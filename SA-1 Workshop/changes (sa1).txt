@@ -1,0 +1,72 @@
+SA-1 Pack v1.25:
+	- Fixed SNES NMI and IRQ vectors override not getting written correctly ($220C, $220E). These registers are SA-1 only write and they were being written on SNES CPU side, making real hardware crash. None of the major emulators currently emulate this register properly.
+	- Added a code on RESET routine to put the SA-1 CPU on sleep state before booting and setting up initial variables. The same procedure is done on most commercial games so I decided to include it on SA-1 Pack just to be safe in real hardware.
+	- Added a code for clearing DMA state ($2230) on SA-1 RESET routine.
+	- Made all DMAs invoked by the patch use channel 1 instead of 0. This should make the DMA remap patch work with SA-1 ROMs without requering to modify any of the SA-1 Pack code.
+	- Made DSX (Dynamic Sprites) patch code optional, requested by anonimzwx.
+	- Made some minor grammar fixes.
+
+SA-1 Pack v1.24:
+	- Fixed Character Conversion DMA randomly freezing the game when SA-1 is unable to receive IRQs.
+
+SA-1 Pack v1.23:
+	- Made the dynamic sprite uploader only run on level and title screen game mode. This may fix some issues with dynamic sprites getting garbaged graphics on fade in/out or even unwanted uploads.
+
+SA-1 Pack v1.22:
+	- Fixed a bug where the arrow used in CONTINUE/END text wasn't being rendered in bsnes and other saner emulators that blocks WRAM access from SA-1 CPU.
+
+SA-1 Pack v1.21:
+	- Fixed another bug when more than 84 sprites gets loaded. Interesting how the cause was the same as another one I fixed on version v1.20, so this time I had sure that no similar bugs will appear.
+	- Made all files have @includefrom sa1.asm to avoid possible patching problems.
+	- Made the ZSNES detection optional.
+
+SA-1 Pack v1.20:
+	- Moved routines $00E2BD and $00C47E to SA-1 side on level game mode, which seems to handle mario physics, mario oam, most sprites types (shooters, generators, clusters, extended, minor extended, bounce, score and smoke) plus block/map16 handling. With that, the CPU usage on levels decreased a lot, almost by half.
+	- Moved almost all overworld code to SA-1 CPU. Now the CPU usage on overworld is around 22% and the [!] blocks spreading event runs without slowdown chance.
+	- Made the sprite C6 (Light) update every frame instead of every four frames.
+	- Fixed IRQ issues with ZSNES and bsnes accuracy. Layer 3 won't glitch anymore.
+	- Fixed LZ3 making the ROM crash if "case 00" wraps a bank.
+	- Fixed stairs GFX being messed up. The cause was of wrong bank being used on two STA opcodes on clear stack routine.
+	- Fixed an issue with sprite loading code, which could crash the ROM if more than 84 sprites gets loaded when placed on specific positions.
+	- Fixed pos-Bowser's battle.
+	- Fixed fireworks.
+	- Fixed two missing addresses from The Last Remap patch.
+	- Lowercased files lzx.asm, lz2.asm and lz3.asm. It should make SA-1 Pack patchable on case-sensitible OS.
+	- Restored old and fast MVN code on LZ2/LZ3 patches, but if ZSNES runs the old (slow) code will be used.
+
+SA-1 Pack v1.12:
+	- Fixed a incompability issue with Lunar Magic's Overworld Editor. The ROM crashes if you save
+	the overworld to your ROM because the LM modifies a specific byte making a JML be JML $7Fxxxx on
+	SA-1 side, freezing the game at black screen.
+
+SA-1 Pack v1.11:
+	- Fixed a bug on LZ2/LZ3 patch which on rare cases makes the GFX decompress incorrectly.
+
+SA-1 Pack v1.10:
+	- Added Arujus's Sprite Remap, allowing up to ~20 sprites to be processed on screen.
+	- Modified most of sprite loading code, allowing up to 255 sprites per level.
+	- Optimized SMW's circle routine, removing all slowdown on level clear and other screens.
+	- No More Sprite Tile Limits patch is now integrated, due of a limitation on Arujus's patch.
+	- Fixed a ZSNES freeze/crash when the SA-1 CPU calls SNES CPU (fixes all sprites which edits level tiles, like monty moles).
+	- Fixed lot of grammar/spelling errors on read me, comments and documents.
+	- Fixed lot of issues on I-RAM map.
+	- Removed Lunar Fix since Lunar Magic 2.20 supports SA-1 Pack now.
+	- Added changes.txt.
+
+SA-1 Pack v1.03:
+	- Fixed some IRQ timing bug.
+	- Fixed Reznor's bridge.
+	- Optimized a bit the patch and removed two useless features.
+	- (Lunar Fix) Added a fix related with level C7 and File Select background palette.
+	- (Lunar Fix) Fixed a major bug which layer 2, vertical and vertical+layer 2 levels had the screen totally glitched.
+
+SA-1 Pack v1.02/v1.01:
+	- All features from standard and deluxe pack with ZSNES compatibility. Character Conversion DMA is included too, but it doesn't work totaly with ZSNES.
+	- Map16 remap: moves $7E:C800-$7E:FFFF and $7F:C800-$7F:FFFF to $40:C800-$40:FFFF & $41:C800-$41:FFFF.
+	- Level loading boost: Since Map16 memory has been remapped, now SA-1 handles the level loading.
+	- LZ2 now works on ZSNES
+	- Added LZ3 patch. Works on ZSNES, of course.
+	- Includes a few OAM boost patches.
+	
+SA-1 Pack v1.00:
+	- First version of patch which only included sprite boost.

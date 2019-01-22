@@ -1,0 +1,157 @@
+
+
+Gonna merge all lesser sprite types.
+
+	10 extended sprites
+
+	4 bounce sprites
+
+	8 shooters
+
+	4 coin sprites
+
+	6 score sprites
+
+	12 minor extended sprites
+
+	4 smoke sprites
+
+	44 ExSprites in total (probably reduce to 32).
+
+
+regs:
+
+	12 for extended sprites (120 bytes)
+
+	21 for bounce sprites (84 bytes)
+
+	7 for shooters (56 bytes)
+
+	8 for coin sprites (32 bytes)
+
+	7 for score sprites (42 bytes)
+
+	10 for minor extended sprites (120 bytes)
+
+	4 for smoke sprites (16 bytes)
+
+	(470 bytes in total)
+
+
+	Each ExSprite gets 13 regs:
+
+	- xpos lo
+	- xpos hi
+	- xspeed
+	- xfraction
+	- ypos lo
+	- ypos hi
+	- yspeed
+	- yfraction
+
+	- GFX data
+	- go behind scenery
+
+	- misc 1
+	- misc 2
+	- misc timer
+
+	Bounce sprites will need some rewriting but that's fine.
+
+$1699-$17BA:	290 (0x122) bytes
+
+$17C0-$185B:	156 (0x09C) bytes
+
+
+	- Physics -
+	$1699: X position lo byte
+	$16B9: X position hi byte
+	$16D9: X speed
+	$16F9: X fraction bits
+	$1719: Y position lo byte
+	$1739: Y position hi byte
+	$1759: Y speed
+	$1779: Y fraction bits
+
+	- Misc -
+	$1799: Misc. timer
+	$17C0: Misc. 1
+	$17E0: Misc. 2
+	$1800: GFX data
+	$1820: Go behind scenery flag (7 bits free...)
+
+
+
+list:
+
+	00 - Free slot
+	01 - Puff of smoke 1
+	02 - Reznor fireball
+	03 - Little flame (left by hopping flame)
+	04 - Hammer
+	05 - Player fireball
+	06 - Bone from dry bones
+	07 - Lava splash
+	08 - Torpedo Ted shooter's arm
+	09 - Shooter
+	0A - Coin from coin cloud game
+	0B - Pirahna Plant fireball
+	0C - Lava Lotus fireball
+	0D - Baseball
+	0E - Wiggler's flower
+	0F - Yellow Yoshi stomp smoke
+	10 - Spinjump stars
+	11 - Yoshi fireballs
+	12 - Water bubble
+
+	13 - Moving turn block
+	14 - Note block
+	15 - ?Block
+	16 - Sideways bouncing block (?)
+	17 - Translucent block
+	18 - On/Off block
+	19 - Spinning turn block
+
+	1A - Coin from block
+
+	1B - 10 pts
+	1C - 20 pts
+	1D - 40 pts
+	1E - 80 pts
+	1F - 100 pts
+	20 - 200 pts
+	21 - 400 pts
+	22 - 800 pts
+	23 - 1000 pts
+	24 - 2000 pts
+	25 - 4000 pts
+	26 - 8000 pts
+	27 - 1up
+	28 - 2up
+	29 - 3up
+
+	2A - Puff of smoke 2
+	2B - Contact GFX
+	2C - Turn smoke
+	2D - Glitter sprite
+
+	2E - Piece of brick
+	2F - Small star
+	30 - Cracked shell (Yoshi egg)
+	31 - Flame from jumping fireball (Podoboo)
+	32 - Blue sparkle
+	33 - Z (Rip Van Fish)
+	34 - Water splash
+	35 - Boo stream tail
+	36 - Puff of smoke 3
+
+
+
+
+
+
+
+
+
+
+
