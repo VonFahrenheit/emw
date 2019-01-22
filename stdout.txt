@@ -1,0 +1,8 @@
+Reading config file C:\Users\djkno\Dropbox\emq/snes9x.conf.
+Saving	config file	C:\Users\djkno\Dropbox\emq/snes9x.conf
+Sound buffer size: 8192 (2048 samples)
+Found ROM file header (and ignored it).
+Map_SA1LoROMMap
+"SUPER MARIOWORLD" [checksum ok] LoROM, 8Mbits, ROM+RAM+BAT+SA-1, NTSC, SRAM:1024Kbits, ID:____, CRC32:6D148C5B
+Sound buffer size: 8192 (2048 samples)
+Saving	config file	C:\Users\djkno\Dropbox\emq/snes9x.conf
