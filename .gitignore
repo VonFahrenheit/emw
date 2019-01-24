@@ -5,3 +5,7 @@
 *.mwt
 *.srm
 *.ssc
+/patches
+/sa-1workshop
+/roms
+/oldies
