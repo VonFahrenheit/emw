@@ -1,0 +1,61 @@
+
+
+	2019-06-17:
+		- improved PCE physics engine (added a shared function for acceleration)
+		- added ice physics for Kadaal and Leeway
+		- added Happy Slime (custom sprite 0x00) option by setting the extra bit:
+			- in this mode it will be stationary and bounce objects on its head
+			- if it is damaged, it will turn red and chase the player like normal
+			- it can bounce almost any sprite that it touches
+			- you can even have chains of this sprite on top of each other
+		- improved Happy Slime physics and AI:
+			- it no longer clips into the floor
+			- it will try to jump over players when green and on top of them when red
+		- inserted Lava Lord boss as custom sprite 0x20
+		- implemented 3D tilemap system (I call it the 3D Joint Cluster System)
+			- this can process 3D models, which are made up by joints
+			- each joint is attached to another one in a position defined by distance and 2 angles
+			- each cluster has a core which is only attached to itself
+			- rotating the core will rotate the entire object
+			- when a cluster is processed it is converted to a tilemap that can be loaded by a sprite
+			- 3D clusters can be used to achieve very smooth animations
+			- this system is extremely demanding and can lag even the SA-1 if models are made too complex
+		- inserted Coin Golem as custom sprite 0x21
+			- Coin Golem makes use of 3D tilemaps
+			- it uses standard palettes but requires Sprite Yoshi Coin to be added to the level's GFX index
+
+
+	2019-06-23:
+		- Coin Golem:
+			- moved head 11.25 degrees forward
+			- added run animation
+			- added turn animation
+		- inserted sprite Yoshi Coin as custom sprite 0x22
+			- works as normal Yoshi Coin but it is a sprite
+			- it has level GFX index support so it is easy to use
+			- it should not be placed in Lunar Magic as that will let it respawn
+			- this can be spawned from blocks or from other sprites, which is its intended use
+
+
+	2019-07-01:
+		- Coin Golem:
+			- improved animations
+			- improved model
+			- limbs behindd the body will now be darker to show depth
+			- head will flip horizontally when the golem turns around
+			- added physics and basic AI
+			- added interaction with hitboxes for torso, head, and hand
+			- coin golem can be killed by hitting its torso or head or jumping on its head enough times
+			- coin golem will drop its head as a Yoshi Coin upon death
+		- Alter:
+			- Alter added in slot 4 in PCE
+			- Alter does not yet have any GFX but has some basic movement ready for testing
+		- Leeway:
+			- increased the height of the air slash hitbox
+			- landing with an air slash should now hit short grounded enemies 100% of the time
+
+
+
+
+
+
