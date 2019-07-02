@@ -53,6 +53,16 @@
 		- Leeway:
 			- increased the height of the air slash hitbox
 			- landing with an air slash should now hit short grounded enemies 100% of the time
+			
+			
+	2019-07-02:
+		- Coin Golem:
+			- added deactivated status, that the golem starts in
+			- added activation animation
+			- made golem look at the nearest player
+			- golem will have an angry expression when attacking and a sly one if it kills all players
+			- friction reduced to 1 (down from 4)
+			- friction of 4 maintained for landing with slam attack
 
 
 
