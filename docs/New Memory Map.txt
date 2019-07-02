@@ -33,7 +33,8 @@
 		$0C00-$0DFF:	512 B	Table for HDMA channel 7.
 		$0E00-$1E7F:	4.5 KB	RAM code area.
 		$1E80-$1EA5:	38 B	Vitor's RAM codes.
-		$1EA6-$1FFF:	346 B	----
+		$1EA6-$1EFF:	90 B	----
+		$1F00-$1FFF:	246 B	----
 
 		Bank $7E:
 		$2000-$7CFF:	24 KB	GFX32, decompressed.
@@ -52,7 +53,9 @@
 
 		$3000-$30FF:	256 B	SNES/SA-1 DP
 		$3100-$313F:	64 B	Used by Vitor's patch
-		$3140-$317E:	63 B	----
+		$3140-$3169:	42 B	----
+		$316A-$317D:	20 B	Mario palette data
+		$317E-$317E:	1 B	Mario palette override
 		$317F-$31FF:	129 B	Used by Vitor's patch
 		$3200-$35FF:	1024 B	Sprite data, expanded by physics+
 		$3600-$367F:	128 B	Player 1 data
@@ -70,6 +73,9 @@
 		$6110-$6187:	120 B	Raw player 1 DMA data (1 byte free at the end)
 		$6188-$61FF:	120 B	Raw player 2 DMA data (1 byte free at the end)
 		$6200-$7FFF:	7.5 KB	SMW's $0200-$1FFF
+
+		$6DDF-$6EF4:	278 B	3D tilemap cache
+
 
 		Bank $40:
 		$0000-$1FFF:	8 KB	BW-RAM image
@@ -97,7 +103,8 @@
 		$8A00-$8AFE:	255 B	Sprite load status (00: reload, EE: never reload)
 		$8AFF-$8B5E:	96 B	Midway table, lo byte table
 		$8B5F-$8BBE:	96 B	Midway table, hi bit table
-		$8BBF-$BFFF:	13 KB	----
+		$8BBF-$B7FF:	11 KB	Tile update optimizer area (probably only uses 1KB or so)
+		$B800-$BFFF:	2 KB	3D Cluster Joint data
 		$C000-$C7FF:	2 KB	SRAM area
 		$C800-$FFFF:	14 KB	Map16 hi byte table
 
