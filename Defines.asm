@@ -1,3 +1,4 @@
+
 ;=======;
 ;DEFINES;
 ;=======;
@@ -31,13 +32,23 @@
 			; $02 = Piranha Plant
 			; $03 = Rex
 			; $04 = Hammer Rex
-			; $05 = Hammer (Extended sprite)
+			; $05 = Hammer (x2, Extended sprite)
 			; $06 = Plant Head
 			; $07 = Goomba Slave
 			; $08 = Thif
 			; $09 = Palette 8 CCC bits (corrects palette usage on a level-level basis)
-			; $0A = Volcano Lotus Fire
-			; $0B = Bumper (base tile = $100)
+			; $0A = Volcano Lotus Fire (x2)
+			; $0B = Bumper (x2, base tile = $100)
+			; $0C = Novice Shaman
+			; $0D = Happy Slime
+			; $0E = Magic Mole
+			; $0F = Monkey
+			; $10 = Goomba (x2)
+			; $11 = Komposite Koopa
+			; $12 = Monty Mole
+			; $13 = Terrain Platform
+			; $14 = Projectile
+			; $15 = Sprite Yoshi Coin
 
 		!BigRAM			= $6080
 
@@ -108,6 +119,29 @@
 		!P2DashTimerR2		= !P2Base+$27		; Also Leeway's crouch timer
 		!P2DashTimerL1		= !P2Base+$28		; Also ORA'd to Leeway's $6DA3 if L2 is set
 		!P2DashTimerL2		= !P2Base+$29		; Also Leeway's Timer for L1
+
+
+		!P2Element		= !P2Base+$20
+		!P2Telekinesis		= !P2Base+$21
+		!P2Launch		= !P2Base+$22		; highest bit for direction, lo 5 bits for sprite index
+		!P2StasisSpell		= !P2Base+$23
+		!P2DestroyXLo		= !P2Base+$24
+		!P2DestroyXHi		= !P2Base+$25
+		!P2DestroyYLo		= !P2Base+$26
+		!P2DestroyYHi		= !P2Base+$27
+		!P2DestroyTimer		= !P2Base+$28
+		!P2FamiliarXLo		= !P2Base+$29
+		!P2FamiliarXHi		= !P2Base+$2A
+	; 2B-2D for animation
+		!P2FamiliarYLo		= !P2Base+$2E
+		!P2FamiliarYHi		= !P2Base+$2F
+		!P2DoubleJump		= !P2Base+$60
+		!P2LaunchTimer		= !P2Base+$61
+		!P2Mana			= !P2Base+$62
+		!P2ManaTimer		= !P2Base+$63
+		!P2ManaLock		= !P2Base+$64
+
+
 
 		!P2Dashing		= !P2Base+$2A		; Also Leeway's main dash timer
 		!P2Anim			= !P2Base+$2B
@@ -182,9 +216,13 @@
 		!P2SenkuSmash		= !P2Base+$62		; Set if player is touching a smashable enemy this frame
 		!P2ShellSpeed		= !P2Base+$63		; Allow maximum air speed when set
 		!P2ShellDrill		= !P2Base+$64
+		!P2BackDash		= !P2Base+$65
+
+
 
 
 		!P1Dead			= $7FFF
+
 
 		!SRAM_buffer		= $404000
 		!Difficulty		= !SRAM_buffer+$01
@@ -230,6 +268,9 @@
 		!OAMindex		= $7473			; lo byte
 		!OAMindexhi		= $7475			; hi bit
 
+		!MarioPalData		= $316A			; colors 0x86-0x8F
+		!MarioPalOverride	= $317E			; when set, SMW is not allowed to update !MarioPalData
+
 		!PlayerBackupData	= $404E00		; > 128 bytes
 
 		!MultiPlayer		= $404E80
@@ -266,6 +307,8 @@
 		!MegaLevelID		= $404EB3		; 0 = no mega level
 
 		!TextPal		= $404EB4		; CCC bits of text prop, set to 0x18 by default
+
+		!PauseThif		= $404EB5		; when set, thifs will not process
 
 
 		!VineDestroyHorzTile1	= $92
@@ -304,6 +347,56 @@
 
 		!MidwayLo		= $418AFF	; what level each translevel is currently loading its midway from
 		!MidwayHi		= $418B5F
+
+
+	; -- 3D Joint Cluster --
+
+		!3D_Base		= $41B800
+
+		!3D_AngleXY		= !3D_Base+$0	;\
+		!3D_AngleXZ		= !3D_Base+$1	; |
+		!3D_AngleYZ		= !3D_Base+$2	; | used for core
+		!3D_AngleYX		= !3D_AngleXY	; |
+		!3D_AngleZX		= !3D_AngleXZ	; |
+		!3D_AngleZY		= !3D_AngleYZ	;/
+
+		!3D_AngleH		= !3D_Base+$0	;\ used for non-core objects
+		!3D_AngleV		= !3D_Base+$1	;/
+
+	; for all angles, 256 represents a full 360 degree rotation
+
+		!3D_Distance		= !3D_Base+$3	; 16 bit, each unit represents 1/256th px
+		!3D_DistanceSub		= !3D_Base+$3	;
+		!3D_DistancePx		= !3D_Base+$4	;
+		!3D_X			= !3D_Base+$5	; 16-bit X position
+		!3D_Y			= !3D_Base+$7	; 16-bit Y position
+		!3D_Z			= !3D_Base+$9	; 8-bit Z position (0x80 is default)
+		!3D_Attachment		= !3D_Base+$B	; which object this one is attached to
+		!3D_Slot		= !3D_Base+$D	; 8-bit, 0 if this slot is free, otherwise used
+		!3D_Extra		= !3D_Base+$E	; empty
+
+		; if an object is set to be attached to itself, then that is the core of that cluster.
+		; writing to angles and Z position of the core will affect the entire cluster.
+		; distance has no effect on the core.
+
+
+		!3D_AssemblyCache	= !3D_Base+$400
+
+		!3D_TilemapCache	= $6DDF		; 278 bytes
+
+		!3D_BankCache		= !3D_Base+$7ED
+		!3D_TilemapPointer	= !3D_Base+$7EE
+
+		!3D_Cache		= !3D_Base+$7F0
+		!3D_Cache1		= !3D_Cache+$0
+		!3D_Cache2		= !3D_Cache+$2
+		!3D_Cache3		= !3D_Cache+$4
+		!3D_Cache4		= !3D_Cache+$6
+		!3D_Cache5		= !3D_Cache+$8
+		!3D_Cache6		= !3D_Cache+$A
+		!3D_Cache7		= !3D_Cache+$C
+		!3D_Cache8		= !3D_Cache+$E
+
 
 
 	; -- Sprite stuff --
@@ -357,6 +450,7 @@
 		!MarioScreenXPosHi	= $7F
 		!MarioScreenYPosLo	= $80
 		!MarioScreenYPosHi	= $81
+		!IceLevel		= $86
 		!MarioXPosLo		= $94
 		!MarioXPosHi		= $95
 		!MarioYPosLo		= $96
@@ -441,7 +535,7 @@
 
 		!PlayerClipping		= read3($00E3D6)	; Pointer is stored with PCE.asm
 
-		!GenerateBlock		= read3($04842E)	; Pointer is stored with RealmSelect.asm
+		!GenerateBlock		= read3($04842E)	; Pointer is stored with SP_Patch.asm
 
 
 	; -- SMW routines --
@@ -489,6 +583,11 @@
 		!P2Tile6		= $2A
 		!P2Tile7		= $2C
 		!P2Tile8		= $2E
+
+		!SP1			= $6000
+		!SP2			= $6800
+		!SP3			= $7000
+		!SP4			= $7800
 
 
 	; -- Booleans --		; Don't mess with these.
