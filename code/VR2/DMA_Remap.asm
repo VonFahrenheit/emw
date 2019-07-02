@@ -522,7 +522,7 @@ LDX #$02
 ;Fix Lunar Magic hijack;
 ;======================;
 
-if read3($00A390+1) != $80A020
+if read3($00A390+1) != $00A020
 
    org read3($00A390+1)
    STZ $4316     
