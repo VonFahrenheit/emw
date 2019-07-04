@@ -519,8 +519,10 @@ incsrc "Replace/SP_Coin.asm"
 incsrc "Replace/SP_HammerPlat.asm"
 
 macro InsertSprite(name)
-	print "<name> inserted at $", pc, "."
+	START_<name>:
 	incsrc "Sprites/<name>.asm"
+	END_<name>:
+	print "<name> inserted at $", pc, " ($", hex(END_<name>-START_<name>), " bytes)."
 endmacro
 
 
@@ -567,6 +569,7 @@ print "-- BANK $17 --"
 %InsertSprite(LavaLord)
 %InsertSprite(CoinGolem)
 %InsertSprite(YoshiCoin)
+%InsertSprite(EliteKoopa)
 
 
 	WalkOff:

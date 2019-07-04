@@ -2,19 +2,27 @@ CoinGolem:
 
 	namespace CoinGolem
 
-	!CoinGolemState		= $BE,x
+
+
+	!CoinGolemEye		= $BE,x			;\ used for dynamic uploads
+	!CoinGolemPrevEye	= $3290,x		;/
+
 	!CoinGolemHP		= $3280,x
 	!CoinGolemTimer		= $32D0,x
 	!CoinGolemHurtTimer	= $3360,x
-
 
 	!CoinGolemTurnDir	= $32A0,x
 	!CoinGolemTurn		= $32B0,x
 	!CoinGolemHeight	= $32C0,x
 
 
+	!CoinGolemAttack1	= $3340,x
+	!CoinGolemAttack2	= $35D0,x
 	!CoinGolemDead		= $35E0,x
 
+
+
+	!YoshiCoinGFX		= $30F8A8
 
 
 
@@ -36,10 +44,7 @@ CoinGolem:
 		LDY $00
 		BEQ $01 : ASL A
 		STA !CoinGolemHP
-
 		JSR ResetModel
-
-		LDA #$02 : STA !SpriteAnimIndex
 
 		.Main
 		JSL SPRITE_OFF_SCREEN_Long
@@ -55,7 +60,8 @@ CoinGolem:
 		db $20,$E0
 
 		.Friction
-		db $FC,$04
+		db -$01,$01
+		db -$04,$04
 
 		.TurnRotation
 		db $FF,$00
@@ -110,10 +116,11 @@ CoinGolem:
 		LDA #$D0 : STA $9E,x			; |
 		STZ $AE,x				; |
 		PLX					;/
+		STZ !CoinGolemEye			; > Reset eye tile so dropped coin won't look weird
 
-	+	JMP GRAPHICS				;\ just go to graphics if sprite is dead
-		.Alive					;/
+	+	JMP GRAPHICS				; just go to graphics if sprite is dead
 
+		.Alive
 		PEA .Return-1				; > set return address
 		LDA !CoinGolemTimer : BEQ .Process	;\ don't do animations if stunned
 		RTS					;/
@@ -130,7 +137,7 @@ CoinGolem:
 
 		.Ptr
 		dw .Idle	; 00
-		dw .Walk	; 01
+		dw .Unused	; 01
 		dw .Run		; 02
 		dw .Squat	; 03
 		dw .Jump	; 04
@@ -143,14 +150,82 @@ CoinGolem:
 
 	.Idle
 		PLX
-		RTS
+		JSR TargetEye
+		LDA !SpriteAnimIndex : BMI ..main
+		ORA #$80
+		STA !SpriteAnimIndex
+		LDX #$B0
+		LDY #$0A
+	-	LDA ..AngleH,y : STA !3D_AngleH,x
+		LDA ..AngleV,y : STA !3D_AngleV,x
+		DEY
+		TXA
+		SEC : SBC #$10
+		BEQ +
+		TAX
+		BRA -
 
-	.Walk
+	+	LDX !SpriteIndex
+		LDA #$00 : STA !3D_AngleXZ
+
+		..main
+		AND #$40 : BNE ..unravel
+		JSR .Run_Sight
+		BCC ..r
+		LDA #$C0 : STA !SpriteAnimIndex
+
+		..unravel
+		PHB
+		LDA.b #!3D_Base>>16
+		PHA : PLB
+		LDX #$B0
+		LDY #$01
+		STZ $00
+	-	LDA.w !3D_AngleH,x
+		CMP.l ANIM_Start+0,x
+		BEQ $05 : INC.w !3D_AngleH,x : STY $00
+		LDA.w !3D_AngleV,x
+		CMP.l ANIM_Start+1,x
+		BEQ $05 : INC.w !3D_AngleV,x : STY $00
+
+		TXA
+		BEQ +
+		SEC : SBC #$10
+		TAX
+		BRA -
+
+	+	PLB
+		LDX !SpriteIndex
+		LDA #$02 : STA !CoinGolemHurtTimer
+		LDA $00 : BNE ..r
+		STZ $AE,x
+		JSL !SpriteApplySpeed
+		LDA $3330,x
+		AND #$04 : BEQ ..r
+		LDA #$09 : STA !SPC4				; sfx
+		LDA #$1F : STA !ShakeTimer
+		LDA #$02 : STA !SpriteAnimIndex
+		LDA #$10 : STA !CoinGolemTimer			; pause a bit when landing
+	..r	RTS
+
+		..AngleH
+		db $00,$00,$40,$00	; 00-03 (10-40)
+		db $00,$00,$00,$00	; 04-07 (50-80)
+		db $00,$00,$00		; 08-0A	(90-B0)
+
+		..AngleV
+		db $C0,$C0,$20,$00	; 00-03 (10-40)
+		db $00,$00,$00,$C0	; 04-07 (50-80)
+		db $00,$C0,$00		; 08-0A	(90-B0)
+
+
+	.Unused
 		PLX
 		RTS
 
 	.Run
 		PLX
+		JSR TargetEye
 		LDA $3330,x			;\
 		AND #$04			; | suspend animation if in midair
 		BNE $01 : RTS			;/
@@ -158,8 +233,21 @@ CoinGolem:
 
 		JSR ..Sight
 		BCC ..main
-		LDA #$03 : STA !SpriteAnimIndex
-		LDA #$10 : STA !SpriteAnimTimer
+		LDA !RNG
+		AND #$04
+		ORA #$03
+		CMP !CoinGolemAttack1 : BNE +	; can't use the same attack more than twice in a row
+		CMP !CoinGolemAttack2 : BNE +
+		EOR #$04
+	+	STA !SpriteAnimIndex
+		XBA
+		LDA !CoinGolemAttack1 : STA !CoinGolemAttack2
+		XBA : STA !CoinGolemAttack1
+		CMP #$03
+		BNE $01 : INC A
+		ASL #2
+		AND #$18
+		STA !SpriteAnimTimer
 		RTS
 
 		..main
@@ -264,6 +352,7 @@ CoinGolem:
 
 	.Squat
 		PLX
+		JSR TargetEye
 		LDA $3320,x : STA !CoinGolemTurnDir
 		LDA $3330,x
 		AND #$04 : BEQ ..r
@@ -285,11 +374,13 @@ CoinGolem:
 
 	.Jump
 		PLX
+		JSR TargetEye
 		LDA $3330,x
 		AND #$04 : BEQ +
 		LDA !3D_AngleV+$40
 		CMP #$30 : BNE ++
 		LDA #$C0 : STA $9E,x
+		LDA #$08 : STA !SPC4				; jump SFX
 		BRA +
 
 	++	LDY #$01
@@ -306,6 +397,7 @@ CoinGolem:
 
 	.Freefall
 		PLX
+		JSR TargetEye
 		LDA $3330,x
 		AND #$04 : BNE ..Ground
 		JSR .Run_Sight
@@ -330,6 +422,7 @@ CoinGolem:
 	; sprite timer is supposed to be 0x18
 	.Slam
 		PLX
+		LDA #$08 : STA !CoinGolemEye
 		BIT !SpriteAnimIndex
 		BVS ..landed
 		BMI ..down
@@ -385,27 +478,39 @@ CoinGolem:
 
 	.Backswing
 		PLX
+		LDA $3320,x : STA !CoinGolemTurnDir
+		LDA #$08 : STA !CoinGolemEye
 		LDA !SpriteAnimIndex : BMI ..Main
 		ORA #$80 : STA !SpriteAnimIndex
+		LDY $3320,x
+		LDA DATA_XSpeed,y : STA $AE,x
 		JSR ResetModel
-		LDA #$00
-		STA !3D_AngleV+$10
+		LDA #$00 : STA !3D_AngleV+$10
+		LDA !3D_AngleV+$80
+		CLC : ADC #$20
+		STA !3D_AngleV+$80
 
 		..Main
-		LDA !3D_AngleV+$10
-		DEC A
-		STA !3D_AngleV+$10
+		LDA !3D_AngleH+$40
+		SEC : SBC #$03
+		STA !3D_AngleH+$40
 		LDA !3D_AngleV+$40
 		SEC : SBC #$02
 		STA !3D_AngleV+$40
+
 		LDA !3D_AngleV+$50
-		SEC : SBC #$04
+		INC #2
 		STA !3D_AngleV+$50
+
+
+		LDA !3D_AngleXZ
+		CLC : ADC #$02
+		STA !3D_AngleXZ
 
 		DEC !SpriteAnimTimer
 		LDA !SpriteAnimTimer : BNE ..r
 		LDA #$08 : STA !SpriteAnimIndex
-		LDA #$10 : STA !SpriteAnimTimer
+		LDA #$18 : STA !SpriteAnimTimer
 	..r	RTS
 
 
@@ -413,36 +518,51 @@ CoinGolem:
 
 	.Punch
 		PLX
-		STA !3D_AngleV+$10
-		CLC : ADC #$02
-		STA !3D_AngleV+$10
 
-		LDA !3D_AngleH+$10
-		SEC : SBC #$10
-		STA !3D_AngleH+$10
+		LDA !SpriteAnimTimer
+		CMP #$10 : BCC +
+		LDA !3D_AngleXZ
+		SEC : SBC #$06
+		STA !3D_AngleXZ
+
+
+		LDA !3D_AngleV+$10
+		CLC : ADC #$06
+		STA !3D_AngleV+$10
+		LDA !3D_AngleV+$20
+		CLC : ADC #$06
+		STA !3D_AngleV+$20
+		LDA !3D_AngleV+$30
+		CLC : ADC #$06
+		STA !3D_AngleV+$30
+
+		LDA !3D_AngleV+$60
+		SEC : SBC #$0E
+		STA !3D_AngleV+$60
+		LDA !3D_AngleH+$60
+		CLC : ADC #$08
+		STA !3D_AngleH+$60
+
+
 		LDA !3D_AngleH+$40
-		SEC : SBC #$10
+		CLC : ADC #$0A
 		STA !3D_AngleH+$40
 		LDA !3D_AngleV+$40
-		CLC : ADC #$02
+		CLC : ADC #$06
 		STA !3D_AngleV+$40
-		LDA !3D_Distance+$41
-		INC A
-		STA !3D_Distance+$41
-		LDA !3D_AngleH+$50
-		SEC : SBC #$10
-		STA !3D_AngleH+$50
 		LDA !3D_AngleV+$50
-		CLC : ADC #$04
+		SEC : SBC #$06
 		STA !3D_AngleV+$50
-		LDA !3D_Distance+$51
-		INC A
-		STA !3D_Distance+$51
 
-		DEC !SpriteAnimTimer
+		LDA !3D_AngleV+$80
+		SEC : SBC #$0C
+		STA !3D_AngleV+$80
+
+
+	+	DEC !SpriteAnimTimer
 		LDA !SpriteAnimTimer : BNE ..r
-		LDA #$07 : STA !SpriteAnimIndex
-		LDA #$10 : STA !SpriteAnimTimer
+		LDA #$02 : STA !SpriteAnimIndex
+		JSR ResetModel
 	..r	RTS
 
 
@@ -467,10 +587,12 @@ CoinGolem:
 
 	.Return
 		LDY $3320,x
+		LDA !CoinGolemTimer : BNE INTERACTION	; no movement if timer is set
 		LDA !SpriteAnimIndex			;\
 		AND #$3F				; | states that have friction
+		BEQ INTERACTION				; > 0 does not move at all
 		CMP #$03 : BEQ .Friction		; |
-		CMP #$09 : BEQ .Friction		;/
+		CMP #$07 : BCS .Friction		;/
 		CMP #$06 : BNE +			;\
 		LDA $3330,x				; | Slam has friction if on the ground
 		AND #$04 : BEQ .NoTurn			; |
@@ -494,9 +616,17 @@ CoinGolem:
 
 		.Friction
 		LDY !CoinGolemTurnDir			;\
+		LDA !SpriteAnimIndex			; \
+		AND #$3F				;  | extra friction during landing slam
+		CMP #$06				;  |
+		BNE $02 : INY #2			; /
 		LDA $AE,x : BEQ .Turning		; |
+		STA $00					; |
 		CLC : ADC DATA_Friction,y		; | apply friction
 		STA $AE,x				; |
+		EOR $00					; |
+		BPL .Turning				; |
+		STZ $AE,x				; |
 		BRA .Turning				;/
 
 		.NoTurn
@@ -565,7 +695,10 @@ CoinGolem:
 
 	JSL Rotate
 
+		LDA !SpriteAnimIndex
+		AND #$3F : BEQ +
 		JSR Hitbox
+		+
 
 		LDY !BigRAM			; tilemap size determines loop count
 	-	LDA !BigRAM+4,y			;\
@@ -595,7 +728,23 @@ CoinGolem:
 
 		PLA : STA $3320,x
 
+
+		LDA !CoinGolemEye				;\
+		CMP !CoinGolemPrevEye : BEQ .Return		; |
+		ASL A						; |
+		TAY						; |
+		REP #$20					; |
+		LDA !GFX_status+$15				; | update eye tile
+		AND #$00FF					; |
+		STA $02						; |
+		LDA Dynamo,y : STA $0C				; |
+		SEC : JSL !UpdateGFX				; |
+		SEP #$20					;/
+
+
+
 		.Return
+		LDA !CoinGolemEye : STA !CoinGolemPrevEye
 		PLB
 	INIT:
 		RTL
@@ -769,6 +918,126 @@ CoinGolem:
 
 
 
+; -6000
+; /16
+; -100
+
+; reverse:
+; +100
+; x16
+; +6000
+
+; ignore the +6000 in the math and just have that as the base VRAM address
+
+
+macro Eye(tile)
+	dl !YoshiCoinGFX+(<tile>*$20)
+endmacro
+
+
+	Dynamo:
+		dw .Normal		; 00
+		dw .ForwardDown		; 01
+		dw .Down		; 02
+		dw .BackDown		; 03
+		dw .Back		; 04
+		dw .BackUp		; 05
+		dw .Up			; 06
+		dw .ForwardUp		; 07
+		dw .Angry		; 08
+		dw .Troll		; 09
+		dw .Dishonest		; 0A
+
+
+		.Normal
+		dw ..End-..Start
+		..Start
+		dw $0020
+		%Eye($11)
+		dw $7110
+		..End
+
+		.ForwardDown
+		dw ..End-..Start
+		..Start
+		dw $0020
+		%Eye($6)
+		dw $7110
+		..End
+
+		.Down
+		dw ..End-..Start
+		..Start
+		dw $0020
+		%Eye($7)
+		dw $7110
+		..End
+
+		.BackDown
+		dw ..End-..Start
+		..Start
+		dw $0020
+		%Eye($8)
+		dw $7110
+		..End
+
+		.Back
+		dw ..End-..Start
+		..Start
+		dw $0020
+		%Eye($9)
+		dw $7110
+		..End
+
+		.BackUp
+		dw ..End-..Start
+		..Start
+		dw $0020
+		%Eye($A)
+		dw $7110
+		..End
+
+		.Up
+		dw ..End-..Start
+		..Start
+		dw $0020
+		%Eye($B)
+		dw $7110
+		..End
+
+		.ForwardUp
+		dw ..End-..Start
+		..Start
+		dw $0020
+		%Eye($C)
+		dw $7110
+		..End
+
+		.Angry
+		dw ..End-..Start
+		..Start
+		dw $0020
+		%Eye($D)
+		dw $7110
+		..End
+
+		.Troll
+		dw ..End-..Start
+		..Start
+		dw $0020
+		%Eye($E)
+		dw $7110
+		..End
+
+		.Dishonest
+		dw ..End-..Start
+		..Start
+		dw $0020
+		%Eye($F)
+		dw $7110
+		..End
+
+
 	ResetModel:
 		LDA !CoinGolemTimer : BNE .Return
 		PHX
@@ -783,6 +1052,74 @@ CoinGolem:
 	.Return	RTS
 
 
+	TargetEye:
+		LDA !3D_X+$30 : STA $00	
+		LDA !3D_X+$31 : STA $01
+		LDA !3D_Y+$30 : STA $02
+		LDA !3D_Y+$31 : STA $03
+		LDA !P2Status-$80 : BEQ .Go
+		LDA !P2Status : BNE .Win
+		REP #$20
+		STZ $08
+		BRA .P2
+	.Win	LDA #$09 : STA !CoinGolemEye
+		RTS
+
+	.Go	REP #$20
+		LDA $00
+		SEC : SBC !P2XPosLo-$80
+		STA $04
+		BPL $03 : EOR #$FFFF
+		STA $08
+		LDA $02
+		SEC : SBC !P2YPosLo-$80
+		STA $06
+		BPL $03 : EOR #$FFFF
+		CLC : ADC $08
+		STA $08
+
+	.P2	LDA $00
+		SEC : SBC !P2XPosLo
+		STA $0A
+		BPL $03 : EOR #$FFFF
+		STA $0E
+		LDA $02
+		SEC : SBC !P2YPosLo
+		STA $0C
+		BPL $03 : EOR #$FFFF
+		CLC : ADC $0E
+		CMP $08 : BCC .1
+	.2	LDA $0A : STA $04
+		LDA $0C : STA $06
+
+	.1	LDY #$01 : STY $2250
+		LDA $06
+		BPL $03 : EOR #$FFFF
+		STA $2251
+		LDA $04 : STA $0E			; back this up
+		BPL $03 : EOR #$FFFF
+		STA $2253
+		JSL ADEPT_ROUTE_GetNode_Long
+		LDA .Index,y
+		BIT $0F
+		BPL $02 : ORA #$04
+		BIT $07
+		BPL $02 : ORA #$08
+		LDY $3320,x
+		BNE $02 : EOR #$04
+		TAY
+		LDA .Eye,y : STA !CoinGolemEye
+	.Return	RTS
+
+	.Index	db $00,$00			; vastly to greatly dominant y
+		db $01,$01,$01			; slightly dominant y to slightly dominant x
+		db $02,$02			; greatly to vastly dominant x
+
+	.Eye	db $06,$07,$00,$FF		; top right quadrant
+		db $06,$05,$04,$FF		; top left quadrant
+		db $02,$01,$00,$FF		; bottom right quadrant
+		db $02,$03,$04,$FF		; bottom left quadrant
+
 
 	Hitbox:
 		PHB
@@ -794,7 +1131,7 @@ CoinGolem:
 		STA $04
 		STA $09
 		SEC : SBC.w !3D_X+$10
-		EOR #$FFFF : INC A
+		BPL $04 : EOR #$FFFF : INC A
 		CLC : ADC #$000C
 		STA $06
 		LDA.w !3D_Y+$10
@@ -821,9 +1158,13 @@ CoinGolem:
 		LDA !SpriteAnimIndex
 		AND #$3F
 		CMP #$06 : BEQ .YES		; 6 is actually the index lol
-		LDA #$00
+		CMP #$08 : BNE .NO
+		LDA #$06
+		LDY #$00
+		BRA .GO				; big hand during punch
+	.NO	LDA #$00
 	.YES	LDY $3320,x
-		LDX .HitIndex,y
+	.GO	LDX .HitIndex,y
 		TAY
 		REP #$20
 		LDA !3D_X,x
@@ -840,8 +1181,13 @@ CoinGolem:
 		SEC : JSL !PlayerClipping
 		BCC .NoHand
 		JSL !HurtPlayers
+		LDA !SpriteAnimIndex
+		AND #$3F
+		CMP #$06 : BEQ .Hit
+		CMP #$08 : BNE .NoHand
+	.Hit	LDA #$09 : STA !SPC4
+		LDA #$0F : STA !ShakeTimer
 		.NoHand
-
 
 
 		REP #$20

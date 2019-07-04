@@ -219,6 +219,8 @@
 		!P2BackDash		= !P2Base+$65
 
 
+		!P2DashSlash		= !P2Base+$60		; limits Leeway's dash slashes to 1 per dash
+
 
 
 		!P1Dead			= $7FFF

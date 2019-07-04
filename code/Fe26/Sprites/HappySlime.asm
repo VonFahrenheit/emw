@@ -222,7 +222,8 @@ HappySlime:
 		XBA : STA $3240,y
 		BRA ..anim
 
-..bounce	LDA $309E,y : BMI ..ok
+..bounce	LDA !SpriteAnimTimer : BNE ..ok		; only bounce once
+		LDA $309E,y : BMI ..ok
 		LDA #$A0 : STA $309E,y
 		LDA #$08 : STA !SPC4			; handle bounce
 		BRA ..anim

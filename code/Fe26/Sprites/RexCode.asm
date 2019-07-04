@@ -4194,6 +4194,12 @@ ADEPT_ROUTE:
 
 
 
+.GetNode_Long	PHB : PHK : PLB
+		JSR .GetNode
+		PLB
+		RTL
+
+
 ; Load unsigned 17-bit number in A + carry, then JSR here.
 ; A returns in same mode as before (PHP : PLP)
 ; A holds square root of input number.
