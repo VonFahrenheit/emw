@@ -5,12 +5,15 @@ EliteKoopa:
 
 
 	!EliteAI	= $BE,x
-			; cdikp-ff
-			; c - chase
+			; -dikmmff
 			; d - shell drill
 			; i - pick up items
 			; k - knockback on touch
-			; p - patrol-guard
+			; mm - movement mode:
+			;	00 - no movement
+			;	01 - patrol
+			;	10 - advance
+			;	11 - chase (also enables jumping at ledges and wall jumping)
 			; ff - fire mode:
 			;	00 - no fire
 			;	01 - throw fireballs at range
@@ -20,7 +23,6 @@ EliteKoopa:
 
 
 	!TurnTimer	= $3280,x
-
 	!TackleReady	= $3290,x
 			; if this is non-zero, sprite is getting ready to tackle
 			; it is set to zero if a player leaves the sight-box
@@ -37,6 +39,13 @@ EliteKoopa:
 
 
 	!FireTimer	= $32D0,x	; when this hits 0, sprite will throw a fireball if lowest bit of AI is set
+	!CounterTimer	= $32F0,x	; when this is non-zero, sprite can not counter (auto-decrements)
+	!ShellTimer	= $33E0,x	; when this is non-zero, sprite will slide in shell if chase is enabled
+
+	!DrillState	= $3340,x
+			; 00 - no drill
+			; 01 - jumping towards player
+			; 80 - drilling down
 
 
 
@@ -57,8 +66,7 @@ EliteKoopa:
 		ORA $3460,x
 		STA $3460,x
 		LDA.w DATA_AI,y : STA !EliteAI
-
-		AND #$08 : BEQ .NoPatrol		;\ set turn timer if patrol is enabled
+		AND #$0C : BNE .NoPatrol		;\ set turn timer if patrol is enabled
 		LDA #$80 : STA !TurnTimer		;/
 
 
@@ -77,13 +85,19 @@ EliteKoopa:
 		db $0A,$08,$06,$04
 
 		.AI
-		db $18,$03,$60,$B2
+		db $14,$03,$68,$3E
 
 		.XSpeed
 		db $18,$E8		; patrol
 		db $10,$F0		; patrol EASY
-		db $20,$E0		; run
-		db $28,$D8		; run INSANE
+		db $1C,$E4		; run
+		db $24,$DC		; run INSANE
+		db $30,$D0		; shell dash
+		db $40,$C0		; shell dash INSANE
+
+		.FireSpeed
+		db $40,$C0		;
+		db $30,$D0		; EASY
 
 
 
@@ -101,58 +115,158 @@ EliteKoopa:
 
 
 		.Process
+		LDA !ShellTimer					;\ decrement shell timer
+		BEQ $03 : DEC !ShellTimer			;/
+
 		LDA !EliteAI
-		AND #$03 : BEQ .NoFire
+		AND #$03 : BNE .Fire
+		JMP .NoFire
+
+		.Fire
 		LSR A : BCC .FlameCounter
 		PHA
 		LDA !FireTimer : BNE +
-		LDA #$40 : STA !FireTimer
+		LDA #$30 : STA !FireTimer
+		LDY $3320,x
+		LDA !Difficulty
+		AND #$03
+		BNE $02 : INY #2
+		LDA DATA_FireSpeed,y : STA $04
+		STZ $05
 		JSR Fire
 	+	PLA : BEQ .NoFire
 
 		.FlameCounter
-		LDA $3220,x
-		SEC : SBC #$50
-		STA $04
-		LDA $3250,x
-		SBC #$00
-		STA $0A
-		LDA $3210,x
-		SEC : SBC #$50
-		STA $05
-		LDA $3240,x
-		SBC #$00
-		STA $0B
-		LDA #$B0
-		STA $06
-		STA $07
-		SEC : JSL !PlayerClipping
+		LDA !CounterTimer : BNE .NoFire
+		LDY #$06 : JSR CounterSight
 		BCC .NoFire
+		LDA #$40 : STA !CounterTimer
+		JSR SetAim
+		LDY #$00
+		LDA !Difficulty
+		AND #$03
+		BNE $02 : INY #2
+		LDA DATA_FireSpeed,y
+		JSL AIM_SHOT_Long
+		LDA $06 : STA $05
 		JSR Fire
-
 		.NoFire
 
 
+		BIT !EliteAI : BVC .NoDrill			; > check for drill attack
+		LDA !SpriteAnimIndex				;\ can't drill during stun
+		CMP #$09 : BEQ .NoDrill				;/
+		LDA !DrillState					;\
+		BEQ .CheckStart					; | check for state
+		BPL .CheckDown					;/
+		LDA $3330,x					;\
+		AND #$04 : BEQ .NoDrill				; |
+		STZ !DrillState					; |
+		LDA #$09 : STA !SPC4				; | impact code
+		LDA #$18 : STA !ShakeTimer			; |
+		LDA #$09 : STA !SpriteAnimIndex			; |
+		STZ !SpriteAnimTimer				; |
+		BRA .NoDrill					;/
+
+		.CheckDown
+		LDA $3330,x					;\
+		AND #$04 : BEQ +				; |
+		STZ !DrillState					; |
+		BRA .NoDrill					; |
+	+	JSL SUB_HORZ_POS_Long				; |
+		TYA : STA $3320,x				; |
+		BIT $9E,x : BMI .NoDrill			; | look for players below
+		LDY #$12 : JSR CounterSight			; |
+		BCC .NoDrill					; |
+		LDA #$80 : STA !DrillState			; |
+		LDA #$05 : STA !SpriteAnimIndex			; |
+		STZ !SpriteAnimTimer				; |
+		BRA .NoDrill					;/
+
+		.CheckStart
+		LDA $3330,x					;\
+		AND #$04 : BEQ .NoDrill				; |
+		LDY #$0C : JSR CounterSight			; | check for nearby players
+		BCC .NoDrill					; |
+		LDA #$B0 : STA $9E,x				; |
+		LDA #$01 : STA !DrillState			;/
+		.NoDrill
 
 
-		LDA !EliteAI				;\ this sight box only applies for patrollers
-		AND #$08 : BEQ .NoSight			;/
-		LDA $3220,x				;\
-		SEC : SBC #$20				; |
-		STA $04					; |
-		LDA $3250,x				; |
-		SBC #$00				; |
-		STA $0A					; | set up 80x256 sight box around sprite
-		LDA $3210,x				; |
-		SEC : SBC #$80				; |
-		STA $05					; |
-		LDA $3240,x				; |
-		SBC #$00				; |
-		STA $0B					; |
-		LDA #$50 : STA $06			; |
-		LDA #$FF : STA $07			;/
-		SEC : JSL !PlayerClipping		;\ check for players
-		BCC .NoSight				;/
+		LDA !EliteAI
+		AND #$20 : BNE $03 : JMP .NoItems
+		LDA !Item
+		BMI .Trajectory
+		BNE .Carry
+
+		.Search
+		JSL !GetSpriteClipping04
+		LDY #$0F
+	-	LDA $3230,y
+		CMP #$09 : BCC +
+		PHX
+		TYX
+		JSL !GetSpriteClipping00
+		TXY
+		PLX
+		JSL !CheckContact
+		BCC +
+		TYA
+		INC A
+		STA !Item
+		BRA .Carry_Go
+
+	+	DEY : BPL -
+		BRA .NoItems
+
+		.Carry
+		DEC A
+		TAY
+	..Go	LDA #$02 : STA $34E0,y
+		JSL SPRITE_A_SPRITE_B_COORDS_Long
+		LDY #$18 : JSR CounterSight
+		BCC .NoItems
+		JSR SetAim
+		LDA #$40
+		JSL AIM_SHOT_Long
+		LDA $04 : STA !ItemSpeedX
+		LDA $06 : STA !ItemSpeedY
+		LDA !Item
+		ORA #$80
+		STA !Item
+
+		.Trajectory
+		PHX
+		LDA !Item
+		AND #$7F
+		DEC A
+		TAY
+		LDA !ItemSpeedX : STA $30AE,y
+		LDA !ItemSpeedY : STA $309E,y
+		TYX
+		STZ $34E0,x
+		JSL !SpriteApplySpeed
+		JSL !GetSpriteClipping04
+		SEC : JSL !PlayerClipping
+		BCC $04 : JSL !HurtPlayers
+		PLX
+		TXY
+		LDA $3330,x : BEQ .NoItems
+		LDA #$00
+		STA $309E,y
+		STA $30AE,y
+		STZ !Item
+
+		.NoItems
+
+
+
+
+
+		LDA !EliteAI				;\
+		AND #$0C				; | this sight box only applies for patrollers
+		CMP #$04 : BNE .NoSight			;/
+		LDY #$00 : JSR CounterSight
 
 		JSL SUB_HORZ_POS_Long
 		TYA : STA $3320,x
@@ -195,12 +309,50 @@ EliteKoopa:
 		EOR #$01				; |
 		STA $3320,x				;/
 		LDA !EliteAI				;\
-		AND #$08 : BEQ .NoTurn			; | reset turn timer if patrol is enabled
+		AND #$0C				; | reset turn timer if patrol is enabled
+		CMP #$04 : BNE .NoTurn			; |
 		LDA #$80 : STA !TurnTimer		;/
 		.NoTurn
 
+		LDA !SpriteAnimIndex			;\ can't move during stun
+		CMP #$09 : BNE $03 : JMP .Frctn		;/
+		LDA !DrillState : BPL +			;\
+		LDA #$40 : STA $9E,x			; | set Y speed and use friction during drill
+		BRA .Frctn				;/
+	+	LDY $3320,x				; Y = speed index
+		LDA !EliteAI				;\
+		AND #$0C : BEQ .Camp			; | check movement type
+		CMP #$0C : BNE .Move			;/
+		LDA $3330,x				;\ can't turn in midair when chasing
+		AND #$04 : BEQ +			;/
+		LDA !TurnTimer : BNE .Frctn		; > friction while turning
+		JSL SUB_HORZ_POS_Long			;\
+		TYA					; |
+		CMP $3320,x :  BEQ +			; |
+		LDA #$80 : STA !ShellTimer		; |
+		LDA #$08 : STA !TurnTimer		; |
+		LDA #$04 : STA !SpriteAnimIndex		; | chase clause
+		STZ !SpriteAnimTimer			; |
+		BRA .Frctn				; > apply friction
+	+	LDA !Difficulty				; |
+		AND #$03				; |
+		CMP #$02				; |
+		BNE $02 : INY #2			; |
+		LDA !ShellTimer : BNE .NoShll		; |
+		INY #4					; |
+		LDA !SpriteAnimIndex			; |
+		CMP #$05 : BCC +			; | animation setup
+		CMP #$09 : BCC .NoShll			; |
+	+	LDA #$05 : STA !SpriteAnimIndex		; |
+		STZ !SpriteAnimTimer			; |
+	.NoShll	LDA DATA_XSpeed+4,y			; |
+		BRA .X					;/
 
-		LDA !TackleReady : BNE .Frctn		; grind to a halt when ready to tackle
+	.Camp	JSL SUB_HORZ_POS_Long			;\
+		TYA : STA $3320,x			; | face player if no movement is enabled
+		BRA .Frctn				;/
+
+	.Move	LDA !TackleReady : BNE .Frctn		; grind to a halt when ready to tackle
 		LDA !SpriteAnimIndex			;\
 		CMP #$04 : BNE .Speed			; | friction during turn animation
 	.Frctn	JSR Friction				; |
@@ -210,8 +362,20 @@ EliteKoopa:
 		LDA !Difficulty				; |
 		AND #$03				; | higher index on EASY, based on direction
 		BNE $02 : INY #2			; |
-		LDA DATA_XSpeed,y : STA $AE,x		;/
-	.Write	JSL !SpriteApplySpeed			; > apply speed
+		LDA DATA_XSpeed,y			; |
+	.X	JSR SetSpeed				;/
+	.Write	LDA $3330,x				;\ backup ground flag
+		AND #$04 : PHA				;/
+		JSL !SpriteApplySpeed			; > apply speed
+		PLA : BEQ .NoSpeed			;\
+		EOR $3330,x				; |
+		AND #$04				; |
+		BEQ .NoSpeed				; |
+		LDA !EliteAI				; | jump at ledges during chase
+		AND #$0C				; |
+		CMP #$0C : BNE .NoSpeed			; |
+		LDA #$B0 : STA $9E,x			; |
+		LDA #$80 : STA !ShellTimer		;/
 		.NoSpeed
 
 
@@ -219,6 +383,13 @@ EliteKoopa:
 
 
 	Graphics:
+		LDA !SpriteAnimIndex
+		CMP #$05 : BCC .NoShell
+		CMP #$08 : BCS .NoShell
+		LDA !ShellTimer : BEQ .NoShell
+		STZ !SpriteAnimIndex
+		STZ !SpriteAnimTimer
+		.NoShell
 
 
 
@@ -262,18 +433,97 @@ EliteKoopa:
 
 	Friction:
 		LDA $AE,x : BEQ .Return
-		BPL .Dec
-	.Inc	INC $AE,x : RTS
-	.Dec	DEC $AE,x
+		LSR #4
+		TAY
+		LDA $AE,x
+		SEC : SBC .Table,y
+		STA $AE,x
+	.Return	RTS
+
+	.Table	db $01,$02,$03,$04
+		db $05,$06,$07,$08
+		db $F8,$F9,$FA,$FB
+		db $FC,$FD,$FE,$FF
+
+	SetSpeed:
+		SEC : SBC $AE,x
+		BEQ .Return
+		LSR #4
+		TAY
+		LDA $AE,x
+		CLC : ADC Friction_Table,y
+		STA $AE,x
 	.Return	RTS
 
 
-
-
 	Fire:
-
+		STZ $00
+		STZ $01
+		STZ $02
+		STZ $03
+		LDA #$01
+		LDY #$01
+		JSL SpawnExSprite_Long
 		RTS
 
+	CounterSight:
+		LDA $3220,x
+		CLC : ADC .Table+0,y
+		STA $04
+		LDA $3250,x
+		ADC .Table+1,y
+		STA $0A
+		LDA $3210,x
+		CLC : ADC .Table+2,y
+		STA $05
+		LDA $3240,x
+		ADC .Table+3,y
+		STA $0B
+		LDA .Table+4,y : STA $06
+		LDA .Table+5,y : STA $07
+		SEC : JSL !PlayerClipping
+		RTS
+
+
+	.Table
+	.Patrol
+	dw -$0020,-$0080 : db $50,$FF	; 00
+
+	.Fire
+	dw -$0050,-$0050 : db $B0,$B0	; 06
+
+	.ShellDrill
+	dw -$0038,-$0020 : db $80,$FF	; 0C
+
+	.DrillDown
+	dw -$0008,$0010 : db $20,$FF	; 12
+
+	.ThrowItem
+	dw -$0078,-$0078 : db $FF,$FF	; 18
+
+
+
+	SetAim:
+		PHX
+		LDY #$00
+		LSR A
+		BCS $02 : LDY #$80
+		LDA $3220,x
+		SEC : SBC !P2XPosLo-$80,y
+		STA $00
+		LDA $3250,x
+		SBC !P2XPosHi-$80,y
+		STA $01
+		LDA $3240,x : XBA
+		LDA $3210,x
+		REP #$20
+		SEC : SBC !P2YPosLo-$80,y
+		LDX !P2Character-$80,y : BNE +
+		CLC : ADC #$0010			; 16px offset for Mario
+	+	STA $02
+		SEP #$20
+		PLX
+		RTS
 
 
 
@@ -285,7 +535,18 @@ EliteKoopa:
 	dw .IdleTM	: db $08,$03		; 02
 	dw .WalkTM01	: db $08,$00		; 03
 
+	.Turn
 	dw .TurnTM	: db $08,$00		; 04
+
+	.Shell
+	dw .ShellTM00	: db $04,$06		; 05
+	dw .ShellTM01	: db $04,$07		; 06
+	dw .ShellTM02	: db $04,$08		; 07
+	dw .ShellTM03	: db $04,$05		; 08
+
+	.TemporaryDuck
+	dw .ShellTM00	: db $18,$00		; 09
+
 
 
 	.IdleTM
@@ -307,6 +568,22 @@ EliteKoopa:
 	dw $0008
 	db $20,$00,$F0,$C6
 	db $20,$00,$00,$E6
+
+	.ShellTM00
+	dw $0004
+	db $20,$00,$00,$A4
+
+	.ShellTM01
+	dw $0004
+	db $20,$00,$00,$A6
+
+	.ShellTM02
+	dw $0004
+	db $60,$00,$00,$A4
+
+	.ShellTM03
+	dw $0004
+	db $20,$00,$00,$A8
 
 
 	namespace off

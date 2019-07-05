@@ -794,6 +794,7 @@ DontInteract:
 ;======================;
 ;SPAWN EXSPRITE ROUTINE;
 ;======================;
+; extended
 ; LOAD Y WITH NUMBER OF EXSPRITES TO SPAWN, LOAD A WITH TYPE/PATTERN, LOAD $00-$03 WITH OFFSET!
 ; THEN CALL THE FUNCTION TO SPAWN THEM!
 ;

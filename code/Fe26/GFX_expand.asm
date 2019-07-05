@@ -278,8 +278,21 @@
 	pullpc
 
 
-
-
+	MarioFireball:
+	pushpc
+	org $02A080
+		JSL .Main
+	org $02A1E8
+		JSL .Main
+	pullpc
+	.Main
+		TAX
+		LDA $A15B,x
+		CLC : ADC !GFX_status+$16
+		CLC : ADC !GFX_status+$16
+		BIT !GFX_status+$16
+		BPL $02 : INC $00
+		RTL
 
 
 

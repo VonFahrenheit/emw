@@ -221,20 +221,20 @@ db $00,$37,$30,$BE,$39,$46
 
 ; -- Sprite 23 --
 db $01,$36
-db $00,$27,$50,$81,$11,$04
+db $00,$27,$50,$81,$19,$04
 %AddToList(EliteKoopa_Green, $00, $00)
 
 ; -- Sprite 24 --
 db $01,$36
-db $00,$27,$50,$81,$11,$04
+db $00,$27,$50,$81,$19,$04
 %AddToList(EliteKoopa_Red, $00, $00)
 
 ; -- Sprite 25 --
 db $01,$36
-db $00,$27,$50,$81,$11,$04
+db $00,$27,$50,$81,$19,$04
 %AddToList(EliteKoopa_Blue, $00, $00)
 
 ; -- Sprite 26 --
 db $01,$36
-db $00,$27,$50,$81,$11,$04
+db $00,$27,$50,$81,$19,$04
 %AddToList(EliteKoopa_Yellow, $00, $00)

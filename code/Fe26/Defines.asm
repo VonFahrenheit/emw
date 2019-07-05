@@ -49,6 +49,7 @@
 			; $13 = Terrain Platform
 			; $14 = Projectile
 			; $15 = Sprite Yoshi Coin
+			; $16 = Mario fireball
 
 		!BigRAM			= $6080
 
