@@ -47,14 +47,14 @@
 			- added interaction with hitboxes for torso, head, and hand
 			- coin golem can be killed by hitting its torso or head or jumping on its head enough times
 			- coin golem will drop its head as a Yoshi Coin upon death
-		- Alter:
+		- Alter (0.1):
 			- Alter added in slot 4 in PCE
 			- Alter does not yet have any GFX but has some basic movement ready for testing
-		- Leeway:
+		- Leeway (2.2):
 			- increased the height of the air slash hitbox
 			- landing with an air slash should now hit short grounded enemies 100% of the time
-			
-			
+
+
 	2019-07-02:
 		- Coin Golem:
 			- added deactivated status, that the golem starts in
@@ -65,6 +65,28 @@
 			- friction of 4 maintained for landing with slam attack
 
 
+	2019-07-03:
+		- Coin Golem:
+			- updated activation animation
+			- added SFX to jump
+			- added SFX to attacks upon hit
+		- Leeway (2.3):
+			- fixed bug that caused Leeway to be stuck in his getup animation
+			- limited Leeway's dash attacks to 1 per dash, fixing an unlimited air dash extension glitch
+		- Happy Slime:
+			- fixed a bug that let the sprite bounce something again without touching it
+
+
+	2019-07-04:
+		- inserted Green Elite Koopa as custom sprite 0x23
+		- inserted Red Elite Koopa as custom sprite 0x24
+		- inserted Blue Elite Koopa as custom sprite 0x25
+		- inserted Yellow Elite Koopa as custom sprite 0x26
+
+
+	2019-07-05:
+		- added Mario fireball to level GFX index, letting it be used even when Mario is not in play
+		- added behavior to elite koopas according to the docs
 
 
 
