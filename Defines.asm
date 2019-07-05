@@ -49,6 +49,7 @@
 			; $13 = Terrain Platform
 			; $14 = Projectile
 			; $15 = Sprite Yoshi Coin
+			; $16 = Mario fireball
 
 		!BigRAM			= $6080
 
@@ -218,6 +219,8 @@
 		!P2ShellDrill		= !P2Base+$64
 		!P2BackDash		= !P2Base+$65
 
+
+		!P2DashSlash		= !P2Base+$60		; limits Leeway's dash slashes to 1 per dash
 
 
 
