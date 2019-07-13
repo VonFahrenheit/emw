@@ -50,6 +50,7 @@
 		CPY #$0B : BEQ .Bump
 		CPY #$10 : BEQ .Goomba
 		CPY #$12 : BEQ .Monty
+		CPY #$16 : BEQ .FireB
 
 	.x1	SEC : SBC #$0100
 		BRA .stat
@@ -62,7 +63,8 @@
 	.LotusF	SBC #$01A6 : BRA .x2
 	.Bump	SBC #$0100 : BRA .x2
 	.Goomba	SBC #$00A8 : BRA .x2
-	.Monty	SBC #$0182
+	.Monty	SBC #$0182 : BRA .x2
+	.FireB	SBC #$0008
 
 	.x2	LSR A
 	.stat	SEP #$20
@@ -119,7 +121,7 @@
 	db $09		; level 010
 	db $0B		; level 011
 	db $FF		; level 012
-	db $FF		; level 013
+	db $0C		; level 013
 	db $FF		; level 014
 	db $FF		; level 015
 	db $FF		; level 016
@@ -627,6 +629,7 @@
 	dw .Thif			; index 09
 	dw .RexSlimePlant		; index 0A
 	dw .TerrainPlatform		; index 0B
+	dw .EliteKoopaRexSlime		; index 0C
 
 
 	.Empty
@@ -635,62 +638,67 @@
 
 	.RexLevel
 	dw !SP3
-	db $00,$02,$0B		; Rex, Hammer Rex, Piranha Plant
+	db $00,$02,$0B			; Rex, Hammer Rex, Piranha Plant
 	db $FF
 
 	.VillageRexLevel
 	dw !SP3
-	db $01,$02,$0B		; Villager Rex, Hammer Rex, Piranha Plant
+	db $01,$02,$0B			; Villager Rex, Hammer Rex, Piranha Plant
 	db $FF
 
 	.ShamanSlime
 	dw !SP3
-	db $06,$08,$0B		; Novice Shaman, Happy Slime, Piranha Plant
+	db $06,$08,$0B			; Novice Shaman, Happy Slime, Piranha Plant
 	db $FF
 
 	.HammerRexKoopaMonty
 	dw !SP3
-	db $02,$03,$0B,$11,$13	; Hammer Rex, Koopa Renegade, Piranha Plant, Hammer, Monty
+	db $02,$03,$0B,$11,$13		; Hammer Rex, Koopa Renegade, Piranha Plant, Hammer, Monty
 	db $FF
 
 	.MagicMoleMonty
 	dw !SP3
-	db $09,$13,$0B		; Magic Mole, Monty, Piranha Plant
+	db $09,$13,$0B			; Magic Mole, Monty, Piranha Plant
 	db $FF
 
 	.RexSlime
 	dw !SP3
-	db $00,$08,$10,$15	; Rex, Happy Slime, Lotus fire, Yoshi Coin
+	db $00,$08,$10			; Rex, Happy Slime, Lotus fire
 	db $FF
 
 	.ThunderPlant
-	dw $7800
-	db $12,$0B		; Thunder, Piranha Plant
+	dw !SP4
+	db $12,$0B			; Thunder, Piranha Plant
 	db $FF
 
 	.PlantHeadHammerRex
 	dw !SP3
-	db $04,$02		; Hammer Rex, Plant Head
+	db $04,$02			; Hammer Rex, Plant Head
 	db $FF
 
 	.GoombaSlave
 	dw !SP3
-	db $07			; Goomba Slave
+	db $07				; Goomba Slave
 	db $FF
 
 	.Thif
 	dw !SP3
-	db $05			; Thif
+	db $05				; Thif
 	db $FF
 
 	.RexSlimePlant
 	dw !SP3
-	db $00,$08,$0B		; Rex, Happy Slime, Piranha Plant
+	db $00,$08,$0B			; Rex, Happy Slime, Piranha Plant
 	db $FF
 
 	.TerrainPlatform
 	dw !SP3
-	db $03,$02,$14,$0B,$11	; Koopa, Hammer Rex, Terrain platform, Piranha Plant, Hammer
+	db $03,$02,$14,$0B,$11		; Koopa, Hammer Rex, Terrain platform, Piranha Plant, Hammer
+	db $FF
+
+	.EliteKoopaRexSlime
+	dw !SP2+$200
+	db $03,$02,$08,$11,$15,$17	; Koopa, Hammer Rex, Happy Slime, Hammer, Yoshi Coin, Mario Fire
 	db $FF
 
 
@@ -717,6 +725,8 @@
 	dw .Monty		; file 13
 	dw .TerrainPlatform	; file 14
 	dw .SpriteYoshiCoin	; file 15
+	dw .CoinGolem		; file 16
+	dw .MarioFire		; file 17
 
 
 
@@ -968,15 +978,31 @@
 	dw ..End-..Start
 	db $15
 	..Start
-	dw $00C0
+	dw $0080
 	dl $30F8A8
 	dw $0100
-	dw $00C0
+	dw $0080
 	dl $30FAA8
-	dw $FF60		; -0x100 + 0x60
+	dw $FF40		; -0x100 + 0x40
 	..End
 
+	.CoinGolem
+	dw ..End-..Start
+	db $15
+	..Start
+	dw $02C0
+	dl $30F8A8
+	dw $0200
+	..End
 
+	.MarioFire
+	dw ..End-..Start
+	db $16
+	..Start
+	dw $0040
+	dl $31EC00+$280
+	dw $0020
+	..End
 
 
 

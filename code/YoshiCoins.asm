@@ -492,7 +492,7 @@ Data:
 %YC(0, 0, $FFFF)
 
 .013
-%YC(0, 0, $FFFF)
+%YC(55, 14, $013)
 %YC(0, 0, $FFFF)
 %YC(0, 0, $FFFF)
 %YC(0, 0, $FFFF)

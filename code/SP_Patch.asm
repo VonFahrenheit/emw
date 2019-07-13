@@ -681,6 +681,7 @@ HurtP1:		LDA !P2Invinc-$80,y		;\
 
 ; Store dynamo pointer in $0C-$0D.
 ; Set carry to add $02-$03 to destination, clear carry to not include $02-$03
+; unit of $02 is number of tiles to add, NOT address bytes
 ;==================;
 ;UPDATE GFX ROUTINE;
 ;==================;
@@ -1440,7 +1441,7 @@ SmokeFix:
 		.GFX
 		TAX
 		BIT !GFX_status+$05		;\ Flip bit 0 of $00 (EOR'd to property) if page should be shifted
-		BPL $02 : INC $00		;/
+		BMI $02 : DEC $00		;/
 		LDA $A2DF,x
 		CLC : ADC !GFX_status+$05	; Add hammer offset
 		CLC : ADC !GFX_status+$05	; Twice, so highest bit can be used for page bit in YXPPCCCT

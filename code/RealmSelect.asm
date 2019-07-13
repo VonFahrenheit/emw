@@ -150,12 +150,12 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 		JMP KILL_OAM
 
 	MAIN:
-		PHK : PLB		; Get bank
-		REP #$20		;\
-		STZ $1A			; |
-		STZ $1C			; | Layer 1 & 2 positions
-		STZ $1E			; |
-		STZ $20			;/
+		PHK : PLB			; Get bank
+		REP #$20			;\
+		STZ $1A				; |
+		STZ $1C				; | Layer 1 & 2 positions
+		STZ $1E				; |
+		STZ $20				;/
 
 		LDA #$0040 : STA $22
 		LDA #$0008 : STA $24
@@ -177,8 +177,8 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 		JSL CLEAR_MSG_SA1
 		JSL CLEAR_PLAYER2
 
-	LDA #$0F : STA !StoryFlags
-	NOP #3					; apparently this suppresses a ZMZ glitch
+	LDA #$FF : STA !StoryFlags
+;	NOP #3					; apparently this suppresses a ZMZ glitch
 
 		STZ !LevelSelectBase+$1
 		STZ !LevelSelectBase+$3
@@ -1315,7 +1315,11 @@ endmacro
 		.4
 		db $10		; Thieves' Valley
 		db $11		; Avalanche Incline
+		db $13		; Sovereign Peak
 		db $12		; Hellfire Cave
+		db $30
+		db $30
+		db $30
 
 		.5
 		db $00		; UNKNOWN
@@ -1358,6 +1362,7 @@ endmacro
 	.010	%MapCursor($0, $15)
 	.011	%MapCursor($A, $11)
 	.012	%MapCursor($1C, $1B)
+	.013	%MapCursor(18, $B)
 
 
 

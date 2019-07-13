@@ -3809,7 +3809,21 @@ level11:
 level12:
 	RTS
 level13:
-	RTS
+
+		LDX #$0F				; sprite Yoshi Coin on this level is number 2
+	-	LDA $3230,x
+		CMP #$08 : BNE +
+		LDA $3590,x
+		AND #$08 : BEQ +
+		LDA $35C0,x
+		CMP #$22 : BNE +
+		LDA #$02 : STA $BE,x
+	+	DEX : BPL -
+		RTS
+
+
+
+
 level14:
 	RTS
 level15:
