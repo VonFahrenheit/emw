@@ -89,5 +89,35 @@
 		- added behavior to elite koopas according to the docs
 
 
+	2019-07-06:
+		- Elite Koopa:
+			- item throw now works
+			- improved blue elite koopa's shell drill targeting
 
 
+	2019-07-10:
+		- Elite Koopa:
+			- added interaction
+
+	2019-07-11:
+		- Elite Koopa:
+			- now properly turns around at walls
+			- improved hit detection
+		- Fe26:
+			- sprites that check for player attacks now take index memory into account
+			- this means that each hitbox can only affect each sprite once
+
+
+	2019-07-12:
+		- Sprites:
+			- coin sprite now uses the correct palette
+			- coins will not move sideways while bein bounced by Happy Slime
+			- Hammer Rex now has physics while throwing hammer
+		- fixed a bug causing the hammer to use the wrong tiles
+
+
+	2019-07-13:
+		- Sprites:
+			- Physics Plus will now let sprite speeds be read during stasis
+			- improved Happy Slime bouncing
+			- Happy Slime can now bounce powerups on its head
