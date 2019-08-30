@@ -236,6 +236,7 @@ org $188000		; Bank already claimed because of Fe26
 		STA !HDMAptr+1			;/
 		SEP #$10			; > Index 8 bit
 		LDY #$0C : STY !GFX_status+$09	; > Default palette 8 replacement (pal E)
+		LDY #$60 : STY !GFX_status+$0D	; > Default dynamic tile placement is $0C0
 		LDY $2100			; > Backup 2100
 		LDX #$80 : STX $2100		;\
 		LDA #$3B82 : STA $4300		; |

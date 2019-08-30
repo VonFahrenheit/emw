@@ -493,10 +493,10 @@ Data:
 
 .013
 %YC(55, 14, $013)
-%YC(0, 0, $FFFF)
-%YC(0, 0, $FFFF)
-%YC(0, 0, $FFFF)
-%YC(0, 0, $FFFF)
+%YC(0, 0, $FFFF)		; this one is a sprite
+%YC(257, 21, $013)
+%YC(284, 5, $013)
+%YC(353, 1, $013)
 
 .014
 %YC(0, 0, $FFFF)

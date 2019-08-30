@@ -14,6 +14,17 @@
 		!CCDMA_TABLE	 	= $3190
 		!CC_BUFFER		= $3700
 
+
+
+		!DynamicTile		= $3150
+					; 16 bytes
+					; each one represents one tile, starting at !GFX_status+$0D (D for Dynamic)
+					; to claim one for a sprite, write the sprite's index+1 to the proper index
+					; the sprite's !ClaimedGFX register needs to match what is written here as well
+					; if the comparison concludes invalid, the slot is considered free
+
+
+
 		!Level			= $610B
 		!BossData		= $66F9			; 7 bytes
 		!RNG			= $6700			; Updated every frame during level (game mode = 0x14)
@@ -40,7 +51,7 @@
 			; $0A = Volcano Lotus Fire (x2)
 			; $0B = Bumper (x2, base tile = $100)
 			; $0C = Novice Shaman
-			; $0D = Happy Slime
+			; $0D = Dynamic area
 			; $0E = Magic Mole
 			; $0F = Monkey
 			; $10 = Goomba (x2)
@@ -50,6 +61,7 @@
 			; $14 = Projectile
 			; $15 = Sprite Yoshi Coin
 			; $16 = Mario fireball
+			; $17 = Elite Koopa
 
 		!BigRAM			= $6080
 
@@ -222,6 +234,17 @@
 
 		!P2DashSlash		= !P2Base+$60		; limits Leeway's dash slashes to 1 per dash
 
+		!P2CoyoteTime		= !P2Base+$7F
+			; also applies to Mario
+			; it works like this:
+			;	j----ttt
+			; every frame, t decrements
+			; when t hits 0, j is cleared as well
+			; if j i set when the character is on the ground, they will jump and this will be cleared
+			; if t is nonzero, the character can jump even in midair
+			; when the character is on the ground, t is set to 3
+			; when the character presses jump in midair, j is set and t is set to 3
+
 
 
 		!P1Dead			= $7FFF
@@ -383,14 +406,14 @@
 		; distance has no effect on the core.
 
 
-		!3D_AssemblyCache	= !3D_Base+$400
+		!3D_AssemblyCache	= !3D_Base+$200
 
 		!3D_TilemapCache	= $6DDF		; 278 bytes
 
-		!3D_BankCache		= !3D_Base+$7ED
-		!3D_TilemapPointer	= !3D_Base+$7EE
+		!3D_TilemapPointer	= !3D_Base+$410
+		!3D_BankCache		= !3D_Base+$412
 
-		!3D_Cache		= !3D_Base+$7F0
+		!3D_Cache		= !3D_Base+$400
 		!3D_Cache1		= !3D_Cache+$0
 		!3D_Cache2		= !3D_Cache+$2
 		!3D_Cache3		= !3D_Cache+$4
@@ -408,6 +431,7 @@
 		!SpriteAnimIndex	= $33D0,x
 		!SpriteAnimIndexY	= $33D0,y
 		!ClaimedGFX		= $32C0,x
+		!ClaimedGFX_Y		= $32C0,y
 		!ClaimSize		= $34A0,x	; Used by Kingking!
 		!AggroRexTile		= $35E0,x
 
@@ -539,6 +563,9 @@
 		!PlayerClipping		= read3($00E3D6)	; Pointer is stored with PCE.asm
 
 		!GenerateBlock		= read3($04842E)	; Pointer is stored with SP_Patch.asm
+
+		!GetDynamicTile		= read3($048443)	; Pointer is stored with SP_Patch.asm
+		!UpdateClaimedGFX	= read3($048446)	; Pointer is stored with SP_Patch.asm
 
 
 	; -- SMW routines --

@@ -25,6 +25,12 @@ dl SCROLL_OPTIONS_Main	; JSL read3($048334) will instantly scroll layer 2 and ex
 ; 04843D	; |
 ; 048440	;/
 
+org $048443
+dl GET_DYNAMIC_TILE
+dl UPDATE_CLAIMED_GFX
+
+
+
 pullpc
 
 
@@ -613,6 +619,166 @@ GET_CGRAM:
 
 
 
+; load A with number of extra slots to request, then call this (A=0 means you request 1 tile)
+; if carry returns clear, no slot was found
+; if carry returns set, then Y = index to table
+;========================;
+;GET DYNAMIC TILE ROUTINE;
+;========================;
+
+; $00: number of extra tiles requested
+; $01: number of tiles not yet checked for availability
+; $02: used as a loop counter when checking several tiles for requests larger than 1
+; $03: used as scratch
+
+GET_DYNAMIC_TILE:
+		PHX
+		PHB : PHK : PLB
+		STA $00
+
+		LDY #$00
+.Loop		STY $01
+		LDA $00 : STA $02
+
+.Process	LDX !DynamicTile,y
+		CPX #$10 : BCS .CheckSpace
+		LDA $3230,x : BEQ .CheckSpace
+		LDA !ClaimedGFX
+		CMP #$10 : BCC .CheckSpace
+		AND #$0F
+		STA $03
+		CPY $03 : BNE .CheckSpace
+
+.Next		LDA !ClaimedGFX
+		LSR #4
+		STA $03
+		TYA
+	-	CLC : ADC $03
+		CMP #$10 : BCC +
+		CLC
+
+.Return		PLB
+		PLX
+		RTL
+
+	+	TAY
+		BRA .Loop
+
+.CheckSpace	TYA
+		EOR #$0F
+		CMP $02 : BCC .Return
+		DEC $02 : BMI .ThisOne
+		INY
+		CPY #$08 : BEQ .Loop
+		BRA .Process
+
+.ThisOne	TYA
+		SEC : SBC $00
+		TAY
+		SEC
+		BRA .Return
+
+
+
+
+
+; Store dynamo pointer in $0C-$0D, as usual.
+;==========================;
+;UPDATE CLAIMED GFX ROUTINE;
+;==========================;
+UPDATE_CLAIMED_GFX:
+		PHY
+		LDA !ClaimedGFX
+		AND #$0F
+		ASL A
+		CMP #$10
+		BCC $03 : CLC : ADC #$10
+		CLC : ADC !GFX_status+$0D
+		CLC : ADC !GFX_status+$0D
+		STA $02
+		STZ $03
+		BIT !GFX_status+$0D
+		BPL $02 : INC $03
+		JSR UPDATE_GFX_Dynamic
+		PLY
+		RTL
+
+; Store dynamo pointer in $0C-$0D.
+; Set carry to add $02-$03 to destination, clear carry to not include $02-$03
+; unit of $02 is number of tiles to add, NOT address bytes
+;==================;
+;UPDATE GFX ROUTINE;
+;==================;
+UPDATE_GFX:	BCS .Dynamic
+.Static		STZ $02 : STZ $03			; < Clear this unless dynamic option is used
+.Dynamic	PHX
+		PHB
+		JSR GET_VRAM
+		PLB
+		PHP
+		REP #$30
+		LDA $0C : BEQ +				; < Return if dynamo is empty
+		LDA ($0C) : STA $00
+		LDY #$0000
+		INC $0C
+		INC $0C
+	-	LDA ($0C),y
+		STA !VRAMbase+!VRAMtable+$00,x
+		INY #2
+		LDA ($0C),y
+		STA !VRAMbase+!VRAMtable+$02,x
+		INY
+		LDA ($0C),y
+		STA !VRAMbase+!VRAMtable+$03,x
+		INY #2
+		LDA $02
+		ASL #4
+		CLC : ADC ($0C),y
+		STA !VRAMbase+!VRAMtable+$05,x
+		INY #2
+		CPY $00
+		BCS +
+		TXA
+		CLC : ADC #$0007
+		TAX
+		BRA -
+
+		+
+		PLP
+		PLX
+		RTS
+
+
+UPDATE_PAL:	JSR GET_CGRAM
+		PHP
+		REP #$30
+		LDA $0C : BEQ +
+		LDA ($0C) : STA $00
+		LDY #$0000
+		INC $0C
+		INC $0C
+	-	LDA ($0C),y
+		STA !VRAMbase+!CGRAMtable+$00,x
+		INY #2
+		LDA ($0C),y
+		STA !VRAMbase+!CGRAMtable+$02,x
+		INY #2
+		LDA ($0C),y
+		STA !VRAMbase+!CGRAMtable+$04,x
+		INY #2
+		CPY $00
+		BCS +
+		TXA
+		CLC : ADC #$0006
+		TAX
+		BRA -
+
+		+
+		PLP
+		RTS
+
+
+
 ;=====================;
 ;HURT PLAYER 2 ROUTINE;
 ;=====================;
@@ -679,79 +845,9 @@ HurtP1:		LDA !P2Invinc-$80,y		;\
 .Return		RTS
 
 
-; Store dynamo pointer in $0C-$0D.
-; Set carry to add $02-$03 to destination, clear carry to not include $02-$03
-; unit of $02 is number of tiles to add, NOT address bytes
-;==================;
-;UPDATE GFX ROUTINE;
-;==================;
-UPDATE_GFX:	BCS .Dynamic
-		STZ $02 : STZ $03			; < Clear this unless dynamic option is used
-.Dynamic	PHX
-		PHB
-		JSR GET_VRAM
-		PLB
-		PHP
-		REP #$30
-		LDA $0C : BEQ +				; < Return if dynamo is empty
-		LDA ($0C) : STA $00
-		LDY #$0000
-		INC $0C
-		INC $0C
-	-	LDA ($0C),y
-		STA !VRAMbase+!VRAMtable+$00,x
-		INY #2
-		LDA ($0C),y
-		STA !VRAMbase+!VRAMtable+$02,x
-		INY
-		LDA ($0C),y
-		STA !VRAMbase+!VRAMtable+$03,x
-		INY #2
-		LDA $02
-		ASL #4
-		CLC : ADC ($0C),y
-		STA !VRAMbase+!VRAMtable+$05,x
-		INY #2
-		CPY $00
-		BCS +
-		TXA
-		CLC : ADC #$0007
-		TAX
-		BRA -
-
-		+
-		PLP
-		PLX
-		RTS
 
 
-UPDATE_PAL:	JSR GET_CGRAM
-		PHP
-		REP #$30
-		LDA $0C : BEQ +
-		LDA ($0C) : STA $00
-		LDY #$0000
-		INC $0C
-		INC $0C
-	-	LDA ($0C),y
-		STA !VRAMbase+!CGRAMtable+$00,x
-		INY #2
-		LDA ($0C),y
-		STA !VRAMbase+!CGRAMtable+$02,x
-		INY #2
-		LDA ($0C),y
-		STA !VRAMbase+!CGRAMtable+$04,x
-		INY #2
-		CPY $00
-		BCS +
-		TXA
-		CLC : ADC #$0006
-		TAX
-		BRA -
 
-		+
-		PLP
-		RTS
 
 ; Clipping 1:
 ; $00,$08: Xpos

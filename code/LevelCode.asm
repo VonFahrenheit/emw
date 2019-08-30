@@ -1,3 +1,349 @@
+
+
+	!SnowBase	= !3D_Base+$480
+
+	!SnowXLo	= !SnowBase+$000	;
+	!SnowXHi	= !SnowBase+$001	;
+	!SnowX		= !SnowXLo
+	!SnowYLo	= !SnowBase+$060
+	!SnowYHi	= !SnowBase+$061
+	!SnowY		= !SnowYLo
+	!SnowXSpeed	= !SnowBase+$0C0	; amount to add to packed X coordinate every frame
+	!SnowYSpeed	= !SnowBase+$0C1	; amount to add to packed Y coordinate every frame
+	!SnowXAccel	= !SnowBase+$120	; amount to add to X speed every frame
+	!SnowYAccel	= !SnowBase+$121	; amount to add to Y speed every frame
+
+	!SnowRNG	= !SnowBase+$180
+
+	!SnowSpawned	= !SnowBase+$280
+
+	!SnowXFrac	= !SnowBase+$282
+	!SnowYFrac	= !SnowBase+$283
+
+	!WeatherType	= !SnowBase+$2E2	; 0 = calm snow
+						; 1 = raging snow
+						; 2 = spell particles
+
+	!WeatherIndex	= !SnowBase+$2E3
+
+
+Weather:
+		LDA.b #.SA1 : STA $3180
+		LDA.b #.SA1>>8 : STA $3181
+		LDA.b #.SA1>>16 : STA $3182
+		JMP $1E80
+
+		.LoadSnow
+		PHP
+		JSL !GetVRAM
+		REP #$20
+		LDA #$0020 : STA.l !VRAMbase+!VRAMtable+$00,x
+		LDA.w #$EC00+$2E0 : STA.l !VRAMbase+!VRAMtable+$02,x
+		LDA #$3131 : STA.l !VRAMbase+!VRAMtable+$04,x
+		LDA #$7FF0 : STA.l !VRAMbase+!VRAMtable+$05,x
+		PLP
+		RTS
+
+
+		.SA1
+		PHP
+		SEP #$30
+		PHB
+		LDA.b #!SnowBase>>16
+		PHA : PLB
+
+		STZ.w !SnowSpawned+1
+		LDA.w !SnowSpawned
+		BEQ $03 : DEC.w !SnowSpawned
+
+		LDY $14
+		LDA.l !RNG : STA.w !SnowRNG,y
+
+		REP #$20
+		LDX #$5E
+	.Loop	LDA.w !SnowX,x
+		SEC : SBC $1A
+		CMP #$0100 : BCC .GoodX
+		CMP #$FFF8 : BCS .GoodX
+		CMP #$0180 : BCS .Spawn
+	-	JMP .Process
+
+	.Spawn	LDA.w !SnowSpawned : BNE -
+		LDA #$0004 : STA.w !SnowSpawned
+		LDY $14
+		CPY #$FC
+		BCC $02 : LDY #$00
+		STX.w !WeatherIndex
+		LDA.w !WeatherType
+		AND #$00FF
+		ASL A
+		TAX
+		JSR (.SpawnPtr,x)
+		JMP .Next
+
+	.GoodX	CMP #$0100
+		BCC $03 : ORA #$0100
+		AND #$01FF
+		STA $00				; OAM X (includes hi bit)
+		LDA.w !SnowY,x
+		SEC : SBC $1C
+		CMP #$00D8 : BCC .GoodY
+		CMP #$FFF8 : BCS .GoodY
+		CMP #$FF80 : BCS .Process
+		JMP .Spawn
+
+	.GoodY	PHX
+		SEP #$20
+		XBA
+		LDA.l !OAMindex : TAX
+		CLC : ADC #$04
+		STA.l !OAMindex
+		XBA
+		STA.l !OAM+1,x
+		LDA $00 : STA.l !OAM+0,x
+		LDA.w !WeatherType
+		CMP #$02 : BEQ ++
+		CMP #$03 : BNE +
+	++	LDA #$4D
+		CLC : ADC.l !GFX_status+$0C
+		BRA ++
+	+	LDA #$FF
+	++	STA.l !OAM+2,x
+		LDA #$3D : STA.l !OAM+3,x
+		TXA
+		LSR #2
+		TAX
+		LDA.w !WeatherType
+		CMP #$02 : BEQ ++
+		CMP #$03 : BNE +
+		LDA #$02
+	++	ORA $01
+		BRA ++
+	+	LDA $01
+	++	STA.l !OAMhi,x
+		PLX
+
+	.Process
+		SEP #$20
+		LDA.w !SnowXSpeed,x
+		ASL #4
+		CLC : ADC.w !SnowXFrac,x
+		STA.w !SnowXFrac,x
+		PHP
+		LDY #$00
+		LDA.w !SnowXSpeed,x
+		LSR #4
+		CMP #$08 : BCC +
+		ORA #$F0
+		DEY
+	+	PLP
+		ADC.w !SnowXLo,x : STA.w !SnowXLo,x
+		TYA
+		ADC.w !SnowXHi,x : STA.w !SnowXHi,x
+		LDA.w !SnowYSpeed,x
+		ASL #4
+		CLC : ADC.w !SnowYFrac,x
+		STA.w !SnowYFrac,x
+		PHP
+		LDY #$00
+		LDA.w !SnowYSpeed,x
+		LSR #4
+		CMP #$08 : BCC +
+		ORA #$F0
+		DEY
+	+	PLP
+		ADC.w !SnowYLo,x : STA.w !SnowYLo,x
+		TYA
+		ADC.w !SnowYHi,x : STA.w !SnowYHi,x
+
+		LDA $14
+		AND #$07 : BNE +
+		LDA.w !SnowXSpeed,x
+		CLC : ADC.w !SnowXAccel,x
+		STA.w !SnowXSpeed,x
+		LDA.w !SnowYSpeed,x
+		CLC : ADC.w !SnowYAccel,x
+		STA.w !SnowYSpeed,x
+
+	+	REP #$20
+
+		LDY.w !WeatherType
+		CPY #$03 : BNE $03 : JSR .MaskBox
+
+
+	.Next	DEX #2
+		BMI .Done
+		JMP .Loop
+
+	.Done	PLB
+		PLP
+		RTL
+
+
+		.SpawnPtr
+		dw .CalmSnow
+		dw .RagingSnow
+		dw .SpellParticles
+		dw .MaskSpecial
+
+
+		.CalmSnow
+		LDX.w !WeatherIndex
+		LDA.w !SnowRNG+0,y
+		AND #$00FF
+		ASL A
+		CLC : ADC $1A
+		SEC : SBC #$0080
+		STA.w !SnowX,x
+		LDA $1C
+		SEC : SBC #$0008
+		STA.w !SnowY,x
+		LDA #$1000 : STA.w !SnowXSpeed,x
+		STZ.w !SnowXAccel,x
+		RTS
+
+
+		.RagingSnow
+		LDX.w !WeatherIndex
+		LDA.w !SnowRNG+0,y
+		AND #$00FF
+		LSR A
+		ORA #$0100
+		CLC : ADC $1A
+		STA.w !SnowX,x
+		LDA.w !SnowRNG+1,y
+		AND #$00FF
+		STA $00
+		LSR #2
+		SEC : SBC $00
+		EOR #$FFFF : INC A
+		CLC : ADC $1C
+		SEC : SBC #$0080
+		STA.w !SnowY,x
+		SEP #$20
+		LDA.w !SnowRNG+2,y
+		AND #$3F
+		CMP #$20
+		BCC $02 : LDA #$20
+		SEC : SBC #$40
+		STA.w !SnowXSpeed,x
+		LDA.w !SnowRNG+3,y
+		AND #$10
+		CLC : ADC #$10
+		STA.w !SnowYSpeed,x
+
+		LDA.w !SnowXSpeed,x
+		CMP #$E0 : BCS ++
+		LDA.w !SnowYLo,x
+		SEC : SBC $1C
+		BMI +
+	++	LDA #$00 : BRA ++
+	+	LDA.w !SnowRNG+3,y
+		AND #$01
+		DEC A
+	++	STA.w !SnowYAccel,x
+		STZ.w !SnowXAccel,x
+		REP #$20
+		RTS
+
+
+		.SpellParticles
+		LDX.w !WeatherIndex
+		LDA.w !SnowRNG+0,y
+		AND #$00FF
+		ASL #2
+		CLC : ADC $1A
+		SEC : SBC #$0180
+		CMP #$0300 : BCC ..R
+		STA.w !SnowX,x
+		LDA $1C
+		CLC : ADC #$00D8
+		STA.w !SnowY,x
+		SEP #$20
+		LDA.w !SnowRNG+1,y
+		AND #$0F
+		SEC : SBC #$08
+		STA.w !SnowXSpeed,x
+		LDA.w !SnowRNG+2,y
+		AND #$0F
+		ADC #$E8
+		STA.w !SnowYSpeed,x
+		LDA.w !SnowRNG+3,y
+		AND #$01
+		ASL A
+		DEC A
+		STA.w !SnowXAccel,x
+		LDA.w !SnowRNG+3,y
+		AND #$02
+		DEC A
+		STA.w !SnowYAccel,x
+		REP #$20
+	..R	RTS
+
+
+		.MaskSpecial
+		LDX.w !WeatherIndex
+		STZ $00
+		LDA.w !SnowRNG+0,y
+		AND #$0001 : BEQ ..R
+	..L	LDA.l !Level+2
+		AND #$0001 : BEQ ..Return
+		LDA #$0C60 : STA.w !SnowX,x
+		DEC $00
+		BRA +
+	..R	LDA.l !Level+2
+		AND #$0002 : BEQ ..Return
+		LDA #$0C90 : STA.w !SnowX,x
+	+	LDA #$0148 : STA.w !SnowY,x
+
+		LDA.w !SnowRNG+1,y
+		AND #$0006
+		PHX
+		TAX
+		LDA.l ..SpeedTable,x : STA $02
+		LDA.l ..AccelTable,x
+		PLX
+		SEP #$20
+		BIT $00
+		BPL $03 : EOR #$FF : INC A
+		REP #$20
+		STA.w !SnowXAccel,x
+		LDA $02
+		SEP #$20
+		BIT $00
+		BPL $03 : EOR #$FF : INC A
+		REP #$20
+		STA.w !SnowXSpeed,x
+	..Return
+		RTS
+
+
+
+	..SpeedTable
+	db $00,$F0
+	db $FA,$FC
+	db $F8,$F0
+	db $FB,$00
+
+	..AccelTable
+	db $FF,$01
+	db $FF,$FC
+	db $00,$00
+	db $00,$FD
+
+
+		.MaskBox
+		LDA.w !SnowX,x
+		CMP #$0C72 : BCC ..R
+		CMP #$0C7E : BCS ..R
+		LDA.w !SnowY,x
+		CMP #$0110 : BCC ..R
+		CMP #$0118 : BCS ..R
+		STZ.w !SnowX,x
+		STZ.w !SnowY,x
+	..R	RTS
+
+
 ; --Level INIT--
 
 levelinit0:
@@ -151,7 +497,6 @@ levelinit5:
 		LDA #$07 : STA !Level+5		; > Chunk size
 		JSR .HDMA			; > Set up HDMA
 		JSR CLEAR_DYNAMIC_BG3		; > Clear the top of BG3
-	;	JSR REX_LEVEL			; > Rex level
 		JMP level5
 
 
@@ -179,62 +524,70 @@ levelinit5:
 		RTS
 
 
+; $0400-$06FF: reserved
+; $0700 - red HDMA table
+; $0800 - green HDMA table
+; $0900 - blue HDMA table
+; $0A00 - BG2 Hscroll HDMA table
+; $0A80 - reserved
+
 levelinit6:
 		LDA #$06 : STA !GFX_status+$09	; pal 8 replacement: palette A
+		STZ !GFX_status+$16		; for some reason Mario's fireball doesn't load normally here
 
 		INC !SideExit
 		LDA #$0E			;\ Scanline count
 		XBA				;/
 	-	LDA #$01			;\
-		STA $0400,x			; |
+		STA $0700,x			; |
 		LDA #$31			; |
-		STA $0401,x			; | Red scroll buffer
+		STA $0701,x			; | Red scroll buffer
 		INX #2				; |
 		CPX #$20			; |
 		BNE -				;/
 	-	XBA				;\
-		STA $0400,x			; |
+		STA $0700,x			; |
 		XBA				; |
 		INC A				; |
-		STA $0401,x			; |
+		STA $0701,x			; |
 		INX #2				; |
 		CPX #$38			; | Red table
 		BNE -				; |
-		INC A : STA $0401,x		; |
-		INC A : STA $0403,x		; |
+		INC A : STA $0701,x		; |
+		INC A : STA $0703,x		; |
 		LDA #$1F			; |
-		STA $0400,x			; |
-		STA $0402,x			; |
-		TDC : STA $0404,x		;/
+		STA $0700,x			; |
+		STA $0702,x			; |
+		TDC : STA $0704,x		;/
 		TAX				; > X = 0x00
 		LDA #$15			;\ Scanline count
 		XBA				;/
 	-	LDA #$01			;\
-		STA $0600,x			; |
+		STA $0800,x			; |
 		LDA #$40			; |
-		STA $0601,x			; | Green scroll buffer
+		STA $0801,x			; | Green scroll buffer
 		INX #2				; |
 		CPX #$20			; |
 		BNE -				;/
 	-	XBA				;\
-		STA $0600,x			; |
+		STA $0800,x			; |
 		XBA				; |
 		INC A				; |
-		STA $0601,x			; | Green table
+		STA $0801,x			; | Green table
 		INX #2				; |
 		CPX #$34			; |
 		BNE -				; |
-		TDC : STA $0600,x		;/
+		TDC : STA $0800,x		;/
 		TAX				; > X = 0x00
 		LDY #$88			; > Base color
 	-	LDA #$1A			;\
-		STA $0800,x			; |
+		STA $0900,x			; |
 		TYA : DEY			; |
-		STA $0801,x			; | Blue table
+		STA $0901,x			; | Blue table
 		INX #2				; |
 		CPX #$12			; |
 		BNE -				; |
-		TDC : STA $0800,x		;/
+		TDC : STA $0900,x		;/
 
 		LDA #$48			;\
 		STA $0A00			; |
@@ -250,18 +603,18 @@ levelinit6:
 		REP #$20			; > A 16 bit
 		LDA #$3200			;\
 		STA $4330			; |
-		LDA #$0400			; |
+		LDA #$0700			; |
 		STA $4332			; | Set up red colour math on channel 3
 		LDY #$00			; |
 		STY $4334			;/
 		LDA #$3200			;\
 		STA $4340			; |
-		LDA #$0600			; | Set up green colour math on channel 4
+		LDA #$0800			; | Set up green colour math on channel 4
 		STA $4342			; |
 		STY $4344			;/
 		LDA #$3200			;\
 		STA $4350			; |
-		LDA #$0800			; | Set up blue colour math on channel 5
+		LDA #$0900			; | Set up blue colour math on channel 5
 		STA $4352			; |
 		STY $4354			;/
 		LDA #$0F02			;\
@@ -351,32 +704,6 @@ levelinit7:
 		LDA #$02 : STA !BG2ModeH
 		LDA #$04 : STA !BG2ModeV
 		%GradientRGB(HDMA_BlueSky)
-		JSL !GetVRAM
-		PHB
-		LDA.b #!VRAMbank
-		PHA : PLB
-		REP #$20
-	;	LDA.w #$0C00 : STA.w !VRAMtable+$00,x	;\
-		LDA.w #$9808 : STA.w !VRAMtable+$02,x	; | Upload hammer rex to start of SP3
-		LDA.w #$0030 : STA.w !VRAMtable+$04,x	; |
-		LDA.w #$7000 : STA.w !VRAMtable+$05,x	;/
-	;	LDA.w #$0080 : STA.w !VRAMtable+$07,x	;\
-		LDA.w #$8988 : STA.w !VRAMtable+$09,x	; |
-		LDA.w #$0030 : STA.w !VRAMtable+$0B,x	; |
-		LDA.w #$7600 : STA.w !VRAMtable+$0C,x	; | Upload hammer
-	;	LDA.w #$0080 : STA.w !VRAMtable+$0E,x	; |
-		LDA.w #$8B88 : STA.w !VRAMtable+$10,x	; |
-		LDA.w #$0030 : STA.w !VRAMtable+$12,x	; |
-		LDA.w #$7700 : STA.w !VRAMtable+$13,x	;/
-	;	LDA.w #$0C00 : STA.w !VRAMtable+$15,x	;\
-		LDA.w #$A408 : STA.w !VRAMtable+$17,x	; | Upload Koopa renegade to bottom of SP4
-		LDA.w #$0030 : STA.w !VRAMtable+$19,x	; |
-		LDA.w #$7A00 : STA.w !VRAMtable+$1A,x	;/
-		SEP #$20
-		PLB
-	;	LDA #$0A : STA !GFX_status+$05		; Hammer offset (0x14)
-	;	STZ !GFX_status+$04			; Hammer rex offset
-	;	LDA #$80 : STA !GFX_status+$01		; Koopa offset ($100)
 		LDA #$BA : STA !Level+4			; > negative 0x3F
 		LDA #$07 : STA !Level+5			; > Size of chunks
 		JSR levelinit5_HDMA
@@ -392,22 +719,6 @@ levelinit8:
 		SEP #$20
 
 		.GFX
-	;	JSR REX_LEVEL
-		PHB
-		LDA #!VRAMbank : PHA : PLB
-		REP #$20
-		LDA #$DA08
-		STA !VRAMtable+$02,x
-		LDA #$3030
-		STA !VRAMtable+$04,x
-		LDA #$7000
-		STA !VRAMtable+$05,x
-		LDA #$0C00
-	;	STA !VRAMtable+$00,x
-		LDA #$0000
-	;	STA !VRAMtable+$07,x
-		PLB
-		SEP #$20
 
 	REP #$20
 	LDA.w #.Dynamo : STA $0C
@@ -542,7 +853,9 @@ levelinitB:
 		JMP levelB
 
 levelinitC:
-	RTS
+		INC !SideExit
+		RTS
+
 levelinitD:
 		INC !SideExit
 
@@ -612,7 +925,7 @@ levelinitE:
 
 
 levelinitF:
-	RTS
+		JMP levelinit13
 levelinit10:
 
 		INC !SideExit
@@ -661,7 +974,32 @@ levelinit11:
 levelinit12:
 	RTS
 levelinit13:
-	RTS
+
+		LDA #$80 : STA !GFX_status+$0D
+
+		LDA #$01 : STA.l !WeatherType
+		JSR Weather_LoadSnow
+
+		LDA #$04 : STA $6D9D			;\ BG3 on main screen, everything else on sub
+		LDA #$1B : STA $6D9E			;/
+
+		REP #$20
+		LDA #$0F02
+		STA $4320
+		STA $4330
+		LDA #$0200 : STA $4322
+		LDA #$0300 : STA $4332
+		SEP #$20
+		STZ $4324
+		STZ $4334
+
+		INC !SideExit
+		JSL level13_HDMA
+		INC $14
+		JSL level13_HDMA
+		DEC $14
+		JMP CLEAR_DYNAMIC_BG3
+
 levelinit14:
 	RTS
 levelinit15:
@@ -912,7 +1250,21 @@ levelinit31:
 
 
 levelinit32:
-	RTS
+
+		STZ !Level+3
+		LDA #$02 : STA.l !WeatherType
+
+		STZ $0A84
+		REP #$20				;\
+		LDA.w level6_BGColoursEnd		; | set color 0x02
+		STA $00A2				; |
+		SEP #$20				;/
+		LDA #$78				;\ Enable HDMA on channels 3 through 6
+		TSB $6D9F				;/
+		LDA #$0E : STA !GFX_status+$09		; pal 8 replacement: palette F
+		STZ !GFX_status+$16			; for some reason Mario's fireball doesn't load normally here
+		STZ !SideExit
+		JMP level32
 levelinit33:
 	RTS
 levelinit34:
@@ -2323,7 +2675,11 @@ level5:
 
 
 
+; see level init for info on RAM use
+
 level6:
+		REP #$20
+		LDA #$09E8 : JSR EXIT_FADE_Right
 		LDA $1F					;\
 		LSR A					; |
 		STA $0A08				; | Update BG2 Hscroll
@@ -2357,11 +2713,11 @@ level6:
 		AND #$1F				; |
 		BNE .HandleHDMA				; |
 .StretchGreen	LDX #$00				; |
-	-	LDA $0600,x				; |
+	-	LDA $0800,x				; |
 		CMP #$26				; | Increment timer and stretch green
 		BEQ +					; |
 		INC A					; |
-		STA $0600,x				; |
+		STA $0800,x				; |
 		BRA ++					; |
 	+	INX #2					; |
 		CPX #$14				; |
@@ -2379,7 +2735,7 @@ level6:
 	-	CMP #$000F
 		BCC +
 		INX #2
-		SEC : SBC #$000E
+		SBC #$000E
 		BRA -
 	+	SEP #$20
 		STA $7FA100
@@ -2408,28 +2764,28 @@ level6:
 		BEQ +
 		LDX #$00
 	-	LDA $7FA100,x
-		STA $0400,x
+		STA $0700,x
 		CLC : ADC $00
 		STA $00
 		LDA $7FA101,x
-		STA $0401,x
+		STA $0701,x
 		INX #2
 		BCS ++
 		CPX $01
 		BNE -
 	+	LDY #$00
 	-	LDA.w HDMA_Evening,y
-		STA $0400,x
+		STA $0700,x
 		CLC : ADC $00
 		STA $00
 		LDA.w HDMA_Evening+1,y
-		STA $0401,x
+		STA $0701,x
 		INX #2
 		BCS ++
 		INY #2
 		CPY #$1E
 		BNE -
-	++	TDC : STA $0400,x
+	++	TDC : STA $0700,x
 
 		LDX #$00
 		REP #$20
@@ -2472,28 +2828,28 @@ level6:
 		BEQ +
 		LDX #$00
 	-	LDA $7FA200,x
-		STA $0800,x
+		STA $0900,x
 		CLC : ADC $00
 		STA $00
 		LDA $7FA201,x
-		STA $0801,x
+		STA $0901,x
 		INX #2
 		BCS ++
 		CPX $01
 		BNE -
 	+	LDY #$00
 	-	LDA.w HDMA_Evening_Blue,y
-		STA $0800,x
+		STA $0900,x
 		CLC : ADC $00
 		STA $00
 		LDA.w HDMA_Evening_Blue+1,y
-		STA $0801,x
+		STA $0901,x
 		INX #2
 		BCS ++
 		INY #2
 		CPY #$1E
 		BNE -
-	++	TDC : STA $0800,x
+	++	TDC : STA $0900,x
 
 .CGRAM		REP #$20				;\
 		LDA !Level+2				; |
@@ -3264,7 +3620,11 @@ levelE:
 
 
 levelF:
-	RTS
+		LDA.b #level13_HDMA : STA !HDMAptr+0
+		LDA.b #level13_HDMA>>8 : STA !HDMAptr+1
+		LDA.b #level13_HDMA>>16 : STA !HDMAptr+2
+		JMP Weather
+
 level10:
 
 ; .BGScroll by default
@@ -3809,7 +4169,6 @@ level11:
 level12:
 	RTS
 level13:
-
 		LDX #$0F				; sprite Yoshi Coin on this level is number 2
 	-	LDA $3230,x
 		CMP #$08 : BNE +
@@ -3819,8 +4178,59 @@ level13:
 		CMP #$22 : BNE +
 		LDA #$02 : STA $BE,x
 	+	DEX : BPL -
-		RTS
 
+
+		JSR Weather
+
+
+		REP #$20
+		LDA.w #.HDMA : STA !HDMAptr+0
+		LDA.w #.HDMA>>8 : STA !HDMAptr+1
+		LDA #$1AE8 : JMP END_Right
+
+
+		.HDMA
+		PHP
+		REP #$30
+		LDA $14
+		AND #$000F
+		BNE $03 : INC !Level+2
+		INC !Level+4
+
+		LDX #$0000
+		LDA $14
+		LSR A
+		BCC $03 : LDX #$0100
+
+		LDA #$0130
+		SEC : SBC $20
+		LSR A
+		STA $0200,x
+		BCC $01 : INC A
+		STA $0203,x
+		LDA #$0001 : STA $0206,x
+		STZ $0209,x
+		LDA $1E : STA $0207,x
+		LSR #3
+		CLC : ADC !Level+2
+		STA $0201,x
+		STA $0204,x
+		LDA $1A
+		LSR #2
+		CLC : ADC $1A
+		CLC : ADC !Level+4
+		STA $22
+		LDA $1C : STA $24
+		SEP #$20
+		LDA $14
+		AND #$01
+		INC A
+		ASL #2
+		TSB $6D9F
+		EOR #$0C
+		TRB $6D9F
+		PLP
+		RTL
 
 
 
@@ -4479,7 +4889,255 @@ level31:
 
 
 level32:
-	RTS
+		LDA.b #.HDMA : STA.l !HDMAptr+0
+		LDA.b #.HDMA>>8 : STA.l !HDMAptr+1
+		LDA.b #.HDMA>>16 : STA.l !HDMAptr+2
+
+		LDA #$7F : TRB !Level+4
+		LDX #$0F
+	-	LDA $3230,x
+		CMP #$08 : BNE +
+		LDA $3590,x
+		AND #$08 : BEQ +
+		LDA $35C0,x
+		CMP #$05 : BNE +
+		LDA $3250,x
+		CMP #$0C : BNE +
+		LDA $BE,x : BNE +
+		LDA $3220,x
+		ASL A
+		ROL A
+		AND #$01
+		STA $3320,x
+		INC A : TSB !Level+4
+		LDA #$0F : STA $32D0,x
+	+	DEX : BPL -
+
+
+		LDA #$02 : STA !WeatherType
+		REP #$20
+		LDA !Level+3
+		ASL A
+		AND #$00FF
+		STA $02
+		LDA #$0C78
+		SEC : SBC $1A
+		CMP #$0100 : BCC .GoodX
+		CMP #$FFF0 : BCS $03 : JMP .Nope
+	.GoodX	STA $00
+		LDA $14
+		AND #$00FF
+		LSR #4
+		SEC : SBC #$0008
+		BPL $03 : EOR #$FFFF
+		CLC : ADC #$0110
+		SEC : SBC $1C
+		SEC : SBC $02
+		CMP #$00D8 : BCC .GoodY
+		CMP #$FFF0 : BCC .Nope
+	.GoodY	LDY !OAMindex
+		SEP #$20
+		STA !OAM+1,y
+		LDA $00 : STA !OAM+0,y
+		LDA #$E0 : STA !OAM+2,y
+		LDA #$28 : STA !OAM+3,y
+
+		LDA !Level+4
+		AND #$03 : BNE +
+		INC !Level+3
+		LDA !Level+4 : BMI +
+		ORA #$80
+		STA !Level+4
+		REP #$20
+		LDA #$0C60 : STA $0A80
+		LDA #$0130 : STA $0A82
+		JSR PuffTile
+		LDA #$0C70 : STA $0A80
+		JSR PuffTile
+		LDA #$0C80 : STA $0A80
+		JSR PuffTile
+		LDA #$0C90 : STA $0A80
+		JSR PuffTile
+		SEP #$20
+		LDA #$10 : STA !SPC1			; magikoopa sound
+
+	+	TYA
+		INY #4
+		STY !OAMindex
+		LSR #2
+		TAY
+		LDA $01
+		AND #$01
+		ORA #$02
+		STA !OAMhi,y
+		LDA #$03 : STA !WeatherType
+
+	.Nope	SEP #$20
+
+		JSR Weather
+
+
+		LDA $1B
+		CMP #$0D : BNE .NoExit
+		REP #$20
+		LDA #$00A0 : JSR EXIT_Up
+		.NoExit
+
+
+		LDX #$0F				;\
+	-	LDA $3200,x				; |
+		CMP #$0C : BCS +			; |
+		LDA $3590,x				; |
+		AND #$08 : BNE +			; | koopas go behind scenery
+		LDA #$01 : STA $3410,x			; |
+		LDA #$1F				; |
+		STA $32E0,x				; |
+		STA $35F0,x				; |
+	+	DEX : BPL -				;/
+
+
+		LDY $1B					;\
+		LDA .ChunkScreen,y			; |
+		AND !Level+2 : BNE ++			; |
+		LDX #$0F				; |
+	-	LDA $3230,x : BEQ +			; |
+		LDA $35C0,x				; |
+		CMP #$06 : BNE +			; |
+		LDA $3280,x				; | load chunks when adept shamans die
+		AND #$03				; |
+		CMP #$02 : BNE +			; |
+		LDA .ChunkScreen,y : TSB !Level+2	; |
+		JSR LoadChunk				; |
+		BRA ++					; |
+	+	DEX : BPL -				; |
+		++					;/
+
+		LDA $0A84 : BEQ .Return
+		LDA $14
+		AND #$1F : BEQ DestroyChunk
+
+	.Return	RTS
+
+
+.ChunkScreen	db $01,$01,$01,$01			; screens 00-03
+		db $02,$02,$02				; screens 04-06
+		db $04,$04,$04,$04,$04,$04,$04		; screens 07-0D
+		db $08,$08,$08,$08			; screens 0E-11
+
+
+
+
+		.HDMA
+		PHP
+		REP #$20
+		LDA !Level+2
+		AND #$0088 : BEQ ..Check
+		CMP #$0080 : BEQ ..Lock
+		BRA ..R
+
+	..Check	LDA $1A
+		CMP #$1016 : BCC ..R
+		LDA #$0080 : TSB !Level+2
+		BRA ..R
+
+	..Lock	LDA #$1018
+		CMP $1A : BCC ..R
+		STA $1A
+		LSR A
+		STA $1E
+
+	..R	SEP #$20
+		LDA $1F					;\
+		LSR A					; |
+		STA $0A08				; | Update BG2 Hscroll
+		LDA $1E					; |
+		ROR A					; |
+		STA $0A07				;/
+		PLP
+		RTL
+
+
+
+
+;	!Level+2: chunk status
+;			each bit represents a chunk, so bit 0 - chunk 1 etc.
+
+
+;	$0A80-$0A81:	X coord of section being destroyed
+;	$0A82-$0A83:	Y coord of section being destroyed
+;	$0A84:		how many rows are left to destroy
+
+	DestroyChunk:
+		REP #$20
+		JSR PuffTile
+		LDA $0A80 : PHA
+		CLC : ADC #$0010
+		STA $0A80
+		JSR PuffTile
+		PLA : STA $0A80
+		LDA $0A82
+		CLC : ADC #$0010
+		STA $0A82
+		SEP #$20
+		DEC $0A84
+		LDA #$09 : STA !SPC4			; > Boom sound
+	.Return	RTS
+
+
+	PuffTile:
+		PHP
+		PEI ($98)
+		PEI ($9A)
+		REP #$20
+		LDA $0A80 : STA $9A
+		LDA $0A82 : STA $98
+		LDX #$02 : STX $9C
+		JSL $00BEB0
+		PLA : STA $9A
+		PLA : STA $98
+
+		LDA $0A80
+		SEC : SBC $1A
+		CMP #$0100 : BCC .GoodX
+		CMP #$FFF0 : BCC .Return
+	.GoodX	STA $00
+		LDA $0A82
+		SEC : SBC $1C
+		CMP #$0100 : BCC .GoodY
+		CMP #$FFF0 : BCC .Return
+	.GoodY	STA $02
+		SEP #$20
+		LDX #$03
+	-	LDA $77C0,x : BEQ .Slot
+		DEX : BPL -
+		BMI .Return
+	.Slot	LDA #$01 : STA $77C0,x
+		LDA $0A80 : STA $77C8,x
+		LDA $0A82 : STA $77C4,x
+		LDA #$17 : STA $77CC,x
+	.Return	PLP
+		RTS
+
+
+
+	LoadChunk:
+		PHP
+		LDX #$FE
+	-	INX #2
+		LSR A
+		BCC -
+		REP #$20
+		LDA .ChunkX,x : STA $0A80
+		LDA .ChunkY,x : STA $0A82
+		LDA .ChunkSize,x : STA $0A84
+		PLP
+		RTS
+
+.ChunkX		dw $02D0,$06E0,$0D70,$0F50
+.ChunkY		dw $0110,$0110,$0120,$00D0
+.ChunkSize	dw $0006,$0006,$0002,$000B
+
+
 level33:
 	RTS
 level34:

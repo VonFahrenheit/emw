@@ -1316,9 +1316,9 @@ endmacro
 		db $10		; Thieves' Valley
 		db $11		; Avalanche Incline
 		db $13		; Sovereign Peak
+		db $0F		; Dragonfell Keep
+		db $0C		; Monkey Village
 		db $12		; Hellfire Cave
-		db $30
-		db $30
 		db $30
 
 		.5
@@ -1355,10 +1355,10 @@ endmacro
 	.009	%MapCursor($22, $13)
 	.00A	%MapCursor($18, $B)
 	.00B	%MapCursor($6, $B)
-	.00C	dw $0000
+	.00C	%MapCursor($1C, $B)
 	.00D	%MapCursor($14, $15)
 	.00E	%MapCursor($24, $B)
-	.00F	dw $0000
+	.00F	%MapCursor($18, $B)
 	.010	%MapCursor($0, $15)
 	.011	%MapCursor($A, $11)
 	.012	%MapCursor($1C, $1B)

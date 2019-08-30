@@ -51,6 +51,7 @@
 		CPY #$10 : BEQ .Goomba
 		CPY #$12 : BEQ .Monty
 		CPY #$16 : BEQ .FireB
+		CPY #$17 : BEQ .x2
 
 	.x1	SEC : SBC #$0100
 		BRA .stat
@@ -152,7 +153,7 @@
 	db $01		; level 02F
 	db $06		; level 030
 	db $FF		; level 031
-	db $FF		; level 032
+	db $0D		; level 032
 	db $FF		; level 033
 	db $FF		; level 034
 	db $FF		; level 035
@@ -629,7 +630,8 @@
 	dw .Thif			; index 09
 	dw .RexSlimePlant		; index 0A
 	dw .TerrainPlatform		; index 0B
-	dw .EliteKoopaRexSlime		; index 0C
+	dw .EliteKoopaRex		; index 0C
+	dw .ShamanKoopa			; index 0D
 
 
 	.Empty
@@ -663,7 +665,7 @@
 
 	.RexSlime
 	dw !SP3
-	db $00,$08,$10			; Rex, Happy Slime, Lotus fire
+	db $00,$08,$10,$17		; Rex, Happy Slime, Lotus fire, Mario Fire
 	db $FF
 
 	.ThunderPlant
@@ -696,9 +698,14 @@
 	db $03,$02,$14,$0B,$11		; Koopa, Hammer Rex, Terrain platform, Piranha Plant, Hammer
 	db $FF
 
-	.EliteKoopaRexSlime
+	.EliteKoopaRex
 	dw !SP2+$200
-	db $03,$02,$08,$11,$15,$17	; Koopa, Hammer Rex, Happy Slime, Hammer, Yoshi Coin, Mario Fire
+	db $03,$18,$02,$11,$15,$17	; Koopa, Elite Koopa, Hammer Rex, Hammer, Yoshi Coin, Mario Fire
+	db $FF
+
+	.ShamanKoopa
+	dw !SP3
+	db $06,$03			; Novice Shaman, Koopa Renegade
 	db $FF
 
 
@@ -727,6 +734,7 @@
 	dw .SpriteYoshiCoin	; file 15
 	dw .CoinGolem		; file 16
 	dw .MarioFire		; file 17
+	dw .EliteKoopa		; file 18
 
 
 
@@ -1002,6 +1010,15 @@
 	dw $0040
 	dl $31EC00+$280
 	dw $0020
+	..End
+
+	.EliteKoopa
+	dw ..End-..Start
+	db $17
+	..Start
+	dw $1000
+	dl $32E1F8
+	dw $0800
 	..End
 
 

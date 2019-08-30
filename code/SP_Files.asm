@@ -167,6 +167,10 @@ print "Bank $32:"
 	incbin Fe26/Sprites/SpriteGFX/AdeptShaman.bin
 	.End
 
+	%InsertFile(EliteKoopa)
+	incbin Fe26/Sprites/SpriteGFX/EliteKoopa.bin
+	.End
+
 print "$", hex($330000-.End), " bytes free at ", pc, "."
 print " "
 EndBank32:
