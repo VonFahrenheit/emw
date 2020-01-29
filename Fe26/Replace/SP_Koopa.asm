@@ -496,6 +496,12 @@ pullpc
 		EOR $33C0,x
 		BCS $02 : ORA #$40
 		ORA $64
+		XBA
+		LDA $3410,x : BEQ +		; ignore hi priority bit if behind scenery flag is set
+		XBA
+		AND #$DF
+		RTS
+	+	XBA
 		RTS
 
 
