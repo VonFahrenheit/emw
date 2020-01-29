@@ -435,7 +435,12 @@ IRQ:
 		PHD				; > Push direct page
 		LDA #$42 : XBA			;\ DP = 0x420B
 		LDA #$0B : TCD			;/
-		LDA #$80 : STA $2100		; > Enable f-blank
+
+		LDA !GameMode
+		CMP #$14 : BEQ .Level
+		JMP .Return
+
+.Level		LDA #$80 : STA $2100		; > Enable f-blank
 		STZ $2115			;\
 		REP #$20			; |
 		LDA #$5000			; |
@@ -480,13 +485,14 @@ IRQ:
 		SEP #$20			; > A 8 bit
 		STZ $11				;\ Layer 3 Hscroll
 		STZ $11				;/
-		LDA !GameMode			;\
-		CMP #$14			; |
-		BEQ .Level			; | Only display status bar during level game mode
-		STZ $12				; |
-		STZ $12				; |
-		BRA .Shared			;/
-.Level		LDA #$27 : STA $12		;\ Layer 3 Vscroll
+;		LDA !GameMode			;\
+;		CMP #$14			; |
+;		BEQ .Level			; | Only display status bar during level game mode
+;		STZ $12				; |
+;		STZ $12				; |
+;		BRA .Shared			;/
+;.Level
+		LDA #$27 : STA $12		;\ Layer 3 Vscroll
 		LDA #$FF : STA $12		;/
 .Shared		LDA #$04 : STA $2C		; > Main screen designation
 		STZ $24				;\ Disable windowing
@@ -499,7 +505,7 @@ IRQ:
 		LDA #$09 : STA $05		; > GFX mode 1 + Layer 3 priority
 		BIT $4212 : BVC $FB		;\ Wait for h-blank and restore brightness
 		LDA $6DAE : STA $00		;/
-		REP #$30			;\
+.Return		REP #$30			;\
 		PLD				; |
 		PLB				; |
 		PLY				; | Return from interrupt
@@ -697,11 +703,11 @@ UploadGFX:	SEI
 		CMP #$0002
 		BEQ +
 		LDA.w #!MaxUpload1
-		STA $00CC
+		STA.w $00CC
 		BRA ++
 		+
 		LDA.w #!MaxUpload2
-		STA $00CC
+		STA.w $00CC
 		++
 
 		LDA #$4300 : TCD			; Direct page = 0x4300
@@ -800,30 +806,30 @@ UploadGFX:	SEI
 
 	++	JMP .VRAMtransfer
 
-.LevelMode	STA $00CA				; > Preserve
+.LevelMode	STA.w $00CA				; > Preserve
 		AND #$3FFF : STA $05			; > Upload size
 		LDA #$0000 : STA.w !VRAMtable+0,y	; > Clear slot
 		LDA.w !VRAMtable+2,y : STA $02		;\ Source
 		LDA.w !VRAMtable+3,y : STA $03		;/
 		LDA.w !VRAMtable+5,y : STA.l $002116	; > Dest VRAM
 		SEP #$20				;\
-		LDA $00CB				; |
+		LDA.w $00CB				; |
 		AND #$80				; |
 		ASL A					; | Set VRAM increment based on direction
 		ROL A					; |
 		ORA #$80				; |
-		STA $00C9				; > Back this up
+		STA.w $00C9				; > Back this up
 		STA.l $002115				;/
 		REP #$20				;\
-		LDA $00CA				; | Determine RLE
+		LDA.w $00CA				; | Determine RLE
 		AND #$4000 : BEQ +			;/
 		LDA #$1809 : STA $00			;\
 		SEP #$20				; |
-		LDA $00C9				; |
+		LDA.w $00C9				; |
 		AND #$7F				; |
 		STA.l $002115				; |
 		LDA #$01 : STA.l $00420B		; |
-		LDA $00C9 : STA.l $002115		; | Upload RLE
+		LDA.w $00C9 : STA.l $002115		; | Upload RLE
 		LDA #$19 : STA $01			; |
 		REP #$20				; |
 		LDA.w !VRAMtable+5,y : STA.l $002116	; |
@@ -841,7 +847,7 @@ UploadGFX:	SEI
 		BRA ++					; > Loop
 
 
-.VRAMtransfer	LDA $00CC				; Load variable upload cap
+.VRAMtransfer	LDA.w $00CC				; Load variable upload cap
 		PLB					; Set VRAM bank
 		STA.w !LoadSize				; Store cap
 		LDX.w !LoadIndex
@@ -907,7 +913,7 @@ UploadGFX:	SEI
 		STX !LoadIndex				; > Queue remaining data
 	.End
 
-
+; 129507
 UPLOAD_CGRAM:	LDA #$2202				;\ Parameters and destination of DMA
 		STA $00					;/
 		LDX #$00
@@ -924,12 +930,11 @@ UPLOAD_CGRAM:	LDA #$2202				;\ Parameters and destination of DMA
 		STA $03					;/
 		SEP #$20				;\
 		LDA.w !CGRAMtable+5,y			; | Set dest CGRAM
-		STA.l $002121				; |
-		REP #$20				;/
-		LDA #$0001 : STA $00420B		; > Upload data
+		STA.l $002121				;/
+		LDA #$01 : STA $00420B			; > Upload data
+		REP #$20
 		INX
-		CPX #$2A
-		BNE .Loop
+		CPX #$2A : BNE .Loop
 
 ReturnToNMI:	REP #$20				; > A 16-bit
 		LDA #$3000 : TCD			; > DP = $3000
@@ -1320,7 +1325,7 @@ TileCount:
 
 .Custom		db $01,$06,$04,$05,$04,$08,$10,$01,$11,$10,$04,$03,$01,$04,$04,$02	; 0X
 		db $15,$01,$01,$02,$02,$01,$03,$03,$09,$03,$01,$04,$02,$02,$08,$03	; 1X
-		db $08,$0D,$02,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 2X
+		db $10,$0D,$02,$05,$05,$05,$05,$06,$06,$06,$06,$06,$00,$00,$00,$00	; 2X
 		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 3X
 		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 4X
 		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 5X
@@ -1426,137 +1431,6 @@ SPRITE_BG:
 ; 0C:		YXPP bits from BG settings
 
 
-;======================;
-;SUPREME TILEMAP LOADER;
-;======================;
-;
-;	This routine can be used by sprites to load a raw OAM tilemap.
-;	To use it, do:
-;		PHB
-;		LDA.b #Tilemap
-;		STA $04
-;		LDA.b #Tilemap>>8
-;		STA $05
-;		LDA.b #Tilemap>>16
-;		PHA : PLB
-;		JSL LOAD_TILEMAP
-;		PLB
-;
-;	$00:		sprite Xpos within screen
-;	$02:		sprite Ypos within screen
-;	$04:		pointer to tilemap base
-;	$06:		pointer to hi tilemap
-;	$08:		copy of next byte in hi tilemap
-;	$0A:		tile Xpos within screen
-;	$0C:		pointer to [hi OAM table] + [OAM index]/4
-;	$0E:		x-flip flag (0x0000 = xflip, 0xFFFF = no xflip)
-
-	!HiIndex	= $7FC774			; 12 bytes
-
-LOAD_TILEMAP:	PHX					; Push sprite index
-		PHP					; Push processor
-		LDY #$02				; Base index = 0x02 to skip past tilemap header
-		LDA $157C,x				;\
-		BEQ $02 : LDA #$FF			; | Set x-flip flag
-		STA $0E					; |
-		STA $0F					;/
-		LDA $E4,x				;\
-		STA $00					; | Store 16-bit xpos to scratch RAM
-		LDA $14E0,x				; |
-		STA $01					;/
-		LDA $15EA,x				;\
-		STA $0C					; | Store 16-bit OAM index to scratch RAM
-		LDA !HiIndex,x				; |
-		STA $0D					;/
-		LDA $14D4,x				;\
-		XBA					; |
-		LDA $D8,x				; |
-		REP #$30				; |
-		SEC : SBC $1C				; | Calculate sprite's coordinates within the screen
-		STA $02					; |
-		LDA $00					; |
-		SEC : SBC $1A				; |
-		STA $00					;/
-		LDA $0C					;\
-		TAX					; |
-		LSR #2					; | Set up hi OAM pointer
-		CLC : ADC #!OAMhi			; |
-		STA $0C					;/
-		CLC : ADC $04				;\ Calculate hi tilemap location
-		STA $06					;/
-.Loop		LDA ($06)				;\
-		AND #$0002				; | Copy tile size
-		STA $08					;/
-		LDA ($04),y				;\
-		AND #$00FF				; |
-		BIT $0E					; |
-		BMI $04 : EOR #$FFFF : INC A		; |
-		CLC : ADC $00				; |
-		BIT $0E					; | Calculate xpos based on coords, disp, size, and xflip
-		BMI +					; |
-		LSR $08					; |
-		LSR $08					; |
-		BCC +					; |
-		SEC : SBC #$0008			;/
-	+	CMP #$0100				;\
-		BCC +					; | Only draw tile if -17 < X < 256
-		CMP #$FFF0				; |
-		BCS +					;/
-		INC $06					;\
-		INC $0C					; |
-		INY #4					; | Loop
-		TYA					; |
-		CMP ($04)				; |
-		BNE .Loop				;/
-		PLB					;\
-		PLP					; | Return if loop fails
-		PLX					; |
-		RTL					;/
-	+	STA $0A					; Store 16-bit tile xpos within screen
-		INY					;\
-		LDA ($04),y				; |
-		AND #$00FF				; |
-		CLC : ADC $02				; | Only draw tile if -17 < Y < 232
-		CMP #$00E8				; |
-		BCC +					; |
-		CMP #$FFF0				; |
-		BCS +					;/
-		INC $06					;\
-		INC $0C					; |
-		INY #3					; | Loop
-		TYA					; |
-		CMP ($04)				; |
-		BNE .Loop				;/
-		PLB					;\
-		PLP					; | Return if loop fails
-		PLX					; |
-		RTL					;/
-	+	SEP #$20				; A 8 bit
-		STA !OAM+$01,x				; Store Ydisp
-		LDA $0A					;Read Xdisp
-		STA !OAM+$00,x				;\ Store Xdisp
-		INY					;/
-		LDA ($04),y				; Read tile
-		STA !OAM+$02,x				;\ Store tile
-		INY					;/
-		LDA ($04),y				;\
-		BIT $0E					; |
-		BMI $02 : EOR #$40			; | Calculate and store prop
-		STA !OAM+$03,x				; |
-		INY					;/
-		LDA $0B					;\
-		EOR ($06)				; | Store hi byte
-		STA ($0C)				;/
-		REP #$20				;\
-		INC $06					; |
-		INC $0C					; | Loop
-		TYA					; |
-		CMP ($04)				; |
-		BEQ .Return				;/
-		JMP .Loop
-.Return		PLP					; Restore processor
-		PLX					; Restore sprite index
-		RTL					; Return
 
 
 End:
