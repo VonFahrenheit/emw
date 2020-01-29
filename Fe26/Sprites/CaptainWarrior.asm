@@ -15,24 +15,24 @@
 		PHB : PHK : PLB			; > Always do this. Just... do it.
 		JSL !GetCGRAM			;\
 		BCS +				; |
-		LDA #!VRAMbank			; |
+		LDA.b #!VRAMbank		; |
 		PHA : PLB			; |
 		REP #$20			; |
 		LDA #$001E			; |
-		STA !CGRAMtable+$00,y		; |
-		STA !CGRAMtable+$06,y		; | Upload palette
+		STA.w !CGRAMtable+$00,y		; |
+		STA.w !CGRAMtable+$06,y		; | Upload palette
 		LDA.w #BodyPal			; |
-		STA !CGRAMtable+$02,y		; |
+		STA.w !CGRAMtable+$02,y		; |
 		LDA.w #AxePal			; |
-		STA !CGRAMtable+$08,y		; |
+		STA.w !CGRAMtable+$08,y		; |
 		SEP #$20			; |
 		LDA.b #BodyPal>>16		; |
-		STA !CGRAMtable+$04,y		; |
-		STA !CGRAMtable+$0A,y		; |
+		STA.w !CGRAMtable+$04,y		; |
+		STA.w !CGRAMtable+$0A,y		; |
 		LDA #$E1			; |
-		STA !CGRAMtable+$05,y		; |
+		STA.w !CGRAMtable+$05,y		; |
 		LDA #$F1			; |
-		STA !CGRAMtable+$0B,y		; |
+		STA.w !CGRAMtable+$0B,y		; |
 	+	PHK : PLB			;/
 		LDX !SpriteIndex		; > Restore sprite index
 		LDA #$01 : STA $3320,x		; > Face left
@@ -596,8 +596,7 @@
 		CMP #$02
 		BNE .Wait
 		LDA $3250,x
-		CMP #$15
-		BNE .OnScreen
+		CMP $5D : BNE .OnScreen
 		LDA $3220,x
 		CMP #$40
 		BCC .OnScreen

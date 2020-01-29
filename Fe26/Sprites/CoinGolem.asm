@@ -129,8 +129,8 @@ CoinGolem:
 		PHX					; push sprite index
 		LDA !SpriteAnimIndex			;\
 		AND #$3F				; |
-		ASL A					; |
-		CMP.b #.End-.Ptr			; | check for illegal states
+		ASL A					; | check for illegal states
+		CMP.b #.End-.Ptr			; |
 		BCC $02 : LDA #$00			; |
 		TAX					;/
 		JMP (.Ptr,x)				; > execute pointer
@@ -1389,7 +1389,6 @@ endmacro
 		LDY #$0000
 		STZ.w !3D_AssemblyCache			; how many objects will be added to tilemap
 	-	LDA.w !3D_Slot,y : BEQ +
-
 		LDA.w !3D_X,y
 		SEC : SBC $00
 		STA.w !3D_AssemblyCache+$02,x
@@ -1407,7 +1406,7 @@ endmacro
 	+	TYA
 		CLC : ADC #$0010
 		TAY
-		CPY #$0400 : BCC -
+		CPY #$0200 : BCC -
 
 
 	; now all objects are in !3D_AssemblyCache
@@ -1439,7 +1438,7 @@ endmacro
 		STY $0E
 
 	+	INY #8
-		CPY.w !3D_Base+$400 : BNE -
+		CPY.w !3D_AssemblyCache : BNE -
 
 	.Z	LDY $0E
 		REP #$20

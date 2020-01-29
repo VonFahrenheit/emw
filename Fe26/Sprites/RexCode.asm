@@ -20,7 +20,7 @@
 ; $3290 - Desired X coordinate (lo)
 ; $32A0 - Desired X coordinate (hi)
 ; $32B0 - Desired Y coordinate (lo)
-; $32C0 - Desired Y coordinate (hi)
+; $35A0 - Desired Y coordinate (hi)	(extra prop 1)
 ; $32D0 - Fly timer
 ; $3340 - Loaded frame
 ; $35D0 - Intended attack option
@@ -75,6 +75,7 @@
 
 
 	!RexAI			= $3280,x
+	!RexAIY			= $3280,y
 	!RexWallX		= $3290,x
 	!RexHammer		= $32A0,x
 	!RexMovementFlags	= $3340,x
@@ -133,42 +134,22 @@ AggroRex:
 		STA $3440,x
 
 
-		STZ $00
-		STZ $01
-		STZ $02
-		STZ $03
-		LDY #$00
-		LDX #$0F
-	-	LDA $3230,x
-		CMP #$02 : BEQ +
-		CMP #$08 : BNE ++
-	+	LDA !NewSpriteNum,x
-		CMP #$04 : BNE ++
-		LDA !ClaimedGFX
-		STA $3000,y
-		INY
-
-	++	DEX : BPL -
-		DEY
-		CPY #$04 : BCC +
-	--	LDX !SpriteIndex
+		LDA #$03 : JSL !GetDynamicTile
+		BCS +
 		STZ $3230,x
 		PLB
 		RTL
 
-	+	LDA #$C0
-	-	CMP $00 : BEQ +
-		CMP $01 : BEQ +
-		CMP $02 : BEQ +
-		CMP $03 : BNE ++
-	+	CLC : ADC #$04
-		CMP #$D0
-		BNE -
-		BRA --
-
-	++	LDX !SpriteIndex
+	+	TYA
+		ORA #$40
 		STA !ClaimedGFX
+		TXA
+		STA !DynamicTile+0,y
+		STA !DynamicTile+1,y
+		STA !DynamicTile+2,y
+		STA !DynamicTile+3,y
 		PLB
+
 
 .MAIN		PHB : PHK : PLB
 		JSR REX_BEHAVIOUR
@@ -303,19 +284,31 @@ AggroRex:
 		CMP #$0012 : BEQ .32U1
 		CMP #$000D : BEQ .32U1
 		CMP #$0011 : BEQ .32U2
-	++	LDA.w #.TM32 : BRA +
+		LDA.w #.TM32 : BRA +
 	.32U1	LDA.w #.TM32U1 : BRA +
 	.32U2	LDA.w #.TM32U2 : BRA +
 	.24	LDA.w #.TM24
 	+	STA $04
 		SEP #$20
 
-		JSR REX_GFX_Aggro
+		LDA !AggroRexIFrames
+		AND #$02 : BNE .Return
+		JSR LOAD_CLAIMED
+
+	.Return
 		PLB
 		RTL
 
 	.UpdateGFX
-		LDA !ClaimedGFX : STA $08
+		LDA !ClaimedGFX
+		AND #$0F
+		ASL A
+		CMP #$10 : BCC +
+		CLC : ADC #$10
+	+	CLC : ADC !GFX_status+$0D
+		CLC : ADC !GFX_status+$0D
+		STA $08
+
 		JSL !GetVRAM
 		PHB
 		LDA #!VRAMbank
@@ -349,13 +342,17 @@ AggroRex:
 		ASL #5
 		CLC : ADC #$9008
 
+		PHY
+		LDY $06
 	-	STA $02				;\ Source address
 		STA !VRAMtable+$02,x		;/
 		LDA #$3434			;\ Source bank
 		STA !VRAMtable+$04,x		;/
 		LDA $08				;\ Dest VRAM
 		STA !VRAMtable+$05,x		;/
-		CLC : ADC #$0100		;\ Update for next loop
+		CPY #$02 : BNE +
+		SEC : SBC #$01C0
+	+	CLC : ADC #$0100		;\ Update for next loop
 		STA $08				;/
 		LDA $00				;\ Upload size
 		STA !VRAMtable+$00,x		;/
@@ -364,8 +361,9 @@ AggroRex:
 		TAX				;/
 		LDA $02				;\ Calculate next source address
 		CLC : ADC #$0200		;/
-		DEC $06 : BPL -			; > Loop
+		DEY : BPL -			; > Loop
 
+		PLY
 		SEP #$20
 		PLB
 		LDX !SpriteIndex
@@ -377,36 +375,36 @@ AggroRex:
 	dw $0010
 	db $28,$00,$F0,$00
 	db $28,$08,$F0,$01
-	db $28,$00,$00,$20
-	db $28,$08,$00,$21
+	db $28,$00,$00,$04
+	db $28,$08,$00,$05
 
 	.TM24X
 	dw $0010
 	db $28,$F8,$F0,$00
 	db $28,$00,$F0,$01
-	db $28,$F8,$00,$20
-	db $28,$00,$00,$21
+	db $28,$F8,$00,$04
+	db $28,$00,$00,$05
 
 	.TM32
 	dw $0010
 	db $28,$F8,$F0,$00
 	db $28,$08,$F0,$02
-	db $28,$F8,$00,$20
-	db $28,$08,$00,$22
+	db $28,$F8,$00,$04
+	db $28,$08,$00,$06
 
 	.TM32U1			; 4, 8, C, E, 10, 12
 	dw $0010
 	db $28,$F8,$EF,$00
 	db $28,$08,$EF,$02
-	db $28,$F8,$FF,$20
-	db $28,$08,$FF,$22
+	db $28,$F8,$FF,$04
+	db $28,$08,$FF,$06
 
 	.TM32U2			; D, 11
 	dw $0010
 	db $28,$F8,$EE,$00
 	db $28,$08,$EE,$02
-	db $28,$F8,$FE,$20
-	db $28,$08,$FE,$22
+	db $28,$F8,$FE,$04
+	db $28,$08,$FE,$06
 
 	.ANIM_IDLE
 		dw $6C04 : db $FF,$01		; 00
@@ -441,6 +439,9 @@ AggroRex:
 	.EXTRA_ANIM
 		dw $6D04 : db $C0,$00		; 17
 		dw $4CCA : db $0A,$14		; 18
+
+
+
 
 
 
@@ -690,6 +691,7 @@ NoviceShaman:
 		LDA #$01
 		STA !SpriteAnimIndex
 		LDA !RNG			;\
+		ADC !SpriteIndex		; |
 		AND #$03			; | Equip random mask
 		STA !ShamanMask			;/
 		PLB
@@ -1006,31 +1008,73 @@ AdeptShaman:
 		STZ $3390,x			;\ Clear casting status
 		STZ $33C0,x			;/
 		STZ !RexAI			; > Reset AI
-		JSL !GetVRAM
-		REP #$20
+		STZ $32E0,x
+		STZ $35F0,x
 
+
+		STZ !ClaimedGFX				;\
+		LDY #$0F				; |
+	-	CPY !SpriteIndex : BEQ +		; |
+		LDA $3230,y : BEQ +			; |
+		LDA !ExtraBits,y			; | adjust GFX allocation
+		AND #$08 : BEQ +			; |
+		LDA !NewSpriteNum,y			; |
+		CMP !NewSpriteNum,x : BNE +		; |
+		LDA #$08 : STA !ClaimedGFX		; |
+	+	DEY : BPL -				;/
+
+		LDA !ExtraBits,x
+		AND #$04 : BEQ .NoExtra
+		JSR .LookForPartner
+		BMI .NoExtra
+		LDA !ExtraBits,x			;\
+		ORA #$80				; | this is the secondary sprite
+		STA !ExtraBits,x			;/
+		.NoExtra
+
+
+		LDA !ClaimedGFX
+		ASL #4
+		STA $00
+		STZ $01
+
+
+		JSL !GetVRAM
+		LDA.b #!VRAMbank
+		PHA : PLB
+		REP #$20
 		LDA #$0032
-		STA !VRAMbase+!VRAMtable+$04,x
-		STA !VRAMbase+!VRAMtable+$0B,x
-		LDA !RNG
+		STA !VRAMtable+$04,x
+		STA !VRAMtable+$0B,x
+		LDA.l !RNG
+		ADC.l !SpriteIndex
 		AND #$0003
 		XBA
 		LSR #2
 		CLC : ADC #$B008
-		STA !VRAMbase+!VRAMtable+$02,x
+		STA !VRAMtable+$02,x
 		CLC : ADC #$0200
-		STA !VRAMbase+!VRAMtable+$09,x
-		LDA #$6E80
-		STA !VRAMbase+!VRAMtable+$05,x
-		LDA #$6F80
-		STA !VRAMbase+!VRAMtable+$0C,x
+		STA !VRAMtable+$09,x
+		LDA #$6E00
+		CLC : ADC $00
+		STA !VRAMtable+$05,x
+		LDA #$6F00
+		CLC : ADC $00
+		STA !VRAMtable+$0C,x
 		LDA #$0040
-		STA !VRAMbase+!VRAMtable+$00,x
-		STA !VRAMbase+!VRAMtable+$07,x
+		STA !VRAMtable+$00,x
+		STA !VRAMtable+$07,x
 
+		JSL !GetCGRAM
+		LDA #$001E : STA !CGRAMtable+$00,x
+		LDA.w #.Pal : STA !CGRAMtable+$02,x
 		SEP #$20
-		LDX !SpriteIndex
+		LDA.b #.Pal>>16 : STA !CGRAMtable+$04,x
+		LDA #$D1 : STA !CGRAMtable+$05,x
 		PLB
+		LDX !SpriteIndex
+
+
 
 	; AI:
 	; CCt---PP
@@ -1087,7 +1131,9 @@ AdeptShaman:
 		CMP !SpriteAnimIndex
 		BEQ +
 		PHY
-		CLC : JSL !UpdateGFX
+		LDA !ClaimedGFX : STA $02
+		STZ $03
+		SEC : JSL !UpdateGFX		; load dynamo / update GFX
 		PLY
 		+
 
@@ -1110,8 +1156,7 @@ AdeptShaman:
 		STA $02				; > $02 = header (byte count)
 		LDA $BE,x			;\
 		AND #$00FF			; |
-		CMP #$0004			; |
-		BEQ +				; |
+		CMP #$0004 : BEQ +		; |
 		LDA $02				; | Ignore mask if adept has taken damage
 		SEC : SBC #$0004		; |
 		STA $02				; |
@@ -1156,8 +1201,8 @@ AdeptShaman:
 		LDA $14				;\
 		CMP #$E2 : BCC .NoFlash		; | Only flash between 0xE2 < t < 0xF2
 		CMP #$F2 : BCS .NoFlash		;/
-	++	LDA #$F1 : STA $00		;\ AND #$FFF1 : ORA #$0008
-		LDA #$08 : STA $08		;/
+	++	LDA #$F1 : STA $00		;\ AND #$FFF1 : ORA #$000C
+		LDA #$0C : STA $08		;/
 		BRA .EndFlash
 
 		.NoFlash
@@ -1167,14 +1212,15 @@ AdeptShaman:
 
 		LDA !RexAI
 		AND #$03
-		CMP #$02 : BNE .NoDeath
+		CMP #$02 : BEQ $03
+	-	JMP .NoDeath
 		LDA !RexChase
 		AND #$C0
-		CMP #$C0 : BEQ .NoDeath
+		CMP #$C0 : BEQ -
 		LDA $3330,x
 		AND #$04 : BEQ .NoDeath
 
-		LDA #$27			;\
+		LDA #$2D			;\
 		STA !BigRAM+$02			; | Spell prop
 		STA !BigRAM+$06			; |
 		STA !BigRAM+$0A			;/
@@ -1198,10 +1244,13 @@ AdeptShaman:
 		LDA NoviceShaman_SpellPart3Y,y	; |
 		STA !BigRAM+$0C			;/
 		LDA NoviceShaman_SpellTile1,y	;\
+		CLC : ADC !GFX_status+$0C	; |
 		STA !BigRAM+$05			; |
 		LDA NoviceShaman_SpellTile2,y	; | Spell tiles
+		CLC : ADC !GFX_status+$0C	; |
 		STA !BigRAM+$09			; |
 		LDA NoviceShaman_SpellTile3,y	; |
+		CLC : ADC !GFX_status+$0C	; |
 		STA !BigRAM+$0D			;/
 		REP #$20			; > A 16-bit
 		LDA $04				;\
@@ -1213,14 +1262,37 @@ AdeptShaman:
 		.NoDeath
 		REP #$20
 
+		LDA !ClaimedGFX
+		AND #$00FF
+		XBA
+		STA $0A
+
 		LDY $02				; > Y = tile count
 	-	LDA ($06),y			;\
 		AND $00				; \ Account for attack flash
 		ORA $08				; /
 		STA ($04),y			; |
 		DEY #2				; |
-		LDA ($06),y			; | Upload body tilemap
-		STA ($04),y			; |
+		LDA $BE,x			; |
+		AND #$00FF			; |
+		CMP #$0004 : BEQ ..mask		; |
+	..face	CPY #$0C : BCS +		; |
+		BRA ++				; |
+	..mask	CPY #$04 : BCC +		; |
+		CPY #$10 : BCS +		; |
+	++	LDA !SpriteAnimIndex		; |
+		AND #$00FF			; | account for where spell tile is loaded by novice
+		CMP #$0016 : BCC +		; |
+		LDA ($06),y			; |
+		AND #$00FF : STA $0E		; |
+		LDA ($06),y			; |
+		CLC : ADC !GFX_status+$0B	; > 0C in hi
+		AND #$FF00			; |
+		ORA $0E				; |
+		BRA ++				; |
+	+	LDA ($06),y			; | Upload body tilemap
+		CLC : ADC $0A			; > add GFX offset
+	++	STA ($04),y			; |
 		DEY #2				; |
 		BPL -				;/
 		LDA #!BigRAM : STA $04		; > $04 = true tilemap pointer
@@ -1230,6 +1302,25 @@ AdeptShaman:
 		JSR LOAD_TILEMAP		; > Upload tilemap
 		PLB
 		RTL
+
+
+	; returns with Y = index to partner
+	; if it returns negative, no one was found
+
+	.LookForPartner
+		LDY #$0F
+	-	CPY !SpriteIndex : BEQ +
+		LDA $3230,y : BEQ +
+		LDA !ExtraBits,y
+		AND #$0C
+		CMP #$0C : BNE +
+		LDA !NewSpriteNum,y
+		CMP !NewSpriteNum,x : BNE +
+		RTS
+
+	+	DEY : BPL -
+		RTS
+
 
 
 	.PhasePtr
@@ -1255,13 +1346,21 @@ AdeptShaman:
 		CMP #$0040
 		BCC .TakeFlight
 		SEP #$20
-
-	.Return
-		RTS
+	.Return	RTS
 
 
 	.TakeFlight
 		SEP #$20
+		LDA !ExtraBits,x : BMI ..NoPartner
+		AND #$04 : BEQ ..NoPartner
+		JSR .LookForPartner
+		BMI +
+		STZ $3320,x
+		LDA !RexAIY
+		AND #$03 : BNE ..NoPartner
+	+	RTS				; wait for partner
+		..NoPartner
+
 		LDA #$0A : STA !RexChase
 		LDA #$1A : STA !AdeptFlyTimer
 		LDA #$03 : STA !SpriteAnimIndex
@@ -1272,13 +1371,12 @@ AdeptShaman:
 		STA $32B0,x
 		LDA $3240,x
 		SBC #$00
-		STA $32C0,x
+		STA $35A0,x
 
 		INC !RexAI
 
 	.ChaseMode
 		LDX !SpriteIndex
-
 		LDA $BE,x
 		BPL .NoReggedHit
 		LSR #4
@@ -1307,10 +1405,12 @@ AdeptShaman:
 		CMP #$03 : BNE +
 		JSR DROP_MASK_Spawn
 		LDA $33C0,y			;\
-		AND #$F0			; | Set mask palette
+		AND #$F0			; | set mask palette
 		ORA #$0A			; |
 		STA $33C0,y			;/
-		LDA #$E8 : STA $33D0,y		; > Set mask tile
+		LDA #$E0			;\
+		CLC : ADC !ClaimedGFX		; | set mask tile
+		STA $33D0,y			;/
 	+	JMP .NoContact
 
 		..2
@@ -1340,14 +1440,13 @@ AdeptShaman:
 
 		LDA $7490
 		BEQ $03 : JMP SPRITE_STAR
-		LDA $32E0,x
-		BNE .NoContact
+		LDA $32E0,x : BNE .NoContact
 		LDA #$0C : STA $32E0,x
 		LDA $3210,x
 		SEC : SBC $96
 		BCC .HurtMario
-		LDA !MarioYSpeed
-		CMP #$10 : BMI .HurtMario
+	;	LDA !MarioYSpeed
+	;	CMP #$10 : BCC .HurtMario
 .HurtAdept	JSL !BouncePlayer
 		JSL !ContactGFX
 		JSR REX_SOUND
@@ -1417,7 +1516,7 @@ AdeptShaman:
 		STA $32B0,x
 		LDA !P2YPosHi
 		SBC #$00
-		STA $32C0,x
+		STA $35A0,x
 		JMP ..HandleAttack
 	+	LDA !P2XPosLo-$80 : STA $3290,x
 		LDA !P2XPosHi-$80 : STA $32A0,x
@@ -1426,7 +1525,7 @@ AdeptShaman:
 		STA $32B0,x
 		LDA !P2YPosHi
 		SBC #$00
-		STA $32C0,x
+		STA $35A0,x
 		BRA ..HandleAttack
 	..FeintCoords
 		LDA $AE,x
@@ -1450,7 +1549,7 @@ AdeptShaman:
 		STA $32B0,x
 		LDA !P2YPosHi
 		SBC #$00
-		STA $32C0,x
+		STA $35A0,x
 		BRA ..HandleAttack
 	+	LDA !P2XPosLo-$80
 		SEC : SBC $00
@@ -1463,7 +1562,7 @@ AdeptShaman:
 		STA $32B0,x
 		LDA !P2YPosHi-$80
 		SBC #$00
-		STA $32C0,x
+		STA $35A0,x
 
 		..HandleAttack
 		LDA $34C0,x
@@ -1482,6 +1581,7 @@ AdeptShaman:
 
 		..NoSpray
 		LDA !RNG
+		ADC !SpriteIndex
 		AND #$01
 		INC A
 		STA $35D0,x
@@ -1492,6 +1592,7 @@ AdeptShaman:
 		AND.b #$20^$FF			; |
 		STA $00				; |
 		LDA !RNG			; | Target random player
+		ADC !SpriteIndex		; |
 		AND #$20			; |
 		ORA $00				; |
 		STA !RexAI			;/
@@ -1538,7 +1639,19 @@ AdeptShaman:
 ; s is stage (0 = flash, 1 = petrify)
 	.DeathMode
 		LDX !SpriteIndex
-		LDA $3330,x
+		LDA !ExtraBits,x
+		AND #$04 : BEQ ..Off
+		JSR .LookForPartner
+		BMI ..Off
+		LDA $30BE,y : BNE ..Stay
+
+	..Off	TXY
+		LDA $33F0,x : TAX
+		LDA #$EE : STA.l $418A00,x
+		TYX
+		JSR SPRITE_OFF_SCREEN
+
+	..Stay	LDA $3330,x
 		AND #$04 : BNE ..Ground
 		LDA !SpriteAnimIndex
 		CMP #$07 : BEQ ..Return
@@ -1550,8 +1663,7 @@ AdeptShaman:
 		..Ground
 		STZ $9E,x
 		STZ $AE,x
-		BIT !RexChase
-		BMI +
+		BIT !RexChase : BMI +
 		LDA #$80 : STA !RexChase
 		LDA !SpriteAnimIndex
 		CMP #$03 : BCC +
@@ -1560,8 +1672,18 @@ AdeptShaman:
 
 	+	BVS +
 		LDA $14
-		AND #$07
-		BNE ..Return
+		AND #$07 : BNE ..Return
+
+		LDA !ExtraBits,x		; partner also needs to be knocked out here
+		AND #$04 : BEQ ..NoPartner
+		JSR .LookForPartner
+		BMI ..NoPartner
+		LDA $30BE,y : BNE ..Return
+		BIT !ExtraBits,x : BPL ..NoPartner
+		LDA #$D0 : STA !RexChase
+		RTS
+		..NoPartner
+
 		INC !RexChase
 		LDA !RexChase
 		AND #$0F : BNE ..Return
@@ -1569,8 +1691,7 @@ AdeptShaman:
 
 	+	STZ !SpriteAnimTimer
 		LDA $14
-		AND #$07
-		BNE ..Return
+		AND #$07 : BNE ..Return
 		LDA !RexChase
 		CMP #$D0 : BNE ..Petrify
 		RTS
@@ -1815,7 +1936,7 @@ AdeptShaman:
 		LDA $3290,x : STA $00		;\ Desired X coord
 		LDA $32A0,x : STA $01		;/
 		LDA $32B0,x : STA $02		;\ Desired Y coord
-		LDA $32C0,x : STA $03		;/
+		LDA $35A0,x : STA $03		;/
 		LDA $3210,x : STA $04		;\ Current Y coord
 		LDA $3240,x : STA $05		;/
 		LDA $3250,x			;\
@@ -1911,7 +2032,7 @@ AdeptShaman:
 		LDA $3210,x
 		CMP $32B0,x
 		LDA $3240,x
-		SBC $32C0,x
+		SBC $35A0,x
 		BPL ..Ascend
 		LDA $9E,x : BMI +
 		LDA #$08 : STA !RexChase
@@ -1937,6 +2058,7 @@ AdeptShaman:
 		BIT !RexChase : BVS ..Ascend
 
 		..Grind
+		BIT !RexChase : BMI ..Accel
 		LDA $3330,x
 		AND #$04
 		BNE ..Ground
@@ -1971,8 +2093,7 @@ AdeptShaman:
 		RTS
 
 		..Ground
-		BIT !RexChase : BMI ..Accel
-		LDA !RexChase
+		LDA !RexChase : BMI ..Accel
 		ORA #$80
 		STA !RexChase
 		LDA !SpriteAnimIndex
@@ -1985,6 +2106,7 @@ AdeptShaman:
 		STA $3320,x
 
 		..Accel
+		STZ $9E,x
 		LDA !AdeptFlyTimer
 		CMP #$01 : BEQ ..TargetFound
 		LDA $3320,x
@@ -2261,7 +2383,7 @@ AdeptShaman:
 		REP #$20			; > A 16-bit
 		LDA .SpellCircle-$01,y		;\
 		AND #$FF00			; | Write prop + Xcoord to tilemap
-		ORA #$0027			; |
+		ORA #$002D			; |
 		STA ($04)			;/
 		PHX				;\
 		LDX !SpriteIndex		; |
@@ -2284,13 +2406,15 @@ AdeptShaman:
 		BRA ..WriteTile
 
 		..Tile2
-		LDA #$AB00			;\ Get medium tile
+		LDA #$4B00			;\ Get medium tile
 		BRA ..WriteTile			;/
 
 		..Tile1
-		LDA #$AD00			; > Get small tile
+		LDA #$4D00			; > Get small tile
 
 		..WriteTile
+		CLC : ADC !GFX_status+$0B	; 0C in hi
+		AND #$FF00
 		STA $0C				; > Save tile
 		LDA .SpellCircle+$12,y		;\
 		AND #$00FF			; | Write Ycoord + tile to tilemap
@@ -2357,9 +2481,9 @@ AdeptShaman:
 		db $03,$05,$07
 
 	.SpellTile
-		db $A5,$A7,$A9		; 00-17
-		db $A5,$A7,$A9		; 18-2F
-		db $A5,$A7,$A9		; 30-47
+		db $45,$47,$49		; 00-17
+		db $45,$47,$49		; 18-2F
+		db $45,$47,$49		; 30-47
 
 
 	.AnimIdle
@@ -2430,200 +2554,204 @@ AdeptShaman:
 
 	.IdleTM00
 		dw $0014
-		db $2A,$FE,$F0,$E8
-		db $2A,$FC,$F0,$C8
-		db $2A,$04,$F0,$C9
-		db $2A,$FC,$00,$CB
-		db $2A,$04,$00,$CC
+		db $2A,$FE,$F0,$E8-8
+		db $2A,$FC,$F0,$C8-8
+		db $2A,$04,$F0,$C9-8
+		db $2A,$FC,$00,$CB-8
+		db $2A,$04,$00,$CC-8
 	.IdleTM01
 		dw $0014
-		db $2A,$FE,$F0,$E8
-		db $2A,$FC,$F0,$C8
-		db $2A,$04,$F0,$C9
-		db $2A,$FC,$00,$CB
-		db $2A,$04,$00,$CC
+		db $2A,$FE,$F0,$E8-8
+		db $2A,$FC,$F0,$C8-8
+		db $2A,$04,$F0,$C9-8
+		db $2A,$FC,$00,$CB-8
+		db $2A,$04,$00,$CC-8
 	.IdleTM02
 		dw $0014
-		db $2A,$FE,$F0,$E8
-		db $2A,$FC,$F0,$C8
-		db $2A,$04,$F0,$C9
-		db $2A,$FC,$00,$CB
-		db $2A,$04,$00,$CC
+		db $2A,$FE,$F0,$E8-8
+		db $2A,$FC,$F0,$C8-8
+		db $2A,$04,$F0,$C9-8
+		db $2A,$FC,$00,$CB-8
+		db $2A,$04,$00,$CC-8
 
 	.ExtendTM00
 		dw $0014
-		db $2A,$FE,$F2,$E8
-		db $2A,$FC,$F0,$CA
-		db $2A,$04,$F0,$CB
-		db $2A,$FC,$00,$EA
-		db $2A,$04,$00,$EB
+		db $2A,$FE,$F2,$E8-8
+		db $2A,$FC,$F0,$CA-8
+		db $2A,$04,$F0,$CB-8
+		db $2A,$FC,$00,$EA-8
+		db $2A,$04,$00,$EB-8
 	.ExtendTM01
 		dw $0014
-		db $2A,$00,$F0,$E8
-		db $2A,$F8,$F0,$CA
-		db $2A,$08,$F0,$CC
-		db $2A,$F8,$00,$EA
-		db $2A,$08,$00,$EC
+		db $2A,$00,$F0,$E8-8
+		db $2A,$F8,$F0,$CA-8
+		db $2A,$08,$F0,$CC-8
+		db $2A,$F8,$00,$EA-8
+		db $2A,$08,$00,$EC-8
 	.ExtendTM02
 		dw $001C
-		db $2A,$FF,$F0,$E8
-		db $2A,$00,$F0,$CC
-		db $2A,$F0,$F8,$DA
-		db $2A,$10,$F8,$DE
-		db $2A,$F0,$00,$EA
-		db $2A,$00,$00,$EC
-		db $2A,$10,$00,$EE
+		db $2A,$FF,$F0,$E8-8
+		db $2A,$00,$F0,$CC-8
+		db $2A,$F0,$F8,$DA-8
+		db $2A,$10,$F8,$DE-8
+		db $2A,$F0,$00,$EA-8
+		db $2A,$00,$00,$EC-8
+		db $2A,$10,$00,$EE-8
 
 	.FlapTM00
 		dw $001C
-		db $2A,$0B-$C,$F0,$E8
-		db $2A,$00-$C,$F0,$CA
-		db $2A,$10-$C,$F0,$CC
-		db $2A,$18-$C,$F0,$CD
-		db $2A,$00-$C,$00,$EA
-		db $2A,$10-$C,$00,$EC
-		db $2A,$18-$C,$00,$ED
+		db $2A,$0B-$C,$F0,$E8-8
+		db $2A,$00-$C,$F0,$CA-8
+		db $2A,$10-$C,$F0,$CC-8
+		db $2A,$18-$C,$F0,$CD-8
+		db $2A,$00-$C,$00,$EA-8
+		db $2A,$10-$C,$00,$EC-8
+		db $2A,$18-$C,$00,$ED-8
 	.RisingTM00
 		dw $001C
-		db $2A,$0C-$C,$F1,$E8
-		db $2A,$00-$C,$F0,$CA
-		db $2A,$10-$C,$F0,$CC
-		db $2A,$18-$C,$F0,$CD
-		db $2A,$00-$C,$00,$EA
-		db $2A,$10-$C,$00,$EC
-		db $2A,$18-$C,$00,$ED
+		db $2A,$0C-$C,$F1,$E8-8
+		db $2A,$00-$C,$F0,$CA-8
+		db $2A,$10-$C,$F0,$CC-8
+		db $2A,$18-$C,$F0,$CD-8
+		db $2A,$00-$C,$00,$EA-8
+		db $2A,$10-$C,$00,$EC-8
+		db $2A,$18-$C,$00,$ED-8
 	.RisingTM01
 		dw $001C
-		db $2A,$0C-$C,$F1,$E8
-		db $2A,$00-$C,$F0,$CA
-		db $2A,$10-$C,$F0,$CC
-		db $2A,$18-$C,$F0,$CD
-		db $2A,$00-$C,$00,$EA
-		db $2A,$10-$C,$00,$EC
-		db $2A,$18-$C,$00,$ED
+		db $2A,$0C-$C,$F1,$E8-8
+		db $2A,$00-$C,$F0,$CA-8
+		db $2A,$10-$C,$F0,$CC-8
+		db $2A,$18-$C,$F0,$CD-8
+		db $2A,$00-$C,$00,$EA-8
+		db $2A,$10-$C,$00,$EC-8
+		db $2A,$18-$C,$00,$ED-8
 
 	.HoverTM00
 		dw $0020
-		db $2A,$00,$F0,$E8
-		db $2A,$00,$EF,$C8
-		db $2A,$F0,$F8,$CA
-		db $2A,$00,$F8,$CC
-		db $2A,$10,$F8,$CE
-		db $2A,$F0,$00,$DA
-		db $2A,$00,$00,$DC
-		db $2A,$10,$00,$DE
+		db $2A,$00,$F0,$E8-8
+		db $2A,$00,$EF,$C8-8
+		db $2A,$F0,$F8,$CA-8
+		db $2A,$00,$F8,$CC-8
+		db $2A,$10,$F8,$CE-8
+		db $2A,$F0,$00,$DA-8
+		db $2A,$00,$00,$DC-8
+		db $2A,$10,$00,$DE-8
 	.HoverTM01
 		dw $0020
-		db $2A,$00,$F0,$E8
-		db $2A,$00,$EF,$C8
-		db $2A,$F0,$F8,$CA
-		db $2A,$00,$F8,$CC
-		db $2A,$10,$F8,$CE
-		db $2A,$F0,$00,$DA
-		db $2A,$00,$00,$DC
-		db $2A,$10,$00,$DE
+		db $2A,$00,$F0,$E8-8
+		db $2A,$00,$EF,$C8-8
+		db $2A,$F0,$F8,$CA-8
+		db $2A,$00,$F8,$CC-8
+		db $2A,$10,$F8,$CE-8
+		db $2A,$F0,$00,$DA-8
+		db $2A,$00,$00,$DC-8
+		db $2A,$10,$00,$DE-8
 	.HoverTM02
 		dw $0020
-		db $2A,$00,$F0,$E8
-		db $2A,$00,$EF,$C8
-		db $2A,$F0,$F8,$CA
-		db $2A,$00,$F8,$CC
-		db $2A,$10,$F8,$CE
-		db $2A,$F0,$00,$DA
-		db $2A,$00,$00,$DC
-		db $2A,$10,$00,$DE
+		db $2A,$00,$F0,$E8-8
+		db $2A,$00,$EF,$C8-8
+		db $2A,$F0,$F8,$CA-8
+		db $2A,$00,$F8,$CC-8
+		db $2A,$10,$F8,$CE-8
+		db $2A,$F0,$00,$DA-8
+		db $2A,$00,$00,$DC-8
+		db $2A,$10,$00,$DE-8
 
 	.FDashTM
 		dw $0018
-		db $2A,$FB,$F2,$E8
-		db $2A,$F4,$F0,$CA
-		db $2A,$04,$F0,$CC
-		db $2A,$F4,$00,$EA
-		db $2A,$04,$00,$EC
-		db $2A,$0C,$00,$ED
+		db $2A,$FB,$F2,$E8-8
+		db $2A,$F4,$F0,$CA-8
+		db $2A,$04,$F0,$CC-8
+		db $2A,$F4,$00,$EA-8
+		db $2A,$04,$00,$EC-8
+		db $2A,$0C,$00,$ED-8
 
 	.BDashTM
 		dw $001C
-		db $2A,$03,$F2,$E8
-		db $2A,$F4,$F8,$DA
-		db $2A,$FC,$F0,$CB
-		db $2A,$0C,$F0,$CD
-		db $2A,$F4,$00,$EA
-		db $2A,$FC,$00,$EB
-		db $2A,$0C,$00,$ED
+		db $2A,$03,$F2,$E8-8
+		db $2A,$F4,$F8,$DA-8
+		db $2A,$FC,$F0,$CB-8
+		db $2A,$0C,$F0,$CD-8
+		db $2A,$F4,$00,$EA-8
+		db $2A,$FC,$00,$EB-8
+		db $2A,$0C,$00,$ED-8
 
 	.GrindTM00
 		dw $0024
-		db $2A,$FB,$F2,$E8
-		db $2D,$0C,$FC,$A5
-		db $2D,$0C+$0C,$FC-$06,$AD	; 3
-		db $2D,$0C+$06,$FC+$00,$AB	; 1
+		db $2A,$FB,$F2,$E8-8
+		db $2D,$0C,$FC,$45
+		db $2D,$0C+$0C,$FC-$06,$4D	; 3
+		db $2D,$0C+$06,$FC+$00,$4B	; 1
 						; 5
-		db $2A,$F4,$F0,$CA
-		db $2A,$04,$F0,$CC
-		db $2A,$F4,$00,$EA
-		db $2A,$04,$00,$EC
-		db $2A,$0C,$00,$ED
+		db $2A,$F4,$F0,$CA-8
+		db $2A,$04,$F0,$CC-8
+		db $2A,$F4,$00,$EA-8
+		db $2A,$04,$00,$EC-8
+		db $2A,$0C,$00,$ED-8
 	.GrindTM01
 		dw $0024
-		db $2A,$FB,$F2,$E8
-		db $2D,$0C,$FC,$A5
-		db $2D,$0C+$10,$FC-$08,$AD	; 4
-		db $2D,$0C+$0C,$FC+$00,$AB	; 2
+		db $2A,$FB,$F2,$E8-8
+		db $2D,$0C,$FC,$45
+		db $2D,$0C+$10,$FC-$08,$4D	; 4
+		db $2D,$0C+$0C,$FC+$00,$4B	; 2
 						; 6
-		db $2A,$F4,$F0,$CA
-		db $2A,$04,$F0,$CC
-		db $2A,$F4,$00,$EA
-		db $2A,$04,$00,$EC
-		db $2A,$0C,$00,$ED
+		db $2A,$F4,$F0,$CA-8
+		db $2A,$04,$F0,$CC-8
+		db $2A,$F4,$00,$EA-8
+		db $2A,$04,$00,$EC-8
+		db $2A,$0C,$00,$ED-8
 	.GrindTM02
 		dw $0024
-		db $2A,$FB,$F2,$E8
-		db $2D,$0C,$FC,$A7
+		db $2A,$FB,$F2,$E8-8
+		db $2D,$0C,$FC,$47
 						; 5
-		db $2D,$0C+$12,$FC+$00,$AD	; 3
-		db $2D,$0C+$04,$FC+$02,$AB	; 1
-		db $2A,$F4,$F0,$CA
-		db $2A,$04,$F0,$CC
-		db $2A,$F4,$00,$EA
-		db $2A,$04,$00,$EC
-		db $2A,$0C,$00,$ED
+		db $2D,$0C+$12,$FC+$00,$4D	; 3
+		db $2D,$0C+$04,$FC+$02,$4B	; 1
+		db $2A,$F4,$F0,$CA-8
+		db $2A,$04,$F0,$CC-8
+		db $2A,$F4,$00,$EA-8
+		db $2A,$04,$00,$EC-8
+		db $2A,$0C,$00,$ED-8
 	.GrindTM03
 		dw $0024
-		db $2A,$FB,$F2,$E8
-		db $2D,$0C,$FC,$A7
+		db $2A,$FB,$F2,$E8-8
+		db $2D,$0C,$FC,$47
 						; 6
-		db $2D,$0C+$18,$FC+$00,$AD	; 4
-		db $2D,$0C+$08,$FC+$04,$AB	; 2
-		db $2A,$F4,$F0,$CA
-		db $2A,$04,$F0,$CC
-		db $2A,$F4,$00,$EA
-		db $2A,$04,$00,$EC
-		db $2A,$0C,$00,$ED
+		db $2D,$0C+$18,$FC+$00,$4D	; 4
+		db $2D,$0C+$08,$FC+$04,$4B	; 2
+		db $2A,$F4,$F0,$CA-8
+		db $2A,$04,$F0,$CC-8
+		db $2A,$F4,$00,$EA-8
+		db $2A,$04,$00,$EC-8
+		db $2A,$0C,$00,$ED-8
 	.GrindTM04
 		dw $0024
-		db $2A,$FB,$F2,$E8
-		db $2D,$0C,$FC,$A9
-		db $2D,$0C+$04,$FC-$02,$AB	; 1
+		db $2A,$FB,$F2,$E8-8
+		db $2D,$0C,$FC,$49
+		db $2D,$0C+$04,$FC-$02,$4B	; 1
 						; 5
-		db $2D,$0C+$0C,$FC+$06,$AD	; 3
-		db $2A,$F4,$F0,$CA
-		db $2A,$04,$F0,$CC
-		db $2A,$F4,$00,$EA
-		db $2A,$04,$00,$EC
-		db $2A,$0C,$00,$ED
+		db $2D,$0C+$0C,$FC+$06,$4D	; 3
+		db $2A,$F4,$F0,$CA-8
+		db $2A,$04,$F0,$CC-8
+		db $2A,$F4,$00,$EA-8
+		db $2A,$04,$00,$EC-8
+		db $2A,$0C,$00,$ED-8
 	.GrindTM05
 		dw $0024
-		db $2A,$FB,$F2,$E8
-		db $2D,$0C,$FC,$A9
-		db $2D,$0C+$08,$FC-$04,$AB	; 2
+		db $2A,$FB,$F2,$E8-8
+		db $2D,$0C,$FC,$49
+		db $2D,$0C+$08,$FC-$04,$4B	; 2
 						; 6
-		db $2D,$0C+$10,$FC+$08,$AD	; 4
-		db $2A,$F4,$F0,$CA
-		db $2A,$04,$F0,$CC
-		db $2A,$F4,$00,$EA
-		db $2A,$04,$00,$EC
-		db $2A,$0C,$00,$ED
+		db $2D,$0C+$10,$FC+$08,$4D	; 4
+		db $2A,$F4,$F0,$CA-8
+		db $2A,$04,$F0,$CC-8
+		db $2A,$F4,$00,$EA-8
+		db $2A,$04,$00,$EC-8
+		db $2A,$0C,$00,$ED-8
+
+	.AngryMask
+		dw $0004
+		db $2A,$00,$00,$E8-8
 
 
 	.Pal
@@ -2643,7 +2771,7 @@ AdeptShaman:
 macro AdeptDyn(TileCount, SourceTile, DestVRAM)
 	dw <TileCount>*$20
 	dl <SourceTile>*$20+$32B008
-	dw <DestVRAM>*$10+$5000			; < Move everything to $0C0-$0FF area
+	dw <DestVRAM>*$10+$5000-$80		; < Move everything to $0C0-$0FF area
 endmacro
 
 	.IdleDyn00
@@ -2794,11 +2922,6 @@ endmacro
 ;=================;
 
 REX_GFX:
-
-.Aggro		LDA !AggroRexIFrames
-		AND #$02 : BNE .Return
-		JMP LOAD_PSUEDO_DYNAMIC
-.Return		RTS
 
 .Normal		LDA $3220,x
 		LDY $BE,x
@@ -3396,6 +3519,7 @@ REX_HAMMER:	LDA $32D0,x
 		AND #$03			; |
 		TAY				; |
 		LDA !RNG			; | Wait a random number of frames
+		ADC !SpriteIndex		; |
 		LSR #2				; |
 		CLC : ADC #$23			; |
 		CLC : ADC.w .ThrowDelay,y	; |
@@ -3445,6 +3569,7 @@ REX_HAMMER:	LDA $32D0,x
 		SBC #$00			; |
 		STA $7729,y			;/
 		LDA !RNG			;\
+		ADC !SpriteIndex		; |
 		AND #$80			; |
 		ORA.b #!P2YPosLo-$80		; | Target a random player
 		STA $00				; |
@@ -3484,10 +3609,8 @@ REX_HAMMER:	LDA $32D0,x
 SHAMAN_CAST:	LDA !Difficulty			;\
 		AND #$03			; | Y = difficulty index
 		TAY				;/
-		LDA !ShamanCast
-		BEQ .Fire
-		CMP .CastTime,y
-		BCC .Cast
+		LDA !ShamanCast : BEQ .Fire
+		CMP .CastTime,y : BCC .Cast
 		LDA !SpriteAnimIndex
 		CMP #$09 : BCC .Return
 		CMP #$0C : BCS .Return
@@ -3497,6 +3620,7 @@ SHAMAN_CAST:	LDA !Difficulty			;\
 .Return		RTS
 
 .Fire		LDA !RNG			;\
+		ADC !SpriteIndex		; |
 		LSR #2				; | Wait a random number of frames
 		CLC : ADC #$94			; |
 		STA !ShamanCast			;/
@@ -3505,8 +3629,8 @@ SHAMAN_CAST:	LDA !Difficulty			;\
 		BRA .Spawn
 
 .Cast		LDA #$09			;\
-		CMP !SpriteAnimIndex		; | Start cast animation
-		BCC .Return			; |
+		CMP !SpriteAnimIndex		; |
+		BCC .Return			; | Start cast animation
 		BEQ .Return			; |
 		STA !SpriteAnimIndex		; |
 		STZ !SpriteAnimTimer		;/
@@ -3555,7 +3679,7 @@ SHAMAN_CAST:	LDA !Difficulty			;\
 		STX $00
 		PLX
 		LDA #$45			;\
-		CLC : ADC !ClaimedGFX		; | Base tile
+		CLC : ADC !GFX_status+$0C	; | Base tile
 		STA $33D0,y			;/
 		LDY $3320,x			;\
 		LDA DROP_MASK_MaskProp,y	; |
@@ -3578,6 +3702,7 @@ DROP_MASK:	LDA !RexMovementFlags		;\
 		STA !RexMovementFlags		;/
 
 		LDA !RNG			;\
+		ADC !SpriteIndex		; |
 		LSR #2				; | Reset spell cast
 		CLC : ADC #$94			; |
 		STA !ShamanCast			;/
@@ -3655,6 +3780,7 @@ QUICK_CAST:	PHA
 .Spray		JSR SPRITE_A_SPRITE_B_COORDS	; Same position
 		JSR .SetMode
 		LDA !RNG
+		ADC !SpriteIndex
 		AND #$1F
 		SBC #$10
 		STA $00
@@ -3767,7 +3893,9 @@ QUICK_CAST:	PHA
 		JSL $0187A7			; | /
 		LDA #$08 : STA !ExtraBits,x	;/  > Custom sprite flag
 		LDA #$FF : STA $32D0,x		; > Life timer (max)
-		LDA #$A5 : STA $33D0,x		; > Base tile
+		LDA #$45			;\
+		CLC : ADC !GFX_status+$0C	; | Base tile
+		STA $33D0,x			;/
 		LDA #$82 : STA $BE,x		; > Behaviour (line + anim)
 		LDA #$03 : STA $33E0,x		; > Number of frames (3)
 		LDA #$05 : STA $3310,x		; > Animation frequency

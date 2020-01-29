@@ -23,7 +23,7 @@ MoleWizard:
 
 	MAIN:
 		PHB : PHK : PLB
-		JSR SPRITE_OFF_SCREEN
+		JSL SPRITE_OFF_SCREEN_Long
 		LDA $3230,x
 		SEC : SBC #$08
 		ORA $9D
@@ -89,7 +89,7 @@ MoleWizard:
 		TAY					; |
 		LDA DATA_AttackTime,y			; |
 		STA !MoleWizardTimer			;/
-		JSR SUB_HORZ_POS			;\ Face a player
+		JSL SUB_HORZ_POS_Long			;\ Face a player
 		TYA : STA $3320,x			;/
 		..Return
 		RTS
@@ -259,7 +259,7 @@ MoleWizard:
 		TAY
 		LDA ANIM,y : STA $04
 		LDA ANIM+1,y : STA $05
-		JSR LOAD_PSUEDO_DYNAMIC
+		JSL LOAD_PSUEDO_DYNAMIC_Long
 
 		.Return
 		PLB
@@ -331,7 +331,8 @@ MoleWizard:
 		BMI .Nope
 		LDA #$C2 : STA !MoleWizardState
 		STZ !MoleWizardTimer
-		JMP P2Bounce
+		JSL P2Bounce_Long
+		RTS
 
 		.Nope
 		RTS
@@ -352,7 +353,7 @@ MoleWizard:
 	Fire:
 		JSL $02A9DE
 		BMI .Return
-		JSR SPRITE_A_SPRITE_B_COORDS		; same position
+		JSL SPRITE_A_SPRITE_B_COORDS_Long	; same position
 		PHY
 		PHX
 		TYX

@@ -62,15 +62,33 @@ HappySlime:
 
 
 
-	INIT:
-		PHB : PHK : PLB
-		LDA !GFX_status+$0D : STA !ClaimedGFX
-		JSR SUB_HORZ_POS				;\ face player
-		TYA : STA $3320,x				;/
-		PEA MAIN-1+3
+	MAIN:
+		LDA !GameMode
+		CMP #$14 : BEQ +
+		RTL
+
+	+	PHB : PHK : PLB
+		LDA !ExtraBits,x : BMI .Main
+
+		.Init
+		ORA #$80
+		STA !ExtraBits,x
+		LDA #$00 : JSL !GetDynamicTile
+		BCS +
+		STZ $3230,x
+		PLB
+		RTL
+
+	+	TYA
+		ORA #$10
+		STA !ClaimedGFX
+		TXA : STA !DynamicTile,y
+
+		JSR SUB_HORZ_POS
+		TYA : STA $3320,x
+		PEA INIT-2
 		LDA !ExtraBits,x
-		AND #$04
-		BEQ .Follow
+		AND #$04 : BEQ .Follow
 
 		.Play
 		JMP PLAY
@@ -79,8 +97,7 @@ HappySlime:
 		JMP FOLLOW
 
 
-	MAIN:
-		PHB : PHK : PLB
+		.Main
 		JSR SPRITE_OFF_SCREEN
 		LDA $3230,x
 		SEC : SBC #$08
@@ -722,11 +739,11 @@ HappySlime:
 		TAY
 		LDA !SpriteAnimTimer
 		INC A
-		CMP.w .Anim+2,y
+		CMP.w Anim+2,y
 		BNE .SameAnim
 
 		.NewAnim
-		LDA .Anim+3,y
+		LDA Anim+3,y
 		CMP #$FF : BNE +
 		STZ $3230,x
 		PLB
@@ -740,43 +757,67 @@ HappySlime:
 		.SameAnim
 		STA !SpriteAnimTimer
 		LDA !SlimeInvincTimer			;\ Flicker during i-frames
-		AND #$02 : BNE .Invis			;/
-
-
-		LDA.w .Anim+0,y : STA $04
-		LDA.w .Anim+1,y : STA $05
-		JSR LOAD_PSUEDO_DYNAMIC
-
-		LDA !ExtraBits,x			; move slime to hi prio OAM if it's bouncy
-		AND #$04 : BEQ .Invis
-		LDY $33B0,x
-		REP #$20
-		LDA !OAM+$100,y : STA $00
-		LDA !OAM+$102,y : STA $02
-		LDA #$F0F0 : STA !OAM+$100,y
-		TYA
-		LSR #2
-		TAY
-		LDA !OAMhi+$40,y
-		STA $04
-		LDY !OAMindex
-		LDA $00 : STA !OAM+$000,y
-		LDA $02 : STA !OAM+$002,y
-		SEP #$20
-		TYA
-		INY #4
-		STY !OAMindex
-		LSR #2
-		TAY
-		LDA $04 : STA !OAMhi+$00,y
-
-
-		.Invis
+		AND #$02 : BEQ .Draw			;/
 		PLB
 		RTL
 
 
-	.Anim
+		.Draw
+		LDA.w Anim+0,y : STA $04
+		LDA.w Anim+1,y : STA $05
+
+		LDA ($04)
+		BIT !GFX_status+$0D
+		BPL $02 : EOR #$01
+		STA !BigRAM+$02
+		STZ !BigRAM+$05
+
+		REP #$20
+		LDA #$0004
+		STA !BigRAM+$00
+		STZ !BigRAM+$03
+		LDA #$000E : STA !BigRAM+$06
+		LDA #$0040
+		STA !BigRAM+$08
+		STA !BigRAM+$0F
+		LDY #$01
+		LDA ($04),y
+		AND #$00FF
+		ASL #5
+		CLC : ADC #$DA08
+		STA !BigRAM+$0A
+		CLC : ADC #$0200
+		STA !BigRAM+$11
+		LDA #$6000
+		STA !BigRAM+$0D
+		ORA #$0100
+		STA !BigRAM+$14
+
+		LDA.w #!BigRAM+0 : STA $04
+		LDA.w #!BigRAM+6 : STA $0C
+
+		SEP #$20
+		LDA #$30
+		STA !BigRAM+$0C
+		STA !BigRAM+$13
+
+		JSL !UpdateClaimedGFX
+		JSR LOAD_CLAIMED
+
+
+		LDA !ExtraBits,x			; move slime to hi prio OAM if it's bouncy
+		AND #$04 : BEQ .Invis
+		JSR HI_PRIO_OAM				; note that A i always 4 here
+
+
+		.Invis
+		PLB
+
+	INIT:
+		RTL
+
+
+	Anim:
 	.Anim_Horz00
 		dw .TM_Horz00 : db $07,$01		; 00
 		dw .TM_Horz01 : db $07,$02		; 01
@@ -872,157 +913,114 @@ HappySlime:
 
 
 
+
+
+
 	.TM_Horz00
-		dw $0004
-		db $2B,$00,$00,$00
+		db $2A,$00
 	.TM_Horz01
-		dw $0004
-		db $2B,$00,$00,$02
+		db $2A,$02
 	.TM_Horz02
-		dw $0004
-		db $2B,$00,$00,$04
+		db $2A,$04
 	.TM_Horz80
-		dw $0004
-		db $AB,$00,$00,$00
+		db $AA,$00
 	.TM_Horz81
-		dw $0004
-		db $AB,$00,$00,$02
+		db $AA,$02
 	.TM_Horz82
-		dw $0004
-		db $AB,$00,$00,$04
+		db $AA,$04
 
 	.TM_HorzJump00
-		dw $0004
-		db $2B,$00,$00,$06
+		db $2A,$06
 	.TM_HorzJump01
-		dw $0004
-		db $2B,$00,$00,$08
+		db $2A,$08
 	.TM_HorzJump80
-		dw $0004
-		db $AB,$00,$00,$06
+		db $AA,$06
 	.TM_HorzJump81
-		dw $0004
-		db $AB,$00,$00,$08
+		db $AA,$08
 
 	.TM_Vert00
-		dw $0004
-		db $2B,$00,$00,$0A
+		db $2A,$0A
 	.TM_Vert01
-		dw $0004
-		db $2B,$00,$00,$0C
+		db $2A,$0C
 	.TM_Vert02
-		dw $0004
-		db $2B,$00,$00,$0E
+		db $2A,$0E
 	.TM_Vert80
-		dw $0004
-		db $AB,$00,$00,$0A
+		db $AA,$0A
 	.TM_Vert81
-		dw $0004
-		db $AB,$00,$00,$0C
+		db $AA,$0C
 	.TM_Vert82
-		dw $0004
-		db $AB,$00,$00,$0E
+		db $AA,$0E
 
 	.TM_VertJump00
-		dw $0004
-		db $6B,$00,$00,$20
+		db $6A,$20
 	.TM_VertJump80
-		dw $0004
-		db $EB,$00,$00,$20
+		db $EA,$20
 
 	.TM_Corner00
-		dw $0004
-		db $2B,$00,$00,$22
+		db $2A,$22
 	.TM_Corner01
-		dw $0004
-		db $6B,$00,$00,$22
+		db $6A,$22
 	.TM_Corner80
-		dw $0004
-		db $AB,$00,$00,$22
+		db $AA,$22
 	.TM_Corner81
-		dw $0004
-		db $EB,$00,$00,$22
+		db $EA,$22
 
 	.TM_Stunned
-		dw $0004
-		db $2B,$00,$00,$24
+		db $2A,$24
 
 
 	Angry:
 	.TM_Horz00
-		dw $0004
-		db $29,$00,$00,$26
+		db $28,$26
 	.TM_Horz01
-		dw $0004
-		db $29,$00,$00,$28
+		db $28,$28
 	.TM_Horz02
-		dw $0004
-		db $29,$00,$00,$2A
+		db $28,$2A
 	.TM_Horz80
-		dw $0004
-		db $A9,$00,$00,$26
+		db $A8,$26
 	.TM_Horz81
-		dw $0004
-		db $A9,$00,$00,$28
+		db $A8,$28
 	.TM_Horz82
-		dw $0004
-		db $A9,$00,$00,$2A
+		db $A8,$2A
 
 	.TM_HorzJump00
-		dw $0004
-		db $29,$00,$00,$2C
+		db $28,$2C
 	.TM_HorzJump01
-		dw $0004
-		db $29,$00,$00,$2E
+		db $28,$2E
 	.TM_HorzJump80
-		dw $0004
-		db $A9,$00,$00,$2C
+		db $A8,$2C
 	.TM_HorzJump81
-		dw $0004
-		db $A9,$00,$00,$2E
+		db $A8,$2E
 
 	.TM_Vert00
-		dw $0004
-		db $29,$00,$00,$40
+		db $28,$40
 	.TM_Vert01
-		dw $0004
-		db $29,$00,$00,$42
+		db $28,$42
 	.TM_Vert02
-		dw $0004
-		db $29,$00,$00,$44
+		db $28,$44
 	.TM_Vert80
-		dw $0004
-		db $A9,$00,$00,$40
+		db $A8,$40
 	.TM_Vert81
-		dw $0004
-		db $A9,$00,$00,$42
+		db $A8,$42
 	.TM_Vert82
-		dw $0004
-		db $A9,$00,$00,$44
+		db $A8,$44
 
 	.TM_VertJump00
-		dw $0004
-		db $69,$00,$00,$46
+		db $68,$46
 	.TM_VertJump80
-		dw $0004
-		db $E9,$00,$00,$46
+		db $E8,$46
 
 	.TM_Corner00
-		dw $0004
-		db $29,$00,$00,$48
+		db $28,$48
 	.TM_Corner01
-		dw $0004
-		db $69,$00,$00,$48
+		db $68,$48
 	.TM_Corner80
-		dw $0004
-		db $A9,$00,$00,$48
+		db $A8,$48
 	.TM_Corner81
-		dw $0004
-		db $E9,$00,$00,$48
+		db $E8,$48
 
 	.TM_Stunned
-		dw $0004
-		db $29,$00,$00,$4A
+		db $28,$4A
 
 
 	PlayerContact:
