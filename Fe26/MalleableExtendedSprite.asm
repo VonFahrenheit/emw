@@ -41,11 +41,19 @@
 		BVC .NoContact					;/
 
 		.CheckContact
-		LDA !ExSpriteXPosLo,x : STA $04			;\
-		LDA !ExSpriteYPosLo,x : STA $05			; |
-		LDA !ExSpriteXPosHi,x : STA $0A			; |
-		LDA !ExSpriteYPosHi,x : STA $0B			; | Generate hitbox in RAM
-		LDA #$10					; |
+		LDA !ExSpriteXPosLo,x				;\
+		CLC : ADC #$02					; |
+		STA $04						; |
+		LDA !ExSpriteXPosHi,x				; |
+		ADC #$00					; |
+		STA $0A						; |
+		LDA !ExSpriteYPosLo,x				; | Generate hitbox
+		CLC : ADC #$02					; |
+		STA $05						; |
+		LDA !ExSpriteYPosHi,x				; |
+		ADC #$00					; |
+		STA $0B						; |
+		LDA #$0C					; |
 		STA $06						; |
 		STA $07						;/
 		SEC : JSL !PlayerClipping			;\ Check for contact

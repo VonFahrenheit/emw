@@ -30,6 +30,9 @@ SPRITE_OFF_SCREEN:
 
 		.HorizontalLevel
 		XBA
+		BIT !CameraBoxU+1 : BPL .GoodX
+		LDA $3470,x
+		AND #$04 : BNE .GoodX
 		LDA $3220,x
 		REP #$20
 		SEC : SBC $1A
@@ -39,27 +42,44 @@ SPRITE_OFF_SCREEN:
 		ROL A
 		AND #$01
 		STA $3350,x
+
+		.GoodX
 		LDA $3240,x : XBA
 		LDA $3210,x
 		REP #$20
-		CMP $73D7
+		BIT !CameraBoxU : BMI .NoBoxY
+		CMP !CameraBoxU : BCC .NoBoxY
+		SBC #$00E0
+		CMP !CameraBoxD : BCC .GoodY
+
+		.NoBoxY
+		CMP $73D7 : BCS .OutOfBoundsY
+		SEC : SBC $1C
+		BPL +
+		EOR #$FFFF
+		LDY #$00
+		BRA ++
+	+	LDY #$02
+	++	CMP.w .YBounds,y
 		SEP #$20
 		BCC .GoodY
+
+		.OutOfBoundsY
+		SEP #$20
 		INC $3490,x
 
 		.GoodY
+		SEP #$20
 		LDA $3350,x
 		ORA $3490,x
 		BEQ .Return
 		LDA $3230,x
-		CMP #$08
-		BCC .Kill
+		CMP #$08 : BCC .Kill
 		LDY $33F0,x
-		CPY #$FF
-		BEQ .Kill
+		CPY #$FF : BEQ .Kill
 		PHX
 		TYX
-		LDA $418A00,x			;\ 0xEE means don't respawn
+		LDA $418A00,x			;\ 0xEE means don't respawn ever
 		CMP #$EE : BEQ +		;/
 		LDA #$00			;\ Respawn
 		STA $418A00,x			;/
@@ -71,7 +91,12 @@ SPRITE_OFF_SCREEN:
 		.Return
 		RTS
 
-.Long		JSR SPRITE_OFF_SCREEN
+
+.YBounds	dw $00E0,$01C0			; above, below
+
+.Long		PHB : PHK : PLB
+		JSR SPRITE_OFF_SCREEN
+		PLB
 		RTL
 
 
@@ -238,11 +263,15 @@ P2Attack:	STZ $0F
 		PLA : STA $0F			; |
 		BCC .Next			;/
 
+
 		TYA				;\
 		CLC : ROL #2			; |
 		INC A				; | Mark contact
 		ORA $02,s			; |
 		STA $02,s			;/
+
+		JSR P2HitContactGFX
+
 
 		.WriteIndex
 		LDA .ContactBits,x
@@ -273,7 +302,9 @@ P2Attack:	STZ $0F
 		RTS				;/
 
 
-.Long		JSR P2Attack
+.Long		PHB : PHK : PLB
+		JSR P2Attack
+		PLB
 		RTL
 
 .KnockBack	LDA #$01 : STA $0F
@@ -298,10 +329,8 @@ P2ContactGFX:	PHX
 		LDX #$03
 
 		.Loop
-		LDA $77C0,x
-		BEQ .Spawn
-		DEX
-		BPL .Loop
+		LDA $77C0,x : BEQ .Spawn
+		DEX : BPL .Loop
 		PLX
 		RTS
 
@@ -321,6 +350,55 @@ P2ContactGFX:	PHX
 
 .Long		JSR P2ContactGFX
 		RTL
+
+
+;=======================;
+;HIT CONTACT GFX ROUTINE;
+;=======================;
+P2HitContactGFX:
+		PHX
+		LDX #$03
+
+	.Loop	LDA $77C0,x : BEQ .Spawn
+		DEX : BPL .Loop
+		PLX
+		RTS
+
+		.Spawn
+		LDA #$02 : STA $77C0,x
+		LDA $0F : PHA
+		LDA $02
+		LSR A
+		CLC : ADC $00
+		STA $0F
+		LDA $06
+		LSR A
+		CLC : ADC $04
+		CLC : ADC $0F
+		ROR A
+		STA $77C8,x
+
+		LDA $03
+		LSR A
+		CLC : ADC $01
+		STA $0F
+		LDA $07
+		LSR A
+		CLC : ADC $05
+		CLC : ADC $0F
+		ROR A
+		SEC : SBC #$08
+		STA $77C4,x
+
+		LDA #$08 : STA $77CC,x
+		PLA : STA $0F
+		PLX
+		RTS
+
+.Long		JSR P2HitContactGFX
+		RTL
+
+
 
 ;=======================;
 ;PLAYER 2 BOUNCE ROUTINE;
@@ -345,9 +423,14 @@ P2Bounce:
 		LDA #$00			;\
 		STA !P2SenkuUsed-$80,y		;/ Reset air Senku
 		JMP P2ContactGFX
+		LDA #$1F : STA !P2Floatiness-$80,y
 
 .Long		JSR P2Bounce
 		RTL
+
+
+
+
 
 ;======================;
 ;SUPREME TILEMAP LOADER;
@@ -365,35 +448,17 @@ P2Bounce:
 ;	$0E:		0xFFFF is tile is x-flipped, otherwise 0x0000
 
 
-LOAD_TILEMAP:	LDA $3220,x : STA $00
-		LDA $3250,x : STA $01
-		LDA $3210,x : STA $02
-		LDA $3240,x : STA $03
-		REP #$20
-		LDA $00
-		SEC : SBC $1A
-		STA $00
-		LDA $02
-		SEC : SBC $1C
-		STA $02
-		LDA ($04)
-		STA $08
-		LDA $04
-		INC #2
-		STA $04
-		STZ $0C
-		LDA $3320,x
-		LSR A
-		BCS +
-		LDA #$0040
-		STA $0C
-	+	SEP #$20
+LOAD_TILEMAP:	JSR .Setup
+		LDA #$01 : XBA		; add 0x100 to access second block OAM
 		LDA $33B0,x : TAX
-		LDY #$00
+		JSR .Loop
+		SEP #$10
+		LDX !SpriteIndex
+		RTS
 
 .Loop		LDA ($04),y
 		EOR $0C
-		STA !OAM+$103,x
+		STA !OAM+$003,x
 		REP #$20
 		STZ $0E
 		AND #$0040
@@ -438,31 +503,74 @@ LOAD_TILEMAP:	LDA $3220,x : STA $00
 		BRA .End
 
 .GoodY		SEP #$20
-		STA !OAM+$101,x
+		STA !OAM+$001,x
 		LDA $06
-		STA !OAM+$100,x
+		STA !OAM+$000,x
 		INY
 		LDA ($04),y
-		STA !OAM+$102,x
+		STA !OAM+$002,x
 		INY
 		PHX
+		REP #$20		; added
 		TXA
 		LSR #2
 		TAX
+		SEP #$20		; added
 		LDA $07
 		AND #$01
 		ORA #$02
-		STA !OAMhi+$40,x
+		STA !OAMhi+$00,x	; 0x40 for second block
 		PLX
+		INX #4			; moved this to before end branch to work with first block access
 		CPY $08
 		BEQ .End
-		INX #4
 		JMP .Loop
-.End		LDX !SpriteIndex
-		RTS
+.End		RTS
 
 .Long		JSR LOAD_TILEMAP
 		RTL
+
+
+.HiPrio		JSR .Setup
+		LDX !OAMindex
+		JSR .Loop		; go to loop
+		STX !OAMindex
+		SEP #$10
+		LDX !SpriteIndex
+		RTS
+
+
+..Long		JSR .HiPrio
+		RTL
+
+
+
+.Setup		LDA $3220,x : STA $00
+		LDA $3250,x : STA $01
+		LDA $3210,x : STA $02
+		LDA $3240,x : STA $03
+		REP #$20
+		LDA $00
+		SEC : SBC $1A
+		STA $00
+		LDA $02
+		SEC : SBC $1C
+		STA $02
+		LDA ($04)
+		STA $08
+		LDA $04
+		INC #2
+		STA $04
+		STZ $0C
+		LDA $3320,x
+		LSR A
+		BCS +
+		LDA #$0040
+		STA $0C
+	+	SEP #$20
+		LDY #$00
+		REP #$10
+		RTS
 
 
 LOAD_PSUEDO_DYNAMIC:
@@ -569,167 +677,26 @@ LOAD_PSUEDO_DYNAMIC:
 
 
 
-; This routine is hardcoded to upload Aggro Rex GFX.
-LOAD_DYNAMIC:	LDA $3220,x : STA $00
-		LDA $3250,x : STA $01
-		LDA $3210,x : STA $02
-		LDA $3240,x : STA $03
-		LDA !ClaimedGFX : STA $0A
-		STZ $0B
-		REP #$20
-		LDA $00
-		SEC : SBC $1A
-		STA $00
-		LDA $02
-		SEC : SBC $1C
-		STA $02
-		LDA ($04)
-		STA $08
-		LDA $04
-		INC #2
-		STA $04
-		STZ $0C
-		LDA $3320,x
-		LSR A
-		BCS +
-		LDA #$0040
-		STA $0C
-	+	SEP #$20
-		LDA $33B0,x : TAX
-		LDY #$00
-
-.Loop		LDA ($04),y
-		EOR $0C
-		STA !OAM+$103,x
-		REP #$20
-		STZ $0E
-		AND #$0040
-		BEQ +
-		LDA #$FFFF
-		STA $0E
-	+	INY
-
-		LDA ($04),y
-		AND #$00FF
-		CMP #$0080
-		BMI $03 : ORA #$FF00
-		EOR $0E
-		CLC : ADC $00
-		CMP #$0100
-		BCC .GoodX
-		CMP #$FFF0
-		BCS .GoodX
-		INX #4
-		INY #3
-		SEP #$20
-		CPY $08
-		BNE .Loop
-		JMP .End
-
-.GoodX		STA $06			; Save tile xpos
-		INY
-		LDA ($04),y
-		AND #$00FF
-		CMP #$0080
-		BMI $03 : ORA #$FF00
-		CLC : ADC $02
-		CMP #$00E8
-		BCC .GoodY
-		CMP #$FFF0
-		BCS .GoodY
-		INX #4
-		INY #2
-		SEP #$20
-		CPY $08
-		BNE .Loop
-		JMP .End
-
-.GoodY		SEP #$20
-		STA !OAM+$101,x
-		LDA $06
-		STA !OAM+$100,x
-		INY
-		LDA $0A
-		CLC : ADC.w .TileDisp,y
-		STA !OAM+$102,x
-		INY
-		PHX
-		TXA
-		LSR #2
-		TAX
-		LDA $07
-		AND #$01
-		ORA #$02
-		STA !OAMhi+$40,x
-		PLX
-		CPY $08
-		BEQ .End
-		INX #4
-		JMP .Loop
-.End		LDX !SpriteIndex
-		LDY #$03
-		LDA !AggroRexTile
-		CMP ($04),y
-		BNE +
-		RTS
-
-	+	JSL !GetVRAM
-		BCC +
-		LDX !SpriteIndex
-		RTS
-
-	+	PHB : LDA #!VRAMbank
-		PHA : PLB
-		LDA #$30
-		STA !VRAMtable+$04,x
-		STA !VRAMtable+$0B,x
-		STA !VRAMtable+$12,x
-		STA !VRAMtable+$19,x
-		REP #$20
-		LDA #$0080
-		STA !VRAMtable+$00,x
-		STA !VRAMtable+$07,x
-		STA !VRAMtable+$0E,x
-		STA !VRAMtable+$15,x
-		LDA $0A
-		ASL #4
-		ORA #$6000
-		STA !VRAMtable+$05,x
-		CLC : ADC #$0100
-		STA !VRAMtable+$0C,x
-		CLC : ADC #$0100
-		STA !VRAMtable+$13,x
-		CLC : ADC #$0100
-		STA !VRAMtable+$1A,x
-		PLB
-		LDA ($04),y
-		AND #$00FF
-		ASL #5
-		CLC : ADC #$A408
-		STA.l !VRAMbase+!VRAMtable+$02,x
-		CLC : ADC #$0200
-		STA.l !VRAMbase+!VRAMtable+$09,x
-		CLC : ADC #$0200
-		STA.l !VRAMbase+!VRAMtable+$10,x
-		CLC : ADC #$0200
-		STA.l !VRAMbase+!VRAMtable+$17,x
-		SEP #$20
-		LDX !SpriteIndex
-		LDA ($04),y
-		STA !AggroRexTile
+; This routine should be used with dynamic sprites that use the GFX claim system
+LOAD_CLAIMED:
+		LDA !ClaimedGFX : PHA
+		AND #$0F
+		ASL A
+		CMP #$10 : BCC +
+		CLC : ADC #$10
+	+	ADC !GFX_status+$0D
+		CLC : ADC !GFX_status+$0D
+		STA !ClaimedGFX
+		JSR LOAD_PSUEDO_DYNAMIC
+		PLA : STA !ClaimedGFX
 		RTS
 
 
-.TileDisp	db $00,$00,$00,$00
-		db $02,$02,$02,$02
-		db $20,$20,$20,$20
-		db $22,$22,$22,$22
+.Long		JSR LOAD_CLAIMED
+		RTL
 
 
 
-;
-;
-;
 
 
 CheckMario:	CLC : ROL #2
@@ -968,6 +935,61 @@ DontInteract:
 ; XD	-	spin jump star
 ; XE	-	Yoshi's fireball
 ; XF	-	water bubble
+
+
+
+; load A with the number of tiles to move, then call this
+; that number of tiles will be moved from the start of the sprite's tilemap to hi prio OAM
+; this has to be called after LOAD_TILEMAP or any of its variants
+
+;===============;
+;HI PRIORITY OAM;
+;===============;
+HI_PRIO_OAM:
+		PHX
+		STA $02
+		LSR #2
+		DEC A
+		STA $03
+		LDA $33B0,x : PHA
+		CLC : ADC.b #!OAM
+		STA $00
+		LDA.b #!OAM>>8
+		ADC #$01
+		STA $01
+		LDY #$00
+		LDX !OAMindex
+	-	LDA ($00),y : STA !OAM,x
+		LDA #$F0 : STA ($00),y
+		INY
+		INX
+		CPY $02 : BNE -
+		LDA !OAMindex
+		STX !OAMindex
+		LSR #2
+		TAX
+		PLA
+		LSR #2
+		TAY
+	-	LDA !OAMhi+$40,y : STA !OAMhi,x
+		INY
+		INX
+		DEC $03 : BPL -
+		PLX
+		RTS
+
+.Long		JSR HI_PRIO_OAM
+		RTL
+		
+
+
+
+
+
+
+
+
+
 
 
 

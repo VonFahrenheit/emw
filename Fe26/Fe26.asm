@@ -56,6 +56,9 @@ endmacro
 		dl KeepExtraBits
 		dl SilverCoinFix
 
+		; the following bytes are taken by SP_Patch, look there for more info on the next free space
+
+
 
 
 	; -- Main Hijacks --
@@ -499,16 +502,17 @@ incsrc "MalleableExtendedSprite.asm"
 
 
 Bank16:
+
+incsrc "SpriteSubRoutines.asm"
+incsrc "GFX_expand.asm"
+
+print "Fe26 Sprite Engine ends at $", pc, "."
+
+print "Sprite data inserted at $", pc, "."
 print " "
 print "-- SPRITE LIST --"
 
-incsrc "SpriteSubRoutines.asm"
 incsrc "SpriteData.asm"
-incsrc "GFX_expand.asm"
-
-print " "
-print "Fe26 Sprite Engine ends at $", pc, "."
-
 incsrc "Replace/SP_spring_board.asm"
 incsrc "Replace/SP_Koopa.asm"
 incsrc "Replace/SP_Mole.asm"
@@ -522,7 +526,7 @@ macro InsertSprite(name)
 	START_<name>:
 	incsrc "Sprites/<name>.asm"
 	END_<name>:
-	print "<name> inserted at $", pc, " ($", hex(END_<name>-START_<name>), " bytes)."
+	print "<name> inserted at $", hex(START_<name>), " ($", hex(END_<name>-START_<name>), " bytes)."
 endmacro
 
 
@@ -535,7 +539,6 @@ print "-- BANK $16 --"
 %InsertSprite(CaptainWarrior)
 %InsertSprite(TarCreeper)
 %InsertSprite(MiniMech)
-%InsertSprite(MoleWizard)
 
 .End
 
@@ -566,11 +569,12 @@ print "-- BANK $17 --"
 %InsertSprite(Monkey)
 %InsertSprite(MiniMole)
 %InsertSprite(TerrainPlatform)
-%InsertSprite(LavaLord)
 %InsertSprite(CoinGolem)
 %InsertSprite(YoshiCoin)
 %InsertSprite(EliteKoopa)
-
+%InsertSprite(MoleWizard)
+%InsertSprite(BooHoo)
+%InsertSprite(GigaThwomp)
 
 	WalkOff:
 	.VertY	BMI ..LimitUp
@@ -662,4 +666,25 @@ print "-- BANK $17 --"
 BANK17End:
 
 print "Bank $17 ends at $", pc, ". ($", hex($180000-BANK17End), " bytes left)"
+
+
+org $198000
+db $53,$54,$41,$52
+dw $FFF7
+dw $0008
+
+Bank19:
+
 print " "
+print "-- BANK $19 --"
+%InsertSprite(LavaLord)
+%InsertSprite(FlamePillar)
+
+
+
+
+BANK19End:
+
+print "Bank $19 ends at $", pc, ". ($", hex($1A0000-BANK19End), " bytes left)"
+print " "
+
