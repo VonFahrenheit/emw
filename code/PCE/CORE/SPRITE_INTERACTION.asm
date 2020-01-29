@@ -338,13 +338,14 @@ Hurt:
 
 
 Bounce:
-	LDA #$D0			;\
-	BIT $6DA3			; | Set Y speed
-	BPL $02 : LDA #$A8		; |
+	LDA #$A8			;\
+	;BIT $6DA3			; | Set Y speed
+	;BPL $02 : LDA #$A8		; |
 	BIT !P2YSpeed : BPL +		; |
 	CMP !P2YSpeed : BCS ++		; |
 +	STA !P2YSpeed			;/
 ++	STZ !P2SenkuUsed		; > Reset air Senku
+	LDA #$1F : STA !P2Floatiness
 	RTS
 
 

@@ -3,7 +3,7 @@
 
 namespace Kadaal
 
-; --Build 6.1--
+; --Build 6.2--
 ;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -18,11 +18,11 @@ namespace Kadaal
 ; --Sprite Table Usage--
 ; Always assume LoRAM unless specifically stated.
 ;
-; $00C2,x	; Platform data. Format: pd--iiii. Cleared if no sprite contact is detected or when landing.
-; $00D8,x	; Current position along Y-axis in level (low byte).
-; $00E4,x	; Current position along X-axis in level (low byte).
-; $00AA,x	; Current speed along Y-axis.
-; $00B6,x	; Current speed along X-axis.
+; $00BE,x	; Platform data. Format: pd--iiii. Cleared if no sprite contact is detected or when landing.
+; $3210,x	; Current position along Y-axis in level (low byte).
+; $3220,x	; Current position along X-axis in level (low byte).
+; $009E,x	; Current speed along Y-axis.
+; $00AE,x	; Current speed along X-axis.
 ; $3230,x	; Sprite status. Usually 08.
 ; $3240,x	; Current position along Y-axis in level (high byte).
 ; $3250,x	; Current position along X-axis in level (high byte).
@@ -37,7 +37,7 @@ namespace Kadaal
 ; $3330,x	; Sprite collision table.
 ; $3350,x	; Sprite off screen flag (horizontal). While this is set, smoke sprites are not spawned by player 2.
 ; $3400,x	; Consecutive enemies killed in one jump. Cleared upon touching the ground.
-; $186C,x	; Sprite off screen flag (vertical). While this is set, smoke sprites are not spawned by player 2.
+; $3490,x	; Sprite off screen flag (vertical). While this is set, smoke sprites are not spawned by player 2.
 
 ; --Extra RAM Usage--
 ;
@@ -244,6 +244,10 @@ namespace Kadaal
 
 
 	CONTROLS:
+
+		JSR CORE_COYOTE_TIME
+
+
 		LDX !P2Direction
 		LDA !P2Water
 		LSR A
@@ -260,10 +264,7 @@ namespace Kadaal
 		PHX
 		PEA PHYSICS-1
 
-		LDA !P2HurtTimer
-		BEQ .NoHurt
-		RTS
-		.NoHurt
+		LDA !P2HurtTimer : BEQ $01 : RTS
 
 		LDA !P2Water
 		LSR A
@@ -488,7 +489,7 @@ namespace Kadaal
 		LDA #$01 : TRB !P2Water		; vine/net jump
 		LDA #$B8 : STA !P2YSpeed
 		LDA #$2B : STA !SPC1		; jump SFX
-		LDA #$07 : STA !P2Floatiness
+		LDA #$1F : STA !P2Floatiness
 	+	RTS
 		.NoClimb
 
@@ -678,11 +679,13 @@ namespace Kadaal
 
 
 
-		LDA !P2JumpLag			;\
-		BEQ .ProcessJump		; |
-		BIT $6DA7 : BPL $05		; | Allow jump buffer from land lag
-		LDA #$80 : TSB !P2Buffer	; |
-		JMP .Friction			;/
+		LDA !P2CoyoteTime : BMI +		;\ coyote time
+		BNE .InitJump				;/
+	+	LDA !P2JumpLag				;\
+		BEQ .ProcessJump			; |
+		BIT $6DA7 : BPL $05			; | Allow jump buffer from land lag
+		LDA #$80 : TSB !P2Buffer		; |
+		JMP .Friction				;/
 
 
 	; THIS IS THE MAIN JUMP CODE
@@ -692,12 +695,14 @@ namespace Kadaal
 		AND #$04
 		ORA !P2Platform
 		BNE .InitJump
-		LDA !P2Floatiness
-		DEC A : BNE .NoJump		;\
-		BIT $6DA3			; |
-		BMI .NoJump			; |
-		LDA !P2YSpeed			; | Switch to short jump if player lets go of B
+		LDA !P2Floatiness		;\
+		CMP #$1A : BCS .NoJump		; |
+		BIT $6DA3 : BMI .NoJump		; |
+		STZ !P2Floatiness		; | stop ascent if player lets go of B
+		BIT !P2YSpeed : BPL .NoJump	; |
+		LDA !P2YSpeed			; |
 		CLC : ADC #$20			; |
+		BMI $02 : LDA #$00		; |
 		STA !P2YSpeed			; |
 		BRA .NoJump			;/
 
@@ -707,7 +712,10 @@ namespace Kadaal
 		LDA !P2Buffer
 		ORA $6DA7
 		BPL .NoJump
+		STZ !P2CoyoteTime		; clear coyote time
 		STZ !P2ShellSlide		; Clear shell slide
+		LDA #$0C : STA !P2Anim
+		STZ !P2AnimTimer
 	;	LDA !P2Punch1			;\
 	;	ORA !P2Punch2			; |
 	;	BEQ .SenkuJump			; | Allow players to buffer jump from punch
@@ -733,7 +741,7 @@ namespace Kadaal
 
 	LDA #$04 : TRB !P2Blocked		; Instantly leave ground
 
-		LDA #$07 : STA !P2Floatiness	; > Amount of time to decide between low and high jump
+		LDA #$1F : STA !P2Floatiness	; > Amount of time to decide between low and high jump
 		LDA #$2B : STA !SPC1		; > jump SFX
 		LDA #$0C : STA !P2Anim		; > Start next animation right away for clipping purposes
 		.NoJump
@@ -842,7 +850,7 @@ namespace Kadaal
 		LSR A
 		BCS .Left
 		LDA $00
-		BEQ +
+		BEQ ++
 
 		.Friction			; This code definitely only runs on the ground
 		LDA !P2ShellSlide : BNE ++	;\ Clear shell speed upon touching the ground without shell slide
@@ -943,6 +951,7 @@ namespace Kadaal
 		STZ !P2AnimTimer
 		LDA #$A0 : STA !P2YSpeed
 		LDA #$1C : STA !P2Invinc
+		LDA #$40 : STA !P2Floatiness
 		STZ !P2Senku
 		LDA #$02 : STA !SPC1		; SFX
 		LDA !P2Direction
@@ -1195,9 +1204,10 @@ namespace Kadaal
 	+	LDA !P2Anim
 		CMP #$28 : BCC $03 : JMP .HandleUpdate
 
-		LDA !P2JumpLag
-		ORA !P2Floatiness
-		BEQ +
+		LDA !P2JumpLag : BNE ++
+		BIT !P2YSpeed : BMI +
+		LDA !P2Floatiness : BEQ +
+	++
 	-	LDA #$0C : STA !P2Anim
 		STZ !P2AnimTimer
 		JMP .HandleUpdate
@@ -2130,7 +2140,7 @@ namespace Kadaal
 	dw .ClippingShell
 
 	.Squat				; 0C
-	dw .SquatTM : db $0A,$11
+	dw .SquatTM : db $04,$11
 	dw .SquatDynamo
 	dw .ClippingShell
 

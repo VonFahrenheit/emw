@@ -8,8 +8,7 @@ UPDATE_SPEED:
 		LDA !P2YPosLo : STA !P2YPosBackup	; |
 		SEP #$20				;/
 
-		LDA !P2Stasis
-		BEQ +
+		LDA !P2Stasis : BEQ +
 		DEC !P2Stasis
 		RTS
 		+

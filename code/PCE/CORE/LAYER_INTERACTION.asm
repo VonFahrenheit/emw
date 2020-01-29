@@ -206,6 +206,7 @@
 		LDA !P2Character	;\ Leeway doesn't get speed boost from leaving water
 		CMP #$03 : BEQ +++	;/
 
+		LDA #$40 : STA !P2Floatiness
 		LDA !P2XSpeed
 		BPL +
 		EOR #$FF

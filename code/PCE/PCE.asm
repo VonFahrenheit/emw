@@ -21,6 +21,10 @@ sa1rom
 		JSL PLAYER2_Camera		;\ Org: LDA $94 : SEC : SBC $1A
 		NOP				;/
 
+	org $00DC4A
+		JSL PLAYER2_Coordinates		; Org: LDA $8A : STA $7D
+
+
 	org $01808C
 		JML PLAYER2
 
@@ -279,6 +283,27 @@ sa1rom
 
 
 
+		.Coordinates
+		PHX
+		PHP
+		REP #$20
+		LDA $94
+		STA !P2XPosLo-$80
+		STA !P2XPosLo
+		LDA $96
+		CLC : ADC #$0010
+		LDX !P2Pipe-$80
+		BNE $03 : STA !P2YPosLo-$80
+		LDX !P2Pipe
+		BNE $03 : STA !P2YPosLo
+
+		PLP
+		PLX
+		LDA $8A : STA $7D
+		RTL
+
+
+
 		.GetCharacter
 		REP #$30			; > All regs 16-bit
 		LDA.w #$007F			;\
@@ -495,6 +520,7 @@ BITS:	db $01,$02,$04,$08,$10,$20,$40,$80
 	incsrc "CORE/HURT.asm"
 	incsrc "CORE/ATTACK.asm"
 	incsrc "CORE/SET_XSPEED.asm"
+	incsrc "CORE/COYOTE_TIME.asm"
 	namespace off
 
 

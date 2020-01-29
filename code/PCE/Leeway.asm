@@ -3,7 +3,7 @@
 
 namespace Leeway
 
-; --Build 2.1--
+; --Build 2.5--
 ;
 
 
@@ -90,9 +90,11 @@ namespace Leeway
 		LDA !P2DashTimerR2
 		BEQ $03 : DEC !P2DashTimerR2
 		LDA !P2Dashing
-		BEQ $03 : DEC !P2Dashing
+		BEQ $05 : DEC !P2Dashing : BRA $03 : STZ !P2DashSlash	; only 1 attack per dash
 		LDA !P2SlantPipe
 		BEQ $03 : DEC !P2SlantPipe
+		LDA !P2ClimbTop
+		BEQ $03 : DEC !P2ClimbTop
 
 		LDA !P2SwordTimer
 		BNE +
@@ -130,6 +132,14 @@ namespace Leeway
 
 
 	CONTROLS:
+
+		JSR CORE_COYOTE_TIME
+
+		LDA !P2Buffer			;\
+		AND #$80			; |
+		TSB $6DA3			; | apply jump buffer
+		TSB $6DA7			; |
+		TRB !P2Buffer			;/
 
 		LDA !P2HurtTimer
 		BEQ $03 : JMP PHYSICS
@@ -265,7 +275,7 @@ namespace Leeway
 		LSR #2
 		AND #$03
 		TAX
-		LDA .XSpeed,x : STA !P2YSpeed
+		LDA .XSpeed,x : STA !P2YSpeed		; climb up/down speed
 		BNE +
 		LDX !P2Direction
 		LDA $6DA3
@@ -362,7 +372,7 @@ namespace Leeway
 		LDA #$10 : STA !P2DashTimerL2
 		STZ !P2Climb
 		LDA !P2ClimbTop : BNE +
-		LDA #$01 : STA !P2ClimbTop
+		LDA #$1C : STA !P2ClimbTop
 	+	RTS
 
 		.NoClimb
@@ -430,8 +440,13 @@ namespace Leeway
 		BNE .Ground
 
 		.Air
-		LDA !P2DashTimerR2
-		BNE +
+		LDA !P2CoyoteTime				;\
+		BMI ..nope					; |
+		BEQ ..nope					; | coyote time
+		BIT $6DA7 : BMI .Jump				; |
+		..nope						;/
+
+		LDA !P2DashTimerR2 : BNE +
 		LDA #$80 : TRB !P2Water
 	+	LDA !P2Dashing
 		BEQ +
@@ -461,6 +476,7 @@ namespace Leeway
 	+	RTS
 
 		.Jump
+		STZ !P2CoyoteTime				; clear coyote time
 		STZ !P2SwordAttack
 		LDA #$20 : STA !P2Floatiness
 		LDA #$B0 : STA !P2YSpeed
@@ -616,10 +632,12 @@ namespace Leeway
 		BEQ .NoDash
 
 		.Dash
+		LDA !P2DashSlash : BNE .NoDash
 		LDA !P2SwordAttack : BNE .NoDash
 		BIT $6DA7 : BVC +
 		LDA #$03 : STA !P2SwordAttack
 		LDA #$3C : STA !SPC4				; slice SFX
+		LDA #$01 : STA !P2DashSlash
 		BRA .NoDash
 	+	BIT $6DA5 : BMI .NoDash
 		LDA #$01 : STA !P2Dashing
@@ -695,8 +713,8 @@ namespace Leeway
 		CMP #$08 : BEQ +
 		CMP #$09 : BEQ ++
 		RTS
-	++	LDA #$0C : JMP HITBOX
-	+	LDA #$00 : JMP HITBOX
+	++	LDA.b #CUT_1-BOX_START : JMP HITBOX
+	+	LDA.b #CUT_0-BOX_START : JMP HITBOX
 
 		..Bits
 		db $02,$01
@@ -736,8 +754,8 @@ namespace Leeway
 		CMP #$0C : BEQ +
 		CMP #$0D : BEQ ++
 		RTS
-	++	LDA #$24 : JMP HITBOX
-	+	LDA #$18 : JMP HITBOX
+	++	LDA.b #SLASH_1-BOX_START : JMP HITBOX
+	+	LDA.b #SLASH_0-BOX_START : JMP HITBOX
 
 		.DashSlash
 		LDA !P2SwordAttack : BMI ..Process
@@ -750,8 +768,8 @@ namespace Leeway
 		CMP #$14 : BEQ +
 		CMP #$15 : BEQ ++
 		RTS
-	++	LDA #$3C : JMP HITBOX
-	+	LDA #$30 : JMP HITBOX
+	++	LDA.b #DASHSLASH_1-BOX_START : JMP HITBOX
+	+	LDA.b #DASHSLASH_0-BOX_START : JMP HITBOX
 
 		.AirSlash
 		LDA !P2SwordAttack : BMI ..Process
@@ -764,8 +782,8 @@ namespace Leeway
 		CMP #$2C : BEQ +
 		CMP #$2D : BEQ ++
 		RTS
-	++	LDA #$54 : JMP HITBOX
-	+	LDA #$48 : JMP HITBOX
+	++	LDA.b #AIRSLASH_1-BOX_START : JMP HITBOX
+	+	LDA.b #AIRSLASH_0-BOX_START : JMP HITBOX
 
 		.WallSlash
 		LDA !P2SwordAttack : BMI ..Process
@@ -785,8 +803,8 @@ namespace Leeway
 		CMP #$36 : BEQ +
 		CMP #$37 : BEQ ++
 		RTS
-	++	LDA #$6C : JMP HITBOX
-	+	LDA #$60 : JMP HITBOX
+	++	LDA.b #WALLSLASH_1-BOX_START : JMP HITBOX
+	+	LDA.b #WALLSLASH_0-BOX_START : JMP HITBOX
 
 		.HangSlash
 		LDA !P2SwordAttack : BMI ..Process
@@ -799,8 +817,8 @@ namespace Leeway
 		CMP #$31 : BEQ +
 		CMP #$32 : BEQ ++
 		RTS
-	++	LDA #$84 : JMP HITBOX
-	+	LDA #$78 : JMP HITBOX
+	++	LDA.b #HANGSLASH_1-BOX_START : JMP HITBOX
+	+	LDA.b #HANGSLASH_0-BOX_START : JMP HITBOX
 
 
 	SPRITE_INTERACTION:
@@ -940,7 +958,17 @@ namespace Leeway
 
 		LDA !P2Climb
 		BEQ .NoClimb
-		BPL -
+		BMI .Ceiling
+		LDA !P2Anim
+		CMP #$34 : BCC .Stick
+		CMP #$3D : BCS .Stick
+		BRA -
+	.Stick	LDA #$34 : STA !P2Anim
+		STZ !P2AnimTimer
+		BRA -
+
+
+		.Ceiling
 		LDA !P2XSpeed
 		BEQ -
 		LDA !P2Anim
@@ -1211,18 +1239,22 @@ namespace Leeway
 		RTS
 
 		.Process
+		TAY
 		JSR CORE_ATTACK_Setup
 
-		LDA !P2SwordAttack
-		AND #$7F
-		DEC A
-		ASL A
-		CLC : ADC !P2Direction
-		ASL A
-		STA $00
-		ASL A
-		CLC : ADC $00
-		TAY
+		LDA !P2Direction
+		BEQ $06 : INY #6
+
+	;	LDA !P2SwordAttack
+	;	AND #$7F
+	;	DEC A
+	;	ASL A
+	;	CLC : ADC !P2Direction
+	;	ASL A
+	;	STA $00
+	;	ASL A
+	;	CLC : ADC $00
+	;	TAY
 		REP #$20
 		LDA !P2XPosLo
 		CLC : ADC CUT+0,y
@@ -1367,54 +1399,54 @@ namespace Leeway
 
 
 	; Hitbox format is Xdisp (lo+hi), Ydisp (lo+hi), width, height.
-
+	BOX_START:
 	CUT:
 	.0					; Start at sword coords + 1;4
 	dw $FFED,$FFF6 : db $3F,$10		; Left
 	dw $FFE4,$FFF6 : db $3F,$10		; Right
 	.1					; Start at sword coords + 3;4
-;	dw $FFFF,$FFF6 : db $2D,$10		; Left
-;	dw $FFE4,$FFF6 : db $2D,$10		; Right
+	dw $FFFF,$FFF6 : db $2D,$10		; Left
+	dw $FFE4,$FFF6 : db $2D,$10		; Right
 
 	SLASH:
 	.0					; Start at sword coords + 3;-20 (sword, not lil' cut tile)
 	dw $FFDE,$FFDE : db $30,$38		; Left
 	dw $0002,$FFDE : db $30,$38		; Right
 	.1					; Start at sword coords + 5;8
-;	dw $FFEB,$000E : db $23,$08		; Left
-;	dw $0002,$000E : db $23,$08		; Right
+	dw $FFEB,$000E : db $23,$08		; Left
+	dw $0002,$000E : db $23,$08		; Right
 
 	DASHSLASH:
 	.0					; Start at sword coords + 1;4
 	dw $FFEC,$FFF4 : db $3F,$10		; Left
 	dw $FFE5,$FFF4 : db $3F,$10		; Right
 	.1					; Start at sword coords + 3;4
-;	dw $FFFC,$FFF4 : db $2D,$10		; Left
-;	dw $FFE7,$FFF4 : db $2D,$10		; Right
+	dw $FFFC,$FFF4 : db $2D,$10		; Left
+	dw $FFE7,$FFF4 : db $2D,$10		; Right
 
 	AIRSLASH:
 	.0					; Start at sword coords + 3;-20 (sword, not lil' cut tile)
-	dw $FFF0,$FFDC : db $30,$40		; Left
-	dw $0000,$FFDC : db $30,$40		; Right
+	dw $FFE0,$FFE0 : db $30,$40		; Left
+	dw $0000,$FFE0 : db $30,$40		; Right
 	.1					; Start at sword coords + 5;8
-;	dw $FFED,$000C : db $23,$08		; Left
-;	dw $0000,$000C : db $23,$08		; Right
+	dw $FFED,$000C : db $23,$08		; Left
+	dw $0000,$000C : db $23,$08		; Right
 
 	WALLSLASH:
 	.0					; Start at sword coords + 3;-20 (sword, not lil' cut tile)
 	dw $0009,$FFDD : db $2D,$38		; Left
 	dw $FFDA,$FFDD : db $2D,$38		; Right
 	.1					; Start at sword coords + 5;8
-;	dw $0009,$000D : db $23,$08		; Left
-;	dw $FFE4,$000D : db $23,$08		; Right
+	dw $0009,$000D : db $23,$08		; Left
+	dw $FFE4,$000D : db $23,$08		; Right
 
 	HANGSLASH:
 	.0					; Start at sword coords + 3;0
 	dw $FFD5,$FFFD : db $2D,$18		; Left
 	dw $000E,$FFFD : db $2D,$18		; Right
 	.1					; Start at sword coords + 5;8
-;	dw $FFDF,$0010 : db $23,$08		; Left
-;	dw $000E,$0010 : db $23,$08		; Right
+	dw $FFDF,$0010 : db $23,$08		; Left
+	dw $000E,$0010 : db $23,$08		; Right
 
 
 	HIT_00:
