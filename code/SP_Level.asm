@@ -106,7 +106,7 @@ incsrc "Defines.asm"
 ; --Hijacks--
 
 	org $00A242
-		JML LEVEL_MAIN	;\ Source: LDA $13D4 : BEQ $43
+		JML LEVEL_MAIN			;\ Source: LDA $73D4 : BEQ $43
 		NOP				;/
 
 	org $00A295
@@ -115,7 +115,7 @@ incsrc "Defines.asm"
 		+				;/
 
 	org $00A5EE
-		JML LEVEL_INIT	;\ Source: SEP #$30 : JSR $919B
+		JML LEVEL_INIT			;\ Source: SEP #$30 : JSR $919B
 		NOP				;/
 
 	org $05D8B7
@@ -204,6 +204,10 @@ org $188000		; Bank already claimed because of Fe26
 		STZ !MarioPalOverride		; reset Mario pal override
 		LDA #$00
 		STA !PauseThif			; unpause Thif
+		STA !LevelInitFlag		; set level INIT
+		LDA #$FF			;\
+		STA !CameraBoxU+1		; | disable camera box
+		STA !CameraForbiddance		;/
 		JSL $138020			; > Load Yoshi Coins (A must be 0x00)
 		LDA.b #..SA1 : STA $3180	;\
 		LDA.b #..SA1>>8 : STA $3181	; | Have SA-1 clear VR2 RAM
@@ -231,6 +235,7 @@ org $188000		; Bank already claimed because of Fe26
 		STZ !GFX_status+$10			; |
 		STZ !GFX_status+$12			; |
 		LDA #$0080 : STA !GFX_status+$14	;/
+		STZ !SmoothCamera		; Clear smooth camera
 		LDA #$0000			; > Set up clear
 		STA !HDMAptr+0			;\ Clear HDMA pointer
 		STA !HDMAptr+1			;/
@@ -296,20 +301,7 @@ org $188000		; Bank already claimed because of Fe26
 		JSR GFXIndex
 
 		STY $2100			; > Restore 2100
-		LDA $94				;\
-		STA !P2XPosLo			; |
-		STA !P2XPosLo-$80		; |
-		LDX !P2Pipe			; | Player 1 X position
-		BNE +				; | Player 2 full position
-		LDA $96				; |
-		CLC : ADC #$0010		; |
-		STA !P2YPosLo			;/
-	+	LDX !P2Pipe-$80			;\
-		BNE +				; |
-		LDA $96				; | Player 1 Y position
-		CLC : ADC #$0010		; |
-		STA !P2YPosLo-$80		;/
-	+	LDA #$7EB0			;\ Default border tiles are $1EB-$1EF, $1FB-$1FF
+		LDA #$7EB0			;\ Default border tiles are $1EB-$1EF, $1FB-$1FF
 		STA $400000+!MsgVRAM3		;/
 		LDA #$7C00			;\
 		STA $400000+!MsgVRAM1		; | Default portrait tiles
@@ -961,7 +953,9 @@ dw levelinit1FF
 		LDA.l !MsgMode			;\
 		BNE +				; | Don't clear OAM during !MsgMode non-zero
 	++	JSL $138010			;/
-	+	LDA #$01 : JSL $138020		; > Handle Yoshi Coins
+	+	LDA #$01
+		STA !LevelInitFlag		; set level MAIN
+		JSL $138020			; > Handle Yoshi Coins (A=1)
 		PHB : PHK : PLB			; > Bank wrapper
 		LDA !RNG			; Load RNG from last frame
 		ADC $13				; Add true frame counter

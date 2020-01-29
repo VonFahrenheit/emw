@@ -19,9 +19,34 @@
 		!DynamicTile		= $3150
 					; 16 bytes
 					; each one represents one tile, starting at !GFX_status+$0D (D for Dynamic)
-					; to claim one for a sprite, write the sprite's index+1 to the proper index
+					; to claim one for a sprite, write the sprite's index to the proper index
 					; the sprite's !ClaimedGFX register needs to match what is written here as well
 					; if the comparison concludes invalid, the slot is considered free
+
+
+		!CameraBackupX		= $3148
+		!CameraBackupY		= $314A
+
+		!CameraForceTimer	= $314C			; index 0/1 for both of these, 1 processed first
+		!CameraForceDir		= $314E
+
+
+
+		!CameraBoxL		= $3160
+		!CameraBoxU		= $3162
+		!CameraBoxR		= $3164
+		!CameraBoxD		= $3166
+
+		!CameraForbiddance	= $3168
+					; reg2     reg1
+					; yyyyyxxx xxssssss
+					; s = which screen of camera box that forbiddance box starts at
+					; x = number of screens for forbiddance box to span horizontally (0=1)
+					; y = number of screens for forbiddance box to span vertically (0=1)
+
+		!SmoothCamera		= $6AF6			; enables smooth camera (always on with camera box)
+
+
 
 
 
@@ -62,6 +87,8 @@
 			; $15 = Sprite Yoshi Coin
 			; $16 = Mario fireball
 			; $17 = Elite Koopa
+			; $18 = Boo Hoo
+			; $19 = Flame Pillar (currently only sprite version)
 
 		!BigRAM			= $6080
 
@@ -336,6 +363,8 @@
 
 		!PauseThif		= $404EB5		; when set, thifs will not process
 
+		!LevelInitFlag		= $404EB6		; 0 while INIT is running, 1 while MAIN is running
+
 
 		!VineDestroyHorzTile1	= $92
 		!VineDestroyHorzTile2	= $93
@@ -492,6 +521,7 @@
 		!Translevel		= $73BF
 		!PauseTimer		= $73D3
 		!Pause			= $73D4
+		!LevelHeight		= $73D7
 		!MarioImg		= $73E0
 		!MarioWallWalk		= $73E3
 		!CapeEnable		= $73E8

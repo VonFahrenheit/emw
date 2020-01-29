@@ -1307,7 +1307,7 @@ endmacro
 		db $0A		; Path of Thunder
 		db $0E		; Tower of Storms
 		db $0D		; Sunken City
-		db $09		; Yoshi's Boneyard
+		db $14		; Yoshi's Boneyard
 
 		.3
 		db $00		; UNKNOWN

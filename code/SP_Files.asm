@@ -133,6 +133,9 @@ print "Bank $31:"
 	incbin ExExGFX/Cannon.bin
 	.End
 
+	%InsertFile(BooHoo)
+	incbin Fe26/Sprites/SpriteGFX/BooHoo.bin
+	.End
 
 print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 print "!! $", hex($31DC00-.End), " BYTES FREE AT $", pc, " !!"
@@ -229,6 +232,10 @@ print "Bank $36:"
 
 	%InsertFile(MiniMech)
 	incbin Fe26/Sprites/SpriteGFX/MiniMechBeta.bin
+	.End
+
+	%InsertFile(LavaLord)
+	incbin Fe26/Sprites/SpriteGFX/LavaLord.bin
 	.End
 
 print "$", hex($370000-.End), " bytes free at ", pc, "."

@@ -15,7 +15,7 @@
 
 	!SnowRNG	= !SnowBase+$180
 
-	!SnowSpawned	= !SnowBase+$280
+	!SnowSpawned	= !SnowBase+$280	; used to determine when to spawn the next particle
 
 	!SnowXFrac	= !SnowBase+$282
 	!SnowYFrac	= !SnowBase+$283
@@ -23,8 +23,11 @@
 	!WeatherType	= !SnowBase+$2E2	; 0 = calm snow
 						; 1 = raging snow
 						; 2 = spell particles
+						; 3 = special effect for Evernight Temple
+						; 4 = special effect for Lava Lord boss
 
 	!WeatherIndex	= !SnowBase+$2E3
+	!WeatherFreq	= !SnowBase+$2E4	; number of frames to wait until next particle is spawned
 
 
 Weather:
@@ -41,6 +44,16 @@ Weather:
 		LDA.w #$EC00+$2E0 : STA.l !VRAMbase+!VRAMtable+$02,x
 		LDA #$3131 : STA.l !VRAMbase+!VRAMtable+$04,x
 		LDA #$7FF0 : STA.l !VRAMbase+!VRAMtable+$05,x
+
+		SEP #$30
+		LDX #$5F				; reset data so it will work on screen 0/0
+		LDA.b #$55
+	-	STA.l !SnowX,x
+		STA.l !SnowY,x
+		STA.l !SnowXSpeed,x
+		STA.l !SnowXAccel,x
+		DEX : BPL -
+
 		PLP
 		RTS
 
@@ -69,7 +82,9 @@ Weather:
 	-	JMP .Process
 
 	.Spawn	LDA.w !SnowSpawned : BNE -
-		LDA #$0004 : STA.w !SnowSpawned
+		LDA.w !WeatherFreq		;\
+		AND #$00FF			; | spawn timer for next particle
+		STA.w !SnowSpawned		;/
 		LDY $14
 		CPY #$FC
 		BCC $02 : LDY #$00
@@ -183,8 +198,9 @@ Weather:
 		.SpawnPtr
 		dw .CalmSnow
 		dw .RagingSnow
-		dw .SpellParticles
+		dw .SpellParticles		; this one can also be used for lava
 		dw .MaskSpecial
+		dw .LavaLord			; special one to be used for Lava Lord boss
 
 
 		.CalmSnow
@@ -344,6 +360,415 @@ Weather:
 	..R	RTS
 
 
+
+		.LavaLord
+		PHP
+		SEP #$20
+		LDX #$0F
+	-	LDA.l $3230,x
+		CMP #$08 : BNE +
+		LDA.l $3590,x
+		AND #$08 : BEQ +
+		LDA.l $35C0,x
+		CMP #$20 : BEQ ++
+	+	DEX : BPL -
+		PLP
+		RTS
+
+	++	LDA.l $3220,x : STA $00
+		LDA.l $3250,x : STA $01
+		LDA.l $3240,x : XBA
+		LDA.l $3210,x
+
+
+		PLP
+		LDX.w !WeatherIndex
+		STA.w !SnowY,x
+		LDA $00 : STA.w !SnowX,x
+		LDA.w !SnowRNG+0,y
+		AND #$0003
+		XBA
+		STA.w !SnowXAccel,x			; X acc = 0, Y acc = 0-3
+
+		LDA.w !SnowRNG+0,y
+		AND #$00FC
+		LSR #2
+		SEC : SBC #$0020
+		AND #$00FF
+		ORA #$E000
+		STA.w !SnowXSpeed,x			; X speed = -20-20, Y speed = -20
+		RTS
+
+
+
+
+
+macro CameraBox(X, Y, W, H, S, FX, FY)
+	dw <X>*$100
+	dw <Y>*$E0
+	dw (<X>+<W>)*$100
+	dw (<Y>+<H>)*$E0
+	dw <S>|(<FX><<6)|(<FY><<11)
+endmacro
+
+macro Door(x, y)
+	db <x>|(<y><<4)
+endmacro
+
+
+LoadCameraBox:
+		STA $00
+		LDA.w #.SA1 : STA $3180
+		LDA.w #.SA1>>8 : STA $3181
+		SEP #$20
+		JMP $1E80
+
+		.SA1
+		PHB : PHK : PLB
+		PHP
+		REP #$20
+
+		LDX #$06
+	-	TXY
+		LDA ($00),y : STA $08,x
+		DEX #2
+		BPL -
+		SEP #$20
+
+		LDA !CameraForceTimer : BEQ .NoTransition
+		LDA !CameraForceDir
+		CMP #$04 : BCS .NoTransition
+		EOR #$02
+		ASL #2
+		STA $00
+		ASL #2
+		CLC : ADC $00
+		ASL A
+		SEC : SBC #$28
+		STA $00
+		SEC : SBC !P2XSpeed-$80
+		STA !P2VectorX-$80
+		LDA $00
+		SEC : SBC !P2XSpeed
+		STA !P2VectorX
+		STZ !P2VectorAccX-$80
+		STZ !P2VectorAccX
+		.NoTransition
+
+
+
+
+		REP #$20
+		LDX #$00
+		LDA !P2XPosLo-$80 : STA $00
+		LDA !P2YPosLo-$80 : STA $02
+		LDA !MultiPlayer
+		AND #$00FF
+		BEQ $02 : LDX #$80
+		LDA !P2XPosLo-$80,x
+		CLC : ADC $00
+		LSR A
+		XBA
+		AND #$0007
+		STA $00
+
+		LDA !P2YPosLo-$80,x
+		CLC : ADC $02
+		LSR A
+		CMP !LevelHeight
+		BCC $04 : LDA !LevelHeight : DEC A
+		LDX #$00
+	-	CMP #$00E0 : BCC +
+		SBC #$00E0
+		INX
+		BRA -
+		+
+
+		LDA #$FFF8
+	-	CLC : ADC #$0008
+		DEX : BPL -
+		ORA $00
+		TAY
+		LDA ($08),y
+		AND #$00FF
+		STA !BigRAM+0
+
+	; door loader
+
+		PEI ($0A)
+		PHP
+		SEP #$20
+		LDA !CameraForceTimer : BEQ $03 : JMP .NoDoor
+		STZ $00
+		LDY #$00
+	--	LDA ($0C),y : BPL +
+		JMP .NextIndex
+
+	+
+	-	LDX $00
+		CPX !BigRAM+0 : BNE .NextDoor
+		TYX
+		TAY
+		LDA $00 : PHA
+		PEI ($0C)
+		PEI ($0E)
+		REP #$20
+		LDA ($0E),y
+		AND #$000F
+		XBA
+		SEC : SBC #$0018
+		STA $04
+		STA $09
+		LDA ($0E),y
+		AND #$00F0
+		STA $00
+		ASL #3
+		SEC : SBC $00
+		ASL A
+		CLC : ADC #$00A0
+		STA $05
+		XBA
+		STA $0B
+		SEP #$20
+		LDA #$30 : STA $06
+		LDA #$30 : STA $07
+		SEC : JSL !PlayerClipping
+		TXY
+		REP #$20
+		PLA : STA $0E
+		PLA : STA $0C
+		SEP #$20
+		PLA : STA $00
+		BCC .NextDoor
+
+		LDA $1B
+		CMP $0A
+		BEQ .Right
+		BCS .Left
+	.Right	LDA #$00 : BRA +
+	.Left	LDA #$02
+	+	STA !CameraForceDir
+		LDA #$20
+		STA !CameraForceTimer
+		STA !P2VectorTimeX-$80
+		STA !P2VectorTimeX
+		JSR .CameraChain
+		BRA .NoDoor
+
+	.NextDoor
+		INY
+		LDA ($0C),y
+		BMI .NextIndex
+		JMP -
+
+	.NextIndex
+		INY
+		INC $00
+		LDA $00
+		CMP !BigRAM+0
+		BCC +
+		BNE .NoDoor
+	+	JMP --
+
+
+	.NoDoor
+		PLP
+		PLA : STA $0A
+
+
+	; camera box
+
+		LDA !BigRAM+0
+		ASL A
+		STA $00
+		ASL #2
+		CLC : ADC $00
+		STA $00					; index in $00
+		TAY
+		LDX #$00
+
+		LDA !LevelInitFlag			;\ don't do the update during level init
+		AND #$00FF : BEQ .Old			;/
+
+	-	LDA ($0A),y
+		CMP !CameraBoxL,x
+		BNE .New
+		INX #2
+		INY #2
+		CPX #$08 : BNE -
+
+	.Old	JSR .Load
+
+		PLP
+		PLB
+		RTL
+
+
+	.New	LDY #$0F
+	-	LDX $3220,y : STX $02
+		LDX $3250,y : STX $03
+		LDX $3210,y : STX $04
+		LDX $3240,y : STX $05
+		LDX #$02
+	--	LDA $02,x
+		CMP !CameraBoxL,x : BCC ..Next
+		SBC .Offset,x
+		CMP !CameraBoxR,x : BCS ..Next
+
+	..Erase	LDA $3230,y
+		AND #$FF00
+		STA $3230,y
+		PHX
+		LDX $33F0,y
+		LDA $418A00,x
+		AND #$00FF
+		CMP #$00EE : BEQ +
+		LDA $418A00,x
+		AND #$FF00
+		STA $418A00,x
+	+	PLX
+
+	..Next	DEX #2 : BPL --
+		DEY : BPL -
+
+		JSR .Load
+
+		LDA !CameraForceTimer : BNE .End		; checks both slots
+
+		LDA !CameraBackupY
+		AND #$FFF8 : STA !CameraBackupY
+		CMP !CameraBoxU : BEQ .X : BCC .Down
+		CMP !CameraBoxD : BEQ .X : BCC .X
+
+	.Up	SBC !CameraBoxD
+		LSR #3
+		SEP #$20
+		STA !CameraForceTimer
+		LDA #$06 : STA !CameraForceDir
+		BRA .X
+
+	.Down	SEC : SBC !CameraBoxU
+		EOR #$FFFF : INC A
+		LSR #3
+		SEP #$20
+		STA !CameraForceTimer
+		LDA #$04 : STA !CameraForceDir
+
+	.X	REP #$20
+		LDA !CameraBackupX
+		AND #$FFF8 : STA !CameraBackupX
+		CMP !CameraBoxL : BEQ .End : BCC .R2
+		CMP !CameraBoxR : BEQ .End : BCC .End
+
+	.L2	SBC !CameraBoxR
+		LSR #3
+		SEP #$20
+		STA !CameraForceTimer+1
+		LDA #$02 : STA !CameraForceDir+1
+		BRA .End
+
+	.R2	SEC : SBC !CameraBoxL
+		EOR #$FFFF : INC A
+		LSR #3
+		SEP #$20
+		STA !CameraForceTimer+1
+		STZ !CameraForceDir+1
+
+
+	.End	PLP
+		PLB
+		RTL
+
+
+
+
+
+	.Offset	dw $0100,$00E0
+
+
+
+
+	.Load
+		LDY $00					;\ reset index
+		LDX #$00				;/
+	-	LDA ($0A),y : STA !CameraBoxL,x
+		INX #2
+		INY #2
+		CPX #$08 : BNE -
+		LDA ($0A),y : STA !CameraForbiddance
+		RTS
+
+
+; figure out which $E0 block the door is on vertically, then chain to that
+
+	.CameraChain
+		LDY.b #.ScreensEnd-.VerticalScreens-2
+		LDA $0B : XBA
+		LDA $05
+		REP #$20
+	-	CMP .VerticalScreens,y : BCS +
+		DEY #2 : BPL -
+		RTS
+
+	+	LDA .VerticalScreens,y
+		SEC : SBC !CameraBackupY
+		STA $02
+		BPL $04 : EOR #$FFFF : INC A
+		CMP #$0008 : BCS +
+		LDA .VerticalScreens,y : STA !CameraBackupY
+		RTS
+
+	+	LDA $02
+		SEP #$20
+		BPL ..D
+
+	..U	EOR #$FF : INC A
+		LDY #$06 : BRA +
+	..D	LDY #$04
+	+	STY !CameraForceDir+1
+		LSR #3
+		STA !CameraForceTimer+1
+		STA !P2Stasis-$80
+		STA !P2Stasis
+		RTS
+
+
+		.VerticalScreens
+		dw $0000,$00E0,$01C0,$02A0,$0380,$0460,$0540,$0620
+		dw $0700,$07E0,$08C0,$09A0,$0A80,$0B60,$0C40,$0D20
+		.ScreensEnd
+
+
+
+
+InitCameraBox:
+		PHP
+		REP #$20
+		LDA !CameraBoxL
+		CMP $1A : BCS .WriteX
+		LDA !CameraBoxR
+		CMP $1A : BCS .NoX
+	.WriteX	STA $1A
+		STA !CameraBackupX
+		.NoX
+
+		LDA !CameraBoxU
+		CMP $1C : BCS .WriteY
+		LDA !CameraBoxD
+		CMP $1C : BCS .NoY
+	.WriteY	STA $1C
+		STA !CameraBackupY
+		.NoY
+
+		INC !SmoothCamera
+		PLP
+		RTS
+
+
+
+
+
+
 ; --Level INIT--
 
 levelinit0:
@@ -430,6 +855,7 @@ levelinit3:
 		STZ $6D9E			; > Disable subscreen
 		JSR CLEAR_DYNAMIC_BG3		; > Clear the top of BG3
 	;	JSR REX_LEVEL			; > Rex level
+		JSL !GetVRAM
 		LDA #$31
 		STA !VRAMbase+!VRAMtable+$12,x
 		STA !VRAMbase+!VRAMtable+$19,x
@@ -534,6 +960,7 @@ levelinit5:
 levelinit6:
 		LDA #$06 : STA !GFX_status+$09	; pal 8 replacement: palette A
 		STZ !GFX_status+$16		; for some reason Mario's fireball doesn't load normally here
+		LDA #$E0 : STA !GFX_status+$0D
 
 		INC !SideExit
 		LDA #$0E			;\ Scanline count
@@ -972,12 +1399,17 @@ levelinit11:
 
 
 levelinit12:
-	RTS
+		LDA #$04 : STA.l !WeatherType
+		LDA #$10 : STA.l !WeatherFreq
+		JSR Weather_LoadSnow
+		RTS
+
 levelinit13:
 
 		LDA #$80 : STA !GFX_status+$0D
 
 		LDA #$01 : STA.l !WeatherType
+		LDA #$04 : STA.l !WeatherFreq
 		JSR Weather_LoadSnow
 
 		LDA #$04 : STA $6D9D			;\ BG3 on main screen, everything else on sub
@@ -1001,7 +1433,10 @@ levelinit13:
 		JMP CLEAR_DYNAMIC_BG3
 
 levelinit14:
-	RTS
+		LDA #$F0 : STA !GFX_status+$0D
+		JSR level14
+		JMP InitCameraBox
+
 levelinit15:
 	RTS
 levelinit16:
@@ -1253,6 +1688,7 @@ levelinit32:
 
 		STZ !Level+3
 		LDA #$02 : STA.l !WeatherType
+		LDA #$04 : STA.l !WeatherFreq
 
 		STZ $0A84
 		REP #$20				;\
@@ -1268,7 +1704,10 @@ levelinit32:
 levelinit33:
 	RTS
 levelinit34:
-	RTS
+		LDA #$F0 : STA !GFX_status+$0D
+		JSR level34
+		JMP InitCameraBox
+
 levelinit35:
 	RTS
 levelinit36:
@@ -2284,6 +2723,9 @@ level0:
 		db $28,$08,$A2,$3F
 
 level1:
+
+		JSR DisplayHitbox_Main
+
 		REP #$20
 		LDA $1C
 		LSR #3
@@ -2308,6 +2750,191 @@ level1:
 		LDA #$01			;\ Enable Vscroll
 		STA !EnableVScroll		;/
 .Return		RTS
+
+
+
+
+
+	DisplayHitbox:
+
+
+	.OutsideJump
+		JMP .Outside
+
+	.Main
+		PHP
+		SEP #$20
+		STZ $6D9F				; disable HDMA at first
+		STZ $41
+		STZ $42
+		STZ $43
+		REP #$20
+		LDA !P2Hitbox+4-$80 : BEQ .OutsideJump
+		AND #$00FF
+		CLC : ADC !P2Hitbox+0-$80
+		STA $00					; $00 = x + w
+		LDA !P2Hitbox+5-$80
+		AND #$00FF
+		CLC : ADC !P2Hitbox+2-$80
+		STA $02					; $02 = y + h
+
+		LDA $1A
+		CLC : ADC #$0100
+		STA $04					; $04 = screen right
+		LDA $1C
+		CLC : ADC #$00D8
+		STA $06					; $06 = screen bottom
+
+
+		LDA !P2Hitbox+2-$80 : BMI .OverTop
+		CMP $1C : BCC .OverTop
+
+	.UnderTop
+		CMP $06 : BCS .OutsideJump
+
+	; case 5: outside
+
+		LDA !P2Hitbox+2-$80
+		SEC : SBC $1C
+		TAY
+		LDA $02
+		CMP $06 : BCC .YInside
+		LDA $06
+		SEC : SBC !P2Hitbox+2-$80
+		BRA .Height
+
+	; case 4: visible $1C+0xD8-y
+
+
+	.YInside
+		LDA !P2Hitbox+5-$80
+		AND #$00FF
+		BRA .Height
+
+	; case 3: completely inside
+
+
+	.OverTop
+		LDA $02
+		SEC : SBC $1C
+		BCC .OutsideJump
+		LDY #$00				; start at scanline 0
+
+	; case 1: outside
+	; case 2: visible y+h-$1C
+
+
+	.Height
+		STY $0F					; $0F = starting scanline
+		TAY					; y = number of scanlines visible
+
+
+		LDA !P2Hitbox+0-$80 : BMI .LeftLeft
+		CMP $1A : BCC .LeftLeft
+
+	.RightLeft
+		CMP $04 : BCS .OutsideJump
+
+	; case E: outside
+
+		LDA !P2Hitbox+0-$80
+		SEC : SBC $1A
+		TAX
+		LDA $00
+		CMP $04 : BCC .XInside
+		LDA $04
+		SEC : SBC !P2Hitbox+0-$80
+		BRA .Width
+
+	; case D: visible $1A+0x100-x
+
+
+	.XInside
+		LDA !P2Hitbox+4-$80
+		AND #$00FF
+		BRA .Width
+
+	; case C: completely inside
+
+
+	.LeftLeft
+		LDA $00
+		SEC : SBC $1A
+		BCC .Outside
+		LDX #$00				; x coord 0
+
+	; case A: outside
+	; case B: visible x+w-$1A
+
+
+	.Width
+		STX $0D
+		SEP #$20
+		CLC : ADC $0D
+		BCC $02 : LDA #$FF			; cap at 0xFF
+		STA $0E
+
+	; $0D:	left border
+	; $0E:	right border
+	; $0F:	starting y coord
+	; y:	number of scanlines visible
+
+
+		LDA #$04 : STA $6D9F			; enable HDMA on channel 2
+		LDA #$22
+		STA $41
+		STA $42
+		STA $43
+
+
+		LDX #$00				; table index: 0
+		LDA $0F : BEQ .InstantStart
+		CMP #$40 : BCC +
+
+		LSR A
+		STA $0400
+		BCC $01 : INC A
+		STA $0403
+		INX
+		LDA #$FF : STA $0400,x
+		STZ $0401,x
+		INX #3
+		BRA ++
+
+	+	STA $0400
+		INX
+		LDA #$FF
+	++	STA $0400,x				;\
+		STZ $0401,x				; | set up skip lines
+		INX #2					;/
+
+	.InstantStart
+		TYA : STA $0400,x			;\
+		LDA $0D : STA $0401,x			; | write box
+		LDA $0E : STA $0402,x			;/
+		LDA #$01 : STA $0403,x			;\
+		LDA #$FF : STA $0404,x			; | set up a final skip line
+		STZ $0405,x				;/
+		STZ $0406,x				; end table
+
+		REP #$20
+		LDA #$2601 : STA $4320
+		STZ $4323
+		LDA #$0400 : STA $4322
+
+
+	.Outside
+
+		PLP
+		RTS
+
+
+
+
+
+
+
+
 
 
 level2:
@@ -2347,7 +2974,7 @@ level2:
 
 level3:
 		REP #$20
-		LDA #$15F8				;\
+		LDA #$15E8				;\
 		LDY #$01				; | Regular exit (screen 0x15)
 		JSR END_Right				;/
 		LDA #$1F				;\ Put everything on mainscreen
@@ -2366,12 +2993,12 @@ level3:
 		ORA !Pause				; | Y = pause flag
 		TAY					;/
 		LDA !BossData+0
-		CMP #$82
-		BNE ..Scroll
+		CMP #$82 : BNE ..Scroll
 		LDA !BossData+2
-		CMP #$02
-		BNE ..Scroll
-		LDA #$01 : STA !EnableHScroll		; > Enable scrolling
+		CMP #$02 : BNE ..Scroll
+		LDA #$01
+		STA !EnableHScroll			; > Enable scrolling
+		STA !SmoothCamera			; enable smooth camera to prevent a glitch later
 		REP #$20
 		LDA #$1400
 		CMP $1A
@@ -4167,7 +4794,9 @@ level11:
 
 
 level12:
-	RTS
+		JSR Weather
+		RTS
+
 level13:
 		LDX #$0F				; sprite Yoshi Coin on this level is number 2
 	-	LDA $3230,x
@@ -4235,7 +4864,84 @@ level13:
 
 
 level14:
-	RTS
+		REP #$20
+		LDA.w #.RoomPointers
+		JSR LoadCameraBox
+		RTS
+
+		.RoomPointers
+		dw .ScreenMatrix
+		dw .BoxTable
+		dw .DoorList
+		dw .DoorTable
+
+
+
+
+;	Key ->	   X  Y  W  H  S  FX FY
+;		   |  |  |  |  |  |  |
+;		   V  V  V  V  V  V  V
+;
+.BoxTable
+.Box0	%CameraBox(0, 5, 3, 2, 0, 2, 1)
+.Box1	%CameraBox(3, 4, 0, 0, $FF, 0, 0)
+.Box2	%CameraBox(1, 4, 1, 0, $FF, 0, 0)
+.Box3	%CameraBox(2, 2, 2, 1, $FF, 0, 0)
+.Box4	%CameraBox(4, 4, 0, 2, $FF, 0, 0)
+.Box5	%CameraBox(5, 2, 2, 4, 2, 0, 2)
+.Box6	%CameraBox(0, 2, 1, 1, $FF, 0, 0)
+.Box7	%CameraBox(1, 0, 1, 1, $FF, 0, 0)
+.Box8	%CameraBox(0, 0, 0, 1, $FF, 0, 0)
+.Box9	%CameraBox(5, 0, 1, 1, $FF, 0, 0)
+.BoxA	%CameraBox(3, 0, 1, 1, $FF, 0, 0)
+.BoxB	%CameraBox(7, 0, 0, 0, $FF, 0, 0)
+.BoxC	%CameraBox(7, 1, 0, 3, $FF, 0, 0)
+.BoxD	%CameraBox(4, 7, 3, 0, $FF, 0, 0)
+.BoxE	%CameraBox(0, 5, 2, 1, $FF, 0, 0)
+.BoxF	%CameraBox(0, 4, 0, 0, $FF, 0, 0)
+
+
+.ScreenMatrix	db $08,$07,$07,$0A,$0A,$09,$09,$0B
+		db $08,$07,$07,$0A,$0A,$09,$09,$0C
+		db $06,$06,$03,$03,$03,$05,$05,$0C
+		db $06,$06,$03,$03,$03,$05,$05,$0C
+		db $0F,$02,$02,$01,$04,$05,$05,$0C
+		db $0E,$0E,$0E,$00,$04,$05,$05,$05
+		db $0E,$0E,$0E,$00,$04,$05,$05,$05
+		db $00,$00,$00,$00,$0D,$0D,$0D,$0D
+
+
+
+
+.DoorList	db $FF			; area 0
+		db $04,$05,$FF		; area 1
+		db $03,$04,$FF		; area 2
+		db $FF			; area 3
+		db $05,$06,$FF		; area 4
+		db $06,$FF		; area 5
+		db $FF			; area 6
+		db $02,$FF		; area 7
+		db $02,$FF		; area 8
+		db $00,$01,$FF		; area 9
+		db $00,$FF		; area A
+		db $01,$FF		; area B
+		db $FF			; area C
+		db $FF			; area D
+		db $FF			; area E
+		db $03,$FF		; area F
+
+
+.DoorTable
+.Door0		%Door(5, 0)
+.Door1		%Door(7, 0)
+.Door2		%Door(1, 1)
+.Door3		%Door(1, 4)
+.Door4		%Door(3, 4)
+.Door5		%Door(4, 4)
+.Door6		%Door(5, 6)
+
+
+
 level15:
 	RTS
 level16:
@@ -4915,6 +5621,7 @@ level32:
 
 
 		LDA #$02 : STA !WeatherType
+		LDA #$04 : STA !WeatherFreq
 		REP #$20
 		LDA !Level+3
 		ASL A
@@ -4971,6 +5678,7 @@ level32:
 		ORA #$02
 		STA !OAMhi,y
 		LDA #$03 : STA !WeatherType
+		LDA #$04 : STA !WeatherFreq
 
 	.Nope	SEP #$20
 
@@ -5140,8 +5848,88 @@ level32:
 
 level33:
 	RTS
+
 level34:
-	RTS
+
+
+
+		REP #$20
+		LDA.w #.RoomPointers
+		JSR LoadCameraBox
+		RTS
+
+		.RoomPointers
+		dw .ScreenMatrix
+		dw .BoxTable
+		dw .DoorList
+		dw .DoorTable
+
+
+
+
+;	Key ->	   X  Y  W  H  S  FX FY
+;		   |  |  |  |  |  |  |
+;		   V  V  V  V  V  V  V
+;
+.BoxTable
+.Box0	%CameraBox(0, 0, 0, 3, $FF, 0, 0)
+.Box1	%CameraBox(1, 0, 0, 3, $FF, 0, 0)
+.Box2	%CameraBox(2, 0, 5, 0, $FF, 0, 0)
+.Box3	%CameraBox(2, 1, 1, 2, 3, 0, 1)
+.Box4	%CameraBox(4, 1, 3, 0, $FF, 0, 0)
+.Box5	%CameraBox(3, 2, 4, 1, $FF, 0, 0)
+.Box6	%CameraBox(0, 4, 1, 1, $FF, 0, 0)
+.Box7	%CameraBox(2, 4, 0, 1, $FF, 0, 0)
+.Box8	%CameraBox(3, 4, 0, 3, $FF, 0, 0)
+.Box9	%CameraBox(4, 4, 3, 2, 5, 2, 1)
+.BoxA	%CameraBox(5, 5, 2, 2, $FF, 0, 0)
+.BoxB	%CameraBox(0, 6, 1, 1, $FF, 0, 0)
+.BoxC	%CameraBox(2, 6, 0, 0, $FF, 0, 0)
+.BoxD	%CameraBox(2, 7, 0, 0, $FF, 0, 0)
+.BoxE	%CameraBox(4, 7, 0, 0, $FF, 0, 0)
+
+
+.ScreenMatrix	db $00,$01,$02,$02,$02,$02,$02,$02
+		db $00,$01,$03,$03,$04,$04,$04,$04
+		db $00,$01,$03,$05,$05,$05,$05,$05
+		db $00,$01,$03,$05,$05,$05,$05,$05
+		db $06,$06,$07,$08,$09,$09,$09,$09
+		db $06,$06,$07,$08,$09,$0A,$0A,$0A
+		db $0B,$0B,$0C,$08,$09,$0A,$0A,$0A
+		db $0B,$0B,$0D,$08,$0E,$0A,$0A,$0A
+
+
+
+
+.DoorList	db $01,$FF		; area 0
+		db $00,$01,$FF		; area 1
+		db $00,$FF		; area 2
+		db $FF			; area 3
+		db $FF			; area 4
+		db $FF			; area 5
+		db $02,$FF		; area 6
+		db $02,$FF		; area 7
+		db $02,$FF		; area 8
+		db $03,$FF		; area 9
+		db $03,$FF		; area A
+		db $04,$05,$FF		; area B
+		db $04,$FF		; area C
+		db $05,$FF		; area D
+		db $FF			; area E
+
+
+.DoorTable
+.Door0		%Door(2, 0)
+.Door1		%Door(1, 3)
+.Door2		%Door(2, 5)
+.Door3		%Door(5, 5)
+.Door4		%Door(2, 6)
+.Door5		%Door(2, 7)
+
+
+
+
+
 level35:
 	RTS
 level36:

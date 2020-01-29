@@ -121,9 +121,9 @@
 	db $FF		; level 00F
 	db $09		; level 010
 	db $0B		; level 011
-	db $FF		; level 012
+	db $0F		; level 012
 	db $0C		; level 013
-	db $FF		; level 014
+	db $0E		; level 014
 	db $FF		; level 015
 	db $FF		; level 016
 	db $FF		; level 017
@@ -620,18 +620,20 @@
 	IndexTable:
 	dw .RexLevel			; index 00
 	dw .VillageRexLevel		; index 01
-	dw .ShamanSlime			; index 02
+	dw .Shaman			; index 02
 	dw .HammerRexKoopaMonty		; index 03
 	dw .MagicMoleMonty		; index 04
-	dw .RexSlime			; index 05
+	dw .Rex				; index 05
 	dw .ThunderPlant		; index 06
 	dw .PlantHeadHammerRex		; index 07
 	dw .Empty			; index 08
 	dw .Thif			; index 09
-	dw .RexSlimePlant		; index 0A
+	dw .RexPlant			; index 0A
 	dw .TerrainPlatform		; index 0B
 	dw .EliteKoopaRex		; index 0C
 	dw .ShamanKoopa			; index 0D
+	dw .CoinGolemEliteBooHoo	; index 0E
+	dw .FlamePillar			; index 0F
 
 
 	.Empty
@@ -648,9 +650,9 @@
 	db $01,$02,$0B			; Villager Rex, Hammer Rex, Piranha Plant
 	db $FF
 
-	.ShamanSlime
+	.Shaman
 	dw !SP3
-	db $06,$08,$0B			; Novice Shaman, Happy Slime, Piranha Plant
+	db $06,$0B			; Novice Shaman, Piranha Plant
 	db $FF
 
 	.HammerRexKoopaMonty
@@ -663,9 +665,9 @@
 	db $09,$13,$0B			; Magic Mole, Monty, Piranha Plant
 	db $FF
 
-	.RexSlime
+	.Rex
 	dw !SP3
-	db $00,$08,$10,$17		; Rex, Happy Slime, Lotus fire, Mario Fire
+	db $00,$10,$17			; Rex, Lotus fire, Mario Fire
 	db $FF
 
 	.ThunderPlant
@@ -688,9 +690,9 @@
 	db $05				; Thif
 	db $FF
 
-	.RexSlimePlant
+	.RexPlant
 	dw !SP3
-	db $00,$08,$0B			; Rex, Happy Slime, Piranha Plant
+	db $00,$0B			; Rex, Piranha Plant
 	db $FF
 
 	.TerrainPlatform
@@ -708,6 +710,17 @@
 	db $06,$03			; Novice Shaman, Koopa Renegade
 	db $FF
 
+	.CoinGolemEliteBooHoo
+	dw !SP3
+	db $18,$08,$15,$16,$17		; Elite Koopa, Boo Hoo, Sprite Yoshi Coin, Coin Golem, Mario fire
+	db $FF
+
+	.FlamePillar
+	dw !SP4
+	db $19				; Flame Pillar
+	db $FF
+
+
 
 	GraphicsTable:
 	dw .Rex			; file 00
@@ -718,7 +731,7 @@
 	dw .Thif		; file 05
 	dw .NoviceShaman	; file 06
 	dw .GoombaSlave		; file 07
-	dw .HappySlime		; file 08
+	dw .BooHoo		; file 08
 	dw .MagicMole		; file 09
 	dw .Monkey		; file 0A
 	dw .PiranhaPlant	; file 0B
@@ -735,6 +748,7 @@
 	dw .CoinGolem		; file 16
 	dw .MarioFire		; file 17
 	dw .EliteKoopa		; file 18
+	dw .FlamePillar		; file 19
 
 
 
@@ -820,13 +834,13 @@
 	dw $0400
 	..End
 
-	.HappySlime
+	.BooHoo
 	dw ..End-..Start
-	db $0D
+	db $18
 	..Start
-	dw $0C00
-	dl $30DA08
-	dw $0600
+	dw $0400
+	dl $31C000
+	dw $0200
 	..End
 
 	.MagicMole
@@ -1021,5 +1035,16 @@
 	dw $0800
 	..End
 
+	.FlamePillar
+	dw ..End-..Start
+	db $19
+	..Start
+	dw $0080
+	dl $31F080
+	dw $0100
+	dw $0080
+	dl $31F280
+	dw $FF40		; -0x100 + 0x40
+	..End
 
 

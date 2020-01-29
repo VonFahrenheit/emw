@@ -342,7 +342,7 @@ GET_MAP16:
 	..Horz
 	REP #$20
 	LDA $00
-	CMP #$01B0
+	CMP $73D7
 	SEP #$20
 	BCS ..OutOfBounds
 	LDA $03
@@ -1295,7 +1295,129 @@ DELAY_DEATH:
 ;======================;
 SCROLL_OPTIONS:
 
+
+; this routine is called once at level load (game mode == 0x11) to set initial screen coordinates
+; if I just rewrite those I can decide where the camera ends up
+; when this routine is called in this way, !Level is already set properly so I do know where I'm going
+
+
+; culprit: $80C426 (probably a LM routine)
+
+
+		LDX !GameMode
+		CPX #$11 : BNE .NoInit
+
+		; ladies and gentlemen. we got em.
+
+		PHP
+		SEP #$20
+		LDX !Level
+		LDA.l .LevelTable,x
+		LDX !Level+1
+		AND.l .LevelSwitch,x
+		BEQ .NormalCoords
+		CMP #$10 : BCC +
+		LSR #4
+	+	DEC A
+		ASL A
+		CMP.b #.CoordsEnd-.CoordsPtr
+		BCS .NormalCoords
+		TAX
+		JSR (.CoordsPtr,x)
+
+	.NormalCoords
+		PLP
+		JML $00F7C2
+
+	.NoInit	CPX #$14 : BNE .NoBox
+
+		.Expand
+		LDY #$01
+	-	LDX !CameraForceTimer,y : BEQ .NextForce
+		DEX
+		TXA
+		SEP #$20
+		STA !CameraForceTimer,y
+		REP #$20
+		LDX !CameraForceDir,y
+		PHY
+		LDY #$00
+		TXA
+		AND #$0002
+		BNE $02 : LDY #$02
+		STY $55
+		PLY
+		LDA !CameraBackupX
+		CLC : ADC.l .ForceTableX,x
+		AND #$FFF8
+		STA $1A
+		LDA !CameraBackupY
+		CLC : ADC.l .ForceTableY,x
+		AND #$FFF8
+		STA $1C
+		JMP .CameraBackup
+.NextForce	DEY : BPL -
+
+
+		BIT !CameraBoxU : BMI .NoBox
+		LDA.w #.SA1 : STA $3180
+		LDA.w #.SA1>>8 : STA $3181
+		PHP
+		SEP #$20
+		JSR $1E80
+		PLP
+		BRA .CameraBackup
+
+		.NoBox
+		LDX !SmoothCamera : BEQ .CameraBackup
+		PHB : PHK : PLB
+		STZ $00
+		LDX $5D
+		DEX
+		STX $01
+		LDA !LevelHeight
+		SEC : SBC #$00F0
+		STA $02
+		LDA !P2XPosLo-$80
+		CLC : ADC !P2XPosLo
+		LSR A
+		SEC : SBC #$0080
+		BPL $03 : LDA #$0000
+		CMP $00
+		BCC $02 : LDA $00
+		STA $1A
+		LDY !EnableVScroll : BEQ +
+		LDA !P2YPosLo-$80
+		CLC : ADC !P2YPosLo
+		LSR A
+		SEC : SBC #$0070
+		BPL $03 : LDA #$0000
+		CMP $02
+		BCC $02 : LDA $02
+		STA $1C
+	+	LDX #$02
+	-	LDA !CameraBackupX,x
+		CMP $1A,x : BEQ +
+		LDY #$00
+		BCC $02 : LDY #$02
+		CLC : ADC.w .SmoothSpeed,y
+		STA $00
+		LDA !CameraBackupX,x
+		SEC : SBC $1A,x
+		BPL $04 : EOR #$FFFF : INC A
+		CMP #$0006 : BCC +
+		LDA $00 : STA $1A,x
+	+	DEX #2 : BPL -
+		PLB
+
+
+
+		.CameraBackup
+		LDA $1A : STA !CameraBackupX
+		LDA $1C : STA !CameraBackupY
+
 		JSL .Main
+
 		LDA.l !HDMAptr+0 : BEQ .Return	;\
 		STA $00				; |
 		LDA.l !HDMAptr+1		; |
@@ -1305,6 +1427,249 @@ SCROLL_OPTIONS:
 		JML [$3000]			;/
 
 	.Return	JML $00F7C2
+
+
+	.ForceTableY
+		dw $0000,$0000
+	.ForceTableX
+		dw $0008,$FFF8,$0000,$0000
+
+	.SmoothSpeed
+		dw $0006,$FFFA
+
+	.CameraOffset
+		dw $0100,$00E0
+	.CameraCenter
+		dw $0080,$0070
+
+
+		.SA1
+		PHB : PHK : PLB
+		PHP
+		SEP #$10
+		REP #$20
+
+		JSR .Aim
+		JSR .Forbiddance
+		JSR .Process
+
+		LDX #$02
+	-	LDY #$00
+		LDA $1A,x
+		CMP !CameraBackupX,x
+		BEQ +
+		BCC $02 : LDY #$02
+		STY $55
+	+	DEX #2 : BPL -
+
+
+
+		LDA !CameraBoxL
+		SEC : SBC #$0020
+		STA $04
+		LDA !CameraBoxR
+		CLC : ADC #$0110
+		STA $06
+		LDA !CameraBoxU
+		SEC : SBC #$0020
+		STA $08
+		LDA !CameraBoxD
+		CLC : ADC #$00F0
+		STA $0A
+
+
+		LDX #$0F
+	-	LDA $3470,x
+		ORA #$0004
+		STA $3470,x
+		LDY !CameraForceTimer : BNE .Freeze
+		LDY $3220,x : STY $00
+		LDY $3250,x : STY $01
+		LDY $3210,x : STY $02
+		LDY $3240,x : STY $03
+		LDA $00
+		SEC : SBC $04
+		BPL .CheckR
+		CMP #$FF00 : BCC .Delete
+		CMP #$FFE0 : BCC .Freeze
+
+	.Delete	LDA $3230,x
+		AND #$FF00
+		STA $3230,x
+		LDY $33F0,x
+		CPY #$FF : BEQ .Next
+		PHX
+		TYX
+		LDA $418A00,x
+		AND #$00FF
+		CMP #$00EE : BEQ +
+		LDA $418A00,x
+		AND #$FF00
+		STA $418A00,x
+	+	PLX
+		BRA .Next
+
+	.CheckR	LDA $00
+		SEC : SBC $06
+		BMI .GoodX
+		CMP #$0020 : BCC .Delete
+		CMP #$0100 : BCS .Delete
+
+	.Freeze	LDA $34E0,x
+		ORA #$0002
+		STA $34E0,x
+		BRA .Next
+
+	.GoodX	LDA $02
+		CMP $08 : BCC .Freeze
+		CMP $0A : BCS .Freeze
+	.Next	DEX : BMI $03 : JMP -
+
+		PLP
+		PLB
+		RTL
+
+
+		.Aim
+		LDA !P2XPosLo-$80
+		CLC : ADC !P2XPosLo
+		LSR A
+		SEC : SBC #$0080
+		STA $1A
+		BPL $02 : STZ $1A
+		LDA !P2YPosLo-$80
+		CLC : ADC !P2YPosLo
+		LSR A
+		SEC : SBC #$0070
+		STA $1C
+		BPL $02 : STZ $1C
+		RTS
+
+		.Process
+		LDX #$02
+	-	LDA $1A,x
+		CMP !CameraBoxL,x : BCS +
+		LDA !CameraBoxL,x : STA $1A,x
+		BRA ++
+	+	CMP !CameraBoxR,x : BCC ++ : BEQ ++
+		LDA !CameraBoxR,x : STA $1A,x
+	++	LDA !CameraBackupX,x			; apply smooth camera
+		CMP $1A,x : BEQ +
+		LDY #$00
+		BCC $02 : LDY #$02
+		CLC : ADC.w .SmoothSpeed,y
+		STA $00
+		LDA !CameraBackupX,x
+		SEC : SBC $1A,x
+		BPL $04 : EOR #$FFFF : INC A
+		CMP #$0006 : BCC +
+		LDA $00 : STA $1A,x
+	;	TXA
+	;	EOR #$0002
+	;	TAX
+	;	LDA !CameraBackupX,x : STA $1A,x
+	;	BRA .Absolute
+	+	DEX #2 : BPL -
+	..R	RTS
+
+
+		.Absolute
+		LDA $1A,x
+		CMP !CameraBoxL,x : BCS +
+		LDA !CameraBoxL,x : STA $1A,x
+		RTS
+	+	CMP !CameraBoxR,x : BCC + : BEQ +
+		LDA !CameraBoxR,x : STA $1A,x
+	+	RTS
+
+
+		.Forbiddance
+		LDX !CameraForbiddance
+		CPX #$FF : BEQ .Process_R
+		LDA !CameraForbiddance
+		AND #$003F
+		TAX
+
+		LDA !CameraBoxU : STA $0A	; forbiddance top border start
+		LDA !CameraBoxL
+	-	CPX #$00 : BEQ +
+		DEX
+		CLC : ADC #$0100
+		STA $08
+		CMP !CameraBoxR : BCC - : BEQ -
+		LDA $0A
+		CLC : ADC #$00E0
+		STA $0A				; forbiddance top border
+		LDA !CameraBoxL
+		BRA -
+
+	+	STA $08				; forbiddance left border
+		LDA !CameraForbiddance
+		ASL #2
+		AND #$1F00
+		CLC : ADC $08
+		CLC : ADC #$0100
+		STA $0C				; forbiddance right border
+		LDA !CameraForbiddance
+		AND #$F800
+		LSR #3
+		PHA
+		LSR #3
+		STA $0E
+		PLA
+		SEC : SBC $0E
+		CLC : ADC $0A
+		CLC : ADC #$00E0
+		STA $0E				; forbiddance bottom border
+
+
+		LDA $1A
+		CMP $0C : BCS .NoForbid
+		ADC #$0100
+		CMP $08 : BCC .NoForbid
+		LDA $1C
+		CMP $0E : BCS .NoForbid
+		ADC #$00E0
+		CMP $0A : BCC .NoForbid
+
+
+		LDX #$02
+	-	LDA $08,x
+		CLC : ADC $0C,x
+		LSR A
+		STA !BigRAM+0
+		LDA $1A,x
+		CLC : ADC .CameraCenter,x
+		CMP !BigRAM+0
+		BCS ..RD
+	..LU	LDA $08,x : STA $00,x
+		SEC : SBC .CameraOffset,x
+		BRA +
+	..RD	LDA $0C,x : STA $00,x
+	+	SEC : SBC $1A,x
+		BPL $04 : EOR #$FFFF : INC A
+		STA $04,x
+		DEX #2 : BPL -
+
+
+		LDX #$00
+		LDA $04
+		CMP $06
+		BCC $02 : LDX #$02
+		LDA $00,x
+		CMP !CameraBoxL,x : BNE +
+		TXA
+		EOR #$0002
+		TAX
+		LDA $00,x
+	+	CMP $08,x : BNE +
+		SEC : SBC .CameraOffset,x
+		BPL $03 : LDA #$0000
+	+	STA $1A,x
+
+		.NoForbid
+		RTS
+
 
 
 		.Main
@@ -1419,6 +1784,84 @@ SCROLL_OPTIONS:
 
 .GetDiv		NOP #2
 		RTS
+
+
+; lo nybble is used by levels 0x000-0x0FF, hi nybble is used by levels 0x100-0x1FF
+; 0 means it's unused, so just use normal coords
+; any other number is treated as an index to the coordinate routine pointer table
+
+.LevelTable	db $00,$00,$00,$00,$00,$00,$00,$00		; 00-07
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 08-0F
+		db $00,$00,$00,$00,$01,$00,$00,$00		; 10-17
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 18-1F
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 20-27
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 28-2F
+		db $00,$00,$00,$00,$01,$00,$00,$00		; 30-37
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 38-3F
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 40-47
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 48-4F
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 50-57
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 58-5F
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 60-67
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 68-6F
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 70-77
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 78-7F
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 80-87
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 88-8F
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 90-97
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 98-9F
+		db $00,$00,$00,$00,$00,$00,$00,$00		; A0-A7
+		db $00,$00,$00,$00,$00,$00,$00,$00		; A8-AF
+		db $00,$00,$00,$00,$00,$00,$00,$00		; B0-B7
+		db $00,$00,$00,$00,$00,$00,$00,$00		; B8-BF
+		db $00,$00,$00,$00,$00,$00,$00,$00		; C0-C7
+		db $00,$00,$00,$00,$00,$00,$00,$00		; C8-CF
+		db $00,$00,$00,$00,$00,$00,$00,$00		; D0-D7
+		db $00,$00,$00,$00,$00,$00,$00,$00		; D8-DF
+		db $00,$00,$00,$00,$00,$00,$00,$00		; E0-E7
+		db $00,$00,$00,$00,$00,$00,$00,$00		; E8-EF
+		db $00,$00,$00,$00,$00,$00,$00,$00		; F0-F7
+		db $00,$00,$00,$00,$00,$00,$00,$00		; F8-FF
+
+
+.LevelSwitch	db $0F,$F0
+
+
+	; this is entered with all regs 8-bit
+	; PLP is used at return, so no need to bother keeping track of P
+
+
+	.CoordsPtr
+	dw .Coords1
+	.CoordsEnd
+
+
+	.Coords1
+		STZ $1A
+		REP #$20
+		LDX #$00
+		LDA $1C
+	-	CMP #$00E0 : BCC ..Yes
+		INX #2
+		SBC #$00E0
+		BRA -
+
+	..Yes	CMP #$0070
+		BCC $02 : INX #2
+		LDA.l ..Y,x : STA $1C
+		LDX #$02
+	-	LDA $1A,x
+		STA !CameraBackupX,x
+		STA !CameraBoxL,x
+		STA $7462,x
+		INC A
+		STA !CameraBoxR,x
+		DEX #2
+		BPL -
+		RTS
+
+	..Y	dw $0000,$00E0,$01C0,$02A0
+		dw $0380,$0460,$0540,$0620
 
 
 ;==========;
@@ -2509,7 +2952,6 @@ org $009CB1
 org $009E24
 	JML LOAD_SRAM			; Hijack the routine that writes garbage to player status
 	NOP				; Clean up garbage
-
 
 org $009F66
 	LDA #$0F			; < Enable mosaic on all layers
