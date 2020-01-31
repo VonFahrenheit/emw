@@ -24,6 +24,10 @@
 
 
 	pushpc
+	org $02A213
+		JMP MalleableExtendedSprite_CheckNumber		; source: STA !ExSpriteNum,x
+
+
 	org $029D9D
 	MalleableExtendedSprite:
 		LDA $14						;\
@@ -41,11 +45,19 @@
 		BVC .NoContact					;/
 
 		.CheckContact
-		LDA !ExSpriteXPosLo,x : STA $04			;\
-		LDA !ExSpriteYPosLo,x : STA $05			; |
-		LDA !ExSpriteXPosHi,x : STA $0A			; |
-		LDA !ExSpriteYPosHi,x : STA $0B			; | Generate hitbox in RAM
-		LDA #$10					; |
+		LDA !ExSpriteXPosLo,x				;\
+		CLC : ADC #$02					; |
+		STA $04						; |
+		LDA !ExSpriteXPosHi,x				; |
+		ADC #$00					; |
+		STA $0A						; |
+		LDA !ExSpriteYPosLo,x				; | Generate hitbox
+		CLC : ADC #$02					; |
+		STA $05						; |
+		LDA !ExSpriteYPosHi,x				; |
+		ADC #$00					; |
+		STA $0B						; |
+		LDA #$0C					; |
 		STA $06						; |
 		STA $07						;/
 		SEC : JSL !PlayerClipping			;\ Check for contact
@@ -53,8 +65,10 @@
 		BIT !ExSpriteMisc,x : PHP			;\
 		BPL .NoHurt					; | If highest bit is set, hurt players
 		JSL !HurtPlayers				;/
-	.NoHurt	PLP : BVC .NoContact				;\ If second highest bit is set, kill sprite
-		BRA .Kill					;/
+	.NoHurt	PLP : BVC .NoContact				;\
+		LDA #$01 : STA !ExSpriteNum,x			; | If second highest bit is set, puff sprite
+		LDA #$0F : STA !ExSpriteTimer,x			;/
+		RTS
 		.NoContact
 
 		.GFX
@@ -75,6 +89,16 @@
 		TAY
 		LDA #$02 : STA !OAMhi,y
 		RTS						; > Return
+
+
+		.CheckNumber
+		LDA !ExSpriteNum,x				; prevent malleable ExSprite from despawning
+		CMP #$09 : BNE .Clear
+	.Draw	LDA $02
+		JMP $A1D5
+
+	.Clear	LDA #$00 : STA !ExSpriteNum,x
+		RTS
 
 	warnpc $029E36
 	pullpc
