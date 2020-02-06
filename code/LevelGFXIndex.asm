@@ -52,6 +52,7 @@
 		CPY #$12 : BEQ .Monty
 		CPY #$16 : BEQ .FireB
 		CPY #$17 : BEQ .x2
+		CPY #$19 : BEQ .Bump		; flame pillar has the same setting as bumber
 
 	.x1	SEC : SBC #$0100
 		BRA .stat

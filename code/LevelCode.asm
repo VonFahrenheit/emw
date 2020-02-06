@@ -37,15 +37,18 @@ Weather:
 		JMP $1E80
 
 		.LoadSnow
-		PHP
+		STA $00					; store snow type
 		JSL !GetVRAM
 		REP #$20
 		LDA #$0020 : STA.l !VRAMbase+!VRAMtable+$00,x
-		LDA.w #$EC00+$2E0 : STA.l !VRAMbase+!VRAMtable+$02,x
+		LDY $00
+		LDA.w .Data,y : STA.l !VRAMbase+!VRAMtable+$02,x
 		LDA #$3131 : STA.l !VRAMbase+!VRAMtable+$04,x
 		LDA #$7FF0 : STA.l !VRAMbase+!VRAMtable+$05,x
+		SEP #$20
 
-		SEP #$30
+
+		.ResetTable
 		LDX #$5F				; reset data so it will work on screen 0/0
 		LDA.b #$55
 	-	STA.l !SnowX,x
@@ -53,9 +56,10 @@ Weather:
 		STA.l !SnowXSpeed,x
 		STA.l !SnowXAccel,x
 		DEX : BPL -
-
-		PLP
 		RTS
+
+		.Data
+		dw $ECE0,$EEE0
 
 
 		.SA1
@@ -400,6 +404,35 @@ Weather:
 		RTS
 
 
+
+; set 16-bit A to  GFX number, then call this
+DecompressGFX:
+		LDX.b #!GFX_buffer : STX $00
+		LDX.b #!GFX_buffer>>8 : STX $01
+		LDX.b #!GFX_buffer>>16 : STX $02
+		JSL $0FF900
+		RTS
+
+
+
+; set 16-bit A to dest VRAM, then call this (source should be in $00-$02, so call after DecompressGFX)
+; set 8-bit X to source tile
+; set 8-bit Y to upload size (number of 8x8 tiles)
+UploadDecomp:
+		STA $03
+		STX $05
+		JSL !GetVRAM
+		LDA $02 : STA.l !VRAMbase+!VRAMtable+$04,x
+		LDA $05
+		AND #$00FF
+		ASL #5
+		CLC : ADC $00
+		STA.l !VRAMbase+!VRAMtable+$02,x
+		LDA $03 : STA.l !VRAMbase+!VRAMtable+$05,x
+		TYA
+		ASL #5
+		STA.l !VRAMbase+!VRAMtable+$00,x
+		RTS
 
 
 
@@ -1399,8 +1432,10 @@ levelinit11:
 
 
 levelinit12:
+
 		LDA #$04 : STA.l !WeatherType
 		LDA #$10 : STA.l !WeatherFreq
+		LDA #$00				; snow type (smallest)
 		JSR Weather_LoadSnow
 		RTS
 
@@ -1410,6 +1445,7 @@ levelinit13:
 
 		LDA #$01 : STA.l !WeatherType
 		LDA #$04 : STA.l !WeatherFreq
+		LDA #$02				; snow type (flake)
 		JSR Weather_LoadSnow
 
 		LDA #$04 : STA $6D9D			;\ BG3 on main screen, everything else on sub
@@ -2154,7 +2190,30 @@ levelinit10A:
 levelinit10B:
 	RTS
 levelinit10C:
-	RTS
+		REP #$20
+		LDA #$0012 : JSR DecompressGFX
+		LDX #$0C
+		LDY #$04
+		LDA #$6A40 : JSR UploadDecomp
+		LDX #$1C
+		LDY #$04
+		LDA #$6B40 : JSR UploadDecomp
+
+		LDA #$EC00 : STA $00
+		LDX #$31 : STX $02
+		LDX #$24
+		LDY #$04
+		LDA #$6AC0 : JSR UploadDecomp
+		LDX #$34
+		LDY #$04
+		LDA #$6BC0 : JSR UploadDecomp
+		SEP #$20
+
+		LDA #$D6 : STA !GFX_status+$19		; flame pillar
+
+		RTS
+
+
 levelinit10D:
 	RTS
 levelinit10E:
@@ -6364,7 +6423,23 @@ level10A:
 level10B:
 	RTS
 level10C:
-	RTS
+		LDA !Level+2
+		CMP #$10 : BEQ .Return
+		INC !Level+2
+		CMP #$0F : BNE .Return
+		REP #$20
+		LDA #$0081 : JSR DecompressGFX
+		LDX #$60
+		LDY #$04
+		LDA #$6E00 : JSR UploadDecomp
+		LDX #$70
+		LDY #$04
+		LDA #$6F00 : JSR UploadDecomp
+		SEP #$20
+
+	.Return
+		RTS
+
 level10D:
 	RTS
 level10E:
