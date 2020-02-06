@@ -7,13 +7,14 @@ FlamePillar:
 	!FlamePillarMaxHeight	= $3290,x	;
 	!FlamePillarLife	= $32D0,x	; life timer, if 0 sprite lasts forever
 	!FlamePillarWait	= $32A0,x	; when set, pillar does not rise or descend
-	!FlamePillarSpeed	= $32B0,x	; amount to add to height each frame
-	!FlamePillarDelay1	= $35E0,x	; amount to wait when reaching top
-	!FlamePillarDelay2	= $35F0,x	; amount to wait when reaching bottom
+	!FlamePillarSpeed	= $32B0,x	; amount to add to height going up (each frame)
+	!FlamePillarDelay1	= $35D0,x	; amount to wait when reaching top
+	!FlamePillarDelay2	= $35E0,x	; amount to wait when reaching bottom
 
 	INIT:
 		PHB : PHK : PLB
-		LDA #$01 : STA !FlamePillarSpeed
+		LDA #$01
+		STA !FlamePillarSpeed
 		LDA #$20 : STA !FlamePillarWait
 		LDA #$40 : STA !FlamePillarMaxHeight
 		LDA #$40 : STA !FlamePillarDelay1
@@ -124,15 +125,20 @@ FlamePillar:
 		EOR #$FF
 		INC A
 		STA $00
-		LDA !GFX_status+$19 : STA $01
+		LDA !GFX_status+$19
+		ASL A
+		STA $01
 		LDA $14
+		CLC : ADC !SpriteIndex
 		AND #$04
 		BEQ $02 : LDA #$40
 		STA $02
 		LDA #$10 : STA $03
 
-	-	LDA #$25
+	-	LDA #$15
 		EOR $02
+		BIT !GFX_status+$19
+		BPL $02 : EOR #$01
 		STA !BigRAM+2,y
 		LDA #$00 : STA !BigRAM+3,y
 		LDA $00 : STA !BigRAM+4,y
@@ -140,7 +146,8 @@ FlamePillar:
 		STA $00
 		LDA $01 : STA !BigRAM+5,y
 		LDA !GFX_status+$19
-		INC #2
+		INC A
+		ASL A
 		STA $01
 		LDA #$08 : STA $03
 		DEY #4 : BPL -

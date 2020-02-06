@@ -37,7 +37,7 @@ LavaLord:
 	!LavaLordAttack		= $3280,x
 	!LavaLordAttackTimer	= $3290,x
 	!LavaLordForceMove	= $32A0,x		; set when inside danger zone or offscreen
-	!LavaLordTarget		= $32B0,x		; used for Flamestrike
+	!LavaLordTarget		= $32B0,x		; used for targeting one player throughout an attack
 
 	!LavaLordFloatHeight	= $32C0,x		; boss will attempt to float at this height
 
@@ -52,7 +52,8 @@ LavaLord:
 
 	!ExtrasLoaded		= $6DFA			; used to load scaled up GFX
 	!LavaLordAura		= $6DFB			; when non-zero, aura image will be displayed
-
+	!BGFraction		= $6DFC			; used for aura display
+	!AuraFraction		= $6DFD			; used for aura display
 
 
 
@@ -83,6 +84,8 @@ endmacro
 		STZ !ExtrasLoaded
 		STZ !PalFrame
 		STZ !LavaLordAura
+		LDA #$20 : STA !BGFraction		; full BG color
+		STZ !AuraFraction			; no aura color
 
 
 ;	LDA #$02 : STA !LavaLordPhase
@@ -131,109 +134,123 @@ endmacro
 
 		.Yes
 		PHB : PHK : PLB
+		LDA !ExtraBits,x : BMI .Skip			;\
+		.UploadRing					; |
+		ORA #$80 : STA !ExtraBits,x			; |
+		LDA.b #ANIM_InitDyn : STA $0C			; | load ring GFX
+		LDA.b #ANIM_InitDyn>>8 : STA $0D		; |
+		CLC : JSL !UpdateGFX				; |
+		.Skip						;/
 
-		LDA !ExtraBits,x : BMI .Skip
 
-		.UploadRing
-		ORA #$80 : STA !ExtraBits,x
-		LDA.b #ANIM_InitDyn : STA $0C
-		LDA.b #ANIM_InitDyn>>8 : STA $0D
-		CLC : JSL !UpdateGFX
-		.Skip
+		LDA $14						;\
+		LSR : BCC .DontLoad				; |
+		LDA !ExtrasLoaded				; |
+		CMP #$06 : BCS .DontLoad			; | render and load scaled-up GFX
+		JSR ScaleUp					; |
+		INC !ExtrasLoaded				; |
+		.DontLoad					;/
+
+
+
+		LDA $3230,x					;\
+		SEC : SBC #$08					; |
+		ORA $9D						; | pause/glitch check
+		BEQ .Main					; |
+		JMP GRAPHICS					; |
+		.Main						;/
 
 
 		LDA $14
-		AND #$3F : BNE .NoIncrement		; enrage timer goes up every 64 frames
+		AND #$3F : BNE .NoIncrement			; enrage timer goes up every 64 frames
 		LDA !LavaLordEnrageTimer
-		CMP #$B4 : BEQ .NoIncrement		; caps at 180 seconds
+		CMP #$B4 : BEQ .NoIncrement			; caps at 180 seconds
 		INC !LavaLordEnrageTimer
 		.NoIncrement
 
 
-		LDA $3250,x
-		CMP !LavaLordScreen : BNE .OffScreen
-		LDA !LavaLordForceMove
-		CMP #$02
-		BCC $03 : DEC !LavaLordForceMove
-		.OffScreen
 
 
-		LDA !LavaLordAttackTimer : BNE +++
-		STZ !LavaLordAttack
+		LDA !LavaLordAura : BEQ .AuraDown		; > check aura direction
+		LDA !BGFraction : BEQ .AuraUp			;\
+	.BGDown	DEC A						; |
+		STA !BGFraction					; |
+		BRA .Update					; | fade BG out then aura in
+	.AuraUp	LDA !AuraFraction				; |
+		CMP #$20 : BEQ $01 : INC A			; |
+		STA !AuraFraction				; |
+		BRA .Update					;/
 
-	LDA !RNG
-	AND #$03
+	.AuraDown						;\
+		LDA !AuraFraction : BEQ .BGUp			; |
+		DEC A						; |
+		STA !AuraFraction				; | fade aura out then BG in
+		BRA .Update					; |
+	.BGUp	LDA !BGFraction					; |
+		CMP #$20 : BEQ $01 : INC A			; |
+		STA !BGFraction					;/
 
-BRA +					; temporary skip to test out exsprite version
-
-	CMP #$02 : BNE +		;\
-	STZ $00				; |
-	LDY #$0F			; |
--	LDA $3230,y			; |
-	CMP #$08 : BNE ++		; |
-	LDA $3200,y			; |
-	CMP #$1D : BNE ++		; | reroll summon flame if there are 2 or more on-screen already
-	INC $00				; |
-++	DEY : BPL -			; |
-	LDA #$02			; |
-	LDY $00				; |
-	CPY #$03 : BCC +		; |
-	LDA #$01			; |
-	BIT !RNG			; |
-	BPL $02 : INC #2		;/
-
-+	STA $00
-	LDA !AttackMemory
-	AND #$0F
-	STA $01
-	LDA !AttackMemory
-	LSR #4
-	CMP $01 : BNE .Ok
-	CMP $00 : BNE .Ok
-	LDA $00
-	INC A
-	AND #$03
-	BRA .Atk
-
-.Ok	LDA $00					;\
-.Atk	STA !LavaLordAttack			; |
-	LDA !AttackMemory			; | attack memory
-	ASL #4					; |
-	ORA !LavaLordAttack			; |
-	STA !AttackMemory			;/
-	CMP #$03 : BNE ++
-	LDA !RNG
-	AND #$80 : STA !LavaLordTarget
-	STZ $AE,x
-	++
-
-
-	LDA #$80 : STA !LavaLordAttackTimer
-
-		BRA ++
-	+++	DEC !LavaLordAttackTimer
-		++
+		.Update						;\
+		LDA !BGFraction					; |
+		LDY #$00 : JSR FadeBG				; |
+		LDA !BGFraction					; | update palette for BG and aura GFX
+		LDY #$10 : JSR FadeBG				; |
+		LDA !AuraFraction				; |
+		LDY #$F0 : JSR FadeBG				; |
+		.AuraDone					;/
 
 
 
-		LDA $3230,x
-		SEC : SBC #$08
-		ORA $9D
-		BEQ ATTACK
-		JMP GRAPHICS
+		LDA $3250,x					;\
+		CMP !LavaLordScreen : BNE .OffScreen		; |
+		LDA !LavaLordForceMove				; | forced movement
+		CMP #$02					; |
+		BCC $03 : DEC !LavaLordForceMove		; |
+		.OffScreen					;/
 
+		LDA !LavaLordAttackTimer : BEQ .NewAttack
+		JMP .GotAttack
+
+	.NewAttack
+		LDA !RNG					;\
+		AND #$03					; |
+		STA $00						; |
+		LDA !AttackMemory				; |
+		AND #$0F					; |
+		STA $01						; |
+		LDA !AttackMemory				; | roll an attack
+		LSR #4						; | ...but never the same more than twice in a row
+		CMP $01 : BNE .Ok				; |
+		CMP $00 : BNE .Ok				; |
+		LDA $00						; |
+		INC A						; |
+		AND #$03					; |
+		BRA .Atk					;/
+
+	.Ok	LDA $00						;\
+	.Atk	STA !LavaLordAttack				; |
+		LDA !RNG					; \ random target
+		AND #$80 : STA !LavaLordTarget			; /
+		LDA #$80 : STA !LavaLordAttackTimer		; > attack timer
+		LDA !AttackMemory				; | attack memory
+		ASL #4						; |
+		ORA !LavaLordAttack				; |
+		STA !AttackMemory				;/
+		CMP #$03 : BNE ATTACK
+		STZ $AE,x
+		LDA !RNG					;\
+		AND #$7F					; | random attack time for Flamestrike
+		ORA #$80					; |
+		STA !LavaLordAttackTimer			;/
+		BRA ATTACK
+
+	.GotAttack
+		DEC !LavaLordAttackTimer
 
 
 
 
 	ATTACK:
-
-		LDA !ExtrasLoaded
-		CMP #$06 : BCS .DontLoad
-		JSR ScaleUp
-		INC !ExtrasLoaded
-		.DontLoad
-
 		PEA PHYSICS-1
 		LDA !LavaLordAttack
 		ASL A
@@ -274,7 +291,7 @@ BRA +					; temporary skip to test out exsprite version
 		CPY #$30 : BNE +
 		LDA #$09 : STA !SpriteAnimIndex
 		STZ !SpriteAnimTimer
-	+	CPY #$10 : BNE ATTACK_Return		; Attack happens at t = 0x10 to make time for animation backswing
+	+	CPY #$10 : BNE ATTACK_Return		; Attack happens at t = 0x10 to make time for backswing
 
 	.Shoot	LDA !Difficulty
 		AND #$03
@@ -336,7 +353,7 @@ BRA +					; temporary skip to test out exsprite version
 		STA $AE,x				; | apply random speed modifier
 		PLA					; |
 		LSR #5					; |
-		SEC : SBC #$10				; |
+		SEC : SBC #$30				; |
 		CLC : ADC $06				; |
 		STA $9E,x				;/
 
@@ -381,7 +398,14 @@ BRA +					; temporary skip to test out exsprite version
 		LDA !AttackMemory
 		AND #$F0
 		CMP #$20 : BNE .NoAura
-		LDA #$01 : STA !LavaLordAura
+
+		LDA !LavaLordAura : BEQ +
+		LDA !MultiPlayer : BEQ .t
+		LDA !RNG
+		AND #$80
+	.t	STA !LavaLordTarget
+	+	LDA #$01 : STA !LavaLordAura
+		LDA !LavaLordAttackTimer : STA !ShakeTimer
 		.NoAura
 
 
@@ -401,10 +425,7 @@ BRA +					; temporary skip to test out exsprite version
 		LDY !LavaLordAura : BEQ .Wave
 
 	.Volley	AND #$0F : BNE .R
-		LDA !MultiPlayer : BEQ .P1
-		LDA !RNG
-		AND #$80
-	.P1	TAY
+		LDY !LavaLordTarget
 		LDA !P2XPosLo-$80,y : STA $00
 		LDA !P2XPosHi-$80,y : STA $01
 
@@ -414,7 +435,7 @@ BRA +					; temporary skip to test out exsprite version
 		RTS
 
 		.SpawnVolley
-		LDA #$09 : STA !ExSpriteNum,y			; spawn fireballs that target players
+		LDA #$09 : STA !ExSpriteNum,y			; spawn flames that target players
 		LDA #$26 : STA !ExSpriteTimer,y
 		LDA #$20 : STA !ExSpriteYSpeed,y
 		LDA #$00 : STA !ExSpriteXSpeed,y
@@ -548,7 +569,7 @@ BRA +					; temporary skip to test out exsprite version
 	+	CPY $00 : BNE +
 		LDA #$10 : STA !PalSpeed			; speed up palette rotation
 	+	CPY #$20
-		BEQ .Go
+		BNE $03 : JMP .Go
 		BCS .Hover
 		JMP .Fall
 
@@ -575,17 +596,36 @@ BRA +					; temporary skip to test out exsprite version
 		LDA !LavaLordAttackTimer
 		CMP DATA_FlameStrikeDelay+0,y : BCS .Target
 		STZ $AE,x
-		BRA .Return
+		RTS
 
 	.Target	LDY !LavaLordTarget
+
+		LDA !LavaLordScreen				;\
+		STA $0B						; |
+		STA $0D						; | limits
+		LDA #$10 : STA $0A				; |
+		LDA #$E0 : STA $0C				;/
 		LDA $3250,x : XBA
 		LDA $3220,x
 		REP #$20
-		CMP !P2XPosLo-$80,y
+		STA $0E						;\
+		LDA !P2XSpeed-$80,y				; |
+		AND #$00FF					; |
+		LSR A						; | take speed and screen borders into account
+		CMP #$0040					; |
+		BCC $03 : EOR #$FFFF				; |
+		EOR #$FFFF					; |
+		CLC : ADC !P2XPosLo-$80,y			; |
+		BPL $03 : LDA #$0000				; |
+		CMP $0A						; |
+		BCS $02 : LDA $0A				; |
+		CMP $0C						; |
+		BCC $02 : LDA $0C				; |
+		CMP $0E						;/
+
 		SEP #$20
 		LDA #$00
-		BCC $01 : INC A
-		STA $3320,x
+		BCS $01 : INC A
 		TAY
 		LDA DATA_XSpeed+2,y : BPL ..R
 	..L	LDA $AE,x
@@ -600,6 +640,9 @@ BRA +					; temporary skip to test out exsprite version
 		CMP DATA_XSpeed+2,y : BCC .Ok
 	.MaxSpd	LDA DATA_XSpeed+2,y
 	.Ok	STA $AE,x
+		ROL #2						;\
+		AND #$01					; | direction based on speed
+		STA $3320,x					;/
 		RTS
 
 
@@ -674,8 +717,8 @@ BRA +					; temporary skip to test out exsprite version
 		STA $32D0,x				;/
 		LDA #$02 : STA $32B0,x			; speed
 		LDA #$30 : STA $3290,x			; max height
-		LDA #$10 : STA $35E0,x			; delay 1
-		STZ $35F0,x				; delay 2
+		LDA #$10 : STA $35D0,x			; delay 1
+		STZ $35E0,x				; delay 2
 
 
 		LDX !SpriteIndex
@@ -896,18 +939,14 @@ BRA +					; temporary skip to test out exsprite version
 		LDA.b #!VRAMbank
 		PHA : PLB
 		LDA #$40				; bank
-		STA.w !CGRAMtable+$4,y
-		STA.w !CGRAMtable+$A,y
+		STA.w !CGRAMtable+4,y
 		REP #$20
 		LDA #$F000				; address
-		STA.w !CGRAMtable+$2,y
-		STA.w !CGRAMtable+$8,y
+		STA.w !CGRAMtable+2,y
 		LDA #$000C				; size of color data
-		STA.w !CGRAMtable+$0,y
-		STA.w !CGRAMtable+$6,y
+		STA.w !CGRAMtable+0,y
 		SEP #$20
-		LDA #$D3 : STA.w !CGRAMtable+$5,y	; dest color 1
-		LDA #$E1 : STA.w !CGRAMtable+$B,y	; dest color 2
+		LDA #$D3 : STA.w !CGRAMtable+$5,y	; dest color
 		PLB
 		PLX
 
@@ -968,7 +1007,7 @@ BRA +					; temporary skip to test out exsprite version
 		LDA ANIM_FireballX,y : STA !BigRAM+$07
 		LDA ANIM_FireballTile,y : STA !BigRAM+$09
 
-	.Draw	LDA !LavaLordAura : BEQ +
+	.Draw	LDA !BGFraction : BNE +
 		JSL LOAD_TILEMAP_HiPrio_Long
 
 		LDA.b #ANIM_AuraTM : STA $04
@@ -1340,10 +1379,6 @@ BRA +					; temporary skip to test out exsprite version
 
 
 
-	Palette:
-		dw $0011,$0417,$001D,$04DF,$15BF,$12FF,$1FFF,$035F
-
-
 
 
 	DefaultMovement:
@@ -1521,8 +1556,9 @@ ScaleUp:
 	; A = 1 -> right arm
 	; A = 2 -> upper body
 	; A = 3 -> lower body
+	; A = 4 -> left arm pit
+	; A = 5 -> right arm pit
 	; no ring included
-
 
 		PHX
 		TAX
@@ -1538,7 +1574,8 @@ ScaleUp:
 		STA $06
 		STZ $07
 		STZ $08
-		JSL !ScaleGFX
+		LDA #$00			; 1 stage
+		CLC : JSL !ScaleGFX
 		JSL !GetVRAM
 		TXY
 		PLX
@@ -1607,4 +1644,97 @@ ScaleUp:
 		dw $7EC0,$0040
 
 
+
+	; call this with A set to the fraction (0 = black, 20 = full color)
+	; Y is starting color (always affects a full row from there)
+
+	; uses $40F100 as a buffer
+	; $00:	16-bit fraction value
+	; $02:	16-bit currently loaded color
+	; $04:	16-bit color construction
+	; $0D:	8-bit target color
+	; $0E:	16-bit loop counter
+
+
+	FadeBG:
+		PHB
+		PHX
+		PHP
+		SEP #$20
+		STA $00
+		STZ $01
+		STY $0D
+		STZ.w $2250		; set multiplication
+		REP #$30
+		LDA $0D
+		AND #$00FF
+		ASL A
+		TAX			; X = palette index
+
+
+
+		LDA #$000F : STA $0E	; loop counter
+
+	.Loop	LDA.w $6703,x
+		STA $02
+		AND #$001F
+		STA.w $2251
+		LDA $00 : STA.w $2253	; I already cleared $01
+		BRA $00
+		NOP
+		LDA.w $2306
+		LSR #5
+		STA $04
+
+		LDA $02
+		LSR #5
+		STA $02
+		AND #$001F
+		STA.w $2251
+		LDA $00 : STA $2253
+		BRA $00
+		NOP
+		LDA.w $2306
+		AND #$03E0		; just clear the lowest 5 bits, this is already shifted properly
+		TSB $04			; ...so we add it here
+
+		LDA $02
+		LSR #5
+		STA.w $2251
+		LDA $00 : STA $2253
+		BRA $00
+		NOP
+		LDA.w $2306
+		AND #$03E0
+		ASL #5
+		ORA $04
+		STA.l $40F100,x		; transfer new color to buffer
+
+		INX #2
+		DEC $0E : BPL .Loop
+
+		STX $08
+		SEP #$30
+		JSL !GetCGRAM
+		LDA.b #!VRAMbank
+		PHA : PLB
+		STA.w !CGRAMtable+$04,y
+		LDA $0D : STA.w !CGRAMtable+$05,y
+		REP #$20
+		LDA $08
+		SEC : SBC #$0020
+		CLC : ADC #$F100
+		STA.w !CGRAMtable+$02,y
+		LDA #$0020 : STA.w !CGRAMtable+$00,y
+		PLP
+		PLX
+		PLB
+		RTS
+
+
+
 	namespace off
+
+
+
+
