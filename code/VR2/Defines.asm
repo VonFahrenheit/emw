@@ -465,7 +465,7 @@
 		!AggroRexTile		= $35E0,x
 
 
-	; -- 5bpp --
+	; -- 5bpp and GFX scaling --
 
 		!GraphicsLoc	= $3000				; 24-bit pointer to graphics file
 		!GraphicsSize	= $3003				; 8-bit number of 8x8 tiles
@@ -479,6 +479,9 @@
 		!GFX2		= $16				; Points to GFX+$10
 		!GFX3		= $19				; Points to GFX+$11
 		!GFX4		= $1C				; Points to GFX+$20
+
+		!GFX_buffer	= $407000			; used by Lunar Magic as well
+
 
 
 
@@ -596,6 +599,8 @@
 
 		!GetDynamicTile		= read3($048443)	; Pointer is stored with SP_Patch.asm
 		!UpdateClaimedGFX	= read3($048446)	; Pointer is stored with SP_Patch.asm
+
+		!ScaleGFX		= read3($048449)	; Pointer is stored with SP_Patch.asm
 
 
 	; -- SMW routines --
