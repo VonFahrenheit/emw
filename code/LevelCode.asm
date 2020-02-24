@@ -65,6 +65,12 @@ Weather:
 		.SA1
 		PHP
 		SEP #$30
+		LDA !Pause : BEQ .NoPause
+		PLP
+		RTL
+
+
+		.NoPause
 		PHB
 		LDA.b #!SnowBase>>16
 		PHA : PLB
@@ -2190,30 +2196,7 @@ levelinit10A:
 levelinit10B:
 	RTS
 levelinit10C:
-		REP #$20
-		LDA #$0012 : JSR DecompressGFX
-		LDX #$0C
-		LDY #$04
-		LDA #$6A40 : JSR UploadDecomp
-		LDX #$1C
-		LDY #$04
-		LDA #$6B40 : JSR UploadDecomp
-
-		LDA #$EC00 : STA $00
-		LDX #$31 : STX $02
-		LDX #$24
-		LDY #$04
-		LDA #$6AC0 : JSR UploadDecomp
-		LDX #$34
-		LDY #$04
-		LDA #$6BC0 : JSR UploadDecomp
-		SEP #$20
-
-		LDA #$D6 : STA !GFX_status+$19		; flame pillar
-
-		RTS
-
-
+	RTS
 levelinit10D:
 	RTS
 levelinit10E:
@@ -6426,8 +6409,14 @@ level10C:
 		LDA !Level+2
 		CMP #$10 : BEQ .Return
 		INC !Level+2
-		CMP #$0F : BNE .Return
-		REP #$20
+		CMP #$00 : BEQ .GFX_0
+		CMP #$02 : BEQ .GFX_1
+		CMP #$04 : BEQ .GFX_2
+	.Return	RTS
+
+
+
+	.GFX_2	REP #$20
 		LDA #$0081 : JSR DecompressGFX
 		LDX #$60
 		LDY #$04
@@ -6436,9 +6425,42 @@ level10C:
 		LDY #$04
 		LDA #$6F00 : JSR UploadDecomp
 		SEP #$20
-
-	.Return
 		RTS
+
+	.GFX_1	REP #$20
+		LDA #$0013 : JSR DecompressGFX
+		LDX #$60
+		LDY #$04
+		LDA #$6C00 : JSR UploadDecomp
+		LDX #$70
+		LDY #$04
+		LDA #$6D00 : JSR UploadDecomp
+		SEP #$20
+		LDA #$60 : STA !GFX_status+$13		; terrain platform
+		RTS
+
+	.GFX_0	REP #$20
+		LDA #$0012 : JSR DecompressGFX
+		LDX #$0C
+		LDY #$04
+		LDA #$6A40 : JSR UploadDecomp
+		LDX #$1C
+		LDY #$04
+		LDA #$6B40 : JSR UploadDecomp
+
+		LDA #$EC00 : STA $00
+		LDX #$31 : STX $02
+		LDX #$24
+		LDY #$04
+		LDA #$6AC0 : JSR UploadDecomp
+		LDX #$34
+		LDY #$04
+		LDA #$6BC0 : JSR UploadDecomp
+		SEP #$20
+		LDA #$D6 : STA !GFX_status+$19		; flame pillar
+		RTS
+
+
 
 level10D:
 	RTS
