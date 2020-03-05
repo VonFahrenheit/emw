@@ -9,60 +9,187 @@
 ;
 ExMessage:
 
-.L000	dw ..SenkuSmash			; 03
-	dw ..SenkuControl		; 04
-	dw ..Landslide			; 05
-	dw ..ShellSpin			; 06
-	dw ..ShellDrill			; 07
-	dw ..SturdyShell		; 08
-	dw ..AirSenku			; 09
+.L000	dw ..Mario1			; 03
+	dw ..Mario2			; 04
+	dw ..Mario3			; 05
+	dw ..Mario4			; 06
+	dw ..Mario5			; 07
+	dw ..Mario6			; 08
+	dw ..Mario7			; 09
 
-	..SenkuSmash
-	db $80,$00,$00,$03
-	db "You learned the Senku Smash!",$FE
-	db "Push Y during senku when",$FE
-	db "touching an enemy to smash",$FE
-	db "them and gain some serious",$FE
-	db "momentum!",$FB,$FF
+	dw ..Luigi1			; 0A
+	dw ..Luigi2			; 0B
+	dw ..Luigi3			; 0C
+	dw ..Luigi4			; 0D
+	dw ..Luigi5			; 0E
+	dw ..Luigi6			; 0F
+	dw ..Luigi7			; 10
+
+	dw ..SenkuControl		; 11
+	dw ..AirSenku			; 12
+	dw ..SenkuSmash			; 13
+	dw ..ShellSpin			; 14
+	dw ..LandSlide			; 15
+	dw ..ShellDrill			; 16
+	dw ..SturdyShell		; 17
+
+	dw ..ComboSlash			; 18
+	dw ..AirDash			; 19
+	dw ..AirDashPlus		; 1A
+	dw ..ComboAirSlash		; 1B
+	dw ..HeroicCape			; 1C
+	dw ..DinoGrip			; 1D
+	dw ..StarStrike			; 1E
+
+
+	..Mario1
+	..Mario2
+	..Mario3
+	..Mario4
+	..Mario5
+	..Mario6
+	..Mario7
+	..Luigi1
+	..Luigi2
+	..Luigi3
+	..Luigi4
+	..Luigi5
+	..Luigi6
+	..Luigi7
+	db $07,$00,$00,$40
+	db "UNUSED MESSAGE",$FF
+
+
 
 	..SenkuControl
-	db $80,$00,$00,$03
-	db "Your senku improved!",$FE
-	db "You can now senku vertically",$FE
-	db "and diagonally!",$FB,$FF
-
-	..Landslide
-	db $80,$00,$00,$03
-	db "You learned the Landslide!",$FE
-	db "Hold down when running to",$FE
-	db "slide along the ground like",$FE
-	db "the true koopa you are!",$FB,$FF
-
-	..ShellSpin
-	db $80,$00,$00,$03
-	db "You learned the Shell Spin!",$FE
-	db "Push Y ducking or shell dashing",$FE
-	db "to perform a spin attack!",$FB,$FF
-
-	..ShellDrill
-	db $80,$00,$00,$03
-	db "You learned the Shell Drill!",$FE
-	db "Push down and Y in midair to",$FE
-	db "perform a devastating drill",$FE
-	db "attack straight down!",$FE
-	db "This attack can even destroy",$FE
-	db "bricks!",$FB,$FF
-
-	..SturdyShell
-	db $80,$00,$00,$03
-	db "Your shell has been improved!",$FE
-	db "Your maximum health has",$FE
-	db "increased by one!",$FB,$FF
+	db $07,$00,$00,$40
+	db "This will let you "
+	db "use your senku in "
+	db "more directions!",$FF
 
 	..AirSenku
-	db $80,$00,$00,$03
-	db "Your senku improved again!"
-	db "You can now senku in midair!",$FB,$FF
+	db $07,$00,$00,$40
+	db "With this upgrade "
+	db "you can use your  "
+	db "senku in midair to"
+	db "reach new places!",$FF
+
+	..SenkuSmash
+	db $07,$00,$00,$40
+	db "Unleash a powerful"
+	db "blow by pushing Y "
+	db "when using your   "
+	db "senku to pass by  "
+	db "an enemy! This    "
+	db "attack will also  "
+	db "bounce you high in"
+	db "the air!",$FF
+
+	..ShellSpin
+	db $07,$00,$00,$40
+	db "Push Y while      "
+	db "crouching to      "
+	db "perform an        "
+	db "invincible spin   "
+	db "attack!",$FF
+
+	..LandSlide
+	db $07,$00,$00,$40
+	db "This is my        "
+	db "favorite! It will "
+	db "let you slide in  "
+	db "your shell by     "
+	db "crouching while   "
+	db "you have a lot of "
+	db "speed!",$FF
+
+	..ShellDrill
+	db $07,$00,$00,$40
+	db "Ever wanted to    "
+	db "break a brick from"
+	db "above? Push down  "
+	db "and Y in midair to"
+	db "perform a shell   "
+	db "drill! This move  "
+	db "can also be used  "
+	db "as an attack!",$FF
+
+	..SturdyShell
+	db $07,$00,$00,$40
+	db "Simple but        "
+	db "effective! This   "
+	db "upgrade to your   "
+	db "shell will let you"
+	db "tank an extra hit!",$FF
+
+
+	..ComboSlash
+	db $07,$00,$00,$40
+	db "This technique    "
+	db "lets you combo a  "
+	db "ground attack into"
+	db "a dash slash!",$FF
+
+	..AirDash
+	db $07,$00,$00,$40
+	db "With this upgrade "
+	db "you can dash in   "
+	db "midair once per   "
+	db "jump! Be careful, "
+	db "you can't dash out"
+	db "of a dash jump!",$FF
+
+	..AirDashPlus
+	db $07,$00,$00,$40
+	db "Tired of          "
+	db "limitations, huh? "
+	db "Me too! Grab this "
+	db "upgrade and you'll"
+	db "be able to use    "
+	db "your air dash even"
+	db "out of a dash     "
+	db "jump!",$FF
+
+	..ComboAirSlash
+	db $07,$00,$00,$40
+	db "This advanced     "
+	db "technique can be  "
+	db "used to combo an  "
+	db "air attack into a "
+	db "flying dash slash!"
+	db "Be careful with   "
+	db "all that speed    "
+	db "though!",$FF
+
+	..HeroicCape
+	db $07,$00,$00,$40
+	db "This simple little"
+	db "improvement to    "
+	db "your cape will let"
+	db "you slow your     "
+	db "descent by holding"
+	db "B.",$FF
+
+	..DinoGrip
+	db $07,$00,$00,$40
+	db "With a little bit "
+	db "of extra grip your"
+	db "claws can be used "
+	db "to scale walls and"
+	db "even climb        "
+	db "ceilings! Just    "
+	db "imagine the places"
+	db "you can explore!",$FF
+
+	..StarStrike
+	db $07,$00,$00,$40
+	db "I have an idea for"
+	db "an ultimate       "
+	db "technique for     "
+	db "you... but it     "
+	db "seems you'll need "
+	db "a stronger sword  "
+	db "to learn it.",$FF
 
 
 .L001
@@ -509,7 +636,7 @@ ExMessage:
 ; If a level has, say, 2 ExMessages, and you write 5, then that will work as a 3 for a level without ExMessages.
 ; It's pretty simple.
 
-.H000	db $07 : .H001	db $00
+.H000	db $1C : .H001	db $00
 .H002	db $00 : .H003	db $09
 .H004	db $00 : .H005	db $07
 .H006	db $00 : .H007	db $06

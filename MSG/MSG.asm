@@ -46,7 +46,10 @@ sa1rom
 	!MsgTileNumberHi	= !MsgRAM+$01		; 1 byte
 	!MsgOptions		= !MsgRAM+$02		; 1 byte
 	!MsgArrow		= !MsgRAM+$03		; 1 byte
-	!MsgDestination		= !MsgRAM+$04		; 3 bytes
+	!MsgOptionRow		= !MsgRAM+$04		; 1 byte, which row the dialogue options start on
+	!MsgDestination		= !MsgRAM+$05		; 1 byte, determines what !MsgArrow writes to
+	!MsgVertOffset		= !MsgRAM+$06		; 1 byte, number of pixels to move window down
+							;	  highest bit toggles portrait to top-right of screen
 	!MsgSequence		= !MsgRAM+$07		; 15 bytes, read backwards.
 	!MsgScroll		= !MsgRAM+$16		; 1 byte
 	!MsgCounter		= !MsgRAM+$17		; 1 byte
@@ -133,10 +136,14 @@ sa1rom
 		BEQ ++					;/
 		INC !MsgWaitScroll			;\ Increment message scroll
 		INC !MsgWaitScroll			;/
+		LDA !MsgVertOffset			;\
+		AND #$007F				; | get window offset
+		STA $00					;/
 		LDA !MsgWaitScroll			;\
 		REP #$20				; |
 		AND #$00FF				; |
 		SEC : SBC #$0010			; | Apply message scroll
+		SEC : SBC $00				; > apply window offset
 		STA $24					; |
 		SEP #$20				; |
 		CLC : ADC #$10				;/
@@ -212,9 +219,8 @@ sa1rom
 		STZ !MsgOffset
 		STZ !MsgOptions
 		STZ !MsgArrow
+		STZ !MsgOptionRow
 		STZ !MsgDestination
-		STZ !MsgDestination+$01
-		STZ !MsgDestination+$02
 		STZ !MsgScroll
 
 .Return		PLB
@@ -267,6 +273,10 @@ sa1rom
 		JSR UPLOAD_TEXT				; > Upload message
 .SkipText	STZ $22					;\ Lock layer 3 Hscroll
 		STZ $23					;/
+		LDA !MsgVertOffset			;\
+		AND #$7F				; | get window offset
+		STA $00					; |
+		STZ $01					;/
 		LDA !MsgScroll				;\
 		BEQ .DontScroll				; | Increment message scroll
 		INC !MsgScroll				; |
@@ -276,6 +286,7 @@ sa1rom
 		AND #$00FF				; |
 		BCC $04 : CLC : ADC #$0100		; | Apply BG3 Vscroll
 		SEC : SBC #$0010			; |
+		SEC : SBC $00				; > apply window offset
 		STA $24					; |
 		SEP #$20				;/
 		PLB					; Restore bank
@@ -307,12 +318,32 @@ sa1rom
 		PHA : PLB
 		LDA !MsgScroll : BNE ++
 		LDA !MultiPlayer : BEQ ..1P
-	..2P	LDA.l $6DA7
-		ORA.l $6DA9
-	..1P	ORA.l $6DA6
-		ORA.l $6DA8
-		AND #$F0 : BNE +
-		PLB
+	..2P	LDA.l $6DA7				;\
+		ORA.l $6DA9				; |
+	..1P	ORA.l $6DA6				; | normal mode input
+		ORA.l $6DA8				; |
+		STA $00					;/
+		AND #$F0 : BNE +			; end message if a button is pushed
+
+		LDA !MsgOptions : BEQ ..R		; return if there is no dialogue options
+		LDA !MsgEnd : BEQ ..R			; only process arrow at the end of a message
+		JSR UPDATE_ARROW			; update arrow tile
+		LDA $00					;\
+		AND #$0C : BEQ ..R			; |
+		CMP #$0C : BEQ ..SFX			; |
+		CMP #$08 : BEQ ..Up			; |
+	..Down	LDA !MsgArrow				; |
+		INC A					; |
+		CMP !MsgOptions : BCC ..W		; | move dialogue arrow
+		LDA #$00 : BRA ..W			; |
+	..Up	LDA !MsgArrow				; |
+		DEC A					; |
+		BPL ..W					; |
+		LDA !MsgOptions				; |
+		DEC A					; |
+	..W	STA !MsgArrow				;/
+	..SFX	LDA #$06 : STA.l !SPC4			; cursor SFX
+	..R	PLB
 		RTL
 
 	++	STZ !MsgTileNumber
@@ -323,7 +354,7 @@ sa1rom
 		PLB
 		RTL
 
-	+++	LDA #$98				;\ Starting Ypos on OW
+	+++	;LDA #$98				;\ Starting Ypos on OW
 		;STA $7F19				;/
 		STZ $6109
 		STZ $6DD5
@@ -332,7 +363,9 @@ sa1rom
 		RTL
 
 	+	LDA !MsgEnd : BEQ -
-		LDX !MsgCounter : BEQ .Close
+		LDA !MsgCounter
+		ORA !MsgOptions
+		BEQ .Close
 		JMP .NextMessage
 
 		.Close
@@ -385,23 +418,31 @@ sa1rom
 
 
 		.NextMessage
-		LDA #$01
-		STA !MsgScroll
+		LDA #$01 : STA !MsgScroll
 		STZ $16
 		STZ $18
 		STZ !MsgTileNumber
 		STZ !MsgTileNumberHi
 		LDA !MsgOptions
 .SomeF0		BEQ +
-		LDA !MsgDestination			;\
-		STA $00					; |
-		LDA !MsgDestination+$01			; |
-		STA $01					; | Write option to address
-		LDA !MsgDestination+$02			; |
-		STA $02					; |
-		LDA !MsgArrow				; |
-		STA [$00]				;/
+
+	; dialogue feedback code
+
 		STZ !MsgOptions
+		LDA !MsgArrow
+		INC A
+		LDX !MsgDestination : BEQ .Level
+		CPX #$01 : BEQ .MSG
+		BRA +
+
+	.Level	STA.l !Level+4
+		JMP .Close
+
+	.MSG	LDX !MsgCounter
+		CLC : ADC.l !MsgTrigger
+		STA !MsgSequence,x
+		INC !MsgCounter
+
 	+	PLB
 		RTL
 
@@ -417,7 +458,7 @@ HANDLE_WINDOWING:
 
 
 		.Cinematic
-		LDA !MsgMode : BEQ ..NoClear		; Don't clear during mode 0
+		LDA !MsgMode : BEQ ..NoClear		; Don't clear during message mode 0
 		JSL !KillOAM				; Needed since level mode doesn't clear OAM during message
 		..NoClear
 
@@ -577,17 +618,25 @@ HANDLE_WINDOWING:
 		PLA					; > Pull window size
 
 
+
+
 .SkipINIT	CLC : ADC.w DATA_05B10A,y
 		STA $7B89
 		CLC : ADC #$80
 		XBA
+		LDA.l $400000+!MsgVertOffset
+		ASL A
+		STA $00					; store window offset
+		TAX					; X = window offset
+		CLC : ADC #$50				;\ Y = window offset + 0x50
+		TAY					;/
+		SEC : SBC #$50				;\
+		CLC : ADC $7B89				; | set up mirror of $7B89
+		STA $01					;/
 		LDA #$80
 		SEC : SBC $7B89
 		REP #$20				; > A 16 bit
-		LDX #$00
-		LDY #$50
-.Loop		CPX $7B89				;\
-		BCC +					; |
+.Loop		CPX $01 : BCC +				;\
 		LDA.w #$00FF				; |
 	+	STA $650C,y				; |
 		STA $655C,x				; | Write to windowing table
@@ -595,7 +644,7 @@ HANDLE_WINDOWING:
 		INX					; |
 		DEY					; |
 		DEY					; |
-		BNE .Loop				;/
+		CPY $00 : BNE .Loop			;/
 
 
 .SetHDMA	SEP #$20				; > A 8 bit
@@ -793,13 +842,10 @@ ApplyHeader:
 		BEQ ..NoDialogue			; |
 		INY					; |
 		LDA [$00],y				; |
-		STA !MsgDestination+$00			; |
+		STA !MsgOptionRow+$00			; |
 		INY					; |
 		LDA [$00],y				; |
-		STA !MsgDestination+$01			; |
-		INY					; |
-		LDA [$00],y				; |
-		STA !MsgDestination+$02			; |
+		STA !MsgDestination			; |
 		..NoDialogue				; |
 		INY					; |
 		LDA [$00],y				; |
@@ -840,11 +886,9 @@ UPLOAD_TEXT:	LDA #$00 : XBA				; Wipe hi byte of A
 		LDA $0073BF
 		AND #$00FF
 		TAX
-		LDA.l ExMessage_H000,x
-		BEQ .NormalMessage
+		LDA.l ExMessage_H000,x : BEQ .NormalMessage
 		INC #2
-		CMP $00
-		BCS .ExMessage
+		CMP $00 : BCS .ExMessage
 		LDA $00
 		SEC : SBC.l ExMessage_H000,x
 		STA $00
@@ -864,9 +908,15 @@ UPLOAD_TEXT:	LDA #$00 : XBA				; Wipe hi byte of A
 		TAY
 		PHK : PHK
 		PLA : STA $09
-		LDA ($0E),y
+		LDA ($0E),y : STA $00
 		CLC : ADC #$0004
 		STA $08
+		LDY #$0002
+		LDA ($00),y
+		AND #$00FF : BEQ ..NoDialogue
+		INC $08					;\ header is 2 bytes longer if dialogue is set
+		INC $08					;/
+		..NoDialogue
 		STZ $00
 		TXY
 		PLB
@@ -884,12 +934,12 @@ UPLOAD_TEXT:	LDA #$00 : XBA				; Wipe hi byte of A
 		LDA !MsgData+$00 : STA $08
 		LDA !MsgData+$01 : STA $09
 
-		LDA !MsgSpeed				;\
+.Process	LDA !MsgSpeed				;\
 		AND #$00FF				; | Upload entire message if text speed is 0x00
-		BNE .Process				; |
+		BNE .Gradual				; |
 		JMP UPLOAD_ALL				;/
 
-.Process	LDA !MsgCinematic
+.Gradual	LDA !MsgCinematic
 		AND #$00FF
 		BEQ ..Normal
 
@@ -936,10 +986,10 @@ UPLOAD_TEXT:	LDA #$00 : XBA				; Wipe hi byte of A
 
 		LDA !MsgTileNumber			; Load data index
 		AND.w #$00FF
-		STA $04
+		STA $06
 		LDA !MsgOffset
 		AND.w #$00FF
-		CLC : ADC $04				; Add offset caused by commands
+		CLC : ADC $06				; Add offset caused by commands
 		CLC : ADC $00				; Add message index
 		TAY					; Y = Message data index
 
@@ -959,8 +1009,7 @@ UPLOAD_TEXT:	LDA #$00 : XBA				; Wipe hi byte of A
 .LineReturn	JSR SWITCH_PALACE
 
 		LDA !MsgTileNumber
-		CMP #$8F
-		BNE .Increment
+		CMP #$8F : BNE .Increment
 		STA !MsgEnd
 		RTS
 
@@ -968,72 +1017,76 @@ UPLOAD_TEXT:	LDA #$00 : XBA				; Wipe hi byte of A
 .Return		RTS					; Return
 
 
-UPLOAD_ALL:	STZ $02					; Clear $02-$03
-		LDA $7F837B : TAX
+
+UPLOAD_ALL:	PHB : PHK : PLB
 		LDY $00
-		SEP #$20
-
-	--	PHX
-		REP #$20
-		LDA $03
+		STZ $04					; end flag
+		LDA !TextPal-1
+		AND #$FF00
+		ORA #$2100
+		STA $02
+		LDX #$0000
+	-	LDA $04 : BEQ +
+		LDA #$001F : BRA ++
+	+	LDA [$08],y
 		AND #$00FF
-		ASL A
-		TAX
-		LDA.l .Headers,x
-		PLX
-		STA $7F837D,x
-		LDA #$2300 : STA $7F837F,x
-		INX #4
-		SEP #$20
-	-	LDA [$08],y
-		CMP #$FF : BEQ .End
-		STA $7F837D,x
-		LDA #$21
-		ORA !TextPal
-		STA $7F837E,x
+		CMP #$00FF : BNE $02 : STA $04
+		CMP #$00F0
+		BCC $03 : LDA #$001F
+	++	ORA $02
+		STA $0800,x
+		INX #2
 		INY
-		INX #2
-		INC $02
-		LDA $02
-		CMP #$12
-		BNE -
-		INC $03
-		LDA $03
-		CMP #$08
-		BEQ .End
-		STZ $02
-		BRA --
+		CPY #$0090 : BNE -
+		PLB
 
-		.End
-	-	LDA $02
-		CMP #$12 : BEQ .Done
-		LDA #$1F : STA $7F837D,x
-		LDA #$21
-		ORA !TextPal
-		STA $7F837E,x
-		INX #2
-		INC $02
-		BRA -
-
-		.Done
-		LDA #$FF : STA $7F837D,x
-		TXA : STA $7F837B
-		XBA : STA $7F837C
+	.Done	SEP #$30
+		LDA #$10 : STA !MsgEnd
 		LDA #$8F : STA !MsgTileNumber
-		LDA #$1F : STA !MsgEnd
-		SEP #$10
+		JSL !GetVRAM
+		LDA #$00
+		STA !VRAMtable+$04,x
+		STA !VRAMtable+$0B,x
+		STA !VRAMtable+$12,x
+		STA !VRAMtable+$19,x
+		STA !VRAMtable+$20,x
+		STA !VRAMtable+$27,x
+		STA !VRAMtable+$2E,x
+		STA !VRAMtable+$35,x
+		REP #$20
+		LDA #$0800 : STA !VRAMtable+$02,x
+		LDA #$0824 : STA !VRAMtable+$09,x
+		LDA #$0848 : STA !VRAMtable+$10,x
+		LDA #$086C : STA !VRAMtable+$17,x
+		LDA #$0890 : STA !VRAMtable+$1E,x
+		LDA #$08B4 : STA !VRAMtable+$25,x
+		LDA #$08D8 : STA !VRAMtable+$2C,x
+		LDA #$08FC : STA !VRAMtable+$33,x
+
+		LDA #$50C7 : STA !VRAMtable+$05,x
+		LDA #$50E7 : STA !VRAMtable+$0C,x
+		LDA #$5107 : STA !VRAMtable+$13,x
+		LDA #$5127 : STA !VRAMtable+$1A,x
+		LDA #$5147 : STA !VRAMtable+$21,x
+		LDA #$5167 : STA !VRAMtable+$28,x
+		LDA #$5187 : STA !VRAMtable+$2F,x
+		LDA #$51A7 : STA !VRAMtable+$36,x
+
+		LDA #$0024
+		STA !VRAMtable+$00,x
+		STA !VRAMtable+$07,x
+		STA !VRAMtable+$0E,x
+		STA !VRAMtable+$15,x
+		STA !VRAMtable+$1C,x
+		STA !VRAMtable+$23,x
+		STA !VRAMtable+$2A,x
+		STA !VRAMtable+$31,x
+
+		SEP #$20
 		RTS
 
 
-		.Headers
-		db $50,$C7
-		db $50,$E7
-		db $51,$07
-		db $51,$27
-		db $51,$47
-		db $51,$67
-		db $51,$87
-		db $51,$A7
+
 
 
 DRAW_BORDER:	PHK : PLB
@@ -1046,12 +1099,27 @@ DRAW_BORDER:	PHK : PLB
 
 		.SA1
 		PHP
-		PHB
-		REP #$30
-		LDA.w #.End-.TileMap-1
-		LDX.w #.TileMap
-		LDY.w #!OAM
-		MVN $00,.TileMap>>16
+		PHB : PHK : PLB
+		SEP #$30
+		LDA.l $400000+!MsgVertOffset		;\
+		AND #$7F				; | Y offset
+		STA $00					;/
+		REP #$20				;\
+		LDA.l $400000+!MsgVRAM3			; |
+		LSR #4					; | tile offset
+		SEP #$20				; |
+		STA $01					;/
+	-	LDA.w .TileMap+0,x : STA.w !OAM+0,x
+		LDA.w .TileMap+1,x
+		CLC : ADC $00
+		STA.w !OAM+1,x
+		LDA.w .TileMap+2,x
+		CLC : ADC $01
+		STA !OAM+2,x
+		LDA.w .TileMap+3,x : STA !OAM+3,x
+		INX #4
+		CPX.b #.End-.TileMap : BNE -
+
 		REP #$20
 		LDA #$AAAA				;\
 		STA.w !OAM+$200				; |
@@ -1066,32 +1134,32 @@ DRAW_BORDER:	PHK : PLB
 		;  ___ ___ ___ ___
 		; | X | Y | T | P |
 
-.TileMap	db $31,$37,$EB,$21			; > Topleft corner
-		db $41,$37,$EC,$21			;\
-		db $51,$37,$EC,$21			; |
-		db $61,$37,$EC,$21			; |
-		db $71,$37,$EC,$21			; | Upper border
-		db $81,$37,$EC,$21			; |
-		db $91,$37,$EC,$21			; |
-		db $A1,$37,$EC,$21			; |
-		db $B1,$37,$EC,$21			;/
-		db $C1,$37,$EB,$61			; > Topright corner
-		db $31,$47,$EE,$21			;\
-		db $C1,$47,$EE,$61			; |
-		db $31,$57,$EE,$21			; | Side borders
-		db $C1,$57,$EE,$61			; |
-		db $31,$67,$EE,$21			; |
-		db $C1,$67,$EE,$61			;/
-		db $31,$77,$EB,$A1			; > Botleft corner
-		db $41,$77,$EC,$A1			;\
-		db $51,$77,$EC,$A1			; |
-		db $61,$77,$EC,$A1			; |
-		db $71,$77,$EC,$A1			; | Lower border
-		db $81,$77,$EC,$A1			; |
-		db $91,$77,$EC,$A1			; |
-		db $A1,$77,$EC,$A1			; |
-		db $B1,$77,$EC,$A1			;/
-		db $C1,$77,$EB,$E1			; > Botright corner
+.TileMap	db $31,$37,$00,$21			; > Topleft corner
+		db $41,$37,$01,$21			;\
+		db $51,$37,$01,$21			; |
+		db $61,$37,$01,$21			; |
+		db $71,$37,$01,$21			; | Upper border
+		db $81,$37,$01,$21			; |
+		db $91,$37,$01,$21			; |
+		db $A1,$37,$01,$21			; |
+		db $B1,$37,$01,$21			;/
+		db $C1,$37,$00,$61			; > Topright corner
+		db $31,$47,$03,$21			;\
+		db $C1,$47,$03,$61			; |
+		db $31,$57,$03,$21			; | Side borders
+		db $C1,$57,$03,$61			; |
+		db $31,$67,$03,$21			; |
+		db $C1,$67,$03,$61			;/
+		db $31,$77,$00,$A1			; > Botleft corner
+		db $41,$77,$01,$A1			;\
+		db $51,$77,$01,$A1			; |
+		db $61,$77,$01,$A1			; |
+		db $71,$77,$01,$A1			; | Lower border
+		db $81,$77,$01,$A1			; |
+		db $91,$77,$01,$A1			; |
+		db $A1,$77,$01,$A1			; |
+		db $B1,$77,$01,$A1			;/
+		db $C1,$77,$00,$E1			; > Botright corner
 		.End
 
 ; 10C5A3
@@ -1206,6 +1274,8 @@ DRAW_PORTRAIT:	BPL .INIT
 		LDA #$01 : TSB $02
 		+
 
+		LDA.l $400000+!MsgVertOffset : STA $0F	; store this for later
+
 		LDY #$03				; Y = times to loop
 		BIT $02					;\ Check direction
 		BVC .Right				;/
@@ -1236,20 +1306,28 @@ DRAW_PORTRAIT:	BPL .INIT
 		BRA .End
 
 .Right		LDX.w .OAM+$00,y			; > Lo plane OAM index
-		LDA.w .XRight,y				;\ Lo plane xpos
-		STA.w !OAM+$000,x			;/
-		LDA.w .Y,y				;\ Lo plane ypos
-		STA.w !OAM+$001,x			;/
+		LDA.w .XRight,y				;\
+		BIT $0F : BPL +				; | Lo plane xpos
+		LDA.w .XSpecial,y			; |
+	+	STA.w !OAM+$000,x			;/
+		LDA.w .Y,y				;\
+		BIT $0F : BPL +				; | Lo plane ypos
+		LDA.w .YSpecial,y			; |
+	+	STA.w !OAM+$001,x			;/
 		LDA.w .TilesRight,y			;\
 		CLC : ADC $00				; | Lo plane tile number
 		STA.w !OAM+$002,x			;/
 		LDA $02					;\ Lo plane YXPPCCCT
 		STA.w !OAM+$003,x			;/
 		LDX.w .OAM+$04,y			; > Hi plane OAM index
-		LDA.w .XRight,y				;\ Hi plane xpos
-		STA.w !OAM+$000,x			;/
-		LDA.w .Y,y				;\ Hi plane ypos
-		STA.w !OAM+$001,x			;/
+		LDA.w .XRight,y				;\
+		BIT $0F : BPL +				; | Hi plane xpos
+		LDA.w .XSpecial,y			; |
+	+	STA.w !OAM+$000,x			;/
+		LDA.w .Y,y				;\
+		BIT $0F : BPL +				; | Hi plane ypos
+		LDA.w .YSpecial,y			; |
+	+	STA.w !OAM+$001,x			;/
 		LDA.w .TilesRight,y			;\
 		CLC : ADC $01				; | Hi plane tile number
 		STA.w !OAM+$002,x			;/
@@ -1273,6 +1351,59 @@ DRAW_PORTRAIT:	BPL .INIT
 .Y		db $17,$17,$27,$27
 .TilesLeft	db $02,$00,$06,$04
 .TilesRight	db $00,$02,$04,$06
+
+.XSpecial	db $DC,$EC,$DC,$EC
+.YSpecial	db $04,$04,$14,$14
+
+
+;====================;
+;UPDATE ARROW ROUTINE;
+;====================;
+UPDATE_ARROW:
+
+		PHP
+
+		LDA !MsgOptionRow
+		CLC : ADC !MsgArrow
+		ASL A
+		TAX
+		LDA.l DATA_05A580+0,x : STA $0E			;\ first half of header for arrow tile
+		LDA.l DATA_05A580+1,x : STA $0F			;/
+
+		LDA !MsgOptionRow
+		ASL A
+		TAX
+		REP #$30
+		LDA.l DATA_05A580,x : STA $02			; first half of header
+		LDA #$00C0 : STA $04				; direction + RLE
+		LDA !MsgOptions					;\
+		AND #$00FF					; | length of string
+		ASL A						; |
+		XBA						; |
+		TSB $04						;/
+
+		LDA $7F837B : TAX				;\
+		LDA $02 : STA $7F837D,x				; |
+		LDA $04 : STA $7F837F,x				; | RLE string
+		LDA !TextPal-1					; |
+		ORA #$211F					; |
+		STA $7F8381,X					;/
+
+		LDA $0E : STA $7F8383,x				;\
+		LDA #$0100 : STA $7F8385,x			; |
+		LDA !TextPal-1					; | arrow tile
+		AND #$FF00					; |
+		ORA #$212E					; |
+		STA $7F8387,x					;/
+		LDA #$FFFF : STA $7F8389,x			; end upload
+		TXA						;\
+		CLC : ADC #$000C				; | update index
+		STA $7F837B					;/
+
+		PLP
+		RTS
+
+
 
 ;=========================;
 ;CINEMATIC COMMAND ROUTINE;
@@ -1416,7 +1547,7 @@ HANDLE_COMMANDS:
 		dw .P2Character		; FB, character number
 		dw .NextMessage		; FA, message number
 		dw .SubMessage		; F9, submessage number
-		dw .Dialogue		; F8, option count
+		dw .Dialogue		; F8, option (lo 2 bits number of options-1, rest of bits destination)
 		dw .Delay		; F7, frame count
 		dw .WaitForInput	; F6, line count
 		dw .AutoScroll		; F5, line count
@@ -1440,6 +1571,7 @@ HANDLE_COMMANDS:
 		LDA #$1F
 		RTS
 
+		db $FF
 ..Lines		db $11
 		db $23
 		db $35
@@ -1500,7 +1632,13 @@ HANDLE_COMMANDS:
 
 .Dialogue	INY
 		LDA [$08],y
+		AND #$03
 		STA !MsgOptions
+		LDA [$08],y
+		LSR #2
+		INC A
+		STA !MsgDestination
+		LDA $02 : STA !MsgOptionRow
 		STZ !MsgArrow
 		INC !MsgTileNumber
 		LDA #$1F
@@ -1537,43 +1675,50 @@ HANDLE_COMMANDS:
 		LDA #$1F
 		RTS
 
-.InstantLine	LDA $02
+.InstantLine	LDA #$01 : STA !MsgSpeed
+		LDA #$00 : XBA
+		LDA $02 : TAX
+		LDA.l .LineBreak_Lines,x
+		INC A
+		STA !MsgTileNumber
+		TYA
+		SEC : SBC $04
+		TAY
+		LDA $02
+		ASL A
 		TAX
 		REP #$20
-		LDA.l DATA_05A580,x
-
-		PHA					;\
-		TYA					; |
-		SEC : SBC $04				; | Calculate new index
-		CLC : ADC.l DATA_05A580,x		; |
-		TAY					; |
-		PLA					;/
-
-		PLX : PLX : PHX				; Kill RTS and restore X
-		STA $7F837D,x				; Set first half of stripe image header
-		LDA #$2300
-		STA $7F837F,x
+		LDA.l DATA_05A580,x				; first half of header
+		PLX : PLX					; kill RTS and get stripe index
+		STA $7F837D,x					; set first half of stripe image header
+		LDA #$2300 : STA $7F837F,x			; second half of header
 		SEP #$20
-		LDA $02
-		TAX
-		LDA.l .LineBreak_Lines,x
-		STA !MsgTileNumber
-		PLX
-		LDA #$12
-		STA $0F
-	-	LDA [$08],y
-		STA $7F8381,x
-		LDA #$39
+		LDA #$12 : STA $0F				; loop counter
+		STZ $0E						; flag for line end
+	-	LDA !MsgEnd : BNE ++
+		LDA $0E : BNE ++
+		LDA [$08],y
+		CMP #$F2 : BEQ ++
+		CMP #$F3 : BNE $02 : INC $0E			; set line end flag
+		CMP #$FF : BNE +
+		STA !MsgEnd
+	++	LDA #$1F
+	+	STA $7F8381,x
+		LDA.w !TextPal
+		ORA #$21
 		STA $7F8382,x
 		INX
 		INX
 		INY
-		DEC $0F
-		BNE -
-		LDA #$FF
-		STA $7F8381,x
-		SEP #$10				; All registers 8 bit
-		JMP UPLOAD_TEXT_LineReturn		; Return
+		DEC $0F : BNE -
+		LDA #$FF : STA $7F8381,x
+		REP #$20
+		PLA						; kill RTS
+		TXA
+		STA $7F837B					; set new index
+		SEP #$30					; all registers 8 bit
+		PLB
+		RTL
 
 .LinkMessage	LDA !MsgCounter
 		TAX

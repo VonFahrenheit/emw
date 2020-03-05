@@ -260,6 +260,10 @@
 
 
 		!P2DashSlash		= !P2Base+$60		; limits Leeway's dash slashes to 1 per dash
+		!P2ClimbTimer		= !P2Base+$61		; how long Leeway can use dino grip for
+		!P2ComboDash		= !P2Base+$62		; combo dash can be used if this is nonzero
+		!P2ComboDisable		= !P2Base+$63		; set during combo dash to prevent chaining
+
 
 		!P2CoyoteTime		= !P2Base+$7F
 			; also applies to Mario
@@ -465,7 +469,7 @@
 		!AggroRexTile		= $35E0,x
 
 
-	; -- 5bpp --
+	; -- 5bpp and GFX scaling --
 
 		!GraphicsLoc	= $3000				; 24-bit pointer to graphics file
 		!GraphicsSize	= $3003				; 8-bit number of 8x8 tiles
@@ -479,6 +483,9 @@
 		!GFX2		= $16				; Points to GFX+$10
 		!GFX3		= $19				; Points to GFX+$11
 		!GFX4		= $1C				; Points to GFX+$20
+
+		!GFX_buffer	= $407000			; used by Lunar Magic as well
+
 
 
 
@@ -596,6 +603,10 @@
 
 		!GetDynamicTile		= read3($048443)	; Pointer is stored with SP_Patch.asm
 		!UpdateClaimedGFX	= read3($048446)	; Pointer is stored with SP_Patch.asm
+
+		!ScaleGFX		= read3($048449)	; Pointer is stored with SP_Patch.asm
+
+		!LoadPortrait		= read3($04844C)	; Pointer is stored with SP_Patch.asm
 
 
 	; -- SMW routines --
