@@ -20,7 +20,7 @@
 ; If the value is 0x00, no write takes place.
 ;
 ; Dialogue is written to !MsgOptions.
-; If this is a nonzero value, it should be followed by a 24-bit little endian value for !MsgDestination.
+; If this is nonzero, it should be followed by 2 bytes; 1 for !MsgOptionRow and 1 for !MsgDestination
 ;
 ; Text speed is written to !MsgSpeed.
 ; It defines how many frames should pass between each character being written.
@@ -31,7 +31,7 @@ HEADER:
 
 
 .000a	db $06,$00,$00,$43
-.000b	db $07,$00,$00,$43
+.000b	db $07,$00,$03,$04,$00,$43
 
 .001a	db $00,$00,$00,$00
 .001b	db $00,$00,$00,$00
