@@ -28,6 +28,8 @@ dl SCROLL_OPTIONS_Main	; JSL read3($048334) will instantly scroll layer 2 and ex
 org $048443
 dl GET_DYNAMIC_TILE
 dl UPDATE_CLAIMED_GFX
+dl SCALE_GFX
+dl LevelSelect_Portrait_Long
 
 
 
@@ -212,6 +214,7 @@ DATA_138058:
 
 
 incsrc "5bpp.asm"
+incsrc "Scale_GFX.asm"
 
 
 ;=========;
@@ -605,9 +608,9 @@ GET_CGRAM:
 
 .Loop		LDA !CGRAMtable,y
 		BEQ .SlotFound
-		TAY
-		CLC : ADC #$0006
 		TYA
+		CLC : ADC #$0006
+		TAY
 		BCC .Loop
 		PLP
 		SEC
@@ -1695,7 +1698,10 @@ SCROLL_OPTIONS:
 		dw .CloseHalfHorz		; 8 - 43.75%
 		dw .Close2HalfHorz		; 9 - 37.5%
 		dw .40PercentHorz		; A - 40%
+		dw .DoubleHorz			; B - 200%
 
+.DoubleHorz	ASL A
+		BRA .ConstantHorz
 .40PercentHorz	ASL #2
 		STA $4204
 		LDX #$0A
@@ -1746,7 +1752,10 @@ SCROLL_OPTIONS:
 		dw .CloseHalfVert		; 8 - 43.75%
 		dw .Close2HalfVert		; 9 - 37.5%
 		dw .40PercentVert		; A - 40%
+		dw .DoubleVert			; B - 200%
 
+.DoubleVert	ASL A
+		BRA .ConstantVert
 .40PercentVert	ASL #2
 		STA $4204
 		LDX #$0A

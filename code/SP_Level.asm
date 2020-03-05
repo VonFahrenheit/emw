@@ -384,6 +384,10 @@ org $188000		; Bank already claimed because of Fe26
 		LDA #$41 : PHA
 		LDA #$40
 		PHA : PLB
+		STZ.w $4406			; clear !MsgVertOffset
+		STZ.w !NPC_ID+0			;\
+		STZ.w !NPC_ID+1			; | reset NPC ID table
+		STZ.w !NPC_ID+2			;/
 		STZ !VRAMtable+$3FF		;\ set up wipes
 		LDA #$00 : STA.l !3D_Base+$7FF	;/
 		REP #$30			; all regs 16 bit

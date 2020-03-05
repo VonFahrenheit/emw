@@ -812,6 +812,7 @@ InitCameraBox:
 
 levelinit0:
 		INC !SideExit
+		LDA #$0B : STA !BG2ModeV
 		JMP CLEAR_DYNAMIC_BG3
 
 levelinit1:
@@ -1511,8 +1512,32 @@ levelinit23:
 	RTS
 levelinit24:
 	RTS
+
 levelinit25:
-	RTS
+
+		LDA !Characters
+		LSR #4
+		TAX
+		JSL !LoadPortrait
+
+
+		REP #$20
+		LDA #$7000 : STA.l $400000+!MsgVRAM1
+		LDA #$7080 : STA.l $400000+!MsgVRAM2
+		LDA #$7200 : STA.l $400000+!MsgVRAM3
+
+		SEP #$20
+
+
+		LDA.b #.NPC_table : STA !NPC_ID
+		LDA.b #.NPC_table>>8 : STA !NPC_ID+1
+		LDA.b #.NPC_table>>16 : STA !NPC_ID+2
+		RTS
+
+	.NPC_table
+	db $01
+
+
 levelinit26:
 		%GradientRGB(HDMA_BlueSky)
 		JSR REX_LEVEL
@@ -2700,11 +2725,37 @@ levelinit1FF:
 ; --Level MAIN--
 
 level0:
+		STZ $00
+		JSR DisplayYC
 
-		LDX #$0B
-	-	LDA .Tilemap,x
+		REP #$20
+		LDA #$01F0 : JSR END_Right
+		SEP #$20
+
+		LDA !Level+4 : BEQ .NoUpgrade
+		LDA #$01 : STA !EnableVScroll
+		REP #$20
+		LDA $1C
+		CMP #$00A0 : BEQ +
+		DEC !BG2BaseV
+	+	LDA #$00A0 : JSR LOCK_VSCROLL
+		SEP #$20
+		.NoUpgrade
+
+		.Return
+		RTS
+
+
+	DisplayYC:
+		LDX #$00
+	-	LDA .Tilemap+0,x
+		CLC : ADC $00
 		STA !OAM+$1F4,x
-		DEX : BPL -
+		LDA .Tilemap+1,x : STA !OAM+$1F5,x
+		LDA .Tilemap+2,x : STA !OAM+$1F6,x
+		LDA .Tilemap+3,x : STA !OAM+$1F7,x
+		INX #4
+		CPX #$0C : BNE -
 		LDA !YoshiCoinCount
 	-	CMP #$0A : BCC +
 		SBC #$0A
@@ -2715,54 +2766,16 @@ level0:
 		LDA !OAM+$1FA
 		CMP #$A2 : BNE +
 		LDA #$F0 : STA !OAM+$1F9
-		+
-		STZ !OAMhi+$7D
+	+	STZ !OAMhi+$7D
 		STZ !OAMhi+$7E
 		STZ !OAMhi+$7F
-
-		REP #$20
-		LDA #$01F0 : JSR END_Right
-		SEP #$20
-
-		LDA !MsgTrigger
-		CMP #$02 : BNE .NoQueue
-
-		LDY #$00
-	-	LDA !YoshiCoinCount
-		CMP .CostTable,y : BCC +
-
-		LDA .RewardTable,y
-		AND !KadaalUpgrades : BNE +
-		STY !Level+2
-		LDA .RewardTable,y : STA !Level+3
-		LDA #$10 : STA !Level+4
-		BRA .Return
-
-	+	INY
-		CPY #$07 : BNE -
-
 		RTS
-
-
-		.NoQueue
-		LDA !Level+4 : BEQ .Return
-		DEC !Level+4 : BNE .Return
-		LDA !Level+2
-		INC #3 : STA !MsgTrigger
-		LDA !Level+3
-		ORA !KadaalUpgrades
-		STA !KadaalUpgrades
-
-		.Return
-		RTS
-
-
-.CostTable	db $03,$07,$0A,$0E,$11,$15,$19
-.RewardTable	db $01,$02,$08,$40,$10,$20,$04
 
 .Tilemap	db $08,$08,$F1,$3F
 		db $20,$08,$A2,$3F
 		db $28,$08,$A2,$3F
+
+
 
 level1:
 
@@ -5016,8 +5029,283 @@ level23:
 	RTS
 level24:
 	RTS
+
 level25:
-	RTS
+
+	LDA #$FF : STA !LeewayUpgrades
+
+		LDY !Level+4
+		LDA .Y,y
+		LSR A
+		CMP #$64
+		BCC $02 : LDA #$64
+		STA $00
+		JSR DisplayYC
+
+		LDA !Level+2 : BNE .NoUpload
+		INC !Level+2
+		JSR .LoadScreen
+		JSL !GetVRAM
+		REP #$20
+		LDA #$0400 : STA !VRAMbase+!VRAMtable+$02,x
+		LDA #$0000 : STA !VRAMbase+!VRAMtable+$04,x
+		LDA #$3400 : STA !VRAMbase+!VRAMtable+$05,x
+		LDA #$0800 : STA !VRAMbase+!VRAMtable+$00,x
+		SEP #$20
+		RTS
+		.NoUpload
+
+
+		LDA !Level+4 : BNE $03 : JMP ++
+		CMP.b #.Y_End-.Y-1 : BCS +
+		INC !Level+4
+		JMP ++
+	+	LDA.b #.Y_End-.Y-1 : STA !Level+4
+		LDA #$C0 : STA $404406
+
+
+	LDA !Characters
+	LSR #4
+	TAX
+	LDA .CharIndex,x : STA $00
+	CLC : ADC #$03
+	CLC : ADC !Level+5
+	STA !MsgTrigger
+
+	LDA $6DA6
+	AND #$03 : BEQ .NoInput
+	CMP #$03 : BEQ .NoInput
+	EOR #$03
+	DEC A
+	ASL A
+	DEC A
+	CLC : ADC !Level+5
+	BPL $02 : LDA #$06
+	CMP #$07
+	BCC $02 : LDA #$00
+	STA !Level+5
+	LDA $00
+	CLC : ADC #$03
+	CLC : ADC !Level+5
+	STA !MsgTrigger
+	LDA #$00
+	STA.l $400000+!MsgRAM+$00
+	STA.l $400000+!MsgRAM+$01
+	STA.l $400000+!MsgRAM+$20
+	.NoInput
+
+
+
+		LDA !Characters				;\
+		LSR #4					; |
+		TAX					; | get index to character tree
+		LDA .CharIndex,x			; |
+		CLC : ADC !Level+5			; |
+		TAX					;/
+		LDA .CursorX,x : STA $01		;\
+		LDA .CursorY,x : STA $02		; |
+		LDX #$00				; | get input for cursor tilemap
+		LDA $14					; |
+		LSR #2					; |
+		AND #$02 : STA $00			;/
+	-	LDA .CursorTM+0,x			;\
+		CLC : ADC $01				; | cursor X
+		STA !OAM+$1E0,x				;/
+		LDA .CursorTM+1,x			;\
+		CLC : ADC $02				; | cursor Y
+		STA !OAM+$1E1,x				;/
+		LDA .CursorTM+2,x			;\
+		CLC : ADC $00				; | cursor tile
+		STA !OAM+$1E2,x				;/
+		LDA .CursorTM+3,x : STA !OAM+$1E3,x	; cursor prop
+		INX #4
+		CPX #$10 : BNE -
+		STZ !OAMhi+$78
+		STZ !OAMhi+$79
+		STZ !OAMhi+$7A
+		STZ !OAMhi+$7B
+
+		LDX #$1F
+	-	LDA .PortraitTM,x : STA !OAM+$1C0,x
+		DEX : BPL -
+		LDA #$02
+		LDX #$07
+	-	STA !OAMhi+$70,x
+		DEX : BPL -
+		++
+
+		REP #$20
+		LDA #$0D03 : STA $4330
+		LDA $14
+		AND #$0001
+		ASL #5
+		ORA #$0600
+		STA $4332
+
+		TAX
+		LDA #$0100
+		STA $0601,x
+		STA $0606,x
+
+		LDY !Level+4
+		LDA .Y,y
+		AND #$00FF
+		EOR #$FFFF
+		STA $0603,x
+		STA $0608,x
+
+		STZ $060B,x
+		STZ $060D,x
+
+		STZ $060F,x
+
+
+		SEP #$20
+		STZ $4324
+		LDA .Y,y
+		LSR A
+		STA $0600,x
+		BCC $01 : INC A
+		STA $0605,x
+		LDA #$01 : STA $060A,x
+		LDA #$08 : TSB $6D9F
+		RTS
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+; give upgrade code
+		LDA !Characters
+		LSR #4
+		STA $00
+		CLC : ADC !Level+5
+		TAX
+		LDA .UpgradeBit,x
+		LDX $00
+		ORA !MarioUpgrades,x
+		STA !MarioUpgrades,x
+;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+
+
+.CharIndex	db $00,$07,$0E,$15,$00,$00
+
+
+.CursorTM	db $2C,$1C,$EC,$3F
+		db $3C,$1C,$EC,$7F
+		db $2C,$2C,$EC,$BF
+		db $3C,$2C,$EC,$FF
+
+
+.CursorX	db $00,$30,$60		;\ Mario
+		db $00,$30,$60,$90	;/
+		db $00,$30,$60		;\ Luigi
+		db $00,$30,$60,$90	;/
+		db $00,$30,$60		;\ Kadaal
+		db $00,$30,$60,$90	;/
+		db $00,$00,$30,$60	;\ Leeway
+		db $00,$50,$A0		;/
+
+
+
+.CursorY	db $00,$00,$00		;\ Mario
+		db $30,$30,$30,$30	;/
+		db $00,$00,$00		;\ Luigi
+		db $30,$30,$30,$30	;/
+		db $00,$00,$00		;\ Kadaal
+		db $30,$30,$30,$30	;/
+		db $00,$20,$20,$10	;\ Leeway
+		db $40,$40,$40		;/
+
+
+.UpgradeBit	db $00,$00,$00		;\ Mario
+		db $00,$00,$00,$00	;/
+		db $00,$00,$00		;\ Luigi
+		db $00,$00,$00,$00	;/
+		db $02,$04,$01		;\ Kadaal
+		db $40,$08,$10,$20	;/
+		db $01,$02,$04,$08	;\ Leeway
+		db $10,$20,$80		;/
+
+
+.PortraitTM	db $14,$04,$60,$79
+		db $04,$04,$62,$79
+		db $14,$14,$64,$79
+		db $04,$14,$66,$79
+		db $14,$04,$68,$7B
+		db $04,$04,$6A,$7B
+		db $14,$14,$6C,$7B
+		db $04,$14,$6E,$7B
+
+		.Y
+		db $01,$08,$0F,$16,$1E,$25,$2C,$32
+		db $39,$3F,$45,$4B,$51,$57,$5D,$63
+		db $69,$6E,$73,$78,$7D,$82,$87,$8C
+		db $91,$95,$99,$9D,$A1,$A5,$A9,$AD
+		db $B1,$B4,$B7,$BA,$BD,$C0,$C3,$C6
+		db $C9,$CB,$CD,$CF,$D1,$D3,$D5,$D7
+		db $D9,$DA,$DB,$DC,$DD,$DE,$DF,$E0
+		..End
+
+
+
+.LoadScreen
+		PHP
+		LDA !Characters
+		LSR #4
+		TAX
+		LDA ..Screen+6,x : XBA
+		LDA ..Screen,x
+
+		REP #$10
+		TAX
+		LDY #$0000
+
+	-	LDA $41C800,x : XBA
+		LDA $40C800,x
+		INX
+		STX $00
+		REP #$20
+		ASL A
+		PHX
+		PHY
+		PHP
+		JSL $06F540
+		PLP
+		PLX				; get "Y" in X
+		STA $0A
+		LDY #$0000
+		LDA [$0A],y : STA $0400,x
+		INY #2
+		LDA [$0A],y : STA $0440,x
+		INY #2
+		LDA [$0A],y : STA $0402,x
+		INY #2
+		LDA [$0A],y : STA $0442,x
+		TXY
+		PLX
+
+		TYA
+		CLC : ADC #$0004
+		AND #$003F : BNE ..Same
+	..New	TYA
+		CLC : ADC #$0040
+		TAY
+	..Same	INY #4
+		CPY #$0800 : BEQ ..Done
+		SEP #$20
+		LDX $00
+		BRA -
+
+	..Done	PLP
+		RTS
+
+
+..Screen	db $B0,$60,$10,$C0,$70,$20
+		db $01,$03,$05,$06,$08,$0A
+
+
+
 
 level26:
 		STZ !SideExit

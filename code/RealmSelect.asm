@@ -67,6 +67,7 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 								; only player 2 can choose "drop out"
 
 
+	!UploadPlayerPal	=	!LevelSelectBase+$010	; 0 = upload, 1 = don't upload
 
 
 ; For game mode 0C (the OW loader)
@@ -222,6 +223,7 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 		STA !CharMenuSize : BNE +
 		LDA #$FF : STA !CharMenuSize
 		INC !CharMenu
+		STZ !UploadPlayerPal				; upload player palette
 		LDX #$00 : JSR Portrait_0			; Upload portrait at t = 0xFF
 	+	JMP Draw
 
@@ -250,6 +252,7 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 
 		LDA !CharMenuCursor
 		CMP $00 : BEQ ..NoUpdate
+		STZ !UploadPlayerPal				; upload player pal
 		JSR Portrait
 		..NoUpdate
 
@@ -266,7 +269,7 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 		SEP #$20					; |
 		LDA.b #Portrait_RestorePal>>16			; |
 		STA.l !VRAMbase+!CGRAMtable+4			; |
-		LDA #$81					; |
+		LDA #$C1					; |
 		STA.l !VRAMbase+!CGRAMtable+5			;/
 
 		LDA !CharMenuCursor : STA $0F
@@ -475,7 +478,7 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 	+	STA !OAM+$FD
 		LDA #$10 : STA !OAM+$FC
 		LDA #$AE : STA !OAM+$FE
-		LDA #$3D : STA !OAM+$FF
+		LDA #$31 : STA !OAM+$FF
 
 		LDX !CharMenuCursor
 		LDA Portrait_Table,x : BMI ..NoPortrait
@@ -934,9 +937,11 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 		LDA.w #!BigRAM				; |
 		STA.l !VRAMbase+!CGRAMtable+2		; |
 		LDA #$005E				; |
+		LDY !UploadPlayerPal			; \ upload player pal clause
+		BEQ $03 : LDA #$003E			; /
 		STA.l !VRAMbase+!CGRAMtable+0		; |
 		SEP #$20				; |
-		LDA #$81				; |
+		LDA #$C1				; |
 		STA.l !VRAMbase+!CGRAMtable+5		;/
 
 		JSL PLANE_SPLIT_SA1			; > unpack 5bpp portrait
@@ -994,6 +999,13 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 
 		RTS
 
+	.Long	PHB : PHK : PLB
+		LDA #$01 : STA !UploadPlayerPal		; don't upload player pal
+		JSR .0
+		PLB
+		RTL
+
+
 
 		.Table		; portrait index
 		db $00
@@ -1006,14 +1018,14 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 
 
 		.Tilemap	; OAM data
-		db $C0,$20,$60,$31
-		db $D0,$20,$62,$31
-		db $C0,$30,$64,$31
-		db $D0,$30,$66,$31
-		db $C0,$20,$68,$33
-		db $D0,$20,$6A,$33
-		db $C0,$30,$6C,$33
-		db $D0,$30,$6E,$33
+		db $C0,$20,$60,$39
+		db $D0,$20,$62,$39
+		db $C0,$30,$64,$39
+		db $D0,$30,$66,$39
+		db $C0,$20,$68,$3B
+		db $D0,$20,$6A,$3B
+		db $C0,$30,$6C,$3B
+		db $D0,$30,$6E,$3B
 
 
 		.RestorePal
@@ -1042,8 +1054,8 @@ endmacro
 
 		.MarioTM
 		db $07
-		db $80,$20,$0C,$35
-		db $80,$30,$0E,$35
+		db $80,$20,$0C,$3D
+		db $80,$30,$0E,$3D
 
 	; tile $004 is the body
 	; tile $0E0 is the head
@@ -1060,8 +1072,8 @@ endmacro
 
 		.KadaalTM
 		db $07
-		db $80,$20,$0C,$35
-		db $80,$30,$0E,$35
+		db $80,$20,$0C,$3D
+		db $80,$30,$0E,$3D
 
 		.KadaalDyn
 		dw ..End-..Start
@@ -1075,11 +1087,11 @@ endmacro
 
 		.LeewayTM
 		db $13
-		db $75,$38,$4C,$35		; sword
-		db $7D,$38,$4D,$35
-		db $80,$20,$0C,$35		; body
-		db $80,$30,$2C,$35
-		db $88,$30,$2D,$35
+		db $75,$38,$4C,$3D		; sword
+		db $7D,$38,$4D,$3D
+		db $80,$20,$0C,$3D		; body
+		db $80,$30,$2C,$3D
+		db $88,$30,$2D,$3D
 
 		.LeewayDyn
 		dw ..End-..Start
@@ -1219,54 +1231,54 @@ endmacro
 		dw $0080,$4080,$00C0,$40C0
 
 	CharTilemap:
-		db $20,$1F,$8C,$3D	; M
-		db $28,$1F,$80,$3D	; A
-		db $30,$1F,$91,$3D	; R
-		db $38,$1F,$88,$3D	; I
-		db $40,$1F,$8E,$3D	; O
+		db $20,$1F,$8C,$31	; M
+		db $28,$1F,$80,$31	; A
+		db $30,$1F,$91,$31	; R
+		db $38,$1F,$88,$31	; I
+		db $40,$1F,$8E,$31	; O
 
-		db $20,$27,$8B,$3D	; L
-		db $28,$27,$94,$3D	; U
-		db $30,$27,$88,$3D	; I
-		db $38,$27,$86,$3D	; G
-		db $40,$27,$88,$3D	; I
+		db $20,$27,$8B,$31	; L
+		db $28,$27,$94,$31	; U
+		db $30,$27,$88,$31	; I
+		db $38,$27,$86,$31	; G
+		db $40,$27,$88,$31	; I
 
-		db $20,$2F,$8A,$3D	; K
-		db $28,$2F,$80,$3D	; A
-		db $30,$2F,$83,$3D	; D
-		db $38,$2F,$80,$3D	; A
-		db $40,$2F,$80,$3D	; A
-		db $48,$2F,$8B,$3D	; L
+		db $20,$2F,$8A,$31	; K
+		db $28,$2F,$80,$31	; A
+		db $30,$2F,$83,$31	; D
+		db $38,$2F,$80,$31	; A
+		db $40,$2F,$80,$31	; A
+		db $48,$2F,$8B,$31	; L
 
-		db $20,$37,$8B,$3D	; L
-		db $28,$37,$84,$3D	; E
-		db $30,$37,$84,$3D	; E
-		db $38,$37,$96,$3D	; W
-		db $40,$37,$80,$3D	; A
-		db $48,$37,$98,$3D	; Y
+		db $20,$37,$8B,$31	; L
+		db $28,$37,$84,$31	; E
+		db $30,$37,$84,$31	; E
+		db $38,$37,$96,$31	; W
+		db $40,$37,$80,$31	; A
+		db $48,$37,$98,$31	; Y
 
-		db $20,$3F,$80,$3D	; A
-		db $28,$3F,$8B,$3D	; L
-		db $30,$3F,$93,$3D	; T
-		db $38,$3F,$84,$3D	; E
-		db $40,$3F,$91,$3D	; R
+		db $20,$3F,$80,$31	; A
+		db $28,$3F,$8B,$31	; L
+		db $30,$3F,$93,$31	; T
+		db $38,$3F,$84,$31	; E
+		db $40,$3F,$91,$31	; R
 
-		db $20,$47,$8F,$3D	; P
-		db $28,$47,$84,$3D	; E
-		db $30,$47,$80,$3D	; A
-		db $38,$47,$82,$3D	; C
-		db $40,$47,$87,$3D	; H
+		db $20,$47,$8F,$31	; P
+		db $28,$47,$84,$31	; E
+		db $30,$47,$80,$31	; A
+		db $38,$47,$82,$31	; C
+		db $40,$47,$87,$31	; H
 
 
 		.End
 
-		db $20,$57,$83,$3D	; D
-		db $28,$57,$91,$3D	; R
-		db $30,$57,$8E,$3D	; O
-		db $38,$57,$8F,$3D	; P
-		db $48,$57,$8E,$3D	; O
-		db $50,$57,$94,$3D	; U
-		db $58,$57,$93,$3D	; T
+		db $20,$57,$83,$31	; D
+		db $28,$57,$91,$31	; R
+		db $30,$57,$8E,$31	; O
+		db $38,$57,$8F,$31	; P
+		db $48,$57,$8E,$31	; O
+		db $50,$57,$94,$31	; U
+		db $58,$57,$93,$31	; T
 		.End2
 
 

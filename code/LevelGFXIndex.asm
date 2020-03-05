@@ -50,6 +50,7 @@
 		CPY #$0B : BEQ .Bump
 		CPY #$10 : BEQ .Goomba
 		CPY #$12 : BEQ .Monty
+		CPY #$13 : BEQ .x2
 		CPY #$16 : BEQ .FireB
 		CPY #$17 : BEQ .x2
 		CPY #$19 : BEQ .Bump		; flame pillar has the same setting as bumber
