@@ -260,6 +260,10 @@
 
 
 		!P2DashSlash		= !P2Base+$60		; limits Leeway's dash slashes to 1 per dash
+		!P2ClimbTimer		= !P2Base+$61		; how long Leeway can use dino grip for
+		!P2ComboDash		= !P2Base+$62		; combo dash can be used if this is nonzero
+		!P2ComboDisable		= !P2Base+$63		; set during combo dash to prevent chaining
+
 
 		!P2CoyoteTime		= !P2Base+$7F
 			; also applies to Mario
@@ -601,6 +605,8 @@
 		!UpdateClaimedGFX	= read3($048446)	; Pointer is stored with SP_Patch.asm
 
 		!ScaleGFX		= read3($048449)	; Pointer is stored with SP_Patch.asm
+
+		!LoadPortrait		= read3($04844C)	; Pointer is stored with SP_Patch.asm
 
 
 	; -- SMW routines --
