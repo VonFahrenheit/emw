@@ -95,9 +95,12 @@ namespace Leeway
 		BEQ $03 : DEC !P2SlantPipe
 		LDA !P2ClimbTop
 		BEQ $03 : DEC !P2ClimbTop
+		LDA !P2ComboDash
+		BEQ $03 : DEC !P2ComboDash
 
-		LDA !P2SwordTimer
-		BNE +
+
+		LDA !P2SwordTimer : BNE +
+		STZ !P2ComboDisable
 		STZ !P2SwordAttack
 		STZ !P2Buffer
 		BRA ++
@@ -167,7 +170,7 @@ namespace Leeway
 		RTS
 
 	+	LDA !P2Climb
-		BNE .ProcessClimb
+		BEQ $03 : JMP .ProcessClimb
 
 		LDA $6DA3
 		ORA #$04
@@ -193,8 +196,11 @@ namespace Leeway
 		AND #$08 : BEQ -
 
 		.ClingUp
-		LDA !IceLevel : BEQ +
-		STZ !P2Climb
+		LDA !P2ClimbTimer : BEQ .nogrip		; can't grip without stamina
+		LDA !LeewayUpgrades			;\ can never cling to ceilings without dino grip
+		AND #$20 : BEQ .nogrip			;/
+		LDA !IceLevel : BEQ +			; can't cling to ceilings on icy levels
+	.nogrip	STZ !P2Climb
 		JMP .NoClimb
 	+	LDA #$80 : STA !P2Climb
 		BRA .ProcessClimb
@@ -254,13 +260,15 @@ namespace Leeway
 		PHP : REP #$20
 		DEC !P2XPosLo
 		PLP
-		BRA ++
+		JMP ++
 	+	LDX !P2Direction
 		LDA .ClimbX,x : STA !P2XSpeed
 
-
+		LDA !P2ClimbTimer : BEQ .slide		; slip without stamina
+		LDA !LeewayUpgrades			;\ always slide down without dino grip
+		AND #$20 : BEQ .slide			;/
 		LDA !IceLevel : BEQ .done		; slide down on icy levels
-		LDA !P2VectorY : BMI .drop
+	.slide	LDA !P2VectorY : BMI .drop
 		CMP #$40 : BCS .time
 	.drop	INC !P2VectorY
 		INC !P2VectorY
@@ -298,6 +306,7 @@ namespace Leeway
 		BRA .ClimbJump
 
 		.Ceiling
+		LDA !P2ClimbTimer : BEQ +++			; drop when stamina runs out
 		LDA !P2Blocked
 		LSR A : BCC +
 		LDA #$08 : TRB !P2Blocked
@@ -305,8 +314,9 @@ namespace Leeway
 	+	LSR A : BCC ++
 		LDA #$08 : TRB !P2Blocked
 		JMP .ClingLeft
-	++	JSR CheckAbove : BCC .Fall
-		STZ !P2ClimbTop					; Clear getup
+	++	JSR CheckAbove : BCS .stick
+	+++	JMP .Fall
+	.stick	STZ !P2ClimbTop					; Clear getup
 		LDA $6DA3
 		AND #$03
 		TAX
@@ -326,7 +336,7 @@ namespace Leeway
 		BVS .ClimbSlash
 		BPL .EndClimb
 		BIT !P2Climb : BMI .Fall
-		STZ !P2ClimbTop
+		STZ !P2ClimbTop					; wall jump here
 		LDX !P2Direction
 		LDA .ClimbX+2,x : STA !P2XSpeed
 		LDA .ClimbLock+2,x : STA !P2DashTimerL1
@@ -334,7 +344,18 @@ namespace Leeway
 		STZ !P2VectorTimeY
 		LDA #$10 : STA !P2DashTimerL2
 		LDA #$20 : STA !P2Floatiness
-		LDA #$C8 : STA !P2YSpeed
+		LDY #$C8
+		LDA !P2ClimbTimer : BEQ .nospd			; low vertical speed without stamina
+		LDA !LeewayUpgrades				;\ very low vertical speed without dino grip
+		AND #$20 : BEQ .nospd				;/
+		LDA !IceLevel : BEQ +				;\ very low vertical speed on icy levels
+	.nospd	LDY #$E0					;/
+		LDA .ClimbLock+3,x : STA !P2ButtonDis		; lock input
+	+	STY !P2YSpeed					; Y speed
+		LDA !P2ClimbTimer				;\
+		SEC : SBC #$28					; | wall jump costs 0x28 stamina
+		BPL $02 : LDA #$00				; |
+		STA !P2ClimbTimer				;/
 		LDA #$2B : STA !SPC1				; jump SFX
 		BIT $6DA5 : BPL .Fall
 		LDA #$01 : STA !P2DashJump
@@ -359,7 +380,7 @@ namespace Leeway
 
 		.WallSlash
 		STA !P2SwordAttack
-		LDA #$3D : STA !SPC4			; slash SFX
+		LDA #$3D : STA !SPC4				; slash SFX
 		RTS
 
 		.Top
@@ -378,26 +399,48 @@ namespace Leeway
 		.NoClimb
 
 
-		LDA !P2SwordAttack
-		BEQ +
+		LDA !P2SwordAttack : BEQ +
 		CMP #$02 : BCS +
 		RTS
 		+
 
 	; Dash check before ground check because air dash will be unlocked
 
-		LDA !P2DashTimerR2
-		ORA !P2SwordAttack
-		BNE .NoDash
-		BIT $6DA9 : BPL .NoDash
+		LDA !P2DashTimerR2			;\
+		BEQ $03					; | I don't know what this does but I did put it here
+	-	JMP .NoDash				;/
+		BIT $6DA9 : BPL -			; check input
 		LDA !P2Water				;\ No dashing from nets
 		LSR A : BCS .NoDash			;/
+
+		LDA !P2SwordAttack : BEQ .NoCombo	;\
+		LDA !P2ComboDisable : BNE .NoDash	; |
+		LDA !LeewayUpgrades			; |
+		AND #$09 : BEQ .NoDash			; | check for combo dash trigger
+		CMP #$08 : BCS +			; |
+		LDA !P2Blocked				; |
+		AND #$04 : BEQ .NoDash			; |
+	+	LDA !P2ComboDash : BEQ .NoDash		;/
+		LDA #$03 : STA !P2SwordAttack		;\
+		LDA #$1A : STA !P2Invinc		; |
+		INC !P2ComboDisable			; | set up combo dash
+		STZ !P2IndexMem1			; |
+		STZ !P2IndexMem2			;/
+		.NoCombo
+
 
 		STZ !P2ClimbTop				; Clear getup when starting a dash
 		LDA !P2Blocked
 		AND #$04
 		ORA !P2Platform
 		BNE .GroundDash
+
+		LDA !LeewayUpgrades			;\ air dash required to dash in midair
+		AND #$06 : BEQ .NoDash			;/
+		CMP #$04 : BCS +			;\
+		LDA !P2DashJump : BNE .NoDash		; | air dash+ required to dash out of dash jump
+		+					;/
+
 		LDA !P2SenkuUsed
 		BEQ $03 : JMP .Shared
 		LDA #$2D : STA !SPC1
@@ -464,6 +507,7 @@ namespace Leeway
 		BRA .Shared
 
 		.Ground
+		LDA #$78 : STA !P2ClimbTimer
 		BIT $6DA7
 		BMI .Jump
 		BVC .Shared
@@ -532,13 +576,41 @@ namespace Leeway
 
 		.ClimbLock
 		db $0A,$09
-		db $01,$02
+		db $01,$02,$01				; third byte used for easier indexing
 
 		.WallAnim
 		db $01,$02
 
 
 	PHYSICS:
+
+
+		.Stamina
+		LDA !P2Climb : BEQ .NoStamina		;\
+		LDA !P2ClimbTimer : BEQ .NoStamina	; |
+		LDA !P2XSpeed : BEQ ..nox		; |
+		ASL A					; |
+		ROL A					; |
+		INC A					; |
+		EOR !P2Blocked				; |
+		AND #$03 : BNE .ClimbTimer		; |
+		..nox					; |
+		LDA !P2YSpeed : BEQ .NoClimb		; |
+		ASL A					; | climb timer
+		ROL A					; | (1/16th speed when still)
+		INC A					; |
+		ASL #2					; |
+		EOR !P2Blocked				; |
+		AND #$0C : BNE .ClimbTimer		; |
+	.NoClimb					; |
+		LDA $14					; |
+		AND #$0F : BNE .NoStamina		; |
+	.ClimbTimer					; |
+		DEC !P2ClimbTimer			; |
+		.NoStamina				;/
+
+
+
 
 		LDA !P2ClimbTop : BEQ .NoGetUpAttack	;\
 		BIT $6DA7 : BVC .NoGetUpAttack		; | Can buffer get-up attack
@@ -665,12 +737,12 @@ namespace Leeway
 		RTS
 
 		.Ptr
-		dw .Cut
-		dw .Slash
-		dw .DashSlash
-		dw .AirSlash
-		dw .WallSlash
-		dw .HangSlash
+		dw .Cut					; 1
+		dw .Slash				; 2
+		dw .DashSlash				; 3
+		dw .AirSlash				; 4
+		dw .WallSlash				; 5
+		dw .HangSlash				; 6
 		.End
 
 		.Cut
@@ -858,6 +930,18 @@ namespace Leeway
 		STZ !P2YSpeed
 
 		.Main
+		LDA !LeewayUpgrades
+		AND #$10 : BEQ .NoCape
+		LDA $6DA3 : BPL .NoCape
+		AND #$04 : BNE .NoCape
+		LDA !P2YSpeed : BMI .NoCape
+		CMP #$20 : BCC .NoCape
+		LDA #$20 : STA !P2YSpeed
+		.NoCape
+
+
+
+
 		BIT !P2Water : BVC +
 		LDA !P2YSpeed : BMI +
 		CMP #$28 : BCC +
@@ -1139,8 +1223,8 @@ namespace Leeway
 		LDA SWORD+$04,y				;\ Get priority setting
 		STA $06					;/
 		SEP #$30
-		LDA !P2HurtTimer
-		BNE .DrawTiles
+		LDA !P2HurtTimer : BNE .DrawTiles
+		LDA !P2ComboDisable : BNE .DrawTiles	; always draw during combo dash invinc
 		LDA !P2Invinc
 		BEQ .DrawTiles
 		AND #$06
@@ -1334,6 +1418,9 @@ namespace Leeway
 		DEC A
 		PHA
 		SEP #$20
+		CPY #$00 : BEQ .NoHit
+		LDA #$08 : STA !P2ComboDash
+		.NoHit
 		RTS
 
 		.LoopEnd
@@ -1418,11 +1505,11 @@ namespace Leeway
 
 	DASHSLASH:
 	.0					; Start at sword coords + 1;4
-	dw $FFEC,$FFF4 : db $3F,$10		; Left
-	dw $FFE5,$FFF4 : db $3F,$10		; Right
+	dw $FFEC,$FFF4 : db $3F,$20		; Left
+	dw $FFE5,$FFF4 : db $3F,$20		; Right
 	.1					; Start at sword coords + 3;4
-	dw $FFFC,$FFF4 : db $2D,$10		; Left
-	dw $FFE7,$FFF4 : db $2D,$10		; Right
+	dw $FFFC,$FFF4 : db $2D,$20		; Left
+	dw $FFE7,$FFF4 : db $2D,$20		; Right
 
 	AIRSLASH:
 	.0					; Start at sword coords + 3;-20 (sword, not lil' cut tile)
