@@ -1,9 +1,0 @@
-Reading config file C:\Users\djkno\Desktop\Dropbox\ExtraMarioWorld/snes9x.conf.
-Saving	config file	C:\Users\djkno\Desktop\Dropbox\ExtraMarioWorld/snes9x.conf
-Sound buffer size: 8192 (2048 samples)
-Found ROM file header (and ignored it).
-Using BPS patch C:\Users\djkno\Desktop\Dropbox\ExtraMarioWorld\emw.bps failed!
-Map_SA1LoROMMap
-"SUPER MARIOWORLD" [checksum ok] LoROM, 32Mbits, ROM+RAM+BAT+SA-1, NTSC, SRAM:1024Kbits, ID:____, CRC32:A2930B32
-Sound buffer size: 8192 (2048 samples)
-Saving	config file	C:\Users\djkno\Desktop\Dropbox\ExtraMarioWorld/snes9x.conf

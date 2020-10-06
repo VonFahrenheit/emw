@@ -1,1 +1,0 @@
-start asar.exe 

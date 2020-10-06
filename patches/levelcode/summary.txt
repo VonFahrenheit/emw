@@ -1,0 +1,68 @@
+
+
+Intro
+
+
+	3D water from DKC2 is on layer 3 but the method could be used for any layer.
+
+	It starts at the top of BG3 in the editor and loops horizontally.
+	It's 96px tall, or 6 full tiles.
+
+	In DKC2, the water is split into 6 chunks, and the perspective freezes when the camera goes under it (it just becomes a flat line)
+	This was a problem for me since I wanted it to have more depth (go further into the horizon) and be mirrored when seen from below
+
+	If I was clever I would probably just put a Y-flipped version of the image under it in the editor, but...
+	I get too attached to my ideas sometimes and went with the pure math approach lol
+
+	To make it smoother, I went with 12 chunks, which is more or less indistinguishable from a full scanline effect from most angles
+
+
+
+Math
+
+	For each chunk, I calculate the height relative to the horizon as such:
+
+		f * (wl - c)
+
+	f is the chunk's scroll factor, wl is the water level, and c is the camera center (horizon)
+
+	I came up with a method for generating scroll factor tables, which is necessary for varying "draw distance".
+
+	The formula to create the scroll factors are:
+
+		z = "draw distance" (idk what unit this is but larger values go closer to the horizon)
+		n = number of chunks
+
+		zc = ((1/z)-1)/n
+
+		f = [chunk number] * zc + 1
+
+	To make this reasonable, I have excel output a bunch of these at once, multiply them by 100 and convert to hex.
+	Starting at a negative chunk number (such as -3) will put the first chunks closer than layer 1.
+	Chunk number 0 always has a scroll factor of 1.
+
+
+
+Method
+
+
+	I loop through all the chunks and dump their scroll values in !BigRAM.
+	This is really simple, I just multiply layer 1 positions by the chunk factors.
+
+	If the f = 1 chunk is above c, then the water is seen from below, otherwise it is seen from above.
+	Based on this I go to one of two loops to generate the HDMA table.
+	Scanline counts are calculated as distance between chunks.
+	Each chunk also has a constant added to its vertical position (I think 8) to make sure the image doesn't cut.
+	The seen-from-below constant math is honestly just trial-and-error, but the from-above one is legit.
+
+	Any chunk that ends above the camera is ignored.
+	Scanline counts are capped at 127 to avoid continuous mode breaking stuff.
+	If there's any space left on the screen, I set the vertical position to 0x0060, making layer 3 invisible for the rest of it.
+
+
+
+
+
+
+
+

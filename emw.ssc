@@ -1,0 +1,490 @@
+﻿00	0002	0,0,040
+01	0002	0,0,001
+02	0002	0,0,002
+02	0010	A variation of the blue kicker koopa. It will remain in place unless it sees a shell. If it sees a shell, it will walk up to it and wait until a player is in front of it. It will then kick the shell. After kicking the shell it walks back to its spawn point.
+02	0012	0,0,002 0,-8,0DC
+03	0002	0,0,003
+04	0002	0,0,004
+05	0002	0,0,005
+06	0002	0,0,006
+07	0002	0,0,007
+08	0002	0,0,004 12,4,009, -16,0,402
+09	0002	0,0,004 12,4,009, -16,-8,404 -16,8,405
+0A	0002	0,0,005 12,4,009, -16,-8,404 -16,8,405
+0B	0002	0,0,005 12,4,009, -8,-16,402 8,-16,403
+0C	0002	0,0,007 12,4,009
+0D	0002	0,0,00A
+0E	0002	0,0,00B
+0F	0002	0,0,00C
+10	0002	-12,-8,0BE 0,0,00C 12,-8,0BF
+11	0002	0,0,00D
+12	0002	0,0,420
+13	0002	0,0,00E
+14	0002	0,0,00F
+15	0002	0,0,010 -8,-16,402 8,-16,403
+16	0002	0,0,010 -16,-8,404 -16,8,405
+17	0002	0,0,010
+18	0002	0,0,010 0,-16,404
+1A	0000	A classic piranha plant. Updated to work properly in-game.
+1A	0002	8,-32,011 8,-16,012
+1B	0002	0,0,013
+1C	0002	0,0,014
+1D	0002	0,0,015
+1E	0000	A cloudborne lakitu. Will follow the player and throw spinys. If Lakitu is killed, his cloud can be stolen and used by the player. Lakitu will respawn after some time unless sprite command 0xD2 is used.
+1E	0002	-6,-4,079 8,-2,079 0,-12,042 -4,4,079 6,4,079
+1E	0100	A cloudborne lakitu equipped with a fishing pole. Will follow the player and try to bait them with a coin (changed from 1-up since we don't use lives). If the coin is taken, Lakitu will start throwing spinys. If Lakitu is killed, his cloud can be stolen and used by the player. Lakitu will respawn after some time unless sprite command 0xD2 is used.
+1E	0102	-6,-4,079 8,-2,079 0,-12,042 -4,4,079 6,4,079 -16,-12,0D5 -24,-12,0D4 -24,4,0D4 -24,20,0D4 -24,36,0D4 -24,52,01B
+1F	0002	0,-14,016 0,2,017
+20	0002	0,-8,018 -6,0,019 4,0,01A
+21	0002	0,0,01B
+22	0002	0,0,01C 0,16,01D 0,-16,404 0,32,405
+23	0002	0,0,01E 0,16,01F 0,-16,404 0,32,405
+24	0002	0,0,01C 0,16,01D -16,8,402 16,8,403
+25	0002	0,0,01E 0,16,01F -16,8,402 16,8,403
+26	0002	4,0,020 20,0,021 4,16,022 20,16,023
+27	0002	0,0,024
+28	0002	16,0,025 32,0,025 16,48,025 32,48,025 0,16,025 0,32,025 48,16,025 48,32,025 16,24,*BIG \nBOO *
+2A	0002	8,32,026 8,16,027
+2B	0002	0,0,028
+2C	0002	0,0,*BANNED*
+2D	0002	0,0,*BANNED*
+2E	0002	0,0,029
+2F	0002	0,0,02A
+30	0002	0,-16,02B 8,-16,02D
+31	0002	0,0,02C
+32	0002	0,-16,02B
+33	0002	0,0,02E
+34	0000	Boss fireball, stationary. Should be handled by other sprites and/or level code. Displays correctly in-game but not in-editor.
+34	0002	0,0,420
+35	0002	0,0,*BANNED*
+36	0002	0,0,420
+37	0002	0,0,025
+38	0002	0,0,02F -16,0,402
+39	0002	0,0,02F -16,-8,404 -16,8,405
+3A	0002	0,0,030 16,0,031 0,16,032 16,16,033 8,0,034 -16,0,404 -16,16,405
+3A	0102	0,0,030 16,0,031 0,16,032 16,16,033 8,0,034 0,-16,402 16,-16,403
+3B	0002	0,0,030 16,0,031 0,16,032 16,16,033 8,0,034 -16,0,404 -16,16,405
+3B	0102	0,0,030 16,0,031 0,16,032 16,16,033 8,0,034 0,-16,402 16,-16,403
+3C	0002	0,0,030 16,0,031 0,16,032 16,16,033 8,0,034 0,-32,405 16,-32,402 16,-16,404 0,-16,403
+3C	0102	0,0,030 16,0,031 0,16,032 16,16,033 8,0,034 0,-32,403 16,-32,405 16,-16,402 0,-16,404
+3D	0002	0,0,035
+3E	0002	0,0,036
+3E	0102	0,0,037
+3F	0002	0,0,00C 0,-16,038
+40	0002	0,0,00A 0,-16,038
+41	0002	0,0,039 -8,-16,402 0,-16,402
+42	0002	0,0,039
+43	0002	0,0,03A
+44	0002	-16,0,03D 16,0,03B
+45	0002	0,16,03C 0,8,03C 0,0,01B
+46	0002	0,0,03E 0,-16,*Diggin'\nChuck*
+47	0002	0,0,010 -8,-16,402 8,-16,403
+48	0002	0,0,03F
+49	0000	Currently broken!
+49	0002	0,0,000 16,0,041
+4A	0002	0,0,*BANNED*
+4B	0002	8,-16,042
+4C	0002	0,0,010 -6,-6,043 14,-6,043 -6,14,043 14,14,043
+4C	0102	0,0,00C -6,-6,043 14,-6,043 -6,14,043 14,14,043
+4C	0202	0,0,000 -6,-6,043 14,-6,043 -6,14,043 14,14,043
+4C	0302	0,0,004 -6,-6,043 14,-6,043 -6,14,043 14,14,043
+4D	0002	0,0,044
+4D	0102	0,0,044 0,-16,405
+4E	0002	0,0,045
+4E	0102	0,0,045 0,-16,404
+4F	0002	8,0,011
+50	0002	8,0,011 0,-8,046 24,-8,046
+51	0002	0,0,047
+52	0002	0,0,048 16,0,049 32,0,04A
+53	0002	0,0,04B 0,-16,*can't be placed\nnormally, use tile 0x012E
+54	0000	As normal, do not place on sub-screen boundary. Displays correctly in-game but not in-editor.
+54	0002	16,16,420 32,16,420 16,32,420 32,32,420
+55	0002	0,0,04C 16,0,04D 32,0,04D 48,0,04D 64,0,04E 24,-16,402 40,-16,403
+56	0002	0,0,059 16,0,05A 32,0,05B 8,-16,402 24,-16,403
+57	0002	0,0,04C 16,0,04D 32,0,04D 48,0,04D 64,0,04E 32,-32,404 32,-16,405
+58	0002	0,0,059 16,0,05A 32,0,05B 16,-32,404 16,-16,405
+59	0002	0,-32,060 0,-16,060 0,0,060 0,16,060 0,32,060
+5A	0002	-32,0,060 -16,0,060 0,0,060 16,0,060 32,0,060
+5B	0002	0,0,053 16,0,054 32,0,055
+5C	0002	0,0,0D9 16,0,0DA 32,0,0DA 48,0,0DA 64,0,0DB
+5D	0002	0,0,056 16,0,057 32,0,058
+5E	0002	0,0,056 16,0,057 32,0,057 48,0,057 64,0,058 24,-16,403 40,-16,403
+5F	0002	32,80,04F 32,64,04F 32,48,04F 32,32,04F 32,16,04F 8,8,053 24,8,054 40,8,054 56,8,055
+60	0002	0,0,*BANNED*
+61	0002	0,8,061 16,8,061 32,8,061 48,8,061
+62	0002	-24,-8,053 -8,-8,054 8,-8,055
+63	0000	A line guided platform that moves right/down. It won't start moving until Mario jumps on it. Its length depends on its X position.
+63	0002	-32,-8,04C -16,-8,04D 0,-8,04D 16,-8,04D 32,-8,04E
+63	0100	A line guided platform that moves right/down. It won't start moving until Mario jumps on it. Its length depends on its X position.
+63	0102	-24,-8,04C -8,-8,04D 8,-8,04E
+64	0002	-8,-8,062 -8,8,063 -8,24,063 -8,40,063 -8,56,064
+65	0002	0,0,*INVALID X POSITION*
+65	0102	8,-8,062 8,-24,066 8,-40,065
+66	0002	0,0,*INVALID X POSITION*
+66	0102	8,-8,062 8,8,068 8,24,067
+67	0002	0,0,*INVALID X POSITION*
+67	0102	0,0,069 16,0,06A 0,16,06B 16,16,06C
+68	0002	0,0,*INVALID X POSITION*
+68	0102	0,0,06D
+69	0002	0,0,420
+6A	0002	0,0,*BANNED*
+6B	0002	0,0,06E 16,0,06E 24,0,06E
+6C	0002	-16,0,06E -32,0,06E -40,0,06E
+6D	0002	0,0,806F
+6E	0002	8,-7,0BA 0,-15,0BB 16,-10,0BA 0,1,0BA 16,1,0BA
+6F	0002	0,1,0BA
+70	0002	0,0,070 0,16,070 0,32,070 0,48,070 0,64,070
+71	0002	0,0,0BC 16,0,0BD
+72	0002	0,0,080 16,0,081
+73	0002	0,-2,80BC 16,-2,80BD 0,2,80BC 16,2,80BD -2,0,8080 14,0,8081 2,0,8080 18,0,8081 0,0,080 16,0,081
+73	0102	0,0,080 16,0,081
+74	0002	0,0,071
+75	0002	0,0,072
+76	0002	0,0,073
+77	0002	0,0,*BANNED*
+78	0000	This is a rainbow mushroom. It will fully heal a player and give them 100 coins if they collect it. It stands still if placed on the ground but will move right if placed in the air. If Mario's reserve box is empty when he collects this, he will receive an additional mushroom in the reserve box.
+78	0002	0,0,074
+79	0002	0,0,075
+7A	0002	0,0,*DO NOT USE*
+7B	0002	0,0,*BANNED*
+7C	0002	0,0,*BANNED*
+7D	0002	0,0,076
+7E	0002	-12,-8,0BE 12,-8,0BF 0,0,0C0
+7F	0000	This is a flying rainbow mushroom. It will fully heal a player and give them 100 coins if they collect it. It will fly up and right. If Mario's reserve box is empty when he collects this, he will receive an additional mushroom in the reserve box.
+7F	0002	-12,-8,0BE 12,-8,0BF 0,0,074
+80	0002	0,0,077
+81	0002	0,0,*BANNED*
+82	0002	0,0,*BANNED*
+83	0000	This ?-block will fly to the left. Its contents depend on X position. Cape has been removed from spawn table. Placing too many of these at once will cause the game to glitch out.
+83	0002	-12,-8,0BE 12,-8,0BF 0,-12,801B 0,0,0C1 0,16,402
+83	0100	This ?-block will fly to the left. Its contents depend on X position. Cape has been removed from spawn table. Placing too many of these at once will cause the game to glitch out.
+83	0102	-12,-8,0BE 12,-8,0BF 0,-12,8072 0,0,0C1 0,16,402
+83	0200	This ?-block will fly to the left. Its contents depend on X position. Cape has been removed from spawn table. Placing too many of these at once will cause the game to glitch out.
+83	0202	-12,-8,0BE 12,-8,0BF 0,-12,8071 0,0,0C1 0,16,402
+83	0300	This ?-block will fly to the left. Its contents depend on X position. Cape has been removed from spawn table. Placing too many of these at once will cause the game to glitch out.
+83	0302	-12,-8,0BE 12,-8,0BF 0,-12,8074 0,0,0C1 0,16,402
+84	0000	This ?-block will fly back and forth horizontally. Its contents depend on X position. Cape has been removed from spawn table. Placing too many of these at once will cause the game to glitch out.
+84	0002	-12,-8,0BE 12,-8,0BF 0,-12,801B 0,0,0C1 -8,16,402 8,16,403
+84	0000	This ?-block will fly back and forth horizontally. Its contents depend on X position. Cape has been removed from spawn table. Placing too many of these at once will cause the game to glitch out.
+84	0102	-12,-8,0BE 12,-8,0BF 0,-12,8072 0,0,0C1 -8,16,402 8,16,403
+84	0000	This ?-block will fly back and forth horizontally. Its contents depend on X position. Cape has been removed from spawn table. Placing too many of these at once will cause the game to glitch out.
+84	0202	-12,-8,0BE 12,-8,0BF 0,-12,8071 0,0,0C1 -8,16,402 8,16,403
+84	0000	This ?-block will fly back and forth horizontally. Its contents depend on X position. Cape has been removed from spawn table. Placing too many of these at once will cause the game to glitch out.
+84	0302	-12,-8,0BE 12,-8,0BF 0,-12,8074 0,0,0C1 -8,16,402 8,16,403
+85	0002	0,0,420
+86	0002	0,4,078 16,2,078 32,2,078
+87	0002	-6,-4,079 8,-2,079 -4,4,079 6,4,079
+88	0002	0,0,*BANNED*
+8A	0000	A reprogrammed small bird. Will hop around and peck the ground. When a player or another sprite comes too close, all birds will fly away. Lunar Magic says you can only place 4 of these but that is false, it has the same limits as normal sprites. The bird's color depends on its initial X position.
+8A	0002	0,0,07A
+8A	0000	A reprogrammed small bird. Will hop around and peck the ground. When a player or another sprite comes too close, all birds will fly away. Lunar Magic says you can only place 4 of these but that is false, it has the same limits as normal sprites. The bird's color depends on its initial X position.
+8A	0102	0,0,07B
+8A	0000	A reprogrammed small bird. Will hop around and peck the ground. When a player or another sprite comes too close, all birds will fly away. Lunar Magic says you can only place 4 of these but that is false, it has the same limits as normal sprites. The bird's color depends on its initial X position.
+8A	0202	0,0,07C
+8A	0000	A reprogrammed small bird. Will hop around and peck the ground. When a player or another sprite comes too close, all birds will fly away. Lunar Magic says you can only place 4 of these but that is false, it has the same limits as normal sprites. The bird's color depends on its initial X position.
+8A	0302	0,0,07D
+8B	0002	0,0,*BANNED*
+8D	0002	0,0,*BANNED*
+8E	0002	0,0,*BANNED*
+8F	0002	-8,0,07E 8,0,07F 120,0,07E 136,0,07F
+8F	0102	-8,0,07E 8,0,07F 56,0,07E 72,0,07F
+90	0000	A large green gas bubble. It displays correctly in-game but not in-editor. Its tiles are also used by Big Boo.
+90	0002	16,0,0C2 32,0,0C3 16,48,0C4 32,48,0C5 0,16,0C2 0,32,0C4 48,16,0C3 48,32,0C5 16,16,0C2 32,16,0C3 16,32,0C4 32,32,0C5
+91	0002	0,0,03E 0,-16,*Chargin'\nChuck*
+92	0002	-8,0,803E 8,0,803E 0,0,03E 0,-16,*Splittin'\nChuck*
+93	0002	-16,-32,402 0,-32,404 0,0,03E 0,-16,*Bouncin'\nChuck*
+94	0002	16,0,8035 0,0,03E 0,-16,*Whistlin'\nChuck*
+94	0102	16,0,8080 32,0,8081 0,0,03E 0,-16,*Whistlin'\nChuck*
+95	0002	0,-32,404 0,0,03E 0,-16,*Clappin'\nChuck*
+96	0002	0,0,03E 0,-16,*Chargin'\nChuck*
+97	0002	-16,0,013 0,0,03E 0,-16,*Puntin'\nChuck*
+98	0002	-8,0,082 0,0,03E 0,-16,*Pitchin'\nChuck*
+99	0002	-8,0,083 8,0,084
+9A	0002	0,-8,085 16,-8,086 8,16,028
+9B	0002	-16,-16,087
+9C	0002	-8,0,088 8,0,088 -24,-4,008 24,-4,009
+9D	0002	-8,-8,0C6 8,-8,0C7 -8,8,0C8 8,8,0C9 0,0,00C
+9D	0102	-8,-8,0C6 8,-8,0C7 -8,8,0C8 8,8,0C9 0,0,00A
+9D	0202	-8,-8,0C6 8,-8,0C7 -8,8,0C8 8,8,0C9 0,0,010
+9D	0302	-8,-8,0C6 8,-8,0C7 -8,8,0C8 8,8,0C9 0,0,071
+9E	0002	0,16,0CB 0,32,0CB -8,48,0CC 8,48,0CD -8,64,0CE 8,64,0CF -24,56,402
+9E	0102	0,16,0CB 0,32,0CB -8,48,0CC 8,48,0CD -8,64,0CE 8,64,0CF 24,56,403
+9F	0002	16,0,014 32,0,014 48,0,014 0,16,014 48,16,014 0,32,014 48,32,014 16,48,014 32,48,014 48,48,014 16,24,*BANZAI\nBILL*
+A1	0000	This sprite has been reprogrammed to work in normal levels. It displays correctly in-game but not in-editor.
+A1	0002	-16,-16,0B6 16,-16,0B7 -16,16,0B8 16,16,0B9 -16,0,*Bowling\nBall   *
+A2	0002	-8,-8,0CA
+A3	0002	0,16,0D0 0,32,0D0 0,48,0D0 -16,48,0D1 0,48,0D2 16,48,0D3 -32,40,402
+A3	0102	0,16,0D0 0,32,0D0 0,48,0D0 -16,48,0D1 0,48,0D2 16,48,0D3 32,40,403
+A4	0002	-8,-8,089 8,-8,08A -8,8,08B 8,8,08C
+A4	0102	-8,-8,089 8,-8,08A -8,8,08B 8,8,08C -4,-24,402 4,-24,402
+A5	0002	0,0,08D 0,-16,402
+A5	0102	0,0,08D 0,-16,403
+A6	0002	-8,-8,08D 8,-8,08D -8,8,08D 8,8,08D 0,0,08D 0,-24,402
+A6	0102	-8,-8,08D 8,-8,08D -8,8,08D 8,8,08D 0,0,08D 0,-24,403
+A7	0002	0,0,*BANNED*
+A8	0002	0,0,08E
+A9	0002	0,0,*BANNED*
+AA	0002	0,0,090 16,0,091
+AB	0000	Use custom sprite 0x02 instead.
+AB	0002	0,0,*BANNED*
+AC	0002	0,-64,094 0,-48,094 0,-32,094 0,-16,094 0,0,093
+AD	0002	0,0,092 0,16,094 0,32,094 0,48,094 0,64,094 8,32,405
+AD	0102	0,0,092 0,16,094 0,32,094 0,48,094 0,64,094 8,32,404
+AE	0002	-6,-4,079 8,-2,079 0,-12,0D6 -4,4,079 6,4,079 -16,-12,0D8 -24,-12,0D4 -24,4,0D4 -24,20,0D4 -24,36,0D4 -24,46,0D7
+AF	0002	-8,-8,8025 0,0,05F
+B0	0002	40,40,8025 32,32,8025 24,24,8025 16,16,8025 8,8,8025 0,0,025
+B1	0002	0,0,06F
+B2	0002	0,0,08F
+B3	0002	0,0,095
+B4	0002	0,0,069 16,0,06A 0,16,06B 16,16,06C
+B5	0002	0,0,420
+B6	0002	0,0,098
+B7	0002	0,16,05C 16,16,05D 16,0,05E
+B8	0002	0,16,099 16,16,09A 0,0,09B
+B9	0000	Use custom sprite 0x11 instead!
+B9	0002	0,0,*BANNED*
+BA	0002	0,0,09C 16,0,9D 12,4,09F
+BA	0102	0,0,09C 16,0,9D 12,4,09E
+BB	0002	0,0,0A0 16,0,0A1 0,16,0A2 16,16,0A3
+BC	0002	-8,-8,0A4 0,0,0A5
+BC	0102	-8,-8,0A4 0,0,0A5 -20,-2,095
+BC	0202	-8,-8,096 0,0,097 -4,-24,404
+BC	0302	-8,-8,0A4 0,0,0A5 -20,-2,095
+BD	0002	0,0,002
+BE	0002	0,0,0A6
+BF	0002	0,-16,044 16,-16,044 0,0,044 16,0,044 8,-8,044
+C0	0002	0,0,059 16,0,05A 32,0,05B
+C1	0002	0,0,*BANNED*
+C2	0002	0,0,0A7
+C3	0002	0,0,010 -8,-8,0A8 8,-8,010 -8,8,010 8,8,010
+C4	0002	0,0,053 16,0,054 32,0,054 48,0,055
+C5	0002	16,0,8025 32,0,8025 16,48,8025 32,48,8025 0,16,8025 0,32,8025 48,16,8025 48,32,8025 16,16,*BIG \nBOO \nBOSS*
+C6	0002	0,0,*BANNED*
+C7	0002	0,0,8071
+C8	0002	0,0,0A9
+C9	0002	0,-4,03D 0,4,03D 4,0,03D -8,0,014
+CA	0002	0,24,0AB 16,24,03D 8,16,0AA
+CB	0002	0,0,802F 12,0,802F 24,0,802F 0,16*Eerie\nGenerator*
+CC	0002	0,0,800C 0,-16,8038 12,0,800C 12,-16,8038 24,0,800C 24,-16,8038 0,16,*Para-Goomba\nGenerator*
+CD	0002	0,0,800A 0,-16,8038 12,0,800A 12,-16,8038 24,0,800A 24,-16,8038 0,16,*Para-Bomb\nGenerator*
+CE	0002	0,0,800C 0,-16,8038 12,0,800A 12,-16,8038 24,0,800C 24,-16,8038 36,0,800A 36,-16,8038 0,16,*Para-Goomba\n& Para-Bomb\nGenerator*
+CF	0002	0,0,8039 12,0,8039 24,0,8039 0,16,*Dolphin\nGenerator* 12,-16,402
+D0	0002	0,0,80AC 12,0,80AC 24,0,80AC 0,16,*Dolphin\nGenerator* 12,-16,403
+D1	0002	0,0,8010 12,0,8010 24,0,8010 0,16,*Jumping Fish\nGenerator*
+D3	0002	0,0,80BC 16,0,80BD 12,0,80BC 28,0,80BD 24,0,80BC 40,0,80BD 0,16,*Super Koopa\nGenerator*
+D4	0002	-8,-8,80C6 8,-8,80C7 -8,8,80C8 8,8,80C9 0,0,800C 8,-8,80C6 24,-8,80C7 8,8,80C8 24,8,80C9 16,0,800A 24,-8,80C6 40,-8,80C7 24,8,80C8 40,8,80C9 32,0,8010 -8,16,*Bubble\nGenerator*
+D5	0002	0,0,8014 12,0,8014 24,0,8014 0,16,*Bullet Bill\nGenerator\nhorizontal shots*
+D6	0002	0,0,8014 12,0,8014 24,0,8014 0,16,*Bullet Bill\nGenerator\nall sides*
+D7	0002	0,0,8014 12,0,8014 24,0,8014 0,16,*Bullet Bill\nGenerator\ndiagonal shots*
+D8	0002	0,0,8095 12,0,8095 24,0,8095 0,16,*Fireball\nGenerator*
+DA	0002	0,0,0B0
+DB	0002	0,0,0B1
+DC	0002	0,0,0B2
+DD	0002	0,0,0B3
+DE	0002	-32,16,02F -16,-16,02F 0,16,02F 16,-16,02F 32,16,02F
+DF	0002	0,0,0B0
+E0	0002	0,16,0D0 0,32,0D0 0,48,0D0 -16,48,0D1 0,48,0D2 16,48,0D3 -32,40,402 -14,-8,0D0 -28,-16,0D0 -41,-24,0D0 -57,-24,0D1 -41,-24,0D2 -25,-24,0D3 -41,-48,403 14,-8,0D0 28,-16,0D0 41,-24,0D0 25,-24,0D1 41,-24,0D2 57,-24,0D3 41,-16,405
+E0	0102	0,16,0D0 0,32,0D0 0,48,0D0 -16,48,0D1 0,48,0D2 16,48,0D3 32,40,403 -14,-8,0D0 -28,-16,0D0 -41,-24,0D0 -57,-24,0D1 -41,-24,0D2 -25,-24,0D3 -41,-16,405 14,-8,0D0 28,-16,0D0 41,-24,0D0 25,-24,0D1 41,-24,0D2 57,-24,0D3 41,-48,402
+E1	0002	0,0,*BANNED*
+E2	0002	0,0,*BANNED*
+E3	0002	0,0,*BANNED*
+E4	0002	0,0,*BANNED*
+E5	0002	0,0,*BANNED*
+E6	0002	0,0,*BANNED*
+EB	0002	0,0,420
+EC	0002	0,0,420
+EE	0002	0,0,420
+F0	0002	0,0,420
+F1	0002	0,0,420
+
+
+
+00	0020	A simple sprite that follows players. It can climb walls and ceilings and jump over small gaps. It tries to jump over players if it gets close (meaning they usually won't get hit if they stand still). If the slime takes damage, it turns red and moves faster. While red, it tries to jump on the player rather than over.\n\nHP: 2\nRank: D\nTraits: None\nType: Dynamic (1 tile)\nExtra bit: Yes
+00	0022	0,16,*Happy\nSlime* 0,0,420
+00	0030	With the extra bit set, the Happy Slime is stationary. If another sprite is placed on top of it, it will bounce it straight up, then catch it and repeat. The extra bit is cleared if the slime takes damage.\n\nHP: 2\nRank: D\nTraits: None\nType: Dynamic (1 tile)\nExtra bit: Yes
+00	0032	0,16,*Happy\nSlime* 0,0,420
+
+01	0020	This version of the Goomba walks straight ahead, turning at walls but walking off ledges. If another sprite is placed on top of it, the slave will carry it. Placing several Goomba Slaves on top of each other will form a totem. Use with extra bit version to allow totems to carry players.\n\nHP: 1\nRank: E\nTraits: None\nType: Pseudo-dynamic (6 tiles for Goomba, 4 tiles for tray)\nExtra bit: Yes
+01	0022	0,16,*Goomba\nSlave* 0,0,420
+01	0030	With the extra bit set, the Goomba Slave spawns with a tray on its head. The tray can be jumped on to reveal a mushroom, which can then be collected as a normal powerup. The Goomba maintains its empty tray afterward, which can be used as a platform. If the Goomba is placed on the top of a totem, it spawns with an empty tray meant to be used as a platform.\n\nHP: 1\nRank: E\nTraits: None\nType: Pseudo-dynamic (6 tiles for Goomba, 4 tiles for tray)\nExtra bit: Yes
+01	0032	0,16,*Goomba Slave\nwith tray* 0,0,420
+
+02	0020	Rex, EMW version. This one is a lot more complex under the hood, though that is normally not apparent. Turns around at ledges rather than walking off.\nExtra byte 1 gives the Rex a bag.\n01 - sack that drops coins\n02 - bindle with a mushroom\n03 - backpack (??)\n04 - box (??)\n05 - useless sword\nExtra byte 2 gives the Rex a hat.\n01 - green robin hood hat\n02 - red hat with bow\n03 - straw hat\n04 - red fez-like hat\n05 - bandit bandana\n06 - top hat and mustache\n07 - bandana\n08 - knight helmet\nIf a sprite Yoshi Coin is placed on a Rex, it will become a golden bandit and carry that Yoshi Coin.\n\nHP: 2\nRank: E\nTraits: None\nType: Pseudo-dynamic (1.75-4.00 KB)\nExtra bit: Yes
+02	0022	0,16,*Rex* 0,0,420
+02	0030	With the extra bit set, this Rex will not move unless it takes damage.\nExtra byte 1 gives the Rex a bag.\n01 - sack that drops coins\n02 - bindle with a mushroom\n03 - backpack (??)\n04 - box (??)\n05 - useless sword\nExtra byte 2 gives the Rex a hat.\n01 - green robin hood hat\n02 - red hat with bow\n03 - straw hat\n04 - red fez-like hat\n05 - bandit bandana\n06 - top hat and mustache\n07 - bandana\n08 - knight helmet\nIf a sprite Yoshi Coin is placed on a Rex, it will become a golden bandit and carry that Yoshi Coin.\n\nHP: 2\nRank: E\nTraits: None\nType: Pseudo-dynamic (1.75-4.00 KB)\nExtra bit: Yes
+02	0032	0,16,*Rex\nstationary* 0,0,420
+
+03	0020	This Rex will walk, then stop to throw a hammer. The hammer is quite accurate and usually hits stationary players. The sprite always turns to face a player upon throwing a hammer. The sprite loses its ability to throw hammers upon taking damage.\n\nHP: 2\nRank: D\nTraits: None\nType: Pseudo-dynamic (3KB)\nExtra bit: Yes
+03	0022	0,16,*Hammer\nRex* 0,0,420
+03	0030	With the extra bit set, the Hammer Rex will not move. Instead, it stands its ground and throws hammers. Upon taking damage it will start moving as usual.\n\nHP: 2\nRank: D\nTraits: None\nType: Pseudo-dynamic (3KB)\nExtra bit: Yes
+03	0032	0,16,*Hammer Rex\nstaionary* 0,0,420
+
+04	0020	This powerful enemy will give relentless pursuit upon spotting a player. The Aggro Rex climbs walls and jumps over pits to reach its target. If the target is below the Aggro Rex, it will drop down ledges instead of jumping (meaning that it won't get stuck if you hide in a pit). The Aggro Rex can also jump off of a wall that it is climbing to reach its target.\n\nHP: 3\nRank: C\nTraits: Fireproof, Durable, Uncrushable (NORMAL and up)\nType: Dynamic (4 tiles)\nExtra bit: Yes
+04	0022	0,16,*Aggro\nRex* 0,0,420
+04	0030	With the extra bit set, the Aggro Rex will remain still until a player comes close. Upon giving chase, the Aggro Rex leaps at the player provoking it.\n\nHP: 3\nRank: C\nTraits: Fireproof, Durable, Uncrushable (NORMAL and up)\nType: Dynamic (4 tiles)\nExtra bit: Yes
+04	0032	0,16*Aggro Rex\nambush* 0,0,420
+
+05	0020	The Novice Shaman walks forward, then stops to fire a projectile. It always faces a player upon casting its spell. Also turns at walls and ledges. It will move faster upon taking damge but will not shrink, meaning that it can still cast its spells.\n\nHP: 2\nRank: D\nTraits: None\nType: Pseudo-dynamic (3KB)\nExtra bit: Yes
+05	0022	0,16,*Novice\nShaman* 0,0,420
+05	0030	With the extra bit set, the Novice Shaman will not move from its spot. Instead, it holds its ground and casts its spells from there. Since the Shaman drops its mask instead of shrinking upon taking damage, it will not start moving but keep casting spells.\n\nHP: 2\nRank: D\nTraits: None\nType: Pseudo-dynamic (3KB)\nExtra bit: Yes
+05	0032	0,16,*Novice Shaman\nstationary* 0,0,420
+
+06	0020	The Adept Shaman is an extremely deadly enemy. It will stay out of range of most player attacks while preparing its own. It can fire projectils in a spray pattern or a circle pattern. It can also swoop along the ground, quickly jumping up and firing projectiles upon getting close to a player. The amount of projectiles it fires with all of its attacks depends on difficulty.\n\nHP: 4\nRank: A\nTraits: Fireproof, Durable\nType: Dynamic (6 tiles)\nExtra bit: Yes
+06	0022	0,16,*Adept\nShaman* 0,0,420
+06	0030	Reserved for Master Shaman
+06	0032	0,16,*Reserved For\nMaster Shaman*
+
+07	0020	The Ball o' Hurt is mostly used as a projectile by other sprites (that also change its appearance). It damages players upon contact.\n\nHP: Invulnerable\nRank: F\nTraits: None\nType: Basic\nExtra bit: No
+07	0022	0,16,*Ball o' Hurt* 0,0,420
+
+08	0020	Captain Warrior is the first taste of a boss in the hack. See the dev doc for more info.\n\nHP: 5/5/7\nRank: Boss\nTraits: Boss\nType: Boss\nExtra bit: Yes
+08	0022	0,16,*Captain\nWarrior* 0,0,420
+08	0030	Reserved for the second fight against Captain Warrior
+08	0032	0,16,*Captain Warrior\nFight 2*
+
+09	0020	This sprite controls a large amount of space and is more of an obstacle than a threat. It walks back and forth, turning around at walls and ledges. Upon spotting a player, it will attempt to either grab or punch them by stretching out its arm. If it grabs a player, it throws them towards the latest ledge it turned around at. The Tar Creeper blocks against all attacks by using its two hands, and it can not be passed through. Jumping on the Tar Creeper causes it to carry the player with it. The Tar Creeper deals no contact damage unless it is using its punch. The only way to kill one is to use fire.\n\nHP: Invulnerable (but dies instantly to fire)\nRank: D\nTraits: None\nType: Dynamic (6 tiles) + Pseudo-dynamic (4KB)
+09	0022	0,16,*Tar\nCreeper* 0,0,420
+09	0030	With the extra bit set, the Tar Creeper holds its ground and does not move.\n\nHP: Invulnerable (but dies instantly to fire)\nRank: D\nTraits: None\nType: Dynamic (6 tiles) + Pseudo-dynamic (4KB)
+09	0032	0,16,*Tar Creeper\nstationary* 0,0,420
+
+0A	0020	Reserved for Mini Mech
+0A	0022	0,16,*Mini Mech* 0,0,420
+
+0B	0020	The Mole Wizard is an obnoxious enemy that is difficult to kill. It deals no damage. It moves around by burrowing through the ground, then fires Mini Moles toward a player. The Mini Moles will latch onto players they touch, disrupting their controls until they mash out. Jumping on the Mole Wizard causes it to instantly burrow without taking damage, but other attacks will hurt it.\n\nHP: 2/2/4\nRank: F\nTraits: Fireproof, Durable\nType: Pseudo-dynamic (2KB)\nExtra bit: No
+0B	0022	0,16,*Mole Wizard* 0,0,420
+
+0C	0020	This sprite is more fun than dangerous. The Mini Mole walks forward, turning at walls but walking off ledges. If it touches a player, it latches onto them and disrupts their controls by pushing random buttons until the player mashes out. The Mini Mole dies when the player mashes out, but it is otherwise invulnerable.\n\nHP: Invulnerable\nRank: F\nTraits: None\nType: Pseudo-dynamic (4 8x8 tiles)\nExtra bit: Yes
+0C	0022	0,16,*Mini\nMole* 0,0,420
+0C	0030	Setting the extra bit causes the Mini Mole to spawn burrowed, much like a normal Mony Mole. It should be placed inside a block in this state. The Mini Mole does break the block it comes out of.\n\nHP: Invulnerable\nRank: F\nTraits: None\nType: Pseudo-dynamic (4 8x8 tiles)\nExtra bit: Yes
+0C	0032	0,16,*Mini Mole\nburrowed* 0,0,420
+
+0D	0020	This Plant Head rotates to face players as best it can, hurting them upon contact. If the Plant Head is placed on a destructible vine tile, its range of motion is restricted to within 60 degrees of the vine. If the Plant Head dies, its vine starts disintegrating (if it is placed on one). Any attack will kill the Plant Head, but it can not be jumped on.\n\nHP: 1\nRank: E\nTraits: None\nType: Super-dynamic (size not yet calculated)\nExtra bit: Yes
+0D	0022	0,16,*Red\nPlant Head* 0,0,420
+0D	0030	The Yellow Plant Head will periodically face upwards to spit 3 lotus fires. This version controls a lot of space compared to the red one, but has the same vine tile interaction.\n\nHP: 3\nRank: C\nTraits: Durable\nType: Super-dynamic (size not yet calculated)\nExtra bit: Yes
+0D	0032	0,16,*Yellow\nPlant Head* 0,0,420
+
+0E	0020	This is an NPC. Generally, it can be talked to by standing close to it and pushing up. Its behavior depends on the level's NPC table, see those files for reference.\n\nHP: Invulnerable\nRank: N/A\nTraits: None\nType: Varies\nExtra bit: No
+0E	0022	0,16,*NPC* 0,0,420
+
+0F	0020	This is a solid 16x16 block. Since it is a sprite, it can be placed overlapping layer 1 tiles. This counts as solid for other sprites as well as players. Extra byte 1 can toggle interactions, but only if extra bit is off.\n1 = disable sprite interaction\n2 = disable sprite interaction\n3 = disable all interaction\n\nHP: Invulnerable\nRank: N/A\nTraits: None\nType: Basic\nExtra bit: Yes
+0F	0022	0,0,06F
+0F	0030	Setting the extra bit causes the sprite to become 2 blocks placed next to each other horizontally. Its hitbox is adjusted as you would expect. Extra byte 1 can not be used when the extra bit is set for this sprite.\n\nHP: Invulnerable\nRank: N/A\nTraits: None\nType: Basic\nExtra bit: Yes
+0F	0032	0,0,06F 16,0,06F
+
+10	0020	Kingking is the first Realm Boss of the hack, meant to blow player expectations out of the water. See the dev doc for more details.\n\nHP: 8/12/16\nRank: Boss\nTraits: Boss\nType: Boss\nExtra bit: Yes
+10	0022	0,16,*Kingking* 0,0,420
+10	0030	Kingking's Scepter should be placed somewhere in the same room as it is required for the fight to work properly. Should not be placed on its own.\n\nHP: Invulnerable\nRank: Boss\nTraits: Boss\nType: Boss\nExtra bit: Yes
+10	0032	0,16,*Kingking's\nScepter* 0,0,420
+
+11	0020	This Sign displays message 1. It can be read by standing next to it and pushing up. The extra bit toggles which message this sign will display.\n\nHP: Invulnerable\nRank: N/A\nTraits: None\nType: Basic\nExtra bit: Yes
+11	0022	0,0,0AD 0,-8,09E
+11	0030	This Sign displays message 2. It can be read by standing next to it and pushing up. The extra bit toggles which message this sign will display.\n\nHP: Invulnerable\nRank: N/A\nTraits: None\nType: Basic\nExtra bit: Yes
+11	0032	0,0,0AD 0,-8,0AE
+
+12	0020	The Lakitu Lovers are the boss in Realm 2. See the dev doc for more details.\n\nHP: 8/12/16\nRank: Boss\nTraits: Boss\nType: Boss\nExtra bit: Yes
+12	0022	0,16,*Lakitu\nLovers* 0,0,420
+12	0030	The Dance Pad has to be used in conjunction with level ASM, see those files for more details. When stepped on, the Dance Pad generates a random sequence of inputs that the player must enter with a specific timing. Doing so successfully destroys a 3-tile column 2 tiles to the side of the Dance Pad. Failing the game will cause the Dance Pad to destroy the floor it is placed on, causing the player to fall down.\n\nHP: Invulnerable\nRank: F\nTraits: None\nType: Basic\nExtra bit: Yes
+12	0032	0,0,420
+
+13	0020	This completely normal-looking Green Koopa will dance by jumping around in its shell and moon walking. It will prioritize getting back to the position it was placed at whenever it starts a new move, meaning it tends to not stray very far. All Dancer Koopas use the same RNG value when determining which move to use, meaning their dance will be perfectly synchronized. Upon taking damage, the Dancer is knocked out of its shell and becomes a normal Green Koopa.\n\nHP: 2\nRank: E\nTraits: None\nType: Basic\nExtra bit: Yes
+13	0022	0,-16,004 0,0,03D
+13	0030	This completely normal-looking Red Koopa will dance by jumping around in its shell and moon walking. It will prioritize getting back to the position it was placed at whenever it starts a new move, meaning it tends to not stray very far. All Dancer Koopas use the same RNG value when determining which move to use, meaning their dance will be perfectly synchronized. Upon taking damage, the Dancer is knocked out of its shell and becomes a normal Red Koopa.\n\nHP: 2\nRank: E\nTraits: None\nType: Basic\nExtra bit: Yes
+13	0032	0,-16,005 0,0,03D
+14	0020	This completely normal-looking Blue Koopa will dance by jumping around in its shell and moon walking. It will prioritize getting back to the position it was placed at whenever it starts a new move, meaning it tends to not stray very far. All Dancer Koopas use the same RNG value when determining which move to use, meaning their dance will be perfectly synchronized. Upon taking damage, the Dancer is knocked out of its shell and becomes a normal Blue Koopa.\n\nHP: 2\nRank: E\nTraits: None\nType: Basic\nExtra bit: Yes
+14	0022	0,-16,006 0,0,03D
+14	0030	This completely normal-looking Yellow Koopa will dance by jumping around in its shell and moon walking. It will prioritize getting back to the position it was placed at whenever it starts a new move, meaning it tends to not stray very far. All Dancer Koopas use the same RNG value when determining which move to use, meaning their dance will be perfectly synchronized. Upon taking damage, the Dancer is knocked out of its shell and becomes a normal Yellow Koopa.\n\nHP: 2\nRank: E\nTraits: None\nType: Basic\nExtra bit: Yes
+14	0032	0,-16,007 0,0,03D
+
+15	0020	This version of the Spiny will snap to a wall if it is placed next to one. Other than that it behaves exactly like the normal one.\n\nHP: 1\nRank: E\nTraits: Fireproof, Uncrushable\nType: Basic\nExtra bit: Yes
+15	0022	0,0,00E -8,-16,402 8,-16,403
+15	0030	Setting the extra bit causes the Spiny to roll along the ground, bouncing if it falls down a ledge.\n\nHP: 1\nRank: E\nTraits: Fireproof, Uncrushable\nType: Basic\nExtra bit: Yes
+15	0032	0,0,00F -8,-16,402 8,-16,403
+
+16	0020	The Thif transforms and chases the player, stealing up to 200 coins upon contact. When the Thif is carrying money, it attempts to run away from players. If the Thif is defeated, it drops half the coins it is carrying as the rest are lost. Can climb walls and jump over pits. A flag can be set in level code that pauses all Thifs. Normally the Thif can see 8 tiles, but setting the first expansion byte to 1 lets it see 16 tiles.\n\nHP: 1\nRank: E\nTraits: None\nType: Pseudo-dynamic (8 tiles)\nExtra bit: Yes
+16	0022	0,16,*Thif\nsight 128* 0,0,420
+16	0030	Setting the extra bit causes the Thif to spawn hidden. When the player gets close, the Thif appears, breaking the 4 blocks it is placed in (the Thif is placed in the bottom-left tile of the 2x2 section it destroys). Hidden Thifs do not respawn. Normally the Thif can see 8 tiles, but setting the first expansion byte to 1 lets it see 16 tiles.\n\nHP: 1\nRank: E\nTraits: None\nType: Pseudo-dynamic (8 tiles)\nExtra bit: Yes
+16	0032	8,8,*Hidden Thif\nsight 128* 8,-8,420
+
+18	0020	The Red Komposite Koopa is a Skeleton Snake Dragon Head From The Wall (TM). It moves its head around like a snake, occasionally spitting 3 fireballs in a forking pattern. Its entire body can be safely jumped on, but only its head can take damage.\n\nHP: 3/4/5\nRank: C\nTraits: Fireproof, Durable, Uncrushable\nType: Pseudo-dynamic (3 tiles)\nExtra bit: Yes
+18	0022	0,0,0B1 -8,-8,0B1 -12,-18,0B1 -16,-30,0B1 -19,-42,005
+18	0030	Reserved for Green Komposite Koopa
+18	0032	0,16,*Green\nKomposite Koopa* 0,0,420
+
+19	0020	Birdo is a simple mini boss. She walks back and forth, occasionally jumps, and shoots eggs. She can be damaged by attacks or by her own eggs if they are thrown back. Eggs deal 2 damage to Birdo. Birdo deals contact damage but can be safely jumped on, though this does no damage.\n\nHP: 5\nRank: B\nTraits: Fireproof, Durable, Uncrushable\nType: Pseudo-dynamic (6 tiles, +1 tile for eggs)\nExtra bit: No
+19	0022	0,16,*Birdo* 0,0,420
+
+1A	0020	Birdo's Egg is usually spawned by Birdo but it can be placed manually as well. When manually placed, it has no time limit and lasts indefinitely. It is a carryable object and can also be knocked around by attacks.\n\nHP: Invulnerable\nRank: F\nTraits: None\nType: Pseudo-dynamic (1 tile)\nExtra bit: No
+1A	0022	0,16,*Birdo's\nEgg* 0,0,420
+
+1B	0020	The Bumper is a very simple sprite that bounces players back upon contact. It is normally stationary but can be carried around by Monkeys, which can make it a major threat around pits. On icy levels, the bumper is frozen and acts like a solid sphere. In this state, it can be rolled along the ground and used as a platform.\n\nHP: Invulnerable\nRank: F\nTraits: None\nType: Pseudo-dynamic (1 tile) OR Super-dynamic (when frozen)\nExtra bit: No
+1B	0022	0,24,*Bumper* -8,-8,420 8,-8,420 -8,8,420 8,8,420
+
+1C	0020	Monkey, work in progress. This is a very complex sprite that can interact with many things, so it is difficult to describe. It is recommend to experiment with Monkey placements in a level.\n\nHP: ???\nRank: me not tell you ukee ¨o\nTraits: None\Type: Pseudo-dynamic (3KB)\Extra bit: Yes
+1C	0022	0,16,*Monkey\nwaiting* 0,0,420
+1C	0030	Monkey, work in progress. See above.
+1C	0032	0,16,*Monkey\ncarrying Bumper* 0,0,420
+
+1E	0020	This 48px wide platform can be used by players and sprites alike. Its movement depends on its initial X position. X&3 = 0: stationary, X&3 = 1: moves horizontally, X&3 = 2: moves vertically, X&3 = 3: moves in a large, circle-esque motion. Setting the extra bit inverts the starting direction of the platform's movement. The first expansion byte changes the sprite's appearance.\n\nHP: Invulnerable\nRank: N/A\nTraits: None\nType: Pseudo-dynamic (4 tiles for tall version, 2 tiles for small version)\nExtra bit: Yes
+1E	0022	0,16,*Terrain Platform\ntall* -16,0,420 0,0,420 16,0,420
+1E	0120	This platform moves horizontally, starting by moving right. See main entry in sprite list for more info.\n\nHP: Invulnerable\nRank: N/A\nTraits: None\nType: Pseudo-dynamic (4 tiles for tall version, 2 tiles for small version)\nExtra bit: Yes
+1E	0122	0,16,*Terrain Platform\ntall* -16,0,420 0,0,420 16,0,420 0,-16,403
+1E	0220	This platform moves vertically, starting by moving down. See main entry in sprite list for more info.\n\nHP: Invulnerable\nRank: N/A\nTraits: None\nType: Pseudo-dynamic (4 tiles for tall version, 2 tiles for small version)\nExtra bit: Yes
+1E	0222	0,16,*Terrain Platform\ntall* -16,0,420 0,0,420 16,0,420 0,-16,405
+1E	0320	This platform moves in a large, circle-esque pattern, counter-clockwise. See main entry in sprite list for more info.\n\nHP: Invulnerable\nRank: N/A\nTraits: None\nType: Pseudo-dynamic (4 tiles for tall version, 2 tiles for small version)\nExtra bit: Yes
+1E	0322	0,16,*Terrain Platform\ntall* -16,0,420 0,0,420 16,0,420 -8,-16,403 8,-16,404 8,-32,402 -8,-32,405
+1E	0030	This 48px wide platform can be used by players and sprites alike. Its movement depends on its initial X position. X&3 = 0: stationary, X&3 = 1: moves horizontally, X&3 = 2: moves vertically, X&3 = 3: moves in a large, circle-esque motion. Setting the extra bit inverts the starting direction of the platform's movement.\n\nHP: Invulnerable\nRank: N/A\nTraits: None\nType: Pseudo-dynamic (4 tiles for tall version, 2 tiles for small version)\nExtra bit: Yes
+1E	0032	0,16,*Terrain Platform\ntall* -16,0,420 0,0,420 16,0,420
+1E	0130	This platform moves horizontally, starting by moving left. See main entry in sprite list for more info.\n\nHP: Invulnerable\nRank: N/A\nTraits: None\nType: Pseudo-dynamic (4 tiles for tall version, 2 tiles for small version)\nExtra bit: Yes
+1E	0132	0,16,*Terrain Platform\ntall* -16,0,420 0,0,420 16,0,420 0,-16,402
+1E	0230	This platform moves vertically, starting by moving up. See main entry in sprite list for more info.\n\nHP: Invulnerable\nRank: N/A\nTraits: None\nType: Pseudo-dynamic (4 tiles for tall version, 2 tiles for small version)\nExtra bit: Yes
+1E	0232	0,16,*Terrain Platform\ntall* -16,0,420 0,0,420 16,0,420 0,-16,404
+1E	0330	This platform moves in a large, circle-esque pattern, clockwise. See main entry in sprite list for more info.\n\nHP: Invulnerable\nRank: N/A\nTraits: None\nType: Pseudo-dynamic (4 tiles for tall version, 2 tiles for small version)\nExtra bit: Yes
+1E	0332	0,16,*Terrain Platform\ntall* -16,0,420 0,0,420 16,0,420 -8,-16,404 8,-16,402 8,-32,405 -8,-32,403
+
+20	0020	The Lava Lord is the Realm 4 Boss. See the dev doc for more info.\n\nHP: ???\nRank: Boss\nTraits: Boss\nType: Boss\nExtra bit: No
+20	0022	0,16,*Lava Lord* 0,0,420
+
+21	0020	The Coin Golem is quite simple mechanically but extremely demanding on the CPU. Use with care. The Coin Golem is masked hidden as a Yoshi Coin and reveals its true form when the player gets close (the Yoshi Coin will follow the player with its eyes, indicating that something is off). When it appears, the Coin Golem is aggressive and will follow the player until one of them dies. The Coin Golem attacks by jumping on the player or punching them. Upon defeat, the Coin Golem disintegrates, leaving the Yoshi Coin it used for its head. This Yoshi Coin's ID must be set using level code.\n\nHP: 2/2/4 (doubled on multiplayer)\nRank: B\nTraits: Fireproof, Durable, Uncrushable\nType: Pseudo-dynamic (2 tiles + 2 tiles for Sprite Yoshi Coin) + Dynamic (1 8x8 tile for its eye) + 3D Cluster Animation\nExtra bit: No
+21	0022	0,-8,0B5 0,8,0B4 -8,12,01B 8,12,01B 0,24,01B -8,32,01B -10,40,01B 8,32,01B 10,40,01B -12,20,01B -16,24,01B 12,20,01B 16,24,01B
+
+22	0020	This is a sprite version of a Yoshi Coin. It requires level code to set its ID. The purpose of this sprite is to allow for mobile Yoshi Coins, mostly to interact with other sprites. It also serves as the Coin Golem's head.\n\nHP: Invulnerable\nRank: N/A\nTraits: None\nType: Pseudo-dynamic (2 tiles)\nExtra bit: No
+22	0022	0,16,0B4 0,0,0B5
+
+23	0020	The Green Elite Koopa is a guard-type enemy that makes areas difficult to access for players. It will patrol an area, stopping to stare down a player when they get close. If a player stays in front of it for too long, the Elite will attempt to tackle the player. If the player tries to jump over the Elite after it has spotted them, it will jump to intercept. If the Elite Koopa is defeated, it gets knocked out of its shell and becomes a normal Green Koopa.\n\nHP: 1\nRank: C\nTraits: Fireproof, Uncrushable, Super Armor\nType: Dynamic (4 tiles)\nExtra bit: No
+23	0022	0,16,*Green\nElite Koopa* 0,0,420
+24	0020	The Red Elite Koopa stands its ground, aiming fireballs at players that get too close. If no player is nearby, it throws its fireballs straight ahead. This is the simplest Elite Koopa, but quite deadly in the right situation. If it is defeated, the Elite Koopa is knocked out of its shell and becomes a normal Red Koopa.\n\nHP: 1\nRank: C\nTraits: Fireproof, Uncrushable, Super Armor\nType: Pseudo-dynamic (4 tiles)\nExtra bit: No
+24	0022	0,16,*Red\nElite Koopa* 0,0,420
+25	0020	The Blue Elite Koopa is more aggressive than the Green and Red ones. It marches forward, attempting to jump and shell drill on players it encounters. After landing, the Elite immediately starts walking after a player again. If the Blue Elite Koopa touches a carryable object, it will pick it up and carry it. It can then throw this object as a projectile with great speed and precision. If the Elite Koopa is defeated, it gets knocked out of its shell and becomes a normal Blue Koopa.\n\nHP: 1\nRank: C\nTraits: Fireproof, Uncrushable, Super Armor\nType: Dynamic (4 tiles)\nExtra bit: No
+25	0022	0,16,*Blue\nElite Koopa* 0,0,420
+26	0020	The Yellow Elite Koopa is by far the most dangerous one, combining the abilities of the Green, Red, and Blue ones with its own speed. It is extremely aggressive, chasing players without hesitation. It charges after them in its shell, attempting to tackle them if it catches up. In close quarters it can jump around and throw several fireballs in quick succession. Additionally, it has the Blue Elite's ability to manipulate carryable objects. With its ability to outspeed player characters on most difficulty levels and jump over pits, the Yellow Elite Koopa basically can't be shaken and has to be dealt with. If the Yellow Elite Koopa is defeated, it is knocked out of its shell and becomes a normal Yellow Koopa. It doesn't give up so easily though, so beware the potential Rainbow Shell!\n\nHP: 1\nRank: A\nTraits: Fireproof, Uncrushable, Super Armor\nType: Dynamic (4 tiles)\nExtra bit: No
+26	0022	0,16,*Yellow\nElite Koopa* 0,0,420
+
+27	0020	The ghostly Boo Hoo will follow a player, occasionally crying a large stream of tears. The tears damage players upon contact, but the Boo Hoo has no hitbox of its own. The tears are blocked by solid tiles.\n\nHP: Invulnerable\nRank: C\nTraits: None\nType: Pseudo-dynamic (8 tiles)\nExtra bit: Yes
+27	0022	0,16,*Boo Hoo\nfollows player* 0,0,420
+27	0030	With the extra bit set, the Boo Hoo will move in one direction, occasionally crying a large stream of tears. The tears damage players upon contact, but the Boo Hoo has no hitbox of its own. The tears are blocked by solid tiles.\n\nHP: Invulnerable\nRank: D\nTraits: None\nType: Pseudo-dynamic (8 tiles)\nExtra bit: Yes
+27	0032	0,16,*Boo Hoo\nmarching* 0,0,420
+
+28	0020	Reserved for Giga Thwomp
+28	0022	0,16,*Reserved for\nGiga Thwomp*
+
+29	0020	The Flame Pillar will rise from the ground, wait, then return down. All of its parameters, such as speed, height, and delay, can be easily modified using level code.\n\nHP: Invulnerable\nRank: E\nTraits: None\nType: Pseudo-dynamic (2 tiles)\nExtra bit: No
+29	0022	0,16,*Flame\nPillar* 0,0,420 0,-16,420 0,-32,420
+
+2A	0020	Big Max is an advanced Super-dynamic sprite that was originally made as a proof-of-concept for the system. His name is a reference to the "Big Mac" because Von Fahrenheit thought that was funny. See the doc for more details.\n\nHP: 56\nRank: Boss\nTraits: Boss\nType: Boss\nExtra bit: No
+2A	0022	0,16,*Big Max* 0,0,420
+
+2B	0020	The Portal is a utility sprite that acts as a visible spawner. Place another sprite on the same position as the Portal. When the Portal spawns, it instantly and silently eats the sprite placed on it and starts producing clones of that sprite. The Portal displays a little animation before spawning a new sprite. This version will not spawn another sprite until the previous one spawned by it has despawned in some way.\n\nHP: Invulnerable\nRank: ???\nTraits: None\nType: Pseudo-dynamic (1 tile)\nExtra bit: Yes
+2B	0022	-8,-8,0B6 8,-8,0B7 -8,8,0B8 8,8,0B9 0,-32,*Portal* 0,-16, 405
+2B	0030	The Portal is a utility sprite that acts as a visible spawner. Place another sprite on the same position as the Portal. When the Portal spawns, it instantly and silently eats the sprite placed on it and starts producing clones of that sprite. The Portal displays a little animation before spawning a new sprite. Since the extra bit is set, this Portal will continue spawning sprites endlessly, up to 8 at the same time.\n\nHP: Invulnerable\nRank: ???\nTraits: None\nType: Pseudo-dynamic (1 tile)\nExtra bit: Yes
+2B	0032	-8,-8,0B6 8,-8,0B7 -8,8,0B8 8,8,0B9 0,-32,*Rapid-Fire\nPortal* 0,-16,405
+
+2C	0020	Flying Rex
+2C	0022	0,16,*Flying\nRex   * 0,0,420
+
+2D	0020	Ultra Fuzzy
+2D	0022	0,16,*Ultra\nFuzzy   * 0,0,420
+
+2E	0020	Shield (front)
+2E	0022	-8,-8,0DF 8,-8,0E0 -8,8,0E1 8,8,0E2 -16,-16,0DD -16,0,0DD
+2E	0030	Shield (back)
+2E	0032	-8,-8,0DF 8,-8,0E0 -8,8,0E1 8,8,0E2 16,-16,0DE 16,0,0DE

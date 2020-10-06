@@ -1,0 +1,22 @@
+
+
+
+	0FFA46		IMPORTANT ADDRESS
+
+
+	80AE66		Upload BG2 tilemap
+
+			DP is set to $6600 for this
+			$6600 holds a ton of DMA data
+
+
+	To check for errors with BG2 load, do this:
+		1. Set breakpoint 0 $7FC00B to write, SNES, no data
+		2. Set breakpoint 1 $00300E to write, SNES, data = level number
+		3. Set breakpoint 2 $00300E to write, SNES, no data
+		4. Set breakpoint 3 $00000E to write, SA-1, no data
+		5. Enable breakpoints 0 and 1, then load the level
+		6. Upon the first break, enable breakpoints 2 and 3, then run
+		7. Most likely, breakpoint 2 or 3 will trigger, revealing where the pointer is lost
+
+

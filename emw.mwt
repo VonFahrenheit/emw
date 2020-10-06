@@ -1,0 +1,75 @@
+00 x2 Happy Slime
+00 x3 Happy Slime (stationary)
+01 x2 Goomba Slave
+01 x3 Goomba Slave (tray)
+02 x2 Smart Rex
+02 x3 Smart Rex (stationary)
+03 x2 Hammer Rex
+03 x3 Hammer Rex (stationary)
+04 x2 Aggro Rex
+04 x3 Aggro Rex (ambush)
+05 x2 Novice Shaman
+05 x3 Novice Shaman (stationary)
+06 x2 Adept Shaman
+06 x3 Master Shaman (unfinished)
+07 x2 Ball o' Hurt
+08 x2 Captain Warrior
+08 x3 Captain Warrior (second fight)
+09 x2 Tar Creeper
+09 x3 Tar Creeper (stationary)
+0A x2 Mini Mech (unfinished)
+0B x2 Mole Wizard
+0C x2 Mini Mole
+0C x3 Mini Mole (burrowed)
+0D x2 Red Plant Head
+0D x3 Yellow Plant Head
+0E x2 NPC
+0F x2 Block (single)
+0F x3 Block (double)
+10 x2 Kingking
+10 x3 Kingking's Scepter
+11 x2 Sign (message 1)
+11 x3 Sign (message 2)
+12 x2 Lakitu Lovers
+12 x3 Dance Pad
+13 x2 Green Dancer Koopa
+13 x3 Red Dancer Koopa
+14 x2 Blue Dancer Koopa
+14 x3 Yellow Dancer Koopa
+15 x2 Spiny (can be placed on walls)
+15 x3 Rolling Spiny
+16 x2 Thif (128x64 sight box)
+16 x3 Thif (128x64 sight box, hidden)
+17 x2 Thif (256x128 sight box)
+17 x3 Thif (256x128 sight box, hidden)
+18 x2 Red Komposite Koopa
+18 x3 Green Komposite Koopa (unfinished)
+19 x2 Birdo
+1A x2 Birdo's Egg
+1B x2 Bumper
+1C x2 Monkey (waiting)
+1C x3 Monkey (carrying Bumper)
+1D x2 Reserved for Monkey options
+1D x3 Reserved for Monkey options
+1E x2 Tall Terrain Platform
+1E x2 Tall Terrain Platform (reversed)
+1F x2 Terrain Platform
+1F x3 Terrain Platform (reversed)
+20 x2 Lava Lord
+21 x2 Coin Golem
+22 x2 Yoshi Coin (sprite version)
+23 x2 Green Elite Koopa
+24 x2 Red Elite Koopa
+25 x2 Blue Elite Koopa
+26 x2 Yellow Elite Koopa
+27 x2 Boo Hoo (following player)
+27 x3 Boo Hoo
+28 x2 Giga Thwomp (unfinished)
+29 x2 Flame Pillar
+2A x2 Big Max
+2B x2 Portal
+2B x3 Portal (rapid fire version)
+2C x2 Flying Rex
+2D x2 Ultra Fuzzy
+2E x2 Shield (front)
+2E x3 Shield (bakc)

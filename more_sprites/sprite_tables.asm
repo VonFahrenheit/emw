@@ -26,12 +26,12 @@ endmacro
 %define_sprite_table(sprite_misc_1510, $1510, $7510, $3290)
 %define_sprite_table(sprite_misc_151c, $151C, $751C, $32A0)
 %define_sprite_table(sprite_misc_1528, $1528, $7528, $32B0)
-%define_sprite_table(sprite_misc_1534, $1534, $7534, $32C0)
+%define_sprite_table(sprite_misc_1534, $1534, $7534, $32C0)		; !ClaimedGFX
 %define_sprite_table(sprite_misc_1540, $1540, $7540, $32D0)
 %define_sprite_table(sprite_misc_154c, $154C, $754C, $32E0)
 %define_sprite_table(sprite_misc_1558, $1558, $7558, $32F0)
 %define_sprite_table(sprite_misc_1564, $1564, $7564, $3300)
-%define_sprite_table(sprite_misc_1570, $1570, $7570, $3310)
+%define_sprite_table(sprite_misc_1570, $1570, $7570, $3310)		; !SpriteAnimTimer
 %define_sprite_table(sprite_misc_157c, $157C, $757C, $3320)
 %define_sprite_table(sprite_blocked_status, $1588, $7588, $3330)
 %define_sprite_table(sprite_misc_1594, $1594, $7594, $3340)
@@ -43,7 +43,7 @@ endmacro
 %define_sprite_table(sprite_obj_interact, $15DC, $75DC, $33A0)
 %define_sprite_table(sprite_oam_index, $15EA, $75EA, $33B0)
 %define_sprite_table(sprite_oam_properties, $15F6, $75F6, $33C0)
-%define_sprite_table(sprite_misc_1602, $1602, $7602, $33D0)
+%define_sprite_table(sprite_misc_1602, $1602, $7602, $33D0)		; !SpriteAnimIndex
 %define_sprite_table(sprite_misc_160e, $160E, $760E, $33E0)
 %define_sprite_table(sprite_index_in_level, $161A, $761A, $33F0)
 %define_sprite_table(sprite_misc_1626, $1626, $7626, $3400)
@@ -70,7 +70,7 @@ endmacro
 %define_sprite_table(physics_plus_acc_x, $0000, $0000, $3550)
 %define_sprite_table(physics_plus_timer_y, $0000, $0000, $3560)
 %define_sprite_table(physics_plus_timer_x, $0000, $0000, $3570)
-%define_sprite_table(physics_plus_empty, $0000, $0000, $3580)
+%define_sprite_table(physics_plus_extra_collision, $0000, $0000, $3580)
 %define_sprite_table(fe26_data1, $0000, $0000, $3590)
 %define_sprite_table(fe26_data2, $0000, $0000, $35A0)
 %define_sprite_table(fe26_data3, $0000, $0000, $35B0)
