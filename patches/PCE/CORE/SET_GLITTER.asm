@@ -17,13 +17,21 @@
 		BMI .NoMap16
 
 .Map16		LDA $9A : STA !Ex_XLo,y
+		LDA $9B : STA !Ex_XHi,y
 		LDA $98 : STA !Ex_YLo,y
+		LDA $99 : STA !Ex_YHi,y
 		RTS
 
 .NoMap16	LDA !P2XPosLo				;\
-		CLC : ADC #$08				; | Spawn at player X + 8 pixels
-		STA !Ex_XLo,y				;/
+		CLC : ADC #$08				; |
+		STA !Ex_XLo,y				; | Spawn at player X + 8 pixels
+		LDA !P2XPosHi				; | (include hi byte for FusionCore 1.2+)
+		ADC #$00				; |
+		STA !Ex_XHi,y				;/
 		LDA !P2YPosLo				;\
-		CLC : ADC #$08				; | Spawn at player Y + 8 pixels
-		STA !Ex_YLo,y				;/
+		CLC : ADC #$08				; |
+		STA !Ex_YLo,y				; | Spawn at player Y + 8 pixels
+		LDA !P2YPosHi				; | (include hi byte for FusionCore 1.2+)
+		ADC #$00				; |
+		STA !Ex_YHi,y				;/
 		RTS

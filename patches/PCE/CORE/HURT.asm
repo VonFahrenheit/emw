@@ -30,6 +30,7 @@ HURT:
 		RTS
 
 .Kill		LDA #$01 : STA !P2Status		; > This player dies
+		LDA #$C0 : STA !P2YSpeed
 		LDA !CurrentPlayer : BNE +		; see which player this is
 		LDA !PlayerBackupData+0 : BNE .End	; Check if p2 is dead
 		RTS

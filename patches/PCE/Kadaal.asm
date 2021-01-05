@@ -3,7 +3,7 @@
 
 namespace Kadaal
 
-; --Build 6.3--
+; --Build 6.4--
 ;
 ;
 ; Upgrade data:
@@ -18,9 +18,32 @@ namespace Kadaal
 
 
 
+	!Kad_Idle	= $00
+	!Kad_Walk	= $04
+	!Kad_Spin	= $08
+	!Kad_Squat	= $0C
+	!Kad_Shell	= $0D
+	!Kad_Fall	= $11
+	!Kad_Turn	= $12
+	!Kad_Senku	= $13
+	!Kad_Punch1	= $14
+	!Kad_Punch2	= $18
+	!Kad_Hurt	= $1C
+	!Kad_Dead	= $1D
+	!Kad_Dash	= $1E
+	!Kad_Climb	= $24
+	!Kad_Duck	= $26
+	!Kad_SenkuSmash	= $28
+	!Kad_ShellDrill	= $2D
+	!Kad_DrillLand	= $32
+
+
+
 
 	MAINCODE:
 		PHB : PHK : PLB
+
+	LDA #$FF : STA !KadaalUpgrades
 
 		LDA #$02 : STA !P2Character
 		LDA #$02 : STA !P2MaxHP
@@ -41,13 +64,7 @@ namespace Kadaal
 		RTS
 
 		.KnockedOut			; State 01
-		REP #$20
-		LDA !P2YPosLo
-		CLC : ADC #$0004
-		STA !P2YPosLo
-		SEC : SBC $1C
-		CMP #$0180
-		SEP #$20
+		JSR CORE_KNOCKED_OUT
 		BMI .Fall
 		BCC .Fall
 		LDA #$02 : STA !P2Status
@@ -55,7 +72,7 @@ namespace Kadaal
 		RTS
 
 		.Fall
-		LDA #$19 : STA !P2Anim
+		LDA #!Kad_Dead : STA !P2Anim
 		STZ !P2AnimTimer
 		JMP ANIMATION_HandleUpdate
 
@@ -114,9 +131,9 @@ namespace Kadaal
 		LDA #$F0 : STA !P2Kick
 		LDA !P2ShellSlide : BNE ++
 		BIT !P2Water : BPL ++
-		LDA #$27
+		LDA #!Kad_Duck+1
 		BRA +++
-	++	LDA #$0D
+	++	LDA #!Kad_Shell
 	+++	STA !P2Anim
 		STZ !P2AnimTimer
 		STZ !P2Buffer
@@ -200,14 +217,20 @@ namespace Kadaal
 		.NoBackDash
 
 
-		LDA !P2ShellDrill : BEQ .NoPound
-		STZ !P2ShellDrill
-		LDA #$09 : STA !SPC4
-		LDA #$07 : STA !P2JumpLag
-		LDA #$0C : STA !P2Anim
-		STZ !P2AnimTimer
-		.NoPound
+		LDA !P2ShellDrill : BEQ .NoPound	;\
+		STZ !P2ShellDrill			; |
+		JSR .StartSpin				; | shell drill landing
+		LDA #$09 : STA !SPC4			; > smash SFX
+		LDA #$17 : STA !P2JumpLag		; |
+		LDA #!Kad_DrillLand : STA !P2Anim	; |
+		RTS					; |
+		.NoPound				;/
 
+
+		LDA !P2Anim				;\
+		CMP #!Kad_DrillLand : BCC .NoDrillLand	; | force crouch physics during drill land
+		BRA .ForceCrouch			; |
+		.NoDrillLand				;/
 
 
 		LDA $6DA3				;\
@@ -232,8 +255,6 @@ namespace Kadaal
 		BRA .NoDuck				; |
 		.NoGround				;/
 
-
-
 		LDA !P2Senku : BEQ +
 		CMP #$20 : BCC .NoDuck
 	+	LDA !P2Blocked
@@ -244,31 +265,34 @@ namespace Kadaal
 		BIT $6DA7
 		BPL $03 : JMP .SenkuJump
 
-
 		LDA !KadaalUpgrades			;\
-		AND #$08 : BEQ +			; |
+		AND #$08 : BEQ .ForceCrouch		; |
 		LDA !P2XSpeed				; |
-		BPL $03 : EOR #$FF : INC A		; | Allow shell slide with upgrade
-		CMP #$20 : BCC +			; |
+		BPL $03 : EOR #$FF : INC A		; | allow shell slide with upgrade
+		CMP #$20 : BCC .ForceCrouch		; |
 		JSR StartSlide				; |
 		BRA -					;/
 
 
-	+	LDA #$00 : JSR CORE_SET_XSPEED
+	.ForceCrouch
+		LDA #$00 : JSR CORE_SET_XSPEED
 		LDA #$80 : TSB !P2Water
 		STZ !P2Punch1
 		STZ !P2Punch2
 		STZ !P2Dashing
 		STZ !P2Senku
-	.GSpin	LDA !P2Kick : BNE ..R			;\
+	.GSpin	LDA !P2Kick : BNE .SpinR		;\
 		LDA !KadaalUpgrades			; |
-		AND #$40 : BEQ ..R			; |
-		BIT $6DA7 : BVC ..R			; | Allow ground spin with upgrade
+		AND #$40 : BEQ .SpinR			; |
+		BIT $6DA7 : BVC .SpinR			; | Allow ground spin with upgrade
+		.StartSpin				; > JSR here to start spin
 		LDA #$10 : STA !P2Kick			; |
-		LDA #$08 : STA !P2Anim			; |
+		LDA #!Kad_Spin : STA !P2Anim		; |
 		LDA #$3E : STA !SPC4			; | > spin SFX
+		STZ !P2IndexMem1			; |
+		STZ !P2IndexMem2			; |
 		STZ !P2AnimTimer			;/
-	..R	RTS
+	.SpinR	RTS
 		.NoDuck
 
 
@@ -354,6 +378,7 @@ namespace Kadaal
 		LDA !P2Kick : BMI $02 : BNE .NoSenku
 		LDA #$30 : STA !P2Senku
 		LDA #$01 : STA !P2SenkuUsed
+		STZ !P2ShellDrill
 		RTS
 		.NoSenku
 
@@ -391,7 +416,7 @@ namespace Kadaal
 		LDA !P2Anim			;\
 		CMP #$11			; |
 		BNE +				; | Fall -> swim animation
-		LDA #$0D : STA !P2Anim		; |
+		LDA #!Kad_Shell : STA !P2Anim	; |
 		STZ !P2AnimTimer		; |
 		+				;/
 		LDA $6DA3			;\
@@ -475,11 +500,15 @@ namespace Kadaal
 		BIT $6DA7
 		BVS $03
 	..Skip	JMP .NoPunch
-	+	STZ !P2BackDash				; > Clear back dash when an attack is started
-		LDA !P2Kick : BEQ +			;\
-		LDA #$40 : STA !P2Buffer		; | Don't change buffer here if spin is active
+	+	STZ !P2BackDash				; > clear back dash when an attack is started
+		LDA !P2Kick : BEQ +			; see if a spin is happening already
+		LDA !KadaalUpgrades			;\
+		AND #$10 : BEQ ..NoC			; | kadaal can cancel spin into drill
+		LDA $6DA3				; |
+		AND #$04 : BNE .StartKick_Drill		;/
+	..NoC	LDA #$40 : STA !P2Buffer		;\ don't change buffer here if spin is active
 		JMP .NoPunch				;/
-	+	LDA !P2Anim				;\ Can't start spin or shell drill during smash
+	+	LDA !P2Anim				;\ can't start spin or shell drill during smash
 		CMP #$28 : BCC $03 : JMP .NoPunch	;/
 		LDA !P2Blocked
 		AND #$04
@@ -492,16 +521,17 @@ namespace Kadaal
 		AND #$10 : BEQ ..Spin
 		LDA $6DA3
 		AND #$04 : BEQ ..Spin
-	..Drill	LDA #$01 : STA !P2ShellDrill
-		LDA #$2D : STA !P2Anim
+	..Drill	LDA #$01 : STA !P2ShellDrill		; start shell drill
+		STZ !P2Kick				; cancel shell spin
+		LDA #!Kad_ShellDrill : STA !P2Anim
 		STZ !P2AnimTimer
 		STZ !P2ShellSlide
 		STZ !P2ShellSpeed
 		BRA .NoPunch
 
 	..Spin	LDA #$10 : STA !P2Kick
-		LDA #$08 : STA !P2Anim
-		LDA #$3E : STA !SPC4		; spin SFX
+		LDA #!Kad_Spin : STA !P2Anim
+		LDA #$3E : STA !SPC4			; spin SFX
 		STZ !P2AnimTimer
 		STZ !P2Punch1
 		STZ !P2Punch2
@@ -510,8 +540,8 @@ namespace Kadaal
 		BRA .NoPunch
 
 		.PunchBuffer
-		LDA #$40 : TSB !P2Buffer	;\ Set punch buffer and clear jump buffer
-		LDA #$80 : TRB !P2Buffer	;/
+		LDA #$40 : TSB !P2Buffer		;\ Set punch buffer and clear jump buffer
+		LDA #$80 : TRB !P2Buffer		;/
 		BRA .NoPunch
 
 		.NoKick
@@ -547,14 +577,15 @@ namespace Kadaal
 		LDA $6DA7				; |
 		AND #$08 : BEQ +			; |
 		STZ !P2ShellDrill			; | Can cancel drill with up
-		LDA #$0C : STA !P2Anim			; |
+		LDA #!Kad_Squat : STA !P2Anim		; |
 		STZ !P2AnimTimer			; |
 		BRA .NoDrill				;/
 
 	+	STZ !P2XSpeed				;\
+		LDA #$08 : STA !P2Invinc		; > invulnerable during shell drill
 		LDA #$14				; |
 		LDY !P2Anim				; |
-		CPY #$2D : BEQ +			; | Shell drill code
+		CPY #!Kad_ShellDrill : BEQ +		; | Shell drill code
 		LDA #$40				; |
 	+	STA !P2YSpeed				; |
 		RTS					; |
@@ -597,7 +628,7 @@ namespace Kadaal
 		BPL .NoJump
 		STZ !P2CoyoteTime		; clear coyote time
 		STZ !P2ShellSlide		; Clear shell slide
-		LDA #$0C : STA !P2Anim
+		LDA #!Kad_Squat : STA !P2Anim
 		STZ !P2AnimTimer
 	;	LDA !P2Punch1			;\
 	;	ORA !P2Punch2			; |
@@ -625,7 +656,7 @@ namespace Kadaal
 	LDA #$04 : TRB !P2Blocked		; Instantly leave ground
 
 		LDA #$2B : STA !SPC1		; > jump SFX
-		LDA #$0C : STA !P2Anim		; > Start next animation right away for clipping purposes
+		LDA #!Kad_Squat : STA !P2Anim	; > Start next animation right away for clipping purposes
 		.NoJump
 
 
@@ -819,6 +850,7 @@ namespace Kadaal
 		db $00,$08
 
 	PHYSICS:
+
 		PLA
 		BMI $03 : STA !P2Direction
 
@@ -829,7 +861,7 @@ namespace Kadaal
 		LDA !P2Senku : BEQ ..Return
 		LDA !P2SenkuSmash : BEQ ..Return
 		BIT $6DA7 : BVC ..Return
-		LDA #$28 : STA !P2Anim
+		LDA #!Kad_SenkuSmash : STA !P2Anim
 		STZ !P2AnimTimer
 		LDA #$A0 : STA !P2YSpeed
 		LDA #$1C : STA !P2Invinc
@@ -1004,15 +1036,22 @@ namespace Kadaal
 		STZ !P2ExternalAnim
 
 
-		LDA !P2HurtTimer
-		BEQ .NoHurt
-		LDA #$18 : STA !P2Anim
-		JMP .HandleUpdate
+		LDA !P2HurtTimer : BEQ .NoHurt
+		LDA #!Kad_Hurt : STA !P2Anim
+	-	JMP .HandleUpdate
 		.NoHurt
+
+	; drill land check
+		LDA !P2Anim
+		CMP #!Kad_DrillLand : BCC .NoDrillLand
+		LDA !P2JumpLag : BNE -
+		STZ !P2Anim
+		STZ !P2AnimTimer
+		.NoDrillLand
 
 	; spin check before duck and slide checks
 		LDA !P2Anim
-		CMP #$11 : BNE +
+		CMP #!Kad_Fall : BNE +
 		STZ !P2Kick
 	+	LDA !P2Kick
 		BEQ $03 : JMP .HandleUpdate
@@ -1021,9 +1060,9 @@ namespace Kadaal
 		LDA !P2ShellSlide
 		BEQ .NoSlide
 		LDA !P2Anim
-		CMP #$0D : BCC +
-		CMP #$11 : BCC ++
-	+	LDA #$0D : STA !P2Anim
+		CMP #!Kad_Shell : BCC +
+		CMP #!Kad_Shell+4 : BCC ++
+	+	LDA #!Kad_Shell : STA !P2Anim
 		STZ !P2AnimTimer
 	++	JMP .HandleUpdate
 		.NoSlide
@@ -1032,9 +1071,9 @@ namespace Kadaal
 		LDA !P2Water
 		LSR A : BCC .NoClimb
 		LDA !P2Anim
-		CMP #$24 : BEQ +
-		CMP #$25 : BEQ +
-		LDA #$24 : STA !P2Anim
+		CMP #!Kad_Climb : BEQ +
+		CMP #!Kad_Climb+1 : BEQ +
+		LDA #!Kad_Climb : STA !P2Anim
 		STZ !P2AnimTimer
 	+	LDA $6DA3
 		AND #$0F
@@ -1044,56 +1083,49 @@ namespace Kadaal
 		.NoClimb
 
 	; duck check
-		BIT !P2Water
-		BPL .NoDuck
+		BIT !P2Water : BPL .NoDuck
 		LDA !P2Anim
-		CMP #$26 : BEQ +
-		CMP #$27 : BEQ +
-		LDA #$26 : STA !P2Anim
+		CMP #!Kad_Duck : BEQ +
+		CMP #!Kad_Duck+1 : BEQ +
+		LDA #!Kad_Duck : STA !P2Anim
 		STZ !P2AnimTimer
 	+	JMP .HandleUpdate
 		.NoDuck
 
-		LDA !P2Punch1
-		BEQ .NoPunch1
-		CMP #$14
-		BNE .ReturnPunch
-		LDA #$14 : STA !P2Anim
+		LDA !P2Punch1 : BEQ .NoPunch1
+		CMP #!Kad_Punch1 : BNE .ReturnPunch
+		LDA #!Kad_Punch1 : STA !P2Anim
 		STZ !P2AnimTimer
 
 		.ReturnPunch
 		JMP .HandleUpdate
 		.NoPunch1
 
-		LDA !P2Punch2
-		BEQ .NoPunch2
-		CMP #$14
-		BNE .ReturnPunch
-		LDA #$16 : STA !P2Anim
+		LDA !P2Punch2 : BEQ .NoPunch2
+		CMP #!Kad_Punch1 : BNE .ReturnPunch
+		LDA #!Kad_Punch2 : STA !P2Anim
 		STZ !P2AnimTimer
 		JMP .HandleUpdate
 		.NoPunch2
 
-		LDA !P2Senku
-		BEQ +
-		CMP #$20
-		BCC .Senku
-		LDA #$05
+		LDA !P2Senku : BEQ +
+		CMP #$20 : BCC .Senku
+		LDA #!Kad_Walk+1
 		STZ !P2AnimTimer
 		BRA .SenkuEnd
 
 		.Senku
-		LDA #$13
+		LDA #!Kad_Senku
 
 		.SenkuEnd
 		STA !P2Anim
 		JMP .HandleUpdate
 
 	+	LDA !P2Anim
-		CMP #$28 : BCC $03 : JMP .HandleUpdate
+		CMP #!Kad_SenkuSmash : BCC $03 : JMP .HandleUpdate
 
 		LDA !P2JumpLag : BEQ +
-	-	LDA #$0C : STA !P2Anim
+	-	LDA #!Kad_Squat : STA !P2Anim
 		STZ !P2AnimTimer
 		JMP .HandleUpdate
 	+	LDA !P2Blocked
@@ -1105,21 +1137,19 @@ namespace Kadaal
 		LDA !P2YSpeed : BMI +
 		CMP #$08 : BCC -		; > Half-shell frame at 0x00 < speed < 0x08
 		LDA !P2Anim
+		CMP #!Kad_Squat : BNE $03 : JMP .HandleUpdate
+		CMP #!Kad_Shell : BCC .Fall
+		CMP #!Kad_Shell+4 : BCC -
 
-		CMP #$0C : BNE $03 : JMP .HandleUpdate
-		CMP #$0D : BCC .Fall
-		CMP #$11 : BCC -
-
-	.Fall	LDA #$11 : STA !P2Anim
+	.Fall	LDA #!Kad_Fall : STA !P2Anim
 		STZ !P2AnimTimer
 		JMP .HandleUpdate
 	+	LDA !P2Anim
-		CMP #$11
+		CMP #!Kad_Fall
 		BNE $03 : JMP .HandleUpdate
 		BCS +
-		CMP #$0D : BCS .HandleUpdate
-	+	LDA #$0D
-		STA !P2Anim
+		CMP #!Kad_Shell : BCS .HandleUpdate
+	+	LDA #!Kad_Shell : STA !P2Anim
 		STZ !P2AnimTimer
 		BRA .HandleUpdate
 
@@ -1131,8 +1161,7 @@ namespace Kadaal
 
 		.Idle
 		LDA !P2Anim
-		CMP #$04
-		BCC .HandleUpdate
+		CMP #!Kad_Idle+4 : BCC .HandleUpdate
 		STZ !P2Anim
 		STZ !P2AnimTimer
 		BRA .HandleUpdate
@@ -1151,24 +1180,24 @@ namespace Kadaal
 		BPL $03 : EOR #$FF : INC A
 		CMP #$10
 		BCC .NoTurn
-	.Turn	LDA #$12 : STA !P2Anim
+	.Turn	LDA #!Kad_Turn : STA !P2Anim
 		LDA #$2D : STA !SPC1
 		BRA .HandleUpdate
 		.NoTurn
 
 		.Dash
 		LDA !P2Anim
-		CMP #$19 : BCC +
-		CMP #$20 : BCC .HandleUpdate
-	+	LDA #$1A : STA !P2Anim
+		CMP #!Kad_Dash-1 : BCC +
+		CMP #!Kad_Dash+6 : BCC .HandleUpdate
+	+	LDA #!Kad_Dash : STA !P2Anim
 		STZ !P2AnimTimer
 		BRA .HandleUpdate
 
 		.Walk
 		LDA !P2Anim
-		CMP #$03 : BCC +
-		CMP #$08 : BCC .HandleUpdate
-	+	LDA #$04
+		CMP #!Kad_Walk-1 : BCC +
+		CMP #!Kad_Walk+4 : BCC .HandleUpdate
+	+	LDA #!Kad_Walk
 		STA !P2Anim
 		STZ !P2AnimTimer
 
@@ -1222,17 +1251,66 @@ namespace Kadaal
 
 		.ThisOne
 		REP #$30
-		LDA ANIM+$04,y
-		JSR CORE_GENERATE_RAMCODE
-		LDA !P2Anim
-		STA !P2Anim2
+		LDA ANIM+$04,y : STA $00
+
+
+; -- dynamo format --
+;
+; 1 byte header (size)
+; for each upload:
+; 	cccssss-
+; 	-ccccccc
+; 	ttttt---
+;
+; ssss:		DMA size (shift left 4)
+; cccccccccc:	character (formatted for source address)
+; ttttt:	tile number (shift left 1 then add VRAM offset)
+
+		LDY.w #!File_Kadaal
+		JSL !GetFileAddress
+
+
+		LDA ($00)					;\
+		AND #$00FF					; |
+		STA $02						; |
+		LDX #$0000					; |
+		LDY #$0000					; |
+		INC $00						; |
+	-	LDA ($00),y					; |
+		AND #$001E					; |
+		ASL #4						; |
+		STA !BigRAM+$00+2,x				; |
+		LDA ($00),y					; |
+		AND #$7FE0					; |
+		CLC : ADC !FileAddress				; |
+		STA !BigRAM+$02+2,x				; | unpack dynamo data
+		LDA !FileAddress+2 : STA !BigRAM+$04+2,x	; |
+		INY #2						; |
+		LDA ($00),y					; |
+		ASL A						; |
+		AND #$01F0					; |
+		ORA #$6200					; |
+		STA !BigRAM+$05+2,x				; |
+		INY						; |
+		TXA						; |
+		CLC : ADC #$0007				; |
+		TAX						; |
+		CPY $02 : BCC -					;/
+		STX !BigRAM+0					; > set size
+
+		LDA.w #!BigRAM : JSR CORE_GENERATE_RAMCODE
+		SEP #$30
+		LDA !P2Anim : STA !P2Anim2
 
 
 	GRAPHICS:
 		LDA !P2HurtTimer : BNE .DrawTiles
 
 		LDA !P2Anim
-		CMP #$28 : BCS .DrawTiles
+		CMP #!Kad_SenkuSmash : BCS .DrawTiles
+		CMP #!Kad_Spin : BCC +
+		CMP #!Kad_Spin+4 : BCC .DrawTiles
+		+
 
 
 		LDA !P2Invinc : BEQ .DrawTiles
@@ -1295,8 +1373,7 @@ namespace Kadaal
 		.CheckPunch
 		LDA !P2Punch1
 		ORA !P2Punch2
-		CMP #$05
-		BCS .DoPunch
+		CMP #$05 : BCS .DoPunch
 		STZ !P2IndexMem1
 		STZ !P2IndexMem2
 		RTS
@@ -1337,16 +1414,12 @@ namespace Kadaal
 		LDX #$0F
 
 		.Loop
-		CPX #$08				;\
-		BCS +					; |
-		LDA !P2IndexMem1			; |
-		BRA ++					; | Check index memory
+		CPX #$08 : BCS +			;\
+		LDA !P2IndexMem1 : BRA ++		; | check index memory
 	+	LDA !P2IndexMem2			; |
-	++	AND CORE_BITS,x				; |
-		BNE .LoopEnd				;/
+	++	AND CORE_BITS,x : BNE .LoopEnd		;/
 
-	;	LDA $35F0,x
-	;	BNE .LoopEnd
+
 
 		LDA !AnimToggle				;\ If animation is off, there's an advanced enemy nearby
 		BEQ .Normal				;/
@@ -1416,6 +1489,7 @@ namespace Kadaal
 		STA $07				; > Height
 		JSL $03B72B			;\ Check for contact
 		BCC .HammerEnd			;/
+		JSR CORE_DISPLAYCONTACT		; contact gfx
 		LDA #$02 : STA !SPC1
 		STZ !Ex_YSpeed,x		; > Yspeed = 0
 		LDY !P2Direction		;\
@@ -1450,7 +1524,6 @@ namespace Kadaal
 
 	SPIN:
 	dw $FFF8,$0000 : db $20,$10		; Same for both directions
-
 
 	SMASH:
 	dw $FFF8,$FFF8 : db $20,$20		; Same for both directions
@@ -1568,12 +1641,9 @@ namespace Kadaal
 
 
 		LDA CORE_BITS,y
-		CPY #$08
-		BCS +
-		TSB !P2IndexMem1
-		BRA ++
-		+
-		TSB !P2IndexMem2
+		CPY #$08 : BCS +
+		TSB !P2IndexMem1 : BRA ++
+	+	TSB !P2IndexMem2
 		++
 
 		LDA #$10 : STA $3300,y		; > Temporarily disable player interaction
@@ -1772,11 +1842,10 @@ namespace Kadaal
 		; Knock back and damage
 		LDY $BE,x
 		LDA $3280,x
-		AND #$04
-		BNE .Aggro
-		CPY #$01
-		BNE +
+		AND #$04 : BNE .Aggro
+		CPY #$01 : BNE +
 		LDA #$20 : STA $32F0,x
+		LDA #$02 : STA $BE,x
 		JMP KNOCKOUT
 	+	LDA #$04 : STA $34D0,x		; Half smush timer
 		BRA .Shared
@@ -1881,6 +1950,8 @@ namespace Kadaal
 		db $F0,$10
 
 	HIT_1C:
+		LDA $3590,x
+		AND #$04 : BNE HIT_19		; can't hit mask
 		LDA $3280,x
 		AND #$03
 		CMP #$01 : BNE HIT_19
@@ -1912,26 +1983,49 @@ namespace Kadaal
 		LDA #$D8 : STA $9E,x
 		LDA #$02 : STA !SPC1
 		LDY !P2Direction
+		LDA !P2Character			;\
+		CMP #$01				; | luigi borrows this routine
+		BNE $02 : INY #2			;/
 		LDA .XSpeed,y
 		STA $AE,x
+
+		TXY
+		LDA CORE_BITS,y
+		CPY #$08 : BCS +
+		TSB !P2IndexMem1 : BRA ++
+	+	TSB !P2IndexMem2
+		++
+
+		JSR CORE_DISPLAYCONTACT
 		RTS
 
 	.XSpeed
 	db $F0,$10
+	db $E0,$20
 
 
 	KNOCKBACK:
 		LDA #$E8 : STA $9E,x
 		LDY !P2Direction
+		LDA !P2Character			;\
+		CMP #$01				; | luigi borrows this routine
+		BNE $02 : INY #2			;/
 		LDA KNOCKOUT_XSpeed,y
 		STA $AE,x
 		LDA !P2Kick : BEQ .GFX			;\
 		TXY					; | spin has increased i-frames
 		LDA #$20 : STA ($0E),y			;/
+		LDA CORE_BITS,y
+		CPY #$08 : BCS +
+		TSB !P2IndexMem1 : BRA ++
+	+	TSB !P2IndexMem2
+		++
 
 		.GFX
 		LDA #$02 : STA !SPC1
+		JSR CORE_DISPLAYCONTACT
 		RTS
+
 
 
 	; Changes:
@@ -1978,224 +2072,241 @@ namespace Kadaal
 	; CCCC is clipping pointer.
 
 
+
+
 	ANIM:
 	.Idle0				; 00
-	dw .IdleTM : db $06,$01
+	dw .IdleTM : db $06,!Kad_Idle+1
 	dw .IdleDynamo0
 	dw .ClippingStandard
 	.Idle1				; 01
-	dw .IdleTM : db $06,$02
+	dw .IdleTM : db $06,!Kad_Idle+2
 	dw .IdleDynamo1
 	dw .ClippingStandard
 	.Idle2				; 02
-	dw .IdleTM : db $06,$03
+	dw .IdleTM : db $06,!Kad_Idle+3
 	dw .IdleDynamo0
 	dw .ClippingStandard
 	.Idle3				; 03
-	dw .IdleTM : db $06,$00
+	dw .IdleTM : db $06,!Kad_Idle
 	dw .IdleDynamo3
 	dw .ClippingStandard
 
 	.Walk0				; 04
-	dw .IdleTM : db $06,$05
+	dw .IdleTM : db $06,!Kad_Walk+1
 	dw .WalkDynamo0
 	dw .ClippingStandard
 	.Walk1				; 05
-	dw .WalkTM : db $06,$06
+	dw .WalkTM : db $06,!Kad_Walk+2
 	dw .WalkDynamo1
 	dw .ClippingStandard
 	.Walk2				; 06
-	dw .IdleTM : db $06,$07
+	dw .IdleTM : db $06,!Kad_Walk+3
 	dw .WalkDynamo2
 	dw .ClippingStandard
 	.Walk3				; 07
-	dw .WalkTM : db $06,$04
+	dw .WalkTM : db $06,!Kad_Walk
 	dw .WalkDynamo3
 	dw .ClippingStandard
 
 	.Spin0				; 08
-	dw .SpinTM0 : db $02,$09
+	dw .SpinTM0 : db $02,!Kad_Spin+1
 	dw .SpinDynamo0
 	dw .ClippingShell
 	.Spin1				; 09
-	dw .SpinTM1 : db $02,$0A
+	dw .SpinTM1 : db $02,!Kad_Spin+2
 	dw .SpinDynamo1
 	dw .ClippingShell
 	.Spin2				; 0A
-	dw .SpinTM2 : db $02,$0B
+	dw .SpinTM2 : db $02,!Kad_Spin+3
 	dw .SpinDynamo0
 	dw .ClippingShell
 	.Spin3				; 0B
-	dw .SpinTM3 : db $02,$08
+	dw .SpinTM3 : db $02,!Kad_Spin
 	dw .SpinDynamo1
 	dw .ClippingShell
 
 	.Squat				; 0C
-	dw .SquatTM : db $04,$11
+	dw .SquatTM : db $04,!Kad_Fall
 	dw .SquatDynamo
 	dw .ClippingShell
 
 	.Shell0				; 0D
-	dw .ShellTM : db $06,$0E
+	dw .ShellTM : db $06,!Kad_Shell+1
 	dw .ShellDynamo0
 	dw .ClippingShell
 	.Shell1				; 0E
-	dw .ShellTM : db $06,$0F
+	dw .ShellTM : db $06,!Kad_Shell+2
 	dw .ShellDynamo1
 	dw .ClippingShell
 	.Shell2				; 0F
-	dw .ShellTM : db $06,$10
+	dw .ShellTM : db $06,!Kad_Shell+3
 	dw .ShellDynamo2
 	dw .ClippingShell
 	.Shell3				; 10
-	dw .ShellTMX : db $08,$0D
+	dw .ShellTMX : db $08,!Kad_Shell
 	dw .ShellDynamo1
 	dw .ClippingShell
 
 	.Fall				; 11
-	dw .IdleTM : db $FF,$11
+	dw .IdleTM : db $FF,!Kad_Fall
 	dw .FallDynamo
 	dw .ClippingShell
 
 	.Turn				; 12
-	dw .DashTM0 : db $FF,$12
+	dw .DashTM0 : db $FF,!Kad_Turn
 	dw .TurnDynamo
 	dw .ClippingStandard
 
 	.Senku				; 13
-	dw .IdleTM : db $FF,$13
+	dw .IdleTM : db $FF,!Kad_Senku
 	dw .SenkuDynamo
 	dw .ClippingStandard
 
 	.1Punch0			; 14
-	dw .IdleTM : db $02,$15
+	dw .IdleTM : db $02,!Kad_Punch1+1
 	dw .PunchDynamo0
 	dw .ClippingStandard
-	.1Punch1			; 15, next one is a bit later
-	dw .IdleTM : db $04,$20
+	.1Punch1			; 15
+	dw .IdleTM : db $04,!Kad_Punch1+2
 	dw .1PunchDynamo1
 	dw .ClippingStandard
-
-	.2Punch0			; 16
-	dw .IdleTM : db $02,$17
-	dw .PunchDynamo0
-	dw .ClippingStandard
-	.2Punch1			; 17, next one is a bit later
-	dw .IdleTM : db $04,$22
-	dw .2PunchDynamo1
-	dw .ClippingStandard
-
-	.Hurt				; 18
-	dw .IdleTM : db $FF,$18
-	dw .HurtDynamo
-	dw .ClippingStandard
-
-	.Dead				; 19
-	dw .IdleTM : db $FF,$19
-	dw .DeadDynamo
-	dw .ClippingStandard
-
-	.Dash0				; 1A
-	dw .DashTM0 : db $06,$1B
-	dw .DashDynamo0
-	dw .ClippingStandard
-	.Dash1				; 1B
-	dw .DashTM1 : db $06,$1C
-	dw .DashDynamo1
-	dw .ClippingStandard
-	.Dash2				; 1C
-	dw .DashTM1 : db $06,$1D
-	dw .DashDynamo2
-	dw .ClippingStandard
-	.Dash3				; 1D
-	dw .DashTM0 : db $06,$1E
-	dw .DashDynamo0
-	dw .ClippingStandard
-	.Dash4				; 1E
-	dw .DashTM1 : db $06,$1F
-	dw .DashDynamo3
-	dw .ClippingStandard
-	.Dash5				; 1F
-	dw .DashTM1 : db $06,$1A
-	dw .DashDynamo4
-	dw .ClippingStandard
-
-	.1Punch2			; 20
-	dw .EndPunchTM : db $04,$21
+	.1Punch2			; 16
+	dw .EndPunchTM : db $04,!Kad_Punch1+3
 	dw .1PunchDynamo2
 	dw .ClippingStandard
-	.1Punch3			; 21
-	dw .EndPunchTM : db $04,$01
+	.1Punch3			; 17
+	dw .EndPunchTM : db $04,!Kad_Idle+1
 	dw .1PunchDynamo3
 	dw .ClippingStandard
 
-	.2Punch2			; 22
-	dw .EndPunchTM : db $04,$23
+	.2Punch0			; 18
+	dw .IdleTM : db $02,!Kad_Punch2+1
+	dw .PunchDynamo0
+	dw .ClippingStandard
+	.2Punch1			; 19
+	dw .IdleTM : db $04,!Kad_Punch2+2
+	dw .2PunchDynamo1
+	dw .ClippingStandard
+	.2Punch2			; 1A
+	dw .EndPunchTM : db $04,!Kad_Punch2+3
 	dw .2PunchDynamo2
 	dw .ClippingStandard
-	.2Punch3			; 23
-	dw .EndPunchTM : db $04,$01
+	.2Punch3			; 1B
+	dw .EndPunchTM : db $04,!Kad_Idle+1
 	dw .2PunchDynamo3
 	dw .ClippingStandard
 
+	.Hurt				; 1C
+	dw .IdleTM : db $FF,!Kad_Hurt
+	dw .HurtDynamo
+	dw .ClippingStandard
+
+	.Dead				; 1D
+	dw .IdleTM : db $FF,!Kad_Dead
+	dw .DeadDynamo
+	dw .ClippingStandard
+
+	.Dash0				; 1E
+	dw .DashTM0 : db $06,!Kad_Dash+1
+	dw .DashDynamo0
+	dw .ClippingStandard
+	.Dash1				; 1F
+	dw .DashTM1 : db $06,!Kad_Dash+2
+	dw .DashDynamo1
+	dw .ClippingStandard
+	.Dash2				; 20
+	dw .DashTM1 : db $06,!Kad_Dash+3
+	dw .DashDynamo2
+	dw .ClippingStandard
+	.Dash3				; 21
+	dw .DashTM0 : db $06,!Kad_Dash+4
+	dw .DashDynamo0
+	dw .ClippingStandard
+	.Dash4				; 22
+	dw .DashTM1 : db $06,!Kad_Dash+5
+	dw .DashDynamo3
+	dw .ClippingStandard
+	.Dash5				; 23
+	dw .DashTM1 : db $06,!Kad_Dash
+	dw .DashDynamo4
+	dw .ClippingStandard
+
 	.Climb0				; 24
-	dw .IdleTM : db $10,$25
+	dw .IdleTM : db $10,!Kad_Climb+1
 	dw .ClimbDynamo
 	dw .ClippingStandard
 	.Climb1				; 25
-	dw .ClimbTM : db $10,$24
+	dw .ClimbTM : db $10,!Kad_Climb
 	dw .ClimbDynamo
 	dw .ClippingStandard
 
 	.Duck0				; 26
-	dw .SquatTM : db $06,$27
+	dw .SquatTM : db $06,!Kad_Duck+1
 	dw .SquatDynamo
 	dw .ClippingShell
 	.Duck1				; 27
-	dw .ShellTM : db $FF,$27
+	dw .ShellTM : db $FF,!Kad_Duck+1
 	dw .ShellDynamo1
 	dw .ClippingShell
 
 	.SenkuSmash0			; 28
-	dw .SmashTM0 : db $04,$29
+	dw .SmashTM0 : db $04,!Kad_SenkuSmash+1
 	dw .SenkuSmashDynamo0
 	dw .ClippingStandard
 	.SenkuSmash1			; 29
-	dw .SmashTM0 : db $04,$2A
+	dw .SmashTM0 : db $04,!Kad_SenkuSmash+2
 	dw .SenkuSmashDynamo1
 	dw .ClippingStandard
 	.SenkuSmash2			; 2A
-	dw .SmashTM0 : db $04,$2B
+	dw .SmashTM0 : db $04,!Kad_SenkuSmash+3
 	dw .SenkuSmashDynamo2
 	dw .ClippingStandard
 	.SenkuSmash3			; 2B
-	dw .SmashTM0 : db $08,$2C
+	dw .SmashTM0 : db $08,!Kad_SenkuSmash+4
 	dw .SenkuSmashDynamo3
 	dw .ClippingStandard
 	.SenkuSmash4			; 2C
-	dw .SmashTM1 : db $08,$11
+	dw .SmashTM1 : db $08,!Kad_Fall
 	dw .SenkuSmashDynamo4
 	dw .ClippingStandard
 
 	.ShellDrill0			; 2D
-	dw .SmashTM0 : db $04,$2E
-	dw .SenkuSmashDynamo3
+	dw .SmashTM0 : db $04,!Kad_ShellDrill+1
+	dw .ShellDrillDynamoInit
 	dw .ClippingStandard
 	.ShellDrill1			; 2E
-	dw .ShellDrillTM : db $02,$2F
+	dw .ShellDrillTM00 : db $02,!Kad_ShellDrill+2
 	dw .ShellDynamo0
 	dw .ClippingShell
 	.ShellDrill2			; 2F
-	dw .ShellDrillTM : db $02,$30
+	dw .ShellDrillTM01 : db $02,!Kad_ShellDrill+3
 	dw .ShellDynamo1
 	dw .ClippingShell
 	.ShellDrill3			; 30
-	dw .ShellDrillTM : db $02,$31
+	dw .ShellDrillTM02 : db $02,!Kad_ShellDrill+4
 	dw .ShellDynamo2
 	dw .ClippingShell
 	.ShellDrill4			; 31
-	dw .ShellDrillTMX : db $02,$2E
+	dw .ShellDrillTMX : db $02,!Kad_ShellDrill+1
 	dw .ShellDynamo1
+	dw .ClippingShell
+
+	.DrillLand0			; 32
+	dw .FlipSpinTM0 : db $02,!Kad_DrillLand+1
+	dw .SpinDynamo0
+	dw .ClippingShell
+	.DrillLand1			; 33
+	dw .FlipSpinTM1 : db $02,!Kad_DrillLand+2
+	dw .SpinDynamo1
+	dw .ClippingShell
+	.DrillLand2			; 34
+	dw .FlipSpinTM2 : db $02,!Kad_DrillLand+3
+	dw .SpinDynamo0
+	dw .ClippingShell
+	.DrillLand3			; 35
+	dw .FlipSpinTM3 : db $02,!Kad_DrillLand
+	dw .SpinDynamo1
 	dw .ClippingShell
 
 
@@ -2268,8 +2379,40 @@ namespace Kadaal
 	db $6E,$04,$FC,!P2Tile1+1
 	db $2E,$08,$FF,!P2Tile4
 
-	.ShellDrillTM
+	.FlipSpinTM0
+	dw $0008
+	db $AE,$FC,$FC,!P2Tile1
+	db $AE,$04,$FC,!P2Tile1+1
+	.FlipSpinTM1
+	dw $0010
+	db $AE,$08,$05,!P2Tile4
+	db $AE,$FC,$FC,!P2Tile1
+	db $AE,$04,$FC,!P2Tile1+1
+	db $EE,$08,$FF,!P2Tile4
+	.FlipSpinTM2
+	dw $0008
+	db $EE,$FC,$FC,!P2Tile1
+	db $EE,$04,$FC,!P2Tile1+1
+	.FlipSpinTM3
+	dw $0010
+	db $EE,$08,$05,!P2Tile4
+	db $EE,$FC,$FC,!P2Tile1
+	db $EE,$04,$FC,!P2Tile1+1
+	db $AE,$08,$FF,!P2Tile4
+
+
+	.ShellDrillTM00
+	dw $000C
+	db $EE,$08,$01,!P2Tile7
+	db $AE,$08,$FD,!P2Tile7
+	db $AE,$00,$00,!P2Tile1
+	.ShellDrillTM01
 	dw $0004
+	db $AE,$00,$00,!P2Tile1
+	.ShellDrillTM02
+	dw $000C
+	db $AE,$08,$01,!P2Tile7
+	db $EE,$08,$FD,!P2Tile7
 	db $AE,$00,$00,!P2Tile1
 	.ShellDrillTMX
 	dw $0004
@@ -2293,23 +2436,23 @@ namespace Kadaal
 	db $6E,$00,$00,!P2Tile2
 
 
+;macro KadDyn(TileCount, TileNumber, Dest)
+;	dw <TileCount>*$20
+;	dl <TileNumber>*$20+$328008
+;	dw <Dest>*$10+$6000
+;endmacro
+
 macro KadDyn(TileCount, TileNumber, Dest)
-	dw <TileCount>*$20
-	dl <TileNumber>*$20+$328008
-	dw <Dest>*$10+$6000
+	db (<TileCount>*2)|((<TileNumber>&$07)<<5)
+	db <TileNumber>>>3
+	db <Dest>*8
 endmacro
 
-
-; Remember to add unto each entry:
-;	dw ..End-..Start
-;	..Start
-;	[...]
-;	..End
 
 
 
 	.IdleDynamo0				; Used by 0, 2
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(2, $000, !P2Tile1)
 	%KadDyn(2, $010, !P2Tile1+$10)
@@ -2317,7 +2460,7 @@ endmacro
 	%KadDyn(2, $030, !P2Tile2+$10)
 	..End
 	.IdleDynamo1				; Used by 1
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(2, $002, !P2Tile1)
 	%KadDyn(2, $012, !P2Tile1+$10)
@@ -2325,7 +2468,7 @@ endmacro
 	%KadDyn(2, $032, !P2Tile2+$10)
 	..End
 	.IdleDynamo3				; Used by 3
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(2, $004, !P2Tile1)
 	%KadDyn(2, $014, !P2Tile1+$10)
@@ -2334,7 +2477,7 @@ endmacro
 	..End
 
 	.WalkDynamo0
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(2, $000, !P2Tile1)
 	%KadDyn(2, $010, !P2Tile1+$10)
@@ -2342,7 +2485,7 @@ endmacro
 	%KadDyn(2, $030, !P2Tile2+$10)
 	..End
 	.WalkDynamo1
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(2, $006, !P2Tile1)
 	%KadDyn(2, $016, !P2Tile1+$10)
@@ -2350,7 +2493,7 @@ endmacro
 	%KadDyn(2, $036, !P2Tile2+$10)
 	..End
 	.WalkDynamo2
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(2, $008, !P2Tile1)
 	%KadDyn(2, $018, !P2Tile1+$10)
@@ -2358,7 +2501,7 @@ endmacro
 	%KadDyn(2, $038, !P2Tile2+$10)
 	..End
 	.WalkDynamo3
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(2, $00A, !P2Tile1)
 	%KadDyn(2, $01A, !P2Tile1+$10)
@@ -2367,7 +2510,7 @@ endmacro
 	..End
 
 	.DashDynamo0				; Used by frames 0, 3
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(4, $07C, !P2Tile1)
 	%KadDyn(4, $08C, !P2Tile1+$10)
@@ -2375,7 +2518,7 @@ endmacro
 	%KadDyn(4, $09C, !P2Tile3+$10)
 	..End
 	.DashDynamo1				; Used by frame 1
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(3, $0A0, !P2Tile1)
 	%KadDyn(3, $0B0, !P2Tile1+$10)
@@ -2383,7 +2526,7 @@ endmacro
 	%KadDyn(3, $0C0, !P2Tile3+$10)
 	..End
 	.DashDynamo2				; Used by frame 2
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(3, $0A3, !P2Tile1)
 	%KadDyn(3, $0B3, !P2Tile1+$10)
@@ -2391,7 +2534,7 @@ endmacro
 	%KadDyn(3, $0C3, !P2Tile3+$10)
 	..End
 	.DashDynamo3				; Used by frame 4
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(3, $0A6, !P2Tile1)
 	%KadDyn(3, $0B6, !P2Tile1+$10)
@@ -2399,7 +2542,7 @@ endmacro
 	%KadDyn(3, $0C6, !P2Tile3+$10)
 	..End
 	.DashDynamo4				; Used by frame 5
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(3, $0A9, !P2Tile1)
 	%KadDyn(3, $0B9, !P2Tile1+$10)
@@ -2408,7 +2551,7 @@ endmacro
 	..End
 
 	.SquatDynamo				; Also used by .Duck0
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(2, $060, !P2Tile1)
 	%KadDyn(2, $070, !P2Tile1+$10)
@@ -2417,26 +2560,26 @@ endmacro
 	..End
 
 	.ShellDynamo0				; Also used by .Duck1
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(2, $040, !P2Tile1)
 	%KadDyn(2, $050, !P2Tile1+$10)
 	..End
 	.ShellDynamo1
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(2, $042, !P2Tile1)
 	%KadDyn(2, $052, !P2Tile1+$10)
 	..End
 	.ShellDynamo2
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(2, $044, !P2Tile1)
 	%KadDyn(2, $054, !P2Tile1+$10)
 	..End
 
 	.FallDynamo
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(2, $064, !P2Tile1)
 	%KadDyn(2, $074, !P2Tile1+$10)
@@ -2445,7 +2588,7 @@ endmacro
 	..End
 
 	.TurnDynamo
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(4, $04C, !P2Tile1)
 	%KadDyn(4, $05C, !P2Tile1+$10)
@@ -2454,7 +2597,7 @@ endmacro
 	..End
 
 	.SenkuDynamo
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(2, $062, !P2Tile1)
 	%KadDyn(2, $072, !P2Tile1+$10)
@@ -2463,7 +2606,7 @@ endmacro
 	..End
 
 	.PunchDynamo0				; Used by both punches
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(2, $00C, !P2Tile1)
 	%KadDyn(2, $01C, !P2Tile1+$10)
@@ -2472,7 +2615,7 @@ endmacro
 	..End
 
 	.1PunchDynamo1
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(2, $00E, !P2Tile1)
 	%KadDyn(2, $01E, !P2Tile1+$10)
@@ -2480,7 +2623,7 @@ endmacro
 	%KadDyn(2, $03E, !P2Tile2+$10)
 	..End
 	.1PunchDynamo2
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(3, $066, !P2Tile1)
 	%KadDyn(3, $076, !P2Tile1+$10)
@@ -2488,7 +2631,7 @@ endmacro
 	%KadDyn(3, $096, !P2Tile3+$10)
 	..End
 	.1PunchDynamo3
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(3, $069, !P2Tile1)
 	%KadDyn(3, $079, !P2Tile1+$10)
@@ -2497,7 +2640,7 @@ endmacro
 	..End
 
 	.2PunchDynamo1
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(2, $0D0, !P2Tile1)
 	%KadDyn(2, $0E0, !P2Tile1+$10)
@@ -2505,7 +2648,7 @@ endmacro
 	%KadDyn(2, $100, !P2Tile2+$10)
 	..End
 	.2PunchDynamo2
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(3, $0D2, !P2Tile1)
 	%KadDyn(3, $0E2, !P2Tile1+$10)
@@ -2513,7 +2656,7 @@ endmacro
 	%KadDyn(3, $102, !P2Tile3+$10)
 	..End
 	.2PunchDynamo3
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(3, $0D5, !P2Tile1)
 	%KadDyn(3, $0E5, !P2Tile1+$10)
@@ -2522,7 +2665,7 @@ endmacro
 	..End
 
 	.HurtDynamo
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(2, $0AC, !P2Tile1)
 	%KadDyn(2, $0BC, !P2Tile1+$10)
@@ -2531,7 +2674,7 @@ endmacro
 	..End
 
 	.DeadDynamo
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(2, $0AE, !P2Tile1)
 	%KadDyn(2, $0BE, !P2Tile1+$10)
@@ -2540,13 +2683,13 @@ endmacro
 	..End
 
 	.SpinDynamo0
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(3, $046, !P2Tile1)
 	%KadDyn(3, $056, !P2Tile1+$10)
 	..End
 	.SpinDynamo1
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(3, $049, !P2Tile1)
 	%KadDyn(3, $059, !P2Tile1+$10)
@@ -2555,7 +2698,7 @@ endmacro
 	..End
 
 	.ClimbDynamo				; Used by both frames
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(2, $0D8, !P2Tile1)
 	%KadDyn(2, $0E8, !P2Tile1+$10)
@@ -2564,7 +2707,7 @@ endmacro
 	..End
 
 	.SenkuSmashDynamo0
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(3, $110, !P2Tile1)
 	%KadDyn(3, $120, !P2Tile1+$10)
@@ -2572,7 +2715,7 @@ endmacro
 	%KadDyn(3, $130, !P2Tile3+$10)
 	..End
 	.SenkuSmashDynamo1
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(3, $113, !P2Tile1)
 	%KadDyn(3, $123, !P2Tile1+$10)
@@ -2580,7 +2723,7 @@ endmacro
 	%KadDyn(3, $133, !P2Tile3+$10)
 	..End
 	.SenkuSmashDynamo2
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(3, $116, !P2Tile1)
 	%KadDyn(3, $126, !P2Tile1+$10)
@@ -2588,7 +2731,7 @@ endmacro
 	%KadDyn(3, $136, !P2Tile3+$10)
 	..End
 	.SenkuSmashDynamo3
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(3, $119, !P2Tile1)
 	%KadDyn(3, $129, !P2Tile1+$10)
@@ -2596,7 +2739,7 @@ endmacro
 	%KadDyn(3, $139, !P2Tile3+$10)
 	..End
 	.SenkuSmashDynamo4
-	dw ..End-..Start
+	db ..End-..Start
 	..Start
 	%KadDyn(2, $11C, !P2Tile1)
 	%KadDyn(2, $12C, !P2Tile1+$10)
@@ -2604,6 +2747,16 @@ endmacro
 	%KadDyn(2, $14C, !P2Tile2+$10)
 	..End
 
+	.ShellDrillDynamoInit
+	db ..End-..Start
+	..Start
+	%KadDyn(3, $119, !P2Tile1)
+	%KadDyn(3, $129, !P2Tile1+$10)
+	%KadDyn(3, $129, !P2Tile3)
+	%KadDyn(3, $139, !P2Tile3+$10)
+	%KadDyn(2, $0DA, !P2Tile7)
+	%KadDyn(2, $0EA, !P2Tile7+$10)
+	..End
 
 
 	.ClippingStandard

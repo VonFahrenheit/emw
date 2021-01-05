@@ -33,7 +33,7 @@ sa1rom
 ;		db $24					; How many scanlines the status bar takes (vanilla is 0x24)
 
 	org $00A1DF
-	print " "
+	print "-- MSG --"
 	print "Inserted hijack at $", pc, "."
 
 		autoclean JML MESSAGE_ENGINE		; Hijack message box routine
@@ -41,62 +41,7 @@ sa1rom
 
 ; - Defines:
 
-	incsrc "Defines.asm"
-
-	!MaxSize		= $48
-	!MinSize		= $00
-	!GrowSpeed		= $08
-	!ShrinkSpeed		= $F8
-
-	!MsgData		= $03BC0B		; Use this to figure out where Lunar Magic puts message data
-
-	; All of this RAM goes in bank $40!
-
-	!MsgRAM			= $4400			; 256 bytes, base address
-
-	!MsgTileNumber		= !MsgRAM+$00		; 1 byte \ these two form a 16-bit index to the text data
-	!MsgTileNumberHi	= !MsgRAM+$01		; 1 byte /
-	!MsgOptions		= !MsgRAM+$02		; 1 byte
-	!MsgArrow		= !MsgRAM+$03		; 1 byte
-	!MsgOptionRow		= !MsgRAM+$04		; 1 byte, which row the dialogue options start on
-	!MsgDestination		= !MsgRAM+$05		; 1 byte, determines what !MsgArrow writes to
-	!MsgVertOffset		= !MsgRAM+$06		; 1 byte, number of pixels to move window down (doubled)
-							;	  highest bit toggles portrait to top-right of screen
-							;	  second highest bit disables border and window
-	!MsgSequence		= !MsgRAM+$07		; 15 bytes, read backwards.
-	!MsgScroll		= !MsgRAM+$16		; 1 byte
-	!MsgCounter		= !MsgRAM+$17		; 1 byte
-	!MsgDelay		= !MsgRAM+$18		; 1 byte
-	!MsgWait		= !MsgRAM+$19		; 1 byte
-	!MsgWaitFlag		= !MsgRAM+$1A		; 1 byte
-	!MsgWaitScroll		= !MsgRAM+$1B		; 1 byte, also used as a kind of scratch during cinematic mode
-	!SubMsg			= !MsgRAM+$1C		; 1 byte, loads the specified submessage when set
-	!SubMsgTileNumber	= !MsgRAM+$1D		; 1 byte
-	!MsgPortrait		= !MsgRAM+$1E		; 1 byte
-	!MsgSpeed		= !MsgRAM+$1F		; 1 byte
-	!MsgEnd			= !MsgRAM+$20		; 1 byte
-	!MsgOffset		= !MsgRAM+$21		; 1 byte
-	!MsgFont		= !MsgRAM+$22		; 1 byte
-	!MsgVRAM1		= !MsgRAM+$23		; 2 bytes, portrait (lo plane)
-	!MsgVRAM2		= !MsgRAM+$25		; 2 bytes, portrait (hi plane)
-	!MsgVRAM3		= !MsgRAM+$27		; 2 bytes, border
-	!MsgBackup41		= !MsgRAM+$29		; 1 byte
-	!MsgBackup42		= !MsgRAM+$2A		; 1 byte
-	!MsgBackup43		= !MsgRAM+$2B		; 1 byte
-	!MsgBackup44		= !MsgRAM+$2C		; 1 byte
-	!MsgBackup0D9D		= !MsgRAM+$2D		; 1 byte
-	!MsgBackup0D9E		= !MsgRAM+$2E		; 1 byte
-	!MsgBackup24		= !MsgRAM+$2F		; 1 byte
-	!MsgBackup25		= !MsgRAM+$30		; 1 byte
-	!MsgTalk		= !MsgRAM+$31		; 1 byte
-	!MsgCinematic		= !MsgRAM+$32		; 1 byte, enables cinematic mode
-	!MsgX			= !MsgRAM+$33		; 1 byte, X position to start drawing next character at
-	!MsgRow			= !MsgRAM+$34		; 1 byte, current row of text
-	!MsgCurrentArrow	= !MsgRAM+$35		; 1 byte, row of current arrow (used to replace it when it moves)
-	!MsgWordLength		= !MsgRAM+$36		; 1 byte, accumulating word length
-	!MsgCharCount		= !MsgRAM+$37		; 1 byte, accumulating characters
-	!MsgCommandData		= !MsgRAM+$38		; Variable length, maximum of 200 bytes.
-							; Used to upload text during cinematic mode
+	incsrc "../Defines.asm"
 
 
 
@@ -1360,6 +1305,8 @@ DRAW_BORDER:	PHK : PLB
 		.End
 
 ; 10C5A3
+
+print pc
 DRAW_PORTRAIT:	BPL .INIT
 		JMP .MAIN
 
@@ -1382,9 +1329,9 @@ DRAW_PORTRAIT:	BPL .INIT
 		LDA.l !PortraitPointers+5,x		;\
 		ASL A					; |
 		TAX					; |
-		LDA.l $130000+read2(!PortraitPointers)+0,x	; | Source address
+		LDA.l (!PortraitPointers&$FF0000)+read2(!PortraitPointers)+0,x	; | Source address
 		STA !CGRAMtable+$02,y			; |
-		LDA.l $130000+read2(!PortraitPointers)+1,x	; |
+		LDA.l (!PortraitPointers&$FF0000)+read2(!PortraitPointers)+1,x	; |
 		STA !CGRAMtable+$03,y			; |
 		LDA.b #!PortraitPointers>>16		; |
 		STA !CGRAMtable+$04,y			;/

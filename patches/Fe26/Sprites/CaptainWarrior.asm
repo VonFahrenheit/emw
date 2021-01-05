@@ -101,18 +101,13 @@
 		LDA !ExtraBits,x
 		AND #$04
 		BEQ .Normal
-		LDA !Phase
-		BMI +
+		LDA !Phase : BMI +
 		ORA #$80 : STA !Phase
-		LDA.b #Body_Idle0
-		STA $0C
-		LDA.b #Body_Idle0>>8
-		STA $0D
-		LDA.b #Axe_Idle
-		STA $0E
-		LDA.b #Axe_Idle>>8
-		STA $0F
-		JSR UPDATE_GFX
+		LDA.b #Body_Idle0 : STA $0C	;\
+		LDA.b #Body_Idle0>>8 : STA $0D	; |
+		LDA.b #Axe_Idle : STA $0E	; | idle GFX
+		LDA.b #Axe_Idle>>8 : STA $0F	; |
+		JSR UPDATE_GFX			;/
 		PLB
 		RTL
 
@@ -152,19 +147,23 @@
 
 
 	Battle:
-		LDA !Phase
-		BMI .Main
+		LDA !Phase : BMI .Main
 		ORA #$80 : STA !Phase
-		LDA #$37 : STA !SPC3		; > Battle theme
-		LDA.b #Body_Idle0		;\
-		STA $0C				; |
-		LDA.b #Body_Idle0>>8		; |
-		STA $0D				; |
-		LDA.b #Axe_Chop1init		; | Upload first half of chop1 axe frame
-		STA $0E				; |
-		LDA.b #Axe_Chop1init>>8		; |
-		STA $0F				; |
-		JSR UPDATE_GFX			;/
+		LDA #$37 : STA !SPC3			; > battle theme
+		LDA.b #Body_Idle0 : STA $0C		;\
+		LDA.b #Body_Idle0>>8 : STA $0D		; |
+		STZ $0E					; | upload idle body GFX
+		STZ $0F					; |
+		JSR UPDATE_GFX				;/
+
+		LDA !GFX_Dynamic : PHA			;\
+		LDA #$00 : STA !GFX_Dynamic		; |
+		REP #$30				; |
+		LDY.w #!File_CaptainWarrior_Axe		; | load big axe frame
+		LDA.w #Axe_Chop1init : STA $0C		; |
+		JSL !UpdateFromFile			; |
+		SEP #$30				; |
+		PLA : STA !GFX_Dynamic			;/
 		PLB
 		RTL
 
@@ -284,8 +283,7 @@
 		LDA #$00
 	+	STA !SpriteAnimTimer
 
-		BIT $3280,x
-		BPL +
+		BIT $3280,x : BPL +
 		LDA !SpriteAnimIndex
 		ASL #3
 		TAY
@@ -696,6 +694,8 @@
 		LDA #$60 : STA !RexAI
 		LDA .MinionTable+$20,y
 		STA !RexMovementFlags
+		LDA #$05 : STA !ExtraProp1,x
+		LDA #$08 : STA !ExtraProp2,x
 
 		.EasyNormal
 		RTS
@@ -1143,642 +1143,664 @@
 	Tilemaps:
 		.Idle0
 		dw $0028
-		db $3C,$F8,$E0,$C0	; Body
-		db $3C,$00,$E0,$C1
-		db $3C,$F8,$F0,$E0
-		db $3C,$00,$F0,$E1
-		db $3C,$F8,$00,$C4
-		db $3C,$00,$00,$C5
-		db $3E,$F8,$F0,$C8	; Axe
-		db $3E,$00,$F0,$C9
-		db $3E,$F8,$F8,$D8
-		db $3E,$00,$F8,$D9
+		db $3D,$F8,$E0,$C0	; Body
+		db $3D,$00,$E0,$C1
+		db $3D,$F8,$F0,$E0
+		db $3D,$00,$F0,$E1
+		db $3D,$F8,$00,$C4
+		db $3D,$00,$00,$C5
+		db $3F,$F8,$F0,$C8	; Axe
+		db $3F,$00,$F0,$C9
+		db $3F,$F8,$F8,$D8
+		db $3F,$00,$F8,$D9
 		.Idle1
 		dw $0028
-		db $3C,$F8,$E0,$C0	; Body
-		db $3C,$00,$E0,$C1
-		db $3C,$F8,$F0,$E0
-		db $3C,$00,$F0,$E1
-		db $3C,$F8,$00,$C4
-		db $3C,$00,$00,$C5
-		db $3E,$F8,$F0,$C8	; Axe
-		db $3E,$00,$F0,$C9
-		db $3E,$F8,$F8,$D8
-		db $3E,$00,$F8,$D9
+		db $3D,$F8,$E0,$C0	; Body
+		db $3D,$00,$E0,$C1
+		db $3D,$F8,$F0,$E0
+		db $3D,$00,$F0,$E1
+		db $3D,$F8,$00,$C4
+		db $3D,$00,$00,$C5
+		db $3F,$F8,$F0,$C8	; Axe
+		db $3F,$00,$F0,$C9
+		db $3F,$F8,$F8,$D8
+		db $3F,$00,$F8,$D9
 		.Idle2
 		dw $0028
-		db $3C,$F8,$E0,$C0	; Body
-		db $3C,$00,$E0,$C1
-		db $3C,$F8,$F0,$E0
-		db $3C,$00,$F0,$E1
-		db $3C,$F8,$00,$C4
-		db $3C,$00,$00,$C5
-		db $3E,$F8,$F1,$C8	; Axe
-		db $3E,$00,$F1,$C9
-		db $3E,$F8,$F9,$D8
-		db $3E,$00,$F9,$D9
+		db $3D,$F8,$E0,$C0	; Body
+		db $3D,$00,$E0,$C1
+		db $3D,$F8,$F0,$E0
+		db $3D,$00,$F0,$E1
+		db $3D,$F8,$00,$C4
+		db $3D,$00,$00,$C5
+		db $3F,$F8,$F1,$C8	; Axe
+		db $3F,$00,$F1,$C9
+		db $3F,$F8,$F9,$D8
+		db $3F,$00,$F9,$D9
 
 		.PrepChop
 		dw $0028
-		db $3C,$F8,$E8,$C0	; Body
-		db $3C,$00,$E8,$C1
-		db $3C,$F8,$F0,$D0
-		db $3C,$00,$F0,$D1
-		db $3C,$F8,$00,$C4
-		db $3C,$00,$00,$C5
-		db $3E,$F8,$E0,$C8	; Axe
-		db $3E,$00,$E0,$C9
-		db $3E,$F8,$F0,$E8
-		db $3E,$00,$F0,$E9
+		db $3D,$F8,$E8,$C0	; Body
+		db $3D,$00,$E8,$C1
+		db $3D,$F8,$F0,$D0
+		db $3D,$00,$F0,$D1
+		db $3D,$F8,$00,$C4
+		db $3D,$00,$00,$C5
+		db $3F,$F8,$E0,$C8	; Axe
+		db $3F,$00,$E0,$C9
+		db $3F,$F8,$F0,$E8
+		db $3F,$00,$F0,$E9
 
 		.Chop0
 		dw $0028
-		db $3C,$F8,$E0,$C0	; Body
-		db $3C,$08,$E0,$C2
-		db $3C,$F8,$F0,$E0
-		db $3C,$08,$F0,$E2
-		db $3C,$F8,$00,$C4
-		db $3C,$08,$00,$C6
-		db $3E,$F8,$E8,$C8	; Axe
-		db $3E,$08,$E8,$CA
-		db $3E,$F8,$F8,$E8
-		db $3E,$08,$F8,$EA
+		db $3D,$F8,$E0,$C0	; Body
+		db $3D,$08,$E0,$C2
+		db $3D,$F8,$F0,$E0
+		db $3D,$08,$F0,$E2
+		db $3D,$F8,$00,$C4
+		db $3D,$08,$00,$C6
+		db $3F,$F8,$E8,$C8	; Axe
+		db $3F,$08,$E8,$CA
+		db $3F,$F8,$F8,$E8
+		db $3F,$08,$F8,$EA
 		.Chop1
 		dw $0044
-		db $3C,$F8,$E0,$C0	; Body
-		db $3C,$00,$E0,$C1
-		db $3C,$F8,$F0,$E0
-		db $3C,$00,$F0,$E1
-		db $3C,$00,$00,$C4
-		db $3E,$08,$E8,$C8	; Dynamic axe
-		db $3E,$08,$F0,$D8
-		db $3E,$08,$00,$CA
-		db $3F,$D8,$E8,$8A	; Psuedo-dynamic axe
-		db $3F,$E8,$E8,$8C
-		db $3F,$F8,$E8,$8E
-		db $3F,$D8,$F0,$9A
-		db $3F,$E8,$F0,$9C
-		db $3F,$F8,$F0,$9E
-		db $3F,$D8,$00,$BA
-		db $3F,$E8,$00,$BC
-		db $3F,$F8,$00,$BE
+		db $3D,$F8,$E0,$C0	; Body
+		db $3D,$00,$E0,$C1
+		db $3D,$F8,$F0,$E0
+		db $3D,$00,$F0,$E1
+		db $3D,$00,$00,$C4
+		db $3F,$08,$E8,$C8	; Dynamic axe
+		db $3F,$08,$F0,$D8
+		db $3F,$08,$00,$CA
+		db $3F,$D8,$E8,$7A	; Psuedo-dynamic axe
+		db $3F,$E8,$E8,$7C
+		db $3F,$F8,$E8,$7E
+		db $3F,$D8,$F0,$8A
+		db $3F,$E8,$F0,$8C
+		db $3F,$F8,$F0,$8E
+		db $3F,$D8,$00,$AA
+		db $3F,$E8,$00,$AC
+		db $3F,$F8,$00,$AE
+
 		.Chop2
-		dw $0028
-		db $3C,$F8,$E0,$C0	; Body
-		db $3C,$08,$E0,$C2
-		db $3C,$F8,$F0,$E0
-		db $3C,$08,$F0,$E2
-		db $3C,$F8,$00,$C4
-		db $3C,$08,$00,$C6
-		db $3E,$E8,$E8,$C8	; Axe
-		db $3E,$F8,$E8,$CA
-		db $3E,$E8,$F8,$E8
-		db $3E,$F8,$F8,$EA
+		dw $0030
+		db $3D,$F8,$E0,$C0	; Body
+		db $3D,$08,$E0,$C2
+		db $3D,$F8,$F0,$E0
+		db $3D,$08,$F0,$E2
+		db $3D,$F8,$00,$C4
+		db $3D,$08,$00,$C6
+		db $3F,$E8,$E8,$C8	; Axe
+		db $3F,$F8,$E8,$CA
+		db $3F,$E8,$F8,$E8
+		db $3F,$F8,$F8,$EA
+		db $3F,$E8,$00,$CC
+		db $3F,$F8,$00,$CE
 		.Chop3
 		dw $0020
-		db $3E,$F3,$F0,$C8	; Axe
-		db $3E,$F3,$F8,$D8
-		db $3C,$F8,$E0,$C0	; Body
-		db $3C,$08,$E0,$C2
-		db $3C,$F8,$F0,$E0
-		db $3C,$08,$F0,$E2
-		db $3C,$F8,$00,$C4
-		db $3C,$08,$00,$C6
+		db $3F,$F3,$F0,$C8	; Axe
+		db $3F,$F3,$F8,$D8
+		db $3D,$F8,$E0,$C0	; Body
+		db $3D,$08,$E0,$C2
+		db $3D,$F8,$F0,$E0
+		db $3D,$08,$F0,$E2
+		db $3D,$F8,$00,$C4
+		db $3D,$08,$00,$C6
 
 		.Jump
 		dw $0028
-		db $3C,$F8,$E0,$C0	; Body
-		db $3C,$00,$E0,$C1
-		db $3C,$F8,$F0,$E0
-		db $3C,$00,$F0,$E1
-		db $3C,$F8,$00,$C4
-		db $3C,$00,$00,$C5
-		db $3E,$00,$E1,$C8	; Axe
-		db $3E,$08,$E1,$C9
-		db $3E,$00,$E9,$D8
-		db $3E,$08,$E9,$D9
+		db $3D,$F8,$E0,$C0	; Body
+		db $3D,$00,$E0,$C1
+		db $3D,$F8,$F0,$E0
+		db $3D,$00,$F0,$E1
+		db $3D,$F8,$00,$C4
+		db $3D,$00,$00,$C5
+		db $3F,$00,$E1,$C8	; Axe
+		db $3F,$08,$E1,$C9
+		db $3F,$00,$E9,$D8
+		db $3F,$08,$E9,$D9
 
 		.HurricaneJump
 		dw $0028
-		db $3C,$F8,$E0,$C0	; Body
-		db $3C,$08,$E0,$C2
-		db $3C,$F8,$F0,$E0
-		db $3C,$08,$F0,$E2
-		db $3C,$F8,$00,$C4
-		db $3C,$08,$00,$C6
-		db $3E,$09,$EE,$C8	; Axe
-		db $3E,$11,$EE,$C9
-		db $3E,$09,$F6,$D8
-		db $3E,$11,$F6,$D9
+		db $3D,$F8,$E0,$C0	; Body
+		db $3D,$08,$E0,$C2
+		db $3D,$F8,$F0,$E0
+		db $3D,$08,$F0,$E2
+		db $3D,$F8,$00,$C4
+		db $3D,$08,$00,$C6
+		db $3F,$09,$EE,$C8	; Axe
+		db $3F,$11,$EE,$C9
+		db $3F,$09,$F6,$D8
+		db $3F,$11,$F6,$D9
 
 		.Hurricane0		; Axe connects at top-right
 		dw $0020
-		db $3C,$F8,$F0,$C0	; Body
-		db $3C,$08,$F0,$C2
-		db $3C,$F8,$00,$E0
-		db $3C,$08,$00,$E2
-		db $3E,$08,$F0,$C8	; Axe
-		db $3E,$18,$F0,$CA
-		db $3E,$08,$00,$E8
-		db $3E,$18,$00,$EA
+		db $3D,$F8,$F0,$C0	; Body
+		db $3D,$08,$F0,$C2
+		db $3D,$F8,$00,$E0
+		db $3D,$08,$00,$E2
+		db $3F,$08,$F0,$C8	; Axe
+		db $3F,$18,$F0,$CA
+		db $3F,$08,$00,$E8
+		db $3F,$18,$00,$EA
 		.Hurricane1		; Axe connects at top-left
 		dw $0024
-		db $3C,$F8,$F0,$C0	; Body
-		db $3C,$08,$F0,$C2
-		db $3C,$F8,$00,$E0
-		db $3C,$08,$00,$E2
-		db $3E,$F8,$E0,$C8	; Axe
-		db $3E,$08,$E0,$CA
-		db $3E,$10,$E0,$CB
-		db $3E,$F8,$F0,$E8
-		db $3E,$10,$F0,$EB
+		db $3D,$F8,$F0,$C0	; Body
+		db $3D,$08,$F0,$C2
+		db $3D,$F8,$00,$E0
+		db $3D,$08,$00,$E2
+		db $3F,$F8,$E0,$C8	; Axe
+		db $3F,$08,$E0,$CA
+		db $3F,$10,$E0,$CB
+		db $3F,$F8,$F0,$E8
+		db $3F,$10,$F0,$EB
 		.Hurricane2		; Axe connects at bottom-left
 		dw $0028
-		db $3C,$F8,$F0,$C0	; Body
-		db $3C,$08,$F0,$C2
-		db $3C,$F8,$00,$E0
-		db $3C,$08,$00,$E2
-		db $3E,$E8,$E8,$C8	; Axe
-		db $3E,$F8,$E8,$CA
-		db $3E,$00,$E8,$CB
-		db $3E,$E8,$F8,$E8
-		db $3E,$E8,$00,$EC
-		db $3E,$F8,$00,$EE
+		db $3D,$F8,$F0,$C0	; Body
+		db $3D,$08,$F0,$C2
+		db $3D,$F8,$00,$E0
+		db $3D,$08,$00,$E2
+		db $3F,$E8,$E8,$C8	; Axe
+		db $3F,$F8,$E8,$CA
+		db $3F,$00,$E8,$CB
+		db $3F,$E8,$F8,$E8
+		db $3F,$E8,$00,$EC
+		db $3F,$F8,$00,$EE
 		.Hurricane3		; Axe connects at bottom-right
 		dw $0024
-		db $3C,$F8,$F0,$C0	; Body
-		db $3C,$08,$F0,$C2
-		db $3C,$F8,$00,$E0
-		db $3C,$08,$00,$E2
-		db $3E,$F0,$00,$C8	; Axe
-		db $3E,$08,$00,$CB
-		db $3E,$F0,$10,$E8
-		db $3E,$00,$10,$EA
-		db $3E,$08,$10,$EB
+		db $3D,$F8,$F0,$C0	; Body
+		db $3D,$08,$F0,$C2
+		db $3D,$F8,$00,$E0
+		db $3D,$08,$00,$E2
+		db $3F,$F0,$00,$C8	; Axe
+		db $3F,$08,$00,$CB
+		db $3F,$F0,$10,$E8
+		db $3F,$00,$10,$EA
+		db $3F,$08,$10,$EB
 
 		.Stuck
 		dw $0024
-		db $3C,$F8,$E8,$C0	; Body
-		db $3C,$00,$E8,$C1
-		db $3C,$F8,$F0,$D0
-		db $3C,$00,$F0,$D1
-		db $3C,$F8,$00,$C4
-		db $3C,$00,$00,$C5
-		db $3E,$F0,$F8,$C8	; Axe
-		db $3E,$F0,$00,$D8
-		db $3E,$00,$00,$DA
+		db $3D,$F8,$E8,$C0	; Body
+		db $3D,$00,$E8,$C1
+		db $3D,$F8,$F0,$D0
+		db $3D,$00,$F0,$D1
+		db $3D,$F8,$00,$C4
+		db $3D,$00,$00,$C5
+		db $3F,$F0,$F8,$C8	; Axe
+		db $3F,$F0,$00,$D8
+		db $3F,$00,$00,$DA
 
 		.Hurt0
 		dw $0028
-		db $3C,$F8,$E0,$C0	; Body
-		db $3C,$00,$E0,$C1
-		db $3C,$F8,$F0,$E0
-		db $3C,$00,$F0,$E1
-		db $3C,$F8,$00,$C4
-		db $3C,$00,$00,$C5
-		db $3E,$05,$E0,$C8	; Axe
-		db $3E,$0D,$E0,$C9
-		db $3E,$05,$E8,$D8
-		db $3E,$0D,$E8,$D9
-
+		db $3D,$F8,$E0,$C0	; Body
+		db $3D,$00,$E0,$C1
+		db $3D,$F8,$F0,$E0
+		db $3D,$00,$F0,$E1
+		db $3D,$F8,$00,$C4
+		db $3D,$00,$00,$C5
+		db $3F,$05,$E0,$C8	; Axe
+		db $3F,$0D,$E0,$C9
+		db $3F,$05,$E8,$D8
+		db $3F,$0D,$E8,$D9
 		.Hurt1
 		dw $0028
-		db $3C,$F8,$E0,$C0	; Body
-		db $3C,$08,$E0,$C2
-		db $3C,$F8,$F0,$E0
-		db $3C,$08,$F0,$E2
-		db $3C,$F8,$00,$C4
-		db $3C,$08,$00,$C6
-		db $3E,$08,$EF,$C8	; Axe
-		db $3E,$10,$EF,$C9
-		db $3E,$08,$F7,$D8
-		db $3E,$10,$F7,$D9
+		db $3D,$F8,$E0,$C0	; Body
+		db $3D,$08,$E0,$C2
+		db $3D,$F8,$F0,$E0
+		db $3D,$08,$F0,$E2
+		db $3D,$F8,$00,$C4
+		db $3D,$08,$00,$C6
+		db $3F,$08,$EF,$C8	; Axe
+		db $3F,$10,$EF,$C9
+		db $3F,$08,$F7,$D8
+		db $3F,$10,$F7,$D9
 
 		.Defeated
 		dw $0028
-		db $3C,$F8,$E8,$C0	; Body
-		db $3C,$08,$E8,$C2
-		db $3C,$F8,$F0,$D0
-		db $3C,$08,$F0,$D2
-		db $3C,$F8,$00,$C4
-		db $3C,$08,$00,$C6
-		db $3E,$F7,$F8,$C8	; Axe
-		db $3E,$FF,$F8,$C9
-		db $3E,$F7,$00,$D8
-		db $3E,$FF,$00,$D9
+		db $3D,$F8,$E8,$C0	; Body
+		db $3D,$08,$E8,$C2
+		db $3D,$F8,$F0,$D0
+		db $3D,$08,$F0,$D2
+		db $3D,$F8,$00,$C4
+		db $3D,$08,$00,$C6
+		db $3F,$F7,$F8,$C8	; Axe
+		db $3F,$FF,$F8,$C9
+		db $3F,$F7,$00,$D8
+		db $3F,$FF,$00,$D9
 
 		.Channel
 		dw $0028
-		db $3C,$F8,$E0,$C0	; Body
-		db $3C,$00,$E0,$C1
-		db $3C,$F8,$F0,$E0
-		db $3C,$00,$F0,$E1
-		db $3C,$F8,$00,$C4
-		db $3C,$00,$00,$C5
-		db $3E,$F0,$F0,$C8	; Axe
-		db $3E,$00,$F0,$CA
-		db $3E,$F0,$F8,$D8
-		db $3E,$00,$F8,$DA
+		db $3D,$F8,$E0,$C0	; Body
+		db $3D,$00,$E0,$C1
+		db $3D,$F8,$F0,$E0
+		db $3D,$00,$F0,$E1
+		db $3D,$F8,$00,$C4
+		db $3D,$00,$00,$C5
+		db $3F,$F0,$F0,$C8	; Axe
+		db $3F,$00,$F0,$CA
+		db $3F,$F0,$F8,$D8
+		db $3F,$00,$F8,$DA
 
+
+
+;
+;
+; -- dynamo format --
+;
+; 1 byte header (size)
+; for each upload:
+; 	cccssss-
+; 	-ccccccc
+; 	tttttttt
+;
+; ssss:		DMA size (shift left 4)
+; cccccccccc:	character (formatted for source address)
+; tttttttt:	tile number (shift left 4 then add VRAM offset)
+;
+;
+
+
+	macro CompDyn(TileCount, TileNumber, Dest)
+		db (<TileCount>*2)|((<TileNumber>&$07)<<5)
+		db <TileNumber>>>3
+		db <Dest>
+	endmacro
 
 	; Dynamo tables, copied into VR2 upload table.
-	macro Dynamo(Tiles, Address, DestVRAM)
+	macro Dynamo(Tiles, TileNumber, DestVRAM)
 		dw <Tiles>*$20
-		dl <Address>
-		dw <DestVRAM>*$10+$5000			; < move everything to $0C0-$0FF area
+		dl <TileNumber>*$20
+		dw <DestVRAM>*$10
 	endmacro
 
 	Body:
 		.Idle0
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(3, $338000, $1C0)
-		%Dynamo(3, $338200, $1D0)
-		%Dynamo(3, $338400, $1E0)
-		%Dynamo(3, $338600, $1F0)
-		%Dynamo(3, $338800, $1C4)
-		%Dynamo(3, $338A00, $1D4)
+		%CompDyn(3, $000, $00)
+		%CompDyn(3, $010, $10)
+		%CompDyn(3, $020, $20)
+		%CompDyn(3, $030, $30)
+		%CompDyn(3, $040, $04)
+		%CompDyn(3, $050, $14)
 		..End
 		.Idle1
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(3, $338060, $1C0)
-		%Dynamo(3, $338260, $1D0)
-		%Dynamo(3, $338460, $1E0)
-		%Dynamo(3, $338660, $1F0)
-		%Dynamo(3, $338860, $1C4)
-		%Dynamo(3, $338A60, $1D4)
+		%CompDyn(3, $003, $00)
+		%CompDyn(3, $013, $10)
+		%CompDyn(3, $023, $20)
+		%CompDyn(3, $033, $30)
+		%CompDyn(3, $043, $04)
+		%CompDyn(3, $053, $14)
 		..End
 		.Idle2
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(3, $3380C0, $1C0)
-		%Dynamo(3, $3382C0, $1D0)
-		%Dynamo(3, $3384C0, $1E0)
-		%Dynamo(3, $3386C0, $1F0)
-		%Dynamo(3, $3388C0, $1C4)
-		%Dynamo(3, $338AC0, $1D4)
+		%CompDyn(3, $006, $00)
+		%CompDyn(3, $016, $10)
+		%CompDyn(3, $026, $20)
+		%CompDyn(3, $036, $30)
+		%CompDyn(3, $046, $04)
+		%CompDyn(3, $056, $14)
 		..End
 
 		.PrepChop0
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(3, $3394C0, $1C0)
-		%Dynamo(3, $3396C0, $1D0)
-		%Dynamo(3, $3398C0, $1E0)
-		%Dynamo(3, $339AC0, $1C4)
-		%Dynamo(3, $339CC0, $1D4)
+		%CompDyn(3, $0A6, $00)
+		%CompDyn(3, $0B6, $10)
+		%CompDyn(3, $0C6, $20)
+		%CompDyn(3, $0D6, $04)
+		%CompDyn(3, $0E6, $14)
 		..End
 		.PrepChop1
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(3, $339520, $1C0)
-		%Dynamo(3, $339720, $1D0)
-		%Dynamo(3, $339920, $1E0)
-		%Dynamo(3, $339B20, $1C4)
-		%Dynamo(3, $339D20, $1D4)
+		%CompDyn(3, $0A9, $00)
+		%CompDyn(3, $0B9, $10)
+		%CompDyn(3, $0C9, $20)
+		%CompDyn(3, $0D9, $04)
+		%CompDyn(3, $0E9, $14)
 		..End
 		.PrepChop2
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(3, $339580, $1C0)
-		%Dynamo(3, $339780, $1D0)
-		%Dynamo(3, $339980, $1E0)
-		%Dynamo(3, $339B80, $1C4)
-		%Dynamo(3, $339D80, $1D4)
+		%CompDyn(3, $0AC, $00)
+		%CompDyn(3, $0BC, $10)
+		%CompDyn(3, $0CC, $20)
+		%CompDyn(3, $0DC, $04)
+		%CompDyn(3, $0EC, $14)
 		..End
 
 		.Chop0
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(4, $339E00, $1C0)
-		%Dynamo(4, $33A000, $1D0)
-		%Dynamo(4, $33A200, $1E0)
-		%Dynamo(4, $33A400, $1F0)
-		%Dynamo(4, $33A600, $1C4)
-		%Dynamo(4, $33A800, $1D4)
+		%CompDyn(4, $0F0, $00)
+		%CompDyn(4, $100, $10)
+		%CompDyn(4, $110, $20)
+		%CompDyn(4, $120, $30)
+		%CompDyn(4, $130, $04)
+		%CompDyn(4, $140, $14)
 		..End
 		.Chop1
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(3, $339E80, $1C0)
-		%Dynamo(3, $33A080, $1D0)
-		%Dynamo(3, $33A280, $1E0)
-		%Dynamo(3, $33A480, $1F0)
-		%Dynamo(2, $33A6C0, $1C4)
-		%Dynamo(2, $33A8C0, $1D4)
+		%CompDyn(3, $0F4, $00)
+		%CompDyn(3, $104, $10)
+		%CompDyn(3, $114, $20)
+		%CompDyn(3, $124, $30)
+		%CompDyn(2, $134, $04)
+		%CompDyn(2, $144, $14)
 		..End
 		.Chop2
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(4, $339F00, $1C0)
-		%Dynamo(4, $33A100, $1D0)
-		%Dynamo(4, $33A300, $1E0)
-		%Dynamo(4, $33A500, $1F0)
-		%Dynamo(4, $33A700, $1C4)
-		%Dynamo(4, $33A900, $1D4)
+		%CompDyn(4, $0F8, $00)
+		%CompDyn(4, $108, $10)
+		%CompDyn(4, $118, $20)
+		%CompDyn(4, $128, $30)
+		%CompDyn(4, $138, $04)
+		%CompDyn(4, $148, $14)
 		..End
 		.Chop3
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(4, $339F80, $1C0)
-		%Dynamo(4, $33A180, $1D0)
-		%Dynamo(4, $33A380, $1E0)
-		%Dynamo(4, $33A580, $1F0)
-		%Dynamo(4, $33A780, $1C4)
-		%Dynamo(4, $33A980, $1D4)
+		%CompDyn(4, $0FC, $00)
+		%CompDyn(4, $10C, $10)
+		%CompDyn(4, $11C, $20)
+		%CompDyn(4, $12C, $30)
+		%CompDyn(4, $13C, $04)
+		%CompDyn(4, $14C, $14)
 		..End
 
 		.Jump
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(3, $338120, $1C0)
-		%Dynamo(3, $338320, $1D0)
-		%Dynamo(3, $338520, $1E0)
-		%Dynamo(3, $338720, $1F0)
-		%Dynamo(3, $338920, $1C4)
-		%Dynamo(3, $338B20, $1D4)
+		%CompDyn(3, $009, $00)
+		%CompDyn(3, $019, $10)
+		%CompDyn(3, $029, $20)
+		%CompDyn(3, $039, $30)
+		%CompDyn(3, $049, $04)
+		%CompDyn(3, $059, $14)
 		..End
 
 		.HurricaneJump
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(4, $338180, $1C0)
-		%Dynamo(4, $338380, $1D0)
-		%Dynamo(4, $338580, $1E0)
-		%Dynamo(4, $338780, $1F0)
-		%Dynamo(4, $338980, $1C4)
-		%Dynamo(4, $338B80, $1D4)
+		%CompDyn(4, $00C, $00)
+		%CompDyn(4, $01C, $10)
+		%CompDyn(4, $02C, $20)
+		%CompDyn(4, $03C, $30)
+		%CompDyn(4, $04C, $04)
+		%CompDyn(4, $05C, $14)
 		..End
 
 		.Hurricane0
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(4, $338C00, $1C0)
-		%Dynamo(4, $338E00, $1D0)
-		%Dynamo(4, $339000, $1E0)
-		%Dynamo(4, $339200, $1F0)
+		%CompDyn(4, $060, $00)
+		%CompDyn(4, $070, $10)
+		%CompDyn(4, $080, $20)
+		%CompDyn(4, $090, $30)
 		..End
 		.Hurricane1
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(4, $338C80, $1C0)
-		%Dynamo(4, $338E80, $1D0)
-		%Dynamo(4, $339080, $1E0)
-		%Dynamo(4, $339280, $1F0)
+		%CompDyn(4, $064, $00)
+		%CompDyn(4, $074, $10)
+		%CompDyn(4, $084, $20)
+		%CompDyn(4, $094, $30)
 		..End
 		.Hurricane2
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(4, $338D00, $1C0)
-		%Dynamo(4, $338F00, $1D0)
-		%Dynamo(4, $339100, $1E0)
-		%Dynamo(4, $339300, $1F0)
+		%CompDyn(4, $068, $00)
+		%CompDyn(4, $078, $10)
+		%CompDyn(4, $088, $20)
+		%CompDyn(4, $098, $30)
 		..End
 		.Hurricane3
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(4, $338D80, $1C0)
-		%Dynamo(4, $338F80, $1D0)
-		%Dynamo(4, $339180, $1E0)
-		%Dynamo(4, $339380, $1F0)
+		%CompDyn(4, $06C, $00)
+		%CompDyn(4, $07C, $10)
+		%CompDyn(4, $08C, $20)
+		%CompDyn(4, $09C, $30)
 		..End
 
 		.Stuck0
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(3, $339400, $1C0)
-		%Dynamo(3, $339600, $1D0)
-		%Dynamo(3, $339800, $1E0)
-		%Dynamo(3, $339A00, $1C4)
-		%Dynamo(3, $339C00, $1D4)
+		%CompDyn(3, $0A0, $00)
+		%CompDyn(3, $0B0, $10)
+		%CompDyn(3, $0C0, $20)
+		%CompDyn(3, $0D0, $04)
+		%CompDyn(3, $0E0, $14)
 		..End
 		.Stuck1
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(3, $339460, $1C0)
-		%Dynamo(3, $339660, $1D0)
-		%Dynamo(3, $339860, $1E0)
-		%Dynamo(3, $339A60, $1C4)
-		%Dynamo(3, $339C60, $1D4)
+		%CompDyn(3, $0A3, $00)
+		%CompDyn(3, $0B3, $10)
+		%CompDyn(3, $0C3, $20)
+		%CompDyn(3, $0D3, $04)
+		%CompDyn(3, $0E3, $14)
 		..End
 
 		.Hurt0
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(3, $33AA00, $1C0)
-		%Dynamo(3, $33AC00, $1D0)
-		%Dynamo(3, $33AE00, $1E0)
-		%Dynamo(3, $33B000, $1F0)
-		%Dynamo(3, $33B200, $1C4)
-		%Dynamo(3, $33B400, $1D4)
+		%CompDyn(3, $150, $00)
+		%CompDyn(3, $160, $10)
+		%CompDyn(3, $170, $20)
+		%CompDyn(3, $180, $30)
+		%CompDyn(3, $190, $04)
+		%CompDyn(3, $1A0, $14)
 		..End
 		.Hurt1
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(4, $33AA60, $1C0)
-		%Dynamo(4, $33AC60, $1D0)
-		%Dynamo(4, $33AE60, $1E0)
-		%Dynamo(4, $33B060, $1F0)
-		%Dynamo(4, $33B260, $1C4)
-		%Dynamo(4, $33B460, $1D4)
+		%CompDyn(4, $153, $00)
+		%CompDyn(4, $163, $10)
+		%CompDyn(4, $173, $20)
+		%CompDyn(4, $183, $30)
+		%CompDyn(4, $193, $04)
+		%CompDyn(4, $1A3, $14)
 		..End
 
 		.Defeated
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(4, $33ACE0, $1C0)
-		%Dynamo(4, $33AEE0, $1D0)
-		%Dynamo(4, $33B0E0, $1E0)
-		%Dynamo(4, $33B2E0, $1C4)
-		%Dynamo(4, $33B4E0, $1D4)
+		%CompDyn(4, $167, $00)
+		%CompDyn(4, $177, $10)
+		%CompDyn(4, $187, $20)
+		%CompDyn(4, $197, $04)
+		%CompDyn(4, $1A7, $14)
 		..End
 
 		.Channel
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(3, $33AB80, $1C0)
-		%Dynamo(3, $33AD80, $1D0)
-		%Dynamo(3, $33AF80, $1E0)
-		%Dynamo(3, $33B180, $1F0)
-		%Dynamo(3, $33B380, $1C4)
-		%Dynamo(3, $33B580, $1D4)
+		%CompDyn(3, $15C, $00)
+		%CompDyn(3, $16C, $10)
+		%CompDyn(3, $17C, $20)
+		%CompDyn(3, $18C, $30)
+		%CompDyn(3, $19C, $04)
+		%CompDyn(3, $1AC, $14)
 		..End
 
 
 	Axe:
 		.Idle
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(4, $33B600, $1C8)
-		%Dynamo(4, $33B800, $1D8)
-		%Dynamo(4, $33BA00, $1E8)
-		%Dynamo(4, $33BC00, $1F8)
+		%CompDyn(4, $000, $08)
+		%CompDyn(4, $010, $18)
+		%CompDyn(4, $020, $28)
+		%CompDyn(4, $030, $38)
 		..End
 
 		.PrepChop0
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(3, $33BC60, $1C8)
-		%Dynamo(3, $33BE60, $1D8)
-		%Dynamo(3, $33C060, $1E8)
-		%Dynamo(3, $33C260, $1F8)
+		%CompDyn(3, $033, $08)
+		%CompDyn(3, $043, $18)
+		%CompDyn(3, $053, $28)
+		%CompDyn(3, $063, $38)
 		..End
 		.PrepChop1
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(3, $33C200, $1C8)
-		%Dynamo(3, $33C400, $1D8)
-		%Dynamo(3, $33C600, $1E8)
-		%Dynamo(3, $33C800, $1F8)
+		%CompDyn(3, $060, $08)
+		%CompDyn(3, $070, $18)
+		%CompDyn(3, $080, $28)
+		%CompDyn(3, $090, $38)
 		..End
 		.PrepChop2
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(3, $33C460, $1C8)
-		%Dynamo(3, $33C660, $1D8)
-		%Dynamo(3, $33C860, $1E8)
-		%Dynamo(3, $33CA60, $1F8)
+		%CompDyn(3, $073, $08)
+		%CompDyn(3, $083, $18)
+		%CompDyn(3, $093, $28)
+		%CompDyn(3, $0A3, $38)
 		..End
 
 		.Chop0
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(4, $33CF00, $1C8)
-		%Dynamo(4, $33D100, $1D8)
-		%Dynamo(4, $33D300, $1E8)
-		%Dynamo(4, $33D500, $1F8)
+		%CompDyn(4, $0C8, $08)
+		%CompDyn(4, $0D8, $18)
+		%CompDyn(4, $0E8, $28)
+		%CompDyn(4, $0F8, $38)
 		..End
 
 		.Chop1init
-		dw ..End-..Start
+		dw ..End-..Start		; this one has to remain dw, all others should be db tho
 		..Start
-		%Dynamo(6, $33CC00, $28A)
-		%Dynamo(6, $33CE00, $29A)
-		%Dynamo(6, $33D000, $2AA)
-		%Dynamo(6, $33D200, $2BA)
-		%Dynamo(6, $33D400, $2CA)
-		%Dynamo(2, $33CA00, $2E0)
-		%Dynamo(2, $33CC00, $2F0)
-		%Dynamo(2, $33D860, $2E2)
-		%Dynamo(2, $33CC00, $2F2)
-		%Dynamo(2, $33DA60, $2E4)
-		%Dynamo(2, $33CC00, $2F4)
+		%Dynamo(6, $0B0, $77A)		; this one should remain decompressed
+		%Dynamo(6, $0C0, $78A)
+		%Dynamo(6, $0D0, $79A)
+		%Dynamo(6, $0E0, $7AA)
+		%Dynamo(6, $0F0, $7BA)
 		..End
 
 		.Chop1
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(2, $33CCC0, $1C8)
-		%Dynamo(2, $33CEC0, $1D8)
-		%Dynamo(2, $33D0C0, $1E8)
-		%Dynamo(2, $33D2C0, $1CA)
-		%Dynamo(2, $33D4C0, $1DA)
+		%CompDyn(2, $0B6, $08)
+		%CompDyn(2, $0C6, $18)
+		%CompDyn(2, $0D6, $28)
+		%CompDyn(2, $0E6, $0A)
+		%CompDyn(2, $0F6, $1A)
 		..End
 		.Chop2
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(4, $33CD80, $1C8)
-		%Dynamo(4, $33CF80, $1D8)
-		%Dynamo(4, $33D180, $1E8)
-		%Dynamo(4, $33D380, $1F8)
+		%CompDyn(4, $0BC, $08)
+		%CompDyn(4, $0CC, $18)
+		%CompDyn(4, $0DC, $28)
+		%CompDyn(4, $0EC, $38)
+		%CompDyn(4, $0EC, $0C)	; duplicated source to fit in with tilemap
+		%CompDyn(4, $0FC, $1C)
 		..End
 		.Chop3
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(2, $33D6A0, $1C8)
-		%Dynamo(2, $33D8A0, $1D8)
-		%Dynamo(2, $33DAA0, $1E8)
+		%CompDyn(2, $105, $08)
+		%CompDyn(2, $115, $18)
+		%CompDyn(2, $125, $28)
 		..End
 
 		.Jump
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(3, $33BC00, $1C8)
-		%Dynamo(3, $33BE00, $1D8)
-		%Dynamo(3, $33C000, $1E8)
+		%CompDyn(3, $030, $08)
+		%CompDyn(3, $040, $18)
+		%CompDyn(3, $050, $28)
 		..End
 
 		.HurricaneJump
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(3, $33B680, $1C8)
-		%Dynamo(3, $33B880, $1D8)
-		%Dynamo(3, $33BA80, $1E8)
+		%CompDyn(3, $004, $08)
+		%CompDyn(3, $014, $18)
+		%CompDyn(3, $024, $28)
 		..End
 
 		.Hurricane0
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(4, $33B6E0, $1C8)
-		%Dynamo(4, $33B8E0, $1D8)
-		%Dynamo(4, $33BAE0, $1E8)
-		%Dynamo(4, $33BCE0, $1F8)
+		%CompDyn(4, $007, $08)
+		%CompDyn(4, $017, $18)
+		%CompDyn(4, $027, $28)
+		%CompDyn(4, $037, $38)
 		..End
 		.Hurricane1
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(5, $33B760, $1C8)
-		%Dynamo(5, $33B960, $1D8)
-		%Dynamo(5, $33BB60, $1E8)
-		%Dynamo(5, $33BD60, $1F8)
+		%CompDyn(5, $00B, $08)
+		%CompDyn(5, $01B, $18)
+		%CompDyn(5, $02B, $28)
+		%CompDyn(5, $03B, $38)
 		..End
 		.Hurricane2
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(5, $33BEC0, $1C8)
-		%Dynamo(5, $33C0C0, $1D8)
-		%Dynamo(2, $33C2C0, $1E8)
-		%Dynamo(2, $33C4C0, $1F8)
-		%Dynamo(4, $33C4C0, $1EC)	; Duplicated to fit in
-		%Dynamo(4, $33C6C0, $1FC)
+		%CompDyn(5, $046, $08)
+		%CompDyn(5, $056, $18)
+		%CompDyn(2, $066, $28)
+		%CompDyn(2, $076, $38)
+		%CompDyn(4, $076, $2C)	; duplicated source to fit in with tilemap
+		%CompDyn(4, $086, $3C)
 		..End
 		.Hurricane3
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(5, $33BF60, $1C8)
-		%Dynamo(5, $33C160, $1D8)
-		%Dynamo(5, $33C360, $1E8)
-		%Dynamo(5, $33C560, $1F8)
+		%CompDyn(5, $04B, $08)
+		%CompDyn(5, $05B, $18)
+		%CompDyn(5, $06B, $28)
+		%CompDyn(5, $07B, $38)
 		..End
 
 		.Stuck0
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(2, $33C780, $1C8)
-		%Dynamo(4, $33C980, $1D8)
-		%Dynamo(4, $33CB80, $1E8)
+		%CompDyn(2, $08C, $08)
+		%CompDyn(4, $09C, $18)
+		%CompDyn(4, $0AC, $28)
 		..End
 		.Stuck1
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(2, $33C900, $1C8)
-		%Dynamo(4, $33CB00, $1D8)
-		%Dynamo(4, $33CD00, $1E8)
+		%CompDyn(2, $098, $08)
+		%CompDyn(4, $0A8, $18)
+		%CompDyn(4, $0B8, $28)
 		..End
 
 		.Hurt
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(3, $33D600, $1C8)
-		%Dynamo(3, $33D800, $1D8)
-		%Dynamo(3, $33DA00, $1E8)
+		%CompDyn(3, $100, $08)
+		%CompDyn(3, $110, $18)
+		%CompDyn(3, $120, $28)
 		..End
 
 		.Defeated
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(3, $33D780, $1C8)
-		%Dynamo(3, $33D980, $1D8)
-		%Dynamo(3, $33DB80, $1E8)
+		%CompDyn(3, $10C, $08)
+		%CompDyn(3, $11C, $18)
+		%CompDyn(3, $12C, $28)
 		..End
 
 		.Channel
-		dw ..End-..Start
+		db ..End-..Start
 		..Start
-		%Dynamo(4, $33D700, $1C8)
-		%Dynamo(4, $33D900, $1D8)
-		%Dynamo(4, $33DB00, $1E8)
+		%CompDyn(4, $108, $08)
+		%CompDyn(4, $118, $18)
+		%CompDyn(4, $128, $28)
 		..End
 
 
@@ -1806,58 +1828,12 @@
 ; Axe GFX start at $33B600.
 
 	UPDATE_GFX:
-		JSL !GetVRAM
 		REP #$30
-		LDA ($0C) : STA $00
-		LDY #$0000
-		INC $0C
-		INC $0C
-	-	LDA ($0C),y
-		STA !VRAMbase+!VRAMtable+$00,x
-		INY #2
-		LDA ($0C),y
-		STA !VRAMbase+!VRAMtable+$02,x
-		INY
-		LDA ($0C),y
-		STA !VRAMbase+!VRAMtable+$03,x
-		INY #2
-		LDA ($0C),y
-		STA !VRAMbase+!VRAMtable+$05,x
-		INY #2
-		CPY $00
-		BEQ +
-		TXA
-		CLC : ADC #$0007
-		TAX
-		BRA -
-
-	+	TXA
-		CLC : ADC #$0007
-		TAX
-		LDA ($0E) : STA $00
-		LDY #$0000
-		INC $0E
-		INC $0E
-	-	LDA ($0E),y
-		STA !VRAMbase+!VRAMtable+$00,x
-		INY #2
-		LDA ($0E),y
-		STA !VRAMbase+!VRAMtable+$02,x
-		INY
-		LDA ($0E),y
-		STA !VRAMbase+!VRAMtable+$03,x
-		INY #2
-		LDA ($0E),y
-		STA !VRAMbase+!VRAMtable+$05,x
-		INY #2
-		CPY $00
-		BEQ +
-		TXA
-		CLC : ADC #$0007
-		TAX
-		BRA -
-
-		+
+		LDY.w #!File_CaptainWarrior
+		JSL !DecompFromFile
+		LDA $0E : STA $0C
+		LDY.w #!File_CaptainWarrior_Axe
+		JSL !DecompFromFile
 		SEP #$30
 		LDX !SpriteIndex
 		RTS

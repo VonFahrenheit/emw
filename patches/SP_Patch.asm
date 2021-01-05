@@ -1,6 +1,8 @@
 header
 sa1rom
 
+print "-- SP_PATCH --"
+
 ; --Defines--
 
 incsrc "Defines.asm"
@@ -41,65 +43,49 @@ pullpc
 
 
 CODE_138008:
-	PHB				;\
-	PHK				; |
-	PLB				; | Wrapper for GET_MAP16 routine, located at !Freespace+$08
-	JSR GET_MAP16			; |
+	PHB : PHK : PLB			;\
+	JSR GET_MAP16			; | wrapper for GET_MAP16 routine, located at !Freespace+$08
 	PLB				; |
 	RTL				;/
 
 CODE_138010:
-	PHB				;\
-	PHK				; |
-	PLB				; | Wrapper for OAM kill routine
-	JSR KILL_OAM_Short		; |
+	PHB : PHK : PLB			;\
+	JSR KILL_OAM_Short		; | wrapper for OAM kill routine
 	PLB				; |
 	RTL				;/
 
 CODE_138018:
-	PHB				;\
-	PHK				; |
-	PLB				; | Load coordinates in X/Y, then JSL here
-	JSR GET_MAP16_ABSOLUTE		; |
+	PHB : PHK : PLB			;\
+	JSR GET_MAP16_ABSOLUTE		; | load coordinates in X/Y, then JSL here
 	PLB				; |
 	RTL				;/
 
 CODE_138020:
-	PHB				;\
-	PHK				; |
-	PLB				; | Wrapper for Yoshi Coin handler, called by level code
-	JSR YoshiCoins			; |
+	PHB : PHK : PLB			;\
+	JSR YoshiCoins			; | wrapper for Yoshi Coin handler, called by level code
 	PLB				; |
 	RTL				;/
 
 CODE_138028:
-	PHB				;\
-	PHK				; |
-	PLB				; | Wrapper for the routine that gets the VRAM table index into X
-	JSR GET_VRAM			; |
+	PHB : PHK : PLB			;\
+	JSR GET_VRAM			; | wrapper for the routine that gets the VRAM table index into X
 	PLB				; |
 	RTL				;/
 
 CODE_138030:
-	PHB				;\
-	PHK				; |
-	PLB				; | Wrapper for the routine that gets the CGRAM table index into Y
-	JSR GET_CGRAM			; |
+	PHB : PHK : PLB			;\
+	JSR GET_CGRAM			; | wrapper for the routine that gets the CGRAM table index into Y
 	PLB				; |
 	RTL				;/
 
 CODE_138038:
-	PHB
-	PHK
-	PLB
+	PHB : PHK : PLB
 	JSR PLANE_SPLIT
 	PLB
 	RTL
 
 CODE_138040:
-	PHB
-	PHK
-	PLB
+	PHB : PHK : PLB
 	JSR HurtPlayers
 	PLB
 	RTL
@@ -113,44 +99,60 @@ CODE_13804C:
 	RTL
 
 CODE_138050:
-	PHB
-	PHK
-	PLB
+	PHB : PHK : PLB
 	JSR CONTACT16
 	PLB
 	RTL
 
 
 CODE_138058:
-	PHB
-	PHK
-	PLB
+	PHB : PHK : PLB
 	JSR RGBtoHSL
 	PLB
 	RTL
 
 CODE_138060:
-	PHB
-	PHK
-	PLB
+	PHB : PHK : PLB
 	JSR HSLtoRGB
 	PLB
 	RTL
 
 CODE_138068:
-	PHB
-	PHK
-	PLB
+	PHB : PHK : PLB
 	JSR MixRGB
 	PLB
 	RTL
 
 CODE_138070:
-	PHB
-	PHK
-	PLB
+	PHB : PHK : PLB
 	JSR MixHSL
 	PLB
+	RTL
+
+CODE_138078:
+	JSR UPDATE_3D_CLUSTER
+	RTL
+
+CODE_13807C:
+	JSR UPDATE_2D_CLUSTER
+	RTL
+
+CODE_138080:
+	PHB : PHK : PLB
+	JSR GET_FILE_ADDRESS
+	PLB
+	RTL
+
+CODE_138088:
+	JSR UPDATE_FROM_FILE
+	RTL
+
+CODE_13808C:
+	JSR DECOMP_FROM_FILE
+	RTL
+
+CODE_138090:
+	JSR LOAD_FILE
 	RTL
 
 
@@ -776,6 +778,9 @@ UPDATE_GFX:	BCS .Dynamic
 		PLB
 		PHP
 		REP #$30
+		LDA $02					;\
+		ASL #4					; | calculating this here is faster
+		STA $02					;/
 		LDA $0C : BEQ +				; < Return if dynamo is empty
 		LDA ($0C) : STA $00
 		LDY #$0000
@@ -790,9 +795,8 @@ UPDATE_GFX:	BCS .Dynamic
 		LDA ($0C),y
 		STA !VRAMbase+!VRAMtable+$03,x
 		INY #2
-		LDA $02
-		ASL #4
-		CLC : ADC ($0C),y
+		LDA ($0C),y
+		CLC : ADC $02
 		STA !VRAMbase+!VRAMtable+$05,x
 		INY #2
 		CPY $00
@@ -890,6 +894,7 @@ HurtP1:		LDA !P2Invinc-$80,y		;\
 		RTS
 
 .Kill		LDA #$01 : STA !P2Status-$80,y	; > This player dies
+		LDA #$C0 : STA !P2YSpeed-$80,y
 		LDA !P2Status-$80 : BEQ .Return	;\ (this is actually correct! note the absent ",y")
 		LDA !MultiPlayer : BEQ .Music	; | (ignore p2 on singleplayer)
 		LDA !P2Status : BEQ .Return	; | If both players are dead, play death music
@@ -1686,6 +1691,917 @@ MixHSL:
 		RTS
 
 
+;===================;
+;JOINT CLUSTER CODES;
+;===================;
+
+; -- macros --
+
+
+
+; input:
+;	A = angle (0-1023 is a full rotation)
+; output:
+;	A = sine value
+	macro Trig()
+		PHX
+		ASL #2
+		AND #$03FF
+		CMP #$0200
+		PHP
+		AND #$01FF
+		TAX
+		LDA.l !TrigTable,x
+		PLP
+		BCC $04 : EOR #$FFFF : INC A
+		PLX
+	endmacro
+
+; input:
+;	cache1 = coordinate 1
+;	cache2 = coordinate 2
+;	cache3 = coordinate 3
+;	cache4 = coordinate 4
+;	cache5 = angle
+;
+; output:
+;	cache7 = coordinate 1
+;	cache8 = coordinate 2
+	macro Apply3DRotation()
+		PHB : PHK : PLB
+		LDA !3D_Cache5
+		PHA
+		CLC : ADC #$0040
+		%Trig()
+		STA !3D_Cache6			; cache2 = cos(a)
+		PLA
+		%Trig()
+		STA !3D_Cache5			; cache1 = sin(a)
+
+		LDA !3D_Cache6 : STA $2251
+		LDA !3D_Cache1 : STA $2253
+		NOP : BRA $00
+		LDA $2307 : STA $06
+	;	LDA $2306
+	;	AND #$00FF
+	;	CMP #$0080
+	;	BCC $02 : INC $06			; $06 = product 1
+		LDA !3D_Cache5 : STA $2251
+		LDA !3D_Cache2 : STA $2253
+		NOP : BRA $00
+		LDA $2307 : STA $08
+	;	LDA $2306
+	;	AND #$00FF
+	;	CMP #$0080
+	;	BCC $02 : INC $08			; $08 = product 2
+		LDA $06
+		CLC : ADC $08
+		STA !3D_Cache7			; cache7 = coordinate 1 (X or Y)
+
+		LDA !3D_Cache5 : STA $2251
+		LDA !3D_Cache3 : STA $2253
+		NOP : BRA $00
+		LDA $2307 : STA $06
+	;	LDA $2306
+	;	AND #$00FF
+	;	CMP #$0080
+	;	BCC $02 : INC $06			; $06 = product 3
+		LDA !3D_Cache6 : STA $2251
+		LDA !3D_Cache4 : STA $2253
+		NOP : BRA $00
+		LDA $2307 : STA $08
+	;	LDA $2306
+	;	AND #$00FF
+	;	CMP #$0080
+	;	BCC $02 : INC $08			; $08 = product 4
+		LDA $06
+		CLC : ADC $08
+		STA !3D_Cache8			; cache8 = coordinate 2 (Y or Z)
+		PLB
+	endmacro
+
+
+
+UPDATE_3D_CLUSTER:
+
+	; can only be called by SA-1
+
+	; input: A = xflip bit (usually from $3320,x, 0 to not use)
+
+	; $00-$01: parent X position (16-bit)
+	; $02-$03: parent Y position (16-bit)
+	; $04-$05: parent Z position (16-bit)
+	; $06-$07: calculating X position (16-bit)
+	; $08-$09: calculating Y position (16-bit)
+	; $0A-$0B: calculating Z position (16-bit)
+
+	; Each parent position is pushed on the stack, then loaded into $06-$0B
+
+
+; Start processing from index 0 and go all the way up
+; The core has to be the first (lowest index) object of each cluster.
+; Only the core has a true X/Y/Z coordinate.
+; When an attachment is processed, its X/Y/Z coordinates are stored based on the parent's X/Y/Z coordinates.
+; Therefore, each attachment must be processed after its parent.
+
+		LSR A					;\
+		ROR A					; |
+		LSR A					; | xflip flag
+		AND #$40				; |
+		STA !BigRAM+$7F				;/
+
+		PHB : PHB				;\ bank on stack and in cache
+		PLA : STA.l !3D_BankCache		;/
+		PHX					;\ back up X/P
+		PHP					;/
+		STZ $2250				; prepare multiplication
+		LDA.b #!3D_Base>>16			;\ DB
+		PHA : PLB				;/
+		REP #$30				; all regs 16-bit
+
+		PEI ($F0)
+		PEI ($F2)
+		PEI ($F4)
+		PEI ($F6)
+		PEI ($F8)
+		PEI ($FA)
+		PEI ($FC)
+		PEI ($FE)
+
+
+
+	; processing, step 1
+	; here go through the tree of joints, calculating the coordinates of each one
+	; core rotation is not yet applied
+
+		LDX #$0000				;\
+		LDY #$0000				; |
+	-	LDA.w !3D_Slot,y			; |
+		AND #$00FF : BEQ .Next			; | search for non-core joints
+		TYA					; |
+		CMP.w !3D_Attachment,y : BEQ .Core	; |
+		LDX.w !3D_Attachment,y			;/
+		JSR .UpdateJoint			; process joint
+		BRA .Next				; then go to the next one
+		.Core					;\
+		PHY					; |
+		LDA.w !3D_X,y : PHA			; | store core coordinates on the stack
+		LDA.w !3D_Y,y : PHA			; |
+		LDA.w !3D_Z,y : PHA			;/
+		.Next					;\
+		TYA					; |
+		CLC : ADC #$0010			; | get next joint
+		TAY					; |
+		CPY #$0200 : BCC -			;/
+
+
+	; processing, step 2
+	; here, we go through the tree of joints again
+	; this time we only apply core rotation
+
+		PLA : STA $04
+		PLA : STA $02
+		PLA : STA $00
+		PLX
+		LDA.w !3D_AngleXY,x : BNE +		;\ skip rotation if no angles are set
+		LDA.w !3D_AngleXZ,x : BEQ ++		;/
+	+	JSR Transform3DCluster			; rotate around axes
+	++
+
+		STZ $0C
+		LDX #$0000
+		LDY #$0000
+		STZ.w !3D_AssemblyCache			; how many objects will be added to tilemap
+	-	LDA.w !3D_Slot,y : BEQ +
+		LDA.w !3D_X,y
+		SEC : SBC $00
+		STA.w !3D_AssemblyCache+$02,x
+		LDA.w !3D_Y,y
+		SEC : SBC $02
+		STA.w !3D_AssemblyCache+$03,x
+		LDA.w !3D_Z,y
+		AND #$00FF
+		STA.w !3D_AssemblyCache+$04,x
+		LDA.w !3D_Extra,y : STA.w !3D_AssemblyCache+$06,x
+		INX #8
+		STX.w !3D_AssemblyCache			; increment header
+		INC $0C					; increment object count
+
+	+	TYA
+		CLC : ADC #$0010
+		TAY
+		CPY #$0200 : BCC -
+
+
+	; processing, step 3
+	; now all objects are in !3D_AssemblyCache
+	; first 2 bytes is header
+	; X is written to X+0
+	; Y is written to X+1
+	; Z is written to X+2
+	; X+3 is clear (nonzero signals that this has been taken)
+	; X+4 and X+5 is tilemap data
+	; now we sort by Z value and transcribe the tilemaps from highest to lowest
+
+
+	; key:
+	; $0B = highest Z found so far
+	; $0C = how many objects there are
+	; $0D = how many objects have been transcribed
+	; $0E = index of currently highest Z
+
+		LDX #$0000
+		LDY #$0000
+		SEP #$20
+		STZ $0B
+		STZ $06						; for tilemap assembly
+
+	.Loop	LDA.w !3D_AssemblyCache+$05,y : BNE +
+		LDA.w !3D_AssemblyCache+$04,y
+		CMP $0B : BCC +
+		STA $0B
+		STY $0E
+
+	+	INY #8
+		CPY.w !3D_AssemblyCache : BCC .Loop
+
+	.Z	LDY $0E
+		REP #$20
+		LDA.w !3D_AssemblyCache+$02,y : STA $00		; X/Y offset
+		STZ $02						; tile/prop data
+		PHY
+		LDA.w !3D_AssemblyCache+$06,y
+		AND #$00FF
+		ASL A
+		TAY
+		LDA.w !3D_TilemapPointer : STA $08
+		SEP #$20
+		PHB
+		LDA.w !3D_BankCache : PHA : PLB
+		REP #$20
+		LDA ($08),y
+
+	; add tilemap to !BigRAM here
+		PHX
+		PHP
+		SEP #$10
+		REP #$20
+		LDX $06 : BNE .NotInit
+		STZ !BigRAM+0
+		.NotInit
+		STA $04
+		LDY #$00
+		LDA ($04)
+		AND #$00FF			; tilemap can not be larger than 256 bytes
+		STA $08
+		CLC : ADC !BigRAM+0
+		STA !BigRAM+0
+		INC $04
+		LDA ($04)			; > get hi byte of header (GFX status to add)
+		INC $04
+		SEP #$20
+		CMP #$00 : BEQ .LoopTM		; if index is 0, just start
+
+		PEI ($00)			;\ back these up
+		PHX				;/
+		TAX				;\
+		LDA !GFX_status,x		; |
+		STZ $00				; |
+		STA $01				; |
+		AND #$70			; | unpack tile number offset
+		ASL A				; |
+		STA $00				; |
+		LDA $01				; |
+		AND #$0F			; |
+		ORA $00				;/
+		CLC : ADC $03			;\ store new tile number offset
+		STA $03				;/
+		LDA $01				;\
+		ASL A				; |
+		ROL A				; | store new property bits
+		AND #$01			; |
+		EOR $02				; |
+		STA $02				;/
+		PLX				;\
+		REP #$20			; | restore these
+		PLA : STA $00			; |
+		SEP #$20			;/
+
+	.LoopTM	LDA ($04),y			;\
+		EOR $02				; | Prop
+		STA !BigRAM+2,x			; |
+		INY				;/
+		LDA $00				;\
+		BIT !BigRAM+$7F			; |
+		BVC $02 : EOR #$FF		; > extra xflip to account for tilemap loader
+		CLC : ADC ($04),y		; | X
+		STA !BigRAM+3,x			; |
+		INY				;/
+		LDA ($04),y			;\
+		CLC : ADC $01			; | Y
+		STA !BigRAM+4,x			; |
+		INY				;/
+		LDA ($04),y			;\
+		CLC : ADC $03			; | Tile
+		STA !BigRAM+5,x			; |
+		INY				;/
+		INX #4
+		CPY $08 : BCC .LoopTM
+		STX $06
+		PLP
+		PLX
+
+		PLB
+		PLY
+		SEP #$20
+		STZ $0B
+		INX #4
+		LDA #$FF : STA.w !3D_AssemblyCache+$05,y
+		LDY #$0000
+		INC $0D
+		LDA $0D
+		CMP $0C : BEQ $03 : JMP .Loop
+
+
+
+		.Return
+		REP #$20
+		PLA : STA $FE
+		PLA : STA $FC
+		PLA : STA $FA
+		PLA : STA $F8
+		PLA : STA $F6
+		PLA : STA $F4
+		PLA : STA $F2
+		PLA : STA $F0
+		PLP
+		PLX
+		PLB
+		RTS
+
+
+
+
+
+; process:
+;
+; z = d * cos(v)
+; r = d * sin(v)
+; x = r * cos(h)
+; y = r * sin(h)
+;
+; add offsets to parent coordinates to get attachment coordinates
+
+		.UpdateJoint
+		LDA.w !3D_X,x : STA $00			;\
+		LDA.w !3D_Y,x : STA $02			; | parent coordinates
+		LDA.w !3D_Z,x : STA $04			;/
+		PHY					;\
+		PHP					; |
+		SEP #$20				; |
+		STZ $0D					; |
+		STZ $0E					; | search for parent joint
+		STZ $0F					; |
+	-	STY $08					; |
+		LDX.w !3D_Attachment,y			; |
+		CPX $08 : BEQ +				;/
+		STX $08					;\
+		LDY.w !3D_Attachment,x			; | if parent is core, ignore its rotations for now
+		CPY $08 : BEQ +				;/
+		LDA.w !3D_AngleH,x			;\
+		CLC : ADC $0E				; |
+		STA $0E					; |
+		LDA.w !3D_AngleV,x			; | add parent rotations...
+		CLC : ADC $0F				; | ...and keep going up the tree all the way to the core
+		STA $0F					; | this way we will get the full rotations no matter how long the chain is
+		TXY					; |
+		BRA -					;/
+	+	PLP					;\ prepare index
+		PLY					;/
+
+		PHX					;\ preserve X and swap with Y so we can use more effective DB
+		TYX					;/
+
+		PHB : PHK : PLB				; bank wrapper start
+
+		LDA !3D_AngleV,x			;\
+		CLC : ADC $0F				; |
+		PHA					; | get cosine of v
+		CLC : ADC #$0040			; |
+		%Trig()					;/
+		STA $2251				;\
+		LDA !3D_Distance,x : STA $2253		; | distance on XY plane
+		NOP : BRA $00				; |
+		LDA $2307 : STA $08			;/
+	;	LDA $2306				;\
+	;	AND #$00FF				; | round
+	;	CMP #$0080				; | (do we really need this amount of precision?
+	;	BCC $02 : INC $08			;/
+		PLA					;\ get sine of v
+		%Trig()					;/
+		STA $2251				;\
+		LDA !3D_Distance,x : STA $2253		; | Z coordinate
+		NOP : BRA $00				; |
+		LDA $2308 : STA $0A			;/
+	;	LDA $2306				;\ round
+	;	BPL $02 : INC $0A			;/
+
+		LDA !3D_AngleH,x			;\
+		CLC : ADC $0E				; |
+		PHA					; | get cosine of h
+		CLC : ADC #$0040			; |
+		%Trig()					;/
+		STA $2251				;\
+		LDA $08 : STA $2253			; | X coordinate
+		NOP : BRA $00				; |
+		LDA $2308 : STA $06			;/
+	;	LDA $2306				;\ round
+	;	BPL $02 : INC $06			;/
+
+		PLA					;\ get sine of h
+		%Trig()					;/
+		STA $2251				;\
+		LDA $08 : STA $2253			; | Y coordinate
+		NOP : BRA $00				; |
+		LDA $2308 : STA $08			;/
+	;	LDA $2306				;\ round
+	;	BPL $02 : INC $08			;/
+
+		PLB					; bank wrapper end
+		LDA $06					;\
+		CLC : ADC $00				; |
+		STA.w !3D_X,y				; |
+		LDA $08					; |
+		CLC : ADC $02				; | add parent coords to offsets to get joint coords
+		STA.w !3D_Y,y				; | (Y is unchanged so this is fine)
+		LDA $0A					; |
+		CLC : ADC $04				; |
+		STA.w !3D_Z,y				;/
+		PLX					; restore X
+		RTS					; return
+
+
+
+
+	Transform3DCluster:
+
+		LDY #$0000
+
+	.Loop	STY $0E
+		CPX $0E : BNE .Process
+		JMP .Next
+
+		.Process
+		LDA.w !3D_X,y
+		SEC : SBC $00
+		STA.w !3D_X,y
+		LDA.w !3D_Y,y
+		SEC : SBC $02
+		STA.w !3D_Y,y
+		LDA.w !3D_Z,y
+		SEC : SBC $04
+		STA.w !3D_Z,y
+		LDA.w !3D_AngleXY,x			;\
+		AND #$00FF : BNE .CalcXY		; |
+		JMP .SkipXY				; |
+		.CalcXY					; |
+		LDA.w !3D_X,y				; |
+		STA !3D_Cache1				; |
+		STA !3D_Cache3				; |
+		LDA.w !3D_Y,y				; |
+		STA !3D_Cache4				; | rotation around z axis
+		EOR #$FFFF : INC A			; |
+		STA !3D_Cache2				; |
+		LDA.w !3D_AngleXY,x : STA !3D_Cache5	; |
+		%Apply3DRotation()			; |
+		LDA !3D_Cache7 : STA.w !3D_X,y		; |
+		LDA !3D_Cache8 : STA.w !3D_Y,y		; |
+		.SkipXY					;/
+
+		LDA.w !3D_AngleYZ,x			;\
+		AND #$00FF : BNE .CalcYZ		; |
+		JMP .SkipYZ				; |
+		.CalcYZ					; |
+		LDA.w !3D_Y,y				; |
+		STA !3D_Cache1				; |
+		STA !3D_Cache3				; |
+		LDA.w !3D_Z,y				; |
+		STA !3D_Cache4				; | rotation around x axis
+		EOR #$FFFF : INC A			; |
+		STA !3D_Cache2				; |
+		LDA.w !3D_AngleYZ,x : STA !3D_Cache5	; |
+		%Apply3DRotation()			; |
+		LDA !3D_Cache7 : STA.w !3D_Y,y		; |
+		LDA !3D_Cache8 : STA.w !3D_Z,y		; |
+		.SkipYZ					;/
+
+		LDA.w !3D_AngleXZ,x			;\
+		AND #$00FF : BNE .CalcXZ		; |
+		JMP .SkipXZ				; |
+		.CalcXZ					; |
+		LDA.w !3D_X,y				; |
+		STA !3D_Cache1				; |
+		EOR #$FFFF : INC A			; |
+		STA !3D_Cache3				; |
+		LDA.w !3D_Z,y				; | rotation around y axis
+		STA !3D_Cache2				; |
+		STA !3D_Cache4				; |
+		LDA.w !3D_AngleXZ,x : STA !3D_Cache5	; |
+		%Apply3DRotation()			; |
+		LDA !3D_Cache7 : STA.w !3D_X,y		; |
+		LDA !3D_Cache8 : STA.w !3D_Z,y		; |
+		.SkipXZ					;/
+
+		LDA.w !3D_X,y
+		CLC : ADC $00
+		STA.w !3D_X,y
+		LDA.w !3D_Y,y
+		CLC : ADC $02
+		STA.w !3D_Y,y
+		LDA.w !3D_Z,y
+		CLC : ADC $04
+		STA.w !3D_Z,y
+
+		.Next
+		TYA
+		CLC : ADC #$0010
+		TAY
+		CPY #$0200 : BCS .Return
+		JMP .Loop
+
+		.Return
+		RTS
+
+
+
+
+; here, X indexes the current joint and Y indexes the parent joint
+; before calling, store pointers to the tilemaps at !3D_TilemapCache and load A with $3320,x
+	UPDATE_2D_CLUSTER:
+
+		LSR A						;\
+		ROR A						; |
+		LSR A						; | xflip flag
+		AND #$40					; |
+		STA !BigRAM+$7F					;/
+
+		PHB : PHB					;\ bank on stack and in cache
+		PLA : STA.l !3D_BankCache			;/
+		PHX						;\ back up X/P
+		PHP						;/
+		STZ $2250					; prepare multiplication
+		LDA.b #!3D_Base>>16				;\ DB
+		PHA : PLB					;/
+		REP #$30					; all regs 16-bit
+		STZ $06						; clear tilemap continue flag
+
+		LDX #$0000					;\
+		LDY #$0000					; |
+	.Loop	LDA.w !2D_Slot,x				; | search for joints
+		AND #$00FF : BNE .Process			; |
+		JMP .Next					; |
+		.Process					;/
+		LDY.w !2D_Attachment,x				;\
+		STY $00						; | core has no parent joint
+		CPX $00 : BNE .Joint				; |
+		JMP .Core					;/
+
+	.Joint	SEP #$20					; A 8-bit
+		LDA.w !2D_Rotation,y				;\
+		CLC : ADC.w !2D_Angle,x				; | get total rotation
+		STA.w !2D_Rotation,x				;/
+		PHB : PHK : PLB					; start of bank wrapper
+		REP #$20					; A 16-bit
+		AND #$00FF					;\ full angle
+		ASL #2						;/
+		PHA						; preserve
+		CLC : ADC #$0040					;\ cosine
+		%Trig()						;/
+		STA $2251					;\
+		LDA !2D_Distance,x : STA $2253			; | X offset
+		BRA $00 : NOP					; |
+		LDA $2307 : STA $00				;/
+		PLA						;\ sine
+		%Trig()						;/
+		STA $2251					;\
+		LDA !2D_Distance,x : STA $2253			; | Y offset
+		BRA $00 : NOP					; |	
+		LDA $2307					;/
+		PLB						; restore bank
+		CLC : ADC.w !2D_Y,y				;\ store Y offset of joint
+		STA.w !2D_Y,x					;/
+		LDA $00						;\
+		CLC : ADC.w !2D_X,y				; | store X offset of joint
+		STA.w !2D_X,x					;/
+		BRA .AppendTilemap				; go to tilemap code
+
+	.Core	SEP #$20					;\
+		LDA.w !2D_Angle,x : STA.w !2D_Rotation,x	; | save angle as total rotation
+		REP #$20					;/
+
+	.AppendTilemap
+	; add tilemap to !BigRAM here
+		LDA.w !2D_X,x					;\
+		SEC : SBC.w !2D_X,y				; |
+		STA $00						; |
+		LDA.w !2D_Y,x					; | tilemap transcription parameters
+		SEC : SBC.w !2D_Y,y				; |
+		STA $01						; |
+		STZ $02						;/
+		LDA.w !2D_Tilemap,x				; A = tilemap index
+		PHB : PHK : PLB					; start of bank wrapper
+		PHX						; push X
+		PHP						; push P
+		SEP #$10					; index 8-bit
+		REP #$20					; A 16-bit
+		AND #$00FF					;\
+		ASL A						; | get tilemap location
+		TAX						; |
+		LDA !3D_TilemapCache,x				;/
+		LDX $06 : BNE .NotInit				;\
+		STZ !BigRAM+0					; | check init
+		.NotInit					;/
+		STA $04						;\
+		LDY #$00					; |
+		LDA ($04)					; |
+		AND #$00FF					; |
+		STA $08						; |
+		CLC : ADC !BigRAM+0				; | set up tilemap read and check for alt GFX index
+		STA !BigRAM+0					; |
+		INC $04						; |
+		LDA ($04)					; |
+		INC $04						; |
+		SEP #$20					; |
+		CMP #$00 : BEQ .LoopTM				;/
+
+		PEI ($00)					;\ back these up
+		PHX						;/
+		TAX						;\
+		LDA !GFX_status,x				; |
+		STZ $00						; |
+		STA $01						; |
+		AND #$70					; | unpack tile number offset
+		ASL A						; |
+		STA $00						; |
+		LDA $01						; |
+		AND #$0F					; |
+		ORA $00						;/
+		CLC : ADC $03					;\ store new tile number offset
+		STA $03						;/
+		LDA $01						;\
+		ASL A						; |
+		ROL A						; | store new property bits
+		AND #$01					; |
+		EOR $02						; |
+		STA $02						;/
+		PLX						;\
+		REP #$20					; | restore these
+		PLA : STA $00					; |
+		SEP #$20					;/
+
+	.LoopTM	LDA ($04),y					;\
+		EOR $02						; | prop
+		STA !BigRAM+2,x					; |
+		INY						;/
+		LDA $00						;\
+		BIT !BigRAM+$7F					; |
+		BVC $02 : EOR #$FF				; > extra xflip to account for tilemap loader
+		CLC : ADC ($04),y				; | X
+		STA !BigRAM+3,x					; |
+		INY						;/
+		LDA ($04),y					;\
+		CLC : ADC $01					; | Y
+		STA !BigRAM+4,x					; |
+		INY						;/
+		LDA ($04),y					;\
+		CLC : ADC $03					; | tile
+		STA !BigRAM+5,x					; |
+		INY						;/
+		INX #4						;\ loop
+		CPY $08 : BCC .LoopTM				;/
+		STX $06						; save index
+		PLP						; restore P
+		PLX						; restore X
+		PLB						; end of bank wrapper
+
+	.Next	TXA						;\
+		CLC : ADC #$000C				; |
+		TAX						; | loop through entire table
+		CPX #$0200 : BCS .Return			; |
+		JMP .Loop					;/
+		.Return						;\
+		PLP						; |
+		PLX						; | restore stuff and return
+		PLB						; |
+		RTS						;/
+
+
+
+
+
+;================;
+;GET FILE ADDRESS;
+;================;
+
+;
+; how to use:
+; load 16-bit Y (or 8-bit if index < 256) with file number
+; then call here
+; returns with !FileAddress set to the address of the file
+;
+; NOTE!!
+; because file lists can change at any time, all file numbers should use a define
+; NEVER hardcode a file number!!
+
+GET_FILE_ADDRESS:
+		PHP
+		REP #$10
+		SEP #$20
+		LDA.b #$30 : PHA : PLB				; bank
+		REP #$20
+		LDA.w $8409,y : STA.l !FileAddress+1
+		LDA.w $8408,y : STA.l !FileAddress
+		PLP
+		RTS
+
+
+;===============;
+;UPATE FROM FILE;
+;===============;
+
+UPDATE_FROM_FILE:
+		PHB : PHK : PLB
+		JSR GET_FILE_ADDRESS
+		PLB
+
+		PHP
+		SEP #$30
+
+		LDA !ClaimedGFX
+		AND #$0F
+		ASL A
+		CMP #$10
+		BCC $03 : CLC : ADC #$10
+		STA $02
+		LDA !GFX_Dynamic
+		AND #$70
+		ASL A
+		ADC $02
+		STA $02
+		LDA !GFX_Dynamic
+		AND #$0F
+		CLC : ADC $02
+		STA $02
+		STZ $03
+		LDA !GFX_Dynamic
+		BPL $02 : INC $03
+
+		PHX
+		PHB
+		JSR GET_VRAM
+		PLB
+		PHP
+		REP #$30
+		LDA $02					;\
+		ASL #4					; | calculating this here is faster
+		STA $02					;/
+		LDA $0C : BEQ +				; return if dynamo is empty
+		LDA ($0C) : BEQ +			; return if size is 0
+		STA $00
+		LDY #$0000
+		INC $0C
+		INC $0C
+	-	LDA ($0C),y
+		STA !VRAMbase+!VRAMtable+$00,x
+		INY #2
+		LDA ($0C),y
+		CLC : ADC !FileAddress
+		STA !VRAMbase+!VRAMtable+$02,x
+		LDA !FileAddress+2 : STA !VRAMbase+!VRAMtable+$04,x
+		INY #3
+		LDA ($0C),y
+		CLC : ADC $02
+		STA !VRAMbase+!VRAMtable+$05,x
+		INY #2
+		CPY $00
+		BCS +
+		TXA
+		CLC : ADC #$0007
+		TAX
+		BRA -
+
+		+
+		PLP
+		PLX
+
+		PLP
+		RTS
+
+
+;================;
+;DECOMP FROM FILE;
+;================;
+DECOMP_FROM_FILE:
+
+		PHB : PHK : PLB
+		JSR GET_FILE_ADDRESS
+		PLB
+
+		PHP
+		SEP #$30
+
+		LDA !ClaimedGFX
+		AND #$0F
+		ASL A
+		CMP #$10
+		BCC $03 : CLC : ADC #$10
+		STA $02
+		LDA !GFX_Dynamic
+		AND #$70
+		ASL A
+		ADC $02
+		STA $02
+		LDA !GFX_Dynamic
+		AND #$0F
+		CLC : ADC $02
+		STA $02
+		STZ $03
+		LDA !GFX_Dynamic
+		BPL $02 : INC $03
+
+		PHX
+		PHB
+		JSR GET_VRAM
+		PLB
+		PHP
+		REP #$30
+		LDA $02					;\
+		ASL #4					; | this is just better to do here
+		ORA #$6000				; |
+		STA $02					;/
+		LDA $0C : BEQ +				; return if dynamo is empty
+		LDA ($0C)
+		AND #$00FF : BEQ +			; return if size is 0
+		STA $00
+		LDY #$0000
+		INC $0C					; increment past header (only 1 byte for compressed format)
+
+	-	LDA ($0C),y
+		AND #$001E
+		ASL #4
+		STA !VRAMbase+!VRAMtable+$00,x
+		LDA ($0C),y
+		AND #$7FE0
+		CLC : ADC !FileAddress
+		STA !VRAMbase+!VRAMtable+$02,x
+		LDA !FileAddress+2 : STA !VRAMbase+!VRAMtable+$04,x
+		INY #2
+		LDA ($0C),y
+		ASL #4
+		AND #$0FF0
+		CLC : ADC $02
+		STA !VRAMbase+!VRAMtable+$05,x
+		INY
+		CPY $00 : BCS +
+		TXA
+		CLC : ADC #$0007
+		TAX
+		BRA -
+
+		+
+		PLP
+		PLX
+
+		PLP
+		RTS
+
+;=========;
+;LOAD FILE;
+;=========;
+;
+; input:
+;	Y = file number
+;	A = dest VRAM
+;
+LOAD_FILE:
+		PHP
+		PHA
+		PHB : PHK : PLB
+		JSR GET_FILE_ADDRESS
+		PLB
+
+		PHB
+		JSR GET_VRAM
+		PLB
+
+		LDA !FileAddress : STA !VRAMbase+!VRAMtable+$02,x
+		LDA !FileAddress+2 : STA !VRAMbase+!VRAMtable+$04,x
+		PLA : STA !VRAMbase+!VRAMtable+$05,x
+		LDA #$0800 : STA !VRAMbase+!VRAMtable+$00,x
+
+		PLP
+		RTS
+
 
 ;========;
 ;HDMA FIX;
@@ -1759,30 +2675,14 @@ LOAD_SRAM:
 		JML $009E4E			; Return to load OW routine
 
 
-;=================;
-;END LEVEL ROUTINE;
-;=================;
-END_LEVEL:
-
-		LDA !P2Status
-		CMP #$02 : BCC .KeepRunning
-		LDY #$0B			; Fade to overworld if both players are dead
-		BRA .Return
-
-.KeepRunning	LDY #$14			; Gamemode = level
-		INC $7496
-
-.Return		LDA !P2XPosLo			;\
-		STA $94				; | Player 1 Xpos = player 2 Xpos
-		LDA !P2XPosHi			; |
-		STA $95				;/
-		RTL
-
 
 
 ;==============;
 ;CLEAR PLAYER 2;
 ;==============;
+;
+; this is called from RealmSelect.asm
+;
 CLEAR_PLAYER2:
 
 		STZ !BossData+0			;\
@@ -1963,125 +2863,90 @@ DEATH_GAMEMODE:
 ;===========;
 DELAY_DEATH:
 
-		LDA !MultiPlayer : BEQ .Death	; > Ignore P2 if multiplayer is disabled
-		LDA !Characters			;\ If player 2 is Mario, they're dead
-		AND #$0F : BEQ .Death		;/
-		LDA !P2Status			;\
-		CMP #$02			; | If player 2 is still alive, hide player 1
-		BCC .NoDeath			;/
-.Death		LDA !Characters			;\
-		AND #$F0			; |
-		BEQ .ReallyDeath		; | Allow custom player 1 character to survive
-		LDA !P2Status-$80		; |
-		CMP #$02			; |
-		BCC .NoDeath			;/
-.ReallyDeath	LDA #$01			;\ Set music
-		STA !SPC3			;/
-		REP #$20			;\
-		STZ !P1Coins			; | Players lose all coins upon death
-		STZ !P2Coins			; |
-		SEP #$20			;/
+		LDA !MultiPlayer : BNE .HandleMario	;\
+		LDA !Characters				; > !P2Character is not yet filled out
+		AND #$F0 : BEQ .HandleMario		; | special case: single player without mario
+		LDA !P2Status-$80			; |
+		CMP #$02 : BCS $03 : JMP .NoDeath	; |
+		.HandleMario				;/
 
-		STZ $19				;\ Overwritten code
-		LDA #$3E			;/
-		JML $00D0BA			; > Execute rest of routine
+		LDA !P2Status-$80 : BEQ .NoMusic
+		LDA !P2Status : BEQ .NoMusic
+		LDA #$01 : STA !SPC3			; set music
+		.NoMusic
 
-.NoDeath	LDA #$01			;\ Enable vertical scrolling
-		STA !ScrollLayer1		;/
-		LDA #$7F			;\ Hide player 1
-		STA !MarioMaskBits		;/
-		LDA !P1Dead
-		BEQ .Process
+		LDA !P1Dead : BNE .Die
+		LDA !CurrentMario : BEQ .Die
+		DEC A					;\
+		LSR A					; |
+		ROR A					; | mark mario as dying in PCE reg
+		AND #$80				; |
+		TAY					; |
+		LDA #$01 : STA !P2Status-$80,y		;/
+		REP #$20				;\
+		LDA $96					; |
+		SEC : SBC $1C				; | see if mario has fallen off the level yet
+		CMP #$0180				; |
+		SEP #$20				;/
+		BMI .Fall
+		BCC .Fall
 
+		.Die
+		LDA #$01 : STA !P1Dead			;\ mario has died
+		STZ $7496				;/
+		LDA !MultiPlayer : BEQ .Return		; if single player, return and end level
+		LDA !CurrentMario : BEQ .2PCE		; see if mario is in play
+		DEC A					;\
+		LSR A					; |
+		ROR A					; |
+		AND #$80				; |
+		EOR #$80				; | special case: mario + PCE
+		TAY					; |
+		LDA !P2Status-$80,y			; |
+		CMP #$02 : BCC .NoDeath			; |
+		BRA .ReallyDeath			;/
 
-	;	TSC : XBA
-	;	CMP #$37 : BEQ ..SA1
-	;	JSL ..SNES
-		JMP .Snap
+	.2PCE	LDA !P2Status-$80			;\
+		CMP #$02 : BCC .NoDeath			; |
+		REP #$20				; |
+		LDA !P2XPosLo : STA !P2XPosLo-$80	; | special case: two PCE characters
+		LDA !P2YPosLo : STA !P2YPosLo-$80	; |
+		SEP #$20				; |
+		LDA !P2Status				; |
+		CMP #$02 : BCC .NoDeath			;/
 
-		..SA1
-		LDA.b #..SNES : STA $0183
-		LDA.b #..SNES>>8 : STA $0184
-		LDA.b #..SNES>>16 : STA $0185
-		LDA #$D0 : STA $2209
-	-	LDA $018A : BEQ -
-		STZ $018A
-		JMP .Snap
+.ReallyDeath	REP #$20				;\
+		STZ !P1Coins				; | players lose all coins upon death
+		STZ !P2Coins				; |
+		SEP #$20				;/
 
-		pushpc
-		org $00F6DB
-		..SNES				; > Only SNES is allowed to do the camera routine
-		pullpc
+		.Return
+		STZ $19					;\ Overwritten code
+		LDA #$3E				;/
+		JML $00D0BA				; > execute rest of routine
 
+		.Fall
+		LDA #$25 : STA $7496
+		BRA .Return
 
-.Process
-		LDX #$00			;\
-		REP #$20			; | Set up YSpeed index
-		LDA !P2YPosLo			; |
-		SEC : SBC !P2YPosLo-$80		; |
-		STA $02				; |
-		BPL +				; |
-		INX #4				;/
-	+	LDA !P2XPosLo			;\
-		SEC : SBC !P2XPosLo-$80		; |
-		STA $00				; | Set up XSpeed index
-		BPL +				; |
-		INX #2				;/
-	+	LDA $94				;\
-		CLC : ADC.l .XDisp,x		; |
-		STA $94				; | Update MARIO coords
-		LDA $96				; |
-		CLC : ADC.l .YDisp,x		; |
-		STA $96				;/
-		LDA $00
-		BPL +
-		EOR #$FFFF
-		INC A
-	+	STA $00
-		LDA $02
-		BPL +
-		EOR #$FFFF
-		INC A
-	+	CLC : ADC $00
-		CMP #$0010
-		SEP #$20			; > A 8 bit
-		BCS .NoSnap
-		LDA #$01 : STA !P1Dead		;\
-		LDA !CurrentMario		; |
-		BEQ .Snap			; |
-		DEC A				; | Make sure Mario's PCE reg also says that he's dead
-		CLC : ROL #2			; |
-		TAY				; |
-		LDA #$02 : STA !P2Status-$80,y	;/
+.NoDeath	LDA #$7F : STA !MarioMaskBits		; hide mario
+		LDA !CurrentMario : BEQ .Snap1
+		DEC A
+		LSR A
+		ROR A
+		AND #$80
+		TAY
+		LDA #$02 : STA !P2Status-$80,y		; mark mario as dead in PCE reg
+		TYA
+		EOR #$80
+	.Snap1	TAY
+		REP #$20
+		LDA !P2XPosLo-$80,y : STA $94
+		LDA !P2YPosLo-$80,y : STA $96
+		SEP #$20
+		BRA .Fall
 
 
-.Snap		LDA !MultiPlayer		;\
-		BEQ .Override			; |
-		LDA !P2Status			; |
-		CMP #$02 : BCC .NoOverride	; |
-.Override	REP #$20			; | If there's no P2, use P1's coordinates instead
-		LDA !P2XPosLo-$80		; |
-		STA !P2XPosLo			; |
-		LDA !P2YPosLo-$80		; |
-		STA !P2YPosLo			;/
-.NoOverride
-
-		REP #$20			;\
-		LDA !P2XPosLo : STA $94		; | Mario snaps to remaining player
-		LDA !P2YPosLo			; |
-		SEC : SBC #$0010		; |
-		STA $96				; |
-		SEP #$20			;/
-.NoSnap		LDA #$02			;\ Set invinc timer
-		STA $7497			;/
-;		LDY #$0B			;\
-;	-	STA $754C,y			; | Disable sprite interaction for player 1
-;		DEY				; |
-;		BPL -				;/
-		JML $00D107			; Return to RTS
-
-.XDisp		dw $0004,$FFFC,$0004,$FFFC
-.YDisp		dw $0004,$0004,$FFFC,$FFFC
 
 .Init		LDA !P2Status
 		CMP #$02 : BCS +
@@ -2331,7 +3196,8 @@ SCROLL_OPTIONS:
 
 
 		LDX #$0F
-	-	LDA $3470,x
+	-	LDY $3230,x : BNE $03 : JMP .Next
+		LDA $3470,x
 		ORA #$0004
 		STA $3470,x
 		LDY !CameraForceTimer : BNE .Freeze
@@ -2747,98 +3613,6 @@ pullpc
 
 
 
-;================;
-;SMOKE SPRITE FIX;
-;================;
-SmokeFix:
-
-		LDA $77C0,x : BEQ .Clear	; > Clear extra regs for empty slots
-		LDA !SmokeHack,x : BNE .Main	; > Run init routine for fresh smoke sprites
-
-		.Init
-		LDY $1B				;\
-		LDA $77C8,x			; | Set hi X
-		CMP $1A				; |
-		BCS $01 : INY			; |
-		TYA : STA !SmokeXHi,x		;/
-		LDY $1D				;\
-		LDA $77C4,x			; | Set hi X
-		CMP $1C				; |
-		BCS $01 : INY			; |
-		TYA : STA !SmokeYHi,x		;/
-		LDA #$01 : STA !SmokeHack,x	; > Set init flag
-
-		.Main
-		LDA $77C4,x : STA $00		;\
-		LDA !SmokeYHi,x : STA $01	; |
-		LDA !SmokeXHi,x : XBA		; |
-		LDA $77C8,x			; |
-		REP #$20			; |
-		SEC : SBC $1A			; |
-		CMP #$0100 : BCS .Erase		; | Smoke sprite must be within the screen or it will be erased
-		LDA $00				; |
-		SEC : SBC $1C			; |
-		CMP #$00E8 : BCS .Erase		; |
-		SEP #$20			;/
-		LDA $77C0,x			;\ Execute main routine
-		JML $0296C5			;/
-
-
-		.Erase
-		SEP #$20			;\ Erase this smoke sprite
-		STZ $77C0,x			;/
-
-		.Clear
-		LDA #$00
-		STA !SmokeXHi,x			;\
-		STA !SmokeYHi,x			; | Clear extra regs
-		STA !SmokeHack,x		;/
-		JML $0296D7			; > Get next slot
-
-
-
-;===============;
-;HAMMER SPINJUMP;
-;===============;
-
-	HAMMER:
-		.SPINJUMP
-		JSL $03B72B
-		BCS .Contact
-		JML $02A468			; > Return with no contact
-.Contact	LDA !Ex_Num,x
-		CMP #$04+!ExtendedOffset : BNE .NoHammer
-		LDA !Ex_Data3,x
-		LSR A : BCS .Return
-		LDA !MarioSpinJump : BNE .SpinHammer
-		BRA .NoHammer
-
-.SpinHammer	;LDA $7715,x
-		;SEC : SBC $96
-		;LDA $7729,x
-		;SBC $97
-		;BCC .NoHammer
-		JSL !BouncePlayer
-		JSL !ContactGFX
-		LDA #$02 : STA !SPC1
-		LDA #$40 : STA !Ex_YSpeed,x
-		STZ !Ex_XSpeed,x
-		LDA !Ex_Data3,x			; mark hammer as owned by player
-		ORA #$01
-		STA !Ex_Data3,x
-.Return		JML $02A468			; > Return
-.NoHammer	JML $02A40E			; > Non-hammer code
-
-
-	; GenerateHammer starts at $02DAC3.
-
-		.SPAWN
-		LDA #$04+!ExtendedOffset : STA !Ex_Num,y
-		LDA #$00 : STA !Ex_Data3,y
-		JML $02DAC8
-
-
-
 ;============;
 ;ENTRANCE FIX;
 ;============;
@@ -3134,7 +3908,7 @@ pullpc
 
 
 	.Go	CMP #$5000 : BCS .BG3
-		JSR Transform						; convert address
+		JSR TransformAddress					; convert address
 	.BG3	STA $0E
 
 		LDA #$FFFF : STA $837D,y
@@ -3189,9 +3963,6 @@ pullpc
 		JMP .Loop
 
 
-
-
-
 		.Init
 		STX $0000				; > Preserve original index in $0000
 		SEP #$20
@@ -3199,7 +3970,7 @@ pullpc
 		RTL
 
 
-	Transform:
+	TransformAddress:
 		STA $00
 		AND #$0800
 		BEQ $03 : LDA #$0100
@@ -3350,7 +4121,8 @@ MAP16_EXPAND:
 		BNE .Sprites
 		LDA $98 : BRA .Shared
 .Sprites	LDA $0C
-.Shared		CMP !Level+2
+.Shared		BMI .AboveLevel
+		CMP !Level+2
 		SEP #$20
 		BCC .Return
 		LDA !IceLevel : BNE .Ice
@@ -3359,6 +4131,10 @@ MAP16_EXPAND:
 		LDY $7693
 .00F54B		JML $00F54B
 .00F577		JML $00F577
+
+
+.AboveLevel	SEP #$20
+		BRA .Return
 
 
 .Ice		PLA
@@ -3923,19 +4699,8 @@ org $0296C0
 	LDA !Ex_Num,x : BEQ $12
 
 
-org $02A326
-;	JSL HAMMER_GFX			; Source: TAX : LDA.w $A2DF,x
-	TAX : LDA.w $A2DF,x
-
 org $02A3F6
 	BRA $06 : NOP #6		; source: LDA !Ex_Data3,x : EOR $1779,x : BNE Return
-
-org $02A405
-	JML HAMMER_SPINJUMP
-
-org $02DAC3
-	JML HAMMER_SPAWN		; Source: LDA #$04 : STA $170B,y
-	NOP
 
 
 org $048086
@@ -4110,3 +4875,4 @@ org $008A58
 	JML BRK
 
 
+print " "

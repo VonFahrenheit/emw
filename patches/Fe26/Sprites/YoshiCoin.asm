@@ -14,30 +14,30 @@ YoshiCoin:
 
 	INIT:
 		PHB : PHK : PLB
-		BIT !ExtraProp1,x : BPL .NoRex		; check rex flag
-		JSL !GetSpriteClipping04		; load yoshi coin clipping
-		LDY #$0F				;\
-	-	LDA $3230,y : BEQ +			; |
-		LDA !ExtraBits,y			; | search for a rex
-		AND #$08 : BEQ +			; |
-		LDA !NewSpriteNum,y			; |
-		CMP #$02 : BNE +			;/
-		PHY					;\
-		PHX					; |
-		TYX					; |
-		JSL !GetSpriteClipping00		; | check for contact
-		PLX					; |
-		JSL !CheckContact			; |
-		PLY					; |
-		BCC +					;/
-		TYA : STA $3290,x			;\ store rex number, then go on to check ID
-		BRA .NoRex				;/
+	;	BIT !ExtraProp1,x : BPL .NoRex		; check rex flag
+	;	JSL !GetSpriteClipping04		; load yoshi coin clipping
+	;	LDY #$0F				;\
+	;-	LDA $3230,y : BEQ +			; |
+	;	LDA !ExtraBits,y			; | search for a rex
+	;	AND #$08 : BEQ +			; |
+	;	LDA !NewSpriteNum,y			; |
+	;	CMP #$02 : BNE +			;/
+	;	PHY					;\
+	;	PHX					; |
+	;	TYX					; |
+	;	JSL !GetSpriteClipping00		; | check for contact
+	;	PLX					; |
+	;	JSL !CheckContact			; |
+	;	PLY					; |
+	;	BCC +					;/
+	;	TYA : STA $3290,x			;\ store rex number, then go on to check ID
+	;	BRA .NoRex				;/
 
-	+	DEY : BPL -				;\
-		STZ $3230,x				; | loop, but despawn if no rex are found
-		PLB					; |
-		RTL					;/
-		.NoRex
+	;+	DEY : BPL -				;\
+	;	STZ $3230,x				; | loop, but despawn if no rex are found
+	;	PLB					; |
+	;	RTL					;/
+	;	.NoRex
 
 
 		LDA !ExtraProp1,x
@@ -102,7 +102,7 @@ YoshiCoin:
 		LDA $3220,y : STA $3220,x		; |
 		LDA $3240,y : STA $3240,x		; |
 		LDA $3250,y : STA $3250,x		; | wait for rex to be hit
-		LDA #$04 : STA $33C0,y			; |
+	;	LDA #$04 : STA $33C0,y			; |
 		LDA $3230,y				; |
 		CMP #$08 : BNE .Drop			; |
 		LDA.w $BE,y : BNE .Drop			; |
@@ -116,13 +116,23 @@ YoshiCoin:
 		LDA #$40 : STA $32D0,x			; |
 		.NoRex					;/
 
+
 		BIT !ExtraProp1,x : BVC .NoBlock	; check block flag
+		REP #$30
+		LDA #$0000
+		LDY #$0000
+		JSL !GetMap16Sprite
+		CMP #$0025
+		SEP #$30
+		BEQ .Emerge
+
+		.CheckPowerup
 		JSL !GetSpriteClipping04		; load yoshi coin hitbox
 		LDY #$0F				;\
-	-	LDA $3230,y : BEQ +			; |
+	-	LDA $3230,y : BEQ .Next			; |
 		LDA $3200,y				; | look for mushroom/flower
 		CMP #$74 : BEQ ++			; |
-		CMP #$75 : BNE +			;/
+		CMP #$75 : BNE .Next			;/
 	++	PHY					;\
 		PHX					; |
 		TYX					; |
@@ -130,18 +140,19 @@ YoshiCoin:
 		PLX					; |
 		JSL !CheckContact			; |
 		PLY					; |
-		BCC +					;/
-		LDA #$00 : STA $3230,y			;\
+		BCS +					;/
+	.Next	DEY : BPL -				;\
+		PLB					; | wait for powerup sprite
+		RTL					;/
+
+	+	LDA #$00 : STA $3230,y			;\
+		.Emerge					; > emerge from broken block
 		LDA #$40 : STA $32D0,x			; |
 		LDA #$D0 : STA $9E,x			; |
 		STZ $AE,x				; | replace powerup sprite
 		LDA !ExtraProp1,x			; |
 		AND #$0F				; |
-		STA !ExtraProp1,x			; |
-		BRA .NoBlock				;/
-	+	DEY : BPL -				;\
-		PLB					; | wait for powerup sprite
-		RTL					;/
+		STA !ExtraProp1,x			;/
 		.NoBlock
 
 

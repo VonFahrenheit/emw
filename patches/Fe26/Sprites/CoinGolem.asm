@@ -22,10 +22,6 @@ CoinGolem:
 
 
 
-	!YoshiCoinGFX		= $30F8A8
-
-
-
 	MAIN:
 		LDA !GameMode
 		CMP #$14 : BEQ $01 : RTL
@@ -315,13 +311,13 @@ CoinGolem:
 		SBC #$00
 		STA $0A
 		LDA $3210,x
-		SEC : SBC #$80
+		SEC : SBC #$40
 		STA $05
 		LDA $3240,x
 		SBC #$00
 		STA $0B
 		LDA #$40 : STA $06
-		LDA #$FF : STA $07
+		LDA #$C0 : STA $07
 		SEC : JSL !PlayerClipping
 	..r	RTS
 
@@ -648,14 +644,14 @@ CoinGolem:
 	GRAPHICS:
 
 
-	LDA $3220,x : STA.l !3D_X+0
-	LDA $3250,x : STA.l !3D_X+1
-	LDA $3210,x
-	SEC : SBC !CoinGolemHeight
-	STA.l !3D_Y+0
-	LDA $3240,x
-	SBC #$00
-	STA.l !3D_Y+1
+		LDA $3220,x : STA.l !3D_X+0
+		LDA $3250,x : STA.l !3D_X+1
+		LDA $3210,x
+		SEC : SBC !CoinGolemHeight
+		STA.l !3D_Y+0
+		LDA $3240,x
+		SBC #$00
+		STA.l !3D_Y+1
 
 		LDY.b #ANIM_Start-ANIM-1
 	-	LDA ANIM,y : STA !3D_TilemapCache,y
@@ -663,14 +659,15 @@ CoinGolem:
 		REP #$20
 		LDA.w #!3D_TilemapCache : STA.l !3D_TilemapPointer
 		SEP #$20
-		LDA !GFX_status+$8B
-		STA !3D_TilemapCache+(ANIM_YoshiCoin-ANIM)+$9
-		STA !3D_TilemapCache+(ANIM_YoshiCoin40-ANIM)+$9
-		INC #2
-		STA !3D_TilemapCache+(ANIM_YoshiCoin-ANIM)+$5
-		STA !3D_TilemapCache+(ANIM_YoshiCoin40-ANIM)+$5
-		INC #2
-		STA !3D_TilemapCache+(ANIM_DarkCoin-ANIM)+$5
+	;	LDA !GFX_status+$8B
+	; correct this???
+	;	STA !3D_TilemapCache+(ANIM_YoshiCoin-ANIM)+$9
+	;	STA !3D_TilemapCache+(ANIM_YoshiCoin40-ANIM)+$9
+	;	INC #2
+	;	STA !3D_TilemapCache+(ANIM_YoshiCoin-ANIM)+$5
+	;	STA !3D_TilemapCache+(ANIM_YoshiCoin40-ANIM)+$5
+	;	INC #2
+	;	STA !3D_TilemapCache+(ANIM_DarkCoin-ANIM)+$5
 
 	LDA !CoinGolemDead : BNE +
 		LDY $3320,x
@@ -693,7 +690,7 @@ CoinGolem:
 		PLX
 
 
-	JSL Rotate
+		LDA #$00 : JSL !Update3DCluster
 
 		LDA !SpriteAnimIndex
 		AND #$3F : BEQ +
@@ -704,18 +701,12 @@ CoinGolem:
 	-	LDA !BigRAM+4,y			;\
 		SEC : SBC !CoinGolemHeight	; | apply height
 		STA !BigRAM+4,y			;/
-		LDA !BigRAM+2,y			;\
-		AND #$40 : BEQ +		; |
-		LDA !BigRAM+3,y			; | ignore xflip for xcoord
-		EOR #$FF			; |
-		STA !BigRAM+3,y			;/
-	+	LDA !BigRAM+2,y
-		ORA !SpriteProp,x
-		STA !BigRAM+2,y
-		LDA !BigRAM+5,y
-		CLC : ADC !SpriteTile,x
-		STA !BigRAM+5,y
-		DEY #4 : BPL -			; loop
+		LDA !BigRAM+2,y			; neutralize xflip
+		AND #$40 : BEQ +
+		LDA !BigRAM+3,y
+		EOR #$FF
+		STA !BigRAM+3,y
+	+	DEY #4 : BPL -			; loop
 
 
 
@@ -735,22 +726,42 @@ CoinGolem:
 		PLA : STA $3320,x
 
 
-		LDA !CoinGolemEye				;\
-		CMP !CoinGolemPrevEye : BEQ .Return		; |
-		ASL A						; |
-		TAY						; |
-		REP #$20					; |
-		LDA !SpriteTile,x				; | update eye tile
-		AND #$00FF					; |
-		STA $02						; |
-		LDA Dynamo,y : STA $0C				; |
-		SEC : JSL !UpdateGFX				; |
-		SEP #$20					;/
+		; if coin golem's eye should change, we copy it from one place in VRAM to another
+		LDA !CoinGolemEye
+		CMP !CoinGolemPrevEye : BEQ .Return
+		TAY
+		LDA !SpriteTile,x : STA $00
+		LDA !SpriteProp,x : STA $01
+		JSL !GetVRAM
+		BCS .Return
+		REP #$20
+		LDA EyeTile,y
+		AND #$00FF
+		CLC : ADC $00
+		ASL #4
+		ORA #$E000					; address get (with download set)
+		STA !VRAMbase+!VRAMtable+$05,x
+		LDA $00
+		CLC : ADC #$0011
+		ASL #4
+		ORA #$6000
+		STA !VRAMbase+!VRAMtable+$0C,x			; upload address
+		LDA.w #!BigRAM					;\
+		STA !VRAMbase+!VRAMtable+$02,x			; | use !BigRAM as buffer
+		STA !VRAMbase+!VRAMtable+$09,x			;/
+		LDA #$0020					;\
+		STA !VRAMbase+!VRAMtable+$00,x			; | upload size = 1 8x8 tile
+		STA !VRAMbase+!VRAMtable+$07,x			;/
+		SEP #$20
+		LDA #$00					;\
+		STA !VRAMbase+!VRAMtable+$04,x			; | bank = 00
+		STA !VRAMbase+!VRAMtable+$0B,x			;/
 
+
+		LDX !SpriteIndex
 
 
 		.Return
-		LDA !CoinGolemEye : STA !CoinGolemPrevEye
 		PLB
 	INIT:
 		RTL
@@ -805,19 +816,19 @@ CoinGolem:
 
 		.Coin
 		dw $0004
-		db $34,$00,$00,$4C
+		db $34,$00,$00,$45
 
 		.DarkCoin
-		dw $0004
+		dw $8C04
 		db $34,$00,$00,$04
 
 		.YoshiCoin
-		dw $0008
+		dw $8C08
 		db $34,$00,$00,$02
 		db $34,$00,$F0,$00
 
 		.YoshiCoin40
-		dw $0008
+		dw $8C08
 		db $74,$00,$00,$02
 		db $74,$00,$F0,$00
 
@@ -936,112 +947,19 @@ CoinGolem:
 ; ignore the +6000 in the math and just have that as the base VRAM address
 
 
-macro Eye(tile)
-	dl !YoshiCoinGFX+(<tile>*$20)
-endmacro
+	EyeTile:
+		db $16		; 00: normal
+		db $06		; 01: forward-down
+		db $07		; 02: down
+		db $08		; 03: back-down
+		db $09		; 04: back
+		db $0A		; 05: back-up
+		db $0B		; 06: up
+		db $0C		; 07: forward-up
+		db $0D		; 08: angry
+		db $0E		; 09: troll
+		db $0F		; 0A: dishonest
 
-
-	Dynamo:
-		dw .Normal		; 00
-		dw .ForwardDown		; 01
-		dw .Down		; 02
-		dw .BackDown		; 03
-		dw .Back		; 04
-		dw .BackUp		; 05
-		dw .Up			; 06
-		dw .ForwardUp		; 07
-		dw .Angry		; 08
-		dw .Troll		; 09
-		dw .Dishonest		; 0A
-
-
-		.Normal
-		dw ..End-..Start
-		..Start
-		dw $0020
-		%Eye($11)
-		dw $7110
-		..End
-
-		.ForwardDown
-		dw ..End-..Start
-		..Start
-		dw $0020
-		%Eye($6)
-		dw $7110
-		..End
-
-		.Down
-		dw ..End-..Start
-		..Start
-		dw $0020
-		%Eye($7)
-		dw $7110
-		..End
-
-		.BackDown
-		dw ..End-..Start
-		..Start
-		dw $0020
-		%Eye($8)
-		dw $7110
-		..End
-
-		.Back
-		dw ..End-..Start
-		..Start
-		dw $0020
-		%Eye($9)
-		dw $7110
-		..End
-
-		.BackUp
-		dw ..End-..Start
-		..Start
-		dw $0020
-		%Eye($A)
-		dw $7110
-		..End
-
-		.Up
-		dw ..End-..Start
-		..Start
-		dw $0020
-		%Eye($B)
-		dw $7110
-		..End
-
-		.ForwardUp
-		dw ..End-..Start
-		..Start
-		dw $0020
-		%Eye($C)
-		dw $7110
-		..End
-
-		.Angry
-		dw ..End-..Start
-		..Start
-		dw $0020
-		%Eye($D)
-		dw $7110
-		..End
-
-		.Troll
-		dw ..End-..Start
-		..Start
-		dw $0020
-		%Eye($E)
-		dw $7110
-		..End
-
-		.Dishonest
-		dw ..End-..Start
-		..Start
-		dw $0020
-		%Eye($F)
-		dw $7110
-		..End
 
 
 	ResetModel:
@@ -1254,528 +1172,6 @@ endmacro
 	.Return	RTS
 
 
-
-
-	; call to view a hitbox stored in $04-$07, $0A-$0B (standard SMW format)
-	ViewHitbox:
-
-		LDA $04 : STA $00
-		LDA $0A : STA $01
-		LDA $05 : STA $02
-		LDA $0B : STA $03
-		LDA $06 : STA $0C
-		LDA $07 : STA $0E
-		STZ $0D
-		STZ $0F
-
-		REP #$20
-		LDA $00
-		SEC : SBC $1A
-		CMP #$0100 : BCC .GoodX
-		CMP #$FFF0 : BCS .GoodX
-		SEP #$20
-		RTL
-
-	.GoodX	STA $00
-		CLC : ADC $0C
-		SEC : SBC #$0010
-		STA $0C
-		LDA $02
-		SEC : SBC $1C
-		CMP #$00D8 : BCC .GoodY
-		CMP #$FFF0 : BCS .GoodY
-		SEP #$20
-		RTL
-
-	.GoodY	STA $02
-		CLC : ADC $0E
-		SEC : SBC #$0010
-		STA $0E
-
-		SEP #$20
-		LDA $00
-		STA !OAM+$00
-		STA !OAM+$08
-		LDA $0C
-		STA !OAM+$04
-		STA !OAM+$0C
-		LDA $02
-		STA !OAM+$01
-		STA !OAM+$05
-		LDA $0E
-		STA !OAM+$09
-		STA !OAM+$0D
-		LDA #$24
-		STA !OAM+$03
-		STA !OAM+$07
-		STA !OAM+$0B
-		STA !OAM+$0F
-		LDA #$84
-		STA !OAM+$02
-		STA !OAM+$06
-		STA !OAM+$0A
-		STA !OAM+$0E
-		LDA #$02
-		STA !OAMhi+$00
-		STA !OAMhi+$01
-		STA !OAMhi+$02
-		STA !OAMhi+$03
-		RTL
-
-
-	; $00-$01: parent X position (16-bit)
-	; $02-$03: parent Y position (16-bit)
-	; $04-$05: parent Z position (16-bit)
-	; $06-$07: calculating X position (16-bit)
-	; $08-$09: calculating Y position (16-bit)
-	; $0A-$0B: calculating Z position (16-bit)
-
-	; Each parent position is pushed on the stack, then loaded into $06-$0B
-
-
-; Start processing from index 0 and go all the way up
-; The core has to be the first (lowest index) object of each cluster.
-; Only the core has a true X/Y/Z coordinate.
-; When an attachment is processed, its X/Y/Z coordinates are stored based on the parent's X/Y/Z coordinates.
-; Therefore, each attachment must be processed after its parent.
-
-
-
-
-	Rotate:
-		PHB				;\
-		PLA : STA.l !3D_BankCache	; | bank on stack and in cache
-		PHA				;/
-		PHX
-		PHP
-		STZ $2250
-		LDA.b #!3D_Base>>16
-		PHA : PLB
-		REP #$30
-
-
-
-		LDX #$0000
-		LDY #$0000
-
-	-	LDA.w !3D_Slot,y
-		AND #$00FF : BEQ .Next
-		TYA
-		CMP.w !3D_Attachment,y : BEQ .Core
-		LDX.w !3D_Attachment,y
-		JSR .Calc
-		BRA .Next
-
-		.Core
-		PHY
-		LDA.w !3D_X,y : PHA
-		LDA.w !3D_Y,y : PHA
-		LDA.w !3D_Z,y : PHA
-
-
-		.Next
-		TYA
-		CLC : ADC #$0010
-		TAY
-		CPY #$0400 : BCC -
-
-
-		.TranscribeTilemap
-		PLA : STA $04
-		PLA : STA $02
-		PLA : STA $00
-		PLX
-		LDA.w !3D_AngleXY,x : BNE +		;\ skip rotation if no angles are set
-		LDA.w !3D_AngleXZ,x : BEQ ++		;/
-	+	JSR Transform				; rotate around axes
-	++
-
-		STZ $0C
-		LDX #$0000
-		LDY #$0000
-		STZ.w !3D_AssemblyCache			; how many objects will be added to tilemap
-	-	LDA.w !3D_Slot,y : BEQ +
-		LDA.w !3D_X,y
-		SEC : SBC $00
-		STA.w !3D_AssemblyCache+$02,x
-		LDA.w !3D_Y,y
-		SEC : SBC $02
-		STA.w !3D_AssemblyCache+$03,x
-		LDA.w !3D_Z,y
-		AND #$00FF
-		STA.w !3D_AssemblyCache+$04,x
-		LDA.w !3D_Extra,y : STA.w !3D_AssemblyCache+$06,x
-		INX #8
-		STX.w !3D_AssemblyCache			; increment header
-		INC $0C					; increment object count
-
-	+	TYA
-		CLC : ADC #$0010
-		TAY
-		CPY #$0200 : BCC -
-
-
-	; now all objects are in !3D_AssemblyCache
-	; first 2 bytes is header
-	; X is written to X+0
-	; Y is written to X+1
-	; Z is written to X+2
-	; X+3 is clear (nonzero signals that this has been taken)
-	; X+4 and X+5 is tilemap data
-
-	; Sort by Z value and transcribe to tilemap from highest to lowest
-
-
-	; $0B = highest Z found so far
-	; $0C = how many objects there are
-	; $0D = how many objects have been transcribed
-	; $0E = index of currently highest Z
-
-		LDX #$0000
-		LDY #$0000
-		SEP #$20
-		STZ $0B
-		STZ $06						; for tilemap assembly
-
-	-	LDA.w !3D_AssemblyCache+$05,y : BNE +
-		LDA.w !3D_AssemblyCache+$04,y
-		CMP $0B : BCC +
-		STA $0B
-		STY $0E
-
-	+	INY #8
-		CPY.w !3D_AssemblyCache : BNE -
-
-	.Z	LDY $0E
-		REP #$20
-		LDA.w !3D_AssemblyCache+$02,y : STA $00		; X/Y offset
-		STZ $02						; tile/prop data
-		PHY
-		LDA.w !3D_AssemblyCache+$06,y
-		AND #$00FF
-		ASL A
-		TAY
-		LDA.w !3D_TilemapPointer : STA $08
-		SEP #$20
-		PHB
-		LDA.w !3D_BankCache : PHA : PLB
-		REP #$20
-		LDA ($08),y
-		JSL LakituLovers_TilemapToRAM_Long
-		PLB
-		PLY
-		SEP #$20
-		STZ $0B
-		INX #4
-		LDA #$FF : STA.w !3D_AssemblyCache+$05,y
-		LDY #$0000
-		INC $0D
-		LDA $0D
-		CMP $0C : BNE -
-
-
-
-		.Return
-		PLP
-		PLX
-		PLB
-		RTL
-
-
-
-
-		.Calc
-		LDA.w !3D_X,x : STA $00			;\
-		LDA.w !3D_Y,x : STA $02			; | parent coordinates
-		LDA.w !3D_Z,x : STA $04			;/
-
-		PHY
-		PHP
-		SEP #$20
-		STZ $0D
-		STZ $0E
-		STZ $0F
-	-	STY $08
-		LDX.w !3D_Attachment,y
-		CPX $08 : BEQ +
-
-		STX $08					;\
-		LDY.w !3D_Attachment,x			; | don't apply core rotation yet
-		CPY $08 : BEQ +				;/
-
-		LDA.w !3D_AngleH,x
-		CLC : ADC $0E
-		STA $0E
-		LDA.w !3D_AngleV,x
-		CLC : ADC $0F
-		STA $0F
-		TXY
-		BRA -
-
-	+	PLP
-		PLY
-
-
-
-
-
-
-; process:
-;
-; z = d * cos(v)
-; r = d * sin(v)
-; x = r * cos(h)
-; y = r * sin(h)
-;
-; add offsets to parent coordinates to get attachment coordinates
-
-
-
-		LDA.w !3D_AngleV,y
-		CLC : ADC $0F
-		PHA
-		CLC : ADC #$0040
-		JSR Trig
-		STA.l $2251
-		LDA.w !3D_Distance,y : STA.l $2253
-		NOP : BRA $00
-		LDA.l $2307 : STA $08
-		LDA.l $2306
-		AND #$00FF
-		CMP #$0080
-		BCC $02 : INC $08			; distance on XY plane
-		PLA
-		JSR Trig
-		STA.l $2251
-		LDA.w !3D_Distance,y : STA.l $2253
-		NOP : BRA $00
-		LDA.l $2308 : STA $0A
-		LDA.l $2306
-		BPL $02 : INC $0A			; Z coordinate
-
-		LDA.w !3D_AngleH,y
-		CLC : ADC $0E
-		PHA
-		CLC : ADC #$0040
-		JSR Trig
-		STA.l $2251
-		LDA $08 : STA.l $2253
-		NOP : BRA $00
-		LDA.l $2308 : STA $06
-		LDA.l $2306
-		BPL $02 : INC $06			; X coordinate
-
-		PLA
-		JSR Trig
-		STA.l $2251
-		LDA $08 : STA.l $2253
-		NOP : BRA $00
-		LDA.l $2308 : STA $08
-		LDA.l $2306
-		BPL $02 : INC $08			; Y coordinate
-
-		LDA $06
-		CLC : ADC $00
-		STA.w !3D_X,y
-		LDA $08
-		CLC : ADC $02
-		STA.w !3D_Y,y
-		LDA $0A
-		CLC : ADC $04
-		STA.w !3D_Z,y
-		RTS
-
-
-	Trig:
-		PHX
-		ASL #2
-		AND #$03FF
-		CMP #$0200
-		PHP
-		AND #$01FF
-		TAX
-		LDA.l !TrigTable,x
-		PLP
-		BCC $04 : EOR #$FFFF : INC A
-		PLX
-		RTS
-
-
-	Control:
-		PHP
-		SEP #$20
-		LDA $15
-		LSR A : BCS .XZcl
-		LSR A : BCS .XZco
-		LSR A : BCS .YZcl
-		LSR A : BCS .YZco
-		LDA $17
-		ASL #3 : BCS .XYco
-		ASL A : BCS .XYcl
-		BRA +
-
-	.YZcl	INC.w !3D_AngleYZ,x : BRA +
-	.YZco	DEC.w !3D_AngleYZ,x : BRA +
-	.XZcl	INC.w !3D_AngleXZ,x : BRA +
-	.XZco	DEC.w !3D_AngleXZ,x : BRA +
-	.XYcl	INC.w !3D_AngleXY,x : BRA +
-	.XYco	DEC.w !3D_AngleXY,x
-		+
-		PLP
-		RTS
-
-
-	Transform:
-
-		LDY #$0000
-
-	-	STY $0E
-		CPX $0E : BEQ .Next
-		LDA.w !3D_X,y
-		SEC : SBC $00
-		STA.w !3D_X,y
-		LDA.w !3D_Y,y
-		SEC : SBC $02
-		STA.w !3D_Y,y
-		LDA.w !3D_Z,y
-		SEC : SBC $04
-		STA.w !3D_Z,y
-		LDA.w !3D_AngleXY,x			;\
-		AND #$00FF				; | rotation around z axis
-		BEQ $03 : JSR .CalcXY			;/
-		LDA.w !3D_AngleYZ,x			;\
-		AND #$00FF				; | rotation around x axis
-		BEQ $03 : JSR .CalcYZ			;/
-		LDA.w !3D_AngleXZ,x			;\
-		AND #$00FF				; | rotation around y axis
-		BEQ $03 : JSR .CalcXZ			;/
-		LDA.w !3D_X,y
-		CLC : ADC $00
-		STA.w !3D_X,y
-		LDA.w !3D_Y,y
-		CLC : ADC $02
-		STA.w !3D_Y,y
-		LDA.w !3D_Z,y
-		CLC : ADC $04
-		STA.w !3D_Z,y
-
-		.Next
-		TYA
-		CLC : ADC #$0010
-		TAY
-		CPY #$0400 : BNE -
-		RTS
-
-
-		.CalcXY
-		LDA.w !3D_X,y
-		STA.w !3D_Cache1
-		STA.w !3D_Cache3
-		LDA.w !3D_Y,y
-		STA.w !3D_Cache4
-		EOR #$FFFF
-		INC A
-		STA.w !3D_Cache2
-		LDA.w !3D_AngleXY,x : STA.w !3D_Cache5
-		JSR .Calc
-		LDA.w !3D_Cache7 : STA.w !3D_X,y
-		LDA.w !3D_Cache8 : STA.w !3D_Y,y
-		RTS
-
-		.CalcXZ
-		LDA.w !3D_X,y
-		STA.w !3D_Cache1
-		EOR #$FFFF
-		INC A
-		STA.w !3D_Cache3
-		LDA.w !3D_Z,y
-		STA.w !3D_Cache2
-		STA.w !3D_Cache4
-		LDA.w !3D_AngleXZ,x : STA.w !3D_Cache5
-		JSR .Calc
-		LDA.w !3D_Cache7 : STA.w !3D_X,y
-		LDA.w !3D_Cache8 : STA.w !3D_Z,y
-		RTS
-
-		.CalcYZ
-		LDA.w !3D_Y,y
-		STA.w !3D_Cache1
-		STA.w !3D_Cache3
-		LDA.w !3D_Z,y
-		STA.w !3D_Cache4
-		EOR #$FFFF
-		INC A
-		STA.w !3D_Cache2
-		LDA.w !3D_AngleYZ,x : STA.w !3D_Cache5
-		JSR .Calc
-		LDA.w !3D_Cache7 : STA.w !3D_Y,y
-		LDA.w !3D_Cache8 : STA.w !3D_Z,y
-		RTS
-
-
-; input:
-;	cache1 = coordinate 1
-;	cache2 = coordinate 2
-;	cache3 = coordinate 3
-;	cache4 = coordinate 4
-;	cache5 = angle
-;
-; output:
-;	cache7 = coordinate 1
-;	cache8 = coordinate 2
-
-
-		.Calc
-		LDA.w !3D_Cache5
-		PHA
-		CLC : ADC #$0040
-		JSR Trig
-		STA.w !3D_Cache6			; cache2 = cos(a)
-		PLA
-		JSR Trig
-		STA.w !3D_Cache5			; cache1 = sin(a)
-
-		LDA.w !3D_Cache6 : STA.l $2251
-		LDA.w !3D_Cache1 : STA.l $2253
-		NOP : BRA $00
-		LDA.l $2307 : STA $06
-		LDA.l $2306
-		AND #$00FF
-		CMP #$0080
-		BCC $02 : INC $06			; $06 = product 1
-		LDA.w !3D_Cache5 : STA.l $2251
-		LDA.w !3D_Cache2 : STA.l $2253
-		NOP : BRA $00
-		LDA.l $2307 : STA $08
-		LDA.l $2306
-		AND #$00FF
-		CMP #$0080
-		BCC $02 : INC $08			; $08 = product 2
-		LDA $06
-		CLC : ADC $08
-		STA.w !3D_Cache7			; cache7 = coordinate 1 (X or Y)
-
-		LDA.w !3D_Cache5 : STA.l $2251
-		LDA.w !3D_Cache3 : STA.l $2253
-		NOP : BRA $00
-		LDA.l $2307 : STA $06
-		LDA.l $2306
-		AND #$00FF
-		CMP #$0080
-		BCC $02 : INC $06			; $06 = product 3
-		LDA.w !3D_Cache6 : STA.l $2251
-		LDA.w !3D_Cache4 : STA.l $2253
-		NOP : BRA $00
-		LDA.l $2307 : STA $08
-		LDA.l $2306
-		AND #$00FF
-		CMP #$0080
-		BCC $02 : INC $08			; $08 = product 4
-		LDA $06
-		CLC : ADC $08
-		STA.w !3D_Cache8			; cache8 = coordinate 2 (Y or Z)
-
-		RTS
 
 
 

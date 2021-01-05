@@ -1,8 +1,6 @@
 TarCreeper:
 
 	namespace TarCreeper
-	!TarCreeperHands	= $34E608
-	!TarCreeperBody		= $34B808
 
 	!TarCreeperGrabStatus	= $3280,x
 	!TarCreeperHandL	= $3290,x
@@ -62,12 +60,15 @@ TarCreeper:
 		STA !ClaimedGFX
 		CMP #$00 : BNE +
 		JSL !GetVRAM
-		REP #$20
-		LDA #$0FFF : STA.l !VRAMbase+!VRAMtable+$00,x			; 0x1000 bugs out!?
-		LDA.w #!TarCreeperHands : STA.l !VRAMbase+!VRAMtable+$02,x
-		LDA.w #!TarCreeperHands>>8 : STA.l !VRAMbase+!VRAMtable+$03,x
+		REP #$30
+
+		LDY.w #!File_TarCreeper_Hands
+		JSL !GetFileAddress
+		LDA #$1000 : STA.l !VRAMbase+!VRAMtable+$00,x
+		LDA !FileAddress : STA.l !VRAMbase+!VRAMtable+$02,x
+		LDA !FileAddress+1 : STA.l !VRAMbase+!VRAMtable+$03,x
 		LDA #$7800 : STA.l !VRAMbase+!VRAMtable+$05,x
-		SEP #$20
+		SEP #$30
 		LDX !SpriteIndex
 	+	PLB
 
@@ -790,10 +791,9 @@ TarCreeper:
 		BEQ .NoDynamo				; |
 		LDA.w ANIM+4,y				; | Update GFX (A is always 16 bit after this)
 		STA $0C					; |
-		LDA !ClaimedGFX				; \ Include claimed GFX
-		AND #$00FF : STA $02			; /
 		PHY					; |
-		SEC : JSL !UpdateGFX			; |
+		LDY.w #!File_TarCreeper_Body		; |
+		JSL !UpdateFromFile			; |
 		PLY					;/
 		.NoDynamo
 
@@ -1826,7 +1826,7 @@ TarCreeper:
 
 macro TarCreeperDyn(TileCount, SourceTile, DestVRAM)
 	dw <TileCount>*$20
-	dl <SourceTile>*$20+!TarCreeperBody
+	dl <SourceTile>*$20
 	dw <DestVRAM>*$10+$6000
 endmacro
 

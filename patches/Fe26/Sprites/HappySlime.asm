@@ -60,7 +60,12 @@ HappySlime:
 		!Goal1			= $35D0,x
 		!Goal2			= $35E0,x
 
-
+	INIT:
+		PHB : PHK : PLB
+		JSR SUB_HORZ_POS
+		TYA : STA $3320,x
+		PLB
+		RTL
 
 	MAIN:
 		STZ $33C0,x
@@ -87,7 +92,7 @@ HappySlime:
 
 		JSR SUB_HORZ_POS
 		TYA : STA $3320,x
-		PEA INIT-2
+		PEA RETURN-2
 		LDA !ExtraBits,x
 		AND #$04 : BEQ .Follow
 
@@ -221,7 +226,7 @@ HappySlime:
 		.Play
 		LDX !SpriteIndex
 		LDA !SpriteAnimIndex
-		CMP #$32 : BEQ ..search
+		CMP #$32 : BNE $03 : JMP ..search
 		LDY !Goal2
 		DEY
 		CMP #$35 : BEQ ..bounce
@@ -241,7 +246,10 @@ HappySlime:
 		STA $3210,y
 		XBA : STA $3240,y
 		LDA $3200,y				;\
-		CMP #$21 : BEQ +			; | sprites that are held in place
+		CMP #$0F : BNE ++			; |
+		LDA #$08 : STA $3230,y			; > goomba state
+		BRA +					; |
+	++	CMP #$21 : BEQ +			; | sprites that are held in place
 		CMP #$74 : BEQ +			;/
 		JMP ..anim
 	+	LDA $3220,x : STA $3220,y		;\
@@ -254,8 +262,11 @@ HappySlime:
 		BRA ..anim
 
 ..bounce	LDA !SpriteAnimTimer : BNE ..ok		; only bounce once
-		LDA #$A0 : STA $309E,y
-		LDA #$08 : STA !SPC4			; handle bounce
+		LDA #$A0 : STA $309E,y			; bounce yspeed
+		LDA $3200,y				;\
+		CMP #$0F : BNE +			; | goomba is knocked out lmao
+		LDA #$09 : STA $3230,y			;/
+	+	LDA #$08 : STA !SPC4			; handle bounce
 		BRA ..anim
 
 ..search	JSL !GetSpriteClipping04
@@ -770,7 +781,12 @@ HappySlime:
 		LDA ($04) : STA !BigRAM+$02
 		STZ !BigRAM+$05
 
-		REP #$20
+
+		REP #$30
+		PHY
+		LDY.w #!File_HappySlime
+		JSL !GetFileAddress
+		PLY
 		LDA #$0004
 		STA !BigRAM+$00
 		STZ !BigRAM+$03
@@ -782,7 +798,7 @@ HappySlime:
 		LDA ($04),y
 		AND #$00FF
 		ASL #5
-		CLC : ADC #$DA08
+		CLC : ADC !FileAddress
 		STA !BigRAM+$0A
 		CLC : ADC #$0200
 		STA !BigRAM+$11
@@ -794,8 +810,8 @@ HappySlime:
 		LDA.w #!BigRAM+0 : STA $04
 		LDA.w #!BigRAM+6 : STA $0C
 
-		SEP #$20
-		LDA #$30
+		SEP #$30
+		LDA !FileAddress+2
 		STA !BigRAM+$0C
 		STA !BigRAM+$13
 
@@ -810,8 +826,7 @@ HappySlime:
 
 		.Invis
 		PLB
-
-	INIT:
+	RETURN:
 		RTL
 
 

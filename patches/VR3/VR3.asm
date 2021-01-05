@@ -41,7 +41,7 @@ sa1rom
 ;DEFINES;
 ;=======;
 
-	incsrc "Defines.asm"
+	incsrc "../Defines.asm"
 
 ;======;
 ;MACROS;
@@ -105,91 +105,79 @@ endmacro
 
 ; --Remap minor extended sprites--
 
-	%minorOAMremap1($028CFF)			;\
-	%minorOAMremap1($028D8B)			; |
-	%minorOAMremap1($028E20)			; |
+	;%minorOAMremap1($028CFF)			;\
+	;%minorOAMremap1($028D8B)			; |
+	;%minorOAMremap1($028E20)			; |
 	%minorOAMremap2($028E94)			; | Remap minor extended sprite indexes
-	%minorOAMremap1($028EE1)			; |
-	%minorOAMremap1($028F4D)			; |
-	%minorOAMremap1($028FDD)			;/
+	;%minorOAMremap1($028EE1)			; |
+	;%minorOAMremap1($028F4D)			; |
+	;%minorOAMremap1($028FDD)			;/
 
 ; --Remap extended sprites--
 
 	org $029D10
 	RETURN:
-		JML OAM_handler_extG			;\ Source: LDY $A153,x : STY $0F
-		NOP					;/
+	;	JML OAM_handler_extG			;\ Source: LDY $A153,x : STY $0F
+	;	NOP					;/
 		.extG
 	org $02A362
-		JML OAM_handler_ext01special		;\ Source: LDY $A153,x : CPY #$08
-		NOP					;/
+	;	JML OAM_handler_ext01special		;\ Source: LDY $A153,x : CPY #$08
+	;	NOP					;/
 		.ext01special
 	org $02A367
-		JML OAM_handler_ext01			;\ Source: BCC $03 : LDY $9FA3,x
-		NOP					;/
+	;	JML OAM_handler_ext01			;\ Source: BCC $03 : LDY $9FA3,x
+	;	NOP					;/
 		.ext01
 	org $02A180
-		JML OAM_handler_ext02			;\ Source: LDY $A153,x : LDA $14
-		NOP					;/
+	;	JML OAM_handler_ext02			;\ Source: LDY $A153,x : LDA $14
+	;	NOP					;/
 		.ext02
 	org $02A235
 	;	JML OAM_handler_ext03			;\ Source: LDY $A153,x : LDA $1765,x
 	;	NOP #2					;/
-	NOP #3
-	LDA !Ex_Data1,x
 		.ext03
 	org $02A31A
 	;	JML OAM_handler_ext04			;\ Source: LDY $A153,x : LDA $1765,x
 	;	NOP #2					;/
-	NOP #3
-	LDA !Ex_Data1,x
 		.ext04
 	org $02A03B
-		JML OAM_handler_ext05			;\ Source : LDY $9FA3,x : JSR $A1A7
-		NOP #2					;/
+	;	JML OAM_handler_ext05			;\ Source : LDY $9FA3,x : JSR $A1A7
+	;	NOP #2					;/
 	org $02A1A4
-		JML OAM_handler_ext05			;\ Source : LDY $A153,x : LDA $1747,x
-		NOP #2					;/
+	;	JML OAM_handler_ext05			;\ Source : LDY $A153,x : LDA $1747,x
+	;	NOP #2					;/
 		.ext05
 	org $029E9D
-		JML OAM_handler_ext07			;\ Source: LDY $A153,x : LDA $171F,x
-		NOP #2					;/
+	;	JML OAM_handler_ext07			;\ Source: LDY $A153,x : LDA $171F,x
+	;	NOP #2					;/
 		.ext07
 	org $029E5F
 	;	JML OAM_handler_ext08			; Source: LDY $A153,x : PLA
-	NOP #3
-	PLA
 		.ext08
 	org $029B51
-		JML OAM_handler_ext0C			;\ Source: LDY $A153,x : LDA $171F,x
-		NOP #2					;/
+	;	JML OAM_handler_ext0C			;\ Source: LDY $A153,x : LDA $171F,x
+	;	NOP #2					;/
 		.ext0C
 	org $02A287
-		JML OAM_handler_ext0D			;\ Source: LDY $A153,x : LDA $00
-		NOP					;/
+	;	JML OAM_handler_ext0D			;\ Source: LDY $A153,x : LDA $00
+	;	NOP					;/
 		.ext0D
 	org $02A2A3
-		LDA $0E					; get tile number from RAM
+	;	LDA $0E					; get tile number from RAM
 	org $02A2B0
-		ORA $0F					; get YXPPCCCT from RAM
+	;	ORA $0F					; get YXPPCCCT from RAM
 
 	org $029C41
 	;	JML OAM_handler_ext0F			;\ Source: LDY $A153,x : LDA $176F,x
 	;	NOP #2					;/
-	NOP #3
-	LDA !Ex_Data2,x
 		.ext0F
 	org $029C8B
 	;	JML OAM_handler_ext10			;\ Source: LDY $A153,x : LDA #$34
 	;	NOP					;/
-	NOP #3
-	LDA #$34
 		.ext10
 	org $029F76
 	;	JML OAM_handler_ext11			;\ Source: LDY $A153,x : LDA #$04
 	;	NOP					;/
-	NOP #3
-	LDA #$04
 		.ext11
 	;org $029F46
 	;	JML OAM_handler_ext12			;\ Source: LDY $A153,x : LDA $0200,y
@@ -205,27 +193,27 @@ endmacro
 ; --Remap smoke sprites--
 
 	org $02999F
-		JML OAM_handler_smokeG			;\ Source: LDY $96BC,x : LDA $17C8,x
-		NOP #2					;/
+	;	JML OAM_handler_smokeG			;\ Source: LDY $96BC,x : LDA $17C8,x
+	;	NOP #2					;/
 		.smokeG
 	org $029701
-		JML OAM_handler_smoke01special		;\ Source: LDY $96BC,x : LDA $17C8,x
-		NOP #2					;/
+	;	JML OAM_handler_smoke01special		;\ Source: LDY $96BC,x : LDA $17C8,x
+	;	NOP #2					;/
 		.smoke01special
 	org $02974A
-		JML OAM_handler_smoke01
-		NOP #2
+	;	JML OAM_handler_smoke01
+	;	NOP #2
 		.smoke01
 	org $0297B2
-		JML OAM_handler_smoke02			;\ Source: LDY #$F0 : LDA $17C8,x
-		NOP					;/
+	;	JML OAM_handler_smoke02			;\ Source: LDY #$F0 : LDA $17C8,x
+	;	NOP					;/
 		.smoke02
 	org $029936
-		JML OAM_handler_smoke03l		;\ Source: LDY $96BC,x : LDA #$F0
-		NOP					;/
+	;	JML OAM_handler_smoke03l		;\ Source: LDY $96BC,x : LDA #$F0
+	;	NOP					;/
 		.smoke03l
 	org $02996F
-		JML OAM_handler_smoke03h		; > Source: LDA $77C8,x : SEC
+	;	JML OAM_handler_smoke03h		; > Source: LDA $77C8,x : SEC
 		.smoke03h
 
 ; --Remap bounce sprites--
@@ -294,13 +282,26 @@ endmacro
 		RTS
 	warnpc $0081E7
 
-
 	org $00838F
 		JML IRQ
 	org $0083B2
 		JML ReturnNMI				; REP #$30 : PLB : PLY
 	org $008293
 		db $D6					; IRQ scanline
+
+
+	org $0097C1
+		STA $6DB0				; STA instead of STZ (A is already 0x0F)
+	org $009F66					; prevent 2106 write
+		LDA #$0F : TSB $6DB0
+		RTS
+		NOP
+		RTS
+	warnpc $009F6E
+	org $00A0A3
+		LDA #$FF				; 2106 value
+	org $00C9EB
+		LDX #$FF				; 2106 value
 
 
 	; prevent SMW from getting tilemap update parameters
@@ -386,7 +387,8 @@ endmacro
 
 
 org $129000
-print "VR2 inserted at $", pc, "."
+print "-- VR3 --"
+print "VR3 inserted at $", pc, "."
 LoadGFX:	LDA #$1801 : STA $4300			;\
 		LDA $00 : STA $4302			; |
 		LDX $02 : STX $4304			; | load GFX using DMA instead of CPU loop
@@ -406,7 +408,7 @@ LoadGFX:	LDA #$1801 : STA $4300			;\
 ; X = VRAM address
 ; Y = source address
 ; source bank is always $7E
-; DMA parameters are always 0x1801 (vide port control = 0x80)
+; DMA parameters are always 0x1801 (video port control = 0x80)
 ; A should return 8-bit and index should return unchanged
 	BG3Fix:
 
@@ -1753,6 +1755,9 @@ Build_RAM_Code:
 
 
 	.AppendExAnimationTile
+		LDA.w $0182,y : BMI ..square			; check type
+
+	..row
 		PHX						; push RAM code index
 		PHY						; push ExAnimation table index
 		TXY						; Y = RAM code index
@@ -1763,7 +1768,6 @@ Build_RAM_Code:
 		CPX.w #..end-..code : BCC -			;/
 		PLY						; restore ExAnimation table index
 		PLX						; restore RAM code index
-
 		LDA.w $0180,y : STA.w !RAMcode+$0F,x		;\
 		LDA.w $0182,y : STA.w !RAMcode+$14,x		; |
 		LDA.w $0184,y : STA.w !RAMcode+$06,x		; | insert data to code
@@ -1781,6 +1785,43 @@ Build_RAM_Code:
 		TAX						;/
 		RTS
 
+	..square
+		PHX						; push RAM code index
+		PHY						; push ExAnimation table index
+		TXY						; Y = RAM code index
+		LDX #$0000					;\
+	-	LDA.l ..code,x : STA.w !RAMcode+$00,y		; |
+		INY #2						; | transfer code to RAM
+		INX #2						; |
+		CPX.w #..end2-..code : BCC -			;/
+		PLY						; restore ExAnimation table index
+		PLX						; restore RAM code index
+		LDA.w $0180,y					;\
+		STA.w !RAMcode+$0F,x				; |
+		STA.w !RAMcode+$22,x				; |
+		LDA.w $0182,y					; |
+		AND #$7FFF					; |
+		STA.w !RAMcode+$14,x				; |
+		CLC : ADC #$0100				; | insert data to code
+		STA.w !RAMcode+$27,x				; |
+		LDA.w $0184,y : STA.w !RAMcode+$06,x		; |
+		CLC : ADC #$0040				; |
+		STA !RAMcode+$1D,x				; |
+		SEP #$20					; |
+		LDA.w $0186,y : STA.w !RAMcode+$0B,x		; |
+		REP #$20					;/
+
+		LDA #$0000 : STA.w $0180,y			; clear exanim slot
+
+		TYA						;\
+		CLC : ADC #$0007				; | add 7 to VRAM table index
+		TAY						;/
+		TXA						;\
+		CLC : ADC.w #..end2-..code			; | increase RAM code index
+		TAX						;/
+		RTS
+
+
 		..code
 		LDA.w #$1801 : STA $00				; DMA settings
 		LDA.w #$0000 : STA $02				; source address
@@ -1789,6 +1830,12 @@ Build_RAM_Code:
 		LDA.w #$0000 : STA $2116			; VRAM address
 		STY.w $420B					; DMA toggle
 		..end
+	; this section only used for square row 2
+		LDA.w #$0000 : STA $02				; address (DMA settings + bank are the same)
+		LDA.w #$0000 : STA $05				; upload size
+		LDA.w #$0000 : STA $2116			; reset address (1 row below so can't use continuous)
+		STY.w $420B					; DMA toggle
+		..end2
 
 
 	.AppendExAnimationPalette
@@ -1807,9 +1854,11 @@ Build_RAM_Code:
 		CPX.w #..end2-..code2 : BCC -			;/
 		PLY						; restore VRAM table index
 		PLX						; restore RAM code index
-		LDA.w $0184,y : STA.w !RAMcode+$06,x
+	;	LDA.w $0184,y : STA.w !RAMcode+$06,x
 		SEP #$20
 		LDA.w $0182,y : STA.w !RAMcode+$01,x
+		LDA.w $0184,y : STA.w !RAMcode+$06,x
+		LDA.w $0185,y : STA.w !RAMcode+$0B,x
 		REP #$20
 		TYA
 		CLC : ADC #$0007
@@ -1861,7 +1910,9 @@ Build_RAM_Code:
 
 		..code2
 		LDX.b #$00 : STX $2121				; CGRAM address
-		LDA.w #$0000 : STA $2122			; write color
+	;	LDA.w #$0000 : STA $2122			; write color
+		LDX.b #$00 : STX $2121
+		LDX.b #$00 : STX $2121
 		..end2
 
 
@@ -1925,6 +1976,8 @@ Build_RAM_Code:
 ; if highest bit of size is set, it is a color package
 ; A is then doubled and written to $4315
 ; for color packages, byte 03 is ignored
+; if bit 15 of VRAM address is set, this is a square package
+; in this case, the 2 tiles just after the ones we uploaded should be uploaded to the row below
 
 ; $C0FE: unknown
 
@@ -3220,8 +3273,9 @@ TileCount:
 
 
 End:
-print "VR2 is $", hex(End-ReturnNMI), " bytes long."
-print "VR2 ends at $", pc, "."
+print "VR3 is $", hex(End-ReturnNMI), " bytes long."
+print "VR3 ends at $", pc, "."
+print " "
 
 ;=========;
 ;DMA REMAP;

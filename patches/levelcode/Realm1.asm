@@ -9,7 +9,7 @@ levelinit1:
 
 		LDA #$50 : STA !GFX_Dynamic	; set dynamic area
 
-		JMP level1
+		JML level1
 
 levelinit2:
 		INC !SideExit
@@ -32,16 +32,17 @@ levelinit2:
 		SEP #$20			; > A 8 bit
 		LDA #$18			;\ Enable HDMA on channels 3 and 4
 		TSB $6D9F			;/
-		JSR CLEAR_DYNAMIC_BG3
-		RTS				; > Return
+		JSL CLEAR_DYNAMIC_BG3
+		RTL				; > Return
 
 levelinit3:
+		LDA #$03 : STA !Translevel
 		INC !SideExit
 		LDA #$C1 : STA !MsgPal		; > Portrait CGRAM location
 		LDA #$1F			;\ Put everything on mainscreen
 		STA $6D9D			;/
 		STZ $6D9E			; > Disable subscreen
-		JSR CLEAR_DYNAMIC_BG3		; > Clear the top of BG3
+		JSL CLEAR_DYNAMIC_BG3		; > Clear the top of BG3
 		JSL !GetVRAM
 		LDA #$31
 		STA !VRAMbase+!VRAMtable+$04,x
@@ -73,7 +74,7 @@ levelinit3:
 		TSB $6D9F			;/
 		JSL level3_HDMA : INC $14	;\ Set up double-buffered HDMA
 		JSL level3_HDMA : DEC $14	;/
-		JMP level3
+		JML level3
 
 levelinit4:
 		INC !SideExit
@@ -102,7 +103,7 @@ levelinit4:
 	.MainStage
 		LDA #$1D : STA $5E
 		LDA #$00 : STA !SmoothCamera
-		RTS
+		RTL
 
 	.Bonus
 		BEQ ..1
@@ -132,7 +133,7 @@ levelinit4:
 
 	..R	STA !CameraBoxD
 		SEP #$30
-		RTS
+		RTL
 
 levelinit5:
 	; Upload sun, sample code
@@ -160,9 +161,9 @@ levelinit5:
 		LDA #$04			;\ BG2 VScroll = 25%
 		STA !BG2ModeV			;/
 		LDA #$07 : STA !Level+5		; > Chunk size
-		JSR .HDMA			; > Set up HDMA
-		JSR CLEAR_DYNAMIC_BG3		; > Clear the top of BG3
-		JMP level5
+		JSL .HDMA			; > Set up HDMA
+		JSL CLEAR_DYNAMIC_BG3		; > Clear the top of BG3
+		JML level5
 
 
 .HDMA		LDA #$1F			;\ Put everything on mainscreen
@@ -186,7 +187,7 @@ levelinit5:
 		INC $14				; | Initialize both tables (double-buffered)
 		JSL level5_HDMA			; |
 		DEC $14				;/
-		RTS
+		RTL
 
 
 ; $0400-$06FF: reserved
@@ -197,6 +198,7 @@ levelinit5:
 ; $0A80 - reserved
 
 levelinit6:
+		INC !SideExit
 
 		STZ $97
 		STZ !P2YPosHi-$80
@@ -219,16 +221,22 @@ levelinit6:
 		STZ $0AFE
 		STZ $0AFF
 
+		PHB
+		LDA.b #!PaletteHSL>>16
+		PHA : PLB
 		REP #$30					;\
-		LDX #$017E					; |
-	-	LDA.l $3E8008,x : STA !PaletteHSL+$300,x	; | cache the HSL-formatted night time palette
-		DEX #2 : BPL -					; |
+		LDY.w #!File_level06_night			; |
+		JSL !GetFileAddress				; |
+		LDA !FileAddress : STA $00			; |
+		LDA !FileAddress+1 : STA $01			; | cache the HSL-formatted night time palette
+		LDY #$017E					; |
+	-	LDA [$00],y : STA.w !PaletteHSL+$300,y		; |
+		DEY #2 : BPL -					; |
 		SEP #$30					;/
-
+		PLB
 
 
 		LDX #$00
-		INC !SideExit
 		LDA #$0E			;\ Scanline count
 		XBA				;/
 	-	LDA #$01			;\
@@ -283,14 +291,14 @@ levelinit6:
 		TDC : STA $0900,x		;/
 
 		LDA #$48			;\
-		STA $0A00			; |
-		STA $0A03			; |
+		STA $0A00 : STA $0A10		; |
+		STA $0A03 : STA $0A13		; |
 		LDA #$01			; |
-		STA $0A06			; | Set up BG2 Hscroll table
-		TDC : STA $0A09			; |
+		STA $0A06 : STA $0A16		; | Set up BG2 Hscroll table
+		TDC : STA $0A09 : STA $0A19	; |
 		REP #$20			; |
-		STA $0A01			; |
-		STA $0A04			; |
+		STA $0A01 : STA $0A11		; |
+		STA $0A04 : STA $0A14		; |
 		SEP #$20			;/
 
 		REP #$20			; > A 16 bit
@@ -336,17 +344,39 @@ levelinit6:
 		SEP #$20				; |
 		PLB					;/
 
-		JMP level6
-
+		JML level6
 
 
 levelinitC:
+
+		LDA $96 : BEQ +
+		LDA #$C4
+	;	STA !MarioYSpeed
+	;	STA !P2YSpeed-$80
+	;	STA !P2YSpeed
+		STA !P2VectorY-$80
+		STA !P2VectorY
+		LDA #$3C
+		STA !P2VectorTimeY-$80
+		STA !P2VectorTimeY
+		LDA #$01
+		STA !P2VectorAccY-$80
+		STA !P2VectorAccY
+		+
+
 		INC !SideExit
-		JSR levelinit35
+		JSL levelinit35_Setup
+		JSL levelC
+	;	JSL InitCameraBox
 		LDA #$00 : STA !SmoothCamera
-		LDA #$FF : STA !CameraBoxU+1
-		LDA #$16 : STA !Level+6
-		RTS
+		LDA #$0D : STA !Level+6
+		STZ !Level+3
+		REP #$20
+		LDA $6701 : STA !3DWater_Color
+		SEP #$20
+		INC $14 : JSL HDMA3DWater		;\ set up double-buffered HDMA
+		DEC $14 : JSL HDMA3DWater		;/
+		RTL
 
 
 
@@ -358,10 +388,10 @@ levelinit26:
 		STA !BG2ModeV			;/
 		LDA #$A0 : STA !BG2BaseV	;\ Base BG2 Vscroll: 0x1A0
 		LDA #$01 : STA !BG2BaseV+1	;/
-		JMP level26
+		JML level26
 
 levelinit27:
-		RTS
+		RTL
 
 
 levelinit2A:	JSL !GetVRAM				;\
@@ -375,10 +405,10 @@ levelinit2A:	JSL !GetVRAM				;\
 		LDA #$2A00				; |
 		STA.l !VRAMbase+!VRAMtable+$05,x	; |
 		SEP #$20				;/
-		RTS
+		RTL
 
 levelinit2B:	LDA #$3F : STA !Level+2
-		JMP levelinit5
+		JML levelinit5
 
 levelinit2C:
 		STZ $6DF5 : STZ $6DF6
@@ -397,7 +427,7 @@ levelinit2C:
 		STA $4204
 		LDX #$0A
 		STX $4206
-		JSR GET_DIVISION
+		JSL GET_DIVISION
 		LDA $4216
 		CMP #$0005
 		LDA $4214
@@ -415,7 +445,7 @@ levelinit2C:
 		STA $4334
 		LDA #$08
 		TSB $6D9F
-		RTS
+		RTL
 
 
 		.Table
@@ -428,17 +458,38 @@ levelinit2C:
 
 
 levelinit2D:	STZ !SideExit
+		LDA #$05 : STA !Translevel
 		JSL level2D_HDMA
-		RTS
+		RTL
 
 levelinit2E:
-		RTS
+		RTL
 
 levelinit2F:
-		JMP levelinit2
+		JML levelinit2
+
+
+	!CollapseStart	= $0100
 
 
 levelinit32:
+		LDA #$02 : STA $41				; enable window 1 on layer 1
+
+		STZ $4324
+		STZ $4374
+		REP #$20
+		LDA #$0D03 : STA $4320
+		LDA #$0B00 : STA !HDMA2source
+		LDA #$2601 : STA $4370				;\ clipping window HDMA
+		LDA #$0C00 : STA !HDMA7source			;/
+
+		LDA #!CollapseStart : STA !Level+6		; set starting point for collapsing level
+		STA $0400					; also set for falling columns
+		STZ $0402
+
+		LDA.w #.BigMaskDyn : STA $0C
+		CLC : JSL !UpdateGFX
+		SEP #$20
 
 		STZ !Level+3
 		LDA #$02 : STA.l !WeatherType
@@ -449,14 +500,44 @@ levelinit32:
 		LDA.w level6_BGColoursEnd		; | set color 0x02
 		STA $00A2				; |
 		SEP #$20				;/
-		LDA #$78				;\ Enable HDMA on channels 3 through 6
+		LDA #$F4				;\ Enable HDMA on channels 2 and 4 through 7
 		TSB $6D9F				;/
 		STZ !SideExit
+		INC $14 : JSL level32_HDMA
+		DEC $14 : JSL level32_HDMA
 		JMP level32
 
 
+macro AdeptDyn(TileCount, SourceTile, DestVRAM)
+	dw <TileCount>*$20
+	dl <SourceTile>*$20+$32B008
+	dw <DestVRAM>*$10+$6000
+endmacro
+
+	.BigMaskDyn
+		dw ..End-..Start
+		..Start
+		%AdeptDyn(4, $100, $1CC)	;\
+		%AdeptDyn(4, $110, $1DC)	; | big mask
+		%AdeptDyn(4, $120, $1EC)	; |
+		%AdeptDyn(4, $130, $1FC)	;/
+		..End
+
+
+levelinit39:
+		LDA #$20
+		STA !MarioYSpeed
+		STA !P2YSpeed-$80
+		STA !P2YSpeed
+		STZ !P2VectorY-$80
+		STZ !P2VectorY
+		JSL level39
+		JML InitCameraBox
+
+
+
 levelinit1FD:
-	RTS
+	RTL
 
 
 ; --Level MAIN--
@@ -487,7 +568,7 @@ level1:
 		BCC .Return
 		LDA #$01			;\ Enable Vscroll
 		STA !EnableVScroll		;/
-.Return		RTS
+.Return		RTL
 
 
 
@@ -497,7 +578,7 @@ level1:
 
 
 	.OutsideJump
-		JMP .Outside
+		JML .Outside
 
 	.Main
 		PHP
@@ -664,7 +745,7 @@ level1:
 	.Outside
 
 		PLP
-		RTS
+		RTL
 
 
 
@@ -680,14 +761,13 @@ level2:
 	;	LDA #$01 : STA !GlobalPalset2
 	;	LDA #$20 : STA !GlobalPalsetMix
 
-		RTS
+		RTL
 
 level3:
 		REP #$20
-	;	LDA #$15E8				;\
-	LDA #$1FE8
+		LDA #$15E8				;\
 		LDY #$01				; | Regular exit (screen 0x15)
-		JSR END_Right				;/
+		JSL END_Right				;/
 		LDA #$1F				;\ Put everything on mainscreen
 		STA $6D9D				;/
 		STZ $6D9E				; > Disable subscreen
@@ -695,7 +775,7 @@ level3:
 		LDA.b #.HDMA : STA !HDMAptr		;\
 		LDA.b #.HDMA>>8 : STA !HDMAptr+1	; | Set up pointer
 		LDA.b #.HDMA>>16 : STA !HDMAptr+2	;/
-		RTS					; > Return
+		RTL					; > Return
 
 		.HDMA
 		PHP
@@ -711,8 +791,7 @@ level3:
 		STA !EnableHScroll			; > Enable scrolling
 		STA !SmoothCamera			; enable smooth camera to prevent a glitch later
 		REP #$20
-	;	LDA #$1400
-	LDA #$1E00
+		LDA #$1400
 		CMP $1A
 		BEQ +
 		BCC +
@@ -729,15 +808,11 @@ level3:
 		LDA $1A
 		CMP #$80
 		LDA $1B
-	;	SBC #$13
-	SBC #$1D
-		BCC ..NoScroll
+		SBC #$13 : BCC ..NoScroll
 		STZ !EnableHScroll
 		STZ !SideExit
 		LDA $1B
-	;	CMP #$14
-	CMP #$1E
-		BCS ..NoScroll
+		CMP #$14 : BCS ..NoScroll
 		REP #$20
 		INC $1A
 		LDA $1A					;\
@@ -827,9 +902,9 @@ level3:
 		STA !OAM+$1F8				; | Xpos of castle
 		STA !OAM+$1FC				;/
 		LDA #$30				;\
-	;	STA !OAM+$1F9				; | Ypos of castle
+		STA !OAM+$1F9				; | Ypos of castle
 		LDA #$40				; |
-	;	STA !OAM+$1FD				;/
+		STA !OAM+$1FD				;/
 		LDA #$A2				;\
 		STA !OAM+$1FA				; | Tile numbers of castle
 		LDA #$A4				; |
@@ -957,11 +1032,11 @@ level4:
 		CMP #$1C40 : BCS .Bonus
 		LDA #$1CF8				;\
 		LDY #$01				; | Regular exit
-		JMP END_Right				;/
+		JML END_Right				;/
 
 	.Bonus
 		SEP #$30
-		RTS
+		RTL
 
 
 	.SpawnRate
@@ -1322,7 +1397,7 @@ level5:
 
 		REP #$20
 		LDA #$07F8
-		JSR EXIT_Right
+		JSL EXIT_Right
 
 
 		.NoExit
@@ -1359,7 +1434,7 @@ level5:
 		LDA.b #.HDMA : STA !HDMAptr		;\
 		LDA.b #.HDMA>>8 : STA !HDMAptr+1	; | Set up pointer
 		LDA.b #.HDMA>>16 : STA !HDMAptr+2	;/
-		RTS					; > Return
+		RTL					; > Return
 
 		.HDMA
 		PHP
@@ -1415,7 +1490,7 @@ level5:
 		SEP #$20				; |
 		LDA #$0A : STA $4206			; |
 		REP #$20				; |
-		JSR GET_DIVISION			; | Next chunk is set to 40%
+		JSL GET_DIVISION			; | Next chunk is set to 40%
 		LDA $4216				; |
 		CMP #$0005				; |
 		LDA $4214				; |
@@ -1472,13 +1547,28 @@ level5:
 
 level6:
 		REP #$20
-		LDA #$1FE8 : JSR EXIT_FADE_Right
+		LDA #$0FE8 : JSL EXIT_FADE_Right
+
+		LDA.b #.HDMA : STA !HDMAptr+0
+		LDA.b #.HDMA>>8 : STA !HDMAptr+1
+		LDA.b #.HDMA>>16 : STA !HDMAptr+2
+		RTL
+
+
+		.HDMA
+		PHP
+		SEP #$30
+		LDA $14
+		AND #$01
+		ASL #4
+		TAX
 		LDA $1F					;\
 		LSR A					; |
-		STA $0A08				; | Update BG2 Hscroll
+		STA $0A08,x				; | Update BG2 Hscroll
 		LDA $1E					; |
 		ROR A					; |
-		STA $0A07				;/
+		STA $0A07,x				;/
+		STX !HDMA6source			; update table pointer
 		LDA #$17				;\
 		STA $6D9D				; | Main/sub screen settings
 		STZ $6D9E				;/
@@ -1489,32 +1579,29 @@ level6:
 		ORA !Pause				; |
 		BEQ .Process				; |
 		JMP .CGRAM				; |
-.Return		RTS					;/
+.Return		PLP					; |
+		RTL					;/
 
 .Process	REP #$20				;\
 		LDA $1A					; |
 		LSR #3					; |
 		DEC A					; |
 		BMI .Regular				; |
-		CMP !Level+2				; |
-		BCC .Regular				; |
+		CMP !Level+2 : BCC .Regular		; |
 		STA !Level+2				; |
 		SEP #$20				; |
 		BRA .StretchGreen			; |
 .Regular	SEP #$20				; |
 		LDA $14					; |
-		AND #$1F				; |
-		BNE .HandleHDMA				; |
+		AND #$1F : BNE .HandleHDMA		; |
 .StretchGreen	LDX #$00				; |
 	-	LDA $0800,x				; |
-		CMP #$26				; | Increment timer and stretch green
-		BEQ +					; |
+		CMP #$26 : BEQ +			; | Increment timer and stretch green
 		INC A					; |
 		STA $0800,x				; |
 		BRA ++					; |
 	+	INX #2					; |
-		CPX #$14				; |
-		BNE -					; |
+		CPX #$14 : BNE -			; |
 	++	REP #$20				; |
 		INC !Level+2				;/
 
@@ -1699,7 +1786,8 @@ level6:
 		LDA !Level+2				; | Don't draw sun if it's off-screen
 		CMP #$A0				; |
 		BCC .DrawSun				;/
-.OffScreen	RTS
+.OffScreen	PLP
+		RTL
 
 .DrawSun	LDA !Level+3
 		LSR A
@@ -1740,7 +1828,8 @@ level6:
 		STA !OAMhi+$7D				; | Tile size of sun
 		STA !OAMhi+$7E				; |
 		STA !OAMhi+$7F				;/
-		RTS
+		PLP
+		RTL
 
 .BGColours	dw $006F,$006F
 		dw $006E,$006E
@@ -1764,9 +1853,133 @@ level6:
 .BGColoursEnd	dw $0C21
 
 
+
 levelC:
-		JSR level35
-		RTS
+
+		JSL WARP_BOX
+		db $04 : dw $12D0,$01F0 : db $50,$10
+
+		JSL WARP_BOX
+		db $04 : dw $1910,$01F0 : db $50,$10
+
+
+		LDA $1B					;\
+		CMP #$15 : BCC .NoHammers		; | only spawn hammers on screens 15-17
+		CMP #$18 : BCS .NoHammers		;/
+		LDA $14
+		AND #$FC : BEQ .NoHammers
+		AND #$1C : BNE .NoHammers
+		LDX.b #!Ex_Amount-1
+	-	LDA !Ex_Num,x : BEQ +
+		DEX : BPL -
+		BRA .NoHammers
+	+	LDA $14
+		AND #$03
+		TAY
+		LDA .FallingHammerData,y : STA !Ex_XLo,x
+		LDA .FallingHammerData+4,y : STA !Ex_XHi,x
+		LDA $1C
+		SEC : SBC #$10
+		STA !Ex_YLo,x
+		LDA $1D
+		SBC #$00
+		STA !Ex_YHi,x
+		LDA #$04+!ExtendedOffset : STA !Ex_Num,x
+		LDA #$40 : STA !Ex_YSpeed,x
+		.NoHammers
+
+
+		LDA.b #HDMA3DWater : STA !HDMAptr+0
+		LDA.b #HDMA3DWater>>8 : STA !HDMAptr+1
+		LDA.b #HDMA3DWater>>16 : STA !HDMAptr+2
+
+		LDA #$DC : STA !Level+2
+
+		JSL level35_Graphics			; returns 16-bit A
+
+		SEP #$30
+		RTL
+
+	.FallingHammerData
+		db $D0,$90,$D0,$D0	; X lo byte
+		db $15,$17,$16,$17	; X hi byte
+
+
+	;	REP #$20
+	;	LDA.w #.RoomPointers
+	;	JML LoadCameraBox
+
+
+		.RoomPointers
+		dw .ScreenMatrix
+		dw .BoxTable
+		dw .DoorList
+		dw .DoorTable
+
+
+
+
+;	Key ->	   X  Y  W  H  S  FX FY
+;		   |  |  |  |  |  |  |
+;		   V  V  V  V  V  V  V
+;
+.BoxTable
+.Box0	%CameraBox(0, 0, 27, 1, $FF, 0, 0)
+
+.ScreenMatrix	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+
+.DoorList	db $FF			; no doors
+.DoorTable
+
+
+
+	HDMA3DWater:
+		PHP
+		SEP #$20
+		LDA.b #.SA1 : STA $3180
+		LDA.b #.SA1>>8 : STA $3181
+		LDA.b #.SA1>>16 : STA $3182
+		JSR $1E80
+		PLP
+		PHP
+		PHB : PHK : PLB			; start of bank wrapper has to go here so .Gradient can be read
+		REP #$20
+		LDA.w #.Gradient
+		JML level35_HDMA_3DWater
+
+	.SA1
+		PHB
+		PHP
+		SEP #$20
+		LDA.b #Water3D_Calc>>16
+		PHA : PLB
+		REP #$30
+		JSL Water3D_Calc
+		PLP
+		PLB
+		RTL
+
+.Gradient
+		dw ..end-..start
+		dw $000C
+		..start
+		dw $4CA0
+		dw $48A0
+		dw $4080
+		dw $3C80
+		dw $3880
+		dw $3060
+		dw $2C60
+		dw $2860
+		dw $2040
+		dw $1C40
+		dw $1840
+		dw $1020
+		dw $0C20
+		dw $0400
+		..end
 
 
 level26:
@@ -1785,7 +1998,7 @@ level26:
 
 		LDA #$01F8				;\
 		LDY #$01				; | Regular exit
-		JMP END_Right				;/
+		JML END_Right				;/
 
 
 .RightLimit	dw $01FF,$01FF				; 0 - 1
@@ -1806,22 +2019,32 @@ level26:
 
 
 level27:
-		RTS
+		RTL
 
 
 
-level2A:	REP #$20
+level2A:	LDA $1B
+		CMP #$02 : BEQ .Lava
+		CMP #$06 : BEQ .Lava
+		CMP #$0A : BEQ .Lava
+		CMP #$0B : BEQ .Lava
+		CMP #$0C : BEQ .Lava
+		LDA #$00 : BRA +
+	.Lava	LDA #$04
+	+	STA !GlobalPalset1
+
+		REP #$20
 		LDY #$00
 		LDA $1A
 		CMP #$0470-$80 : BCC .DisableV
 		CMP #$09E0-$80 : BCC .EnableV
 		CMP #$0D00-$80 : BCS +
 		PEA .DisableV+2
-		LDA #$0080 : JMP LOCK_VSCROLL
+		LDA #$0080 : JML LOCK_VSCROLL
 
 	+	CMP #$0E80-$80 : BCS .EnableV
 		PEA .DisableV+2
-		LDA #$0050 : JMP LOCK_VSCROLL
+		LDA #$0050 : JML LOCK_VSCROLL
 .EnableV	STZ !Level+2
 		INY
 .DisableV	STY !EnableVScroll
@@ -1834,7 +2057,7 @@ level2A:	REP #$20
 		LDY #$05 : STY $71
 		LDY #$00 : STY $88
 		SEP #$20
-		RTS
+		RTL
 .NoExit		SEP #$20
 
 
@@ -1859,12 +2082,12 @@ level2A:	REP #$20
 		BNE .NoCam			; |
 		REP #$20			; |
 		LDA #$1000			; |
-		JSR LOCK_HSCROLL		; |
+		JSL LOCK_HSCROLL		; |
 		SEP #$20			; |
 		.NoCam				;/
 
 		LDA $7892+$02			;\ See if cannon has fired already
-		BEQ $03 : JMP .PrepShoot	;/
+		BEQ $04 : JML .PrepShoot	;/
 
 
 		LDY #$00			; Start index
@@ -1900,7 +2123,7 @@ level2A:	REP #$20
 		AND #$03
 		LSR A : BCC .P2
 		PHA
-		JSR .PlayerEntering
+		JSL .PlayerEntering
 		PLA
 	.P2	LSR A : BCC .Return
 		LDX #$80
@@ -1908,7 +2131,7 @@ level2A:	REP #$20
 		LDA #$35 : STA $0F		;/
 .PlayerEntering	LDA !P2Character-$80,x : BNE +	;\
 		PEA.w .PlayerD-1		; | Special code for Mario
-		JMP .MarioEntering		;/
+		JML .MarioEntering		;/
 	+	LDA #$DF : STA !P2Pipe-$80,x
 		LDY #$0F			;\
 		LDA #$FF			; | Disable interaction for player
@@ -1931,7 +2154,7 @@ level2A:	REP #$20
 		DEC !P2YPosLo-$80,x
 		BRA .PrepShoot
 .Return		SEP #$20
-		RTS
+		RTL
 
 .PrepShoot	LDA $7892+$00
 		STA $00
@@ -2040,7 +2263,7 @@ level2A:	REP #$20
 		LDA #$31E4 : STA !VRAMtable+$1A,x
 		PLB
 	+	SEP #$20
-		RTS
+		RTL
 
 
 .MarioEntering	LDA #$0F : STA $73E0
@@ -2050,15 +2273,15 @@ level2A:	REP #$20
 		CMP #$26 : BEQ .MarioD
 		BCC .MarioR
 .MarioL		DEC $94
-		RTS
+		RTL
 .MarioR		INC $94
-		RTS
+		RTL
 .MarioD		LDA $96
 		CLC : ADC #$10
 		STA !P2YPosLo-$80,x
 		CMP #$70 : BEQ +
 		INC $96
-	+	RTS
+	+	RTL
 
 
 ; YXPCCCTT tttttttt
@@ -2101,7 +2324,7 @@ level2B:
 		REP #$20
 		LDA #$06F8
 		PEA level5_NoExit-1
-		JMP EXIT_FADE_Right
+		JML EXIT_FADE_Right
 
 
 level2C:
@@ -2116,9 +2339,9 @@ level2C:
 	+	DEX : BPL -			; Loop
 
 		REP #$20
-		LDA.w #.Table1 : JSR TalkOnce
-		LDA.w #.Table2 : JSR TalkOnce
-		LDA.w #.Table3 : JSR TalkOnce
+		LDA.w #.Table1 : JSL TalkOnce
+		LDA.w #.Table2 : JSL TalkOnce
+		LDA.w #.Table3 : JSL TalkOnce
 
 		LDA $1A
 		CMP #$00E0 : BNE +
@@ -2164,14 +2387,14 @@ level2C:
 		BCS +
 		LDA #$00E0 : STA $00
 		LDA #$0000
-		JSR SCROLL_UPRIGHT
+		JSL SCROLL_UPRIGHT
 		SEP #$20
-		RTS
+		RTL
 	+	STZ !Level+2
 		SEP #$20
 		LDA #$01
 		STA !EnableVScroll
-		RTS
+		RTL
 
 
 		.Table
@@ -2187,7 +2410,7 @@ level2C:
 level2D:	LDA.b #.HDMA : STA !HDMAptr+0
 		LDA.b #.HDMA>>8 : STA !HDMAptr+1
 		LDA.b #.HDMA>>16 : STA !HDMAptr+2
-		RTS
+		RTL
 
 		.HDMA
 		PHP
@@ -2200,9 +2423,9 @@ level2D:	LDA.b #.HDMA : STA !HDMAptr+0
 		RTL
 
 level2E:
-	RTS
+	RTL
 level2F:
-	RTS
+	RTL
 
 level32:
 		LDA.b #.HDMA : STA.l !HDMAptr+0
@@ -2218,7 +2441,7 @@ level32:
 		LDA $35C0,x
 		CMP #$05 : BNE +
 		LDA $3250,x
-		CMP #$0C : BNE +
+		CMP #$0D : BNE +
 		LDA $BE,x : BNE +
 		LDA $3220,x
 		ASL A
@@ -2237,27 +2460,45 @@ level32:
 		ASL A
 		AND #$00FF
 		STA $02
-		LDA #$0C78
+		LDA #$0D70
 		SEC : SBC $1A
 		CMP #$0100 : BCC .GoodX
-		CMP #$FFF0 : BCS $03 : JMP .Nope
+		CMP #$FFE0 : BCS $03 : JMP .Nope
 	.GoodX	STA $00
+		CLC : ADC #$0010
+		STA $0E
 		LDA $14
 		AND #$00FF
 		LSR #4
 		SEC : SBC #$0008
 		BPL $03 : EOR #$FFFF
-		CLC : ADC #$0110
+		CLC : ADC #$0108
 		SEC : SBC $1C
 		SEC : SBC $02
 		CMP #$00D8 : BCC .GoodY
-		CMP #$FFF0 : BCC .Nope
+		CMP #$FFE0 : BCS $03 : JMP .Nope
 	.GoodY	LDY !OAMindex
 		SEP #$20
-		STA !OAM+1,y
-		LDA $00 : STA !OAM+0,y
-		LDA #$E0 : STA !OAM+2,y
-		LDA #$28 : STA !OAM+3,y
+		STA !OAM+$01,y
+		STA !OAM+$05,y
+		CLC : ADC #$10
+		STA !OAM+$09,y
+		STA !OAM+$0D,y
+		LDA $00
+		STA !OAM+$00,y
+		STA !OAM+$08,y
+		LDA $0E
+		STA !OAM+$04,y
+		STA !OAM+$0C,y
+		LDA #$CC : STA !OAM+$02,y
+		LDA #$CE : STA !OAM+$06,y
+		LDA #$EC : STA !OAM+$0A,y
+		LDA #$EE : STA !OAM+$0E,y
+		LDA #$39
+		STA !OAM+$03,y
+		STA !OAM+$07,y
+		STA !OAM+$0B,y
+		STA !OAM+$0F,y
 
 		LDA !Level+4
 		AND #$03 : BNE +
@@ -2266,56 +2507,51 @@ level32:
 		ORA #$80
 		STA !Level+4
 		REP #$20
-		LDA #$0C60 : STA $0A80
+		LDA #$0D60 : STA $0A80
 		LDA #$0130 : STA $0A82
-		JSR PuffTile
-		LDA #$0C70 : STA $0A80
-		JSR PuffTile
-		LDA #$0C80 : STA $0A80
-		JSR PuffTile
-		LDA #$0C90 : STA $0A80
-		JSR PuffTile
+		JSL PuffTile
+		LDA #$0D70 : STA $0A80
+		JSL PuffTile
+		LDA #$0D80 : STA $0A80
+		JSL PuffTile
+		LDA #$0D90 : STA $0A80
+		JSL PuffTile
 		SEP #$20
 		LDA #$10 : STA !SPC1			; magikoopa sound
 
 	+	TYA
-		INY #4
-		STY !OAMindex
+		CLC : ADC #$10
+		STA !OAMindex
+		SEC : SBC #$10
 		LSR #2
 		TAY
 		LDA $01
 		AND #$01
 		ORA #$02
-		STA !OAMhi,y
+		STA !OAMhi+0,y
+		STA !OAMhi+2,y
+		LDA $0F
+		AND #$01
+		ORA #$02
+		STA !OAMhi+1,y
+		STA !OAMhi+3,y
+
 		LDA #$03 : STA !WeatherType
 		LDA #$04 : STA !WeatherFreq
 
 	.Nope	SEP #$20
 
-		JSR Weather
+		JSL Weather
 
 
 		LDA $1B
-		CMP #$0D : BNE .NoExit
+		CMP #$0E : BNE .NoExit
 		REP #$20
-		LDA #$00A0 : JSR EXIT_Up
+		LDA #$00A0 : JSL EXIT_Up
 		.NoExit
 
 
-		LDX #$0F				;\
-	-	LDA $3200,x				; |
-		CMP #$0C : BCS +			; |
-		LDA $3590,x				; |
-		AND #$08 : BNE +			; | koopas go behind scenery
-		LDA #$01 : STA $3410,x			; |
-		LDA #$1F				; |
-		STA $32E0,x				; |
-		STA $35F0,x				; |
-	+	DEX : BPL -				;/
-
-
-		LDY $1B					;\
-		LDA .ChunkScreen,y			; |
+		LDA #$01				;\
 		AND !Level+2 : BNE ++			; |
 		LDX #$0F				; |
 	-	LDA $3230,x : BEQ +			; |
@@ -2324,61 +2560,474 @@ level32:
 		LDA $3280,x				; | load chunks when adept shamans die
 		AND #$03				; |
 		CMP #$02 : BNE +			; |
-		LDA .ChunkScreen,y : TSB !Level+2	; |
-		JSR LoadChunk				; |
+		LDA #$01 : TSB !Level+2			; |
+		JSL LoadChunk				; |
 		BRA ++					; |
 	+	DEX : BPL -				; |
 		++					;/
 
 		LDA $0A84 : BEQ .Return
 		LDA $14
-		AND #$1F : BEQ DestroyChunk
+		AND #$1F : BNE $03 : JMP DestroyChunk
 
-	.Return	RTS
-
-
-.ChunkScreen	db $01,$01,$01,$01			; screens 00-03
-		db $02,$02,$02				; screens 04-06
-		db $04,$04,$04,$04,$04,$04,$04		; screens 07-0D
-		db $08,$08,$08,$08			; screens 0E-11
-
+	.Return	RTL
 
 
 
 		.HDMA
+		PHB : PHK : PLB
 		PHP
+		REP #$30
+
+
+		LDA $0402 : BNE $03 : JMP .NotCollapsingYet
+		LDA $14
+		AND #$0003 : BEQ .Smoke
+		LDA $14
+		INC A
+		AND #$0003 : BEQ .Debris
+		JMP .CheckTimer
+
+		.Debris
+		LDA !RNG
+		AND #$00F0
+		ORA #$0008
+		CLC : ADC $1A
+		PHA
+		AND #$FF00
+		XBA
+		TAX
+		PLA
+		AND #$00FF
+		LSR #4
+		CLC : ADC #$00C0
+	-	DEX : BMI +
+		CLC : ADC !LevelHeight
+		BRA -
+	+	TAX
+		LDA $40C800,x
+		AND #$00FF
+		CMP #$0025 : BEQ ..fail
+
+		SEP #$30
+		LDX.b #!Ex_Amount-1
+	..loop	LDA !Ex_Num,x : BEQ ..spawn
+		DEX : BPL ..loop
+		BRA ..fail
+		..spawn
+		LDA #$01+!MinorOffset : STA !Ex_Num,x
+		LDA !RNG
+		CLC : ADC $1A
+		STA !Ex_XLo,x
+		LDA $1B
+		ADC #$00
+		STA !Ex_XHi,x
+		LDA #$B8 : STA !Ex_YLo,x
+		STZ !Ex_YHi,x
+	..fail	REP #$30
+		JMP .CheckTimer
+
+
+		.Smoke
+		LDA !Level+6
+		CLC : ADC #$0008
+		AND #$FF00
+		XBA
+		TAX
+		LDA !Level+6
+		CLC : ADC #$0008
+		AND #$00FF
+		LSR #4
+		CLC : ADC !LevelHeight		;\ start at the bottom
+		SEC : SBC #$0010		;/
+	-	DEX : BMI +
+		CLC : ADC !LevelHeight
+		BRA -
+	+	TAX
+		LDY #$0000
+	-	LDA $40C800,x
+		AND #$00FF
+		CMP #$0025 : BEQ +
+		INY
+		CPY #$000E : BEQ +
+		TXA
+		SEC : SBC #$0010
+		TAX
+		BRA -
+
+	+	TYA
+		ASL #4
+		INC A
+		STA $00
+
+		SEP #$30
+		LDX.b #!Ex_Amount-1
+	..loop	LDA !Ex_Num,x : BEQ ..spawn
+		DEX : BPL ..loop
+		BRA ..fail
+		..spawn
+		LDA #$01+!ExtendedOffset : STA !Ex_Num,x
+		LDA !RNG
+		AND #$F0
+		CMP $00 : BCS ..fail
+		STA $00
+		LDA !LevelHeight
+		SEC : SBC $00
+		STA !Ex_YLo,x
+		LDA !LevelHeight+1
+		SBC #$00
+		STA !Ex_YHi,x
+		LDA #$0B : STA !Ex_Data2,x
 		REP #$20
-		LDA !Level+2
-		AND #$0088 : BEQ ..Check
-		CMP #$0080 : BEQ ..Lock
-		BRA ..R
+		LDA !RNG
+		AND #$001F
+		SEC : SBC #$0010
+		CLC : ADC !Level+6
+		SEP #$20
+		STA !Ex_XLo,x
+		XBA : STA !Ex_XHi,x
+	..fail	REP #$30
+		BRA .CheckTimer
 
-	..Check	LDA $1A
-		CMP #$1016 : BCC ..R
-		LDA #$0080 : TSB !Level+2
-		BRA ..R
 
-	..Lock	LDA #$1018
-		CMP $1A : BCC ..R
-		STA $1A
+		.NotCollapsingYet
+		LDA $1A
+		CMP #!CollapseStart : BCS $03 : JMP .HandleColumns_done
+		.CheckTimer
+
+		LDA #$001F : STA $00
+		LDA !Level+6
+		CMP $1A : BCS +
+		LDA #$0007 : STA $00
+		+
+
+		LDA $14
+		AND $00 : BEQ $03 : JMP .NoCollapse
+
+		LDX $0402					;\
+		STZ $0404,x					; |
+		STZ $0406,x					; | spawn new collapsing column
+		INX #4						; |
+		STX $0402					;/
+
+		; update map16 to remove interaction
+		; TO DO: non-interaction page without blanking the column upon reload
+		LDA !Level+6
+		CLC : ADC #$0008
+		AND #$FF00
+		XBA
+		TAX
+		LDA !Level+6
+		CLC : ADC #$0008
+		AND #$00FF
+		LSR #4
+	-	DEX : BMI +
+		CLC : ADC !LevelHeight
+		BRA -
+	+	TAX
+		LDA !LevelHeight
+		LSR #4
+		TAY
+	-	SEP #$20
+		LDA #$25 : STA $40C800,x
+		LDA #$00 : STA $41C800,x
+		REP #$20
+		DEY : BEQ +
+		TXA
+		CLC : ADC #$0010
+		TAX
+		BRA -
+
+	+	LDA !Level+6					;\
+		CLC : ADC #$0010				; | X of next column to fall
+		STA !Level+6					;/
+		.NoCollapse
+
+
+		.HandleColumns
+		LDX $0402
+	..loop	DEX #4 : BMI ..done
+		LDA $0404,x
+		INC A
+		CMP #$002A : BCC ..down
+		PHX
+		LDX #$0000
+	-	CPX $0402 : BCS ..reorderdone
+		LDA $0408,x : STA $0404,x
+		LDA $040A,x : STA $0406,x
+		INX #4
+		BRA -
+		..reorderdone
+		LDA $0400					;\
+		CLC : ADC #$0010				; | update X of currently collapsing area
+		STA $0400					;/
+		LDA $0402
+		SEC : SBC #$0004
+		BPL $03 : LDA #$0000
+		STA $0402
+		PLX
+		BRA ..loop
+	..down	STA $0404,x
+		TAY
+		LDA .ChunkY,y
+		AND #$00FF
+		STA $0406,x
+		BRA ..loop
+		..done
+
+		SEP #$30
+		LDA #$02 : STA $3E
+
+		LDA $14
+		AND #$01
+		ASL #4
+		TAX
+		LDA $1F						;\
+		LSR A						; |
+		STA $0A08,x					; | Update BG2 Hscroll
+		LDA $1E						; |
+		ROR A							; |
+		STA $0A07,x					;/
+		STX !HDMA6source				; update source for BG2
+		STX !HDMA2source				; update source for BG1
+
+		LDA #$01 : STA $0B00,x
+		STZ $0B05,x
+
+		LDA $14
+		AND #$01
 		LSR A
-		STA $1E
+		ROR A
+		AND #$80
+		TAX
+		STX !HDMA7source				; update source for clipping window
+		LDA #$01 : STA $0C00,x				;\
+		LDA #$FF : STA $0C01,x				; | pre-emptively disable clipping window
+		STZ $0C02,x					; |
+		STZ $0C03,x					;/
 
-	..R	SEP #$20
-		LDA $1F					;\
-		LSR A					; |
-		STA $0A08				; | Update BG2 Hscroll
-		LDA $1E					; |
-		ROR A					; |
-		STA $0A07				;/
+		REP #$20					;\
+		LDX !HDMA6source				; | layer 1 positions in hdma table
+		LDA $1A : STA $0B01,x				; |
+
+		LDA $14
+		AND #$0003
+		CMP #$0003
+		BNE $03 : LDA #$0001
+		DEC A
+		STA $0E
+		CLC : ADC $1C
+		STA $0B03,x
+
+	;	LDA $1C : STA $0B03,x				;/
+		STZ $22						;\
+		STZ $24						; |
+		LDA $1A						; |
+		AND #$01FF					; |
+		ORA #$2000					; |
+		STA $00						; |
+		LDA $1C						; | set up mode 2 table
+	CLC : ADC $0E
+		AND #$01FF					; |
+		ORA #$2000					; |
+		STA $02						; |
+		LDX #$3E					; |
+	-	LDA $00 : STA $40A000,x				; |
+		LDA $02 : STA $40A040,x				; |
+		DEX #2 : BPL -					;/
+
+
+		.HandleDisplacement
+		LDA $0400					; left edge of collapsing area
+		SEC : SBC $1A
+		STA $0E
+		LDY #$00
+	..loop	CPY $0402 : BCC ..process
+		JMP ..done
+
+		..process
+		LDA $0E : BEQ ..bg1plusfirst
+		CMP #$00F8 : BCC ..full
+		CMP #$0100 : BCC ..onecolumn
+		CMP #$FFF1 : BCC ..next
+		CMP #$FFF9 : BCC ..bg1
+
+		..bg1plusfirst
+		LDX !HDMA6source
+		LDA $0B03,x
+		SEC : SBC $0406,y
+		STA $0B03,x
+		LDX #$00 : BRA +
+
+		..bg1
+		LDX !HDMA6source
+		LDA $0B03,x
+		SEC : SBC $0406,y
+		STA $0B03,x
+		BRA ..next
+
+		..onecolumn
+		LSR #3
+		ASL A
+		TAX
+		LDA $0E
+		AND #$0007
+		BNE $02 : DEX #2
+	+	LDA $40A040,x
+		AND #$01FF
+		SEC : SBC $0406,y
+		AND #$01FF
+		ORA #$2000
+		STA $40A040,x
+		BRA ..next
+
+		..full
+		LSR #3
+		ASL A
+		TAX
+		LDA $0E
+		AND #$0007
+		BNE $02 : DEX #2
+		LDA $40A040,x
+		AND #$01FF
+		SEC : SBC $0406,y
+		AND #$01FF
+		ORA #$2000
+		STA $40A040,x
+		STA $40A042,x
+
+		..next
+		LDA $0E
+		CLC : ADC #$0010
+		STA $0E
+		INY #4
+		JMP ..loop
+		..done
+
+
+
+; left edge is !CollapseStart
+; right edge is !Level+6
+; start with R = !Level+6, for scanlines = Ydisp of last column
+; then R = !Level+6 - 16, for scanlines = Ydisp of second to last column - Ydisp of last column
+; repeat for all columns
+; then set R = $0400
+;
+
+; $00 - left edge of window area
+; $02 - right edge of top row
+; $04 - left edge of top row
+; $0E - keeping track of current Xpos of window's right edge
+
+		.HandleClipping
+		LDX !HDMA7source
+		LDY $0402
+		LDA #$0000 : STA $0406,y		; clear this to make the math simpler later
+		LDA #!CollapseStart
+		SEC : SBC $1A
+		BPL $03 : LDA #$0000
+		CMP #$00FF
+		BCC $03 : LDA #$00FF
+		STA $00
+
+		LDA $0400
+		CMP !Level+6 : BNE $03 : JMP ..done	; exception: collapse has not started yet
+		SEC : SBC $1A
+		BPL $03 : LDA #$0000
+		CMP #$00FF
+		BCC $03 : LDA #$00FF
+		STA $02
+
+		LDA !Level+6
+		DEC A
+		SEC : SBC $1A
+		STA $0E
+		BPL $03 : LDA #$0000
+		CMP #$00FF
+		BCC $03 : LDA #$00FF
+		STA $04
+		LDA $0E : BEQ +				; if right edge is exactly 0, it is not off-screen
+		CMP $00 : BEQ ..done			; no clipping if both are off-screen at the same side
+	+	SEP #$20
+
+		..loop
+		DEY #4 : BMI ..finish
+		LDA $0406,y
+		SEC : SBC $040A,y
+		BPL ..small
+
+		..big
+		LSR A
+		STA $0C00,x
+		BCC $01 : INC A
+		STA $0C03,x
+		LDA $00
+		STA $0C01,x
+		STA $0C04,x
+		LDA $04
+		STA $0C02,x
+		STA $0C05,x
+		INX #3
+		BRA ..shared
+		..small
+		STA $0C00,x
+		LDA $00 : STA $0C01,x
+		LDA $04 : STA $0C02,x
+		..shared
+		INX #3
+		REP #$20
+		LDA $0E
+		SEC : SBC #$0010
+		STA $0E : BMI ..offscreen
+		CMP #$00FF
+		BCC $03 : LDA #$00FF
+		STA $04
+		SEP #$20
+		BRA ..loop
+
+		..offscreen
+		SEP #$20
+
+		..finish
+		LDA $00 : STA $0C01,x
+		LDA $02 : STA $0C02,x : BNE +
+		LDA #$FF : STA $0C01,x
+	+	LDA #$01 : STA $0C00,x
+		STZ $0C03,x
+		REP #$20
+
+		..done
+
+
+		JSL !GetVRAM
+		LDA #$0080 : STA !VRAMbase+!VRAMtable+$00,x
+		LDA #$A000 : STA !VRAMbase+!VRAMtable+$02,x
+		LDA #$0040 : STA !VRAMbase+!VRAMtable+$04,x
+		LDA #$5000 : STA !VRAMbase+!VRAMtable+$05,x
+
 		PLP
+		PLB
 		RTL
+
+
+		.ChunkY
+		db $01,$01,$02,$02,$03,$04,$05,$07,$09,$0B,$0E,$11,$14,$18,$1C,$20
+		db $25,$2A,$2F,$35,$3B,$41,$48,$4F,$57,$5F,$67,$6F,$77,$7F,$87,$8F
+		db $97,$9F,$A7,$AF,$B7,$BF,$C7,$CF,$D7,$DF
+
+
+; !Level+6	-	next column that will fall
+; $0400		-	X of last column that disappeared
+; $0402		-	how many falling columns there are
+; $0404 +2X	-	timer for X falling column
+; $0406 +2X	-	displacement of X falling column
+
 
 
 
 
 ;	!Level+2: chunk status
-;			each bit represents a chunk, so bit 0 - chunk 1 etc.
+;			each bit represents a chunk, so bit 0 = chunk 1, bit 1 = chunk 2 etc.
 
 
 ;	$0A80-$0A81:	X coord of section being destroyed
@@ -2387,11 +3036,11 @@ level32:
 
 	DestroyChunk:
 		REP #$20
-		JSR PuffTile
+		JSL PuffTile
 		LDA $0A80 : PHA
 		CLC : ADC #$0010
 		STA $0A80
-		JSR PuffTile
+		JSL PuffTile
 		PLA : STA $0A80
 		LDA $0A82
 		CLC : ADC #$0010
@@ -2399,7 +3048,7 @@ level32:
 		SEP #$20
 		DEC $0A84
 		LDA #$09 : STA !SPC4			; > Boom sound
-	.Return	RTS
+	.Return	RTL
 
 
 	PuffTile:
@@ -2434,7 +3083,7 @@ level32:
 		LDA $0A82 : STA !Ex_YLo,x
 		LDA #$17 : STA !Ex_Data1,x
 	.Return	PLP
-		RTS
+		RTL
 
 
 
@@ -2449,16 +3098,89 @@ level32:
 		LDA .ChunkY,x : STA $0A82
 		LDA .ChunkSize,x : STA $0A84
 		PLP
-		RTS
+		RTL
 
-.ChunkX		dw $02D0,$06E0,$0D70,$0F50
-.ChunkY		dw $0110,$0110,$0120,$00D0
-.ChunkSize	dw $0006,$0006,$0002,$000B
+.ChunkX		dw $02D0
+.ChunkY		dw $0110
+.ChunkSize	dw $0006
+
+
+
+
+
+;lines	x	w
+;10	+30	40
+;50	+30	90
+;60	+90	30
+;10	+50	80
+;10	+30	A0
+;60	+00	D0
+;10	+70	60
+;10	+80	50
+;10	+80	40
+
+level39:
+		JSL WARP_BOX
+		db $08 : dw $0100,$0000 : db $50,$04
+
+		JSL WARP_BOX
+		db $08 : dw $0780,$0000 : db $50,$04
+
+		JSL WATER_BOX
+		dw $0000,$0000 : db $FF,$FF
+
+		JSL WATER_BOX
+		dw $0000,$0100 : db $FF,$FF
+
+		JSL WATER_BOX
+		dw $0100,$0190 : db $60,$40
+
+		JSL WATER_BOX
+		dw $0100,$00B0 : db $80,$40
+
+		JSL WATER_BOX
+		dw $0100,$0000 : db $40,$FF
+
+		REP #$20
+		LDA.w #.RoomPointers
+		JML LoadCameraBox
+
+
+		.RoomPointers
+		dw .ScreenMatrix
+		dw .BoxTable
+		dw .DoorList
+		dw .DoorTable
+
+
+
+
+;	Key ->	   X  Y  W  H  S  FX FY
+;		   |  |  |  |  |  |  |
+;		   V  V  V  V  V  V  V
+;
+.BoxTable
+.Box0	%CameraBox(0, 0, 1, 2, $FF, 0, 0)
+.Box1	%CameraBox(6, 0, 1, 7, $FF, 0, 0)
+
+.ScreenMatrix	db $00,$00,$FF,$FF,$FF,$FF,$01,$01
+		db $00,$00,$FF,$FF,$FF,$FF,$01,$01
+		db $00,$00,$FF,$FF,$FF,$FF,$01,$01
+		db $FF,$FF,$FF,$FF,$FF,$FF,$01,$01
+		db $FF,$FF,$FF,$FF,$FF,$FF,$01,$01
+		db $FF,$FF,$FF,$FF,$FF,$FF,$01,$01
+		db $FF,$FF,$FF,$FF,$FF,$FF,$01,$01
+		db $FF,$FF,$FF,$FF,$FF,$FF,$01,$01
+
+.DoorList	db $FF			; no doors
+.DoorTable
+
+
 
 
 
 level1FD:
-	RTS
+	RTL
 
 
 

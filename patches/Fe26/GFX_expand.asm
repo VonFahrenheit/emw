@@ -104,6 +104,15 @@
 	org $019BA8
 		db $02,$04,$04,$02	; stunned goomba tiles
 
+	org $01B10A
+		BRA 16 : NOP #16
+	warnpc $01B11C
+	org $01B122
+		RTS			; remove sprite palette write from some sprites
+		NOP #6
+		RTS
+	warnpc $01B12A
+
 	pullpc
 
 	.Remap01
@@ -112,13 +121,18 @@
 		LDX !SpriteIndex
 		XBA
 		LDA $3200,x
-		CMP #$0F : BNE ..NotGoomba
+		CMP #$0F : BNE ..Normal
+
+	;	CMP #$0F : BEQ ..GoombaState
+	;	BRA ..Normal
+
+		..GoombaState
 		LDA $3230,x
 		CMP #$08 : BEQ ..Goomba
 		CMP #$02 : BEQ ..RollingGoomba
-		CMP #$0B : BEQ ..NotGoomba
+		CMP #$0B : BEQ ..Normal
 		LDA $3330,x
-		AND #$04 : BNE ..NotGoomba
+		AND #$04 : BNE ..Normal
 
 		..RollingGoomba
 		LDA #$00
@@ -134,7 +148,7 @@
 		ASL A
 		BRA ..Shared
 
-		..NotGoomba
+		..Normal
 		XBA
 
 		..Shared
@@ -248,13 +262,13 @@
 		db $02,$00,$04,$06,$08,$0A,$00,$02,$04,$0A,$08,$00,$06	; boo tiles that STEAR won't find
 	org $028CB8
 		db $02,$04,$08,$00	; boo stream tiles
-		db $06,$0A,$02,$04
+		db $06,$0A,$02,$04	; (minor exsprite)
 		db $08,$00,$06,$0A
 	org $028D23
-		JSL .BooStream1		; source: LDA $8CB8,x : STA !OAM+$002,y
-		NOP #2
+	;	JSL .BooStream1		; source: LDA $8CB8,x : STA !OAM+$002,y
+	;	NOP #2
 	org $028D38
-		JSL .BooStream2		; source: TYA : LSR #2 : TAY
+	;	JSL .BooStream2		; source: TYA : LSR #2 : TAY
 
 
 	org $019E10
@@ -487,21 +501,21 @@
 
 
 	org $028E63
-		JSL .Z			; source: LDA $8DD7,x
-		NOP #2
+	;	JSL .Z			; source: LDA $8DD7,x
+	;	NOP #2
 
 	org $029E73
-		ORA #$12		; remove T bit
+	;	ORA #$12		; remove T bit
 	org $029E78
-		JSL .TorpedoArm		; source: TYA : LSR #2 : TAY
+	;	JSL .TorpedoArm		; source: TYA : LSR #2 : TAY
 	org $02B947
 		JSL .TorpedoTed		; source: LDA #$01 : LDY #$02
 
 	org $02A339
-		JSL .Hammer		; source: TYA : LSR #2 : TAX (note the TAX over TAY)
+	;	JSL .Hammer		; source: TYA : LSR #2 : TAX (note the TAX over TAY)
 
 	org $02B79B
-		JSL .Remap
+		JSL .Remap		; pokey?
 
 	org $02BC62
 		JML .Dolphin		; source: LDA $BC0E,x : STA !OAM+$102,y
@@ -880,7 +894,7 @@
 	org $038F5C
 		JSL .Remap		; source: INY #4 (statue fireball)
 
-	org $038F6D			; boo stream tile table
+	org $038F6D			; boo stream tile table (sprite)
 		db $02,$00,$06,$02,$08,$06,$02,$00
 	org $038F9C
 		JSL .BooStreamHead	; source: TAX : LDA $8F6D,x
@@ -2412,7 +2426,7 @@
 	org $02CB16
 		LDA #$3B	; chuck arm tile 1
 	org $02CB7B
-		LDA #$67	; baseball is tile 0x67 in chuck's file
+		LDA #$67	; (non-dynamic) baseball is tile 0x67 in chuck's file
 	org $02CB9B		; diggin chuck tile table
 		db $77,$62,$60
 	pullpc
@@ -2522,33 +2536,33 @@
 
 
 	Extended:
-	pushpc
-	org $02A240
-		JSL .TinyFlame		; source: LDA $A217,x : STA !OAM+$002,y
-		RTS
-		NOP
-
-	pullpc
-	.TinyFlame
-		LDA !GFX_HoppingFlame
-		PHP
-		PHA
-		AND #$70
-		ASL A
-		STA $00
-		PLA
-		AND #$0F
-		ORA $00
-		CLC : ADC $A217,x
-		STA !OAM+$002,y
-		LDA !OAM+$003,y
-		LDX $75E9
-		AND #$30
-		ORA !Ex_Palset,x
-		PLP
-		BPL $02 : ORA #$01
-		STA !OAM+$003,y
-		RTL
+;	pushpc
+;	org $02A240
+;		JSL .TinyFlame		; source: LDA $A217,x : STA !OAM+$002,y
+;		RTS
+;		NOP
+;
+;	pullpc
+;	.TinyFlame
+;		LDA !GFX_HoppingFlame
+;		PHP
+;		PHA
+;		AND #$70
+;		ASL A
+;		STA $00
+;		PLA
+;		AND #$0F
+;		ORA $00
+;		CLC : ADC $A217,x
+;		STA !OAM+$002,y
+;		LDA !OAM+$003,y
+;		LDX $75E9
+;		AND #$30
+;		ORA !Ex_Palset,x
+;		PLP
+;		BPL $02 : ORA #$01
+;		STA !OAM+$003,y
+;		RTL
 
 
 	Pal8Remap:
@@ -2596,13 +2610,13 @@
 	org $028B84
 		db $44,$54,$54,$44,$44,$54,$54,$44	; brick tiles that STEAR won't find
 	org $029023
-		JSL .Remap				; source: TYA : LSR #2 : TAY (brick piece)
+	;	JSL .Remap				; source: TYA : LSR #2 : TAY (brick piece)
 	org $028F21
-		JSL .Remap				; source: TYA : LSR #2 : TAY (small sparkle)
+	;	JSL .Remap				; source: TYA : LSR #2 : TAY (small sparkle)
 	org $028F7D
 	;	JSL .Remap				; source: TYA : LSR #2 : TAY (fire particle)
 	org $028E69
-		JSL .Remap2				; source: TYA : LSR #2 : TAY (Z)
+	;	JSL .Remap2				; source: TYA : LSR #2 : TAY (Z)
 	org $028DC6
 	;	JSL .Remap				; source: TYA : LSR #2 : TAY (water splash)
 	org $028D38
@@ -2610,20 +2624,20 @@
 
 
 	; -- extended --
-	org $02A3A1
-		JSL .Remap2				; source: TYA : LSR #2 : TAY (puff of smoke)
-	org $02A199
-		JSL .RemapReznorFireball		; source: TYA : LSR #2 : TAX (reznor fireball)
-		LDA #$02 : STA !OAMhi+$00,y		; use Y instead of X
-	org $02A2B5
-		JSL .Baseball				; source: TYA : LSR #2 : TAY (baseball)
-	org $029C9C
-		JSL .SpinJumpStar			; source: LDA !Ex_Data2,x : LSR A
+	;org $02A3A1
+	;	JSL .Remap2				; source: TYA : LSR #2 : TAY (puff of smoke)
+	;org $02A199
+	;	JSL .RemapReznorFireball		; source: TYA : LSR #2 : TAX (reznor fireball)
+	;	LDA #$02 : STA !OAMhi+$00,y		; use Y instead of X
+	;org $02A2B5
+	;	JSL .Baseball				; source: TYA : LSR #2 : TAY (baseball)
+	;org $029C9C
+	;	JSL .SpinJumpStar			; source: LDA !Ex_Data2,x : LSR A
 
 
 	; -- smoke --
-	org $029995
-		JSL .Remap				; source: TYA : LSR #2 : TAY (turn smoke)
+	;org $029995
+	;	JSL .Remap				; source: TYA : LSR #2 : TAY (turn smoke)
 
 
 	; -- bounce --
@@ -2731,61 +2745,60 @@
 
 
 
-	MarioFireball:
-	pushpc
-	org $02A080
-		JSL .Main
-	org $02A087
-		LDA #$00				;\ org: LDA $A15F,x
-		NOP					;/
-	org $02A1E8
-		JSL .Main
-	org $02A1EF
-		LDA #$00				;\ org: LDA $A15F,x
-		NOP					;/
-	pullpc
-	.Main
-		PHA
-		LDA !Ex_Num,x				;\
-		AND #$7F				; | bubble
-		CMP #$12+!ExtendedOffset : BEQ .Nope	;/
+;	MarioFireball:
+;	pushpc
+;	org $02A080
+;		JSL .Main
+;	org $02A087
+;		LDA #$00				;\ org: LDA $A15F,x
+;		NOP					;/
+;	org $02A1E8
+;		JSL .Main
+;	org $02A1EF
+;		LDA #$00				;\ org: LDA $A15F,x
+;		NOP					;/
+;	pullpc
+;	.Main
+;		PHA
+;		LDA !Ex_Num,x				;\
+;		AND #$7F				; | bubble
+;		CMP #$12+!ExtendedOffset : BEQ .Nope	;/
+;
+;		TXA
+;		AND #$01
+;		BEQ $02 : LDA #$C0
+;		ORA !Prop_SmallFireball
+;		BIT !Ex_XSpeed,x
+;		BPL $02 : EOR #$40
+;		STA $00
+;		PLX
+;		LDA !Tile_SmallFireball
+;		RTL
+;
+;	.Nope	PLX
+;		LDA $A15B,x
+;		RTL
 
-		TXA
-		AND #$01
-		BEQ $02 : LDA #$C0
-		ORA !Prop_SmallFireball
-		BIT !Ex_XSpeed,x
-		BPL $02 : EOR #$40
-		STA $00
-		PLX
-		LDA !Tile_SmallFireball
-		RTL
-
-	.Nope	PLX
-		LDA $A15B,x
-		RTL
-
-	Bone:
-	pushpc
-	org $02A2C9
-		JSL .Main	;\
-		STA !OAM+$002,y	; | source: CMP #$26 : LDA #$80 : BCS $02 : LDA #$82 (not good due to remap)
-		RTS		;/
-
-	pullpc
-	.Main
-		TXA
-		AND #$01
-		BEQ $02 : LDA #$C0
-		BIT !Ex_XSpeed,x
-		BMI $02 : EOR #$40
-		ORA !Ex_Palset,x
-		ORA !Prop_Bone
-		ORA $64
-		STA !OAM+$003,y
-		LDA #$00 : STA $0F
-		CLC : ADC !Tile_Bone
-		RTL
+;	Bone:
+;	pushpc
+;	org $02A2C9
+;		JSL .Main	;\
+;		STA !OAM+$002,y	; | source: CMP #$26 : LDA #$80 : BCS $02 : LDA #$82 (not good due to remap)
+;		RTS		;/
+;	pullpc
+;	.Main
+;		TXA
+;		AND #$01
+;		BEQ $02 : LDA #$C0
+;		BIT !Ex_XSpeed,x
+;		BMI $02 : EOR #$40
+;		ORA !Ex_Palset,x
+;		ORA !Prop_Bone
+;		ORA $64
+;		STA !OAM+$003,y
+;		LDA #$00 : STA $0F
+;		CLC : ADC !Tile_Bone
+;		RTL
 
 	TinySparkle:
 	pushpc
@@ -2794,44 +2807,43 @@
 	pullpc
 
 
-	WaterSplash:
-	pushpc
-	org $028DB6
-		JSL .Main		;\ source: LDA $8D42,x : LDX $7698
-		NOP #2			;/
-		STA !OAM+$002,y
-		LDA $64
-		ORA $0F			; source: ORA #$02
-		STA !OAM+$003,y
-		TYA
-		LSR #2
-		TAY
-		LDA $0E			; source: LDA #$02
-	org $028D42			; water splash tile table
-		db $00,$00,$02,$02,$02	; $68 -> $00, $6A -> $02
-	pullpc
-	.Main
-		LDA #$02 : STA $0E	; tile size = 16x16
-		STZ $0F
-		CPX #$05 : BCS +	; some tiles are in SP1
-		LDA !Prop_WaterEffects
-		STA $0F
-	+	LDA $8D42,x
-		LDX $7698		; overwritten code
-		CMP #$66 : BNE +	;\
-		LDA !OAM+$000,y		; |
-		CLC : ADC #$04		; |
-		STA !OAM+$000,y		; | replace tile 0x66 with an 8x8 version
-		LDA !OAM+$001,y		; |
-		CLC : ADC #$04		; |
-		STA !OAM+$001,y		; |
-		LDA #$5E		;/
-		STZ $0E			; tile size = 8x8
-		RTL
-
-	+	CMP #$60 : BCS +
-		ADC !Tile_WaterEffects	; only add offset for the actual water tiles
-	+	RTL
+;	WaterSplash:
+;	pushpc
+;	org $028DB6
+;		JSL .Main		;\ source: LDA $8D42,x : LDX $7698
+;		NOP #2			;/
+;		STA !OAM+$002,y
+;		LDA $64
+;		ORA $0F			; source: ORA #$02
+;		STA !OAM+$003,y
+;		TYA
+;		LSR #2
+;		TAY
+;		LDA $0E			; source: LDA #$02
+;	org $028D42			; water splash tile table
+;		db $00,$00,$02,$02,$02	; $68 -> $00, $6A -> $02
+;	pullpc
+;	.Main
+;		LDA #$02 : STA $0E	; tile size = 16x16
+;		STZ $0F
+;		CPX #$05 : BCS +	; some tiles are in SP1
+;		LDA !Prop_WaterEffects
+;		STA $0F
+;	+	LDA $8D42,x
+;		LDX $7698		; overwritten code
+;		CMP #$66 : BNE +	;\
+;		LDA !OAM+$000,y		; |
+;		CLC : ADC #$04		; |
+;		STA !OAM+$000,y		; | replace tile 0x66 with an 8x8 version
+;		LDA !OAM+$001,y		; |
+;		CLC : ADC #$04		; |
+;		STA !OAM+$001,y		; |
+;		LDA #$5E		;/
+;		STZ $0E			; tile size = 8x8
+;		RTL
+;	+	CMP #$60 : BCS +
+;		ADC !Tile_WaterEffects	; only add offset for the actual water tiles
+;	+	RTL
 
 
 	Bubble:
@@ -2855,113 +2867,114 @@
 		RTL
 
 
-	LavaSplash:
+;	LavaSplash:
 	pushpc
-	org $028F6C
-		JSL .Main		; source: TAX : LDA $8F2B,x
-		STA !OAM+$002,y
-		LDA $64
-		ORA $0F
-	org $028F2B			; lava splash tile table
-		db $11,$10,$01,$00
-	org $029ECB
-		JSL .Main		; source: TAX : LDA $9E82,x
-		STA !OAM+$002,y
-		LDA $64
-		ORA $0F			; source: ORA #$05
+;	org $028F6C
+;		JSL .Main		; source: TAX : LDA $8F2B,x
+;		STA !OAM+$002,y
+;		LDA $64
+;		ORA $0F
+;	org $028F2B			; lava splash tile table
+;		db $11,$10,$01,$00
+;	org $029ECB
+;		JSL .Main		; source: TAX : LDA $9E82,x
+;		STA !OAM+$002,y
+;		LDA $64
+;		ORA $0F			; source: ORA #$05
 	org $029E82			; lava splash tile table
 		db $11,$10,$01,$00
 	pullpc
-	.Main
-		TAX
-		LDA !Prop_LavaEffects
-		STA $0F			; store in RAM for later
-		LDA $9E82,x
-		CLC : ADC !Tile_LavaEffects
-		RTL
+;	.Main
+;		TAX
+;		LDA !Prop_LavaEffects
+;		STA $0F			; store in RAM for later
+;		LDA $9E82,x
+;		CLC : ADC !Tile_LavaEffects
+;		RTL
 
 
-	SmokeAnimation:
-	pushpc
-	org $029740
-		JSL .Main		; source: TYA : LSR #2 : TAY
-		NOP #2			; source: LDA #$02
-	warnpc $029746
-	org $029789
-		JSL .Main		; same as above
-		NOP #2
-	warnpc $02978F
-	pullpc
-	.Main
-		CMP #$66 : BNE .16
-	.8	LDA !OAM+$000,y
-		CLC : ADC #$04
-		STA !OAM+$000,y
-		LDA !OAM+$001,y
-		CLC : ADC #$04
-		STA !OAM+$001,y
-		LDA #$5E : STA !OAM+$002,y
-		TYA
-		LSR #2
-		TAY
-		LDA #$00
-		RTL
-
-	.16	TYA
-		LSR #2
-		TAY
-		LDA #$02
-		RTL
-
-	SmokeExtended:
-	pushpc
-	org $02A38B
-		JSL .Main		; source: TAX : LDA $A347,x
-	org $02A3A5
-		LDA $0F			; remap tile size to RAM
-	pullpc
-	.Main
-		TAX
-		LDA #$02 : STA $0F
-		LDA $A347,x
-		CMP #$66 : BNE +	; remap tile 0x66 to 8x8 version
-		LDA !OAM+$000,y
-		LDA !OAM+$000,y
-		CLC : ADC #$04
-		STA !OAM+$000,y
-		LDA !OAM+$001,y
-		CLC : ADC #$04
-		STA !OAM+$001,y
-		LDA #$5E
-		STZ $0F
-	+	RTL
+;	SmokeAnimation:
+;	pushpc
+;	org $029740
+;		JSL .Main		; source: TYA : LSR #2 : TAY
+;		NOP #2			; source: LDA #$02
+;	warnpc $029746
+;	org $029789
+;		JSL .Main		; same as above
+;		NOP #2
+;	warnpc $02978F
+;	pullpc
+;	.Main
+;		CMP #$66 : BNE .16
+;	.8	LDA !OAM+$000,y
+;		CLC : ADC #$04
+;		STA !OAM+$000,y
+;		LDA !OAM+$001,y
+;		CLC : ADC #$04
+;		STA !OAM+$001,y
+;		LDA #$5E : STA !OAM+$002,y
+;		TYA
+;		LSR #2
+;		TAY
+;		LDA #$00
+;		RTL
+;
+;	.16	TYA
+;		LSR #2
+;		TAY
+;		LDA #$02
+;		RTL
 
 
-	ContactAnimation:
-	pushpc
-	org $0297EA
-		LDA #$00		; remove x-flip from contact animation
-	org $029803
-		PHX
-		LDA !Ex_Data1,x : TAX
-		LDA.l .Tiles,x
-		PLX
-		STA !OAM+$002,y
-		BRA +
-	warnpc $029815
-	org $029825
-	+	LDA !Ex_Palset,x
-		ORA #$30
-		STA !OAM+$003,y
-		TYA
-		LSR #2
-		TAY
-		LDA #$02 : STA !OAMhi,y
-		RTS
-	warnpc $029837
-	pullpc
-	.Tiles
-		db $6A,$6A,$6A,$68,$68,$68,$66,$66
+;	SmokeExtended:
+;	pushpc
+;	org $02A38B
+;		JSL .Main		; source: TAX : LDA $A347,x
+;	org $02A3A5
+;		LDA $0F			; remap tile size to RAM
+;	pullpc
+;	.Main
+;		TAX
+;		LDA #$02 : STA $0F
+;		LDA $A347,x
+;		CMP #$66 : BNE +	; remap tile 0x66 to 8x8 version
+;		LDA !OAM+$000,y
+;		LDA !OAM+$000,y
+;		CLC : ADC #$04
+;		STA !OAM+$000,y
+;		LDA !OAM+$001,y
+;		CLC : ADC #$04
+;		STA !OAM+$001,y
+;		LDA #$5E
+;		STZ $0F
+;	+	RTL
+
+
+;	ContactAnimation:
+;	pushpc
+;	org $0297EA
+;		LDA #$00		; remove x-flip from contact animation
+;	org $029803
+;		PHX
+;		LDA !Ex_Data1,x : TAX
+;		LDA.l .Tiles,x
+;		PLX
+;		STA !OAM+$002,y
+;		BRA +
+;	warnpc $029815
+;	org $029825
+;	+	LDA !Ex_Palset,x
+;		ORA #$30
+;		STA !OAM+$003,y
+;		TYA
+;		LSR #2
+;		TAY
+;		LDA #$02 : STA !OAMhi,y
+;		RTS
+;	warnpc $029837
+;	pullpc
+;	.Tiles
+;		db $6A,$6A,$6A,$68,$68,$68,$66,$66
 
 
 

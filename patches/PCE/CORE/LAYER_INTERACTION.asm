@@ -216,8 +216,7 @@
 		LDA !P2Character	;\ Leeway doesn't get speed boost from leaving water
 		CMP #$03 : BEQ +++	;/
 
-		LDA !P2XSpeed
-		BPL +
+		LDA !P2XSpeed : BPL +
 		EOR #$FF
 		LSR A
 		EOR #$FF
@@ -273,9 +272,11 @@
 		.NoWaterLevel
 		LDA !P2XSpeed
 	CLC : ADC !P2VectorX
-		ASL A
+		BNE +
+		LDA $14 : BRA ++
+	+	ASL A
 		ROL A
-		AND #$01
+	++	AND #$01
 		TAY
 		JSR GET_TILE		;CODE_01944D
 	PHP
@@ -597,14 +598,14 @@
 		JMP (.Map16Ptr,x)
 
 		.Map16Ptr
-		dw .FlowerTBlock		; 117
-		dw .FeatherTBlock		; 118
-		dw .StarTBlock			; 119
-		dw .VariableTBlock		; 11A
-		dw .MultiCoinTBlock		; 11B
-		dw .CoinTBlock			; 11C
-		dw .PTBlock			; 11D
-		dw .TBlock			; 11E
+		dw .FlowerBrick			; 117
+		dw .FeatherBrick		; 118
+		dw .StarBrick			; 119
+		dw .VariableBrick		; 11A
+		dw .MultiCoinBrick		; 11B
+		dw .CoinBrick			; 11C
+		dw .PBrick			; 11D
+		dw .Brick			; 11E
 		dw .FlowerQBlock		; 11F
 		dw .FeatherQBlock		; 120
 		dw .StarQBlock			; 121
@@ -617,27 +618,27 @@
 		dw .ShellQBlock			; 128
 
 
-		.FlowerTBlock
-		LDA #$02 : JMP .TBlockUsed
+		.FlowerBrick
+		LDA #$02 : JMP .BrickUsed
 
-		.FeatherTBlock
-		LDA #$04 : BRA .TBlockUsed
+		.FeatherBrick
+		LDA #$04 : JMP .BrickUsed
 
-		.StarTBlock
-		LDA #$03 : BRA .TBlockUsed
+		.StarBrick
+		LDA #$03 : JMP .BrickUsed
 
-		.VariableTBlock
+		.VariableBrick
 		LDA $0A				;\
 		LSR #4				; | Get index based on Xpos
 		TAX				; |
 		LDA ..Table,x			;/
 		BNE +				;\
 		LDA $7490			; | Star 2
-		BEQ .CoinTBlock			; |
-		LDA #$03 : BRA .TBlockUsed	;/
+		BEQ .CoinBrick			; |
+		LDA #$03 : BRA .BrickUsed	;/
 	+	CMP #$01 : BNE +		;\ 1-Up
-		LDA #$05 : BRA .TBlockUsed	;/
-	+	LDA #$08 : BRA .TBlockUsed	; > Vine
+		LDA #$05 : BRA .BrickUsed	;/
+	+	LDA #$08 : BRA .BrickUsed	; > Vine
 
 		..Table
 		db $00,$01,$02,$00
@@ -645,44 +646,50 @@
 		db $02,$00,$01,$02
 		db $00,$01,$02,$00
 
-		.MultiCoinTBlock
+		.MultiCoinBrick
 		LDA !CoinTimer			;\
 		BNE +				; | Start coin timer at first bounce
 		LDA #$0A : STA $9C		; |
-		LDA #$07 : BRA .TBlockMain	;/
+		LDA #$07 : BRA .BrickMain	;/
 	+	CMP #$01 : BNE +		;\
 		STZ !CoinTimer			; | Reset coin timer at last bounce
-		BRA .CoinTBlock			;/
+		BRA .CoinBrick			;/
 	+	LDA #$0A : STA $9C		;\ Generate coins in-between
-		LDA #$06 : BRA .TBlockMain	;/
+		LDA #$06 : BRA .BrickMain	;/
 
-		.CoinTBlock
-		LDA #$06 : BRA .TBlockUsed
+		.CoinBrick
+		LDA #$06 : BRA .BrickUsed
 
-		.PTBlock
-		LDA #$0A : BRA .TBlockUsed
+		.PBrick
+		LDA #$0A : BRA .BrickUsed
 
-		.TBlock
+		.Brick
 		STZ $00				; > No object
 		LDA !P2Character		;\ Leeway doesn't break bricks
-		CMP #$03 : BEQ .TBlockBounce	;/
+		CMP #$03 : BEQ .BrickBounce	;/
+		LDA !P2Character		;\
+		CMP #$01 : BNE ..notluigi	; |
+		LDA !P2HP			; | luigi can only break bricks when big
+		CMP #$02 : BCC .BrickBounce	; |
+		BRA .BrickBreak			; |
+		..notluigi			;/
 
-		.TBlockBreak
+		.BrickBreak
 		LDA #$02 : STA $9C		; Empty space
 		LDY #$01			; Shatter block
 		STZ $7C				; No bounce sprite
 		JMP GENERATE_BLOCK
 
-		.TBlockBounce
+		.BrickBounce
 		LDA #$01 : STA $7C		;\ (0x07 is spinning turn block)
 		LDA #$0C : STA $9C		; | Normal turn block code
 		LDY #$00			;/
 		JMP GENERATE_BLOCK
 
-		.TBlockUsed
+		.BrickUsed
 		LDY #$0D : STY $9C		; Used block
 
-		.TBlockMain
+		.BrickMain
 		STA $00
 		LDY #$00			; Don't shatter block
 		LDA #$01			;\ Bounce sprite to spawn (turn block)
@@ -1040,18 +1047,37 @@
 		DEC A
 
 	..GoodX	STA $0B
+
+
+		LDA !3DWater : BEQ ..No3DWater			; 3D water check
+		PHP
+		REP #$20
+		LDA $0C : BMI ..Return3DWater
+		CMP !Level+2 : BCC ..Return3DWater
+		PLP
+		LDA !IceLevel : BNE ..3DIce
+		LDA #$40 : TSB !P2Water
+		BRA ..No3DWater
+	..3DIce	LDA #$30 : STA $7693
+		LDA #$01 : BRA .WriteHi
+		..Return3DWater
+		PLP
+		..No3DWater
+
+
+
 		LDA $01
 		LSR #4
 		ORA $00 : STA $00
 		LDX $0B
-		LDA.l $006CB6,x
+		LDA.l $6CB6,x
 		LDY $78D8		; $785E fails
-		BEQ $04 : LDA.l $006CC6,x
+		BEQ $04 : LDA.l $6CC6,x
 		CLC : ADC $00
 		STA $05
-		LDA.l $006CD6,x
+		LDA.l $6CD6,x
 		LDY $78D8		; $785E fails
-		BEQ $04 : LDA.l $006CE6,x
+		BEQ $04 : LDA.l $6CE6,x
 		ADC $0D
 		STA $06
 
@@ -1076,6 +1102,7 @@
 		SEP #$30
 		STA $7693
 		XBA
+		.WriteHi
 		STA $78A7
 		JSR READ_TILE		;CODE_00F545
 		PLX : STX $02

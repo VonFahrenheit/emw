@@ -37,15 +37,7 @@ endmacro
 
 	; -- Defines --
 
-	incsrc "Defines.asm"
-
-		!ExtraBits		= $3590		; extra bits of sprite
-		!ExtraProp1		= $35A0		;
-		!ExtraProp2		= $35B0		;
-		!NewSpriteNum		= $35C0		; custom sprite number
-					; $35F0		; P2 interaction disable timer
-
-		!CustomBit		= $08
+	incsrc "../Defines.asm"
 
 
 
@@ -275,6 +267,7 @@ endmacro
 
 	org $168000
 print " "
+print "-- Fe26 --"
 print "Fe26 sprite engine starts at $", pc, "."
 
 
@@ -864,8 +857,6 @@ incsrc "SpriteData.asm"
 
 
 incsrc "PhysicsPlus.asm"
-incsrc "MalleableExtendedSprite.asm"
-
 
 Bank16:
 
@@ -887,6 +878,8 @@ incsrc "Replace/SP_Spiny.asm"
 incsrc "Replace/SP_Coin.asm"
 incsrc "Replace/SP_HammerPlat.asm"
 incsrc "Replace/SP_SumoLightning.asm"
+incsrc "Replace/SP_Swooper.asm"
+incsrc "Replace/SP_Rip.asm"
 
 macro InsertSprite(name)
 	START_<name>:
@@ -1036,15 +1029,12 @@ BANK17End:
 print "Bank $17 ends at $", pc, ". ($", hex($180000-BANK17End), " bytes left)"
 
 
-org $198000
-db $53,$54,$41,$52
-dw $FFF7
-dw $0008
+org $1A8000
 
-Bank19:
+Bank1A:
 
 print " "
-print "-- BANK $19 --"
+print "-- BANK $1A --"
 %InsertSprite(LavaLord)
 %InsertSprite(FlamePillar)
 %InsertSprite(BigMax)
@@ -1055,8 +1045,8 @@ print "-- BANK $19 --"
 %InsertSprite(ShieldBearer)
 
 
-BANK19End:
+BANK1AEnd:
 
-print "Bank $19 ends at $", pc, ". ($", hex($1A0000-BANK19End), " bytes left)"
+print "Bank $1A ends at $", pc, ". ($", hex($1B0000-BANK1AEnd), " bytes left)"
 print " "
 

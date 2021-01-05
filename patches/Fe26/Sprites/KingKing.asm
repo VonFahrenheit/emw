@@ -33,7 +33,7 @@
 
 macro KingkingDyn(TileCount, SourceTile, DestVRAM)
 	dw <TileCount>*$20
-	dl <SourceTile>*$20+$318000
+	dl <SourceTile>*$20
 	dw <DestVRAM>*$10+$6000
 endmacro
 
@@ -431,6 +431,10 @@ endmacro
 		LDA.w .BaseHP,y			; |
 		STA !HP				;/
 		LDA #$01 : STA !Phase		; > Initialize boss
+
+		JSL SUB_HORZ_POS_Long
+		TYA : STA $3320,x
+
 		STZ !BossData+2			;\
 		STZ !BossData+3			; |
 		STZ !BossData+4			; | Wipe boss data
@@ -1801,9 +1805,13 @@ Graphics:	LDX !SpriteIndex
 		PHA					; (preserve this since it's needed for interaction routine)
 		SEP #$30				; > All regs 16 bit
 		LDA !SpriteAnimIndex			;\
-		CMP !PreviousFrame			; | Load dynamo if this frame isn't loaded
-		BEQ +					; |
-		CLC : JSL !UpdateGFX			;/
+		CMP !PreviousFrame : BEQ +		; | Load dynamo if this frame isn't loaded
+		LDA !GFX_Dynamic : PHA			; |
+		LDA #$00 : STA !GFX_Dynamic		; |
+		LDY.b #!File_Kingking			; |
+		JSL !UpdateFromFile			; |
+		PLA : STA !GFX_Dynamic			;/
+
 	+	LDA !HeadTimer				;\
 		BEQ $03 : DEC !HeadTimer		; |
 		CMP #$01 : BNE +			; |

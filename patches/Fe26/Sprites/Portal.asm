@@ -2,16 +2,17 @@ Portal:
 
 	namespace Portal
 
-	!PortalMode		= $C2,x		; number of allowed spawned sprites
-	!PortalSpriteNum	= $3280,x	; spawned sprite number
-	!PortalCustomSpriteNum	= $3290,x	; spawned sprite custom number
-	!PortalExtraBits	= $32A0,x	; spawned sprite extra bits
-	!PortalDelay		= $32B0,x	; amount to wait before spawning a new sprite
-	!PortalTimer		= $32D0,x	; upon hitting 0, a sprite is spawned and this is set to !PortalWait
-	!PortalIndexMem		= $32C0,x	; index of spawned sprite
-	!PortalLeniency		= $32F0,x	; portal can not sink in lava so this is fine to use
-						; this is set upon spawn and if this runs out, the portal disappears
-	!PortalSpawnState	= $35A0,x	; used to set some sprites to state 0x09
+	!PortalMode		= $C2,x			; number of allowed spawned sprites
+	!PortalSpriteNum	= $3280,x		; spawned sprite number
+	!PortalCustomSpriteNum	= $3290,x		; spawned sprite custom number
+	!PortalExtraBits	= $32A0,x		; spawned sprite extra bits
+	!PortalDelay		= $32B0,x		; amount to wait before spawning a new sprite
+	!PortalTimer		= $32D0,x		; upon hitting 0, a sprite is spawned and this is set to !PortalWait
+	!PortalIndexMem		= $32C0,x		; index of spawned sprite
+	!PortalLeniency		= $32F0,x		; portal can not sink in lava so this is fine to use
+							; this is set upon spawn and if this runs out, the portal disappears
+	!PortalLoadIndex	= !SpriteVectorX,x	; (vectors are unused) keeps track of eaten sprite's index to load table
+	!PortalSpawnState	= $35A0,x		; used to set some sprites to state 0x09
 	!PortalProp1		= $35B0,x
 	!PortalProp2		= $35D0,x
 
@@ -48,6 +49,7 @@ Portal:
 		BNE $02 : LDA #$01
 		STA !PortalSpawnState					; state of sprite
 		LDA #$00 : STA $3230,y					; remove eaten sprite
+		LDA $33F0,y : STA !PortalLoadIndex			; remember eaten sprite's load index
 		LDA $3200,y : STA !PortalSpriteNum			;\
 		LDA !NewSpriteNum,y : STA !PortalCustomSpriteNum	; |
 		LDA !ExtraProp1,y : STA !PortalProp1			; | store data
@@ -68,6 +70,16 @@ Portal:
 	MAIN:
 		PHB : PHK : PLB
 
+		JSL SPRITE_OFF_SCREEN_Long				; off screen check
+		LDA $3230,x : BNE .StillActive				; see if portal despawned
+		PHX							;\
+		LDA !PortalLoadIndex : TAX				; | mark eaten sprite for respawn
+		LDA #$00 : STA $418A00,x				; |
+		PLX							;/
+		PLB
+		RTL							; return right away to prevent a bastard sprite
+		.StillActive
+
 		LDA $3220,x : PHA
 		LDA $3210,x : PHA
 
@@ -81,7 +93,6 @@ Portal:
 		LDA $3220,x
 		CLC : ADC .Offset+4,y
 		STA $3220,x
-
 		+
 
 

@@ -29,7 +29,7 @@
 
 
 	org $02A213
-		JMP MalleableExtendedSprite_CheckNumber		; source: STA !Ex_Num,x
+		STA !Ex_Num,x
 
 
 	org $029D5E
@@ -83,30 +83,22 @@
 
 		.GFX
 		JSR $A1A4					; borrow reznor GFX routine
+		LDA $00 : BEQ .Return
+		LDY !OAMindex
 		LDA !Ex_Data1,x					;\
 		AND #$EF					; | set tile
-		STA !OAM+$002,y					;/
-		LDA !Ex_Palset,x : STA !OAM+$003,y		; > set YXPPCCCT
+		STA !OAM+$002-4,y				;/
+		LDA !Ex_Palset,x : STA !OAM+$003-4,y		; > set YXPPCCCT
 		TYA						;\
 		LSR #2						; |
 		TAY						; |
 		LDA #$00					; | set tile size
 		BIT !Ex_Data3,x					; |
 		BVC $02 : LDA #$02				; |
-		STA !OAMhi,y					;/
+		STA !OAMhi-1,y					;/
+
+		.Return
 		RTS						; > return
-
-
-		.CheckNumber
-		LDA !Ex_Num,x					; prevent malleable ExSprite from despawning
-		CMP #$09+!ExtendedOffset : BNE .Clear
-		LDA !Ex_Data3,x
-		AND #$20 : BEQ .Clear
-	.Draw	LDA $02
-		JMP $A1D5
-
-	.Clear	LDA #$00 : STA !Ex_Num,x
-		RTS
 
 	warnpc $029E36
 	pullpc

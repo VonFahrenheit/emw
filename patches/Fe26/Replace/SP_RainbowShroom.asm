@@ -44,6 +44,12 @@ pullpc
 		CMP #$78 : BNE .NoFlash
 
 		.Flash
+		PHY
+		PEI ($00)
+		JSR MakeGlitter
+		PLA : STA $00
+		PLA : STA $01
+		PLY
 		JML $01C6A5
 
 		.NoFlash

@@ -41,7 +41,7 @@
 23	0002	0,0,01E 0,16,01F 0,-16,404 0,32,405
 24	0002	0,0,01C 0,16,01D -16,8,402 16,8,403
 25	0002	0,0,01E 0,16,01F -16,8,402 16,8,403
-26	0002	4,0,020 20,0,021 4,16,022 20,16,023
+26	0002	20,0,020 36,0,021 20,16,022 36,16,023
 27	0002	0,0,024
 28	0002	16,0,025 32,0,025 16,48,025 32,48,025 0,16,025 0,32,025 48,16,025 48,32,025 16,24,*BIG \nBOO *
 2A	0002	8,32,026 8,16,027
@@ -67,7 +67,10 @@
 3B	0102	0,0,030 16,0,031 0,16,032 16,16,033 8,0,034 0,-16,402 16,-16,403
 3C	0002	0,0,030 16,0,031 0,16,032 16,16,033 8,0,034 0,-32,405 16,-32,402 16,-16,404 0,-16,403
 3C	0102	0,0,030 16,0,031 0,16,032 16,16,033 8,0,034 0,-32,403 16,-32,405 16,-16,402 0,-16,404
+3D	0000	Rip van Fish has been modified to work in co-op. Has alternate behavior when extra bit is set.
 3D	0002	0,0,035
+3D	0010	Rip van Goldfish! He is immune to damage and will only awaken when the player collects a coin (Yoshi coin also counts). Can not respawn after waking up.
+3D	0012	0,0,0E3 -2,-2,0E4 8,-5,0E4 -3,3,0E4
 3E	0002	0,0,036
 3E	0102	0,0,037
 3F	0002	0,0,00C 0,-16,038
@@ -309,9 +312,9 @@ F1	0002	0,0,420
 01	0030	With the extra bit set, the Goomba Slave spawns with a tray on its head. The tray can be jumped on to reveal a mushroom, which can then be collected as a normal powerup. The Goomba maintains its empty tray afterward, which can be used as a platform. If the Goomba is placed on the top of a totem, it spawns with an empty tray meant to be used as a platform.\n\nHP: 1\nRank: E\nTraits: None\nType: Pseudo-dynamic (6 tiles for Goomba, 4 tiles for tray)\nExtra bit: Yes
 01	0032	0,16,*Goomba Slave\nwith tray* 0,0,420
 
-02	0020	Rex, EMW version. This one is a lot more complex under the hood, though that is normally not apparent. Turns around at ledges rather than walking off.\nExtra byte 1 gives the Rex a bag.\n01 - sack that drops coins\n02 - bindle with a mushroom\n03 - backpack (??)\n04 - box (??)\n05 - useless sword\nExtra byte 2 gives the Rex a hat.\n01 - green robin hood hat\n02 - red hat with bow\n03 - straw hat\n04 - red fez-like hat\n05 - bandit bandana\n06 - top hat and mustache\n07 - bandana\n08 - knight helmet\nIf a sprite Yoshi Coin is placed on a Rex, it will become a golden bandit and carry that Yoshi Coin.\n\nHP: 2\nRank: E\nTraits: None\nType: Pseudo-dynamic (1.75-4.00 KB)\nExtra bit: Yes
+02	0020	Rex, EMW version. This one is a lot more complex under the hood, though that is normally not apparent. Turns around at ledges rather than walking off.\nExtra byte 1 gives the Rex a bag.\n01 - sack that drops coins\n02 - bindle with a mushroom\n03 - backpack (??)\n04 - box (??)\n05 - useless sword\nFF - turns the rex into a golden bandit which drops a yoshi coin upon being hit (yoshi coin ID is determined by extra byte 2)\nExtra byte 2 gives the Rex a hat.\n01 - green robin hood hat\n02 - red hat with bow\n03 - straw hat\n04 - red fez-like hat\n05 - bandit bandana\n06 - top hat and mustache\n07 - bandana\n08 - knight helmet\nIf a sprite Yoshi Coin is placed on a Rex, it will become a golden bandit and carry that Yoshi Coin.\n\nHP: 2\nRank: E\nTraits: None\nType: Pseudo-dynamic (1.75-4.00 KB)\nExtra bit: Yes
 02	0022	0,16,*Rex* 0,0,420
-02	0030	With the extra bit set, this Rex will not move unless it takes damage.\nExtra byte 1 gives the Rex a bag.\n01 - sack that drops coins\n02 - bindle with a mushroom\n03 - backpack (??)\n04 - box (??)\n05 - useless sword\nExtra byte 2 gives the Rex a hat.\n01 - green robin hood hat\n02 - red hat with bow\n03 - straw hat\n04 - red fez-like hat\n05 - bandit bandana\n06 - top hat and mustache\n07 - bandana\n08 - knight helmet\nIf a sprite Yoshi Coin is placed on a Rex, it will become a golden bandit and carry that Yoshi Coin.\n\nHP: 2\nRank: E\nTraits: None\nType: Pseudo-dynamic (1.75-4.00 KB)\nExtra bit: Yes
+02	0030	With the extra bit set, this Rex will not move unless it takes damage.\nExtra byte 1 gives the Rex a bag.\n01 - sack that drops coins\n02 - bindle with a mushroom\n03 - backpack (??)\n04 - box (??)\n05 - useless sword\nFF - turns the rex into a golden bandit which drops a yoshi coin upon being hit (yoshi coin ID is determined by extra byte 2)\nExtra byte 2 gives the Rex a hat.\n01 - green robin hood hat\n02 - red hat with bow\n03 - straw hat\n04 - red fez-like hat\n05 - bandit bandana\n06 - top hat and mustache\n07 - bandana\n08 - knight helmet\nIf a sprite Yoshi Coin is placed on a Rex, it will become a golden bandit and carry that Yoshi Coin.\n\nHP: 2\nRank: E\nTraits: None\nType: Pseudo-dynamic (1.75-4.00 KB)\nExtra bit: Yes
 02	0032	0,16,*Rex\nstationary* 0,0,420
 
 03	0020	This Rex will walk, then stop to throw a hammer. The hammer is quite accurate and usually hits stationary players. The sprite always turns to face a player upon throwing a hammer. The sprite loses its ability to throw hammers upon taking damage.\n\nHP: 2\nRank: D\nTraits: None\nType: Pseudo-dynamic (3KB)\nExtra bit: Yes
@@ -324,15 +327,15 @@ F1	0002	0,0,420
 04	0030	With the extra bit set, the Aggro Rex will remain still until a player comes close. Upon giving chase, the Aggro Rex leaps at the player provoking it.\n\nHP: 3\nRank: C\nTraits: Fireproof, Durable, Uncrushable (NORMAL and up)\nType: Dynamic (4 tiles)\nExtra bit: Yes
 04	0032	0,16*Aggro Rex\nambush* 0,0,420
 
-05	0020	The Novice Shaman walks forward, then stops to fire a projectile. It always faces a player upon casting its spell. Also turns at walls and ledges. It will move faster upon taking damge but will not shrink, meaning that it can still cast its spells.\n\nHP: 2\nRank: D\nTraits: None\nType: Pseudo-dynamic (3KB)\nExtra bit: Yes
-05	0022	0,16,*Novice\nShaman* 0,0,420
-05	0030	With the extra bit set, the Novice Shaman will not move from its spot. Instead, it holds its ground and casts its spells from there. Since the Shaman drops its mask instead of shrinking upon taking damage, it will not start moving but keep casting spells.\n\nHP: 2\nRank: D\nTraits: None\nType: Pseudo-dynamic (3KB)\nExtra bit: Yes
-05	0032	0,16,*Novice Shaman\nstationary* 0,0,420
+05	0020	The Conjurex walks forward, then stops to fire a projectile. It always faces a player upon casting its spell. Also turns at walls and ledges. It will move faster upon taking damge but will not shrink, meaning that it can still cast its spells.\n\nHP: 2\nRank: D\nTraits: None\nType: Pseudo-dynamic (3KB)\nExtra bit: Yes
+05	0022	0,16,*Conjurex* 0,0,420
+05	0030	With the extra bit set, the Conjurex will not move from its spot. Instead, it holds its ground and casts its spells from there. Since the Shaman drops its mask instead of shrinking upon taking damage, it will not start moving but keep casting spells.\n\nHP: 2\nRank: D\nTraits: None\nType: Pseudo-dynamic (3KB)\nExtra bit: Yes
+05	0032	0,16,*Conjurex\nstationary* 0,0,420
 
-06	0020	The Adept Shaman is an extremely deadly enemy. It will stay out of range of most player attacks while preparing its own. It can fire projectils in a spray pattern or a circle pattern. It can also swoop along the ground, quickly jumping up and firing projectiles upon getting close to a player. The amount of projectiles it fires with all of its attacks depends on difficulty.\n\nHP: 4\nRank: A\nTraits: Fireproof, Durable\nType: Dynamic (6 tiles)\nExtra bit: Yes
-06	0022	0,16,*Adept\nShaman* 0,0,420
-06	0030	Reserved for Master Shaman
-06	0032	0,16,*Reserved For\nMaster Shaman*
+06	0020	The Wizrex is an extremely deadly enemy. It will stay out of range of most player attacks while preparing its own. It can fire projectils in a spray pattern or a circle pattern. It can also swoop along the ground, quickly jumping up and firing projectiles upon getting close to a player. The amount of projectiles it fires with all of its attacks depends on difficulty.\n\nHP: 4\nRank: A\nTraits: Fireproof, Durable\nType: Dynamic (6 tiles)\nExtra bit: Yes
+06	0022	0,16,*Wizrex* 0,0,420
+06	0030	Master Shaman's Mask. It behaves similarly to the Wizrex. However, it is invulnerable and has no body hitbox/hurtbox. It is meant to chase players like a Phanto.\n\nHP: Invulnerable\nRank: A\nTraits: None\nType: Dynamic (8 tiles) 3D Cluster (5 joints)\nExtra bit: Yes.
+06	0032	0,16,*Master Shaman's\nMask*
 
 07	0020	The Ball o' Hurt is mostly used as a projectile by other sprites (that also change its appearance). It damages players upon contact.\n\nHP: Invulnerable\nRank: F\nTraits: None\nType: Basic\nExtra bit: No
 07	0022	0,16,*Ball o' Hurt* 0,0,420
@@ -444,10 +447,10 @@ F1	0002	0,0,420
 20	0020	The Lava Lord is the Realm 4 Boss. See the dev doc for more info.\n\nHP: ???\nRank: Boss\nTraits: Boss\nType: Boss\nExtra bit: No
 20	0022	0,16,*Lava Lord* 0,0,420
 
-21	0020	The Coin Golem is quite simple mechanically but extremely demanding on the CPU. Use with care. The Coin Golem is masked hidden as a Yoshi Coin and reveals its true form when the player gets close (the Yoshi Coin will follow the player with its eyes, indicating that something is off). When it appears, the Coin Golem is aggressive and will follow the player until one of them dies. The Coin Golem attacks by jumping on the player or punching them. Upon defeat, the Coin Golem disintegrates, leaving the Yoshi Coin it used for its head. This Yoshi Coin's ID must be set using level code.\n\nHP: 2/2/4 (doubled on multiplayer)\nRank: B\nTraits: Fireproof, Durable, Uncrushable\nType: Pseudo-dynamic (2 tiles + 2 tiles for Sprite Yoshi Coin) + Dynamic (1 8x8 tile for its eye) + 3D Cluster Animation\nExtra bit: No
+21	0020	The Coin Golem is quite simple mechanically but extremely demanding on the CPU. Use with care. The Coin Golem is masked hidden as a Yoshi Coin and reveals its true form when the player gets close (the Yoshi Coin will follow the player with its eyes, indicating that something is off). When it appears, the Coin Golem is aggressive and will follow the player until one of them dies. The Coin Golem attacks by jumping on the player or punching them. Upon defeat, the Coin Golem disintegrates, leaving the Yoshi Coin it used for its head. This Yoshi Coin's ID must be set using level code.\n\nHP: 2/2/4 (doubled on multiplayer)\nRank: B\nTraits: Fireproof, Durable, Uncrushable\nType: Pseudo-dynamic (2 tiles + 2 tiles for Sprite Yoshi Coin, the 8x8 eye in the Yoshi Coin is dynamic) + 3D Cluster (12 joints)\nExtra bit: No
 21	0022	0,-8,0B5 0,8,0B4 -8,12,01B 8,12,01B 0,24,01B -8,32,01B -10,40,01B 8,32,01B 10,40,01B -12,20,01B -16,24,01B 12,20,01B 16,24,01B
 
-22	0020	This is a sprite version of a Yoshi Coin. It requires level code to set its ID. The purpose of this sprite is to allow for mobile Yoshi Coins, mostly to interact with other sprites. It also serves as the Coin Golem's head.\n\nHP: Invulnerable\nRank: N/A\nTraits: None\nType: Pseudo-dynamic (2 tiles)\nExtra bit: No
+22	0020	This is a sprite version of a Yoshi Coin. The first extra byte determines which Yoshi Coin this is (0-4 for normal levels, 0-9 for mega levels). Set 0x40 bit to enable block mode. In this mode, the sprite can be placed on a ?-block and will then replace the contents of that block. The purpose of this sprite is to allow for mobile Yoshi Coins, mostly to interact with other sprites. It also serves as the Coin Golem's head.\n\nHP: Invulnerable\nRank: N/A\nTraits: None\nType: Pseudo-dynamic (2 tiles)\nExtra bit: No
 22	0022	0,16,0B4 0,0,0B5
 
 23	0020	The Green Elite Koopa is a guard-type enemy that makes areas difficult to access for players. It will patrol an area, stopping to stare down a player when they get close. If a player stays in front of it for too long, the Elite will attempt to tackle the player. If the player tries to jump over the Elite after it has spotted them, it will jump to intercept. If the Elite Koopa is defeated, it gets knocked out of its shell and becomes a normal Green Koopa.\n\nHP: 1\nRank: C\nTraits: Fireproof, Uncrushable, Super Armor\nType: Dynamic (4 tiles)\nExtra bit: No
@@ -480,6 +483,8 @@ F1	0002	0,0,420
 
 2C	0020	Flying Rex
 2C	0022	0,16,*Flying\nRex   * 0,0,420
+2C	0030	Flying Rex (stationary)
+2C	0032	0,16,*Flying Rex\nstationary* 0,0,420
 
 2D	0020	Ultra Fuzzy
 2D	0022	0,16,*Ultra\nFuzzy   * 0,0,420

@@ -9,8 +9,9 @@
 		Bank $16	Fe26
 		Bank $17	Fe26
 	*	Bank $18	SP_Level
-		Bank $19	Fe26
-		Bank $1A-$1F	--------
+		Bank $19	SP_Level
+		Bank $1A	Fe26
+		Bank $1B-$1F	--------
 		Bank $20-$2F	--------
 		Bank $30-$3F	SP_Files
 

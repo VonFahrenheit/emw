@@ -1,5 +1,5 @@
 levelinitF:
-		JMP levelinit13
+		JML levelinit13
 
 
 
@@ -22,7 +22,7 @@ levelinit10:
 
 		SEP #$20
 		STZ !Level+4
-		JMP level10
+		JML level10
 
 
 
@@ -40,23 +40,23 @@ levelinit11:
 		INC !MarioPalOverride
 
 
-	RTS
+	RTL
 
 
 
 levelinit12:
-
+		LDA #$12 : STA !Translevel
 		LDA #$04 : STA.l !WeatherType
 		LDA #$10 : STA.l !WeatherFreq
 		LDA #$00				; snow type (smallest)
-		JSR Weather_LoadSnow
-		RTS
+		JSL Weather_LoadSnow
+		RTL
 
 levelinit13:
 		LDA #$01 : STA.l !WeatherType
 		LDA #$04 : STA.l !WeatherFreq
 		LDA #$02				; snow type (flake)
-		JSR Weather_LoadSnow
+		JSL Weather_LoadSnow
 
 		LDA #$04 : STA $6D9D			;\ BG3 on main screen, everything else on sub
 		LDA #$1B : STA $6D9E			;/
@@ -76,18 +76,30 @@ levelinit13:
 		INC $14
 		JSL level13_HDMA
 		DEC $14
-		JMP CLEAR_DYNAMIC_BG3
+		JML CLEAR_DYNAMIC_BG3
 
 
 levelinit15:
-		RTS
+		RTL
 
 
 levelinit35:
+		JSL .Setup
 
-; $0200/$0280 - color HDMA
+		LDA #$01 : STA !SmoothCamera
+		JSL level35
+		JSL InitCameraBox
+
+		INC $14 : JSL level35_HDMA		;\ set up double-buffered HDMA
+		DEC $14 : JSL level35_HDMA		;/
+		RTL
+
+
+
+	.Setup
+; $0200/$0400 - color HDMA (512 bytes each)
 ; $0C00/$0C10 - priority HDMA
-; $0C20 - BG1 wave HDMA (not double-buffered)
+; $0C20/$0C80 - BG1 wave HDMA (indirect values at $0D00/$0D10)
 ; $40A000/$40A400 - BG2 HDMA
 ; $40A380/$40A780 - BG3 HDMA
 
@@ -98,6 +110,7 @@ levelinit35:
 	LDA #$04 : STA !Level+3
 
 		REP #$20				;
+		LDA #$1440 : STA !3DWater_Color		; water color
 		LDA #$2103 : STA $4320			;\ color HDMA
 		LDA #$0200 : STA !HDMA2source		; |
 		LDA #$0D43 : STA $4330			; | BG1 wave HDMA (indirect)
@@ -110,20 +123,29 @@ levelinit35:
 
 		LDX #$00				;\
 	-	LDA #$0010				; |
-		STA $0C20+6,x				; |
-		STA $0C23+6,x				; |
-		STA $0C26+6,x				; |
-		STA $0C29+6,x				; |
-		LDA #$0D00 : STA $0C21+6,x		; | BG1 wave table
+		STA $0C20+6,x : STA $0C80+6,x		; |
+		STA $0C23+6,x : STA $0C83+6,x		; |
+		STA $0C26+6,x : STA $0C86+6,x		; |
+		STA $0C29+6,x : STA $0C89+6,x		; |
+		LDA #$0D00 : STA $0C21+6,x		; | BG1 wave tables
 		LDA #$0D04 : STA $0C24+6,x		; |
 		LDA #$0D08 : STA $0C27+6,x		; |
 		LDA #$0D0C : STA $0C2A+6,x		; |
+		LDA #$0D10 : STA $0C81+6,x		; |
+		LDA #$0D14 : STA $0C84+6,x		; |
+		LDA #$0D18 : STA $0C87+6,x		; |
+		LDA #$0D1C : STA $0C8A+6,x		; |
 		TXA					; |
 		CLC : ADC #$000C			; |
 		TAX					; |
-		CPX #$30 : BNE -			;/
-		LDA #$0D00 : STA $0C21 : STA $0C24	; above water chunk
-		STZ $0C20+6,x				; end table
+		CPX #$30 : BCC -			;/
+		LDA #$0D00				;\
+		STA $0C21 : STA $0C24			; | above water chunk
+		LDA #$0D10				; |
+		STA $0C81 : STA $0C84			;/
+		STZ $0C20+6,x : STZ $0C80+6,x		; end table
+
+
 
 		SEP #$20				;
 		STZ $4324				; > bank for color HDMA
@@ -134,25 +156,15 @@ levelinit35:
 		STZ $4374				; > bank for priority HDMA
 
 		LDA #$EC : TSB $6D9F
-
-
-
-
-		LDA #$01 : STA !SmoothCamera
-		JSR level35
-		JSR InitCameraBox
-
-		INC $14 : JSL level35_HDMA		;\ set up double-buffered HDMA
-		DEC $14 : JSL level35_HDMA		;/
-		RTS
+		RTL
 
 
 
 levelinit36:
-		RTS
+		RTL
 
 levelinit37:
-		RTS
+		RTL
 
 
 
@@ -165,7 +177,7 @@ levelF:
 		LDA.b #level13_HDMA : STA !HDMAptr+0
 		LDA.b #level13_HDMA>>8 : STA !HDMAptr+1
 		LDA.b #level13_HDMA>>16 : STA !HDMAptr+2
-		JMP Weather
+		JML Weather
 
 
 
@@ -184,7 +196,7 @@ level10:
 
 
 		REP #$20
-		LDA #$0FE8 : JSR END_Right
+		LDA #$0FE8 : JSL END_Right
 
 
 		LDX !Translevel
@@ -228,7 +240,7 @@ level10:
 		CMP #$F0 : BCC +
 	++	INC !SideExit
 	+	CPY #$0A : BCS .Scroll
-		RTS
+		RTL
 		.Scroll
 
 
@@ -247,7 +259,7 @@ level10:
 		LDA.b #.HDMA2>>8 : STA !HDMAptr+1
 		LDA.b #.HDMA2>>16 : STA !HDMAptr+2
 
-	++	JMP .HandleGrind
+	++	JML .HandleGrind
 
 	+	PEA.w .HandleGrind-1
 		LDA !BossData+0
@@ -267,7 +279,7 @@ level10:
 		dw .EmptyPtr		; 07
 
 		.EmptyPtr
-		RTS
+		RTL
 
 
 		.Init
@@ -284,7 +296,7 @@ level10:
 		INC !Level+4
 		LDA #$0F : STA !ShakeTimer
 		LDA #$17 : STA !SPC4
-	..R	RTS
+	..R	RTL
 	..Next	INC !BossData+0
 		LDA #$37 : STA !SPC3
 		RTS
@@ -299,7 +311,7 @@ level10:
 		RTS
 
 		.SpawnBirdo
-		JSR SpawnBirdo
+		JSL SpawnBirdo
 		LDA #$A0 : STA $3210,x
 		LDA #$80 : STA $3220,x
 		LDA #$01 : STA $3240,x
@@ -309,7 +321,7 @@ level10:
 		RTS
 
 		.KillBirdo
-		JSR FindBirdo
+		JSL FindBirdo
 		CPY #$00 : BNE ..R
 		INC !BossData+0
 	..R	RTS
@@ -364,12 +376,12 @@ level10:
 		LDA.b #.HDMA>>8 : STA !HDMAptr+1
 		LDA.b #.HDMA>>16 : STA !HDMAptr+2
 		STZ !EnableHScroll
-		RTS
+		RTL
 
 	..Grind	LDA #$01 : STA !Level+2
 		STA !Level+3
 		STZ !Level+4
-		JMP ScreenGrind
+		JML ScreenGrind
 
 	..Plat	LDA #$FC
 		STA !P2VectorX-$80
@@ -377,7 +389,7 @@ level10:
 		LDA #$02
 		STA !P2VectorTimeX-$80
 		STA !P2VectorTimeX
-		JSR SpeedPlatform
+		JSL SpeedPlatform
 
 
 
@@ -422,7 +434,7 @@ level10:
 		LDA .Table+3,y : STA $AE,x
 
 		.Return
-		RTS
+		RTL
 
 		.Table
 		dw $0BF0 : db $00,$10
@@ -431,7 +443,7 @@ level10:
 
 		.BGScroll
 		PHP
-		JSR ..main
+		JSL ..main
 		PLP
 		RTL
 
@@ -454,7 +466,7 @@ level10:
 		SEC : SBC #$0020
 		STA $20
 		BRA -
-	+	RTS
+	+	RTL
 
 
 
@@ -462,7 +474,7 @@ level10:
 		.HDMA
 		PHP
 		JSL ScreenGrind_HDMA
-		JSR .BGScroll_main		; handle BG2/BG3 (returns with 16-bit A)
+		JSL .BGScroll_main		; handle BG2/BG3 (returns with 16-bit A)
 
 		LDA $1A
 		CMP #$0D00 : BCC +
@@ -484,7 +496,7 @@ level10:
 
 		.HDMA2
 		PHP
-		JSR .BGScroll_main		; handle BG2/BG3 (and set A 16-bit)
+		JSL .BGScroll_main		; handle BG2/BG3 (and set A 16-bit)
 	++	LDA #$0002 : STA $41		; window 1 enable
 		LDA #$0004 : TRB $6D9F		; end parallax at this point
 		LDA #$2601 : STA $4330
@@ -520,7 +532,7 @@ level10:
 		INY				; +1 Birdo
 
 	.Nope	DEX : BPL .Loop
-		RTS
+		RTL
 
 
 	SpawnBirdo:
@@ -532,7 +544,7 @@ level10:
 		JSL $0187A7			; > Reset custom sprite tables
 		LDA #$08 : STA $3590,x		; extra bits
 		LDA $1B : STA $3250,x		; spawn on screen (X)
-		RTS
+		RTL
 
 
 	DebrisRNG:
@@ -554,7 +566,7 @@ level10:
 		ASL A
 		AND #$04
 		STA $03
-		RTS
+		RTL
 
 
 level11:
@@ -610,7 +622,7 @@ level11:
 		LDX #$00
 		CPY #$12 : BCC $02 : INX #2	; if also over 12
 		LDA !Level+2
-		CMP .Avalanche2+1,x : BEQ .go	; make sure it actually starts at some point
+		CMP .Avalanche2+1,x : BEQ .go	; make sure it actually staRTL at some point
 		CMP .Avalanche2+0,x : BNE .lo
 	.go	LDA !Level+3
 		CMP .Avalanche2+0,x : BCS .lo
@@ -653,7 +665,7 @@ level11:
 		+
 
 		REP #$20
-		LDA #$19E8 : JSR END_Right
+		LDA #$19E8 : JSL END_Right
 
 
 
@@ -663,7 +675,7 @@ level11:
 		LDA.b #.HDMA>>8 : STA.l !HDMAptr+1
 		LDA.b #.HDMA>>16 : STA.l !HDMAptr+2
 
-		RTS
+		RTL
 
 	.color
 	dw $1000,$1000,$1000,$1000,$1000,$1000,$1000,$1000
@@ -703,8 +715,8 @@ level11:
 
 
 level12:
-		JSR Weather
-		RTS
+		JSL Weather
+		RTL
 
 level13:
 		LDX #$0F				; sprite Yoshi Coin on this level is number 2
@@ -718,13 +730,13 @@ level13:
 	+	DEX : BPL -
 
 
-		JSR Weather
+		JSL Weather
 
 
 		REP #$20
 		LDA.w #.HDMA : STA !HDMAptr+0
 		LDA.w #.HDMA>>8 : STA !HDMAptr+1
-		LDA #$1AE8 : JMP END_Right
+		LDA #$1AE8 : JML END_Right
 
 
 		.HDMA
@@ -771,20 +783,56 @@ level13:
 		RTL
 
 level15:
-		RTS
+		RTL
 
 
 level35:
+		LDA.b #.HDMA : STA !HDMAptr+0
+		LDA.b #.HDMA>>8 : STA !HDMAptr+1
+		LDA.b #.HDMA>>16 : STA !HDMAptr+2
+
+		JSL .Graphics		; returns 16-bit A
+
+		LDA.w #.RoomPointers
+		JML LoadCameraBox
 
 
+		.RoomPointers
+		dw .ScreenMatrix
+		dw .BoxTable
+		dw .DoorList
+		dw .DoorTable
+
+
+
+
+;	Key ->	   X  Y  W  H  S  FX FY
+;		   |  |  |  |  |  |  |
+;		   V  V  V  V  V  V  V
+;
+.BoxTable
+.Box0	%CameraBox(0, 0, 7, 7, $FF, 0, 0)
+
+.ScreenMatrix	db $00,$00,$00,$00,$00,$00,$00,$00
+		db $00,$00,$00,$00,$00,$00,$00,$00
+		db $00,$00,$00,$00,$00,$00,$00,$00
+		db $00,$00,$00,$00,$00,$00,$00,$00
+		db $00,$00,$00,$00,$00,$00,$00,$00
+		db $00,$00,$00,$00,$00,$00,$00,$00
+		db $00,$00,$00,$00,$00,$00,$00,$00
+		db $00,$00,$00,$00,$00,$00,$00,$00
+
+.DoorList	db $FF			; no doors
+.DoorTable
+
+
+
+	.Graphics
 		LDA #$02 : STA $44			;\ translucency settings
 		LDA #$24 : STA $40			;/
 
 		STZ !BG2ModeV
 		LDA #$C0 : STA !BG2BaseV
-		LDA.b #.HDMA : STA !HDMAptr+0
-		LDA.b #.HDMA>>8 : STA !HDMAptr+1
-		LDA.b #.HDMA>>16 : STA !HDMAptr+2
 
 
 	REP #$20
@@ -816,19 +864,21 @@ level35:
 	.Write
 	STA !Level+2
 
-	LDX !P2Character-$80 : BEQ ++
-
-	LDX !IceLevel : BNE +
-	CMP !P2YPosLo-$80 : BCS ++
-	LDX #$80 : STX !P2ExtraBlock-$80
-	BRA ++
-
-+	SEC : SBC #$0010
-	CMP !P2YPosLo-$80 : BCS ++
-	LDX #$04 : STX !P2ExtraBlock-$80
-	INC A
-	STA !P2YPosLo-$80
-	++
+;	LDX !P2Character-$80 : BEQ ++
+;
+;	LDX !IceLevel : BNE +
+;	LDA !P2YPosLo-$80 : BMI ++
+;	CMP !Level+2 : BCC ++
+;	LDX #$80 : STX !P2ExtraBlock-$80
+;	BRA ++
+;
+;+	LDA !Level+2
+;	SEC : SBC #$0010
+;	CMP !P2YPosLo-$80 : BCS ++
+;	LDX #$04 : STX !P2ExtraBlock-$80
+;	INC A
+;	STA !P2YPosLo-$80
+;	++
 
 
 	LDX !IceLevel : BNE ++
@@ -844,13 +894,7 @@ level35:
 	++
 
 
-
-
-
-
-
-
-	LDA #$1440
+	LDA !3DWater_Color
 	LDX !IceLevel
 	BEQ $03 : LDA #$2880
 	STA $00
@@ -888,39 +932,7 @@ level35:
 
 
 	LDA $00 : STA $6701
-
-
-		LDA.w #.RoomPointers
-		JMP LoadCameraBox
-
-
-		.RoomPointers
-		dw .ScreenMatrix
-		dw .BoxTable
-		dw .DoorList
-		dw .DoorTable
-
-
-
-
-;	Key ->	   X  Y  W  H  S  FX FY
-;		   |  |  |  |  |  |  |
-;		   V  V  V  V  V  V  V
-;
-.BoxTable
-.Box0	%CameraBox(0, 0, 7, 7, $FF, 0, 0)
-
-.ScreenMatrix	db $00,$00,$00,$00,$00,$00,$00,$00
-		db $00,$00,$00,$00,$00,$00,$00,$00
-		db $00,$00,$00,$00,$00,$00,$00,$00
-		db $00,$00,$00,$00,$00,$00,$00,$00
-		db $00,$00,$00,$00,$00,$00,$00,$00
-		db $00,$00,$00,$00,$00,$00,$00,$00
-		db $00,$00,$00,$00,$00,$00,$00,$00
-		db $00,$00,$00,$00,$00,$00,$00,$00
-
-.DoorList	db $FF			; no doors
-.DoorTable
+	RTL
 
 
 		.HDMA
@@ -928,6 +940,18 @@ level35:
 		JSL levelD_HDMA
 
 		PHB : PHK : PLB
+		REP #$20
+		LDA.w #.Gradient
+
+; input
+;	A = pointer to gradient (stored to $0C)
+;	first word of gradient is byte count
+;	second word of gradient is scanline count for each chunk
+;	the rest is raw color data
+
+
+		..3DWater
+		STA $0C
 		SEP #$20
 		LDA #$80 : STA !HDMA6source		;\
 		LDA $14					; |
@@ -1020,42 +1044,58 @@ level35:
 
 	; BG1 wave code
 
+		REP #$20
+		LDA $14
+		AND #$0001
+		BEQ $03 : LDA #$0060
+		TAX
+		CLC : ADC #$0C21+6			; get pointer and index to current tables
+		STA $00
+		SEP #$20
+
+
 		LDA $14					;\
 		LSR #2					; |
 		AND #$0F				; |
 		INC A					; | update scanline count to scroll wave effect
-		STA $0C20+6				; |
+		STA $0C20+6,x				; |
 		CMP #$01 : BNE .NoUpdate		; |
 		LDA $14					; |
-		AND #$03 : BNE .NoUpdate		;/
+		AND #$02 : BNE .NoUpdate		;/
 
 		.Update					;\
-		LDX #$30				; |
-	-	LDA $0C21+6,x				; |
-		SEC : SBC #$04				; |  update pointers for wave effect
+		LDY #$30				; |
+	-	LDA ($00),y				; |
+		AND #$F0				; > maintain hi nybble
+		STA $02					; |
+		LDA ($00),y				; |
+		SEC : SBC #$04				; | update pointers for wave effect
 		AND #$0F				; |
-		STA $0C21+6,x				; |
-		DEX #3 : BPL -				; |
+		ORA $02					; |
+		STA ($00),y				; |
+		DEY #3 : BPL -				; |
 		.NoUpdate				;/
 
 		REP #$20				;\
 		LDA $0E					; |
 		BPL $03 : LDA #$0000			; |
-		LDX !IceLevel : BNE +			; > no wave effect when frozen
+		LDY !IceLevel : BNE +			; > no wave effect when frozen
 		CMP #$00E0				; |
 		BCC $03					; |
 	+	LDA #$00E0				; | distance to hi prio water from top of screen
 		SEP #$20				; |
 		LSR A					; |
-		STA $0C20				; |
+		STA $0C20,x				; |
 		BCC $01 : INC A				; |
-		STA $0C23				;/
-		LDX #$20				;\
-		LDA $0C20				; |
-		BNE $03 : INX #3			; | see how many chunks we need
-		LDA $0C23				; |
-		BNE $03 : INX #3			;/
-		STX !HDMA3source			; > update source
+		STA $0C23,x				;/
+		LDA $00					;\ > lo byte of pointer
+		SEC : SBC #$07				; |
+		TAY					; |
+		LDA $0C20,x				; |
+		BNE $03 : INY #3			; | see how many chunks we need
+		LDA $0C23,x				; |
+		BNE $03 : INY #3			;/
+		STY !HDMA3source			; > update source
 
 
 
@@ -1064,31 +1104,36 @@ level35:
 	; -1+1
 	; +0+1
 
+
 		REP #$20				;\
+		LDA $14					; |
+		AND #$0001				; |
+		BEQ $03 : LDA #$0010			; |
+		TAX					; |
 		LDA $1A					; |
-		STA $0D00				; |
-		STA $0D0C				; |
+		STA $0D00,x				; |
+		STA $0D0C,x				; |
 		DEC A					; |
 		BPL $03 : LDA #$0000			; > don't allow negative due to clipping errors
-		STA $0D04				; |
-		STA $0D08				; | recalculate BG1 positions
+		STA $0D04,x				; |
+		STA $0D08,x				; | recalculate BG1 positions
 		LDA $1C					; |
-		STA $0D02				; |
-		STA $0D06				; |
+		STA $0D02,x				; |
+		STA $0D06,x				; |
 		INC A					; |
-		STA $0D0A				; |
-		STA $0D0E				;/
+		STA $0D0A,x				; |
+		STA $0D0E,x				;/
 
 
 
 	; gradient and color filter code
 
-
+		REP #$10				; > index 16-bit
 		LDA $14					;\
 		AND #$0001				; |
 		XBA					; | X = double buffer index
-		LSR A					; |
-		STA $0E					; |
+		ASL A					; |
+		STA $04					; > store to $04
 		TAX					;/
 
 		LDA !BigRAM+$00				;\
@@ -1101,13 +1146,19 @@ level35:
 		STA $00					;/
 		LDA $00 : BEQ .Filter			; skip gradient if entirely under water
 
+		LDA ($0C) : STA $0A			;\
+		INC $0C					; |
+		INC $0C					; | unpack gradient header
+		LDA ($0C) : STA $0E			; |
+		INC $0C					; |
+		INC $0C					;/
 
-		LDY #$00				; Y = gradient table index
+		LDY #$0000				; Y = gradient table index
 	-	REP #$20				;\
 		STZ $0201,x				; | gradient data
-		LDA.w .Gradient,y : STA $0203,x		; |
+		LDA ($0C),y : STA $0203,x		; |
 		SEP #$20				;/
-		LDA #$08 : STA $0200,x			; gradient scanline count
+		LDA $0E : STA $0200,x			; gradient scanline count
 		SEC : SBC $00				;\
 		PHP					; |
 		EOR #$FF : INC A			; | subtract from total scanlines allowed
@@ -1122,7 +1173,7 @@ level35:
 	+	STA $00					; store remaining scanlines allowed
 		INX #5					;\
 		INY #2					; | if allowed, loop
-		CPY.b #.Gradient_end-.Gradient : BNE -	;/
+		CPY $0A : BNE -				;/
 
 		LDA $00					;\
 		CLC : ADC $0200-5,x			; | if entire gradient fit, extend bottom chunk
@@ -1137,8 +1188,8 @@ level35:
 		STZ $0205,x				; |
 		.ColorDone				;/
 
-		LDA $0E					;\
-		ORA #$0200				; | update double buffer
+		LDA $04					;\
+		CLC : ADC #$0200			; | update double buffer
 		STA !HDMA2source			;/
 
 		PLB
@@ -1146,7 +1197,11 @@ level35:
 		RTL
 
 
-.Gradient	dw $4CA0
+.Gradient
+		dw ..end-..start
+		dw $0008
+		..start
+		dw $4CA0
 		dw $48A0
 		dw $4080
 		dw $3C80
@@ -1167,9 +1222,9 @@ level35:
 
 
 level36:
-		RTS
+		RTL
 
 level37:
-		RTS
+		RTL
 
 

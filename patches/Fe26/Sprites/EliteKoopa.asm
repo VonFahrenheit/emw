@@ -4,7 +4,6 @@ EliteKoopa:
 
 
 
-
 	!BaseNumber	= $23		; sprite number of first elite koopa (assumes they will follow in order)
 
 
@@ -922,10 +921,16 @@ EliteKoopa:
 	; load Y with plume tile
 	; then call this
 	GetDynamo:
+		PHA
+		PHY
+		LDY.b #!File_EliteKoopa
+		JSL !GetFileAddress
+		PLY
+		PLA
 		REP #$20
 		AND #$00FF
 		ASL #5
-		CLC : ADC.w #$E1F8
+		CLC : ADC.w !FileAddress
 		STA !BigRAM+$04
 		CLC : ADC #$0200
 		STA !BigRAM+$0B
@@ -933,7 +938,7 @@ EliteKoopa:
 		LDA $00
 		AND #$00FF
 		ASL #5
-		CLC : ADC.w #$E1F8
+		CLC : ADC.w !FileAddress
 		STA !BigRAM+$12
 		CLC : ADC #$0200
 		STA !BigRAM+$19
@@ -954,7 +959,7 @@ EliteKoopa:
 		LDA #$6160 : STA !BigRAM+$1C
 
 		SEP #$20
-		LDA #$32
+		LDA !FileAddress+2
 		STA !BigRAM+$06
 		STA !BigRAM+$0D
 		STA !BigRAM+$14

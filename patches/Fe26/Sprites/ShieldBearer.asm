@@ -28,6 +28,11 @@ ShieldBearer:
 
 	+	DEX : BPL -
 		LDX !SpriteIndex
+	.Despawn
+		STZ $3230,x
+		LDA $33F0,x : TAX
+		LDA #$00 : STA $418A00,x
+		LDX !SpriteIndex
 		PLB
 		RTL
 
@@ -43,9 +48,11 @@ ShieldBearer:
 
 	.CheckSprite
 		LDY !ShieldSprite
-		LDA $3230,y : BEQ .Kill
-		CMP #$08 : BEQ .Process
-		JSR Attach
+		LDA $3230,y : BEQ INIT_Despawn		; 00 = despawn
+		CMP #$08 : BEQ .Process			; 08 = normal
+		CMP #$04 : BEQ .Kill			; 04 = kill
+		CMP #$09 : BCS .Kill			; 09+ = kill
+		JSR Attach				; otherwise, attach and wait
 		JMP .Graphics
 
 	.Kill	LDA #$02 : STA $3230,x
@@ -102,6 +109,8 @@ ShieldBearer:
 		LDA $3320,y : STA $3320,x
 		TAY
 		LDA Interact_Force+2,y : STA $AE,x
+		LDY !SpriteIndex
+		JSL SpriteContactGFX_Long
 	+	DEX : BPL -
 		..NoSprite
 		LDX !SpriteIndex
@@ -177,7 +186,13 @@ ShieldBearer:
 		PHY
 		ORA $3320,x
 		TAY
-		LDA .Force,y
+		CPY #$02 : BCS +
+		PHY
+		TXY
+		JSL SpriteContactGFX_Long
+		LDA #$02 : STA !SPC1
+		PLY
+	+	LDA .Force,y
 		CLC : ADC $AE,x
 		PLY
 		STA !P2VectorX-$80,y
@@ -215,7 +230,7 @@ ShieldBearer:
 		SBC #$00
 		STA $0B
 		LDA #$10 : STA $06
-		LDA #$20 : STA $07
+		LDA #$1C : STA $07
 		RTS
 
 

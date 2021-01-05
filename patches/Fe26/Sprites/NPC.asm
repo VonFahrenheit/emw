@@ -171,6 +171,7 @@ NPC:
 		LDA !ID
 		CMP #$01 : BNE .Tilemap
 
+	; tinker code
 		LDA !Level+1 : BNE .NoSpecial		; have tinker go down with screen
 		LDA !Level
 		CMP #$25 : BNE .NoSpecial
@@ -191,15 +192,15 @@ NPC:
 		PLA : STA $3210,x
 		PLB
 		RTL
-
 		.NoSpecial
-		REP #$20
+		REP #$30
 		LDA $04 : STA $0C
-		CLC : JSL !UpdateGFX
-		REP #$20
+		LDY.w #!File_NPC_Tinkerer
+		JSL !UpdateFromFile
 		LDA.w #ANIM_32x32TM : STA $04
-		SEP #$20
+		SEP #$30
 
+	; not tinker code
 		.Tilemap
 		JSL LOAD_PSUEDO_DYNAMIC_Long
 
@@ -280,10 +281,10 @@ NPC:
 
 	.32x32TM
 		dw $0010
-		db $3C,$F8,$F0,$C0
-		db $3C,$08,$F0,$C2
-		db $3C,$F8,$00,$E0
-		db $3C,$08,$00,$E2
+		db $3C,$F8,$F0,$00
+		db $3C,$08,$F0,$02
+		db $3C,$F8,$00,$20
+		db $3C,$08,$00,$22
 
 	.SurvivorIdle0
 		dw $000C
@@ -317,7 +318,7 @@ NPC:
 
 macro TinkererDyn(TileCount, SourceTile, DestVRAM)
 	dw <TileCount>*$20
-	dl <SourceTile>*$20+$388808
+	dl <SourceTile>*$20
 	dw <DestVRAM>*$10+$6000
 endmacro
 
@@ -325,90 +326,90 @@ endmacro
 	.TinkererIdle0
 		dw ..End-..Start
 		..Start
-		%TinkererDyn(4, $000, $0C0)
-		%TinkererDyn(4, $010, $0D0)
-		%TinkererDyn(4, $020, $0E0)
-		%TinkererDyn(4, $030, $0F0)
+		%TinkererDyn(4, $000, $000)
+		%TinkererDyn(4, $010, $010)
+		%TinkererDyn(4, $020, $020)
+		%TinkererDyn(4, $030, $030)
 		..End
 	.TinkererIdle1
 		dw ..End-..Start
 		..Start
-		%TinkererDyn(4, $004, $0C0)
-		%TinkererDyn(4, $014, $0D0)
-		%TinkererDyn(4, $024, $0E0)
-		%TinkererDyn(4, $034, $0F0)
+		%TinkererDyn(4, $004, $000)
+		%TinkererDyn(4, $014, $010)
+		%TinkererDyn(4, $024, $020)
+		%TinkererDyn(4, $034, $030)
 		..End
 	.TinkererIdle2
 		dw ..End-..Start
 		..Start
-		%TinkererDyn(4, $008, $0C0)
-		%TinkererDyn(4, $018, $0D0)
-		%TinkererDyn(4, $028, $0E0)
-		%TinkererDyn(4, $038, $0F0)
+		%TinkererDyn(4, $008, $000)
+		%TinkererDyn(4, $018, $010)
+		%TinkererDyn(4, $028, $020)
+		%TinkererDyn(4, $038, $030)
 		..End
 	.TinkererIdle3
 		dw ..End-..Start
 		..Start
-		%TinkererDyn(4, $00C, $0C0)
-		%TinkererDyn(4, $01C, $0D0)
-		%TinkererDyn(4, $02C, $0E0)
-		%TinkererDyn(4, $03C, $0F0)
+		%TinkererDyn(4, $00C, $000)
+		%TinkererDyn(4, $01C, $010)
+		%TinkererDyn(4, $02C, $020)
+		%TinkererDyn(4, $03C, $030)
 		..End
 	.TinkererIdle4
 		dw ..End-..Start
 		..Start
-		%TinkererDyn(4, $040, $0C0)
-		%TinkererDyn(4, $050, $0D0)
-		%TinkererDyn(4, $060, $0E0)
-		%TinkererDyn(4, $070, $0F0)
+		%TinkererDyn(4, $040, $000)
+		%TinkererDyn(4, $050, $010)
+		%TinkererDyn(4, $060, $020)
+		%TinkererDyn(4, $070, $030)
 		..End
 	.TinkererIdle5
 		dw ..End-..Start
 		..Start
-		%TinkererDyn(4, $044, $0C0)
-		%TinkererDyn(4, $054, $0D0)
-		%TinkererDyn(4, $064, $0E0)
-		%TinkererDyn(4, $074, $0F0)
+		%TinkererDyn(4, $044, $000)
+		%TinkererDyn(4, $054, $010)
+		%TinkererDyn(4, $064, $020)
+		%TinkererDyn(4, $074, $030)
 		..End
 	.TinkererIdle6
 		dw ..End-..Start
 		..Start
-		%TinkererDyn(4, $048, $0C0)
-		%TinkererDyn(4, $058, $0D0)
-		%TinkererDyn(4, $068, $0E0)
-		%TinkererDyn(4, $078, $0F0)
+		%TinkererDyn(4, $048, $000)
+		%TinkererDyn(4, $058, $010)
+		%TinkererDyn(4, $068, $020)
+		%TinkererDyn(4, $078, $030)
 		..End
 	.TinkererTalk0
 		dw ..End-..Start
 		..Start
-		%TinkererDyn(4, $04C, $0C0)
-		%TinkererDyn(4, $05C, $0D0)
-		%TinkererDyn(4, $06C, $0E0)
-		%TinkererDyn(4, $07C, $0F0)
+		%TinkererDyn(4, $04C, $000)
+		%TinkererDyn(4, $05C, $010)
+		%TinkererDyn(4, $06C, $020)
+		%TinkererDyn(4, $07C, $030)
 		..End
 	.TinkererTalk1
 		dw ..End-..Start
 		..Start
-		%TinkererDyn(4, $080, $0C0)
-		%TinkererDyn(4, $090, $0D0)
-		%TinkererDyn(4, $0A0, $0E0)
-		%TinkererDyn(4, $0B0, $0F0)
+		%TinkererDyn(4, $080, $000)
+		%TinkererDyn(4, $090, $010)
+		%TinkererDyn(4, $0A0, $020)
+		%TinkererDyn(4, $0B0, $030)
 		..End
 	.TinkererTalk2
 		dw ..End-..Start
 		..Start
-		%TinkererDyn(4, $084, $0C0)
-		%TinkererDyn(4, $094, $0D0)
-		%TinkererDyn(4, $0A4, $0E0)
-		%TinkererDyn(4, $0B4, $0F0)
+		%TinkererDyn(4, $084, $000)
+		%TinkererDyn(4, $094, $010)
+		%TinkererDyn(4, $0A4, $020)
+		%TinkererDyn(4, $0B4, $030)
 		..End
 	.TinkererTalk3
 		dw ..End-..Start
 		..Start
-		%TinkererDyn(4, $088, $0C0)
-		%TinkererDyn(4, $098, $0D0)
-		%TinkererDyn(4, $0A8, $0E0)
-		%TinkererDyn(4, $0B8, $0F0)
+		%TinkererDyn(4, $088, $000)
+		%TinkererDyn(4, $098, $010)
+		%TinkererDyn(4, $0A8, $020)
+		%TinkererDyn(4, $0B8, $030)
 		..End
 
 

@@ -50,10 +50,11 @@ SPRITE_OFF_SCREEN:
 		BIT !CameraBoxU : BMI .NoBoxY
 		CMP !CameraBoxU : BCC .NoBoxY
 		SBC #$00E0
+		BMI .GoodY
 		CMP !CameraBoxD : BCC .GoodY
 
 		.NoBoxY
-		CMP $73D7 : BCS .OutOfBoundsY
+		CMP !LevelHeight : BCS .OutOfBoundsY
 		SEC : SBC $1C
 		BPL +
 		EOR #$FFFF
@@ -73,6 +74,9 @@ SPRITE_OFF_SCREEN:
 		LDA $3350,x
 		ORA $3490,x
 		BEQ .Return
+		LDA !SpriteTweaker4,x
+		AND #$04 : BNE .Return
+
 		LDA $3230,x
 		CMP #$08 : BCC .Kill
 		LDY $33F0,x
@@ -158,21 +162,23 @@ SPRITE_SPINKILL:
 
 SUB_HORZ_POS:	LDA !P2Status-$80 : BNE .2
 .1		LDY #$00
-		LDA !P2XPosLo-$80
-		SEC : SBC $3220,x
-		LDA !P2XPosHi-$80
-		SBC $3250,x
-		BPL .Return
+		LDA $3250,x : XBA
+		LDA $3220,x
+		REP #$20
+		SEC : SBC !P2XPosLo-$80
+		SEP #$20
+		BMI .Return
 .Set		INY
 .Return		RTS
 .2		LDA !MultiPlayer : BEQ .1
 		LDA !P2Status : BNE .1
 		LDY #$00
-		LDA !P2XPosLo
-		SEC : SBC $3220,x
-		LDA !P2XPosHi
-		SBC $3250,x
-		BMI .Set
+		LDA $3250,x : XBA
+		LDA $3220,x
+		REP #$20
+		SEC : SBC !P2XPosLo
+		SEP #$20
+		BPL .Set
 		RTS
 
 .Long		JSR SUB_HORZ_POS
@@ -184,21 +190,23 @@ SUB_HORZ_POS:	LDA !P2Status-$80 : BNE .2
 
 SUB_VERT_POS:	LDA !P2Status-$80 : BNE .2
 .1		LDY #$00
-		LDA !P2YPosLo-$80
-		SEC : SBC $3210,x
-		LDA !P2YPosHi-$80
-		SBC $3240,x
-		BPL .Return
+		LDA $3240,x : XBA
+		LDA $3210,x
+		REP #$20
+		SEC : SBC !P2YPosLo-$80
+		SEP #$20
+		BMI .Return
 .Set		INY
 .Return		RTS
 .2		LDA !MultiPlayer : BEQ .1
 		LDA !P2Status : BNE .1
 		LDY #$00
-		LDA !P2YPosLo
-		SEC : SBC $3210,x
-		LDA !P2YPosHi
-		SBC $3240,x
-		BMI .Set
+		LDA $3240,x : XBA
+		LDA $3210,x
+		REP #$20
+		SEC : SBC !P2YPosLo
+		SEP #$20
+		BPL .Set
 		RTS
 
 .Long		JSR SUB_VERT_POS
@@ -411,17 +419,109 @@ P2Attack:	STZ $0F
 		db $01,$02,$04,$08,$10,$20,$40,$80
 
 
+;===============;
+;GLITTER ROUTINE;
+;===============;
+MakeGlitter:
+		TXA
+		CLC : ADC $14
+		AND #$0F : BNE .Return
+		LDY.b #!Ex_Amount-1
+	-	LDA !Ex_Num,y : BNE +
+		LDA #$04 : STA !Ex_Num,y
+		LDA !RNG
+		AND #$0F
+		ASL A
+		SEC : SBC #$10
+		STZ $00
+		BPL $02 : DEC $00
+		CLC : ADC $3210,x
+		STA !Ex_YLo,y
+		LDA $3240,x
+		ADC $00
+		STA !Ex_YHi,y
+		LDA !RNG
+		LSR #3
+		AND #$17
+		SEC : SBC #$08
+		STZ $00
+		BPL $02 : DEC $00
+		CLC : ADC $3220,x
+		STA !Ex_XLo,y
+		LDA $3250,x
+		ADC $00
+		STA !Ex_XHi,y
+		LDA #$1F : STA !Ex_Data1,y
+		BRA .Return
+	+	DEY : BPL -
+	.Return	RTS
+
+.Long		JSR MakeGlitter
+		RTL
+
+
+;==========================;
+;SPRITE CONTACT GFX ROUTINE;
+;==========================;
+;
+; displays contact GFX on the point between two sprites (X and Y)
+;
+SpriteContactGFX:
+		PHX
+		LDA $3220,x
+		CLC : ADC $3220,y
+		STA $00
+		LDA $3250,x
+		ADC $3250,y
+		STA $01
+		LDA $3210,x
+		CLC : ADC $3210,y
+		STA $02
+		LDA $3240,x
+		ADC $3240,y
+		STA $03
+		REP #$20
+		LDA $00
+		LSR A
+		STA $00
+		SEC : SBC $1A
+		CMP #$0100 : BCS .Nope
+		LDA $02
+		LSR A
+		STA $02
+		SEC : SBC $1C
+		CMP #$00E0 : BCS .Nope
+		SEP #$20
+		LDX #!Ex_Amount-1
+
+	.Loop	LDA !Ex_Num,x : BEQ .Spawn
+		DEX : BPL .Loop
+		PLX
+		RTS
+
+		.Spawn
+		LDA #$02+!SmokeOffset : STA !Ex_Num,x	; smoke type
+		LDA $00 : STA !Ex_XLo,x			; smoke X
+		LDA $02 : STA !Ex_YLo,x			; smoke Y
+		LDA #$08 : STA !Ex_Data1,x		; smoke timer
+
+	.Nope	SEP #$20
+		PLX
+		RTS
+
+
+	.Long	JSR SpriteContactGFX
+		RTL
+
 
 ;============================;
 ;PLAYER 2 CONTACT GFX ROUTINE;
 ;============================;
 P2ContactGFX:	PHX
-		LDA !P2Offscreen
-		BNE .Return
+		LDA !P2Offscreen : BNE .Return
 		LDX #!Ex_Amount-1
 
-		.Loop
-		LDA !Ex_Num,x : BEQ .Spawn
+	.Loop	LDA !Ex_Num,x : BEQ .Spawn
 		DEX : BPL .Loop
 		PLX
 		RTS
@@ -862,8 +962,9 @@ FireballContact:
 
 .Main		LDA !Ex_Num,y
 		AND #$7F
-		CMP #$05+!ExtendedOffset : BNE .ReturnC
-		LDA !Ex_YLo,y : STA $01
+		CMP #$05+!ExtendedOffset : BEQ .Check	; check mario fireball
+		CMP #$02+!CustomOffset : BNE .ReturnC	; check luigi fireball
+	.Check	LDA !Ex_YLo,y : STA $01
 		LDA !Ex_XLo,y : STA $00
 		LDA !Ex_YHi,y : STA $09
 		LDA !Ex_XHi,y : STA $08

@@ -7,7 +7,7 @@
 					; Don't change addressing mode (16-bit to 24-bit and vice versa).
 					; Doing that requires changing some code.
 
-		!AnimToggle		= $60			; 0 = enabled; 1 = disabled
+		!AnimToggle		= $60			; see VR3.asm for info on how to use
 
 		!CCDMA_SLOTS		= $317F
 		!CCDMA_TABLE	 	= $3190
@@ -39,6 +39,11 @@
 					; to claim one for a sprite, write the sprite's index to the proper index
 					; the sprite's !ClaimedGFX register needs to match what is written here as well
 					; if the comparison concludes invalid, the slot is considered free
+
+
+	!CameraPower	= #$19		; remap to address later
+
+	!CameraXMem	= $7432		; 16-bit used for PCE camera baybee
 
 
 		!CameraBackupX		= $3148
@@ -237,10 +242,11 @@
 		!GFX_CarrierBubble	= !GFX_status+$57
 		!GFX_FishingBoo		= !GFX_status+$58
 		!GFX_Sparky		= !GFX_status+$59
+
 		!GFX_Wings		= !GFX_status+$5A
 		!GFX_Shell		= !GFX_status+$5B
 		!GFX_LakituCloud	= !GFX_status+$5C
-		!GFX_Hammer		= !GFX_status+$5D	; UNUSED!!
+		!GFX_Hammer		= !GFX_status+$5D
 		!GFX_SmallFireball	= !GFX_status+$5E
 		!GFX_ReznorFireball	= !GFX_status+$5F
 		!GFX_LotusPollen	= !GFX_status+$60
@@ -258,6 +264,7 @@
 		!GFX_RexLegs1		= !GFX_status+$6C
 		!GFX_RexLegs2		= !GFX_status+$6D
 		!GFX_RexSmall		= !GFX_status+$6E
+		!GFX_LuigiFireball	= !GFX_status+$6F
 
 		!GFX_GoombaSlave	= !GFX_status+$80
 		!GFX_VillagerRex	= !GFX_status+$81
@@ -311,6 +318,7 @@
 		!SD_Bone		= !GFX_status+$102
 		!SD_Fireball8x8		= !GFX_status+$103
 		!SD_Fireball16x16	= !GFX_status+$104
+		!SD_LuigiFireball	= !GFX_status+$105
 
 	; super dynamic format:
 	; bbpppppp
@@ -334,6 +342,68 @@
 		!PalsetF		= $602F
 
 	; index to palset table
+
+
+
+
+	; SP_Files list
+	;
+	; make sure the order matches the dl list at the start of SP_Files
+	; this list only affects defines, it does not insert anything into the ROM
+
+	macro def_file(name)
+		!File_<name> := !tempfile
+		!tempfile := !tempfile+3
+	endmacro
+
+		!tempfile = 0
+
+		; linear files
+		%def_file(Linear_Hammer)
+		%def_file(Linear_Planthead)
+		%def_file(Linear_Bone)
+		%def_file(Linear_Fireball8x8)
+		%def_file(Linear_Fireball16x16)
+		%def_file(Linear_LuigiFireball)
+		%def_file(Linear_Goomba)
+		%def_file(Linear_Baseball)
+
+		; player files
+		%def_file(Mario_Expand)
+		%def_file(Mario_Supplement)
+		%def_file(Luigi)
+		%def_file(Kadaal)
+		%def_file(Leeway)
+		%def_file(Leeway_Sword)
+
+		; dynamic sprite files
+		%def_file(HappySlime)
+		%def_file(AggroRex)
+		%def_file(Wizrex)
+		%def_file(TarCreeper_Hands)
+		%def_file(TarCreeper_Body)
+		%def_file(EliteKoopa)
+
+		%def_file(NPC_Survivor)
+		%def_file(NPC_Tinkerer)
+		%def_file(NPC_Melody)
+		%def_file(MiniMech)
+
+		; boss files
+		%def_file(CaptainWarrior)
+		%def_file(CaptainWarrior_Axe)
+		%def_file(Kingking)
+		%def_file(LakituLovers)
+		%def_file(LavaLord)
+
+		; color gradients and palette tables
+		%def_file(level06_night)
+
+		; extra stuff, sprite BG and such
+		%def_file(Sprite_BG_1)
+
+
+
 
 
 
@@ -407,6 +477,13 @@
 		!P2Carry		= !P2Base+$1F		; used by Luigi and Peach
 		!P2PickUp		= !P2Base+$21		; forces crouch for Luigi
 		!P2TurnTimer		= !P2Base+$22
+					; 23 used by kick
+					; 24 index mem 1
+					; 25 index mem 2
+		!P2SpinAttack		= !P2Base+$26
+		!P2FireTimer		= !P2Base+$27
+		!P2FireIndex		= !P2Base+$28
+		!P2FireLife		= !P2Base+$29
 
 
 	; KADAAL / LEEWAY
@@ -475,7 +552,8 @@
 
 		!P2ButtonDis		= !P2Base+$2E		; TRB'd to Leeway's $6DA3 if L2 is set
 
-		!P2SenkuUsed		= !P2Base+$2F
+		!P2SpinUsed		= !P2Base+$2F		; used by Luigi
+		!P2SenkuUsed		= !P2Base+$2F		; used by Kadaal/Leeway
 
 		!P2Pipe			= !P2Base+$30		; ddettttt
 								; dd = direction:
@@ -549,6 +627,7 @@
 		!P2ComboDisable		= !P2Base+$63		; set during combo dash to prevent chaining
 
 
+		!P2Init			= !P2Base+$7D		; set to 1 after player has run its init routine
 		!P2ExtraBlock		= !P2Base+$7E
 			; written to !P2Blocked, then cleared
 			; also applies to Mario
@@ -647,14 +726,6 @@
 
 
 
-
-		!MsgRAM			= $4400			; 256 bytes, base address
-		!MsgVRAM1		= !MsgRAM+$23		; 2 bytes
-		!MsgVRAM2		= !MsgRAM+$25		; 2 bytes
-		!MsgVRAM3		= !MsgRAM+$27		; 2 bytes, border
-
-		!MsgPal			= $61
-
 		!VRAMbank		= $40
 		!VRAMbase		= !VRAMbank*$10000	; use !VRAMbase+!VRAMtable for long addressing
 		!VRAMtable		= $4500
@@ -702,9 +773,10 @@
 								; 1 = play animation during message box
 								; 2 = message box has no pause-effect
 
-		!SmokeXHi		= $404EA5		;\ Determines if smoke sprite is within screen bounds
-		!SmokeYHi		= $404EA9		;/
-		!SmokeHack		= $404EAD		; > Smoke sprite init flag (very hacky fam)
+
+		!MarioExtraWaterJump	= $404EA5
+
+		; $404EA6-$404EB0 (11 bytes) free
 
 		!ProcessingSprites	= $404EB1		; Set while sprites are being processed
 
@@ -731,8 +803,10 @@
 
 		!DizzyEffect		= $4059F8		; when enabled, table at $40A040 must be used to adjust sprite heights
 
+		!3DWater_Color		= $4059F9		; 16-bit, should be set at level init
+		!FileAddress		= $4059FB		; 24-bit, scratch pointer to file
 
-	; next entry at $4059F9
+	; next entry at $4059FE
 
 
 
@@ -774,7 +848,7 @@
 		!MidwayHi		= $418B5F
 
 
-	; -- 3D Joint Cluster --
+	; -- 3D/2D Joint Cluster --
 
 		!3D_Base		= $41B800
 
@@ -807,12 +881,12 @@
 
 		!3D_AssemblyCache	= !3D_Base+$200
 
+		!3D_TilemapPointer	= !3D_Base+$400
+		!3D_BankCache		= !3D_Base+$402
+
 		!3D_TilemapCache	= $6DDF		; 278 bytes
 
-		!3D_TilemapPointer	= !3D_Base+$410
-		!3D_BankCache		= !3D_Base+$412
-
-		!3D_Cache		= !3D_Base+$400
+		!3D_Cache		= $F0		; DP is used for faster access
 		!3D_Cache1		= !3D_Cache+$0
 		!3D_Cache2		= !3D_Cache+$2
 		!3D_Cache3		= !3D_Cache+$4
@@ -823,8 +897,35 @@
 		!3D_Cache8		= !3D_Cache+$E
 
 
+		!2D_Base		= !3D_Base
+
+		!2D_Angle		= !2D_Base+$0	; rotation in relation to parent joint
+		!2D_Rotation		= !2D_Base+$1	; total rotation, used to determine which tile to draw
+		!2D_Distance		= !2D_Base+$2	; 16-bit, each unit represents 1/256th px
+		!2D_X			= !2D_Base+$4
+		!2D_Y			= !2D_Base+$6
+		!2D_Attachment		= !2D_Base+$8	; 16-bit index
+		!2D_Slot		= !2D_Base+$A	; 0 if slot is free, otherwise used
+		!2D_Tilemap		= !2D_Base+$B	; tilemap index for this joint
+
+
 
 	; -- Sprite stuff --
+
+		!ExtraBits		= $3590		; extra bits of sprite
+		!ExtraProp1		= $35A0		;
+		!ExtraProp2		= $35B0		;
+		!NewSpriteNum		= $35C0		; custom sprite number
+					; $35F0		; P2 interaction disable timer
+		!CustomBit		= $08
+
+
+		!SpriteTweaker1		= $3440
+		!SpriteTweaker2		= $3450
+		!SpriteTweaker3		= $3460
+		!SpriteTweaker4		= $3470
+		!SpriteTweaker5		= $3480
+		!SpriteTweaker6		= $34B0
 
 		!SpriteAnimTimer	= $3310,x
 		!SpriteAnimIndex	= $33D0,x
@@ -849,6 +950,7 @@
 
 		!SpriteTile		= $6030			; offset to add to sprite tilemap numbers
 		!SpriteProp		= $6040			; lowest bit of sprite OAM prop
+
 
 
 	; -- Fusion Core --
@@ -889,6 +991,67 @@
 		!Ex_Data1	= !Ex_Num+(!Ex_Amount*1)
 		!Ex_Data2	= !Ex_Num+(!Ex_Amount*2)
 		!Ex_Data3	= !Ex_Num+(!Ex_Amount*3)
+
+
+
+	; -- MSG RAM --
+
+		!MaxSize		= $48
+		!MinSize		= $00
+		!GrowSpeed		= $08
+		!ShrinkSpeed		= $F8
+
+		!MsgPal			= $61
+
+		!MsgData		= $03BC0B		; Use this to figure out where Lunar Magic puts message data
+
+		; All of this RAM goes in bank $40!
+
+		!MsgRAM			= $4400			; 256 bytes, base address
+
+		!MsgTileNumber		= !MsgRAM+$00		; 1 byte \ these two form a 16-bit index to the text data
+		!MsgTileNumberHi	= !MsgRAM+$01		; 1 byte /
+		!MsgOptions		= !MsgRAM+$02		; 1 byte
+		!MsgArrow		= !MsgRAM+$03		; 1 byte
+		!MsgOptionRow		= !MsgRAM+$04		; 1 byte, which row the dialogue options start on
+		!MsgDestination		= !MsgRAM+$05		; 1 byte, determines what !MsgArrow writes to
+		!MsgVertOffset		= !MsgRAM+$06		; 1 byte, number of pixels to move window down (doubled)
+								;	  highest bit toggles portrait to top-right of screen
+								;	  second highest bit disables border and window
+		!MsgSequence		= !MsgRAM+$07		; 15 bytes, read backwards.
+		!MsgScroll		= !MsgRAM+$16		; 1 byte
+		!MsgCounter		= !MsgRAM+$17		; 1 byte
+		!MsgDelay		= !MsgRAM+$18		; 1 byte
+		!MsgWait		= !MsgRAM+$19		; 1 byte
+		!MsgWaitFlag		= !MsgRAM+$1A		; 1 byte
+		!MsgWaitScroll		= !MsgRAM+$1B		; 1 byte, also used as a kind of scratch during cinematic mode
+		!SubMsg			= !MsgRAM+$1C		; 1 byte, loads the specified submessage when set
+		!SubMsgTileNumber	= !MsgRAM+$1D		; 1 byte
+		!MsgPortrait		= !MsgRAM+$1E		; 1 byte
+		!MsgSpeed		= !MsgRAM+$1F		; 1 byte
+		!MsgEnd			= !MsgRAM+$20		; 1 byte
+		!MsgOffset		= !MsgRAM+$21		; 1 byte
+		!MsgFont		= !MsgRAM+$22		; 1 byte
+		!MsgVRAM1		= !MsgRAM+$23		; 2 bytes, portrait (lo plane)
+		!MsgVRAM2		= !MsgRAM+$25		; 2 bytes, portrait (hi plane)
+		!MsgVRAM3		= !MsgRAM+$27		; 2 bytes, border
+		!MsgBackup41		= !MsgRAM+$29		; 1 byte
+		!MsgBackup42		= !MsgRAM+$2A		; 1 byte
+		!MsgBackup43		= !MsgRAM+$2B		; 1 byte
+		!MsgBackup44		= !MsgRAM+$2C		; 1 byte
+		!MsgBackup0D9D		= !MsgRAM+$2D		; 1 byte
+		!MsgBackup0D9E		= !MsgRAM+$2E		; 1 byte
+		!MsgBackup24		= !MsgRAM+$2F		; 1 byte
+		!MsgBackup25		= !MsgRAM+$30		; 1 byte
+		!MsgTalk		= !MsgRAM+$31		; 1 byte
+		!MsgCinematic		= !MsgRAM+$32		; 1 byte, enables cinematic mode
+		!MsgX			= !MsgRAM+$33		; 1 byte, X position to start drawing next character at
+		!MsgRow			= !MsgRAM+$34		; 1 byte, current row of text
+		!MsgCurrentArrow	= !MsgRAM+$35		; 1 byte, row of current arrow (used to replace it when it moves)
+		!MsgWordLength		= !MsgRAM+$36		; 1 byte, accumulating word length
+		!MsgCharCount		= !MsgRAM+$37		; 1 byte, accumulating characters
+		!MsgCommandData		= !MsgRAM+$38		; Variable length, maximum of 200 bytes.
+								; Used to upload text during cinematic mode
 
 
 
@@ -945,6 +1108,7 @@
 		!MarioPowerUp		= $19
 		!RAM_ScreenMode		= $5B
 		!Palette		= $5C
+		!LevelWidth		= $5E	; in screens
 		!GlobalProperties	= $64
 		!MarioAnim		= $71
 		!MarioAir		= $72
@@ -1048,6 +1212,12 @@
 		!HSLtoRGB		= $138060
 		!MixRGB			= $138068
 		!MixHSL			= $138070
+		!Update3DCluster	= $138078
+		!Update2DCluster	= $13807C
+		!GetFileAddress		= $138080
+		!UpdateFromFile		= $138088
+		!DecompFromFile		= $13808C
+		!LoadFile		= $138090
 
 		!PortraitPointers	= $378000		; DATA pointer stored with SP_Files.asm, along with portrait GFX
 		!PalsetData		= $3F8000		; DATA pointer stored with SP_Files.asm, along with palset data
@@ -1132,77 +1302,3 @@
 		!True 			= 1
 		!False			= 0
 
-
-;======;
-;MACROS;
-;======;
-
-macro TM16(x, y, tile, prop)
-	dw $0004
-	db <prop>,<x>,<y>,<tile>
-endmacro
-
-macro TM24x32(x, y, tile, prop)
-	dw $0010
-	db <prop>,<x>+$00,<y>+$F0,<tile>+$00
-	db <prop>,<x>+$08,<y>+$F0,<tile>+$01
-	db <prop>,<x>+$00,<y>+$00,<tile>+$20
-	db <prop>,<x>+$08,<y>+$00,<tile>+$21
-endmacro
-
-macro TM32(x, y, tile, prop)
-	dw $0010
-	db <prop>,<x>+$00,<y>+$F0,<tile>+$00
-	db <prop>,<x>+$10,<y>+$F0,<tile>+$02
-	db <prop>,<x>+$00,<y>+$00,<tile>+$20
-	db <prop>,<x>+$10,<y>+$00,<tile>+$22
-endmacro
-
-macro LTM32x32(prop, x, y, tile)
-	dw $0010
-	db <prop>&$F0|<tile>>>8,<x>+$00,<y>+$00,<tile>+$00
-	db <prop>&$F0|<tile>>>8,<x>+$10,<y>+$00,<tile>+$02
-	db <prop>&$F0|<tile>>>8,<x>+$00,<y>+$10,<tile>+$20
-	db <prop>&$F0|<tile>>>8,<x>+$10,<y>+$10,<tile>+$22
-endmacro
-
-macro LTM40x32(prop, x, y, tile)
-	dw $0018
-	db <prop>&$F0|<tile>>>8,<x>+$00,<y>+$00,<tile>+$00
-	db <prop>&$F0|<tile>>>8,<x>+$10,<y>+$00,<tile>+$02
-	db <prop>&$F0|<tile>>>8,<x>+$00,<y>+$10,<tile>+$20
-	db <prop>&$F0|<tile>>>8,<x>+$10,<y>+$10,<tile>+$22
-	db <prop>&$F0|<tile>>>8,<x>+$18,<y>+$00,<tile>+$03
-	db <prop>&$F0|<tile>>>8,<x>+$18,<y>+$10,<tile>+$23
-endmacro
-
-macro Crown(prop, x, y, t)
-	dw $0004
-	db <prop>|$01,<x>,<y>,<t>&$03*$02+$05
-endmacro
-
-macro LTM32x64(prop, x1, y1, tile1, x2, y2, tile2)
-	dw $0020
-	db <prop>&$F0|<tile1>>>8,<x1>+$00,<y1>+$00,<tile1>+$00
-	db <prop>&$F0|<tile1>>>8,<x1>+$10,<y1>+$00,<tile1>+$02
-	db <prop>&$F0|<tile1>>>8,<x1>+$00,<y1>+$10,<tile1>+$20
-	db <prop>&$F0|<tile1>>>8,<x1>+$10,<y1>+$10,<tile1>+$22
-	db <prop>&$F0|<tile2>>>8,<x2>+$00,<y2>+$00,<tile2>+$00
-	db <prop>&$F0|<tile2>>>8,<x2>+$10,<y2>+$00,<tile2>+$02
-	db <prop>&$F0|<tile2>>>8,<x2>+$00,<y2>+$10,<tile2>+$20
-	db <prop>&$F0|<tile2>>>8,<x2>+$10,<y2>+$10,<tile2>+$22
-endmacro
-
-macro LTM40x64(prop, x1, y1, tile1, x2, y2, tile2)
-	dw $0028
-	db <prop>&$F0|<tile1>>>8,<x1>+$00,<y1>+$00,<tile1>+$00
-	db <prop>&$F0|<tile1>>>8,<x1>+$10,<y1>+$00,<tile1>+$02
-	db <prop>&$F0|<tile1>>>8,<x1>+$00,<y1>+$10,<tile1>+$20
-	db <prop>&$F0|<tile1>>>8,<x1>+$10,<y1>+$10,<tile1>+$22
-	db <prop>&$F0|<tile2>>>8,<x2>+$00,<y2>+$00,<tile2>+$00
-	db <prop>&$F0|<tile2>>>8,<x2>+$10,<y2>+$00,<tile2>+$02
-	db <prop>&$F0|<tile2>>>8,<x2>+$18,<y2>+$00,<tile2>+$03
-	db <prop>&$F0|<tile2>>>8,<x2>+$00,<y2>+$10,<tile2>+$20
-	db <prop>&$F0|<tile2>>>8,<x2>+$10,<y2>+$10,<tile2>+$22
-	db <prop>&$F0|<tile2>>>8,<x2>+$18,<y2>+$10,<tile2>+$23
-endmacro

@@ -124,67 +124,79 @@ PalsetDefaults:
 
 	GFXIndex:
 
-		PHP					; preserve P
-		SEP #$30				; all regs 8-bit
-		STZ !PalsetA				;\
-		STZ !PalsetB				; |
-		STZ !PalsetC				; | clear palset regs
-		STZ !PalsetD				; |
-		STZ !PalsetE				; |
-		STZ !PalsetF				;/
-		LDA.b #ReadLevelData : STA $3180	;\
-		LDA.b #ReadLevelData>>8 : STA $3181	; |
-		LDA.b #ReadLevelData>>16 : STA $3182	; | have SA-1 scan level
-		JSR $1E80				; |
-		PLP					;/
-		JSR GetFiles				; upload files
-		PHP					;\
-		SEP #$20				; |
-		LDA !GFX_SmallFireball : BNE +		; |
-		LDA !MultiPlayer : BEQ ++		; |
-		LDA !Characters				; |
-		AND #$0F : BNE ++			; |
-		LDA #$08				; | small fireball can be included in mario's file
-		BRA +++					; |
-	++	LDA !Characters				; |
-		AND #$F0 : BNE +			; |
-		LDA #$08 : STA !GFX_SmallFireball	; |
-	+++	STA !GFX_SmallFireball			; |
-		LDA #$01 : STA !SuperDynamicMark+$03	; |
-	+	PLP					;/
-		JSR SuperDynamicFiles			; upload super-dynamic files
+		PHP						; preserve P
+		SEP #$30					; all regs 8-bit
+		STZ !PalsetA					;\
+		STZ !PalsetB					; |
+		STZ !PalsetC					; | clear palset regs
+		STZ !PalsetD					; |
+		STZ !PalsetE					; |
+		STZ !PalsetF					;/
+		LDA.b #ReadLevelData : STA $3180		;\
+		LDA.b #ReadLevelData>>8 : STA $3181		; |
+		LDA.b #ReadLevelData>>16 : STA $3182		; | have SA-1 scan level
+		JSR $1E80					; |
+		PLP						;/
+		JSR GetFiles					; upload files
+		PHP						;\
+		SEP #$20					; |
+		LDA !GFX_SmallFireball : BNE .NoMarioFire	; |
+		LDA !MultiPlayer : BEQ +			; |
+		LDA !Characters					; |
+		AND #$0F : BEQ ++				; | small fireball can be included in mario's file
+	+	LDA !Characters					; |
+		AND #$F0 : BNE .NoMarioFire			; |
+	++	LDA #$08 : STA !GFX_SmallFireball		; |
+		LDA #$01 : STA !SuperDynamicMark+$03		; |
+		.NoMarioFire					;/
+
+		LDA !MultiPlayer : BEQ +			;\
+		LDA !Characters					; |
+		AND #$0F					; |
+		CMP #$01 : BNE +				; |
+		LDA #$1D : BRA ++				; |
+	+	LDA !Characters					; | luigi fireball
+		AND #$F0					; |
+		CMP #$10 : BNE .NoLuigiFire			; |
+		LDA #$0D					; |
+	++	STA !GFX_LuigiFireball				; |
+		LDA #$01 : STA !SuperDynamicMark+$06		; |
+		.NoLuigiFire					;/
+
+		PLP						;
+		JSR SuperDynamicFiles				; upload super-dynamic files
 		PHP
 		SEP #$30
 
-		LDY #$07				;\
-	-	LDA !Palset8,y : BNE +			; |
-		LDA #$80 : STA !Palset8,y		; | unused rows are marked 0x80, meaning they are free
-		BRA ++					; |
-	+	LDA PalsetDefaults,y : BMI ++		; | A-D load their default palsets if they are used
-		STA !Palset8,y				; |
-	++	DEY					; |
-		CPY #$02 : BCS -			;/
+		LDY #$07					;\
+	-	LDA !Palset8,y : BNE +				; |
+		LDA #$80 : STA !Palset8,y			; | unused rows are marked 0x80, meaning they are free
+		BRA ++						; |
+	+	LDA PalsetDefaults,y : BMI ++			; | A-D load their default palsets if they are used
+		STA !Palset8,y					; |
+	++	DEY						; |
+		CPY #$02 : BCS -				;/
 
 
-		LDA #$00 : STA !GFX_status+$FD		; 0xFD is a command, not a file
-		LDA #$00 : STA !GFX_status+$FE		; SP1 sprites should be set to offset 0
-		LDA #$E0 : STA !GFX_Dynamic		; dynamic area is the lowest 2 rows of SP4
+		LDA #$00 : STA !GFX_status+$FD			; 0xFD is a command, not a file
+		LDA #$00 : STA !GFX_status+$FE			; SP1 sprites should be set to offset 0
+		LDA #$E0 : STA !GFX_Dynamic			; dynamic area is the lowest 2 rows of SP4
 
-		LDX #$25				;\
-	-	LDA !GFX_status+$5A,x : STA $00		; |
-		AND #$0F				; |
-		STA $01					; |
-		LDA $00					; |
-		AND #$70				; |
-		ASL A					; |
-		ORA $01					; | unpack data for extra files
-		STA !Extra_Tiles,x			; |
-		LDA $00					; |
-		ASL A					; |
-		ROL A					; |
-		AND #$01				; |
-		STA !Extra_Prop,x			; |
-		DEX : BPL -				;/
+		LDX #$25					;\
+	-	LDA !GFX_status+$5A,x : STA $00			; |
+		AND #$0F					; |
+		STA $01						; |
+		LDA $00						; |
+		AND #$70					; |
+		ASL A						; |
+		ORA $01						; | unpack data for extra files
+		STA !Extra_Tiles,x				; |
+		LDA $00						; |
+		ASL A						; |
+		ROL A						; |
+		AND #$01					; |
+		STA !Extra_Prop,x				; |
+		DEX : BPL -					;/
 
 		PLP
 		RTS
@@ -1314,14 +1326,15 @@ db $FF
 dw ..end-..start|$8000	; hi prio file
 dw $F47
 db $47	; status offset 0x47
-db $38	; 0x38 blocks
+db $38	; 0x39 blocks
 ..start
 db $00,$00,$68	; 103 tiles 0x00-0x67
 db $70,$70,$08	; 7 tiles 0x70-0x77
 ..end
 %mark($1E)		; load football
 %mark($23)		; load rock
-%include($61, $37)	; include baseball (i had an 8x8 tile free so why not)
+%mark($61)		; load super dynamic dynamic baseball
+%super($07)		; super dynamic baseball
 db $FF
 
 .AmazingHammerBro
@@ -1495,7 +1508,10 @@ db $FF
 		%defaultpal(C)
 		db $FF
 
-.Baseball	%src($F61, $00, $01, $61)
+.Baseball	%cmd($F61, $00, $01, $61)
+		%defaultpal(C)
+		%super($07)
+		db $FF
 .WaterEffects	%src($F62, $00, $05, $62)
 .LavaEffects	%cmd($F63, $00, $02, $63)
 		%defaultpal(C)
@@ -1620,7 +1636,7 @@ dw $F8C
 db $8C
 db $10
 ..start
-db $00,$00,$10
+db $00,$00,$20
 ..end
 %include($8B, $00)	; include yoshi coin in this file (offset 0x00)
 db $FF
@@ -1728,7 +1744,6 @@ ReadLevelData:
 		LDX #$02FF				;\ (also clear GFX status, nothin personell kid)
 	-	STZ.w !GFX_status,x			; | wipe all files from queue
 		DEX : BPL -				;/ (including super-dynamic)
-		PHK : PLB				; go to this bank
 
 		REP #$20
 		LDA.l !Map16ActsLike : STA $00		;\ acts like pointer (lo byte)
@@ -1739,15 +1754,13 @@ ReadLevelData:
 		STA $03					;/
 
 		SEP #$20
-		LDA #$00 : STA !BigRAM			; clear brick flag
-		PHB
-		LDA #$40 : PHA : PLB			; at least we can read 1 bank fast this way
+		LDA #$00 : STA.l !BigRAM		; clear brick flag
 		LDX #$0000
 	.TileLoop
-		LDA $C800,x				;\
+		LDA $40C800,x				;\
 		ASL A					; |
 		STA $0E					; |
-		LDA $41C800,x				; |
+		LDA $C800,x				; |
 		ROL A					; |
 		STA $0F					; |
 		LDY $0E					; | scan map16 data for spawnables
@@ -1824,10 +1837,10 @@ ReadLevelData:
 		CMP #$27 : BEQ ..shell
 		CMP #$28 : BEQ ..shell
 	.NextTile
-		INX					;\
-		CPX #$3800 : BCS $03 : JMP .TileLoop	; | loop through entire level
-		PLB					;/
+		INX					;\ loop through entire level
+		CPX #$3800 : BCS $03 : JMP .TileLoop	;/
 
+		PHK : PLB
 
 	.SpriteData
 		LDX #$0000
@@ -1892,7 +1905,18 @@ ReadLevelData:
 		LDA [$CE],y : BNE +			; | load normal legs if bag = 00
 		LDA #$01 : STA !FileMark+$6C		; |
 		BRA ++					;/
-	+	PHX					;\
+	+	CMP #$FF : BNE ..notgoldenbandit	;\
+		LDA #$01				; |
+		STA !FileMark+$6D			; |
+		STA !FileMark+$8B			; | golden bandit config
+		STA !FileMark+$9C			; |
+		STA !FileMark+$98			; |
+		BRA +					;/
+
+	; DON'T ADD + after this because it could break stuff!!!
+
+		..notgoldenbandit
+		PHX					;\
 		CLC : ADC #$9C-1			; |
 		TAX					; | load carrying legs if bag != 00
 		LDA #$01 : STA !FileMark,x		; |
@@ -2058,7 +2082,7 @@ ReadLevelData:
 		LDA.w #.SA1>>8 : STA $3181			; | call SA-1
 		SEP #$20					; |
 		JSR $1E80					;/
-		LDY #$07					;\
+		LDY #$06					;\
 		LDA ($00),y : TAX				; | store bbpppppp
 		LDA !BigRAM+$7E : STA !GFX_status+$100,x	;/
 		REP #$20
@@ -2116,15 +2140,21 @@ ReadLevelData:
 		STZ $2250
 		REP #$30
 		LDY #$0004
-		LDA ($00),y : STA $0D
-		INY
-		LDA ($00),y : STA $0E
 
-		LDY #$0008				;\
+		LDA ($00),y : TAY
+		JSL !GetFileAddress
+		LDA !FileAddress : STA $0D
+		LDA !FileAddress+1 : STA $0E
+
+;	LDA ($00),y : STA $0D
+;	INY
+;	LDA ($00),y : STA $0E
+
+		LDY #$0007				;\
 		LDA ($00),y				; | number of chunks
 		AND #$00FF				; |
 		STA !BigRAM+$14 : STA !BigRAM+$7C	;/
-		LDY #$0009				;\
+		LDY #$0008				;\
 		LDA ($00),y				; |
 		AND #$FF00				; |
 		XBA : STA $2251				; |
@@ -2183,7 +2213,7 @@ ReadLevelData:
 		DEC A					; | check for end of row
 		AND !BigRAM+$12 : BNE +			;/
 		LDA ($00) : STA $2251			;\
-		LDY #$000A				; | calculate byte count of size in source file
+		LDY #$0009				; | calculate byte count of size in source file
 		LDA ($00),y				; |
 		STA $2253				;/
 		LDA !BigRAM+$12				;\
@@ -2205,7 +2235,7 @@ ReadLevelData:
 		REP #$30
 		LDX $02
 		LDA $04 : STA $2251
-		LDY #$0008
+		LDY #$0007
 		LDA ($00),y
 		AND #$00FF
 		STA $2253
@@ -2215,7 +2245,7 @@ ReadLevelData:
 		STA $0D
 		SEP #$20
 		LDA .RAMprop,x : STA $0F
-		LDY #$000B
+		LDY #$000A
 
 
 	..Loop	SEP #$20
@@ -2403,12 +2433,14 @@ ReadLevelData:
 
 
 		.Lookup
-		dw $FFFF : db $00	; hammer
+	;	dw $FFFF : db $00	; hammer
 		dw $10D : db $01	; plant head
-		dw $FFFF : db $02	; bone
-		dw $FFFF : db $03	; fireball 8x8
-		dw $FFFF : db $04	; fireball 16x16
+	;	dw $FFFF : db $02	; bone
+	;	dw $FFFF : db $03	; fireball 8x8
+	;	dw $FFFF : db $04	; fireball 16x16
 		dw $00F : db $05	; goomba
+	;	dw $FFFF : db $06	; luigi fireball
+	;	dw $FFFF : db $07	; baseball
 		..End
 
 
@@ -2419,6 +2451,8 @@ ReadLevelData:
 		dw .Fireball8x8		; 03
 		dw .Fireball16x16	; 04
 		dw .Goomba		; 05
+		dw .LuigiFireball	; 06
+		dw .Baseball		; 07
 		..End
 
 ; big fat note:
@@ -2432,68 +2466,88 @@ endmacro
 
 
 .Hammer
-dw $0008		; 00: width encoding
-%size($80*16)		; 02: size: 16 16x16 chunks
-dl $309008		; 04: base address
-db $00			; 07: SD GFX status index
-db $01			; 08: 1 chunk
-db $08,$10		; 09: chunk dimensions (16x16)
-db $00,$00,$01,$20,$0F	; 0B: rotate: chunk 0, iterations 1, angle 20, copies 15
-db $FF			; end file
+dw $0008			; 00: width encoding
+%size($80*16)			; 02: size: 16 16x16 chunks
+dw !File_Linear_Hammer		; 04: file index
+db $00				; 06: SD GFX status index
+db $01				; 07: 1 chunk
+db $08,$10			; 08: chunk dimensions (16x16)
+db $00,$00,$01,$20,$0F		; 0A: rotate: chunk 0, iterations 1, angle 20, copies 15
+db $FF				; end file
 
 .PlantHead
-dw $0040		; 00: width encoding
-%size($200*64)		; 02: size: 64 32x32 chunks
-dl $309088		; 04: base address
-db $01			; 07: SD GFX status index
-db $02			; 08: source file has 2 chunks
-db $10,$20		; 09: chunk dimensions (32x32)
-db $00,$00,$02,$20,$0F	; 0B: rotate: chunk 0, iterations 2, angle 20, copies 15
-db $01,$00,$01,$E0,$E0	; 10: scale: chunk 0, iterations 1, x 82%, y 82%
-db $01,$02,$0F,$E0,$E0	; 15: scale: chunk 2, iterations 15, x 82%, y 82%
-db $01,$00,$01,$C0,$C0	; 1A: scale: chunk 0, iterations 1, x 75%, y 75%
-db $01,$02,$0F,$C0,$C0	; 1F: scale: chunk 2, iterations 15, x 75%, y 75%
-db $FF			; end file
+dw $0040			; 00: width encoding
+%size($200*64)			; 02: size: 64 32x32 chunks
+dw !File_Linear_Planthead	; 04: file index
+db $01				; 06: SD GFX status index
+db $02				; 07: source file has 2 chunks
+db $10,$20			; 08: chunk dimensions (32x32)
+db $00,$00,$02,$20,$0F		; 0A: rotate: chunk 0, iterations 2, angle 20, copies 15
+db $01,$00,$01,$E0,$E0		; 0F: scale: chunk 0, iterations 1, x 82%, y 82%
+db $01,$02,$0F,$E0,$E0		; 14: scale: chunk 2, iterations 15, x 82%, y 82%
+db $01,$00,$01,$C0,$C0		; 19: scale: chunk 0, iterations 1, x 75%, y 75%
+db $01,$02,$0F,$C0,$C0		; 1E: scale: chunk 2, iterations 15, x 75%, y 75%
+db $FF				; end file
 
 .Bone
-dw $0008		; 00: width encoding
-%size($80*16)		; 02: size: 16 16x16 chunks
-dl $30A088		; 04: base address
-db $02			; 07: SD GFX status index
-db $01			; 08: 1 chunk
-db $08,$10		; 09: chunk dimensions (16x16)
-db $00,$00,$01,$20,$0F	; 0B: rotate: chunk 0, ierations 1, angle 20, copies 15
-db $FF			; end file
+dw $0008			; 00: width encoding
+%size($80*16)			; 02: size: 16 16x16 chunks
+dw !File_Linear_Bone		; 04: file index
+db $02				; 06: SD GFX status index
+db $01				; 07: 1 chunk
+db $08,$10			; 08: chunk dimensions (16x16)
+db $00,$00,$01,$20,$0F		; 0A: rotate: chunk 0, ierations 1, angle 20, copies 15
+db $FF				; end file
 
 .Fireball8x8
-dw $0004		; 00: width encoding
-%size($20*16)		; 02: size: 16 8x8 chunks
-dl $30A108		; 04: base address
-db $03			; 07: SD GFX status index
-db $01			; 08: 1 chunk
-db $04,$08		; 09: chunk dimensions (8x8)
-db $00,$00,$01,$20,$0F	; 0B: rotate: chunk 0, ierations 1, angle 20, copies 15
-db $FF			; end file
+dw $0004			; 00: width encoding
+%size($20*16)			; 02: size: 16 8x8 chunks
+dw !File_Linear_Fireball8x8	; 04: file index
+db $03				; 06: SD GFX status index
+db $01				; 07: 1 chunk
+db $04,$08			; 08: chunk dimensions (8x8)
+db $00,$00,$01,$20,$0F		; 0A: rotate: chunk 0, ierations 1, angle 20, copies 15
+db $FF				; end file
 
 .Fireball16x16
-dw $0008		; 00: width encoding
-%size($80*16)		; 02: size: 16 16x16 chunks
-dl $30A128		; 04: base address
-db $04			; 07: SD GFX status index
-db $01			; 08: 1 chunk
-db $08,$10		; 09: chunk dimensions (16x16)
-db $00,$00,$01,$20,$0F	; 0B: rotate: chunk 0, ierations 1, angle 20, copies 15
-db $FF			; end file
+dw $0008			; 00: width encoding
+%size($80*16)			; 02: size: 16 16x16 chunks
+dw !File_Linear_Fireball16x16	; 04: file index
+db $04				; 06: SD GFX status index
+db $01				; 07: 1 chunk
+db $08,$10			; 08: chunk dimensions (16x16)
+db $00,$00,$01,$20,$0F		; 0A: rotate: chunk 0, ierations 1, angle 20, copies 15
+db $FF				; end file
 
 .Goomba
-dw $0008		; 00: width encoding
-%size($80*16)		; 02: size: 16 16x16 chunks
-dl $30A1A8		; 04: base address
-db $05			; 07: SD GFX status index
-db $01			; 08: 1 chunk
-db $08,$10		; 09: chunk dimensions (16x16)
-db $00,$00,$01,$20,$0F	; 0B: rotate: chunk 0, ierations 1, angle 20, copies 15
-db $FF			; end file
+dw $0008			; 00: width encoding
+%size($80*16)			; 02: size: 16 16x16 chunks
+dw !File_Linear_Goomba		; 04: file index
+db $05				; 06: SD GFX status index
+db $01				; 07: 1 chunk
+db $08,$10			; 08: chunk dimensions (16x16)
+db $00,$00,$01,$20,$0F		; 0A: rotate: chunk 0, ierations 1, angle 20, copies 15
+db $FF				; end file
+
+.LuigiFireball
+dw $0004			; 00: width encoding
+%size($20*16)			; 02: size: 16 8x8 chunks
+dw !File_Linear_LuigiFireball	; 04: file index
+db $06				; 06: SD GFX status index
+db $01				; 07: 1 chunk
+db $04,$08			; 08: chunk dimensions (8x8)
+db $00,$00,$01,$20,$0F		; 0A: rotate: chunk 0, ierations 1, angle 20, copies 15
+db $FF				; end file
+
+.Baseball
+dw $0004			; 00: width encoding
+%size($20*16)			; 02: size: 16 8x8 chunks
+dw !File_Linear_Baseball	; 04: file index
+db $07				; 06: SD GFX status index
+db $01				; 07: 1 chunk
+db $04,$08			; 08: chunk dimensions (8x8)
+db $00,$00,$01,$20,$0F		; 0A: rotate: chunk 0, ierations 1, angle 20, copies 15
+db $FF				; end file
 
 
 	.Search

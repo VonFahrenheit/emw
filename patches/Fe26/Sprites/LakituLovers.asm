@@ -50,7 +50,7 @@ LakituLovers:
 
 macro LakituDyn(TileCount, SourceTile, DestVRAM)
 	dw <TileCount>*$20
-	dl <SourceTile>*$20+$398000
+	dl <SourceTile>*$20
 	dw <DestVRAM>*$10+$6000
 endmacro
 
@@ -260,7 +260,8 @@ endmacro
 
 		.Shared
 		STA $0C
-		CLC : JSL !UpdateGFX
+		LDY.b #!File_LakituLovers
+		JSL !UpdateFromFile
 		LDA.w #!BigRAM : STA $04
 		SEP #$20
 		LDA !InvincTimer
@@ -1854,9 +1855,37 @@ endmacro
 		CLC : ADC !BigRAM+0
 		STA !BigRAM+0
 		INC $04
+		LDA ($04)			; > get hi byte of header (GFX status to add)
 		INC $04
 		SEP #$20
-	-	LDA ($04),y			;\
+		CMP #$00 : BEQ .Loop		; if index is 0, just start
+
+		PEI ($00)			;\ back these up
+		PHX				;/
+		TAX				;\
+		LDA !GFX_status,x		; |
+		STZ $00				; |
+		STA $01				; |
+		AND #$70			; | unpack tile number offset
+		ASL A				; |
+		STA $00				; |
+		LDA $01				; |
+		AND #$0F			; |
+		ORA $00				;/
+		CLC : ADC $03			;\ store new tile number offset
+		STA $03				;/
+		LDA $01				;\
+		ASL A				; |
+		ROL A				; | store new property bits
+		AND #$01			; |
+		EOR $02				; |
+		STA $02				;/
+		PLX				;\
+		REP #$20			; | restore these
+		PLA : STA $00			; |
+		SEP #$20			;/
+
+	.Loop	LDA ($04),y			;\
 		EOR $02				; | Prop
 		STA !BigRAM+2,x			; |
 		INY				;/
@@ -1873,7 +1902,7 @@ endmacro
 		STA !BigRAM+5,x			; |
 		INY				;/
 		INX #4
-		CPY $08 : BNE -
+		CPY $08 : BCC .Loop
 		STX $06
 
 		PLP

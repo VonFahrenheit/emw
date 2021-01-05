@@ -8,7 +8,7 @@ sa1rom
 ; - reprogram bounce sprites a bit to fit 2 extra tables, and to add their offset (gotta hijack to do that)
 ; - lots and lots of bug testing
 
-incsrc "Defines.asm"
+incsrc "../Defines.asm"
 
 
 	!DebugRemapCount = 0
@@ -71,7 +71,8 @@ incsrc "Defines.asm"
 ;	30 block hitbox
 ;	31 yellow yoshi landing hitbox
 ;
-;	32+ unused
+;	32 -- about to clear --
+;	33+ custom
 
 
 macro remap(source, reg)
@@ -86,7 +87,7 @@ macro index(source, index)
 	!DebugRemapCount := !DebugRemapCount+1
 endmacro
 
-	org $13FC00
+	org $13F800
 	pushpc
 	org $028B05		;\ remove minor extended call
 	NOP #3			;/
@@ -106,6 +107,8 @@ endmacro
 	; kill score sprites
 	org $00F388
 		RTL		; prevent score sprite spawn
+		NOP
+		RTL		; RTL second entry point as well
 	BubbleOffsetY:		; use this extra space to map extra bubble coordinates
 		db $10,$16,$13,$1C
 		db $10,$16,$13,$1C
@@ -177,6 +180,209 @@ endmacro
 		TAY
 		PLA
 		CPY #$06+!BounceOffset
+		RTL
+
+
+	FixSparkleOffset:
+	.Init	REP #$20
+		AND #$00FF
+		CMP #$0080
+		BCC $03 : ORA #$00FF
+		CLC : ADC $96
+		STA $00
+		LDA $748E
+		AND #$000F
+		SEC : SBC #$0002
+		CLC : ADC $94
+		STA $02
+		SEP #$20
+		RTL
+
+	.Main	STA !Ex_Data1,y
+		LDA $01 : STA !Ex_YHi,y
+		LDA $03 : STA !Ex_XHi,y
+		RTL
+
+	GlitterSparkleFix:
+	.Init	LDA !Ex_XHi,x : STA $01
+		LDA !Ex_YLo,x : STA $02
+		LDA !Ex_YHi,x : STA $03
+		RTL
+
+	.Main	REP #$20
+		LDA $98C2,x
+		AND #$00FF
+		CMP #$0080
+		BCC $03 : ORA #$FF00
+		CLC : ADC $00
+		SEP #$20
+		STA !Ex_XLo,y
+		XBA : STA !Ex_XHi,y
+		REP #$20
+		LDA $98C6,x
+		AND #$00FF
+		CMP #$0080
+		BCC $03 : ORA #$FF00
+		CLC : ADC $02
+		SEP #$20
+		STA !Ex_YLo,y
+		XBA : STA !Ex_YHi,y
+		RTL
+
+	ZSpawnFix:
+		STA !Ex_YLo,y
+		LDA $3240,x : STA !Ex_YHi,y
+		LDA $3250,x
+		ADC #$00				; hi bit still in carry so this is fine
+		STA !Ex_XHi,y
+		RTL
+
+	SmokeSpawn:
+		.SpritePlus0001
+		PEI ($0E)
+		STA !Ex_Num,y
+		LDA $3220,x : STA $0E
+		LDA $3250,x : STA $0F
+		REP #$20
+		LDA $00
+		AND #$00FF
+		CMP #$0080
+		BCC $03 : ORA #$FF00
+		CLC : ADC $0E
+		SEP #$20
+		STA !Ex_XLo,y
+		XBA : STA !Ex_XHi,y
+		LDA $3210,x : STA $0E
+		LDA $3240,x : STA $0F
+		REP #$20
+		LDA $01
+		AND #$00FF
+		CMP #$0080
+		BCC $03 : ORA #$FF00
+		CLC : ADC $0E
+		SEP #$20
+		STA !Ex_YLo,y
+		XBA : STA !Ex_YHi,y
+		REP #$20
+		PLA : STA $0E
+		SEP #$20
+		JMP .Finish
+
+		.Block
+		STA !Ex_Num,y
+		LDA $7933 : BNE ..layer2
+		..layer1
+		LDA $9A
+		AND #$F0
+		STA !Ex_XLo,y
+		LDA $9B : STA !Ex_XHi,y
+		LDA $98
+		AND #$F0
+		STA !Ex_YLo,y
+		LDA $99 : STA !Ex_YHi,y
+		JMP .Finish
+		..layer2
+		REP #$20
+		LDA $9A
+		SEC : SBC $26
+		SEP #$20
+		STA !Ex_XLo,y
+		XBA : STA !Ex_XHi,y
+		REP #$20
+		LDA $98
+		SEC : SBC $28
+		SEP #$20
+		STA !Ex_YLo,y
+		XBA : STA !Ex_YHi,y
+		JMP .Finish
+
+		.Sprite
+		STA !Ex_Num,y
+		LDA $3220,x : STA !Ex_XLo,y
+		LDA $3250,x : STA !Ex_XHi,y
+		LDA $3210,x : STA !Ex_YLo,y
+		LDA $3240,x : STA !Ex_YHi,y
+		BRA .Finish
+
+		.Mario8
+		STA !Ex_Num,y
+		REP #$20
+		LDA $94
+		CLC : ADC #$0004
+		SEP #$20
+		STA !Ex_XLo,y
+		XBA : STA !Ex_XHi,y
+		REP #$20
+		LDA $96
+		CLC : ADC #$001A
+		SEP #$20
+		STA !Ex_YLo,y
+		XBA : STA !Ex_YHi,y
+		BRA .Finish
+
+		.Mario16
+		STA !Ex_Num,y
+		LDA $94 : STA !Ex_XLo,y
+		LDA $95 : STA !Ex_XHi,y
+		REP #$20
+		LDA $96
+		CLC : ADC #$0014
+		SEP #$20
+		STA !Ex_YLo,y
+		XBA : STA !Ex_YHi,y
+		BRA .Finish
+
+		.MarioSpecial
+		STA !Ex_Num,y
+		LDA $94 : STA !Ex_XLo,y
+		LDA $95 : STA !Ex_XHi,y
+		REP #$20
+		LDA $96
+		CLC : ADC #$0008
+		SEP #$20
+		STA !Ex_YLo,y
+		XBA : STA !Ex_YHi,y
+
+		.Finish
+		LDA !Ex_Num,y
+		AND #$7F
+		SEC : SBC.b #!SmokeOffset
+		PHX
+		TAX
+		LDA.l .Timer,x : STA !Ex_Data1,y
+		PLX
+		RTL
+
+		.Timer
+		;   00  01  02  03  04  05
+		db $00,$1B,$08,$13,$00,$10
+
+		.SpriteX
+		PHX
+		PHY
+		PHX
+		PHY
+		PLX
+		PLY
+		JSL .Sprite
+		PLY
+		PLX
+		RTL
+
+
+	TransformCoordinates:
+		LDA !Ex_XLo,x
+		SBC $26					; small optimization, carry already set
+		STA !Ex_XLo,x
+		LDA !Ex_XHi,x
+		SBC $27
+		STA !Ex_XHi,x
+		LDA !Ex_YLo,x
+		SEC : SBC $28
+		STA !Ex_YLo,x
+		LDA !Ex_YHi,x
+		SBC $29
+		STA !Ex_YHi,x
 		RTL
 
 
@@ -281,7 +487,7 @@ endmacro
 		CMP #$06+!SmokeOffset : BCC .Smoke
 		CMP #$08+!BounceOffset : BCC .Bounce
 		CMP #$03+!QuakeOffset : BCC .Quake
-		CMP #$02+!CustomOffset : BCC .Custom
+		CMP.b #((.CustomPtr_End-.CustomPtr)/2)+!CustomOffset+1 : BCC .Custom
 		BRA .Clear			; invalid numbers should be cleared
 
 	.Coin
@@ -327,6 +533,9 @@ endmacro
 
 		.CustomPtr
 		dw DizzyStar
+		dw LuigiFireball
+		dw BigFireball
+		..End
 
 
 	.PalsetIndex
@@ -346,8 +555,8 @@ endmacro
 		db $00	; 0D - unused
 		db $00	; 0E - empty
 		db $0A	; 0F - smoke puff, yellow
-		db $0C	; 10 - reznor fireball, red
-		db $0C	; 11 - tiny flame, red
+		db $0A	; 10 - enemy fireball, yellow (for big/reznor version, use custom 35)
+		db $0A	; 11 - tiny flame, yellow
 		db $0B	; 12 - hammer, blue
 		db $0A	; 13 - mario fireball, yellow
 		db $0E	; 14 - bone, grey
@@ -381,7 +590,10 @@ endmacro
 		db $00	; 30 - block hitbox
 		db $00	; 31 - yellow yoshi landing hitbox
 		db $00	; 32 - empty
-		db $0A	; 33 - dizzy star
+		db $0A	; 33 - dizzy star, yellow
+		db $01	; 34 - luigi fireball, luigi palset
+		db $0A	; 35 - big fireball, yellow
+		..End
 
 
 	; data 1: --ppssss
@@ -546,6 +758,739 @@ endmacro
 		RTS
 
 
+	LuigiFireball:
+		LDX $75E9
+
+		LDA !Ex_YLo,x : PHA
+		LDA !Ex_YHi,x : PHA
+		STZ !Ex_YSpeed,x
+		LDA !GFX_SmallFireball : PHA
+		LDA !GFX_LuigiFireball : STA !GFX_SmallFireball
+
+		PHK : PEA.w .Return-1
+		PEA $8B66-1			; point to RTL
+		JML $029FAF
+
+		.Return
+		PLA : STA !GFX_SmallFireball
+		PLA : STA !Ex_YHi,x
+		PLA : STA !Ex_YLo,x
+		RTS
+
+	BigFireball:
+		LDX $75E9
+		PHK : PEA.w .Return-1
+		PEA $8B66-1
+		JML $02A16B			; enemy fireball code
+		.Return
+		RTS
+
+
+;
+; input:
+;	JSL followed by table, returns to first byte after table
+; table format:
+;	header (number of per-tile bytes to read, highest bit is p (0 = use $64, 1 = use PP bits))
+;	GFX status index
+;	for each tile:
+;		Xdisp
+;		Ydisp
+;		tile
+;		YXPP--sp
+;	YX bits are written directly
+;	PP bits are written directly if p is set, otherwise $64 is used
+;	s is used as size bit
+;
+; $00 - 16-bit	Xpos
+; $02 - 16-bit	Ypos
+; $04 - 24-bit	pointer
+; $07 - 8-bit	index to stop reading at
+; $08 - 8-bit	p flag
+; $0A -
+; $0C - 8-bit	tile offset from GFX status
+; $0D - 8-bit	hi bit of tile number from GFX status
+; $0E - 16-bit	working Xpos
+
+	DisplayGFX:
+		REP #$20				;\
+		LDA $01,s				; |
+		INC A					; | pointer to first byte after JSL instruction
+		STA $04					; |
+		SEP #$20				; |
+		LDA $03,s : STA $06			;/
+		REP #$20				;\
+		LDA [$04]				; |
+		AND #$007F				; |
+		STA $07					; > save header in RAM
+		INC #2					; |
+		CLC : ADC $01,s				; > update return address
+		STA $01,s				;/
+		LDA [$04]				;\
+		AND #$0080				; | p flag
+		STA $08					;/
+		INC $04					;\
+		LDA [$04]				; |
+		INC $04					; | read GFX status index and increment past header bytes
+		SEP #$20				; | (now ready to read per-tile data)
+		STA $0F					;/
+
+		PHX					; > push X
+		LDA !Ex_XLo,x : STA $00			;\
+		LDA !Ex_XHi,x : STA $01			; | base coordinates
+		LDA !Ex_YLo,x : STA $02			; |
+		LDA !Ex_YHi,x : STA $03			;/
+		LDA !Ex_Palset,x			;\
+		AND #$0E				; | CCC bits
+		STA $0D					;/
+		BIT $08 : BMI .Skip64			; p bit
+	.Set64	LDA $64					;\
+		AND #$30				; | add PP bits from $64
+		TSB $0D					;/
+	.Skip64	LDX $0F					;\
+		CPX #$FF : BNE +			; | (0xFF means offset 0)
+		STZ $0C					; |
+		BRA ++					; |
+	+	LDA !GFX_status,x : STA $0F		; |
+		AND #$70				; |
+		ASL A					; |
+		STA $0C					; | unpack GFX offset
+		LDA $0F					; |
+		AND #$0F				; |
+		TSB $0C					; |
+		LDA $0F					; |
+		BPL $02 : INC $0D			; |
+		++					;/
+
+		LDX !OAMindex				; X = OAM index
+		LDY #$00				; Y = per-tile data
+
+		REP #$20
+		LDA $00
+		SEC : SBC $1A
+		STA $00
+		CMP #$0110 : BCC +
+		CMP #$FFE0 : BCC .Despawn
+	+	LDA $02
+		SEC : SBC $1C
+		STA $02
+		CMP #$00F0 : BCC .Loop
+		CMP #$FFE0 : BCS .Loop
+
+	.Despawn
+		SEP #$20
+		PLX
+		STZ !Ex_Num,x
+		STZ $00
+		RTL
+
+	.BadX	INY					;\
+	.BadY	INY #3					; | off-screen: go to next tile
+		SEP #$20				; |
+		BRA .Next				;/
+
+	.Loop	REP #$20				; A 16-bit
+		LDA [$04],y				;\
+		AND #$00FF				; |
+		CMP #$0080				; |
+		BCC $03 : ORA #$FF00			; | check X
+		CLC : ADC $00				; |
+		CMP #$0100 : BCC .GoodX			; |
+		CMP #$FFF0 : BCC .BadX			;/
+
+	.GoodX	AND #$01FF				;\ store 9-bit X in scratch RAM
+		STA $0E					;/
+		INY					;\
+		LDA [$04],y				; |
+		AND #$00FF				; |
+		CMP #$0080				; | check Y
+		BCC $03 : ORA #$FF00			; |
+		CLC : ADC $02				; |
+		CMP #$00E0 : BCC .GoodY			; |
+		CMP #$FFF0 : BCC .BadY			;/
+	.GoodY	STA !OAM+$001,x				; store Y
+		SEP #$20				; A 8-bit
+		LDA $0E : STA !OAM+$000,x		; store X lo
+		INY					;\
+		LDA [$04],y				; | store tile number
+		CLC : ADC $0C				; |
+		STA !OAM+$002,x				;/
+		INY					;\
+		LDA [$04],y				; |
+		BIT $08 : BPL .64			; |
+	.PP	AND #$F0 : BRA .Prop			; | store YXPPCCCT
+	.64	AND #$30				; |
+	.Prop	ORA $0D					; |
+		STA !OAM+$003,x				;/
+		PHX					;\
+		TXA					; |
+		LSR #2					; |
+		TAX					; |
+		LDA [$04],y				; | store hi byte
+		AND #$02				; |
+		ORA $0F					; |
+		STA !OAMhi+$00,x			; |
+		PLX					; |
+		INY					;/
+		INX #4					; increment OAM index
+	.Next	CPY $07 : BCC .Loop			; loop
+
+		STZ $00					;\
+		TXA					; |
+		SEC : SBC !OAMindex			; | return $00 = number of tiles written
+		LSR #2					; |
+		STA $00					;/
+		STX !OAMindex				; update OAM index
+		PLX					; pull X
+		RTL					; return
+
+
+	HammerSpinJump:
+		JSL !CheckContact
+		BCS .Contact
+		JML $02A468				; > return with no contact
+.Contact	LDA !Ex_Num,x
+		CMP #$04+!ExtendedOffset : BNE .NoHammer
+		LDA !Ex_Data3,x
+		LSR A : BCS .Return
+		LDA !MarioSpinJump : BNE .SpinHammer
+		BRA .NoHammer
+
+.SpinHammer	JSL !BouncePlayer
+		JSL !ContactGFX
+		LDA #$02 : STA !SPC1
+		LDA #$40 : STA !Ex_YSpeed,x
+		STZ !Ex_XSpeed,x
+		LDA !Ex_Data3,x				; mark hammer as owned by player
+		ORA #$01
+		STA !Ex_Data3,x
+.Return		JML $02A468				; > return
+.NoHammer	JML $02A40E				; > non-hammer code
+
+
+	; GenerateHammer starts at $02DAC3.
+
+	HammerSpawn:
+		LDA #$04+!ExtendedOffset : STA !Ex_Num,y
+		LDA #$00 : STA !Ex_Data3,y
+		JML $02DAC8
+
+	HammerWaterCheck:
+		PHX
+		LDA !Ex_XLo,x : STA $00
+		LDA !Ex_XHi,x : STA $01
+		LDA !Ex_YLo,x : STA $02
+		LDA !Ex_YHi,x : STA $03
+		REP #$10
+		LDA !IceLevel : BNE .No3D
+		LDA !3DWater : BEQ .No3D
+		LDY $02 : BMI .No3D
+		CPY !Level+2 : BCS .Water
+	.No3D	LDX $00
+		LDY $02
+		JSL !GetMap16
+		CMP #$0006 : BCS .NoWater
+
+	.Water	SEP #$30
+		PLX
+		LDA $9D : BNE .02A30C
+		TXA
+		CLC : ADC $14
+		AND #$01 : BNE .02A2F3
+	.02A2F9	JML $02A2F9
+
+	.NoWater
+		SEP #$30
+	.Return	PLX
+		LDA $9D : BNE .02A30C
+	.02A2F3	JML $02A2F3
+	.02A30C	JML $02A30C
+
+
+incsrc "MalleableExtendedSprite.asm"
+
+
+
+	; -- coin gfx fix --
+	; (coin needs no fix)
+
+	; -- minor gfx fix --
+	org $028FCA
+	BrickPiece:
+		JSL DisplayGFX
+		db $04,$FF
+		db $00,$00,$00,$00
+		LDA $00 : BEQ .Return
+		LDA $14
+		LSR A
+		CLC : ADC $7698
+		AND #$07
+		TAY
+		LDA $8B84,y
+		LDY !OAMindex
+		STA !OAM+$002-4,y
+		LDA !Ex_Data1,x : BEQ .Return
+		LDA !OAM+$003-4,y
+		AND.b #$0E^$FF
+		STA $00
+		LDA $14
+		AND #$0E
+		ORA $00
+		STA !OAM+$003-4,y
+	.Return	RTS
+	warnpc $02902D
+
+	org $028EE1
+	Sparkles:
+		JSL DisplayGFX
+		db $04,$FF
+		db $00,$00,$00,$00
+		LDA $00 : BEQ .Return
+		LDA !Ex_Data1,x
+		LSR #3
+		TAY
+		LDA !Ex_Num,x
+		CMP #$02+!MinorOffset : BEQ .SmallStar
+		.BlueSparkle
+		INY #3
+		.SmallStar
+		LDA $8ECC,y				; same table but different offsets
+		LDY !OAMindex
+		STA !OAM+$002-4,y
+	.Return	RTS
+	warnpc $028F2B
+
+	org $028F4D
+	FireParticle:
+		JSL DisplayGFX
+		db $04,!GFX_LavaEffects-!GFX_status
+		db $00,$00,$00,$00
+		LDA $00 : BEQ .Return
+		LDA !Ex_Data1,x
+		LSR #3
+		TAY
+		LDA $8F2B,y
+		CLC : ADC $0C
+		LDY !OAMindex
+		STA !OAM+$002-4,y
+	.Return	RTS
+
+	org $028E20
+	Z:
+		JSL DisplayGFX
+		db $04,!GFX_RipVanFish-!GFX_status
+		db $00,$00,$00,$00
+		LDA $00 : BEQ .Return
+		LDA !Ex_Data1,x
+		LSR #5
+		AND #$03
+		TAY
+		LDA $8DD7,y
+		CLC : ADC $0C
+		LDY !OAMindex
+		STA !OAM+$002-4,y
+	.Return	RTS
+	warnpc $028E76
+
+	org $028DEA
+		BNE +
+		STZ !Ex_Num,x		; make Z actually despawn when timer runs out
+		RTS
+		NOP
+		+
+	warnpc $028DF1
+
+	org $028D42			; water splash tile table
+		db $00,$00,$02,$02,$02	; $68 -> $00, $6A -> $02
+	org $028D8B
+	WaterSplash:
+		LDA !Ex_Data1,x
+		INC !Ex_Data1,x
+		LSR A
+		CMP #$0C
+		BCC $02 : LDA #$0C
+		TAY
+		LDA $8D42,y : BEQ .Water00
+		CMP #$02 : BEQ .Water02
+		CMP #$66 : BNE .Smoke16x16		; catch 8x8 smoke tile
+		.Smoke8x8
+		JMP Smoke01_8
+		.Smoke16x16
+		PHA
+		JSL DisplayGFX
+		db $04,$FF
+		db $00,$00,$00,$02
+		PLA
+		LDY $00 : BEQ .Return
+		LDY !OAMindex
+		STA !OAM+$002-4,y
+	.Return	RTS
+		.Water00
+		JSL DisplayGFX
+		db $04,!GFX_WaterEffects-!GFX_status
+		db $00,$00,$00,$02
+		RTS
+		.Water02
+		JSL DisplayGFX
+		db $04,!GFX_WaterEffects-!GFX_status
+		db $00,$00,$02,$02
+		RTS
+	warnpc $028DD7
+
+	org $028CFF
+	BooStream:
+		JSL DisplayGFX
+		db $04,!GFX_Boo-!GFX_status
+		db $00,$00,$00,$02
+		LDA $00 : BEQ .Return
+		LDY !OAMindex
+		PHX
+		TXA
+		AND #$0B
+		TAX
+		LDA $8CB8,x
+		PLX
+		CLC : ADC !OAM+$002-4,y
+		STA !OAM+$002-4,y
+		LDA !Ex_XSpeed,x
+		LSR A
+		AND #$40
+		ORA !OAM+$003-4,y
+		STA !OAM+$003-4,y
+	.Return	RTS
+	warnpc $028D42
+
+
+	; -- extended gfx fix --
+	org $02A362
+	SmokeExtended:
+		LDA !Ex_Data2,x
+		LSR #2
+		TAY
+		LDA $A347,y
+		CMP #$66 : BNE .16
+	.8	JMP Smoke01_8
+
+	.16	JSL DisplayGFX
+		db $04,$FF
+		db $00,$00,$00,$02
+		LDA $00 : BEQ .Return
+		LDA !Ex_Data2,x
+		LSR #2
+		TAY
+		LDA $A347,y
+		LDY !OAMindex
+		STA !OAM+$002-4,y
+	.Return	RTS
+	warnpc $02A3AE
+
+	org $02A178
+	EnemyFireball:
+		LDA !Ex_Num,x					;\ if num  = extended 02, this looks like mario's fireball
+		CMP #$02+!ExtendedOffset : BEQ MarioFireball	;/ otherwise, it's a big fireball
+		JSL DisplayGFX
+		db $04,!GFX_ReznorFireball-!GFX_status
+		db $00,$00,$00,$02
+		LDA $00 : BEQ .Return
+		LDY !OAMindex
+		LDA !OAM+$003-4,y
+		AND #$3F
+		BIT !Ex_Data3,x
+		BPL $02 : ORA #$C0
+		BVC $02 : EOR #$40
+		STA !OAM+$003-4,y
+	.Return	RTS
+	warnpc $02A1A4
+
+	org $02A232
+	TinyFlame:
+		JSL DisplayGFX
+		db $04,!GFX_HoppingFlame
+		db $00,$00,$00,$00
+		LDA $00 : BEQ .Return
+		LDA !Ex_Data1,x
+		AND #$04
+		LSR #2
+		TAY
+		LDA $A217,y
+		ADC $0C			; trick due to VERY limited space: the LSR always clears C
+		LDY !OAMindex
+		STA !OAM+$002-4,y
+	.Return	RTS
+	warnpc $02A254
+
+	org $02A405
+		JML HammerSpinJump
+	org $02DAC3
+		JML HammerSpawn		; org: LDA #$04 : STA $170B,y
+		NOP
+	org $02A2EF
+		JML HammerWaterCheck	; org: LDA $9D : BNE $19 ($02A30C)
+
+	org $02A317
+	Hammer:
+		JSL DisplayGFX
+		db $04,!GFX_Hammer-!GFX_status
+		db $00,$00,$00,$02
+		LDA $00 : BEQ .Return
+		LDY !OAMindex
+		LDA !OAM+$003-4,y
+		BIT !Ex_Data3,x
+		BPL $02 : ORA #$C0
+		BVC $02 : EOR #$40
+		STA !OAM+$003-4,y
+	.Return	RTS
+	warnpc $02A344
+
+	org $029FB3
+		BRA 13 : NOP #13
+	warnpc $029FC2
+	org $02A03B
+		JMP MarioFireball
+	org $02A1A4
+	MarioFireball:
+		JSL DisplayGFX
+		db $04,!GFX_SmallFireball-!GFX_status
+		db $00,$00,$00,$00
+		LDA $00 : BEQ .Return
+		LDY !OAMindex
+		LDA !OAM+$003-4,y
+		AND #$3F
+		BIT !Ex_Data3,x
+		BPL $02 : ORA #$C0
+		BVC $02 : EOR #$40
+		STA !OAM+$003-4,y
+	.Return	RTS
+	warnpc $02A211
+
+	org $02A2C3
+	Bone:
+		JSL DisplayGFX
+		db $04,!GFX_Bone-!GFX_status
+		db $00,$00,$00,$02
+		LDA $00 : BEQ .Return
+		TXA
+		AND #$01
+		BEQ $02 : LDA #$C0
+		BIT !Ex_XSpeed,x
+		BMI $02 : EOR #$40
+		LDY !OAMindex
+		ORA !OAM+$003-4,y
+		STA !OAM+$003-4,y
+	.Return	RTS
+	warnpc $02A2EF			; we can overwrite the hammer tile table since it's unused
+	org $03C44E
+		BRA 6 : NOP #6		; spawn bone even if dry bones is off-screen
+	warnpc $03C456
+
+	org $029E9D
+	LavaSplash:
+		JSL DisplayGFX
+		db $00,!GFX_LavaEffects-!GFX_status
+		db $00,$00,$00,$00
+		LDA $00 : BEQ .Return
+		LDA !Ex_Data2,x
+		LSR #3
+		AND #$03
+		TAY
+		LDA $9E82,y
+		LDY !OAMindex
+		STA !OAM+$002-4,y
+	.Return	RTS
+	warnpc $029EE6
+
+	org $029E39
+	Code_029E39:
+
+	org $029E3D
+	TorpedoTedArm:
+		LDY #$00
+		LDA !Ex_Data2,x : BEQ Code_029E39
+		CMP #$60 : BCS .Speed
+		INY
+		CMP #$30 : BCS .Speed
+		INY
+	.Speed	LDA $9D : BNE .GFX
+		LDA $9E36,y : STA !Ex_YSpeed,x
+		JSR $B560
+	.GFX	LDA !Ex_Data2,x
+		CMP #$60 : BCC .Tile08
+	.Tile06	JSL DisplayGFX
+		db $84,!GFX_TorpedoTed-!GFX_status
+		db $00,$00,$06,$12
+		RTS
+	.Tile08	JSL DisplayGFX
+		db $84,!GFX_TorpedoTed-!GFX_status
+		db $00,$00,$08,$12
+		RTS
+	warnpc $029E82
+
+	org $02A313
+	EnemyFireballWithGravity:
+		JSR MarioFireball
+	warnpc $02A316
+
+	org $029B51
+	LotusPollen:
+		LDA $14
+		LSR A
+		EOR $75E9
+		LSR #2
+		BCC .Tile10
+	.Tile00	JSL DisplayGFX
+		db $04,!GFX_LotusPollen-!GFX_status
+		db $00,$00,$00,$00
+		BRA .Done
+	.Tile10	JSL DisplayGFX
+		db $04,!GFX_LotusPollen-!GFX_status
+		db $00,$00,$10,$00
+		BRA .Done
+	warnpc $029BA5
+	org $029BA5
+	.Done
+
+	org $02A271
+	Baseball:
+		JSL DisplayGFX
+		db $04,!GFX_Baseball-!GFX_status
+		db $00,$00,$00,$00
+		LDA $00 : BEQ .Return
+		TXA
+		AND #$01
+		BEQ $02 : LDA #$C0
+		BIT !Ex_XSpeed,x
+		BMI $02 : EOR #$40
+		LDY !OAMindex
+		ORA !OAM+$003-4,y
+		STA !OAM+$003-4,y
+	.Return	RTS
+	warnpc $02A2BF
+	org $02C466
+		LDA $32F0,x			;\ spawn baseball even if chuck is off-screen
+		BEQ $03 : RTS : NOP #2		;/
+	warnpc $02C46E
+
+	org $029C88
+	SpinJumpStars:
+		JSL DisplayGFX
+		db $04,$FF
+		db $00,$00,$48,$00
+		BRA .Done
+	warnpc $029C98
+	org $029C98
+		.Done
+
+	org $029F2A
+	Bubble:
+		LDA !Ex_Data1,x
+		LSR #2
+		AND #$03
+		TAY
+		LDA $9EEA,y
+		BEQ .Disp00
+		BMI .DispFF
+	.Disp01	JSL DisplayGFX
+		db $04,!GFX_WaterEffects-!GFX_status
+		db $01,$05,$04,$00
+		RTS
+	.Disp00	JSL DisplayGFX
+		db $04,!GFX_WaterEffects-!GFX_status
+		db $00,$05,$04,$00
+		RTS
+	.DispFF	JSL DisplayGFX
+		db $04,!GFX_WaterEffects-!GFX_status
+		db $FF,$05,$04,$00
+		RTS
+	warnpc $029F61
+
+
+	; -- smoke gfx fix --
+	org $02999F
+	SmokeGeneric:
+		JSL DisplayGFX
+		db $04,$FF
+		db $00,$00,$00,$02
+		LDA $00 : BEQ .Return
+		LDY !OAMindex
+		LDA !Ex_Data1,x
+		LSR #2
+		TAX
+		LDA $9922,x : STA !OAM+$102-4,y
+	.Return	LDX $7698
+		RTS
+
+	org $029701
+	Smoke01:
+		LDA !Ex_Data1,x
+		LSR #2
+		TAY
+		LDA $96D8,y
+		CMP #$66 : BNE .16
+	.8	JSL DisplayGFX
+		db $04,$FF
+		db $04,$04,$5E,$00
+		RTS
+
+	.16	JSL DisplayGFX
+		db $04,$FF
+		db $00,$00,$00,$02
+		LDA $00 : BEQ .Return
+		LDA !Ex_Data1,x
+		LSR #2
+		TAY
+		LDA $96D8,y
+		LDY !OAMindex
+		STA !OAM+$002-4,y
+	.Return	RTS
+	warnpc $02974A
+	org $02974A
+		JMP Smoke01
+
+	org $0297B2
+	ContactGFX:
+		JSL DisplayGFX
+		db $04,$FF
+		db $00,$00,$66,$02
+		LDA $00 : BEQ .Return
+		LDY !Ex_Data1,x
+		LDA.w .Tiles,y
+		LDY !OAMindex
+		STA !OAM+$002-4,y
+	.Return	RTS
+	.Tiles	db $6A,$6A,$6A,$68,$68,$68,$66,$66
+
+	org $029936
+		JMP $9793		; skip a pointless code that just writes 0xF0 to OAM Y
+
+	org $02996F
+	TurnSmoke:
+		JSL DisplayGFX
+		db $04,$FF
+		db $00,$00,$00,$00
+		LDA $00 : BEQ .Return
+		LDY !OAMindex
+		PHX
+		LDA !Ex_Data1,x
+		LSR #2
+		TAX
+		LDA.w $9922,x : STA !OAM+$002-4,y
+		PLX
+	.Return	RTS
+
+
+
+	; to DO:
+	; integrate GFX_expand edits
+	; test EVERYTHING
+	; make sure new GFX code works
+
+
+
+
+;===================;
+; REMAP STUFF BELOW ;
+;===================;
+
+
 ;	table size:
 	%index($01F7EC, !Ex_Amount-1)		;\
 	%index($028677, !Ex_Amount-1)		; |
@@ -597,9 +1542,9 @@ endmacro
 	%index($01BD98, !Ex_Amount-1)		; | smoke (spawn checks)
 	%index($01C4F0, !Ex_Amount-1)		; |
 	%index($01C5BD, !Ex_Amount-1)		; |
-	%index($028A45, !Ex_Amount-1)		; |
-	%index($029ADA, !Ex_Amount-1)		; |
-	%index($02A41C, !Ex_Amount-1)		; |
+;	%index($028A45, !Ex_Amount-1)		; | > overwritten by remap, see $028A44
+;	%index($029ADA, !Ex_Amount-1)		; | > overwritten by optimization, see $029ADA
+;	%index($02A41C, !Ex_Amount-1)		; | > overwritten by optimization, see $02A419
 	%index($02B4DE, !Ex_Amount-1)		; |
 	%index($02B952, !Ex_Amount-1)		; |
 	%index($038A16, !Ex_Amount-1)		;/
@@ -608,6 +1553,7 @@ endmacro
 	%index($0286ED, !Ex_Amount-1)		;\ quake (spawn check)
 	%index($0286ED, !Ex_Amount-1)		;/
 	%index($02903B, !Ex_Amount-1)		; main loop for bounce, quake, and smoke sprites
+	%index($028A66, !Ex_Amount-1)		; coin (spawn check)
 	%index($028A75, !Ex_Amount-1)		; coin (index mem)
 	%index($029356, !Ex_Amount-1)		; coin (spawn check)
 	%index($0299D2, !Ex_Amount-1)		; coin (main loop)
@@ -649,8 +1595,8 @@ endmacro
 	%remap($028BC2, !Ex_Num)
 	%remap($028C32, !Ex_Num)
 	%remap($028E02, !Ex_Num)	; num remapped!
-	%remap($028E4F, !Ex_Num)	; num remapped!
-	%remap($028EFE, !Ex_Num)	; num remapped!
+;	%remap($028E4F, !Ex_Num)	; num remapped! part of GFX recode
+;	%remap($028EFE, !Ex_Num)	; num remapped! part of GFX recode
 	%remap($0298DC, !Ex_Num)
 	%remap($02C0F2, !Ex_Num)
 	%remap($039022, !Ex_Num)
@@ -663,8 +1609,19 @@ endmacro
 		LDA #$03+!MinorOffset
 	org $028505
 		LDA #$07+!MinorOffset
+
+
+	org $0285A9
+		JSL FixSparkleOffset_Init	; org: ADC $96 : STA $00
+		BRA 11 : NOP #11		; see all.log for reference
+	warnpc $0285BA
+	org $0285DB
+		JML FixSparkleOffset_Main	; org: STA !Ex_Data,y : RTL
+	warnpc $0285DF
 	org $0285C5
 		LDA #$05+!MinorOffset
+
+
 	org $0285F3
 		LDA #$04+!MinorOffset
 	org $028684
@@ -673,14 +1630,30 @@ endmacro
 		LDA #$0B+!MinorOffset
 	org $028C3B
 		LDA #$0B+!MinorOffset
+
+
 	org $0298F1
 		LDA #$02+!MinorOffset
+	org $0298F6
+		JSL GlitterSparkleFix_Init	;\ org: LDA !Ex_YLo,x : STA $01
+		NOP				;/
+	org $029909
+		JSL GlitterSparkleFix_Main	; org: LDA $98C2,x : CLC
+		BRA 12 : NOP #12
+	warnpc $02991B
+
+
 	org $02C0D9
 		LDA #$06+!MinorOffset
+	org $02C115
+		JSL ZSpawnFix			;\ org: CLC : ADC #$00 : STA !Ex_YLo,y
+		NOP #2				;/
+
 	org $039037
 		LDA #$0A+!MinorOffset
 	org $03AD74
 		LDA #$05+!MinorOffset
+
 
 ;	remap minor extended num reads
 	org $028E05
@@ -717,7 +1690,7 @@ endmacro
 	%remap($029BDA, !Ex_Num)
 	%remap($029C7F, !Ex_Num)
 	%remap($029D5A, !Ex_Num)
-	%remap($029D99, !Ex_Num)
+;	%remap($029D99, !Ex_Num)	; part of GFX recode
 	%remap($029E39, !Ex_Num)
 	%remap($029EE6, !Ex_Num)
 ;	%remap($02A213, !Ex_Num)	; hijacked by malleable extended sprite
@@ -828,22 +1801,22 @@ endmacro
 
 
 ;	smoke num writes
-	%remap($00FB8F, !Ex_Num)
-	%remap($00FD6D, !Ex_Num)
-	%remap($00FE74, !Ex_Num)
-	%remap($018075, !Ex_Num)
+;	%remap($00FB8F, !Ex_Num)	; overwritten by spawn code
+;	%remap($00FD6D, !Ex_Num)	; overwritten by spawn code
+;	%remap($00FE74, !Ex_Num)	; overwritten by spawn code
+;	%remap($018075, !Ex_Num)	; overwritten by spawn code
 ;	%remap($01AB85, !Ex_Num)	; removed due to repair, see $01AB83
-	%remap($01ABAC, !Ex_Num)
-	%remap($01BDA5, !Ex_Num)
-	%remap($01C4FD, !Ex_Num)
-	%remap($01C5D6, !Ex_Num)
-	%remap($01D01C, !Ex_Num)	; not indexed for some reason...
-	%remap($028A52, !Ex_Num)
-	%remap($029AE7, !Ex_Num)
-	%remap($02A429, !Ex_Num)
+;	%remap($01ABAC, !Ex_Num)	; overwritten by spawn code
+;	%remap($01BDA5, !Ex_Num)	; overwritten by spawn code
+;	%remap($01C4FD, !Ex_Num)	; overwritten by spawn code
+;	%remap($01C5D6, !Ex_Num)	; overwritten by spawn code
+	%remap($01D01C, !Ex_Num) ; not indexed, (used by reznor)
+;	%remap($028A52, !Ex_Num)	; overwritten by spawn code
+;	%remap($029AE7, !Ex_Num)	; overwritten by optimization, see $029ADA
+;	%remap($02A429, !Ex_Num)	; overwritten by optimization, see $02A419
 	%remap($02B4ED, !Ex_Num)
-	%remap($02B991, !Ex_Num)
-	%remap($038A23, !Ex_Num)
+;	%remap($02B991, !Ex_Num)	; torpedo ted special, see $02B969
+;	%remap($038A23, !Ex_Num)	; overwritten by spawn code
 ;	smoke num clears
 	%remap($0296DF, !Ex_Num)
 	%remap($029793, !Ex_Num)
@@ -861,8 +1834,8 @@ endmacro
 	%remap($028A47, !Ex_Num)
 	%remap($0296C0, !Ex_Num)
 	%remap($0296E8, !Ex_Num)	; this one just checks the highest bit
-	%remap($029ADC, !Ex_Num)
-	%remap($02A41E, !Ex_Num)
+;	%remap($029ADC, !Ex_Num)	; overwritten by optimization, see $029ADA
+;	%remap($02A41E, !Ex_Num)	; overwritten by optimization, see $02A419
 	%remap($02B4E0, !Ex_Num)
 	%remap($02B954, !Ex_Num)
 	%remap($038A18, !Ex_Num)
@@ -872,38 +1845,132 @@ endmacro
 	; remap smoke num writes
 	org $00FB8D
 		LDA #$01+!SmokeOffset
+		JSL SmokeSpawn_Sprite
+		RTS
+
 	org $00FD6B
 		LDA #$05+!SmokeOffset
+		JSL SmokeSpawn_Block
+		RTS
+
 	org $00FE72
 		LDA #$03+!SmokeOffset
+		JSL SmokeSpawn_Mario8
+		RTS
+
 	org $018073
 		LDA #$03+!SmokeOffset
+		JSL SmokeSpawn_SpritePlus0001
+		RTS
+
 	org $01AB83
-		LDA #$02+!SmokeOffset : STA !Ex_Num,y
-		LDA ($DE) : STA !Ex_XLo,y	; this is the pointer to sprite X lo
-		LDA ($DA)			; this is the pointer to sprite Y lo
+	;	LDA #$02+!SmokeOffset : STA !Ex_Num,y
+	;	LDA ($DE) : STA !Ex_XLo,y	; this is the pointer to sprite X lo
+	;	LDA ($DA)			; this is the pointer to sprite Y lo
+		JSL SmokeSpawn_Sprite
+		PLY
+		RTL
+
 	org $01ABAA
 		LDA #$02+!SmokeOffset
+		JSL SmokeSpawn_Mario16
+		PLY
+		RTL
+
 	org $01BDA3
 		LDA #$01+!SmokeOffset
+		JSL SmokeSpawn_SpriteX
+		RTS
+
 	org $01C4FB
 		LDA #$05+!SmokeOffset
+		JSL SmokeSpawn_Sprite
+		RTS
+
+
 	org $01C5D4
 		LDA #$81+!SmokeOffset	;?????????
+		JSL SmokeSpawn_MarioSpecial
+		RTL
+
 	org $01D01A
-		LDA #$01+!SmokeOffset
-	org $028A50
-		LDA #$01+!SmokeOffset
-	org $029AE5
-		LDA #$05+!SmokeOffset
-	org $02A427
-		LDA #$05+!SmokeOffset
+		LDA #$01+!SmokeOffset		; used for reznor so w/e
+
+	org $028A44
+		PHY
+		LDY.b #!Ex_Amount-1
+	-	LDA !Ex_Num,y : BEQ +
+		DEY: BPL -
+		INY
+	+	LDA #$01+!SmokeOffset
+		JSL SmokeSpawn_Block
+		PLY
+		RTL
+
+	; turn coin into glitter
+	; optimization
+	org $029AD7
+		RTS
+		RTS
+		RTS
+	warnpc $029ADA
+	org $029ADA
+		LDA #$05+!SmokeOffset : STA !Ex_Num,x
+		LDA !Ex_Data1,x
+		LSR A : BCC .Return
+		JSL TransformCoordinates
+		.Return
+		LDA #$10 : STA !Ex_Data1,x
+		RTS
+	warnpc $029B0A
+
+	;org $029AE5
+	;	LDA #$05+!SmokeOffset	; overwritten by optimization, see $029ADA
+
+	org $02A419
+		LDA #$05+!SmokeOffset : STA !Ex_Num,x
+		LDA #$0A : STA !Ex_Data1,x
+		RTS
+
+	;org $02A427
+	;	LDA #$05+!SmokeOffset	; overwritten by optimization, see $02A419
+
 	org $02B4EB
-		LDA #$01+!SmokeOffset
-	org $02B98F
-		LDA #$01+!SmokeOffset
+		LDA #$01+!SmokeOffset	; shooter, probably irrelevant??
+
+	org $02B94E
+		dw $FFF4,$001C		; torpedo ted offsets
+	warnpc $02B952
+
+	org $02B969
+		LDA ($DE) : STA $00
+		LDA $3250,x : STA $01
+		PHX
+		LDA $3320,x
+		ASL A
+		TAX
+		REP #$20
+		LDA $00
+		CLC : ADC $B94E,x
+		SEP #$20
+		PLX
+		STA !Ex_XLo,y
+		XBA : STA !Ex_XHi,y
+		LDA ($DA) : STA !Ex_YLo,y
+		LDA $3240,x : STA !Ex_YHi,y
+		LDA #$01+!SmokeOffset : STA !Ex_Num,y
+		LDA #$0F : STA !Ex_Data1,y
+		RTS
+	warnpc $02B9A4
+
+
+;	org $02B98F
+;		LDA #$01+!SmokeOffset
+
 	org $038A21
 		LDA #$03+!SmokeOffset
+		JSL SmokeSpawn_SpritePlus0001
+		RTS
 
 	; remap smoke num reads
 	; there are no reads lol
@@ -1113,7 +2180,7 @@ endmacro
 	%remap($028F9E, !Ex_XLo)
 	%remap($028FA1, !Ex_XLo)
 ;	%remap($028FE0, !Ex_XLo)	; part of OAM remap
-	%remap($02990F, !Ex_XLo)
+;	%remap($02990F, !Ex_XLo)	; overwritten by spawn code
 	%remap($02C110, !Ex_XLo)
 	%remap($03903E, !Ex_XLo)
 	%remap($03AD8B, !Ex_XLo)
@@ -1128,12 +2195,12 @@ endmacro
 	%remap($028C4C, !Ex_XHi)
 	%remap($028C79, !Ex_XHi)
 	%remap($028CD0, !Ex_XHi)
-	%remap($028D0A, !Ex_XHi)
+;	%remap($028D0A, !Ex_XHi)	; part of GFX recode
 	%remap($028D54, !Ex_XHi)
 	%remap($028F34, !Ex_XHi)
 	%remap($028FA5, !Ex_XHi)
 	%remap($028FA8, !Ex_XHi)
-	%remap($028FE8, !Ex_XHi)
+;	%remap($028FE8, !Ex_XHi)	; part of GFX recode
 	%remap($039044, !Ex_XHi)
 	%remap($03AD93, !Ex_XHi)
 
@@ -1149,21 +2216,21 @@ endmacro
 	%remap($028C52, !Ex_YLo)
 	%remap($028C80, !Ex_YLo)
 	%remap($028CD7, !Ex_YLo)
-	%remap($028D16, !Ex_YLo)
+;	%remap($028D16, !Ex_YLo)	; part of GFX recode
 	%remap($028D72, !Ex_YLo)
-	%remap($028D9E, !Ex_YLo)
+;	%remap($028D9E, !Ex_YLo)	; part of GFX recode
 	%remap($028E1D, !Ex_YLo)
-	%remap($028E34, !Ex_YLo)
+;	%remap($028E34, !Ex_YLo)	; part of GFX recode
 ;	%remap($028E97, !Ex_YLo)	; part of OAM remap
-	%remap($028EF1, !Ex_YLo)
-	%remap($028F59, !Ex_YLo)
+;	%remap($028EF1, !Ex_YLo)	; part of GFX recode
+;	%remap($028F59, !Ex_YLo)	; part of GFX recode
 	%remap($028FB4, !Ex_YLo)
 	%remap($028FB7, !Ex_YLo)
-	%remap($028FCA, !Ex_YLo)
-	%remap($029918, !Ex_YLo)
+;	%remap($028FCA, !Ex_YLo)	; part of GFX recode
+;	%remap($029918, !Ex_YLo)	; overwritten by spawn code
 	%remap($02B5E5, !Ex_YLo)
 	%remap($02B5E8, !Ex_YLo)
-	%remap($02C118, !Ex_YLo)
+;	%remap($02C118, !Ex_YLo)	; overwritten by spawn code
 	%remap($039049, !Ex_YLo)
 	%remap($03AD9D, !Ex_YLo)
 
@@ -1179,7 +2246,7 @@ endmacro
 	%remap($028CDF, !Ex_YHi)
 	%remap($028FBB, !Ex_YHi)
 	%remap($028FBE, !Ex_YHi)
-	%remap($028FD2, !Ex_YHi)
+;	%remap($028FD2, !Ex_YHi)	; part of GFX recode
 	%remap($03904F, !Ex_YHi)
 	%remap($03ADA5, !Ex_YHi)
 
@@ -1189,7 +2256,7 @@ endmacro
 	%remap($028BF3, !Ex_XSpeed)
 	%remap($028C14, !Ex_XSpeed)
 	%remap($028C23, !Ex_XSpeed)
-	%remap($028D29, !Ex_XSpeed)
+;	%remap($028D29, !Ex_XSpeed)	; part of GFX recode
 	%remap($028DF1, !Ex_XSpeed)
 	%remap($028DF8, !Ex_XSpeed)
 	%remap($028DFB, !Ex_XSpeed)
@@ -1226,7 +2293,7 @@ endmacro
 	%remap($00FDEF, !Ex_Data1)
 	%remap($01F825, !Ex_Data1)
 	%remap($02850C, !Ex_Data1)
-	%remap($0285DB, !Ex_Data1)
+;	%remap($0285DB, !Ex_Data1)	; overwritten by spawn code
 	%remap($02862B, !Ex_Data1)
 	%remap($0286B7, !Ex_Data1)
 	%remap($028BD2, !Ex_Data1)
@@ -1237,25 +2304,25 @@ endmacro
 	%remap($028CFA, !Ex_Data1)
 	%remap($028D5B, !Ex_Data1)
 	%remap($028D75, !Ex_Data1)
-	%remap($028DAB, !Ex_Data1)
-	%remap($028DD3, !Ex_Data1)
+;	%remap($028DAB, !Ex_Data1)	; part of GFX recode
+;	%remap($028DD3, !Ex_Data1)	; part of GFX recode
 	%remap($028DDF, !Ex_Data1)
 	%remap($028DE4, !Ex_Data1)
 	%remap($028DE7, !Ex_Data1)
-	%remap($028DEE, !Ex_Data1)
+;	%remap($028DEE, !Ex_Data1)	; part of Z bug fix
 	%remap($028E16, !Ex_Data1)
-	%remap($028E48, !Ex_Data1)
-	%remap($028E58, !Ex_Data1)
+;	%remap($028E48, !Ex_Data1)	; part of GFX recode
+;	%remap($028E58, !Ex_Data1)	; part of GFX recode
 	%remap($028E7E, !Ex_Data1)
 	%remap($028E81, !Ex_Data1)
 	%remap($028EB6, !Ex_Data1)
 	%remap($028ED2, !Ex_Data1)
 	%remap($028EDE, !Ex_Data1)
-	%remap($028F02, !Ex_Data1)
+;	%remap($028F02, !Ex_Data1)	; part of GFX recode
 	%remap($028F3B, !Ex_Data1)
 	%remap($028F44, !Ex_Data1)
-	%remap($028F66, !Ex_Data1)
-	%remap($028FFD, !Ex_Data1)
+;	%remap($028F66, !Ex_Data1)	; part of GFX recode
+;	%remap($028FFD, !Ex_Data1)	; part of GFX recode
 	%remap($02991E, !Ex_Data1)
 	%remap($02C11D, !Ex_Data1)
 	%remap($039054, !Ex_Data1)
@@ -1293,16 +2360,16 @@ endmacro
 	%remap($029C1C, !Ex_XLo)
 	%remap($029D04, !Ex_XLo)
 	%remap($029D15, !Ex_XLo)
-	%remap($029DC7, !Ex_XLo)
+;	%remap($029DC7, !Ex_XLo)	; part of GFX recode
 ;	%remap($029EA0, !Ex_XLo)	; part of OAM remap
 	%remap($02A01C, !Ex_XLo)
 	%remap($02A01F, !Ex_XLo)
 	%remap($02A05A, !Ex_XLo)
-	%remap($02A1B1, !Ex_XLo)
-	%remap($02A271, !Ex_XLo)
-	%remap($02A36C, !Ex_XLo)
+;	%remap($02A1B1, !Ex_XLo)	; part of GFX recode
+;	%remap($02A271, !Ex_XLo)	; part of GFX recode
+;	%remap($02A36C, !Ex_XLo)	; part of GFX recode
 	%remap($02A3B4, !Ex_XLo)
-	%remap($02A42C, !Ex_XLo)
+;	%remap($02A42C, !Ex_XLo)	; overwritten by optimization, see $02A419
 	%remap($02A452, !Ex_XLo)
 	%remap($02A4BC, !Ex_XLo)
 	%remap($02A4C2, !Ex_XLo)
@@ -1333,14 +2400,14 @@ endmacro
 	%remap($01D3C9, !Ex_XHi)
 	%remap($01F2A5, !Ex_XHi)
 	%remap($02855C, !Ex_XHi)
-	%remap($029B5C, !Ex_XHi)
+;	%remap($029B5C, !Ex_XHi)	; part of GFX recode
 	%remap($029C24, !Ex_XHi)
 	%remap($029D09, !Ex_XHi)
-	%remap($029EA8, !Ex_XHi)
+;	%remap($029EA8, !Ex_XHi)	; part of GFX recode
 	%remap($02A023, !Ex_XHi)
 	%remap($02A026, !Ex_XHi)
-	%remap($02A1B9, !Ex_XHi)
-	%remap($02A279, !Ex_XHi)
+;	%remap($02A1B9, !Ex_XHi)	; part of GFX recode
+;	%remap($02A279, !Ex_XHi)	; part of GFX recode
 	%remap($02A458, !Ex_XHi)
 	%remap($02A4C5, !Ex_XHi)
 	%remap($02A4CA, !Ex_XHi)
@@ -1372,23 +2439,23 @@ endmacro
 	%remap($01F2AA, !Ex_YLo)
 	%remap($01FD20, !Ex_YLo)
 	%remap($028546, !Ex_YLo)
-	%remap($029B63, !Ex_YLo)
+;	%remap($029B63, !Ex_YLo)	; part of GFX recode
 	%remap($029C0A, !Ex_YLo)
 	%remap($029CF8, !Ex_YLo)
-	%remap($029DD3, !Ex_YLo)
-	%remap($029EB4, !Ex_YLo)
+;	%remap($029DD3, !Ex_YLo)	; part of GFX recode
+;	%remap($029EB4, !Ex_YLo)	; part of GFX recode
 	%remap($029EFC, !Ex_YLo)
 	%remap($029EFF, !Ex_YLo)
-	%remap($029F2A, !Ex_YLo)
-	%remap($029FB3, !Ex_YLo)
+;	%remap($029F2A, !Ex_YLo)	; part of GFX recode
+;	%remap($029FB3, !Ex_YLo)	; part of mario fireball fix
 	%remap($029FFF, !Ex_YLo)
 	%remap($02A006, !Ex_YLo)
 	%remap($02A067, !Ex_YLo)
-	%remap($02A1C0, !Ex_YLo)
-	%remap($02A28F, !Ex_YLo)
-	%remap($02A379, !Ex_YLo)
+;	%remap($02A1C0, !Ex_YLo)	; part of GFX recode
+;	%remap($02A28F, !Ex_YLo)	; part of GFX recode
+;	%remap($02A379, !Ex_YLo)	; part of GFX recode
 	%remap($02A3C1, !Ex_YLo)
-	%remap($02A432, !Ex_YLo)
+;	%remap($02A432, !Ex_YLo)	; overwritten by optimization, see $02A419
 	%remap($02A446, !Ex_YLo)
 	%remap($02A4CD, !Ex_YLo)
 	%remap($02A4D3, !Ex_YLo)
@@ -1424,14 +2491,14 @@ endmacro
 	%remap($01D3D3, !Ex_YHi)
 	%remap($01F2B0, !Ex_YHi)
 	%remap($02854C, !Ex_YHi)
-	%remap($029B6B, !Ex_YHi)
+;	%remap($029B6B, !Ex_YHi)	; part of GFX recode
 	%remap($029C11, !Ex_YHi)
 	%remap($029F05, !Ex_YHi)
-	%remap($029F2F, !Ex_YHi)
-	%remap($029FB8, !Ex_YHi)
+;	%remap($029F2F, !Ex_YHi)	; part of GFX recode
+;	%remap($029FB8, !Ex_YHi)	; part of mario fireball fix
 	%remap($02A00B, !Ex_YHi)
-	%remap($02A1C8, !Ex_YHi)
-	%remap($02A297, !Ex_YHi)
+;	%remap($02A1C8, !Ex_YHi)	; part of GFX recode
+;	%remap($02A297, !Ex_YHi)	; part of GFX recode
 	%remap($02A44C, !Ex_YHi)
 	%remap($02A4D6, !Ex_YHi)
 	%remap($02A4DB, !Ex_YHi)
@@ -1467,13 +2534,13 @@ endmacro
 	%remap($029C74, !Ex_XSpeed)
 	%remap($029C78, !Ex_XSpeed)
 	%remap($029CDB, !Ex_XSpeed)
-	%remap($029DA0, !Ex_XSpeed)
+;	%remap($029DA0, !Ex_XSpeed)	; part of GFX recode
 	%remap($029F82, !Ex_XSpeed)
 	%remap($029FE7, !Ex_XSpeed)
 	%remap($02A015, !Ex_XSpeed)
 	%remap($02A052, !Ex_XSpeed)
 ;	%remap($02A1A7, !Ex_XSpeed)	; part of OAM remap
-	%remap($02A280, !Ex_XSpeed)
+;	%remap($02A280, !Ex_XSpeed)	; part of GFX recode
 	%remap($02B45F, !Ex_XSpeed)
 	%remap($02C4B0, !Ex_XSpeed)
 	%remap($02DAE5, !Ex_XSpeed)
@@ -1495,7 +2562,7 @@ endmacro
 	%remap($029CBC, !Ex_YSpeed)
 	%remap($029CC6, !Ex_YSpeed)
 	%remap($029CEF, !Ex_YSpeed)
-	%remap($029E56, !Ex_YSpeed)
+;	%remap($029E56, !Ex_YSpeed)	; part of GFX recode
 	%remap($029E90, !Ex_YSpeed)
 	%remap($029E96, !Ex_YSpeed)
 	%remap($029FC8, !Ex_YSpeed)
@@ -1528,11 +2595,11 @@ endmacro
 	%remap($00FE21, !Ex_Data1)
 	%remap($029CE3, !Ex_Data1)
 	%remap($029CF2, !Ex_Data1)
-	%remap($029DBE, !Ex_Data1)
-	%remap($029DF6, !Ex_Data1)
+;	%remap($029DBE, !Ex_Data1)	; part of GFX recode
+;	%remap($029DF6, !Ex_Data1)	; part of GFX recode
 	%remap($029EF2, !Ex_Data1)
 	%remap($029EF5, !Ex_Data1)
-	%remap($029F39, !Ex_Data1)
+;	%remap($029F39, !Ex_Data1)	; part of GFX recode
 	%remap($029FC2, !Ex_Data1)
 	%remap($02A079, !Ex_Data1)
 	%remap($02A21D, !Ex_Data1)
@@ -1558,13 +2625,13 @@ endmacro
 ;	%remap($029C44, !Ex_Data2)	; part of OAM remap
 	%remap($029C6B, !Ex_Data2)
 	%remap($029C83, !Ex_Data2)
-;	%remap($029C9C, !Ex_Data2)	; part of GFX_expand
-	%remap($029DAA, !Ex_Data2)
-	%remap($029E3F, !Ex_Data2)
-	%remap($029EC1, !Ex_Data2)
+	%remap($029C9C, !Ex_Data2)
+;	%remap($029DAA, !Ex_Data2)	; part of GFX recode
+;	%remap($029E3F, !Ex_Data2)	; part of GFX recode
+;	%remap($029EC1, !Ex_Data2)	; part of GFX recode
 	%remap($02A220, !Ex_Data2)
 	%remap($02A34F, !Ex_Data2)
-	%remap($02A386, !Ex_Data2)
+;	%remap($02A386, !Ex_Data2)	; part of GFX recode
 	%remap($02A3CE, !Ex_Data2)
 	%remap($02A4E0, !Ex_Data2)
 	%remap($02B456, !Ex_Data2)
@@ -1592,18 +2659,18 @@ endmacro
 
 
 ;	smoke XLo:
-	%remap($00FB9B, !Ex_XLo)
-	%remap($00FD74, !Ex_XLo)
-	%remap($00FD8A, !Ex_XLo)
-	%remap($00FE7B, !Ex_XLo)
-	%remap($01807C, !Ex_XLo)
-	%remap($01AB8A, !Ex_XLo)
-	%remap($01ABB1, !Ex_XLo)
-	%remap($01BDAA, !Ex_XLo)
-	%remap($01C502, !Ex_XLo)
-	%remap($01C5E8, !Ex_XLo)
-	%remap($01D023, !Ex_XLo) ; not indexed
-	%remap($028A5C, !Ex_XLo)
+;	%remap($00FB9B, !Ex_XLo)	; overwritten by spawn code
+;	%remap($00FD74, !Ex_XLo)	; overwritten by spawn code
+;	%remap($00FD8A, !Ex_XLo)	; overwritten by spawn code
+;	%remap($00FE7B, !Ex_XLo)	; overwritten by spawn code
+;	%remap($01807C, !Ex_XLo)	; overwritten by spawn code
+;	%remap($01AB8A, !Ex_XLo)	; overwritten by spawn code
+;	%remap($01ABB1, !Ex_XLo)	; overwritten by spawn code
+;	%remap($01BDAA, !Ex_XLo)	; overwritten by spawn code
+;	%remap($01C502, !Ex_XLo)	; overwritten by spawn code
+;	%remap($01C5E8, !Ex_XLo)	; overwritten by spawn code
+	%remap($01D023, !Ex_XLo) ; not indexed (used by reznor)
+;	%remap($028A5C, !Ex_XLo)	; overwritten by spawn code
 ;	%remap($029704, !Ex_XLo)	; part of OAM remap
 ;	%remap($02974D, !Ex_XLo)	; part of OAM remap
 ;	%remap($0297B4, !Ex_XLo)	; part of OAM remap
@@ -1611,61 +2678,61 @@ endmacro
 	%remap($0298FB, !Ex_XLo)
 ;	%remap($02996F, !Ex_XLo)	; part of OAM remap
 ;	%remap($0299A2, !Ex_XLo)	; part of OAM remap
-	%remap($029AF6, !Ex_XLo)
-	%remap($02A42F, !Ex_XLo)
+;	%remap($029AF6, !Ex_XLo)	; overwritten by optimization, see $029ADA
+;	%remap($02A42F, !Ex_XLo)	; overwritten by optimization, see $02A419
 	%remap($02B513, !Ex_XLo)
-	%remap($02B996, !Ex_XLo)
-	%remap($038A2B, !Ex_XLo)
+;	%remap($02B996, !Ex_XLo)	; torpedo ted special, see $02B969
+;	%remap($038A2B, !Ex_XLo)	; overwritten by spawn code
 
 ;	smoke YLo:
-	%remap($00FB95, !Ex_YLo)
-	%remap($00FD7B, !Ex_YLo)
-	%remap($00FD94, !Ex_YLo)
-	%remap($00FE8A, !Ex_YLo)
-	%remap($018083, !Ex_YLo)
-	%remap($01AB8F, !Ex_YLo)
-	%remap($01ABC2, !Ex_YLo)
-	%remap($01BDAF, !Ex_YLo)
-	%remap($01C507, !Ex_YLo)
-	%remap($01C5E3, !Ex_YLo)
-	%remap($01D02A, !Ex_YLo)
-	%remap($028A57, !Ex_YLo)
-	%remap($029711, !Ex_YLo)
+;	%remap($00FB95, !Ex_YLo)	; overwritten by spawn code
+;	%remap($00FD7B, !Ex_YLo)	; overwritten by spawn code
+;	%remap($00FD94, !Ex_YLo)	; overwritten by spawn code
+;	%remap($00FE8A, !Ex_YLo)	; overwritten by spawn code
+;	%remap($018083, !Ex_YLo)	; overwritten by spawn code
+;	%remap($01AB8F, !Ex_YLo)	; overwritten by spawn code
+;	%remap($01ABC2, !Ex_YLo)	; overwritten by spawn code
+;	%remap($01BDAF, !Ex_YLo)	; overwritten by spawn code
+;	%remap($01C507, !Ex_YLo)	; overwritten by spawn code
+;	%remap($01C5E3, !Ex_YLo)	; overwritten by spawn code
+	%remap($01D02A, !Ex_YLo) ; note indexed (used by reznor)
+;	%remap($028A57, !Ex_YLo)	; overwrittenby spawn code
+;	%remap($029711, !Ex_YLo)	; part of GFX recode
 	%remap($02975A, !Ex_YLo)
-	%remap($0297CD, !Ex_YLo)
+;	%remap($0297CD, !Ex_YLo)	; part of GFX recode
 	%remap($029853, !Ex_YLo)
-	%remap($0298F6, !Ex_YLo)
+;	%remap($0298F6, !Ex_YLo)	; overwritten by spawn code
 	%remap($02994C, !Ex_YLo)
-	%remap($029978, !Ex_YLo)
+;	%remap($029978, !Ex_YLo)	; part of GFX recode
 	%remap($0299AB, !Ex_YLo)
-	%remap($029B01, !Ex_YLo)
-	%remap($02A435, !Ex_YLo)
+;	%remap($029B01, !Ex_YLo)	; overwritten by optimization, see $029ADA
+;	%remap($02A435, !Ex_YLo)	; overwritten by optimization, see $02A419
 	%remap($02B4F3, !Ex_YLo)
-	%remap($02B99B, !Ex_YLo)
-	%remap($038A33, !Ex_YLo)
+;	%remap($02B99B, !Ex_YLo)	; torpedo ted special, see $02B969
+;	%remap($038A33, !Ex_YLo)	; overwritten by spawn code
 
 ;	smoke Data1:
-	%remap($00FBA0, !Ex_Data1)
-	%remap($00FD99, !Ex_Data1)
-	%remap($00FE90, !Ex_Data1)
-	%remap($018088, !Ex_Data1)
-	%remap($01AB94, !Ex_Data1)
-	%remap($01ABC7, !Ex_Data1)
-	%remap($01BDB4, !Ex_Data1)
-	%remap($01C50C, !Ex_Data1)
-	%remap($01C5DB, !Ex_Data1)
-	%remap($01D02F, !Ex_Data1)	; not indexed
-	%remap($028A61, !Ex_Data1)
+;	%remap($00FBA0, !Ex_Data1)	; overwritten by spawn code
+;	%remap($00FD99, !Ex_Data1)	; overwritten by spawn code
+;	%remap($00FE90, !Ex_Data1)	; overwritten by spawn code
+;	%remap($018088, !Ex_Data1)	; overwritten by spawn code
+;	%remap($01AB94, !Ex_Data1)	; overwritten by spawn code
+;	%remap($01ABC7, !Ex_Data1)	; overwritten by spawn code
+;	%remap($01BDB4, !Ex_Data1)	; overwritten by spawn code
+;	%remap($01C50C, !Ex_Data1)	; overwritten by spawn code
+;	%remap($01C5DB, !Ex_Data1)	; overwritten by spawn code
+	%remap($01D02F, !Ex_Data1) ; not indexed (used by reznor)
+;	%remap($028A61, !Ex_Data1)	; overwritten by spawn code
 	%remap($0296E3, !Ex_Data1)
 	%remap($0296F1, !Ex_Data1)
-	%remap($02971E, !Ex_Data1)
-	%remap($029732, !Ex_Data1)
+;	%remap($02971E, !Ex_Data1)	; part of GFX recode
+;	%remap($029732, !Ex_Data1)	; part of GFX recode
 	%remap($029767, !Ex_Data1)
 	%remap($02977B, !Ex_Data1)
 	%remap($029797, !Ex_Data1)
 	%remap($0297A0, !Ex_Data1)
-	%remap($0297E2, !Ex_Data1)
-	%remap($0297FC, !Ex_Data1)
+;	%remap($0297E2, !Ex_Data1)	; part of GFX recode
+;	%remap($0297FC, !Ex_Data1)	; part of GFX recode
 	%remap($029868, !Ex_Data1)
 	%remap($029882, !Ex_Data1)
 	%remap($0298CA, !Ex_Data1)
@@ -1673,13 +2740,13 @@ endmacro
 	%remap($029900, !Ex_Data1)
 	%remap($029927, !Ex_Data1)
 	%remap($029945, !Ex_Data1)
-	%remap($029986, !Ex_Data1)
+;	%remap($029986, !Ex_Data1)	; part of GFX recode
 	%remap($0299B9, !Ex_Data1)
-	%remap($029B06, !Ex_Data1)
-	%remap($02A43A, !Ex_Data1)
+;	%remap($029B06, !Ex_Data1)	; overwritten by optimization, see $029ADA
+;	%remap($02A43A, !Ex_Data1)	; overwritten by optimization, see $02A419
 	%remap($02B4F8, !Ex_Data1)
-	%remap($02B9A0, !Ex_Data1)
-	%remap($038A38, !Ex_Data1)
+;	%remap($02B9A0, !Ex_Data1)	; torpedo ted special, see $02B969
+;	%remap($038A38, !Ex_Data1)	; overwritten by spawn code
 
 
 ;=====================;
@@ -1907,7 +2974,7 @@ endmacro
 	%remap($02936D, !Ex_XLo)
 	%remap($029A29, !Ex_XLo)
 	%remap($029ABD, !Ex_XLo)
-	%remap($029AEF, !Ex_XLo)
+;	%remap($029AEF, !Ex_XLo)	; overwritten by optimization, see $029ADA
 
 ;	coin XHi:
 	%remap($028A8B, !Ex_XHi)
@@ -1920,7 +2987,7 @@ endmacro
 	%remap($029A1D, !Ex_YLo)
 	%remap($029A35, !Ex_YLo)
 	%remap($029AB1, !Ex_YLo)
-	%remap($029AF9, !Ex_YLo)
+;	%remap($029AF9, !Ex_YLo)	; overwritten by optimization, see $029ADA
 	%remap($02B5AE, !Ex_YLo)
 	%remap($02B5B1, !Ex_YLo)
 
@@ -1949,14 +3016,14 @@ endmacro
 	%remap($029389, !Ex_Data1)
 	%remap($029A08, !Ex_Data1)
 	%remap($029ACE, !Ex_Data1)
-	%remap($029AEA, !Ex_Data1)
+;	%remap($029AEA, !Ex_Data1)	; overwritten by optimization, see $029ADA
 
 
 
 
 
 print " "
-print "FusionCore V1.0"
+print "FusionCore V1.2"
 print " - Ex_Num mapped to ........$", hex(!Ex_Num)
 print " - Ex_Data1 mapped to ......$", hex(!Ex_Data1)
 print " - Ex_Data2 mapped to ......$", hex(!Ex_Data2)
@@ -1971,4 +3038,5 @@ print " - Ex_XFraction mapped to ..$", hex(!Ex_XFraction)
 print " - Ex_YFraction mapped to ..$", hex(!Ex_YFraction)
 print dec(!DebugRemapCount), " addresses remapped"
 print "Number of ExSprites allowed: ", dec(!Ex_Amount), " (0x", hex(!Ex_Amount), ")"
+print "Number of ExSprite types: ", dec(HandleEx_PalsetIndex_End-HandleEx_PalsetIndex)
 print " "

@@ -89,6 +89,7 @@ db $00
 %sprite(2B, 0)		; Portal
 %sprite(2B, 1)		; Portal
 %sprite(2C, 0)		; Flying Rex
+%sprite(2C, 1)		; Flying Rex
 %sprite(2D, 0)		; Ultra Fuzzy
 %sprite(2E, 0)		; Shield (front)
 %sprite(2E, 1)		; Shield (back)

@@ -375,7 +375,13 @@ StompSFX:
 
 ContactGFX:
 	STA $00
-	STY $01
+	STZ $01
+	STY $02
+	STZ $03
+	LDA $00
+	BPL $02 : DEC $01
+	LDA $02
+	BPL $02 : DEC $03
 	LDA !P2Offscreen
 	BNE .Return
 	LDY #!Ex_Amount-1
@@ -384,11 +390,17 @@ ContactGFX:
 	RTS
 +	LDA #$02+!SmokeOffset : STA !Ex_Num,y	; > Smoke type
 	LDA !P2XPosLo				;\
-	CLC : ADC $00				; | Smoke Xpos
+	CLC : ADC $00				; | Smoke Xpos lo
 	STA !Ex_XLo,y				;/
+	LDA !P2XPosHi				;\
+	ADC $01					; | Smoke Xpos hi
+	STA !Ex_XHi,y				;/
 	LDA !P2YPosLo				;\
-	CLC : ADC $01				; | Smoke Ypos
+	CLC : ADC $02				; | Smoke Ypos lo
 	STA !Ex_YLo,y				;/
+	LDA !P2YPosHi				;\
+	ADC $03					; | Smoke Ypos hi
+	STA !Ex_YHi,y				;/
 	LDA #$08 : STA !Ex_Data1,y		; > Smoke timer
 
 	.Return
@@ -1198,22 +1210,7 @@ CHUCK_PUSH:	db $20,$E0
 .Process	LDA $7490 : BEQ .NoStar
 		JMP StarKill
 
-.NoStar		LDA $3280,x			;\ Check for brute
-		AND #$04 : BEQ .NoSlam		;/
-		LDA !Difficulty
-		AND #$03
-		CMP #$02 : BNE .NoSlam
-		LDA $3340,x
-		LSR A
-		BCC .NoSlam
-		LDA #$10 : STA $35D0,x
-		STA $7887
-		LDA #$09 : STA !SPC4
-		JSR .Side
-		LDA #$C0 : STA !P2YSpeed
-		LDA #$10 : JMP DontInteract
-
-.NoSlam		LDA #$06 : JSR CompareY
+.NoStar		LDA #$06 : JSR CompareY
 		BCS .Top
 
 .Side		JMP GenSide

@@ -20,7 +20,7 @@
 
 		.CheckRight
 		LDX #$F0 : STX $00
-		LDX $5E
+		LDX !LevelWidth
 		DEX
 		STX $01
 		LDA !RAM_ScreenMode
@@ -96,7 +96,7 @@
 		LDA !P2XPosHi
 		BMI .OffHorz
 		REP #$20
-		LDA $5E-1
+		LDA !LevelWidth-1
 		AND #$FF00
 		SEC : SBC #$0010
 		CMP !P2XPosLo

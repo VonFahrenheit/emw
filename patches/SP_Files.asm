@@ -59,6 +59,7 @@ endmacro
 ; For the SNES this means the first protected bank is essentially 0x7FF8 bytes but the second is the full 0x8000 bytes.
 
 print " "
+print "-- SP_FILES --"
 print "Von Fahrenheit's manual file inserter v1.1"
 print " "
 
@@ -77,6 +78,7 @@ org $308008
 %BankStart(30)
 
 	SpriteSizeTable:
+	; vanilla, extra bit 0
 	db $03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03	; 000-00F
 	db $03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03	; 010-01F
 	db $03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03	; 020-02F
@@ -93,6 +95,7 @@ org $308008
 	db $03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03	; 0D0-0DF
 	db $03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03	; 0E0-0EF
 	db $03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03	; 0F0-0FF
+	; vanilla, extra bit 1
 	db $03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03	; 000-00F
 	db $03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03	; 010-01F
 	db $03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03	; 020-02F
@@ -109,6 +112,7 @@ org $308008
 	db $03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03	; 0D0-0DF
 	db $03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03	; 0E0-0EF
 	db $03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03	; 0F0-0FF
+	; custom, extra bit 0
 	db $05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05	; 100-10F
 	db $05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05	; 110-11F
 	db $05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05	; 120-12F
@@ -125,6 +129,7 @@ org $308008
 	db $05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05	; 1D0-1DF
 	db $05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05	; 1E0-1EF
 	db $05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05	; 1F0-1FF
+	; custom, extra bit 1
 	db $05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05	; 100-10F
 	db $05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05	; 110-11F
 	db $05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05	; 120-12F
@@ -142,9 +147,46 @@ org $308008
 	db $05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05	; 1E0-1EF
 	db $05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05	; 1F0-1FF
 
-	%InsertFile(Villager_Rex)
-	incbin Fe26/Sprites/SpriteGFX/VillagerRex.bin
-	.End
+
+	FileList:
+	dl Linear_Hammer
+	dl Linear_PlantHead
+	dl Linear_Bone
+	dl Linear_Fireball8x8
+	dl Linear_Fireball16x16
+	dl Linear_LuigiFireball
+	dl Linear_Goomba
+	dl Linear_Baseball
+
+	dl Mario_Expand
+	dl Mario_Supplement
+	dl Luigi
+	dl Kadaal
+	dl Leeway
+	dl Leeway_Sword
+
+	dl HappySlime
+	dl AggroRex
+	dl Wizrex
+	dl TarCreeper_Hands
+	dl TarCreeper_Body
+	dl EliteKoopa
+	dl NPC_Survivor
+	dl NPC_Tinkerer
+	dl NPC_Melody
+	dl MiniMech
+
+	dl CaptainWarrior
+	dl CaptainWarrior_Axe
+	dl Kingking
+	dl LakituLovers
+	dl LavaLord
+
+	dl level06_night
+
+	dl Sprite_BG_1
+
+
 
 	%InsertFile(Linear_Hammer)
 	incbin ExExGFX/Hammer.bin
@@ -166,16 +208,19 @@ org $308008
 	incbin ExExGFX/Fireball16x16.bin
 	.End
 
+	%InsertFile(Linear_LuigiFireball)
+	incbin ExExGFX/LuigiFireball.bin
+	.End
+
 	%InsertFile(Linear_Goomba)
 	incbin ExExGFX/Goomba.bin
 	.End
 
+	%InsertFile(Linear_Baseball)
+	incbin ExExGFX/Baseball.bin
+	.End
 
-print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-print "!! $", hex($30DA08-.End), " BYTES FREE AT $", pc, " !!"
-print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-org $30DA08
-	%InsertFile(Happy_Slime)
+	%InsertFile(HappySlime)
 	incbin Fe26/Sprites/SpriteGFX/HappySlime.bin
 	.End
 
@@ -185,34 +230,19 @@ warnpc $318000
 org $318000
 %BankStart(31)
 
-	%InsertFile(KingKing_KingOfTheRex)
+	%InsertFile(Kingking)
 	incbin Fe26/Sprites/SpriteGFX/KingKing.bin
 	.End
 
-print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-print "!! $", hex($31C400-.End), " BYTES FREE AT $", pc, " !!"
-print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-org $31C400
-
-	%InsertFile(MarioExpand)
+	%InsertFile(Mario_Expand)
 	incbin ExExGFX/MarioExpand.bin
 	.End
-
-print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-print "!! $", hex($31DC00-.End), " BYTES FREE AT $", pc, " !!"
-print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-org $31DC00
 
 	%InsertFile(Sprite_BG_1)
 	incbin ExExGFX/SBG.bin
 	.End
 
-print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-print "!! $", hex($31FC00-.End), " BYTES FREE AT $", pc, " !!"
-print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-org $31FC00
-
-	%InsertFile(MarioTiles)
+	%InsertFile(Mario_Supplement)
 	incbin PCE/GFX/MarioSupplement.bin
 	.End
 
@@ -221,12 +251,12 @@ warnpc $328000
 org $328008
 %BankStart(32)
 
-	%InsertFile(Kadaal_VengefulKoopa)
+	%InsertFile(Kadaal)
 	incbin PCE/GFX/Kadaal.bin
 	.End
 
-	%InsertFile(Adept_Shaman)
-	incbin Fe26/Sprites/SpriteGFX/AdeptShaman.bin
+	%InsertFile(Wizrex)
+	incbin Fe26/Sprites/SpriteGFX/Wizrex.bin
 	.End
 
 	%InsertFile(EliteKoopa)
@@ -251,7 +281,7 @@ warnpc $348000
 org $348008
 %BankStart(34)
 
-	%InsertFile(LeewaysSword)
+	%InsertFile(Leeway_Sword)
 	incbin PCE/GFX/LeewaysSword.bin
 	.End
 
@@ -259,11 +289,11 @@ org $348008
 	incbin Fe26/Sprites/SpriteGFX/AggroRex.bin
 	.End
 
-	%InsertFile(TarCreeperBody)
+	%InsertFile(TarCreeper_Body)
 	incbin Fe26/Sprites/SpriteGFX/TarCreeperBody.bin
 	.End
 
-	%InsertFile(TarCreeperHands)
+	%InsertFile(TarCreeper_Hands)
 	incbin Fe26/Sprites/SpriteGFX/TarCreeperHands.bin
 	.End
 
@@ -272,7 +302,7 @@ warnpc $358000
 org $358000
 %BankStart(35)
 
-	%InsertFile(Leeway_GoldenRex)
+	%InsertFile(Leeway)
 	incbin PCE/GFX/Leeway.bin
 	.End
 
@@ -294,6 +324,7 @@ warnpc $378000
 org $378000
 %BankStart(37)
 
+	PortraitData:
 	dw .PalPtr		; < This is probably necessary to access the palettes smoothly
 
 	dl MarioPortrait : db $00		; 01, Mario
@@ -416,15 +447,15 @@ warnpc $388000
 org $388008
 %BankStart(38)
 
-	%InsertFile(Survivor_NPC)
+	%InsertFile(NPC_Survivor)
 	incbin Fe26/Sprites/SpriteGFX/Survivor.bin
 	.End
 
-	%InsertFile(Tinkerer_NPC)
+	%InsertFile(NPC_Tinkerer)
 	incbin Fe26/Sprites/SpriteGFX/Tinkerer.bin
 	.End
 
-	%InsertFile(Melody_NPC)
+	%InsertFile(NPC_Melody)
 	incbin Fe26/Sprites/SpriteGFX/Melody.bin
 	.End
 
@@ -523,6 +554,8 @@ PalsetData:
 	%storepal(generic_grey)			; 0E
 	%storepal(generic_ghost_blue)		; 0F
 	%storepal(generic_lightblue)		; 10
+
+	%storepal(special_wizrex)		; 11
 
 
 .Alt

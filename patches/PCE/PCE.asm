@@ -6,7 +6,7 @@ sa1rom
 ;DEFINES;
 ;=======;
 
-	incsrc "Defines.asm"
+	incsrc "../Defines.asm"
 
 ;=======;
 ;HIJACKS;
@@ -56,6 +56,7 @@ sa1rom
 	dw $FFF7
 	dw $0008
 	print " "
+	print "-- PCE --"
 	print "Von Fahrenheit's playable character engine."
 
 
@@ -339,36 +340,86 @@ sa1rom
 		SEP #$20			;/
 		JML $00A6CB
 
+
+
+
 		.Camera
+		PHY
+		LDY #$00
 		LDA !MultiPlayer
-		AND #$00FF
-		BEQ ..SingleCamera
-		LDA !GameMode
+		AND #$00FF : BEQ ..SingleCamera
+
+		LDA !P2Status-$80			;\
+		AND #$00FF				; |
+		CMP #$0002 : BCC +			; |
+		LDY #$80 : BRA ..SingleCamera		; | multiplayer should use single camera if only one player is left
+	+	LDA !P2Status				; |
+		AND #$00FF				; |
+		CMP #$0002 : BCC +			; |
+		LDY #$00 : BRA ..SingleCamera		;/
+
+	+	LDA !GameMode
 		AND #$00FF
 		CMP #$0014 : BEQ ..AverageCamera
 		..SingleCamera
+		SEP #$20			; make sure camera movements are smooth for custom characters too
+	;	LDA !CurrentMario : BNE ++
+		LDA #$77			;\
+		CLC : ADC !CameraPower		; | left value (0x77 + power)
+		STA $00				;/
+		LDA #$77			;\
+		SEC : SBC !CameraPower		; | right value (0x77 - power)
+		STA $01				;/
+	; turns out that 0x77 is the magic number for this camera routine
+	; default values are 0x90 for left and 0x5E for right
 
-	SEP #$20			; make sure camera movements are smooth for custom characters too
-	LDA !CurrentMario
-	BNE ++
 
-	LDA !P2XSpeed-$80
-	CLC : ADC !P2VectorX-$80
-	BEQ ++
-	BPL ..R
-..L	LDA $742A
-	CMP #$90 : BEQ +
-	INC A
-	BRA +
-..R	LDA $742A
-	CMP #$5E : BEQ +
-	DEC A
-+	STA $742A
-++	REP #$20
+		REP #$20
+		LDA !P2XPosLo-$80,y
+		SEC : SBC !CameraXMem
+		CMP #$0018 : BCC ++
+		CMP #$8000 : BCC ..R
+		CMP #$FFE8 : BCS ++
 
+	..L	SEP #$20
+		LDA $742A
+		CMP $00 : BEQ +++
+		INC A
+		CMP $00 : BEQ +++
+		INC A
+		BRA +
+
+	..R	SEP #$20
+		LDA $742A
+		CMP $01 : BEQ +++
+		DEC A
+		CMP $01 : BEQ +++
+		DEC A
+		BRA +
+
+	+++	PHA
+		REP #$20
+		LDA !P2XPosLo-$80,y : STA !CameraXMem	; save this to know when to scroll again
+		SEP #$20
+		PLA
+	+	STA $742A
+	++	REP #$20
+		LDA !GameMode
+		AND #$00FF
+		CMP #$0014 : BEQ ..Level
+
+		..Loading
 		LDA $94
 		SEC : SBC $1A
+		PLY
 		RTL
+
+		..Level
+		LDA !P2XPosLo-$80,y
+		SEC : SBC $1A
+		PLY
+		RTL
+
 		..AverageCamera
 		LDA !P2XPosLo-$80
 		SEC : SBC !P2XPosLo
@@ -385,12 +436,15 @@ sa1rom
 		PLA				;/
 		STZ $7400			; > Disable camera movement
 		PLB				;\ Restore bank and return
+		PLY				; > also restore Y
 		RTL				;/
+
 		..Movement
 		LDA !P2XPosLo-$80
 		CLC : ADC !P2XPosLo
 		LSR A
 		SEC : SBC $1A
+		PLY
 		RTL
 
 
@@ -611,6 +665,8 @@ BITS:	db $01,$02,$04,$08,$10,$20,$40,$80
 	incsrc "CORE/SET_GLITTER.asm"
 	incsrc "CORE/PLAYER_CLIPPING.asm"
 	incsrc "CORE/PLATFORM.asm"
+	incsrc "CORE/KNOCKED_OUT.asm"
+	incsrc "CORE/DISPLAY_CONTACT.asm"
 	namespace off
 
 
@@ -1183,17 +1239,23 @@ BITS:	db $01,$02,$04,$08,$10,$20,$40,$80
 		BRA ..Water				; |
 		..NoMario				;/
 
+		LDA !MarioExtraWaterJump : BNE ..CanJump
+
 		LDA !3DWater : BEQ ..NoWater		;\
 		LDA !IceLevel : BNE ..NoWater		; |
 		REP #$20				; |
 		LDA !MarioYPosLo			; | check for (nonfrozen) 3D water
-		CLC : ADC #$0010			; > Mario offset
+		CLC : ADC #$0018			; > Mario offset
+		BPL $03 : LDA #$0000			; > can't be out of bounds
 		SEC : SBC !Level+2			; |
 		SEP #$20				; |
 		BCC ..NoWater				;/
 		XBA : BNE ..Water
 		XBA
 		CMP #$10 : BCS ..Water			; Mario can jump out when in the top tile of the water
+
+		..CanJump
+		LDA #$00 : STA !MarioExtraWaterJump
 		LDA !MarioUnderWater : BEQ ..Water	; water splash animation
 		LDA #$FC				;\
 		CMP !MarioYSpeed			; | I don't know what this does but smw does it
@@ -1323,8 +1385,8 @@ BITS:	db $01,$02,$04,$08,$10,$20,$40,$80
 
 
 MarioTileRemap:	CLC : ADC !MarioTileOffset		; > add player offset
-		STA !OAM+$102-$18,y			;\ original code
-		LDX $05					;/
+		STA !OAM+$102-$18,y			; original code
+		LDX $05					; original code
 		RTL					; > return
 
 .Prop		CLC : ADC !MarioPropOffset		; > add player palette offset
@@ -1344,6 +1406,11 @@ MarioTileRemap:	CLC : ADC !MarioTileOffset		; > add player offset
 
 
 .Coords		PHY					; preserve
+
+		XBA
+		LDA !CurrentMario : BNE +		;\ don't draw mario if he's not in play
+		LDA #$F0 : BRA ..WriteY			;/
+	+	XBA
 
 		CPY #$10 : BNE ..NoCape			;\
 		LDY !MarioPowerUp : BNE ..NoCape	; |
@@ -1387,6 +1454,8 @@ MarioTileRemap:	CLC : ADC !MarioTileOffset		; > add player offset
 		SEP #$20				; |
 		..NoDown				;/
 
+
+		..WriteY
 		PLY					;\ write Ypos
 		STA !OAM+$101-$18,y			;/
 

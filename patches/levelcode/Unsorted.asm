@@ -34,16 +34,24 @@ Weather:
 		LDA.b #.SA1 : STA $3180
 		LDA.b #.SA1>>8 : STA $3181
 		LDA.b #.SA1>>16 : STA $3182
-		JMP $1E80
+		JSR $1E80
+		RTL
 
 		.LoadSnow
+		PHB : PHK : PLB
 		STA $00					; store snow type
 		JSL !GetVRAM
-		REP #$20
+		REP #$30
+		LDY.w #!File_Sprite_BG_1
+		JSL !GetFileAddress
+		SEP #$10
+
 		LDA #$0020 : STA.l !VRAMbase+!VRAMtable+$00,x
 		LDY $00
-		LDA.w .Data,y : STA.l !VRAMbase+!VRAMtable+$02,x
-		LDA #$3131 : STA.l !VRAMbase+!VRAMtable+$04,x
+		LDA.w .Data,y
+		CLC : ADC !FileAddress
+		STA.l !VRAMbase+!VRAMtable+$02,x
+		LDA !FileAddress+2 : STA.l !VRAMbase+!VRAMtable+$04,x
 		LDA #$7FF0 : STA.l !VRAMbase+!VRAMtable+$05,x
 		SEP #$20
 
@@ -56,10 +64,11 @@ Weather:
 		STA.l !SnowXSpeed,x
 		STA.l !SnowXAccel,x
 		DEX : BPL -
-		RTS
+		PLB
+		RTL
 
 		.Data
-		dw $ECE0,$EEE0
+		dw $0FC0,$0FE0
 
 
 		.SA1
@@ -89,7 +98,7 @@ Weather:
 		CMP #$0100 : BCC .GoodX
 		CMP #$FFF8 : BCS .GoodX
 		CMP #$0180 : BCS .Spawn
-	-	JMP .Process
+	-	JML .Process
 
 	.Spawn	LDA.w !SnowSpawned : BNE -
 		LDA.w !WeatherFreq		;\
@@ -115,7 +124,7 @@ Weather:
 		CMP #$00D8 : BCC .GoodY
 		CMP #$FFF8 : BCS .GoodY
 		CMP #$FF80 : BCS .Process
-		JMP .Spawn
+		JML .Spawn
 
 	.GoodY	PHX
 		SEP #$20
@@ -129,12 +138,27 @@ Weather:
 		LDA.w !WeatherType
 		CMP #$02 : BEQ ++
 		CMP #$03 : BNE +
-	++	LDA #$4D
-		CLC : ADC.l !GFX_status+$0C
+	++	LDA !GFX_status+$83
+		ASL A
+		ROL A
+		AND #$01
+		ORA #$0A
+		STA $0F
+		LDA !GFX_status+$83
+		AND #$70
+		ASL A
+		STA $00
+		LDA !GFX_status+$83
+		AND #$0F
+		ORA $00
+		CLC : ADC #$4D
 		BRA ++
-	+	LDA #$FF
+	+	LDA #$3D : STA $0F
+		LDA #$FF
 	++	STA.l !OAM+2,x
-		LDA #$3D : STA.l !OAM+3,x
+		LDA #$30
+		ORA $0F
+		STA.l !OAM+3,x
 		TXA
 		LSR #2
 		TAX
@@ -198,7 +222,7 @@ Weather:
 
 	.Next	DEX #2
 		BMI .Done
-		JMP .Loop
+		JML .Loop
 
 	.Done	PLB
 		PLP
@@ -312,14 +336,14 @@ Weather:
 		STZ $00
 		LDA.w !SnowRNG+0,y
 		AND #$0001 : BEQ ..R
-	..L	LDA.l !Level+2
+	..L	LDA.l !Level+4			; shows whether caster still lives...
 		AND #$0001 : BEQ ..Return
-		LDA #$0C60 : STA.w !SnowX,x
+		LDA #$0D60 : STA.w !SnowX,x
 		DEC $00
 		BRA +
-	..R	LDA.l !Level+2
+	..R	LDA.l !Level+4
 		AND #$0002 : BEQ ..Return
-		LDA #$0C90 : STA.w !SnowX,x
+		LDA #$0D90 : STA.w !SnowX,x
 	+	LDA #$0148 : STA.w !SnowY,x
 
 		LDA.w !SnowRNG+1,y
@@ -360,8 +384,8 @@ Weather:
 
 		.MaskBox
 		LDA.w !SnowX,x
-		CMP #$0C72 : BCC ..R
-		CMP #$0C7E : BCS ..R
+		CMP #$0D72 : BCC ..R
+		CMP #$0D7E : BCS ..R
 		LDA.w !SnowY,x
 		CMP #$0110 : BCC ..R
 		CMP #$0118 : BCS ..R
@@ -417,7 +441,7 @@ DecompressGFX:
 		LDX.b #!GFX_buffer>>8 : STX $01
 		LDX.b #!GFX_buffer>>16 : STX $02
 		JSL $0FF900
-		RTS
+		RTL
 
 
 
@@ -438,7 +462,7 @@ UploadDecomp:
 		TYA
 		ASL #5
 		STA.l !VRAMbase+!VRAMtable+$00,x
-		RTS
+		RTL
 
 
 
@@ -460,11 +484,17 @@ LoadCameraBox:
 		LDA.w #.SA1 : STA $3180
 		LDA.w #.SA1>>8 : STA $3181
 		SEP #$20
-		JMP $1E80
+		PHB : PLA
+		STA $02
+		JSR $1E80
+		RTL
 
 		.SA1
-		PHB : PHK : PLB
+		PHB
 		PHP
+		SEP #$20
+		LDA $02
+		PHA : PLB				; maintain bank from SNES CPU
 		REP #$20
 
 		LDX #$06				;\ get main pointers:
@@ -523,8 +553,9 @@ LoadCameraBox:
 		BRA -
 		+
 
-		LDA #$FFF8
-	-	CLC : ADC #$0008
+		LDA !LevelWidth
+		EOR #$FFFF : INC A
+	-	CLC : ADC !LevelWidth
 		DEX : BPL -
 		ORA $00
 		TAY
@@ -630,8 +661,7 @@ LoadCameraBox:
 		AND #$00FF : BEQ .Old			;/
 
 	-	LDA ($0A),y
-		CMP !CameraBoxL,x
-		BNE .New
+		CMP !CameraBoxL,x : BNE .New
 		INX #2
 		INY #2
 		CPX #$08 : BNE -
@@ -741,12 +771,14 @@ LoadCameraBox:
 ; figure out which $E0 block the door is on vertically, then chain to that
 
 	.CameraChain
+		PHB : PHK : PLB
 		LDY.b #.ScreensEnd-.VerticalScreens-2
 		LDA $0B : XBA
 		LDA $05
 		REP #$20
 	-	CMP .VerticalScreens,y : BCS +
 		DEY #2 : BPL -
+		PLB
 		RTS
 
 	+	LDA .VerticalScreens,y
@@ -755,6 +787,7 @@ LoadCameraBox:
 		BPL $04 : EOR #$FFFF : INC A
 		CMP #$0008 : BCS +
 		LDA .VerticalScreens,y : STA !CameraBackupY
+		PLB
 		RTS
 
 	+	LDA $02
@@ -769,35 +802,52 @@ LoadCameraBox:
 		STA !CameraForceTimer+1
 		STA !P2Stasis-$80
 		STA !P2Stasis
+		PLB
 		RTS
 
 
 		.VerticalScreens
 		dw $0000,$00E0,$01C0,$02A0,$0380,$0460,$0540,$0620
 		dw $0700,$07E0,$08C0,$09A0,$0A80,$0B60,$0C40,$0D20
+		dw $0E00,$0EE0,$0FC0,$10A0,$1180,$1260,$1340,$1420
+		dw $1500,$15E0,$16C0,$17A0,$1880,$1960,$1A40,$1B20
 		.ScreensEnd
 
 
 
-
 InitCameraBox:
-		PHP
+		PHP			; this push order matters, don't change it
+		PHB : PHK : PLB
 		REP #$20
+
+		LDA $94
+		AND #$FF00
+		BPL $03 : LDA #$0000
+		STA $1A
+		LDA $96
+		SEC : SBC #$0070
+		BPL $03 : LDA #$0000
+		LDY.b #LoadCameraBox_ScreensEnd-LoadCameraBox_VerticalScreens-2
+	-	CMP LoadCameraBox_VerticalScreens,y : BCS +
+		DEY #2 : BPL -
+		LDY #$00
+	+	LDA LoadCameraBox_VerticalScreens,y : STA $1C
+
 		LDA !CameraBoxL
 		CMP $1A : BCS .WriteX
 		LDA !CameraBoxR
 		CMP $1A : BCS .NoX
 	.WriteX	STA $1A
-		STA !CameraBackupX
 		.NoX
+		LDA $1A : STA !CameraBackupX
 
 		LDA !CameraBoxU
 		CMP $1C : BCS .WriteY
 		LDA !CameraBoxD
 		CMP $1C : BCS .NoY
 	.WriteY	STA $1C
-		STA !CameraBackupY
 		.NoY
+		LDA $1C : STA !CameraBackupY
 
 
 		LDA $1C
@@ -814,9 +864,8 @@ InitCameraBox:
 		SEP #$20
 		LDX $00
 		LDY $01
-		JSR LoadScreen
+		JSL LoadScreen
 
-		PHB
 		LDA.b #!VRAMbank
 		PHA : PLB
 
@@ -847,8 +896,7 @@ InitCameraBox:
 
 		INC !SmoothCamera
 		PLP
-		RTS
-
+		RTL
 
 
 
@@ -858,41 +906,48 @@ InitCameraBox:
 
 levelinit0:
 		INC !SideExit
-		RTS
+		PHP
+		REP #$30
+		LDY.w #!File_NPC_Survivor
+		LDA #$6C00
+		JSL !LoadFile
+
+		PLP
+		RTL
 levelinit16:
-	RTS
+	RTL
 levelinit17:
-	RTS
+	RTL
 levelinit18:
-	RTS
+	RTL
 levelinit19:
-	RTS
+	RTL
 levelinit1A:
-	RTS
+	RTL
 levelinit1B:
-	RTS
+	RTL
 levelinit1C:
-	RTS
+	RTL
 levelinit1D:
-	RTS
+	RTL
 levelinit1E:
-	RTS
+	RTL
 levelinit1F:
-	RTS
+	RTL
 levelinit20:
-	RTS
+	RTL
 levelinit21:
-	RTS
+	RTL
 levelinit22:
-	RTS
+	RTL
 levelinit23:
-	RTS
+	RTL
 levelinit24:
-	RTS
+	RTL
 
 levelinit25:
 
-		JSR CLEAR_DYNAMIC_BG3
+		LDA #$60 : STA !GFX_Dynamic
 
 		LDA.b #.SA1 : STA $3180
 		LDA.b #.SA1>>8 : STA $3181
@@ -912,7 +967,7 @@ levelinit25:
 		LDA.b #.NPC_table : STA !NPC_ID
 		LDA.b #.NPC_table>>8 : STA !NPC_ID+1
 		LDA.b #.NPC_table>>16 : STA !NPC_ID+2
-		RTS
+		RTL
 
 	.NPC_table
 	db $01
@@ -934,299 +989,299 @@ levelinit25:
 
 
 levelinit33:
-	RTS
+	RTL
 
 
 
 
 levelinit38:
-	RTS
-levelinit39:
-	RTS
+	RTL
+
+
 levelinit3A:
-	RTS
+	RTL
 levelinit3B:
-	RTS
+	RTL
 levelinit3C:
-	RTS
+	RTL
 levelinit3D:
-	RTS
+	RTL
 levelinit3E:
-	RTS
+	RTL
 levelinit3F:
-	RTS
+	RTL
 levelinit40:
-	RTS
+	RTL
 levelinit41:
-	RTS
+	RTL
 levelinit42:
-	RTS
+	RTL
 levelinit43:
-	RTS
+	RTL
 levelinit44:
-	RTS
+	RTL
 levelinit45:
-	RTS
+	RTL
 levelinit46:
-	RTS
+	RTL
 levelinit47:
-	RTS
+	RTL
 levelinit48:
-	RTS
+	RTL
 levelinit49:
-	RTS
+	RTL
 levelinit4A:
-	RTS
+	RTL
 levelinit4B:
-	RTS
+	RTL
 levelinit4C:
-	RTS
+	RTL
 levelinit4D:
-	RTS
+	RTL
 levelinit4E:
-	RTS
+	RTL
 levelinit4F:
-	RTS
+	RTL
 levelinit50:
-	RTS
+	RTL
 levelinit51:
-	RTS
+	RTL
 levelinit52:
-	RTS
+	RTL
 levelinit53:
-	RTS
+	RTL
 levelinit54:
-	RTS
+	RTL
 levelinit55:
-	RTS
+	RTL
 levelinit56:
-	RTS
+	RTL
 levelinit57:
-	RTS
+	RTL
 levelinit58:
-	RTS
+	RTL
 levelinit59:
-	RTS
+	RTL
 levelinit5A:
-	RTS
+	RTL
 levelinit5B:
-	RTS
+	RTL
 levelinit5C:
-	RTS
+	RTL
 levelinit5D:
-	RTS
+	RTL
 levelinit5E:
-	RTS
+	RTL
 levelinit5F:
-	RTS
+	RTL
 levelinit60:
-	RTS
+	RTL
 levelinit61:
-	RTS
+	RTL
 levelinit62:
-	RTS
+	RTL
 levelinit63:
-	RTS
+	RTL
 levelinit64:
-	RTS
+	RTL
 levelinit65:
-	RTS
+	RTL
 levelinit66:
-	RTS
+	RTL
 levelinit67:
-	RTS
+	RTL
 levelinit68:
-	RTS
+	RTL
 levelinit69:
-	RTS
+	RTL
 levelinit6A:
-	RTS
+	RTL
 levelinit6B:
-	RTS
+	RTL
 levelinit6C:
-	RTS
+	RTL
 levelinit6D:
-	RTS
+	RTL
 levelinit6E:
-	RTS
+	RTL
 levelinit6F:
-	RTS
+	RTL
 levelinit70:
-	RTS
+	RTL
 levelinit71:
-	RTS
+	RTL
 levelinit72:
-	RTS
+	RTL
 levelinit73:
-	RTS
+	RTL
 levelinit74:
-	RTS
+	RTL
 levelinit75:
-	RTS
+	RTL
 levelinit76:
-	RTS
+	RTL
 levelinit77:
-	RTS
+	RTL
 levelinit78:
-	RTS
+	RTL
 levelinit79:
-	RTS
+	RTL
 levelinit7A:
-	RTS
+	RTL
 levelinit7B:
-	RTS
+	RTL
 levelinit7C:
-	RTS
+	RTL
 levelinit7D:
-	RTS
+	RTL
 levelinit7E:
-	RTS
+	RTL
 levelinit7F:
-	RTS
+	RTL
 levelinit80:
-	RTS
+	RTL
 levelinit81:
-	RTS
+	RTL
 levelinit82:
-	RTS
+	RTL
 levelinit83:
-	RTS
+	RTL
 levelinit84:
-	RTS
+	RTL
 levelinit85:
-	RTS
+	RTL
 levelinit86:
-	RTS
+	RTL
 levelinit87:
-	RTS
+	RTL
 levelinit88:
-	RTS
+	RTL
 levelinit89:
-	RTS
+	RTL
 levelinit8A:
-	RTS
+	RTL
 levelinit8B:
-	RTS
+	RTL
 levelinit8C:
-	RTS
+	RTL
 levelinit8D:
-	RTS
+	RTL
 levelinit8E:
-	RTS
+	RTL
 levelinit8F:
-	RTS
+	RTL
 levelinit90:
-	RTS
+	RTL
 levelinit91:
-	RTS
+	RTL
 levelinit92:
-	RTS
+	RTL
 levelinit93:
-	RTS
+	RTL
 levelinit94:
-	RTS
+	RTL
 levelinit95:
-	RTS
+	RTL
 levelinit96:
-	RTS
+	RTL
 levelinit97:
-	RTS
+	RTL
 levelinit98:
-	RTS
+	RTL
 levelinit99:
-	RTS
+	RTL
 levelinit9A:
-	RTS
+	RTL
 levelinit9B:
-	RTS
+	RTL
 levelinit9C:
-	RTS
+	RTL
 levelinit9D:
-	RTS
+	RTL
 levelinit9E:
-	RTS
+	RTL
 levelinit9F:
-	RTS
+	RTL
 levelinitA0:
-	RTS
+	RTL
 levelinitA1:
-	RTS
+	RTL
 levelinitA2:
-	RTS
+	RTL
 levelinitA3:
-	RTS
+	RTL
 levelinitA4:
-	RTS
+	RTL
 levelinitA5:
-	RTS
+	RTL
 levelinitA6:
-	RTS
+	RTL
 levelinitA7:
-	RTS
+	RTL
 levelinitA8:
-	RTS
+	RTL
 levelinitA9:
-	RTS
+	RTL
 levelinitAA:
-	RTS
+	RTL
 levelinitAB:
-	RTS
+	RTL
 levelinitAC:
-	RTS
+	RTL
 levelinitAD:
-	RTS
+	RTL
 levelinitAE:
-	RTS
+	RTL
 levelinitAF:
-	RTS
+	RTL
 levelinitB0:
-	RTS
+	RTL
 levelinitB1:
-	RTS
+	RTL
 levelinitB2:
-	RTS
+	RTL
 levelinitB3:
-	RTS
+	RTL
 levelinitB4:
-	RTS
+	RTL
 levelinitB5:
-	RTS
+	RTL
 levelinitB6:
-	RTS
+	RTL
 levelinitB7:
-	RTS
+	RTL
 levelinitB8:
-	RTS
+	RTL
 levelinitB9:
-	RTS
+	RTL
 levelinitBA:
-	RTS
+	RTL
 levelinitBB:
-	RTS
+	RTL
 levelinitBC:
-	RTS
+	RTL
 levelinitBD:
-	RTS
+	RTL
 levelinitBE:
-	RTS
+	RTL
 levelinitBF:
-	RTS
+	RTL
 levelinitC0:
-	RTS
+	RTL
 levelinitC1:
-	RTS
+	RTL
 levelinitC2:
-	RTS
+	RTL
 levelinitC3:
-	RTS
+	RTL
 levelinitC4:
-	RTS
+	RTL
 levelinitC5:
 		LDA #$01			;\ Prevent camera from scrolling
 		STA $5E				;/
-		RTS				; > Return
+		RTL				; > Return
 levelinitC6:
-	RTS
+	RTL
 levelinitC7:
 	pushpc
 	org $0096C6
@@ -1240,635 +1295,635 @@ levelinitC7:
 		STA !SPC3
 
 	pullpc
-		RTS
+		RTL
 
 levelinitC8:
-	RTS
+	RTL
 levelinitC9:
-	RTS
+	RTL
 levelinitCA:
-	RTS
+	RTL
 levelinitCB:
-	RTS
+	RTL
 levelinitCC:
-	RTS
+	RTL
 levelinitCD:
-	RTS
+	RTL
 levelinitCE:
-	RTS
+	RTL
 levelinitCF:
-	RTS
+	RTL
 levelinitD0:
-	RTS
+	RTL
 levelinitD1:
-	RTS
+	RTL
 levelinitD2:
-	RTS
+	RTL
 levelinitD3:
-	RTS
+	RTL
 levelinitD4:
-	RTS
+	RTL
 levelinitD5:
-	RTS
+	RTL
 levelinitD6:
-	RTS
+	RTL
 levelinitD7:
-	RTS
+	RTL
 levelinitD8:
-	RTS
+	RTL
 levelinitD9:
-	RTS
+	RTL
 levelinitDA:
-	RTS
+	RTL
 levelinitDB:
-	RTS
+	RTL
 levelinitDC:
-	RTS
+	RTL
 levelinitDD:
-	RTS
+	RTL
 levelinitDE:
-	RTS
+	RTL
 levelinitDF:
-	RTS
+	RTL
 levelinitE0:
-	RTS
+	RTL
 levelinitE1:
-	RTS
+	RTL
 levelinitE2:
-	RTS
+	RTL
 levelinitE3:
-	RTS
+	RTL
 levelinitE4:
-	RTS
+	RTL
 levelinitE5:
-	RTS
+	RTL
 levelinitE6:
-	RTS
+	RTL
 levelinitE7:
-	RTS
+	RTL
 levelinitE8:
-	RTS
+	RTL
 levelinitE9:
-	RTS
+	RTL
 levelinitEA:
-	RTS
+	RTL
 levelinitEB:
-	RTS
+	RTL
 levelinitEC:
-	RTS
+	RTL
 levelinitED:
-	RTS
+	RTL
 levelinitEE:
-	RTS
+	RTL
 levelinitEF:
-	RTS
+	RTL
 levelinitF0:
-	RTS
+	RTL
 levelinitF1:
-	RTS
+	RTL
 levelinitF2:
-	RTS
+	RTL
 levelinitF3:
-	RTS
+	RTL
 levelinitF4:
-	RTS
+	RTL
 levelinitF5:
-	RTS
+	RTL
 levelinitF6:
-	RTS
+	RTL
 levelinitF7:
-	RTS
+	RTL
 levelinitF8:
-	RTS
+	RTL
 levelinitF9:
-	RTS
+	RTL
 levelinitFA:
-	RTS
+	RTL
 levelinitFB:
-	RTS
+	RTL
 levelinitFC:
-	RTS
+	RTL
 levelinitFD:
-	RTS
+	RTL
 levelinitFE:
-	RTS
+	RTL
 levelinitFF:
-	RTS
+	RTL
 levelinit100:
-	RTS
+	RTL
 levelinit101:
-	RTS
+	RTL
 levelinit102:
-	RTS
+	RTL
 levelinit103:
-	RTS
+	RTL
 levelinit104:
-	RTS
+	RTL
 levelinit105:
-	RTS
+	RTL
 levelinit106:
-	RTS
+	RTL
 levelinit107:
-	RTS
+	RTL
 levelinit108:
-	RTS
+	RTL
 levelinit109:
-	RTS
+	RTL
 levelinit10A:
-	RTS
+	RTL
 levelinit10B:
-	RTS
+	RTL
 levelinit10C:
-		JMP levelinit0
-		RTS
+		JML levelinit0
+		RTL
 
 
 levelinit10D:
-	RTS
+	RTL
 levelinit10E:
-	RTS
+	RTL
 levelinit10F:
-	RTS
+	RTL
 levelinit110:
-	RTS
+	RTL
 levelinit111:
-	RTS
+	RTL
 levelinit112:
-	RTS
+	RTL
 levelinit113:
-	RTS
+	RTL
 levelinit114:
-	RTS
+	RTL
 levelinit115:
-	RTS
+	RTL
 levelinit116:
-	RTS
+	RTL
 levelinit117:
-	RTS
+	RTL
 levelinit118:
-	RTS
+	RTL
 levelinit119:
-	RTS
+	RTL
 levelinit11A:
-	RTS
+	RTL
 levelinit11B:
-	RTS
+	RTL
 levelinit11C:
-	RTS
+	RTL
 levelinit11D:
-	RTS
+	RTL
 levelinit11E:
-	RTS
+	RTL
 levelinit11F:
-	RTS
+	RTL
 levelinit120:
-	RTS
+	RTL
 levelinit121:
-	RTS
+	RTL
 levelinit122:
-	RTS
+	RTL
 levelinit123:
-	RTS
+	RTL
 levelinit124:
-	RTS
+	RTL
 levelinit125:
-	RTS
+	RTL
 levelinit126:
-	RTS
+	RTL
 levelinit127:
-	RTS
+	RTL
 levelinit128:
-	RTS
+	RTL
 levelinit129:
-	RTS
+	RTL
 levelinit12A:
-	RTS
+	RTL
 levelinit12B:
-	RTS
+	RTL
 levelinit12C:
-	RTS
+	RTL
 levelinit12D:
-	RTS
+	RTL
 levelinit12E:
-	RTS
+	RTL
 levelinit12F:
-	RTS
+	RTL
 levelinit130:
-	RTS
+	RTL
 levelinit131:
-	RTS
+	RTL
 levelinit132:
-	RTS
+	RTL
 levelinit133:
-	RTS
+	RTL
 levelinit134:
-	RTS
+	RTL
 levelinit135:
-	RTS
+	RTL
 levelinit136:
-	RTS
+	RTL
 levelinit137:
-	RTS
+	RTL
 levelinit138:
-	RTS
+	RTL
 levelinit139:
-	RTS
+	RTL
 levelinit13A:
-	RTS
+	RTL
 levelinit13B:
-	RTS
+	RTL
 levelinit13C:
-	RTS
+	RTL
 levelinit13D:
-	RTS
+	RTL
 levelinit13E:
-	RTS
+	RTL
 levelinit13F:
-	RTS
+	RTL
 levelinit140:
-	RTS
+	RTL
 levelinit141:
-	RTS
+	RTL
 levelinit142:
-	RTS
+	RTL
 levelinit143:
-	RTS
+	RTL
 levelinit144:
-	RTS
+	RTL
 levelinit145:
-	RTS
+	RTL
 levelinit146:
-	RTS
+	RTL
 levelinit147:
-	RTS
+	RTL
 levelinit148:
-	RTS
+	RTL
 levelinit149:
-	RTS
+	RTL
 levelinit14A:
-	RTS
+	RTL
 levelinit14B:
-	RTS
+	RTL
 levelinit14C:
-	RTS
+	RTL
 levelinit14D:
-	RTS
+	RTL
 levelinit14E:
-	RTS
+	RTL
 levelinit14F:
-	RTS
+	RTL
 levelinit150:
-	RTS
+	RTL
 levelinit151:
-	RTS
+	RTL
 levelinit152:
-	RTS
+	RTL
 levelinit153:
-	RTS
+	RTL
 levelinit154:
-	RTS
+	RTL
 levelinit155:
-	RTS
+	RTL
 levelinit156:
-	RTS
+	RTL
 levelinit157:
-	RTS
+	RTL
 levelinit158:
-	RTS
+	RTL
 levelinit159:
-	RTS
+	RTL
 levelinit15A:
-	RTS
+	RTL
 levelinit15B:
-	RTS
+	RTL
 levelinit15C:
-	RTS
+	RTL
 levelinit15D:
-	RTS
+	RTL
 levelinit15E:
-	RTS
+	RTL
 levelinit15F:
-	RTS
+	RTL
 levelinit160:
-	RTS
+	RTL
 levelinit161:
-	RTS
+	RTL
 levelinit162:
-	RTS
+	RTL
 levelinit163:
-	RTS
+	RTL
 levelinit164:
-	RTS
+	RTL
 levelinit165:
-	RTS
+	RTL
 levelinit166:
-	RTS
+	RTL
 levelinit167:
-	RTS
+	RTL
 levelinit168:
-	RTS
+	RTL
 levelinit169:
-	RTS
+	RTL
 levelinit16A:
-	RTS
+	RTL
 levelinit16B:
-	RTS
+	RTL
 levelinit16C:
-	RTS
+	RTL
 levelinit16D:
-	RTS
+	RTL
 levelinit16E:
-	RTS
+	RTL
 levelinit16F:
-	RTS
+	RTL
 levelinit170:
-	RTS
+	RTL
 levelinit171:
-	RTS
+	RTL
 levelinit172:
-	RTS
+	RTL
 levelinit173:
-	RTS
+	RTL
 levelinit174:
-	RTS
+	RTL
 levelinit175:
-	RTS
+	RTL
 levelinit176:
-	RTS
+	RTL
 levelinit177:
-	RTS
+	RTL
 levelinit178:
-	RTS
+	RTL
 levelinit179:
-	RTS
+	RTL
 levelinit17A:
-	RTS
+	RTL
 levelinit17B:
-	RTS
+	RTL
 levelinit17C:
-	RTS
+	RTL
 levelinit17D:
-	RTS
+	RTL
 levelinit17E:
-	RTS
+	RTL
 levelinit17F:
-	RTS
+	RTL
 levelinit180:
-	RTS
+	RTL
 levelinit181:
-	RTS
+	RTL
 levelinit182:
-	RTS
+	RTL
 levelinit183:
-	RTS
+	RTL
 levelinit184:
-	RTS
+	RTL
 levelinit185:
-	RTS
+	RTL
 levelinit186:
-	RTS
+	RTL
 levelinit187:
-	RTS
+	RTL
 levelinit188:
-	RTS
+	RTL
 levelinit189:
-	RTS
+	RTL
 levelinit18A:
-	RTS
+	RTL
 levelinit18B:
-	RTS
+	RTL
 levelinit18C:
-	RTS
+	RTL
 levelinit18D:
-	RTS
+	RTL
 levelinit18E:
-	RTS
+	RTL
 levelinit18F:
-	RTS
+	RTL
 levelinit190:
-	RTS
+	RTL
 levelinit191:
-	RTS
+	RTL
 levelinit192:
-	RTS
+	RTL
 levelinit193:
-	RTS
+	RTL
 levelinit194:
-	RTS
+	RTL
 levelinit195:
-	RTS
+	RTL
 levelinit196:
-	RTS
+	RTL
 levelinit197:
-	RTS
+	RTL
 levelinit198:
-	RTS
+	RTL
 levelinit199:
-	RTS
+	RTL
 levelinit19A:
-	RTS
+	RTL
 levelinit19B:
-	RTS
+	RTL
 levelinit19C:
-	RTS
+	RTL
 levelinit19D:
-	RTS
+	RTL
 levelinit19E:
-	RTS
+	RTL
 levelinit19F:
-	RTS
+	RTL
 levelinit1A0:
-	RTS
+	RTL
 levelinit1A1:
-	RTS
+	RTL
 levelinit1A2:
-	RTS
+	RTL
 levelinit1A3:
-	RTS
+	RTL
 levelinit1A4:
-	RTS
+	RTL
 levelinit1A5:
-	RTS
+	RTL
 levelinit1A6:
-	RTS
+	RTL
 levelinit1A7:
-	RTS
+	RTL
 levelinit1A8:
-	RTS
+	RTL
 levelinit1A9:
-	RTS
+	RTL
 levelinit1AA:
-	RTS
+	RTL
 levelinit1AB:
-	RTS
+	RTL
 levelinit1AC:
-	RTS
+	RTL
 levelinit1AD:
-	RTS
+	RTL
 levelinit1AE:
-	RTS
+	RTL
 levelinit1AF:
-	RTS
+	RTL
 levelinit1B0:
-	RTS
+	RTL
 levelinit1B1:
-	RTS
+	RTL
 levelinit1B2:
-	RTS
+	RTL
 levelinit1B3:
-	RTS
+	RTL
 levelinit1B4:
-	RTS
+	RTL
 levelinit1B5:
-	RTS
+	RTL
 levelinit1B6:
-	RTS
+	RTL
 levelinit1B7:
-	RTS
+	RTL
 levelinit1B8:
-	RTS
+	RTL
 levelinit1B9:
-	RTS
+	RTL
 levelinit1BA:
-	RTS
+	RTL
 levelinit1BB:
-	RTS
+	RTL
 levelinit1BC:
-	RTS
+	RTL
 levelinit1BD:
-	RTS
+	RTL
 levelinit1BE:
-	RTS
+	RTL
 levelinit1BF:
-	RTS
+	RTL
 levelinit1C0:
-	RTS
+	RTL
 levelinit1C1:
-	RTS
+	RTL
 levelinit1C2:
-	RTS
+	RTL
 levelinit1C3:
-	RTS
+	RTL
 levelinit1C4:
-	RTS
+	RTL
 levelinit1C5:
-	RTS
+	RTL
 levelinit1C6:
-	RTS
+	RTL
 levelinit1C7:
-	RTS
+	RTL
 levelinit1C8:
-	RTS
+	RTL
 levelinit1C9:
-	RTS
+	RTL
 levelinit1CA:
-	RTS
+	RTL
 levelinit1CB:
-	RTS
+	RTL
 levelinit1CC:
-	RTS
+	RTL
 levelinit1CD:
-	RTS
+	RTL
 levelinit1CE:
-	RTS
+	RTL
 levelinit1CF:
-	RTS
+	RTL
 levelinit1D0:
-	RTS
+	RTL
 levelinit1D1:
-	RTS
+	RTL
 levelinit1D2:
-	RTS
+	RTL
 levelinit1D3:
-	RTS
+	RTL
 levelinit1D4:
-	RTS
+	RTL
 levelinit1D5:
-	RTS
+	RTL
 levelinit1D6:
-	RTS
+	RTL
 levelinit1D7:
-	RTS
+	RTL
 levelinit1D8:
-	RTS
+	RTL
 levelinit1D9:
-	RTS
+	RTL
 levelinit1DA:
-	RTS
+	RTL
 levelinit1DB:
-	RTS
+	RTL
 levelinit1DC:
-	RTS
+	RTL
 levelinit1DD:
-	RTS
+	RTL
 levelinit1DE:
-	RTS
+	RTL
 levelinit1DF:
-	RTS
+	RTL
 levelinit1E0:
-	RTS
+	RTL
 levelinit1E1:
-	RTS
+	RTL
 levelinit1E2:
-	RTS
+	RTL
 levelinit1E3:
-	RTS
+	RTL
 levelinit1E4:
-	RTS
+	RTL
 levelinit1E5:
-	RTS
+	RTL
 levelinit1E6:
-	RTS
+	RTL
 levelinit1E7:
-	RTS
+	RTL
 levelinit1E8:
-	RTS
+	RTL
 levelinit1E9:
-	RTS
+	RTL
 levelinit1EA:
-	RTS
+	RTL
 levelinit1EB:
-	RTS
+	RTL
 levelinit1EC:
-	RTS
+	RTL
 levelinit1ED:
-	RTS
+	RTL
 levelinit1EE:
-	RTS
+	RTL
 levelinit1EF:
-	RTS
+	RTL
 levelinit1F0:
-	RTS
+	RTL
 levelinit1F1:
-	RTS
+	RTL
 levelinit1F2:
-	RTS
+	RTL
 levelinit1F3:
-	RTS
+	RTL
 levelinit1F4:
-	RTS
+	RTL
 levelinit1F5:
-	RTS
+	RTL
 levelinit1F6:
-	RTS
+	RTL
 levelinit1F7:
-	RTS
+	RTL
 levelinit1F8:
-	RTS
+	RTL
 levelinit1F9:
-	RTS
+	RTL
 levelinit1FA:
-	RTS
+	RTL
 levelinit1FB:
-	RTS
+	RTL
 levelinit1FC:
-	RTS
+	RTL
 
 
 levelinit1FE:
-	RTS
+	RTL
 levelinit1FF:
-	RTS
+	RTL
 
 ; --Level MAIN--
 
@@ -1878,11 +1933,11 @@ level0:
 
 		STZ $00
 		STZ $01
-		JSR DisplayYC
+		JSL DisplayYC
 
-	;JSR TriangleProjection
+	;JSL TriangleProjection
 
-		RTS
+		RTL
 
 
 	DisplayYC:
@@ -1925,7 +1980,7 @@ level0:
 		STZ !OAMhi+$03				;/
 
 		LDA #$10 : STA !OAMindex		; set OAM index
-		RTS
+		RTL
 
 .Tilemap	db $08,$08,$F2,$3F
 		db $14,$08,$B2,$3F
@@ -1936,35 +1991,35 @@ level0:
 
 
 level16:
-	RTS
+	RTL
 level17:
-	RTS
+	RTL
 level18:
-	RTS
+	RTL
 level19:
-	RTS
+	RTL
 level1A:
-	RTS
+	RTL
 level1B:
-	RTS
+	RTL
 level1C:
-	RTS
+	RTL
 level1D:
-	RTS
+	RTL
 level1E:
-	RTS
+	RTL
 level1F:
-	RTS
+	RTL
 level20:
-	RTS
+	RTL
 level21:
-	RTS
+	RTL
 level22:
-	RTS
+	RTL
 level23:
-	RTS
+	RTL
 level24:
-	RTS
+	RTL
 
 
 
@@ -1984,7 +2039,8 @@ level25:
 		LDA.b #.SA1>>16 : STA $3182
 		INC !Level+6
 		STZ !RollWidth
-		JMP $1E80
+		JSR $1E80
+		RTL
 
 		.SA1
 		PHP
@@ -2067,19 +2123,19 @@ level25:
 		LDA #$03 : STA !SubScreen
 		LDA #$08 : TRB $3E
 
-	.YC	JSR DisplayYC
+	.YC	JSL DisplayYC
 
 		LDA !Level+2 : BNE .NoUpload
 		INC !Level+2
-		JSR LoadScreen_Char
-		RTS
+		JSL LoadScreen_Char
+		RTL
 		.NoUpload
 
 
-		LDA !Level+4 : BNE $03 : JMP ++
+		LDA !Level+4 : BNE $04 : JML ++
 		CMP.b #.Y_End-.Y-1 : BCS +
 		INC !Level+4
-		JMP ++
+		JML ++
 	+	LDA.b #.Y_End-.Y-1 : STA !Level+4
 		LDA #$D8 : STA $404406
 
@@ -2269,7 +2325,7 @@ level25:
 
 		STZ $0709,x : STZ $0789,x
 		LDA #$38 : TSB !HDMA
-		RTS
+		RTL
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ; give upgrade code
@@ -2404,8 +2460,8 @@ LoadScreen:	PHP
 		LDA !Characters
 		LSR #4
 		TAX
-		LDA .Screen+6,x : XBA
-		LDA .Screen,x
+		LDA.l .Screen+6,x : XBA
+		LDA.l .Screen,x
 		REP #$10
 		TAX
 
@@ -2455,11 +2511,11 @@ LoadScreen:	PHP
 		LDA #$3400 : STA !VRAMbase+!VRAMtable+$05,x
 		LDA #$0800 : STA !VRAMbase+!VRAMtable+$00,x
 		PLP
-		RTS
+		RTL
 
 
-.Screen		db $B0,$60,$10,$C0,$70,$20
-		db $01,$03,$05,$06,$08,$0A
+.Screen		db $B0,$60,$10,$C0,$70,$20,$D0,$80
+		db $01,$03,$05,$06,$08,$0A,$0B,$0D
 
 
 
@@ -2469,927 +2525,927 @@ LoadScreen:	PHP
 
 
 level33:
-	RTS
+	RTL
 
 
 
 
 
 level38:
-	RTS
-level39:
-	RTS
+	RTL
+
+
 level3A:
-	RTS
+	RTL
 level3B:
-	RTS
+	RTL
 level3C:
-	RTS
+	RTL
 level3D:
-	RTS
+	RTL
 level3E:
-	RTS
+	RTL
 level3F:
-	RTS
+	RTL
 level40:
-	RTS
+	RTL
 level41:
-	RTS
+	RTL
 level42:
-	RTS
+	RTL
 level43:
-	RTS
+	RTL
 level44:
-	RTS
+	RTL
 level45:
-	RTS
+	RTL
 level46:
-	RTS
+	RTL
 level47:
-	RTS
+	RTL
 level48:
-	RTS
+	RTL
 level49:
-	RTS
+	RTL
 level4A:
-	RTS
+	RTL
 level4B:
-	RTS
+	RTL
 level4C:
-	RTS
+	RTL
 level4D:
-	RTS
+	RTL
 level4E:
-	RTS
+	RTL
 level4F:
-	RTS
+	RTL
 level50:
-	RTS
+	RTL
 level51:
-	RTS
+	RTL
 level52:
-	RTS
+	RTL
 level53:
-	RTS
+	RTL
 level54:
-	RTS
+	RTL
 level55:
-	RTS
+	RTL
 level56:
-	RTS
+	RTL
 level57:
-	RTS
+	RTL
 level58:
-	RTS
+	RTL
 level59:
-	RTS
+	RTL
 level5A:
-	RTS
+	RTL
 level5B:
-	RTS
+	RTL
 level5C:
-	RTS
+	RTL
 level5D:
-	RTS
+	RTL
 level5E:
-	RTS
+	RTL
 level5F:
-	RTS
+	RTL
 level60:
-	RTS
+	RTL
 level61:
-	RTS
+	RTL
 level62:
-	RTS
+	RTL
 level63:
-	RTS
+	RTL
 level64:
-	RTS
+	RTL
 level65:
-	RTS
+	RTL
 level66:
-	RTS
+	RTL
 level67:
-	RTS
+	RTL
 level68:
-	RTS
+	RTL
 level69:
-	RTS
+	RTL
 level6A:
-	RTS
+	RTL
 level6B:
-	RTS
+	RTL
 level6C:
-	RTS
+	RTL
 level6D:
-	RTS
+	RTL
 level6E:
-	RTS
+	RTL
 level6F:
-	RTS
+	RTL
 level70:
-	RTS
+	RTL
 level71:
-	RTS
+	RTL
 level72:
-	RTS
+	RTL
 level73:
-	RTS
+	RTL
 level74:
-	RTS
+	RTL
 level75:
-	RTS
+	RTL
 level76:
-	RTS
+	RTL
 level77:
-	RTS
+	RTL
 level78:
-	RTS
+	RTL
 level79:
-	RTS
+	RTL
 level7A:
-	RTS
+	RTL
 level7B:
-	RTS
+	RTL
 level7C:
-	RTS
+	RTL
 level7D:
-	RTS
+	RTL
 level7E:
-	RTS
+	RTL
 level7F:
-	RTS
+	RTL
 level80:
-	RTS
+	RTL
 level81:
-	RTS
+	RTL
 level82:
-	RTS
+	RTL
 level83:
-	RTS
+	RTL
 level84:
-	RTS
+	RTL
 level85:
-	RTS
+	RTL
 level86:
-	RTS
+	RTL
 level87:
-	RTS
+	RTL
 level88:
-	RTS
+	RTL
 level89:
-	RTS
+	RTL
 level8A:
-	RTS
+	RTL
 level8B:
-	RTS
+	RTL
 level8C:
-	RTS
+	RTL
 level8D:
-	RTS
+	RTL
 level8E:
-	RTS
+	RTL
 level8F:
-	RTS
+	RTL
 level90:
-	RTS
+	RTL
 level91:
-	RTS
+	RTL
 level92:
-	RTS
+	RTL
 level93:
-	RTS
+	RTL
 level94:
-	RTS
+	RTL
 level95:
-	RTS
+	RTL
 level96:
-	RTS
+	RTL
 level97:
-	RTS
+	RTL
 level98:
-	RTS
+	RTL
 level99:
-	RTS
+	RTL
 level9A:
-	RTS
+	RTL
 level9B:
-	RTS
+	RTL
 level9C:
-	RTS
+	RTL
 level9D:
-	RTS
+	RTL
 level9E:
-	RTS
+	RTL
 level9F:
-	RTS
+	RTL
 levelA0:
-	RTS
+	RTL
 levelA1:
-	RTS
+	RTL
 levelA2:
-	RTS
+	RTL
 levelA3:
-	RTS
+	RTL
 levelA4:
-	RTS
+	RTL
 levelA5:
-	RTS
+	RTL
 levelA6:
-	RTS
+	RTL
 levelA7:
-	RTS
+	RTL
 levelA8:
-	RTS
+	RTL
 levelA9:
-	RTS
+	RTL
 levelAA:
-	RTS
+	RTL
 levelAB:
-	RTS
+	RTL
 levelAC:
-	RTS
+	RTL
 levelAD:
-	RTS
+	RTL
 levelAE:
-	RTS
+	RTL
 levelAF:
-	RTS
+	RTL
 levelB0:
-	RTS
+	RTL
 levelB1:
-	RTS
+	RTL
 levelB2:
-	RTS
+	RTL
 levelB3:
-	RTS
+	RTL
 levelB4:
-	RTS
+	RTL
 levelB5:
-	RTS
+	RTL
 levelB6:
-	RTS
+	RTL
 levelB7:
-	RTS
+	RTL
 levelB8:
-	RTS
+	RTL
 levelB9:
-	RTS
+	RTL
 levelBA:
-	RTS
+	RTL
 levelBB:
-	RTS
+	RTL
 levelBC:
-	RTS
+	RTL
 levelBD:
-	RTS
+	RTL
 levelBE:
-	RTS
+	RTL
 levelBF:
-	RTS
+	RTL
 levelC0:
-	RTS
+	RTL
 levelC1:
-	RTS
+	RTL
 levelC2:
-	RTS
+	RTL
 levelC3:
-	RTS
+	RTL
 levelC4:
-	RTS
+	RTL
 levelC5:
-	RTS
+	RTL
 levelC6:
-	RTS
+	RTL
 levelC7:
 		LDA #$FF
 		STA !P2Stasis-$80
 		STA !P2Stasis
-		RTS
+		RTL
 levelC8:
-	RTS
+	RTL
 levelC9:
-	RTS
+	RTL
 levelCA:
-	RTS
+	RTL
 levelCB:
-	RTS
+	RTL
 levelCC:
-	RTS
+	RTL
 levelCD:
-	RTS
+	RTL
 levelCE:
-	RTS
+	RTL
 levelCF:
-	RTS
+	RTL
 levelD0:
-	RTS
+	RTL
 levelD1:
-	RTS
+	RTL
 levelD2:
-	RTS
+	RTL
 levelD3:
-	RTS
+	RTL
 levelD4:
-	RTS
+	RTL
 levelD5:
-	RTS
+	RTL
 levelD6:
-	RTS
+	RTL
 levelD7:
-	RTS
+	RTL
 levelD8:
-	RTS
+	RTL
 levelD9:
-	RTS
+	RTL
 levelDA:
-	RTS
+	RTL
 levelDB:
-	RTS
+	RTL
 levelDC:
-	RTS
+	RTL
 levelDD:
-	RTS
+	RTL
 levelDE:
-	RTS
+	RTL
 levelDF:
-	RTS
+	RTL
 levelE0:
-	RTS
+	RTL
 levelE1:
-	RTS
+	RTL
 levelE2:
-	RTS
+	RTL
 levelE3:
-	RTS
+	RTL
 levelE4:
-	RTS
+	RTL
 levelE5:
-	RTS
+	RTL
 levelE6:
-	RTS
+	RTL
 levelE7:
-	RTS
+	RTL
 levelE8:
-	RTS
+	RTL
 levelE9:
-	RTS
+	RTL
 levelEA:
-	RTS
+	RTL
 levelEB:
-	RTS
+	RTL
 levelEC:
-	RTS
+	RTL
 levelED:
-	RTS
+	RTL
 levelEE:
-	RTS
+	RTL
 levelEF:
-	RTS
+	RTL
 levelF0:
-	RTS
+	RTL
 levelF1:
-	RTS
+	RTL
 levelF2:
-	RTS
+	RTL
 levelF3:
-	RTS
+	RTL
 levelF4:
-	RTS
+	RTL
 levelF5:
-	RTS
+	RTL
 levelF6:
-	RTS
+	RTL
 levelF7:
-	RTS
+	RTL
 levelF8:
-	RTS
+	RTL
 levelF9:
-	RTS
+	RTL
 levelFA:
-	RTS
+	RTL
 levelFB:
-	RTS
+	RTL
 levelFC:
-	RTS
+	RTL
 levelFD:
-	RTS
+	RTL
 levelFE:
-	RTS
+	RTL
 levelFF:
-	RTS
+	RTL
 level100:
-	RTS
+	RTL
 level101:
-	RTS
+	RTL
 level102:
-	RTS
+	RTL
 level103:
-	RTS
+	RTL
 level104:
-	RTS
+	RTL
 level105:
-	RTS
+	RTL
 level106:
-	RTS
+	RTL
 level107:
-	RTS
+	RTL
 level108:
-	RTS
+	RTL
 level109:
-	RTS
+	RTL
 level10A:
-	RTS
+	RTL
 level10B:
-	RTS
+	RTL
 level10C:
-	RTS
+	RTL
 level10D:
-	RTS
+	RTL
 level10E:
-	RTS
+	RTL
 level10F:
-	RTS
+	RTL
 level110:
-	RTS
+	RTL
 level111:
-	RTS
+	RTL
 level112:
-	RTS
+	RTL
 level113:
-	RTS
+	RTL
 level114:
-	RTS
+	RTL
 level115:
-	RTS
+	RTL
 level116:
-	RTS
+	RTL
 level117:
-	RTS
+	RTL
 level118:
-	RTS
+	RTL
 level119:
-	RTS
+	RTL
 level11A:
-	RTS
+	RTL
 level11B:
-	RTS
+	RTL
 level11C:
-	RTS
+	RTL
 level11D:
-	RTS
+	RTL
 level11E:
-	RTS
+	RTL
 level11F:
-	RTS
+	RTL
 level120:
-	RTS
+	RTL
 level121:
-	RTS
+	RTL
 level122:
-	RTS
+	RTL
 level123:
-	RTS
+	RTL
 level124:
-	RTS
+	RTL
 level125:
-	RTS
+	RTL
 level126:
-	RTS
+	RTL
 level127:
-	RTS
+	RTL
 level128:
-	RTS
+	RTL
 level129:
-	RTS
+	RTL
 level12A:
-	RTS
+	RTL
 level12B:
-	RTS
+	RTL
 level12C:
-	RTS
+	RTL
 level12D:
-	RTS
+	RTL
 level12E:
-	RTS
+	RTL
 level12F:
-	RTS
+	RTL
 level130:
-	RTS
+	RTL
 level131:
-	RTS
+	RTL
 level132:
-	RTS
+	RTL
 level133:
-	RTS
+	RTL
 level134:
-	RTS
+	RTL
 level135:
-	RTS
+	RTL
 level136:
-	RTS
+	RTL
 level137:
-	RTS
+	RTL
 level138:
-	RTS
+	RTL
 level139:
-	RTS
+	RTL
 level13A:
-	RTS
+	RTL
 level13B:
-	RTS
+	RTL
 level13C:
-	RTS
+	RTL
 level13D:
-	RTS
+	RTL
 level13E:
-	RTS
+	RTL
 level13F:
-	RTS
+	RTL
 level140:
-	RTS
+	RTL
 level141:
-	RTS
+	RTL
 level142:
-	RTS
+	RTL
 level143:
-	RTS
+	RTL
 level144:
-	RTS
+	RTL
 level145:
-	RTS
+	RTL
 level146:
-	RTS
+	RTL
 level147:
-	RTS
+	RTL
 level148:
-	RTS
+	RTL
 level149:
-	RTS
+	RTL
 level14A:
-	RTS
+	RTL
 level14B:
-	RTS
+	RTL
 level14C:
-	RTS
+	RTL
 level14D:
-	RTS
+	RTL
 level14E:
-	RTS
+	RTL
 level14F:
-	RTS
+	RTL
 level150:
-	RTS
+	RTL
 level151:
-	RTS
+	RTL
 level152:
-	RTS
+	RTL
 level153:
-	RTS
+	RTL
 level154:
-	RTS
+	RTL
 level155:
-	RTS
+	RTL
 level156:
-	RTS
+	RTL
 level157:
-	RTS
+	RTL
 level158:
-	RTS
+	RTL
 level159:
-	RTS
+	RTL
 level15A:
-	RTS
+	RTL
 level15B:
-	RTS
+	RTL
 level15C:
-	RTS
+	RTL
 level15D:
-	RTS
+	RTL
 level15E:
-	RTS
+	RTL
 level15F:
-	RTS
+	RTL
 level160:
-	RTS
+	RTL
 level161:
-	RTS
+	RTL
 level162:
-	RTS
+	RTL
 level163:
-	RTS
+	RTL
 level164:
-	RTS
+	RTL
 level165:
-	RTS
+	RTL
 level166:
-	RTS
+	RTL
 level167:
-	RTS
+	RTL
 level168:
-	RTS
+	RTL
 level169:
-	RTS
+	RTL
 level16A:
-	RTS
+	RTL
 level16B:
-	RTS
+	RTL
 level16C:
-	RTS
+	RTL
 level16D:
-	RTS
+	RTL
 level16E:
-	RTS
+	RTL
 level16F:
-	RTS
+	RTL
 level170:
-	RTS
+	RTL
 level171:
-	RTS
+	RTL
 level172:
-	RTS
+	RTL
 level173:
-	RTS
+	RTL
 level174:
-	RTS
+	RTL
 level175:
-	RTS
+	RTL
 level176:
-	RTS
+	RTL
 level177:
-	RTS
+	RTL
 level178:
-	RTS
+	RTL
 level179:
-	RTS
+	RTL
 level17A:
-	RTS
+	RTL
 level17B:
-	RTS
+	RTL
 level17C:
-	RTS
+	RTL
 level17D:
-	RTS
+	RTL
 level17E:
-	RTS
+	RTL
 level17F:
-	RTS
+	RTL
 level180:
-	RTS
+	RTL
 level181:
-	RTS
+	RTL
 level182:
-	RTS
+	RTL
 level183:
-	RTS
+	RTL
 level184:
-	RTS
+	RTL
 level185:
-	RTS
+	RTL
 level186:
-	RTS
+	RTL
 level187:
-	RTS
+	RTL
 level188:
-	RTS
+	RTL
 level189:
-	RTS
+	RTL
 level18A:
-	RTS
+	RTL
 level18B:
-	RTS
+	RTL
 level18C:
-	RTS
+	RTL
 level18D:
-	RTS
+	RTL
 level18E:
-	RTS
+	RTL
 level18F:
-	RTS
+	RTL
 level190:
-	RTS
+	RTL
 level191:
-	RTS
+	RTL
 level192:
-	RTS
+	RTL
 level193:
-	RTS
+	RTL
 level194:
-	RTS
+	RTL
 level195:
-	RTS
+	RTL
 level196:
-	RTS
+	RTL
 level197:
-	RTS
+	RTL
 level198:
-	RTS
+	RTL
 level199:
-	RTS
+	RTL
 level19A:
-	RTS
+	RTL
 level19B:
-	RTS
+	RTL
 level19C:
-	RTS
+	RTL
 level19D:
-	RTS
+	RTL
 level19E:
-	RTS
+	RTL
 level19F:
-	RTS
+	RTL
 level1A0:
-	RTS
+	RTL
 level1A1:
-	RTS
+	RTL
 level1A2:
-	RTS
+	RTL
 level1A3:
-	RTS
+	RTL
 level1A4:
-	RTS
+	RTL
 level1A5:
-	RTS
+	RTL
 level1A6:
-	RTS
+	RTL
 level1A7:
-	RTS
+	RTL
 level1A8:
-	RTS
+	RTL
 level1A9:
-	RTS
+	RTL
 level1AA:
-	RTS
+	RTL
 level1AB:
-	RTS
+	RTL
 level1AC:
-	RTS
+	RTL
 level1AD:
-	RTS
+	RTL
 level1AE:
-	RTS
+	RTL
 level1AF:
-	RTS
+	RTL
 level1B0:
-	RTS
+	RTL
 level1B1:
-	RTS
+	RTL
 level1B2:
-	RTS
+	RTL
 level1B3:
-	RTS
+	RTL
 level1B4:
-	RTS
+	RTL
 level1B5:
-	RTS
+	RTL
 level1B6:
-	RTS
+	RTL
 level1B7:
-	RTS
+	RTL
 level1B8:
-	RTS
+	RTL
 level1B9:
-	RTS
+	RTL
 level1BA:
-	RTS
+	RTL
 level1BB:
-	RTS
+	RTL
 level1BC:
-	RTS
+	RTL
 level1BD:
-	RTS
+	RTL
 level1BE:
-	RTS
+	RTL
 level1BF:
-	RTS
+	RTL
 level1C0:
-	RTS
+	RTL
 level1C1:
-	RTS
+	RTL
 level1C2:
-	RTS
+	RTL
 level1C3:
-	RTS
+	RTL
 level1C4:
-	RTS
+	RTL
 level1C5:
-	RTS
+	RTL
 level1C6:
-	RTS
+	RTL
 level1C7:
-	RTS
+	RTL
 level1C8:
-	RTS
+	RTL
 level1C9:
-	RTS
+	RTL
 level1CA:
-	RTS
+	RTL
 level1CB:
-	RTS
+	RTL
 level1CC:
-	RTS
+	RTL
 level1CD:
-	RTS
+	RTL
 level1CE:
-	RTS
+	RTL
 level1CF:
-	RTS
+	RTL
 level1D0:
-	RTS
+	RTL
 level1D1:
-	RTS
+	RTL
 level1D2:
-	RTS
+	RTL
 level1D3:
-	RTS
+	RTL
 level1D4:
-	RTS
+	RTL
 level1D5:
-	RTS
+	RTL
 level1D6:
-	RTS
+	RTL
 level1D7:
-	RTS
+	RTL
 level1D8:
-	RTS
+	RTL
 level1D9:
-	RTS
+	RTL
 level1DA:
-	RTS
+	RTL
 level1DB:
-	RTS
+	RTL
 level1DC:
-	RTS
+	RTL
 level1DD:
-	RTS
+	RTL
 level1DE:
-	RTS
+	RTL
 level1DF:
-	RTS
+	RTL
 level1E0:
-	RTS
+	RTL
 level1E1:
-	RTS
+	RTL
 level1E2:
-	RTS
+	RTL
 level1E3:
-	RTS
+	RTL
 level1E4:
-	RTS
+	RTL
 level1E5:
-	RTS
+	RTL
 level1E6:
-	RTS
+	RTL
 level1E7:
-	RTS
+	RTL
 level1E8:
-	RTS
+	RTL
 level1E9:
-	RTS
+	RTL
 level1EA:
-	RTS
+	RTL
 level1EB:
-	RTS
+	RTL
 level1EC:
-	RTS
+	RTL
 level1ED:
-	RTS
+	RTL
 level1EE:
-	RTS
+	RTL
 level1EF:
-	RTS
+	RTL
 level1F0:
-	RTS
+	RTL
 level1F1:
-	RTS
+	RTL
 level1F2:
-	RTS
+	RTL
 level1F3:
-	RTS
+	RTL
 level1F4:
-	RTS
+	RTL
 level1F5:
-	RTS
+	RTL
 level1F6:
-	RTS
+	RTL
 level1F7:
-	RTS
+	RTL
 level1F8:
-	RTS
+	RTL
 level1F9:
-	RTS
+	RTL
 level1FA:
-	RTS
+	RTL
 level1FB:
-	RTS
+	RTL
 level1FC:
-	RTS
+	RTL
 
 
 level1FE:
-	RTS
+	RTL
 level1FF:
-	RTS
+	RTL
 
 CLEAR_DYNAMIC_BG3:
 		PHP
@@ -3400,7 +3456,7 @@ CLEAR_DYNAMIC_BG3:
 		DEX #2
 		BPL -
 		PLP
-		RTS
+		RTL
 
 
 LOCK_VSCROLL:	LDY #$00
@@ -3417,7 +3473,7 @@ LOCK_VSCROLL:	LDY #$00
 		STY !EnableVScroll
 		LDA.w #.Scroll : STA !HDMAptr+0
 		LDA.w #.Scroll>>8 : STA !HDMAptr+1
-		RTS
+		RTL
 
 		.Scroll
 		PHP
@@ -3445,7 +3501,7 @@ LOCK_HSCROLL:	LDY #$00
 		STY !EnableHScroll
 		LDA.w #.Scroll : STA !HDMAptr+0
 		LDA.w #.Scroll>>8 : STA !HDMAptr+1
-		RTS
+		RTL
 
 		.Scroll
 		PHP
@@ -3469,7 +3525,7 @@ SCROLL_UPRIGHT:	LDY #$00
 		STA !Level+2
 		LDA.w #.ScrollUp : STA !HDMAptr+0
 		LDA.w #.ScrollUp>>8 : STA !HDMAptr+1
-		RTS
+		RTL
 
 .DoneUp		LDA $1A
 		CMP $00
@@ -3478,7 +3534,7 @@ SCROLL_UPRIGHT:	LDY #$00
 		STA !Level+2
 		LDA.w #.ScrollRight : STA !HDMAptr+0
 		LDA.w #.ScrollRight>>8 : STA !HDMAptr+1
-.DoneRight	RTS
+.DoneRight	RTL
 
 
 		.ScrollUp
@@ -3521,12 +3577,12 @@ CALC_MULTI:	LDA $00
 		SEP #$10
 		LDX #100
 		STX $4206
-		JSR GET_DIVISION
+		JSL GET_DIVISION
 		LDA $4214
-		RTS
+		RTL
 
 GET_DIVISION:	NOP #2
-		RTS
+		RTL
 
 
 
@@ -3537,14 +3593,15 @@ VineDestroy:
 		LDA #$FF					; | Write 0xFF ("off") to all vine destroy regs
 	-	STA !VineDestroy+1,x				; |
 		DEX : BPL -					;/
-		RTS						; > Return
+		RTL						; > Return
 
 
 		.MAIN
 		LDA.b #..SA1 : STA $3180			;\
 		LDA.b #..SA1>>8 : STA $3181			; | Make the SA-1 process this since it's really intense
 		LDA.b #..SA1>>16 : STA $3182			; |
-		JMP $1E80					;/
+		JSR $1E80					;/
+		RTL
 
 		..SA1
 		PHB						;\
@@ -3598,13 +3655,13 @@ VineDestroy:
 		LDA.w !VineDestroyYHi,y : STA $99		;/
 		JSR .DestroyTile				; > Destroy tile
 		TYX						;\
-		LDA #$01 : STA $0077C0,x			; |
-		LDA $9A : STA $0077C8,x				; | Spawn smoke puff
-		LDA $9B : STA.l !SmokeXHi,x			; |
-		LDA $98 : STA $0077C4,x				; |
-		LDA $99 : STA.l !SmokeYHi,x			; |
-		LDA #$01 : STA.l !SmokeHack,x			; |
-		LDA #$13 : STA $0077CC,x			;/
+	;	LDA #$01 : STA $0077C0,x			; |
+	;	LDA $9A : STA $0077C8,x				; | Spawn smoke puff
+	;	LDA $9B : STA.l !SmokeXHi,x			; |
+	;	LDA $98 : STA $0077C4,x				; |
+	;	LDA $99 : STA.l !SmokeYHi,x			; |
+	;	LDA #$01 : STA.l !SmokeHack,x			; |
+	;	LDA #$13 : STA $0077CC,x			;/
 		LDA #$01 : STA.l !SPC1
 		PLA						; > Restore map16 number (lo byte)
 		BRA +
@@ -3764,7 +3821,7 @@ VineDestroy:
 
 	.CornerExtra
 		REP #$20
-		RTS
+		RTL
 
 	..DR	LDA $9A
 		SEC : SBC #$0010
@@ -3790,22 +3847,22 @@ VineDestroy:
 		..ReturnDL
 		SEP #$20
 		LDA #$08
-		RTS
+		RTL
 
 		..ReturnUL
 		SEP #$20
 		LDA #$00
-		RTS
+		RTL
 
 		..ReturnUR
 		SEP #$20
 		LDA #$04
-		RTS
+		RTL
 
 		..ReturnDR
 		SEP #$20
 		LDA #$0C
-		RTS
+		RTL
 
 
 
@@ -3852,7 +3909,7 @@ LightningBolt:
 		SEP #$20
 		STA $05
 		XBA : STA $0B
-		JMP .DrawLightning
+		JML .DrawLightning
 
 		.BigBolt
 		LDA !VineDestroyTimer+$00	;\
@@ -3866,7 +3923,7 @@ LightningBolt:
 		XBA : STA $0A			; |
 		LDA !VineDestroyTimer+$03	; |
 		STA $07				; |
-		JMP .Main			;/
+		JML .Main			;/
 
 		.Init
 		LDA $1C				;\
@@ -3908,13 +3965,13 @@ LightningBolt:
 		STA $0C				;/
 		LDA $1C				;\
 		SEC : SBC #$0020		; |
-		AND #$FFF0			; | Lo byte of Y in $05, hi byte in $0B (always starts at screen top)
+		AND #$FFF0			; | Lo byte of Y in $05, hi byte in $0B (always staRTL at screen top)
 		STA $05				; |
 		STA $0A				;/
 		LDA $0E				;\
 		SEC : SBC $05			; | Height in $07
 		BEQ $02 : BPL $03		; |
-		JMP .WarningBolt		; | > Go to .WarningBolt if zero or negative
+		JML .WarningBolt		; | > Go to .WarningBolt if zero or negative
 		STA $07				;/
 		LDA $0C				;\
 		SEP #$20			; | Lo byte of X in $04, hi byte in $0A
@@ -4006,7 +4063,7 @@ LightningBolt:
 		CLC : ADC #$08			; | The hitbox needs to actually reach the ground...
 		STA $07				;/
 
-		JSR .BrickBreak			; > Break bricks
+		JSL .BrickBreak			; > Break bricks
 
 		LDX #$0F
 	-	LDA $3230,x
@@ -4045,7 +4102,7 @@ LightningBolt:
 
 		.DrawLightning
 		LDA !VineDestroyPage		;\ Horizontal electricity upon water contact
-		BEQ $03 : JSR .WaterShock	;/
+		BEQ $03 : JSL .WaterShock	;/
 		LDA $05 : STA $02		;\
 		LDA $0B : STA $03		; | Set up OAM calculations
 		LDA $0A : XBA			;/
@@ -4056,7 +4113,7 @@ LightningBolt:
 		CMP #$0100 : BCC .GoodX		; | If X coordinate is invalid, don't draw anything
 		CMP #$FFF0 : BCS .GoodX		; |
 		PLP				; |
-		RTS				;/
+		RTL				;/
 
 	.GoodX	LDA $02
 		SEC : SBC $1C
@@ -4137,7 +4194,7 @@ LightningBolt:
 		STX !OAMindex				;/
 
 	.Return	PLP
-		RTS
+		RTL
 
 .Tilemap	db $86,$88,$86,$88
 		db $86,$88,$86,$88
@@ -4200,7 +4257,7 @@ LightningBolt:
 		.Nope
 
 		PLP
-		RTS
+		RTL
 
 
 .BrickBreak	PEI ($04)
@@ -4247,12 +4304,12 @@ LightningBolt:
 		PLA : STA $06
 		PLA : STA $04
 		SEP #$20
-		RTS
+		RTL
 
 ; To call:
 ; REP #$20
 ; LDA.w #.TalkBox
-; JSR TalkOnce
+; JSL TalkOnce
 ;
 ; Data format:
 ; 00: ID (bit in RAM table, min 0 max 15) times 2
@@ -4307,14 +4364,14 @@ TalkOnce:
 		REP #$20
 		LDA.w .Table,y		;\ Mark message as triggered
 		TSB $6DF5		;/
-		RTS
+		RTL
 
 		.ReturnP
 		REP #$20
 		PLY
 
 		.Return
-		RTS
+		RTL
 		
 
 		.Table
@@ -4346,7 +4403,7 @@ ScreenGrind:
 	.Go	LDA.b #.HDMA : STA !HDMAptr+0
 		LDA.b #.HDMA>>8 : STA !HDMAptr+1
 		LDA.b #.HDMA>>16 : STA !HDMAptr+2
-	.Return	RTS
+	.Return	RTL
 
 		.HDMA
 		PHP
@@ -4380,7 +4437,7 @@ SpeedPlatform:
 		LDA.b #.HDMA : STA !HDMAptr+0
 		LDA.b #.HDMA>>8 : STA !HDMAptr+1
 		LDA.b #.HDMA>>16 : STA !HDMAptr+2
-		RTS
+		RTL
 
 		.HDMA
 		PHP
@@ -4435,7 +4492,7 @@ SpeedPlatform:
 
 		LDA !BossData+0				;\
 		AND #$7F				; | Check for crash
-		CMP #$05 : BCS $03 : JMP ..Return	;/
+		CMP #$05 : BCS $04 : JML ..Return	;/
 
 		LDA #$B6				;\
 		SEC : SBC !BossData+1			; |
@@ -4462,7 +4519,7 @@ SpeedPlatform:
 	-	LDA !Ex_Num,x : BEQ +
 		DEX : BPL -
 		BMI ..Return
-	+	JSR DebrisRNG
+	+	JSL DebrisRNG
 
 		LDA #$01+!MinorOffset : STA !Ex_Num,x	; number
 		LDA #$50
@@ -4504,7 +4561,7 @@ SpeedPlatform:
 DANCE:
 
 		LDA !VineDestroy+$00 : BNE .Go			;\ See if it should run
-		RTS						;/
+		RTL						;/
 
 	.Go	LDA !VineDestroy+$12 : STA !P2ExternalAnim-$80
 		LDA !VineDestroy+$13 : STA !P2ExternalAnim
@@ -4581,7 +4638,7 @@ DANCE:
 
 
 		.Skip
-		DEX #2 : BMI $03 : JMP .Next			; Loop
+		DEX #2 : BMI $04 : JMP .Next			; Loop
 		PLB						; Restore bank
 
 		.DrawSymbols
@@ -4629,7 +4686,7 @@ DANCE:
 		TAY						;/
 	..Next	DEX #2 : BPL -					; Loop
 		STY !OAMindex					; Store new index
-		RTS
+		RTL
 
 
 	..PropTable
@@ -4698,28 +4755,184 @@ DANCE:
 
 
 
-; LDX #$XX (index*6)
-; JSR WARP_BOX
-WARP_BOX:
+WATER_BOX:
 		REP #$20
-		LDA .Table+0,x : STA $04	; Xlo in $04
-		STA $09				; Xhi in $0A
-		LDA .Table+2,x : STA $05	; Ylo in $05
-		XBA : STA $0B			; Yhi in $0B
-		LDA .Table+4,x : STA $06	; Dimensions in $06-$07
+
+		LDA $02,s : STA $01		; bank byte
+		LDA $01,s			;\
+		INC A				; | lo / hi bytes
+		STA $00				;/
+		CLC : ADC #$0005		;\ update stack value (return address)
+		STA $01,s			;/
+
+		LDY #$02			;\
+		LDA [$00],y			; | box Y
+		STA $05				; |
+		STA $0A				;/
+		LDY #$04			;\ box dimensions
+		LDA [$00],y : STA $06		;/
+		LDY #$00			;\
+		LDA [$00],y			; |
+		STA $09				; | box X
+		SEP #$20			; |
+		STA $04				;/
+
+		LDA !P2Invinc-$80 : PHA		;\ backup invinc regs
+		LDA !P2Invinc : PHA		;/
+		STZ !P2Invinc-$80		;\ temp clear invinc regs
+		STZ !P2Invinc			;/
+		SEC : JSL !PlayerClipping	; check for player contact
+		PLX : STX !P2Invinc		;\ restore invinc regs
+		PLX : STX !P2Invinc-$80		;/
+		LSR A : BCC .P2
+	.P1	PHA
+		LDA #$80 : TSB !P2ExtraBlock-$80
+		LDA !P2Character : BNE +
+		JSR .Mario
+	+	PLA
+	.P2	LSR A : BCC .Return
+		LDA #$80 : TSB !P2ExtraBlock
+		JSR .Mario
+
+		.Return
+		RTL
+
+		.Mario
+		LDA $05 : STA $0C
+		LDA $0B : STA $0D
+		LDA $09 : XBA
+		LDA $01
+		REP #$20
+		CMP $0C
 		SEP #$20
-		SEC : JSL !PlayerClipping
-		BCS EXIT_Exit+2			; Warp if player is touching box
+		LDA #$00
+		BCS $01 : INC A
+		STA !MarioExtraWaterJump	;  let mario jump out of water if his hitbox touches the surface
 		RTS
 
 
-		.Table
-		dw $0170,$1440 : db $50,$20	; index 00
-		dw $01F6,$0B90 : db $0A,$20	; index 06
-		dw $0000,$0290 : db $0A,$20	; index 0C
+; JSL here
+; the JSL should be followed by 7 data bytes (JSL will return to first instruction after data)
+; 00:		directional flags (1 = right, 2 = left, 4 = down, 8 = up), 0 will never trigger F will always trigger
+; 01-02:	16-bit Xpos of box, left border
+; 03-04:	16-bit Ypos of box, top border
+; 05:		8-bit width of box
+; 06:		8-bit height of box
+;
+; if a player touches the box and is moving in one of the enabled directions, a level->level transition will be triggered
+;
+; directions key:
+; 00		NEVER
+; 01		right
+; 02		left
+; 03		ALWAYS
+; 04		down
+; 05		right + down
+; 06		left + down
+; 07		ALWAYS
+; 08		up
+; 09		right + up
+; 0A		left + up
+; 0B		ALWAYS
+; 0C		ALWAYS
+; 0D		ALWAYS
+; 0E		ALWAYS
+; 0F		ALWAYS
+
+WARP_BOX:
+		REP #$20
+
+		LDA $02,s : STA $01		; bank byte
+		LDA $01,s			;\
+		INC A				; | lo / hi bytes
+		STA $00				;/
+		CLC : ADC #$0006		;\ update stack value (return address)
+		STA $01,s			;/
+
+		LDY #$03			;\
+		LDA [$00],y			; | box Y
+		STA $05				; |
+		STA $0A				;/
+		LDY #$05			;\ box dimensions
+		LDA [$00],y : STA $06		;/
+		LDY #$01			;\
+		LDA [$00],y			; |
+		STA $09				; | box X
+		SEP #$20			; |
+		STA $04				;/
+		LDY #$00			;\ directional value
+		LDA [$00],y : STA !BigRAM	;/
+
+		LDA !P2Invinc-$80 : PHA		;\ backup invinc regs
+		LDA !P2Invinc : PHA		;/
+		STZ !P2Invinc-$80		;\ temp clear invinc regs
+		STZ !P2Invinc			;/
+		SEC : JSL !PlayerClipping	; check for player contact
+		PLX : STX !P2Invinc		;\ restore invinc regs
+		PLX : STX !P2Invinc-$80		;/
+		BCC .Return
+
+		LDX !BigRAM			;\ don't check directions if all directions are enabled already
+		CPX #$0F : BEQ EXIT_Exit+2	;/
+		LSR A : BCC .P2			;\
+	.P1	PHA				; |
+		LDY #$00			; | check player 1
+		JSR .CheckDirections		; |
+		PLA				; > pull A first
+		BCS EXIT_Exit+2			;/
+		LSR A : BCC .Return		; > return if only player 1 should be checked
+	.P2	LDY #$80			;\
+		JSR .CheckDirections		; | check player 2
+		BCS EXIT_Exit+2			;/
+
+		.Return
+		RTL
+
+
+		.CheckDirections
+		LDA !P2Platform-$80,y
+		AND #$0F : BEQ +			; note that this branch only triggers if A = 0, so no LDA #$00 is needed
+		TAX
+		BRA ++
+	+	LDX !P2SpritePlatform-$80,y : BEQ +
+	++	LDA $AE,x
+	+	CLC : ADC !P2XSpeed-$80,y
+		CLC : ADC !P2VectorX-$80,y
+		ASL A
+		ROL A
+		INC A
+		AND !BigRAM : BNE ..match
+
+		LDA !P2Platform-$80,y
+		AND #$0F : BEQ +			; note that this branch only triggers if A = 0, so no LDA #$00 is needed
+		TAX
+		BRA ++
+	+	LDX !P2SpritePlatform-$80,y : BEQ +
+	++	LDA $9E,x
+	+	CLC : ADC !P2YSpeed-$80,y
+		CLC : ADC !P2VectorY-$80,y
+		ASL A
+		ROL A
+		INC A
+		ASL #2
+		AND !BigRAM : BNE ..match
+		CLC
+		RTS
+
+		..match
+		SEC
+		RTS
+
 
 
 EXIT:
+		.Exit					; Placed here so the WARP_BOX routine can reach
+		SEP #$20
+		LDA #$06 : STA $71
+		STZ $88
+		STZ $89
+		RTL
+
 		.Right
 		LDX !P2Status-$80 : BNE +
 		BIT !P2XPosLo-$80 : BMI +
@@ -4733,7 +4946,7 @@ EXIT:
 		BCC .Exit
 		.Return
 		SEP #$20
-		RTS
+		RTL
 
 		.Left
 		LDX !P2Status-$80 : BNE +
@@ -4741,14 +4954,7 @@ EXIT:
 	+	LDX !P2Status : BNE .Return
 		CMP !P2XPosLo : BCS .Exit
 		SEP #$20
-		RTS
-
-		.Exit					; Placed here so the WARP_BOX routine can reach
-		SEP #$20
-		LDA #$06 : STA $71
-		STZ $88
-		STZ $89
-		RTS
+		RTL
 
 		.Down
 		LDX !P2Status-$80 : BNE +
@@ -4762,7 +4968,7 @@ EXIT:
 		BEQ .Exit
 		BCC .Exit
 		SEP #$20
-		RTS
+		RTL
 
 		.Up
 		LDX !P2Status-$80 : BNE +
@@ -4772,25 +4978,25 @@ EXIT:
 		CMP !P2YPosLo
 		BCS .Exit
 		SEP #$20
-		RTS
+		RTL
 
 
 ; Same as the normal one, except it fades the music upon exit
 EXIT_FADE:
 		.Right
-		JSR EXIT_Right
+		JSL EXIT_Right
 		BRA .Exit
 
 		.Left
-		JSR EXIT_Left
+		JSL EXIT_Left
 		BRA .Exit
 
 		.Down
-		JSR EXIT_Down
+		JSL EXIT_Down
 		BRA .Exit
 
 		.Up
-		JSR EXIT_Up
+		JSL EXIT_Up
 
 		.Exit
 		LDA $71
@@ -4798,7 +5004,7 @@ EXIT_FADE:
 		LDA #$80 : STA !SPC3
 
 		.Return
-		RTS
+		RTL
 
 
 
@@ -4813,7 +5019,7 @@ END:
 		BEQ .End
 		BCC .End
 	+	SEP #$20
-		RTS
+		RTL
 
 		.Left
 		LDX !P2Status-$80 : BNE +
@@ -4823,7 +5029,7 @@ END:
 		CMP !P2XPosLo
 		BCS .End
 	+	SEP #$20
-		RTS
+		RTL
 
 		.Down
 		LDX !P2Status-$80 : BNE +
@@ -4835,7 +5041,7 @@ END:
 		BEQ .End
 		BCC .End
 	+	SEP #$20
-		RTS
+		RTL
 
 		.Up
 		LDX !P2Status-$80 : BNE +
@@ -4845,7 +5051,7 @@ END:
 		CMP !P2YPosLo
 		BCS .End
 	+	SEP #$20
-		RTS
+		RTL
 
 		.End
 		SEP #$20
@@ -4868,14 +5074,14 @@ END:
 
 		REP #$10				; unlock level
 		LDX !Level
-		LDA LEVEL_Unlock,x
+		LDA.l LEVEL_Unlock,x
 		SEP #$10
 		TAX
 		LDA !LevelTable,x
 		ORA #$01
 		STA !LevelTable,x
 
-		RTS
+		RTL
 
 
 ; --HDMA tables--

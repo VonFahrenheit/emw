@@ -9,15 +9,15 @@ levelinit7:
 
 		LDA #$0C : STA !TextPal			; Text palette = 0x03
 
-		JSR CLEAR_DYNAMIC_BG3
+		JSL CLEAR_DYNAMIC_BG3
 
 		LDA #$02 : STA !BG2ModeH
 		LDA #$04 : STA !BG2ModeV
 		%GradientRGB(HDMA_BlueSky)
 		LDA #$BA : STA !Level+4			; > negative 0x3F
 		LDA #$07 : STA !Level+5			; > Size of chunks
-		JSR levelinit5_HDMA
-		JMP level7
+		JSL levelinit5_HDMA
+		JML level7
 
 levelinit8:
 		INC !SideExit
@@ -27,13 +27,13 @@ levelinit8:
 		LDA #$01D0 : STA !BG2BaseV		; base BG2 position
 		JSL read3($048434)
 		SEP #$20
-		RTS
+		RTL
 
 
 
 
 levelinit9:
-	RTS
+	RTL
 levelinitA:
 		LDA #$11				;\
 		TSB $6D9D				; | BG1 and sprites are on both main and subscreen
@@ -63,13 +63,13 @@ levelinitA:
 		LDA #$7960 : STA !VRAMtable+$0C,x	;/
 		SEP #$20
 		PLB
-		RTS
+		RTL
 
 levelinitB:
 		INC !SideExit
 
-		JSR CLEAR_DYNAMIC_BG3
-		JSR VineDestroy_INIT
+		JSL CLEAR_DYNAMIC_BG3
+		JSL VineDestroy_INIT
 
 		LDA #$0E
 		STA !VineDestroyPage			; > page of vines
@@ -84,7 +84,7 @@ levelinitB:
 
 		JSL levelB_HDMA
 		SEP #$20
-		JMP levelB
+		JML levelB
 
 levelinitD:
 		INC !SideExit
@@ -106,7 +106,7 @@ levelinitD:
 		TSB $6D9F			;/
 		JSL levelD_HDMA : INC $14	;\ Set up double-buffered HDMA
 		JSL levelD_HDMA : DEC $14	;/
-		JMP levelD
+		JML levelD
 
 
 levelinitE:
@@ -141,11 +141,11 @@ levelinitE:
 	.Music	STA !SPC3			; Normal music
 		.NoRestrict
 
-		RTS
+		RTL
 
 levelinit14:
-		JSR level14
-		JMP InitCameraBox
+		JSL level14
+		JML InitCameraBox
 
 
 levelinit28:
@@ -160,30 +160,31 @@ levelinit28:
 		CMP #$03 : BCC +
 
 		LDA #$42 : STA !SPC3
-		JMP level28_Block
+		JML level28_Block
 
 	+	LDA #$2C : STA !SPC3
-		RTS
+		RTL
 
 		.BigCave
 		LDA #$09 : STA $5E
 		LDA #$42 : STA !SPC3
-		RTS
+		RTL
 
 levelinit29:
 		LDA #$15			;\ Put everything except BG2 on main screen
 		STA $6D9D			;/
 		LDA #$02 : STA $6D9E		; > BG2 on subscreen
 		%GradientRGB(HDMA_Sunset)	; > Enable sunset gradient
-		RTS
+		RTL
 
 levelinit30:
 		INC !SideExit
-		JSR levelinitA
+		JSL levelinitA
 		STZ !Level+3
-		RTS
+		RTL
 
 levelinit31:
+		LDA #$0E : STA !Translevel
 		LDA #$01				;\ Set midway flag
 		STA $73CE				;/
 		LDX $73BF				;\
@@ -193,16 +194,16 @@ levelinit31:
 		LDA !Level : STA !MidwayLo,x		;\ Store to midway table
 		LDA !Level+1 : STA !MidwayHi,x		;/
 
-		JSR CLEAR_DYNAMIC_BG3
+		JSL CLEAR_DYNAMIC_BG3
 
 		LDA #$11				;\
 		TSB $6D9D				; | BG1 and sprites are on both main and subscreen
 		TSB $6D9E				;/
-		RTS
+		RTL
 
 levelinit34:
-		JSR level34
-		JMP InitCameraBox
+		JSL level34
+		JML InitCameraBox
 
 
 
@@ -229,17 +230,17 @@ level7:
 		LDA.b #level5_HDMA>>16 : STA !HDMAptr+2		;/
 
 		LDA !StoryFlags+$02
-		AND #$07 : BNE $03 : JMP .CheckCoin
+		AND #$07 : BNE $04 : JML .CheckCoin
 		CMP #$01 : BEQ .QuestStarted
 		CMP #$02 : BEQ .QuestAbandoned
 		CMP #$04 : BCC .QuestComplete
-		JMP .MountainEnd
+		JML .MountainEnd
 
 		.QuestComplete
 		LDA !Level+3 : BNE +
-		JSR .NearMountainKing
+		JSL .NearMountainKing
 		BCC $03
-	+	JMP .MountainEnd
+	+	JML .MountainEnd
 		LDA #$01 : STA !Level+3
 		LDA #$06 : STA !MsgTrigger
 		LDX #$00				; reward player with a lot of coins
@@ -261,7 +262,7 @@ level7:
 		BRA .MountainEnd
 
 		.QuestAbandoned
-		JSR .NearMountainKing
+		JSL .NearMountainKing
 		BCS .MountainEnd
 		LDA #$05 : STA !MsgTrigger
 		LDA #$01 : STA !Level+3
@@ -272,7 +273,7 @@ level7:
 		BRA .MountainEnd
 
 		.QuestStarted
-		JSR .NearMountainKing
+		JSL .NearMountainKing
 		BCC +
 		LDA $6DD9 : STA !SPC3 : STA $6F34
 		STZ !Level+3
@@ -307,11 +308,11 @@ level7:
 		LDA #$01 : STA !SideExit
 		REP #$20
 		LDY #$01				;\ Regular exit left
-		LDA #$0004 : JSR END_Left		;/
+		LDA #$0004 : JSL END_Left		;/
 		LDA $1B
 		CMP #$1E : BCC .NoExit
 		REP #$20
-		LDA #$01A0 : JSR EXIT_Down
+		LDA #$01A0 : JSL EXIT_Down
 		LDA $71
 		CMP #$06 : BNE .NoExit
 		LDA #$80 : STA !SPC3
@@ -352,7 +353,7 @@ level7:
 		LDA #$71 : STA !CGRAMtable+$05,y
 		PLB
 		STZ !Level+2
-		RTS
+		RTL
 
 
 		.CastleColor
@@ -373,7 +374,7 @@ level7:
 		LDA #$01 : STA !Level+2
 
 		.Return
-		RTS
+		RTL
 
 
 	; Carry clear = close
@@ -385,7 +386,7 @@ level7:
 		BPL $03 : EOR #$FFFF
 		CMP #$0050
 		SEP #$20
-		RTS
+		RTL
 
 		.Pal1
 		dw $7FDD,$0000,$08E1,$0DA2,$1663,$4653,$56F8	; green version
@@ -398,10 +399,10 @@ level7:
 
 
 level8:
-	RTS
+	RTL
 
 level9:
-	RTS
+	RTL
 levelA:
 
 
@@ -415,7 +416,7 @@ levelA:
 		LDA.b #.HDMA : STA !HDMAptr+0
 		LDA.b #.HDMA>>8 : STA !HDMAptr+1
 		LDA.b #.HDMA>>16 : STA !HDMAptr+2
-		RTS
+		RTL
 
 
 
@@ -523,7 +524,7 @@ LDX #$00
 
 
 		LDA !Level+3 : BPL ..Active		;\
-		LDA $1B					; | Lightning starts at screen 0x02
+		LDA $1B					; | Lightning staRTL at screen 0x02
 		CMP #$02 : BCC ..Return			; |
 		STZ !Level+3				;/
 
@@ -583,8 +584,8 @@ LDX #$00
 		BCC $03 : ADC #$01FF
 		STA $00
 		SEP #$20
-		JSR levelinitA_GFX
-		JSR LightningBolt
+		JSL levelinitA_GFX
+		JSL LightningBolt
 		PLB
 		PLP
 		RTL
@@ -642,7 +643,7 @@ levelB:
 		REP #$20				; > A 16 bit
 		LDA $14					;\ Only move fog vertically once every 8 frames
 		AND #$0007 : BNE .FogDone		;/
-		LDA !Level+2				;\ Don't stop raising fog once it starts
+		LDA !Level+2				;\ Don't stop raising fog once it staRTL
 		CMP #$00C0 : BNE .RaiseFog		;/
 		LDA $1A					;\ Threshold for fog rising is screen 0x10
 		CMP #$0B80 : BCC .FogDone		;/
@@ -656,9 +657,9 @@ levelB:
 		LDA.w #.HDMA : STA !HDMAptr+0		; > Set lo-mid bytes of HDMA pointer
 		LDY #$01				;\
 		LDA #$1FE8				; | Do this now so I don't have to SEP #20
-		JSR END_Right				;/ (normal exit at 0x1DE8
+		JSL END_Right				;/ (normal exit at 0x1DE8
 		LDA.b #.HDMA>>16 : STA !HDMAptr+2	; > Set hi byte of HDMA pointer
-		JMP VineDestroy_MAIN			; > Handle vines
+		JML VineDestroy_MAIN			; > Handle vines
 
 		.HDMA
 		PHP
@@ -679,7 +680,7 @@ levelB:
 		BMI -					; > Make sure it's not visible at the top
 		LDA $1E : STA $4204			;\
 		LDX #$90 : STX $4206			; |
-		JSR GET_DIVISION			; | Divide BG2 Hscroll by 0x90 and set it to the remainder
+		JSL GET_DIVISION			; | Divide BG2 Hscroll by 0x90 and set it to the remainder
 		LDA $4216				; | to make sure it loops every 9 tiles
 		STA $1E					; |
 		RTL					;/
@@ -711,7 +712,7 @@ levelD:
 		LDA.b #.HDMA : STA !HDMAptr+0
 		LDA.b #.HDMA>>8 : STA !HDMAptr+1
 		LDA.b #.HDMA>>16 : STA !HDMAptr+2
-		RTS
+		RTL
 
 		.HDMA
 		PHP
@@ -784,144 +785,7 @@ levelD:
 	; BG3 code goes here, but only on tall levels
 
 
-		LDA !IceLevel
-		AND #$00FF
-		BNE $03 : INC !Level+4			; water does not animate when frozen
-		LDA $1C
-		SEC : SBC !Level+2
-		CLC : ADC #$0030			; account for displaced tilemap
-		CMP #$0100 : BCC +
-		CMP #$FF00 : BCS +
-		LDA #$0100
-	+	STA $24
-		LDA $1A
-		CLC : ADC !Level+4
-		STA $22
-
-
-
-		PHX					;\
-		LDA $14					; |
-		AND #$0001				; | X = index to double buffer
-		ASL #2					; |
-		XBA					; |
-		TAX					;/
-
-
-		LDA !Level+2				;\
-		SEC : SBC $1C				; | the magic number (wl-c)
-		SEC : SBC #$0070			; |
-		CMP #$FFFD				; |
-		BCC $03 : LDA #$FFFE			; > minimum negative distance is -2
-		STA $00					;/
-
-		LDY #$0016				;\
-	-	LDA $00 : STA $2251			; |
-		LDA ..BG3Table,y : STA $2253		; |
-		NOP : BRA $00				; |
-		LDA $2307				; | dump height on screen values in !BigRAM
-		CLC : ADC #$0070			; | and horizontal scroll values in !BigRAM+$18
-		STA !BigRAM,y				; |
-		LDA $22 : STA $2251			; |
-		LDA ..BG3Table,y : STA $2253		; |
-		NOP : BRA $00				; |
-		LDA $2307 : STA !BigRAM+$18,y		; |
-		DEY #2 : BPL -				;/
-
-		LDA $1C					;\
-		CLC : ADC #$0070			; | determine view
-		CMP !Level+2 : BCS $03 : JMP ..BG3low	;/
-
-		..BG3high				; viewed from below
-		LDY #$0016
-		STZ $06
-	-	LDA !BigRAM,y : BEQ ++ : BPL +
-	++	LDA $06
-		CLC : ADC #$0008
-		STA $06
-		DEY #2 : BPL -
-		LDA #$0001 : STA $40A380,x
-		LDA #$0060 : STA $40A383,x
-		LDA #$0000 : STA $40A385,x
-		JMP ..endbg3
-
-	+
-	-	CMP #$007F
-		BCC $03 : LDA #$007F
-		STA $40A380,x
-		CPY #$0016 : BNE +
-		LDA #$0060 : STA $40A383,x		; ignore X here
-		BRA ++
-	
-	+	LDA !BigRAM+$18,y : STA $40A381,x
-		LDA !BigRAM,y
-		EOR #$FFFF : INC A
-		CLC : ADC $06
-		STA $40A383,x
-
-	++	INX #5
-		LDA $06
-		CLC : ADC #$0008
-		STA $06
-	--	LDA !BigRAM-2,y				;\
-		SEC : SBC !BigRAM,y			; |
-		BNE +					; | don't allow scanline counts of zero
-		DEY #2 : BPL --				; |
-		BRA ++					;/
-
-	+	DEY #2 : BPL -				; note that this doesn't loop for y = 0
-							; meaning that the next chunk is the below-water section
-	++	LDA #$0001 : STA $40A380,x
-		LDA #$0060 : STA $40A383,x
-		LDA #$0000 : STA $40A385,x
-		JMP ..endbg3
-
-
-		..BG3low				; viewed from above
-		LDY #$0000
-		LDA !BigRAM,y
-		CMP #$007F : BCC +
-		LSR A
-		STA $40A380,x
-		BCC $01 : INC A
-		PHA
-		LDA #$0060 : STA $40A383,x
-		LDA #$0000 : STA $40A381,x
-		INX #5
-		PLA
-	+	STA $40A380,x
-		LDA #$0060 : STA $40A383,x
-		LDA #$0000 : STA $40A381,x
-		INX #5
-		STZ $00
-
-
-	-	CPY #$0016 : BNE +
-		LDA #$0001 : BRA ++
-	+	LDA !BigRAM+2,y
-		SEC : SBC !BigRAM,y
-		BPL $04 : EOR #$FFFF : INC A
-		CMP #$0000
-		BNE $01 : INC A
-		CMP #$007F
-		BCC $03 : LDA #$007F
-	++	STA $40A380,x
-		LDA !BigRAM,y
-		EOR #$FFFF : INC A
-		CLC : ADC $00
-		STA $40A383,x
-		LDA !BigRAM+$18,y : STA $40A381,x
-		LDA $00
-		CLC : ADC #$0008
-		STA $00
-		INX #5
-		INY #2
-		CPY #$0018 : BNE -
-		LDA #$0000 : STA $40A380,x
-
-		..endbg3
-		PLX
-
+		JSL Water3D_Calc
 
 
 
@@ -1044,7 +908,7 @@ levelD:
 		LDX $0A					; X = base table index
 		LDA !LevelHeight			;\
 		CMP #$0200 : BCC ..Ceiling		; | skip ceiling on tall levels
-		JMP ..Floor				; |
+		JML ..Floor				; |
 		..Ceiling				;/
 
 
@@ -1177,6 +1041,151 @@ db $05,$0B,$11,$17,$1D,$23,$29,$2F,$35,$3B,$41,$47,$4D,$53,$59,$5F
 ..CeilingTable
 db $00,$10,$20,$30,$04,$14,$24,$34,$08,$18,$28,$38,$0C,$1C,$2C,$3C
 
+
+	Water3D:
+	.Calc
+		LDA !IceLevel
+		AND #$00FF : BNE +
+		LDA $14
+		AND #$0003 : BNE +
+		INC !Level+4				; water does not animate when frozen
+	+	LDA $1C
+		SEC : SBC !Level+2
+		CLC : ADC #$0030			; account for displaced tilemap
+		CMP #$0100 : BCC +
+		CMP #$FF00 : BCS +
+		LDA #$0100
+	+	STA $24
+		LDA $1A
+		CLC : ADC !Level+4
+		STA $22
+
+
+
+		PHX					;\
+		LDA $14					; |
+		AND #$0001				; | X = index to double buffer
+		ASL #2					; |
+		XBA					; |
+		TAX					;/
+
+
+		LDA !Level+2				;\
+		SEC : SBC $1C				; | the magic number (wl-c)
+		SEC : SBC #$0070			; |
+		CMP #$FFFD				; |
+		BCC $03 : LDA #$FFFE			; > minimum negative distance is -2
+		STA $00					;/
+
+		LDY #$0016				;\
+	-	LDA $00 : STA $2251			; |
+		LDA ..BG3Table,y : STA $2253		; |
+		NOP : BRA $00				; |
+		LDA $2307				; | dump height on screen values in !BigRAM
+		CLC : ADC #$0070			; | and horizontal scroll values in !BigRAM+$18
+		STA !BigRAM,y				; |
+		LDA $22 : STA $2251			; |
+		LDA ..BG3Table,y : STA $2253		; |
+		NOP : BRA $00				; |
+		LDA $2307 : STA !BigRAM+$18,y		; |
+		DEY #2 : BPL -				;/
+
+		LDA $1C					;\
+		CLC : ADC #$0070			; | determine view
+		CMP !Level+2 : BCS $03 : JMP ..BG3low	;/
+
+		..BG3high				; viewed from below
+		LDY #$0016
+		STZ $06
+	-	LDA !BigRAM,y : BEQ ++ : BPL +
+	++	LDA $06
+		CLC : ADC #$0008
+		STA $06
+		DEY #2 : BPL -
+		LDA #$0001 : STA $40A380,x
+		LDA #$0060 : STA $40A383,x
+		LDA #$0000 : STA $40A385,x
+		JMP ..endbg3
+
+	+
+	-	CMP #$007F
+		BCC $03 : LDA #$007F
+		STA $40A380,x
+		CPY #$0016 : BNE +
+		LDA #$0060 : STA $40A383,x		; ignore X here
+		BRA ++
+	
+	+	LDA !BigRAM+$18,y : STA $40A381,x
+		LDA !BigRAM,y
+		EOR #$FFFF : INC A
+		CLC : ADC $06
+		STA $40A383,x
+
+	++	INX #5
+		LDA $06
+		CLC : ADC #$0008
+		STA $06
+	--	LDA !BigRAM-2,y				;\
+		SEC : SBC !BigRAM,y			; |
+		BNE +					; | don't allow scanline counts of zero
+		DEY #2 : BPL --				; |
+		BRA ++					;/
+
+	+	DEY #2 : BPL -				; note that this doesn't loop for y = 0
+							; meaning that the next chunk is the below-water section
+	++	LDA #$0001 : STA $40A380,x
+		LDA #$0060 : STA $40A383,x
+		LDA #$0000 : STA $40A385,x
+		JMP ..endbg3
+
+
+		..BG3low				; viewed from above
+		LDY #$0000
+		LDA !BigRAM,y
+		CMP #$007F : BCC +
+		LSR A
+		STA $40A380,x
+		BCC $01 : INC A
+		PHA
+		LDA #$0060 : STA $40A383,x
+		LDA #$0000 : STA $40A381,x
+		INX #5
+		PLA
+	+	STA $40A380,x
+		LDA #$0060 : STA $40A383,x
+		LDA #$0000 : STA $40A381,x
+		INX #5
+		STZ $00
+
+
+	-	CPY #$0016 : BNE +
+		LDA #$0001 : BRA ++
+	+	LDA !BigRAM+2,y
+		SEC : SBC !BigRAM,y
+		BPL $04 : EOR #$FFFF : INC A
+		CMP #$0000 : BEQ +
+	;	BNE $01 : INC A
+		CMP #$007F
+		BCC $03 : LDA #$007F
+	++	STA $40A380,x
+		LDA !BigRAM,y
+		EOR #$FFFF : INC A
+		CLC : ADC $00
+		STA $40A383,x
+		LDA !BigRAM+$18,y : STA $40A381,x
+		INX #5
+	+	INY #2
+		LDA $00
+		CLC : ADC #$0008
+		STA $00
+		CPY #$0018 : BNE -
+		LDA #$0000 : STA $40A380,x
+
+		..endbg3
+		PLX
+		RTL
+
+
 ..BG3Table
 dw $0015,$0033,$0050,$006D,$008B,$00A8,$00C5,$00E3,$0100,$011D,$013B,$0158
 
@@ -1186,9 +1195,16 @@ dw $0015,$0033,$0050,$006D,$008B,$00A8,$00C5,$00E3,$0100,$011D,$013B,$0158
 
 
 levelE:
-		LDX #$00 : JSR WARP_BOX
-		LDX #$06 : JSR WARP_BOX
-		LDX #$0C : JSR WARP_BOX
+		JSL WARP_BOX
+		db $0F : dw $0170,$1440 : db $50,$20
+
+		JSL WARP_BOX
+		db $0F : dw $01F6,$0B90 : db $0A,$20
+
+		JSL WARP_BOX
+		db $0F : dw $0000,$0290 : db $0A,$20
+
+
 
 		LDA !Level+4 : BNE .Gate
 
@@ -1197,14 +1213,14 @@ levelE:
 		CMP #$00C0 : BCS +
 		LDA #$0100 : STA $00
 		LDA #$0000
-		JSR SCROLL_UPRIGHT
+		JSL SCROLL_UPRIGHT
 		BRA ++
 		+
 		STZ !Level+2
 		LDX #$01 : STX !EnableVScroll
 		++
 
-		LDA.w #.Table1 : JSR TalkOnce
+		LDA.w #.Table1 : JSL TalkOnce
 
 		LDA #$01A0
 		STA $04
@@ -1218,7 +1234,7 @@ levelE:
 		BCS .Gate
 
 		.NoWarp
-		JMP DANCE
+		JML DANCE
 
 
 		.Gate
@@ -1258,7 +1274,7 @@ levelE:
 		LDA #$22
 		STA $41
 		STA $42
-		RTS
+		RTL
 
 		.CloseGate
 		LDA #$03 : STA $43		; Sprites only visible inside window
@@ -1273,7 +1289,7 @@ levelE:
 		LDA #$10
 		TRB $6D9D
 		TRB $6D9E
-		RTS
+		RTL
 
 
 		;  ID  MSG      Xpos  Ypos       W   H
@@ -1285,8 +1301,8 @@ level14:
 
 		REP #$20
 		LDA.w #.RoomPointers
-		JSR LoadCameraBox
-		RTS
+		JSL LoadCameraBox
+		RTL
 
 		.RoomPointers
 		dw .ScreenMatrix
@@ -1374,7 +1390,7 @@ level28:
 		LDA $1A					;\
 		CMP #$0080 : BCC .Scroll		; | Otherwise ground camera until X = 0x0500
 		CMP #$0500 : BCS .Scroll		; |
-		LDA #$00C0 : JSR LOCK_VSCROLL		;/
+		LDA #$00C0 : JSL LOCK_VSCROLL		;/
 
 
 		.Scroll
@@ -1386,10 +1402,10 @@ level28:
 		.EndLevel
 		LDY #$02
 		REP #$20
-		LDA #$0000 : JMP END_Up
+		LDA #$0000 : JML END_Up
 
 		.NoEnd
-		RTS
+		RTL
 
 
 		.MoleRoom
@@ -1402,7 +1418,7 @@ level28:
 		LDX #$0F
 	-	LDA $3230,x
 		BEQ .ProcessMoles
-	+	JMP .NoMoreMoles
+	+	JML .NoMoreMoles
 
 		.ProcessMoles
 		DEX : BPL -
@@ -1411,10 +1427,10 @@ level28:
 		INC #2					; |
 		STA $00					;/
 		LDY !Level+5
-		CPY $00 : BCS $03 : JMP .Mole
+		CPY $00 : BCS $04 : JML .Mole
 		BNE .NoMessage
 		LDA #$02 : STA !MsgTrigger
-		JMP .End
+		JML .End
 
 		.NoMessage
 		CPY #$40 : BNE .NoPath
@@ -1483,11 +1499,11 @@ level28:
 
 		.NoMoreMoles
 		REP #$20
-		LDA #$01A0 : JSR EXIT_Down
+		LDA #$01A0 : JSL EXIT_Down
 		SEP #$20
 
 		.Return
-		RTS
+		RTL
 
 .MoleCount	db $02,$03,$03,$07
 
@@ -1513,26 +1529,26 @@ level29:
 		REP #$20
 		LDA #$01F8				;\
 		LDY #$01				; | Regular exit
-		JMP END_Right				;/
+		JML END_Right				;/
 
 		.NoExit
 		STZ !SideExit
-		RTS
+		RTL
 
 
 level30:
-		JSR levelA
+		JSL levelA
 		REP #$20
-		LDA #$0AE8 : JMP END_Right		; Exit
+		LDA #$0AE8 : JML END_Right		; Exit
 
 level31:
 		LDA !MsgTrigger : BNE .Continue
 		LDA !Level+4 : BEQ .Continue
 		DEC !Level+4 : BNE .Continue
-		JMP END_End
+		JML END_End
 
 		.Continue
-		JMP DANCE
+		JML DANCE
 
 
 level34:
@@ -1541,8 +1557,8 @@ level34:
 
 		REP #$20
 		LDA.w #.RoomPointers
-		JSR LoadCameraBox
-		RTS
+		JSL LoadCameraBox
+		RTL
 
 		.RoomPointers
 		dw .ScreenMatrix

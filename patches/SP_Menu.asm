@@ -387,8 +387,7 @@ DO NOT PATCH THIS YET
 		+
 
 
-		LDA !MultiPlayer			;\
-		BNE .Player1HP				; |
+		LDA !MultiPlayer : BNE .Player1HP	;\
 		LDA #$FC				; |
 		STA !StatusBar+$1B			; | Wipe player 2 coin counter during singleplayer
 		STA !StatusBar+$1C			; |
@@ -414,7 +413,7 @@ DO NOT PATCH THIS YET
 		BCC $03 : LDX !P2MaxHP			; |
 		BEQ .MarioCheck				; |
 		DEX					; |
-		LDA #$4A				; | Write player 2 HP
+		LDA #$0A				; | Write player 2 HP
 	-	STA !StatusBar+$17,x			; |
 		DEX					; |
 		BPL -					;/	
