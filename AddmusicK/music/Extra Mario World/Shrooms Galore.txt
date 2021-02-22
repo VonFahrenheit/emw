@@ -1,0 +1,192 @@
+#amk 2
+#SPC
+{
+	#author "Ruberjig"
+	#game "Extra Mario World"
+	#title "Shrooms Galore"
+}
+#samples
+{
+	#optimized
+	"String Ensemble 2.brr"
+	"izu_snare.brr"
+	"Bass Drum.brr"
+	"izu_chat.brr"
+	"Synth lead.brr"
+	"saxophone.brr"
+	"synth bass 1.brr"
+	"ocarina.brr"
+	"Marimba.brr"
+}
+#instruments
+{
+	"ocarina.brr" $8F $6C $00 $06 $00
+	"Synth lead.brr" $8F $B2 $B8 $04 $00
+	"saxophone.brr" $8C $B2 $B8 $04 $00
+	"String Ensemble 2.brr" $8E $C8 $00 $02 $8A
+	"synth bass 1.brr" $8e $74 $00 $01 $00
+	"izu_chat.brr" $8e $75 $00 $06 $08
+	"Bass Drum.brr" $8f $72 $00 $03 $8f 
+	"izu_snare.brr" $02 $26 $60 $04 $a0	;@37
+	"synth bass 1.brr" $8F $74 $B8 $02 $00
+	"Marimba.brr" $8E $7C $B8 $05 $00
+}
+
+$EF $FF $02 $02
+$F1 $06 $50 $00
+$F2 $0F $14 $14
+$F4 $02
+#0 w130 v160 y10t70
+@31 o3 q3f $ed $0e $e8 p10,30
+[<g>ga<g>ga<g>g<g>g<g>g
+<f>fg<f>fg<f>f<f>f<f>f
+<e>ef<e>ef<e>e<e>e<e>e
+<f>fg<f>fg<f>f<f>f<f>f]2
+
+@33 o4
+<g>gfefg <g>ab>c<ba <g>gfefg <g>ab>c<ba
+<f>fedef <f>gabag <f>fedef <f>gabag
+<g>gfefg <g>ab>c<ba <g>gfefg <g>ab>c<ba
+<f>fedef <f>gabag <f>fedef <f>fgab>c<
+
+@31 o3 q3f $ed $0e $e8 p10,30
+[<g>ga<g>ga<g>g<g>g<g>g
+<f>fg<f>fg<f>f<f>f<f>f
+<e>ef<e>ef<e>e<e>e<e>e
+<f>fg<f>fg<f>f<f>f<f>f]2
+
+@32 o2[>a4<defg >a4<defg >a4<defg >a4<defg
+>g4<cdef
+>f4<<b>cde
+>e4<<ab>cd
+>f4<<b>cde]2
+
+@30 [>a4<defg >a4<defg >a4<defg >a4<defg
+>g4<cdef
+>f4<<b>cde
+>e4<<ab>cd
+>f4<<b>cde]2
+
+[r1.]4
+
+#1 v160 
+@31 o3 $ee $10 q3f $ed $0e $e8
+[<g>ga<g>ga<g>g<g>g<g>g
+<f>fg<f>fg<f>f<f>f<f>f
+<e>ef<e>ef<e>e<e>e<e>e
+<f>fg<f>fg<f>f<f>f<f>f]2
+v150
+@33 o5
+<g>gfefg <g>ab>c<ba <g>gfefg <g>ab>c<ba
+<f>fedef <f>gabag <f>fedef <f>gabag
+<g>gfefg <g>ab>c<ba <g>gfefg <g>ab>c<ba
+<f>fedef <f>gabag <f>fedef <f>fgab>c<
+v220
+@31 o3 $ee $07 q3f $ed $0e $e8
+[<g>ga<g>ga<g>g<g>g<g>g
+<f>fg<f>fg<f>f<f>f<f>f
+<e>ef<e>ef<e>e<e>e<e>e
+<f>fg<f>fg<f>f<f>f<f>f]2
+
+@32 o3[>a4<defg >a4<defg >a4<defg >a4<defg
+>g4<cdef
+>f4<<b>cde
+>e4<<ab>cd
+>f4<<b>cde]2
+
+@30 [>a4<defg >a4<defg >a4<defg >a4<defg
+>g4<cdef
+>f4<<b>cde
+>e4<<ab>cd
+>f4<<b>cde]2
+
+[r1.]4
+
+#2@34 o4 q2e v250 [g4g4g4 g4g4g4 f4f4f4 f4f4f4 e4e4e4 e4e4e4 f4f4f4 f4f4f4]2
+@39 q3e
+g4f4b4 g4f4b4 g4f4b4 g4f4b4
+f4e4a4 f4e4a4 f4e4a4 f4e4a4
+g4f4b4 g4f4b4 g4f4b4 g4f4b4
+f4e4a4 f4e4a4 f4e4a4 f4g4b4
+@34q2e
+[g4g4g4 g4g4g4 f4f4f4 f4f4f4 e4e4e4 e4e4e4 f4f4f4 f4f4f4]2
+@39q3e
+[gagggg fgffff efeeee fgffff]4
+@33o3q3e
+[gagggg fgffff efeeee fgffff]4
+
+#6@34 r. o4 q2e v120 [g4g4g4 g4g4g4 f4f4f4 f4f4f4 e4e4e4 e4e4e4 f4f4f4 f4f4f4]2
+@39 q3e
+g4f4b4 g4f4b4 g4f4b4 g4f4b4
+f4e4a4 f4e4a4 f4e4a4 f4e4a4
+g4f4b4 g4f4b4 g4f4b4 g4f4b4
+f4e4a4 f4e4a4 f4e4a4 f4g4b4
+@34q2e
+[g4g4g4 g4g4g4 f4f4f4 f4f4f4 e4e4e4 e4e4e4 f4f4f4 f4f4f4]2
+@39q3e
+[gagggg fgffff efeeee fgffff]4
+@33o2q3e
+[gagggg fgffff efeeee fgffff]4
+
+#3o4[@36e@37e@35e @36e@37e@35e  @37e@36e@37e@36e@37e@36e]8
+[@36e@35e@10e@35e@37e@35e]8
+[@36e@37e@35e @36e@37e@35e  @37e@36e@37e@36e@37e@36e]8
+[@36e@35e@10e@35e@37e@35e]8
+[@36e@37e@35e @36e@37e@35e  @37e@36e@37e@36e@37e@36e]8
+[@36e@35e@10e@35e@37e@35e]8
+[@36e@37e@35e @36e@37e@35e  @37e@36e@37e@36e@37e@36e]8
+
+#4@38 o2 q6f v180 [g4g4g4 g4g4g4 f4f4f4 f4f4f4 e4e4e4 e4e4e4 f4f4f4 f4f4f4]2
+@33
+g2. g2. g2. g2.
+f2. f2. f2. f2.
+g2. g2. g2. g2.
+f2. f2. f2. g2.
+@38o3
+[g4g4g4 g4g4g4 f4f4f4 f4f4f4 e4e4e4 e4e4e4 f4f4f4 f4f4f4]2
+@33o2 v250
+[g2. f2. e2. f2.]8
+
+#5@38 o3 q6f v120 [g4g4g4 g4g4g4 f4f4f4 f4f4f4 e4e4e4 e4e4e4 f4f4f4 f4f4f4]2
+@33
+g2. g2. g2. g2.
+f2. f2. f2. f2.
+g2. g2. g2. g2.
+f2. f2. f2. g2.
+@38o3
+[g4g4g4 g4g4g4 f4f4f4 f4f4f4 e4e4e4 e4e4e4 f4f4f4 f4f4f4]2
+@33o4 v190
+[g2. f2. e2. f2.]8
+
+#7 v90 y10 r.
+@31 o3 q3f $ed $0e $e8 p0,0
+[<g>ga<g>ga<g>g<g>g<g>g
+<f>fg<f>fg<f>f<f>f<f>f
+<e>ef<e>ef<e>e<e>e<e>e
+<f>fg<f>fg<f>f<f>f<f>f]2
+
+@33 o4
+<g>gfefg <g>ab>c<ba <g>gfefg <g>ab>c<ba
+<f>fedef <f>gabag <f>fedef <f>gabag
+<g>gfefg <g>ab>c<ba <g>gfefg <g>ab>c<ba
+<f>fedef <f>gabag <f>fedef <f>fgab>c<
+
+@31 o3 q3f $ed $0e $e8 p10,30
+[<g>ga<g>ga<g>g<g>g<g>g
+<f>fg<f>fg<f>f<f>f<f>f
+<e>ef<e>ef<e>e<e>e<e>e
+<f>fg<f>fg<f>f<f>f<f>f]2
+
+@32 o2[>a4<defg >a4<defg >a4<defg >a4<defg
+>g4<cdef
+>f4<<b>cde
+>e4<<ab>cd
+>f4<<b>cde]2
+
+@30 [>a4<defg >a4<defg >a4<defg >a4<defg
+>g4<cdef
+>f4<<b>cde
+>e4<<ab>cd
+>f4<<b>cde]2
+
+[r1.]4

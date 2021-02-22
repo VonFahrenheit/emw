@@ -1,0 +1,199 @@
+#am4
+#samples
+{
+	"Peaceful Days.bnk"
+}
+#SPC
+{
+	#author "Nobuo Uematsu"
+	#title "Peaceful Days"
+	#game "Chrono Trigger"
+	#comment "Ported by someone"
+}
+$ED $80 $6D $68 
+$ED $80 $7D $00 
+$F0
+tuning[14]=-4
+tuning[7]=-5
+#0
+$EF $00 $00 $00
+$F1 $02 $00 $00
+v0c8
+$EF $FF $14 $14
+$F1 $02 $41 $01
+@13 v200 y10 t36 l8 $ED $7F $ED
+o5f+ed+c+ed+c+<b
+b16>c+16d+16c+2^8.<g+
+g+2a+2
+/@14 $ED $7F $E8 $EE $80
+o3[f+4>d+4ed+c+<b]
+>f+4.c+c+2
+*f+2.g+a+
+b4a+g+f+4d+4
+g+4f+ed+4c+4
+<ba+b>d+c+4<g+b
+b2>c+4.f+
+g+4f+g+f+4c+e
+e4d+c+c4c+d+
+e4d+c+<b4>c+4
+<b1
+r1^8
+>f+4e16d+16ed+c+<b
+>c+d+<f+1^4
+g+4.a+
+b2>d+4.d+
+ed+c+<b>c+d+<f+4
+b2.f4
+g+2f+2
+b2>c+2
+e4d+ed+2
+[e4d+c+<b4>c+4]
+<b2..>d+
+*
+<b1
+;
+
+#1 @13 v185 y10 l8 $ED $7F $ED
+ro5b2g+2
+b1
+r2f+2
+/@7 $ED $78 $E8 $EE $A0 
+o3f+1
+b2a+4b4
+f+1^4
+>f+2d+4
+<b2a+2
+b4>c+4d+4e4
+d+2c+2
+[<b2>c+2]2
+e4d+ef+2
+e2g+4a+4
+b1o4[f+4>d+4ed+c+<b]
+>f+4.c+c+2
+*
+f+2.g+a+
+b4a+g+f+4d+4
+g+4f+ed+4c+4
+<ba+b>d+c+4<g+b
+b2>c+4.f+
+g+4f+g+f+4c+e
+e4d+c+c4c+d+
+[e4d+c+<b4>c+4]
+<b2..>d+
+*
+<b1
+;
+
+
+#2 @13 v185 y10 l2 $ED $7F $ED
+r8o5f+e
+g+1
+ec+
+/@7 $ED $78 $E8 $EE $A0
+o3[d+1
+e1
+d+1.
+<a+
+b>c+
+<b>d+4c+4
+<b>c+
+e1
+<b>c+
+ed+
+ec+
+d+1]2
+ec+
+d+1
+;
+
+#3 @13 v185 y10 l2 $ED $7F $ED
+r8o5d+<b
+>e1
+<ba+
+/@7 $ED $78 $E8 $EE $A0
+o2f+1^1^1^1^1
+[g+f+
+f+f
+g+f+
+g+a+
+f+g+
+b1
+f+1]
+f+1^1^1^1^1
+*
+b1
+f+1
+;
+
+#4 @13 v185 y10 l2 $ED $7F $ED
+r8o5<be
+a1
+f+1
+/@7 $ED $78 $E8 $EE $A0
+o1[bg+
+>c+<f+
+bg+
+>d+<a+
+g+>d+
+e<b4a+4
+g+>c+
+<f+1
+ef+
+b4a4g+
+>c+<f+
+b1]2
+>c+<f+
+b1
+;
+
+#5 @13 v193 y10 l8 $ED $7F $ED
+[r1]3^8
+/o4[b>d+f+b<g+b>d+f+
+c+eg+>c+o4f+a+>c+f+
+<b>d+f+b<g+b>d+f+
+<a+>d+f+a+>d+<a+f+d+
+<g+b>d+f+<a+>d+f+a+
+eg+b>eo4b>d+f+a+
+<g+b>d+f+c+fg+b
+<b>eg+b>c+<ba+f+
+eg+b>eo4a+>c+f+a+
+c+eb>c+d+c+c<g+
+c+eg+b<b>eg+b
+<b>d+f+b>d+<bf+d+]2
+c+eg+b<b>eg+b
+<b>d+f+b>d+<bf+d+
+;
+
+#6 v220 y10 @14 l16 $ED $7f $E0 $EE $80
+r8[r1]3/[r1]12r8
+o3[f+rf+rf+r8.]2
+brbrbr8.a+rg+rf+r8.
+*2
+a+ra+ra+rbrbr>c+rc+r8.
+<brbrbrd+ra+ra+ra+r8.
+g+rg+rg+r8.f+r8.er8.
+f+rf+rf+r8.g+rg+rg+r8.
+erg+rbr>c+r<bra+rf+r8.
+g+rg+rg+r8.a+ra+ra+r8.
+er8.f+r8.d+rd+rd+r8.
+[g+rg+rg+r8.ererer8.
+d+rf+rerd+2]
+r8*
+;
+
+
+#7 v220 y10 @14 $ED $7f $E0 $EE $80
+r8[r1]3/[r1]12
+o2[br>d+rd+rd+r<g+r>d+rd+rd+r]
+c+rg+rg+rg+r<f+r>f+rerd+r
+*
+d+rf+rf+rf+rg+rg+ra+ra+r
+<g+r>g+rg+rg+r8.f+rf+rf+r
+<br>ererer<br>d+r<a+r>c+r
+<g+r>d+rd+rd+rc+rfrfrfr
+<g+rbr>erg+ra+rg+rf+rc+r
+<br>erererc+rf+rf+rf+r
+<brbrbr>d+r<g+r>crcrcr
+[c+rererer<f+r>c+rc+rc+r8.
+<br>d+rc+r<b2]2
+;

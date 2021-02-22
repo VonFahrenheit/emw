@@ -1,0 +1,135 @@
+#amk 2
+#samples
+{
+	#optimized
+	"ct-216a_20.brr"
+	"ct-216a_21.brr"
+	"ct-216a_22.brr"
+	"ct-216a_23.brr"
+	"ct-216a_24.brr"
+	"ct-216a_25.brr"
+}
+#instruments
+{
+	"ct-216a_20.brr" $00 $00 $7F $02 $00
+	"ct-216a_21.brr" $FF $F4 $B8 $01 $AA
+	"ct-216a_22.brr" $00 $00 $7F $02 $46
+	"ct-216a_23.brr" $00 $00 $7F $02 $13
+	"ct-216a_24.brr" $00 $00 $7F $02 $1D
+	"ct-216a_25.brr" $00 $00 $7F $03 $00
+}
+#spc
+{
+	#author    "Nobuo Uematsu"
+	#game      "Chrono Trigger / SMW"
+	#comment   "Ported by tcdw"
+	#title     "Underground Sewer"
+}
+
+;Insert Size:	0x04C0 bytes
+;Ported by:	tcdw
+;Length:	1:04
+;AddMusic:	AddMusicK
+;Channels:	7 (#0,#1,#2,#3,#4,#5,#6)
+
+#0 t33 w255
+$EF $FF $32 $32
+$F1 $06 $46 $01
+r1^1 /
+v80 y12 @32
+o5
+[e16r16g16r16b16] r4r16>c8<b16r16g16r16d+16r16f+16r16b16r2r8.d+16r16f+16r16b16r4r16a8g16r16f+16r16
+* r2r8.
+* r4r16>d8c16r16<b16r16e16r16a16r16>c16r4r16e8d8c8<b4f+8g8a8b16a16g8f+8e2.r4
+v100 y10 @31
+[e8e16f+16g16r16e16r16c+8d+16r16e16r16g16r16f+8d+8b16a16g16f+16e2g8b16r16e8g16r16c+8c+16d+16e16r16g16r16a16r16f+8d+16r16b8g16a16b16a16g4]2
+r8e16r16e16r4r16f+16r16f+16r2...r4.e16r16e16r4r16f+16r16f+16r8.
+t30 r4
+t28 r4
+t27 r192
+t26 r64
+t25 r32^64^48
+t24 r32
+t23 r32^48
+t22 r32
+t21 r32
+t20 r4^64
+t33
+
+#1
+r1^1 / v80 y8 @32
+o5
+(10)[<g16r16b16r16>e16r2r8.]
+(11)[<f+16r16b16r16>d+16r2r8.]2
+(10)2
+<a16r16>c16r16e16r2.r16d+4e4c+4d+8e8<b8g8b8e4r4
+v100 y10 @31
+[e8b16r16b16r16g16r16e8a+16r16a+4b8<b8.b16>c+16d+16e16b16>c16<b16a16b16g16f+16e4g4a+16r16g16r16e16r16>c+16r16d+16r16<b8f+16r16d+8e16f+16g16f+16e4]2
+[a16r16>c16r16c16r16<a8b16r16>d+16r16d+16r16<b8a16>c16e16a16<a+16>c+16e16g16<b16>d+16f+16b16<]
+>a16f+16d+16<b16
+*
+>>d+4
+
+#2
+r1^1 / @33 y18 $DF
+r2.o5
+v5 $E8 $18 $78 e4  v50 d+16r1.r8.
+v5 $E8 $18 $78 d+4 v50 e16r1.r8.
+v5 $E8 $18 $78 e4  v50 e16r2...
+v5 $E8 $30 $4B f+2e4d+4
+   $E8 $30 $05 e2.r4
+v125 y12 @34 p12,18
+[g16r16<b16r16>c16r16<b16r16a+2]
+a2g3r24>e16f+16
+*
+<a2g4..r16>
+*
+<a2g3r24>e16f+16
+*
+<a2g4..r16
+[>a4^16g16f+16e16d+16r16f+16r16<b8.r16]
+a4a+8>c+8<b4..r16
+*
+>c4d+8e8d+4..r16
+
+#3
+r1^1 / @33 y12 $DF
+r2.
+o4
+v5 $E8 $18 $78 g4  v50 f+16r1.r8.
+v5 $E8 $18 $78 f+4 v50 g16r1.r8.
+v5 $E8 $18 $78 g+4 v50 a16r2...
+v5 $E8 $30 $4B b4a4g4f+4e2 $E8 $30 $05 ^4r2..
+v90 y6 @35 p12,18 $F4 $01
+>
+[g8f+8e8d+4e8f+8e3r2.r24g8f+8e8d+4d+24e24d+24c+16d+16e4..]
+r2r8. * r1r16c4c+8e8d+4..r16>c4^16<b16a16g16f+16r16b16r16d+8.r16e4f+8g8f+4..r32 $F4 $01 ^32
+
+#4
+r1^1/ @33 y8
+r2.o3
+v5 $E8 $18 $78 b4 v50 b16r1.r8.
+v5 $E8 $18 $78 b4 v50 b16r1.r8.
+v5 $E8 $18 $78 b4 v50 >c16r2...
+v5 $E8 $30 $4B d+4c4<b4a4g2 $E8 $30 $05 ^4r1
+[r2]16
+r4
+v30 $E8 $90 $5A
+>a4g4f+4 $E8 $0C $0A ^8^16r1r16
+v30 $E8 $90 $5A a4g4 f+4 $E8 $0C $0A ^4^8r16
+
+#6
+r1^1/ @33 y4 $DF
+r2.o3
+v5 $E8 $18 $78 e4  v50 d+16r1.r8.
+v5 $E8 $18 $78 d+4 v50 e16r1.r8.
+v5 $E8 $18 $78 e4  v50 e16r2...
+v5 $E8 $30 $4B <b4>c4c+4d+4e2 $E8 $30 $05 ^4r1
+[r2]16
+r4
+v30 $E8 $90 $5A
+a4a+4b4 $E8 $0C $0A ^8^16r1r16
+v30 $E8 $90 $5A a4a+4 b4 $E8 $0C $0A ^4^8r16
+
+#5 @30 v5 y12 $E8 $C0 $46 $F4 $01
+r2o4 / [$DC $BA $08 e1 $DC $BA $0C e1]99

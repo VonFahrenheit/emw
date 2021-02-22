@@ -1,0 +1,88 @@
+;*******************************************************************
+;Title = Map 2
+;Ported by LadiesMan217
+;*******************************************************************
+; Insert size: 473 bytes
+; Number of channels: 5 (Channels 6, 7, 8 unused)
+; Total song length: 0:09
+; Version: AddmusicK 2
+; Samples: Yes (brr)
+;*******************************************************************
+; SPC Generator Info
+#SPC
+{
+	#author "Koji Kondo"
+	#title "Map 2"
+	#game "Yoshi's Island"
+	#comment "Ported by LadiesMan217"
+}
+;*******************************************************************
+;Commands In Song
+
+;None
+;*******************************************************************
+;Samples and Info
+#samples
+{
+	#optimized
+	#YI
+}
+#instruments
+{
+	"YI/yi-1C.brr" $ff $e0 $00 $07 $a8	;@30 bongos
+	"YI/yi-19.brr" $fe $f3 $00 $04 $ff	;@31 jazz guitar
+}
+;*******************************************************************
+;Channel 1
+
+#0
+$ef $00 $00 $00
+$f1 $01 $00 $01
+$f5 $00 $00 $00 $00 $00 $00 $00 $00
+t24 w175 @31 y8 v220 
+q2d o3 b32 q3c b32 q0e > c16 q2e e16 q0d c16 q4e d16. q0e d12... q3e e32 q2d 
+e16. q0e e16 q0b c16 q6e d16. q0e c12... q2e < b32 q3d b32 q2d > c16 q2e e16 
+q0d c16 q5e d16. q0e d12... q4e e32 q3d e32 q0b e16 q0d e16 c16 q6f d16. q0e 
+c16. q7e < b16 ^4 
+
+;*******************************************************************
+;Channel 2
+
+#1
+@31 y10 v220 
+q3e o2 g8 q0e a8 q6e b16. q0e > c12... q3e d8 q0e c8 q6e < b16. q0d a12... q3e 
+g8 q0e a8 q6e b16. q0e > c12... q3e d8 q0e c8 q6e < a+16. q0e g+16. q7e g16 ^4 
+
+;*******************************************************************
+;Channel 3
+
+#2
+@31 y12 v220 
+q3e o4 d32 d32 q0d e16 q2e g16 q0d e16 q5e g16. q0e b12... q4e > c32 q7d c32 
+q0d < b16 q0e g16 q0d e16 q5e g16. q0e g12... q2e d32 q3e d32 q0d e16 q2e g16 
+q0d e16 q4e g16. q0e b12... q5e o5 c32 q6d c32 q0d < b16 q0e g16 e16 q6f g16. 
+q0e g16. q7e g16 ^4 
+
+;*******************************************************************
+;Channel 4
+
+#3
+@31 y4 v140 
+r48 q3e o4 d32 d32 q0d e16 q2e g16 q0d e16 q5e g16. q0e b12... q4e > c32 q7d 
+c32 q0d < b16 q0e g16 q0d e16 q5e g16. q0e g12... q2e d32 q3e d32 q0d e16 q2e 
+g16 q0d e16 q4e g16. q0e b12... q5e > c32 q6d c32 q0d < b16 q0e g16 e16 q6f g16. 
+q0e g16. q7e g24 ^4 
+
+;*******************************************************************
+;Channel 5
+
+#4
+@30 y14 v250 
+[q1b o4 b48.. q01 b=10 q15 b32 q0f b16 q29 < a16 q0f > b16. q1a b32 q0f b16 q2a 
+< a32 q11 > b32 q7f b192 q15 ^=5 q05 b16 q17 b32 q0e b16 q2b < a16 q1e > b32 
+q15 b32 b32 q19 b48.. q0d b=11 q7a < a=13]2 q1a o4 b32 r16 q19 b48.. q0d b=11 
+q7a < a16 
+
+;*******************************************************************
+
+#amk 2

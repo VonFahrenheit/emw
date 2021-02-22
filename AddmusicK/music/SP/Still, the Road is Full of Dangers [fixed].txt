@@ -1,0 +1,98 @@
+;Slightly altered by Von Fahrenheit:
+;	- Removed channel 7 to avoid SFX conflicts.
+;	- Removed channel 8 to avoid SFX conflicts.
+
+#am4
+#samples
+{
+	"Still, the Road is Full of Dangers.bnk"
+}
+
+#SPC
+{
+	#title "Still, The Road is Full of Dangers"
+	#comment "Ported by Mario90"
+}
+
+;Still, The Road Is Full Of Dangers - by Mario90
+
+$ED $80 $6D $25
+$ED $80 $7D $00
+
+$F0
+
+$EF $FD $10 $10
+$F1 $06 $55 $01
+$F2 $DC $15 $15
+
+;FIR Filter
+$ED $80 $0F $7F
+$ED $80 $6C $0F
+#0 l16
+
+w255 t60 r ;w180 = original
+/
+@11 $E5 $A0 $04 $ED $7F $E0 $ED $81 $0B $EE $1D y10 o4 v140 g8.f+grg8d12r24cr<b4>c8<brar>d8<b12r24arg4>g8.f+grg8d12r24cr<b4>c8<brar>d8<g4>gr8. 
+y6 v100 e2d2f+2g2e2d2 v80 c4.< v90 b4. v100 a4^8 v110 g4. v120 f+8r8e4r4 y10 <gb>dgb8r4.r8<df+arf+r8<b>dgbr8.r4gb>dgb8r4.r8<df+arf+r8<b>dgbr8.r1r1 
+@15 $E5 $A2 $04 $ED $7F $E0 $ED $81 $10 $EE $A3  y14 o5 v80 d1 
+@11 $E5 $A0 $04 $ED $7F $E0 $ED $81 $17 $EE $1F  y6 o1 v80 a6>c6<a6>c6<ar=4> v90 d v90 e v100 f v110 f+ v160 g8.f+grd8ercrd8.rgrgf+grd8ercrd8.r v120 e4g4>c4<e4d4g4b4d4c4f+4a4c4<b4>c4c+4d4e4g4>c4<e4d4g4b4d4> v60 c4.< v70 b4. v80 a4^8> v90 d4. v100 e8r8 v110 f+4
+
+#1 l16
+
+r
+/
+@8 $E5 $A1 $04 $ED $7F $EF $ED $81 $05 $EE $6F y10 o2 v220 g8r2.r8d8r4.g4r4g8r2.r8d8r4.g4r8 v160 ab[>crcc]2
+[<grgg]2
+[f+rf+f+]2
+[grgg]2
+[>crcc]2
+[<grgg]2
+>d4.d4.d4^8d4.d8r8d4[< v220 g8r2^4r8d8r4^8g4r4]2
+[> v160 crcc]3
+cc>c8[<crcc]3
+cc>c<c v200 dr2.r8.r1[< v160 grgg]3
+gg>g8[<grgg]3
+gg>g<g[>crcc]4
+[<brbb]4
+[araa]4
+grggaraaa+ra+a+brbb[>crcc]4
+[<brbb]4
+>d4.d4.d4^8d4.d8r8d4
+
+#2 l16
+
+r
+/
+@15 $E5 $A2 $04 $ED $7F $E0 $ED $81 $10 $EE $19 y5 o4 v120 g1d2g2g1d2g4.^ v40  
+$E5 $A6 $04 $ED $7F $E0 $ED $81 $08 $EE $39 b32 v80  b32 v150  b8 v110  b  b v130  b32 v110  b32 v70  b v110  b v130  b v150  b8 v70  b v110  b v130  b64  b=18^64 v110  b v130  b v150  b8 v110  b  b v130  b32 v110  b32 v70  b v110  b v130  b v150  b8 v70  b v110  b v130  b64  b=9 v90  b v110  b v130  b v150  b8 v110  b  b v130  b32 v110  b32 v70  b v110  b v130  b v150  b8 v70  b v110  b v130  b64  b=18^64 v80  b v130  br8 v90  b8  b4 v110  b8  b4 v130  b8  b4 v150  b8  b4  b4  b8r2r8 v180  
+$E5 $A7 $04 $ED $7F $E0 $ED $81 $0E y6 d+8 v140  d+4r8 v180  y14e8 v140  e4. v180  y6 d+8 v140  y14 e4r2r8 v180  y6 d+8 v140  d+4r8 v180  y14 e8 v140  e4. v180  y6 d+8 v140  y14 e8. v40  y10
+$E5 $A6 $04 $ED $7F $E0 $ED $81 $08 $EE $39 b32 v80  b32 v120  b8 v80  b  b v100  b32 v80  b32 v40  b v80  b v100  b v120  b8 v40  b v80  b v100  b64  b=18^64 v80  b v100  b v120  b8 v80  b  b v100  b32 v80  b32 v40  b v80  b v100  b v120  b8 v40  b v80  b v100  b64  b=9 v60  b v80  b v100  b  b64  b2.^8.^=9r2r8 v4  b32  b32 v20  b32  b32 v40  b32  b32 v56  b32  b32 v80  b32  b32 v100  b32  b32[v120  b8 v80  b  b v100  b32 v80  b32 v40  b v80  b v100  b v120  b8 v40  b v80  b v100  b64  b=18^64 v80  b v100  b v120  b8 v80  b  b v100  b32 v80  b32 v40  b v80  b v100  b v120  b8 v40  b v80  b v100  b64  b=9 v60  b v80  b v100  b]4
+r8 v60  b8  b4 v80  b8  b4 v100  b8  b4 v120  b8  b4  b4  b8
+
+
+#3l32
+
+r16
+/
+@15 $E5 $A2 $04 $ED $7F $E0 $ED $81 $10 $EE $0D y14 o5 v80 g2.^8 @3 $E5 $A3 $04 $ED $4F $95 $ED $81 $17 y13 o3 v160 d16g16r4.a16>d16r4.<d16g16r2.r8d16g16r4.a16>d8.<d8g4r8 y10 c16d16e16r16c8d v90 d v100 d v110 d v120 d v130 d v140 d v150 d< v160 b v90 b v100 b v110 b v120 b v130 b v140 b v150 br8 v160 a16b16>c16r16<a8b v90 b v100 b v110 b v120 b v130 b v140 b v150 b> v160 d v90 d v100 d v110 d v120 d v130 d v140 d v150 dr8 v160 c16d16e16r16c8d v90 d v100 d v110 d v120 d v130 d v140 d v150 d v160 g v90 g v100 g v110 g v120 g v130 g v140 g v150 g v60 aaaa v80 aaaa v100 aaaa v110 aaaa v120 aaaa[v130 a]12
+v120 aaaa v110 aaaa v100 aaaa v80 aaaa v60 aaaa v40 aaaar4 v160 g v120 g v130 g v140 g v150 g v160 gf+16g16r16g8d v100 d v120 d v140 d v160 c16r16<b v90 b v100 b v110 b v120 b v130 b v140 b v150 b> v140 c v120 c v160 c16<b16r16a16r16>d v100 d v120 d v140 d< v160 b12r24a16r16g v90 g v100 g v110 g v120 g v130 g v140 g v150 g> v160 g v120 g v130 g v140 g v150 g v160 gf+16g16r16g8d v100 d v120 d v140 d v160 c16r16<b v90 b v100 b v110 b v120 b v130 b v140 b v150 b> v140 c v120 c v160 c16<b16r16a16r16>d v100 d v120 d v140 d< v160 g v90 g v100 g v110 g v120 g v130 g v140 g v150 g> v200 g4r1r1> v160 d8.c+16d16r16c16r16<g+ v100 g+ v120 g+ v140 g+ v160 a16r16f+16r16d16r16c+ v120 c+ v160 d16e16r16d16r16c16r16<a v100 a v120 a v140 a v160 c+16r16d v100 d v110 d v120 d v130 d v120 d v100 d v80 dr1r1r8 y11 o4 v120 c16<b16>c8<g16f+16g8e16d16e8<b16>c16d8b16a16b8g16f+16g8d16c16d8<a16b16>c8a16g16a8f+16e16f+8c16<b16>c8<g16a16b8 o4 d16c16d8<b16a16b8g16f+16g8c16d16e8>c16<b16>c8<g16f+16g8e16d16e8<b16>c16d8b16a16b8g16f+16g8d16c16d8<a16b16> v60 aaaa v80 aaaa v100 aaaa v110 aaaa v120 aaaa[v130 a]12
+v120 aaaa v110 aaaa v100 aaaa v80 aaaa v60 aaaa v40 aaaar4
+
+#4 l16
+
+r
+/
+ $E5 $A0 $0F $ED $7F $E0 $EE $55   y10 o2 v120 b8.a+brb8b12r24arg4a8grf+ra8g12r24cr<b4>b8.a+brb8b12r24arg4a8grf+ra8<b4>br8. y13 > v80 c2<b2>d4.c8<b2>c2<b2 v60 a4. v70 g4. v80 f+4^8 v90 e4. v100 d8r8c4[r1]6
+ $E5 $A2 $19 $ED $7F $E0 $EE $78 y5 o2 v120 d1 
+$E5 $A0 $0F $ED $7F $E0 $EE $78 y13 o1 v80 f+6a6f+6a6f+12a> v90 c v100 d v120 d v160 d8.ddr<b8>cr<arb8.r>drdddr<b8>cr<arb8.r>c4e4g4c4<b4>d4g4<b4a4>c4f+4<a4g4a4a+4b4>c4e4g4c4<b4>d4g4<b4> v60 a4. v70 g4. v80 f+4^8 v90 a4.> v100 c8r8 v110 d4
+
+#5 l16
+
+@0 $E5 $A4 $04 $ED $7F $E0 $ED $81 $09 y10 o3 v160 d=4 v140 e=4 v160 f+=4 v180 
+/
+gr2.r8. 
+@15 $E5 $A2 $04 $ED $7F $E0 $ED $81 $0F $EE $FF y14 o5 v80 d2g2g1d2g2r1r1r1 
+@0 $E5 $A4 $04 $ED $7F $E0 $ED $81 $08 y11 o3 v120 a24r12g24r12f+24r12 v140 g24r12f+24r12e24r12 v160 f+24r12e24r12d24r12 v170 e24r12d24r12c24r12 v180 d24r12c24r12<e24r12f+24r12r4 
+@3 $E5 $A5 $04 $ED $7F $51 $ED $81 $09 $EE $00 y14 o2 v120 gb>dgb12r4.r24r8df+arf+r8<b>dgb12r6r4<gb>dgb12r4.r24r8df+arf+r8<b>dgb12r6 
+@0 $E5 $A4 $04 $ED $7F $E0 $ED $81 $09 y6 o3 v120 c8.<b>cr<g8arfrg8.r y13 >c32r=18c<b>cr<g8arfrg8. y10 > v200 a=4 v180 b=4> v200 c+=4 v220 dr2.r8.[r1]7
+o2 v110 p7,3 e2^8g8>c8e8d4<b4>g8r8 v130 gr8g v120 a24r12g24r12f+24r12 v140 g24r12f+24r12e24r12 v160 f+24r12e24r12d24r12 v170 e24r12f+24r12g24r12 v180 a24r12b24r12>c24r12d24r12 y10 v140 

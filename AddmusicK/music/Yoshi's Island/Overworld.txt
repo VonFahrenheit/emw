@@ -1,0 +1,117 @@
+﻿;*******************************************************************
+;Title = Overworld
+;Ported by LadiesMan217
+;*******************************************************************
+; Insert size: 832 bytes
+; Number of channels: 6 (Channels 7, 8 unused)
+; Total song length: 0:34
+; Version: AddmusicK 2
+; Samples: Yes (brr)
+;*******************************************************************
+; SPC Generator Info
+#SPC
+{
+	#author "Koji Kondo"
+	#title "Overworld"
+	#game "Yoshi's Island"
+	#comment "Ported by LadiesMan217"
+}
+;*******************************************************************
+;Commands In Song
+
+;VCMD_PITCH_SLIDE=$dd
+;VCMD_ECHO_ON=$ef
+;VCMD_ECHO_PARAM=$f1
+;VCMD_ECHO_VOL_FADE=$f2
+;*******************************************************************
+;Samples and Info
+#samples
+{
+	#optimized
+	#YI
+}
+#instruments
+{
+	"YI/yi-1C.brr" $ff $e0 $00 $07 $a8	;@30 bongos
+	"YI/yi-21.brr" $ff $ec $00 $0a $02	;@31 bass
+	"YI/yi-1E.brr" $ff $e0 $00 $03 $00	;@32 rock organ
+	"YI/yi-26.brr" $ff $e0 $00 $05 $40	;@33 cowbell
+	@0	       $8d $e0 $00 $03 $00	;@34 recorder
+	"YI/yi-25.brr" $ff $e0 $00 $07 $a8	;@35 maracas
+	"YI/yi-2D.brr" $ff $e0 $00 $07 $03	;@36 distortion guitar
+}
+;*******************************************************************
+;Channel 1
+
+#0
+w170 t34 v200 @36 y10 
+$ef $f9 $00 $00 
+$f1 $02 $1e $01 
+$f2 $18 $0e $0e
+$f5 $0c $21 $2b $2b $13 $fe $f3 $f9
+[q4e o4 e16 q4d e16 e16 q5f e16 c16 r16 q5d e16 q4d < a16 r8. a16 > c16 d16 r8 
+q4e e16 q4d e16 e16 q5f e16 c16 r16 q4d e16 < a16 r8. > e16 c16 d16 d16 r16]2 
+v230 [q3e o3 g=13 q3d g16 g16 q4f > c=23 < a=13 q3d g16 q4f e=11 ^16 q2f g=13 
+g16 q4f g=35 r16 q3f a16 q4d g=25 q3f a16 q4d g=23 q2d c=25 q4f e=11 ^=13 o3 
+c16 q4d c16 q4f c=47] r16 * q3f a16 
+[q4d o3 g=25 q3f a16 q4d g=23 a=25 @32 v200 > c=11 ^=13 q4f d8 q4d c16 q4f d16 
+e16 r=11 @36 v230 < a16 q4d g=25 q3f a16 q4d g=23 a=25 @32 v200 > c=11 ^=13 q4f 
+o4 e8 q4d d16 q4f c16 c16 r=11] @36 v230 < a16 * r16
+
+;*******************************************************************
+;Channel 2
+
+#1
+v250 @31 y10 
+[q3e o2 c=25 q1d c16 q3e e=25 r8 q2d e=10 
+q3e f=25 q1d f16 q3e g8 r12... q39 g=5]4
+[q4e o2 c=25 q1d c16 q3e e8 r=25 q2d e=10 q4e f=25 q1d f16 q3e g=25 r=29 q39 
+g=5 q4e f=25 q1c f16 q3e e=25 r8 q2d e=10 q4e d=25 q1d d16 q3e c12... r8 q6c 
+c=5]2 
+[q4e o2 f=25 q1c f16 q3e e=25 r8 q2d e=10 q4e d=25 q1d d16 q3e c12... r8 
+q6c c=5]4
+
+;*******************************************************************
+;Channel 3
+
+#2
+y7 v240 @30 
+[q2e o2 b=13 q2b g+16 q7f g+=23 q2e b=13 q2b g+16 q7f g+=23]24
+
+;*******************************************************************
+;Channel 4
+
+#3
+v120 @32 y5 
+[r8 q4e o4 a8 g8 r8 f8 r16 e8 r8. r8 f8 e8 r8 d8 r16 c8 r8.]2 
+v160 @33 y12 
+[r8 q7f o3 g+8 g+8 r8 g+8 r16 g+8 r16 g+8 r8 g+8 g+8 r8 g+8 r16 g+8 r16 g+8]4
+
+;*******************************************************************
+;Channel 5
+
+#4
+v200 @32 y12 
+[q2e o3 g=13 q2d g=11 g=13 q3f g=11 e=13 r=11 q2d g=13 c=11 
+r=37 c=11 e=13 f=11 r8 q2e g=13 q2d g=11 g=13 q3f g=11 e=13 
+r=11 q2d g=13 c=11 r=37 g=11 e=13 f=11 f=13 r=11]2
+y8 v160 @34 
+[r32 q7f > g=13 q7d g16 g16 q7f b=23 $dd $00 $06 $b0 a=13 q7d g16 q7f 
+e=11 ^16 g=13 g16 g=35 r16 a16 q7d g=25 q7f a16 q7d g=23 c=25 q7f 
+d+=11 $dd $00 $06 $a8 ^=13 c16 q7d c16 q7f c=47 r32]2
+[v230 @36 y10 q4d o3 e=25 q3f f16 q4d e=23 f=25 @32 v200 e=11 ^=13 
+q4f f8 q4d e16 q4f f16 g16 r=11 @36 v230 f16 q4d e=25 q3f f16 q4d e=23 
+f=25 @32 v200 e=11 ^=13 q4f o3 g8 q4d f16 q4f e16 e16 r=11] 
+@36 v230 f16 * @36 v230 r16 
+
+;*******************************************************************
+;Channel 6
+
+#5
+y18 v150 @35 
+[q7f o4 d+=13 q7b d+16 q3c d+=11 q3d d+16 
+q7f d+=13 q7b d+16 q3c d+=11 q3d d+16]24
+
+;*******************************************************************
+
+#amk 2

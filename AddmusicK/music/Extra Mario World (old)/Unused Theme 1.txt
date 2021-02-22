@@ -1,0 +1,110 @@
+#amk 2
+#SPC
+{
+	#author "Ruberjig"
+	#game "Extra Mario World"
+	#title "Unused Theme 1"
+}
+#path "allsamp"
+#samples
+{
+	#optimized
+	"String Ensemble 2.brr"
+	"izu_snare.brr"
+	"Bass Drum.brr"
+	"izu_chat.brr"
+	"saxophone.brr"
+	"Sine Marimba.brr"
+	"lead.brr"
+}
+#instruments
+{
+	"Sine Marimba.brr" $8f $70 $00 $04 $00
+	"lead.brr" $8F $A9 $df $03 $00
+	"saxophone.brr" $8e $70 $00 $04 $00
+	"String Ensemble 2.brr" $8E $68 $00 $02 $8A
+	"izu_chat.brr" $8e $75 $00 $06 $08
+	"Bass Drum.brr" $8f $74 $00 $03 $8f 
+	"izu_snare.brr" $02 $26 $60 $06 $a0	;@37
+}
+$EF $FF $10 $10
+$F1 $06 $50 $00
+$EF $FF $20 $20
+l8
+#0r/ o4 t75 $de $20 $0A $50
+(2)[@31 v200 $ed $0e $ee ar aar arararar afd cdfer drerfrgr fa>c< ar aar arararar afd
+a12g12f12 f12e12d12 g12f12e12 e12d12c12 f12e12d12 d12c12<b12 a2]2
+
+[@30 o4 v200 $ed $0e $ee a<a> a4<a> a4<a>a4<a>a<a> fad c<c>fe<e> d<d>e<e>g<g>f<f> a>c<f a<a> a4<a> a4<a>a4<a>a<a> fad
+a4>c< a4>c< a4>c< a4>c< dfeg]2
+
+(2)2
+
+@32 o4
+a4gf
+a4>c< a4>c< a4>c< a4>c<
+a4gf
+cdfer drgr fa>c<
+
+a4gf
+ab>c<b ab>c<b ab>c<b
+abgf
+r arararar afd
+
+a4gf
+a4>c< a4>c< a4>c< a4>c<
+a4gf
+cdfer drgr fa>c<
+
+a4gf
+ab>c<b ab>c<b ab>c<b
+abgf
+g12f12e12 e12d12c12 f12e12d12 d12c12<b12 a2
+
+#1r/r v120 $de $20 $0A $50 $ee $07
+(3)[@31 o4 $ed $0e $ee ar aar arararar afd cdfer drerfrgr fa>c< ar aar arararar afd
+a12g12f12 f12e12d12 g12f12e12 e12d12c12 f12e12d12 d12c12<b12 a2]2
+
+[@30 o4 v120 $ed $0e $ee a<a> a4<a> a4<a>a4<a>a<a> fad c<c>fe<e> d<d>e<e>g<g>f<f> a>c<f a<a> a4<a> a4<a>a4<a>a<a> fad
+a4>c< a4>c< a4>c< a4>c< dfeg]2
+
+(3)2
+
+@32 o4
+a4gf
+a4>c< a4>c< a4>c< a4>c<
+a4gf
+cdfer drgr fa>c<
+
+a4gf
+a4>c< a4>c< a4>c< a4>c<
+a4gf
+r arararar afd
+
+a4gf
+a4>c< a4>c< a4>c< a4>c<
+a4gf
+cdfer drgr fa>c<
+
+a4gf
+a4>c< a4>c< a4>c< a4>c<
+a4gf
+g12f12e12 e12d12c12 f12e12d12 d12c12<b12 a2
+
+#2r/ $de $00 $0A $10
+[@33 v200 o4 $ed $08 $ec a1^1 c1d2f2 a1^1
+a2 f2 d2< a2]99
+
+#3r/ v140 $de $00 $0A $10
+[@33 o4 $ed $08 $ec e1^1 <g1a2>c2 e1^1
+e2 c2 <a2 e2]99
+
+#5r/[q2f@35a@34aq4f@36aq2f@23a]99 *99 *99
+
+#7r/[$EF $FF $30 $30 r $F2 $04 $10 $10 r]99 *99 *99 *99 *99 *99 *99 *99 *99
+
+#6r/[@14 v240 o2 $ed $7f $ef refg refg refg refg rdef rdef refg rfga
+		refg refg refg refg rdef rdef rcde rcde]99
+		
+#4r/[@8 v200 o2 $ed $7f $ef cefg cefg cefg cefg <b>def <b>def cefg dfga
+cefg cefg cefg cefg <b>def <b>def <a>cde <a>cde]99

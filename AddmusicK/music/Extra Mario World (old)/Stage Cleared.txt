@@ -1,0 +1,52 @@
+#am4
+#SPC
+{
+	#author "Ruberjig"
+	#game "Extra Mario World"
+	#title "Stage Cleared"
+}
+$EF $FF $14 $14
+$F1 $06 $48 $01
+$F5 $50 $BF $DB $E0 $E0 $0A $C8 $C8
+#0 w210 v150 l8 t45
+@2 o4e24g24f24a24>c24e24g24a24r4 ;Remove line if not Goal Tape
+
+@4 o4 $ed $0f $ea $de $30 $0c $30
+c12d12e12 d12e12f12 f12g12a12 g12a12b12 > q7f c^1^1^1
+/r1
+
+#1 v230
+@10o3a32@21o3c4...r 	;Remove line if not Goal Tape
+v150
+@4 o3 $ed $0f $ea q5f
+c12d12e12 d12e12f12 f12g12a12 g12a12b12 > q7f c1^1^1^1
+/r1
+
+#2 v180 r16 @2 o4e24g24f24a24>c24e24g24a24r.	;Remove line if not Goal Tape
+@1 o4 $ed $0a $ea v230 q5f
+c2 g2 > q7f c1^1^1^1
+/r1
+
+#3 v230
+@1 o3 $ed $0a $ea 
+r2r16 				;Remove line if not Goal Tape
+q5f
+c2 g2 > q7f c1^1^1^1
+/r1
+
+#5 v200
+@13 o4 $ed $0a $ea 
+r2r16 				;Remove line if not Goal Tape
+q5f
+r2.. f32g32a32b32> q7f c1^1^1^1
+/r1
+
+#6 
+r2r16 				;Remove line if not Goal Tape
+q5f
+@21o2[e12]12 @10> q7f c1^1^1^1/r1
+
+#7 v160 @29o3
+c2r16 				;Remove line if not Goal Tape
+v220 q5f
+@10o3[e12]12 @29> q7f c1^1^1^1/r1

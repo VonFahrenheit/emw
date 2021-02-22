@@ -1,0 +1,31 @@
+#am4
+#SPC
+{
+	#author "Ruberjig"
+	#game "Extra Mario World"
+	#title "Oh Well (Game Over)"
+}
+#instruments
+{
+	@0 $AE $AD $AC $05 $F8
+	@1 $AE $AD $AC $05 $F8
+}
+$EF $FF $02 $02
+$F1 $06 $50 $00
+$F2 $0F $14 $14
+$F4 $02
+#0 w230 v140 l8 t52
+@30 o4 q5f p0,0
+afd fd<b> t46 d<ba t44 baf> t42 $ed $0f $ea c2 t40 e2 t38 q7f a1^1 /r1
+
+#1 v200
+@30 o2 q5f p0,0
+a4. f4. t46 d4.< t44 b4.> t42 $ed $0f $ea c2 t40 e2 t38 q7f a1^1 /r1
+
+#2 v140
+@31 o4 q5f p0,0
+a4. f4. d4. <b4.> c2 t40 e2 t38 q7f a1^1 /r1
+
+#3 v200
+@31 o2 q5f p0,0
+a4. f4. d4. <b4.> c2 t40 e2 t38 q7f a1^1 /r1

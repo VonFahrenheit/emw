@@ -1,0 +1,167 @@
+#amk 2
+#SPC
+{
+	#author "Ruberjig"
+	#game "Extra Mario World"
+	#title "Against Armor"
+}
+#path "allsamp"
+#samples
+{
+	#optimized
+	"Choir Aahs.brr" 
+	"Brasschord001.brr"
+	"izu_snare.brr"
+	"Drum.brr"
+	"izu_chat.brr"
+	"String Ensemble 2.brr"
+	"synth bass 1.brr"
+	"Organ (Church).brr"
+	"Piano.brr"
+}
+#instruments
+{
+	"Organ (Church).brr" $FD $68 $B8 $04 $02
+	"Brasschord001.brr" $FC $6A $B8 $02 $98
+	"String Ensemble 2.brr" $FE $A6 $00 $02 $8A
+	"Piano.brr" $8f $71 $B8 $06 $00
+	"izu_chat.brr" $fe $75 $00 $05 $08	;@34
+	"Drum.brr" $fd $72 $00 $02 $c0
+	"izu_snare.brr" $02 $26 $60 $05 $00
+	"synth bass 1.brr"		$8F $75 $B8 $04 $00
+	"Choir Aahs.brr" $FE $6A $B8 $02 $00
+}
+$EF $FF $04 $04
+$F1 $07 $A0 $00
+$F2 $0F $24 $24
+$F4 $02
+"sngp= h1 $ee $08"	;Pitch of everything
+
+#0 l8  w140 
+						;@15 t60 o3 h4 cefa>c2 ;COMMENT THIS LINE TO REMOVE INTRO
+@32 o5 t62 v170 sngp
+[c16d16f16e16 d16e16g16f16 g16a16 
+>c16<c16 a16<a16> f16<f16>]4 
+/
+@30 o3
+[g4.b16>c16g2 e4.f16g16 e. c. <a16g16 a4>c4<b2 g.a.>c<b2
+g4>c16<b16a16g16 e4 a16g16f16e16 f4 b16a16g16f16 d4 e16f16g16a16> c4.<b16a16b2 b4.g16a16>c2<]2
+@31 o5
+[a.g.a >c4.< a16g16 a4>c4<a4. 
+e16f16 gfedcded c. f. a >c2<]4
+@32 o4
+[g4.b16>c16g2 e4.f16g16 e. c. <a16g16 a4>c4<b2 g.a.>c<b2
+g4>c16<b16a16g16 e4 a16g16f16e16 f4 b16a16g16f16 d4 e16f16g16a16> c4.<b16a16b2 b4.g16a16>c2<]2
+@33 t66
+[o5 c16<b16a16g16 a16g16f16g16 a16g16f16e16 d16c16d16e16<
+o4 c16<b16a16g16 a16g16f16g16 a16g16f16e16 d16c16d16e16]4
+> @32 o4 t63
+$e6 $00 [rg]12  ra >c< agf ga $e6 $01
+
+#1 v190 sngp
+						;@32 q7f o5 cefa>cr4. ;COMMENT THIS LINE TO REMOVE INTRO
+@32 o4
+[c16d16f16e16 d16e16g16f16 g16a16 
+>c16<c16 a16<a16> f16<f16>]4/
+@30 o2
+[g4.b16>c16g2 e4.f16g16 e. c. <a16g16 a4>c4<b2 g.a.>c<b2
+g4>c16<b16a16g16 e4 a16g16f16e16 f4 b16a16g16f16 d4 e16f16g16a16> c4.<b16a16b2 b4.g16a16>c2<]2
+@31 o4
+[a.g.a >c4.< a16g16 a4>c4<a4. 
+e16f16 gfedcded c. f. a >c2<]4
+@32 o4
+[g4.b16>c16g2 e4.f16g16 e. c. <a16g16 a4>c4<b2 g.a.>c<b2
+g4>c16<b16a16g16 e4 a16g16f16e16 f4 b16a16g16f16 d4 e16f16g16a16> c4.<b16a16b2 b4.g16a16>c2<]2
+@33
+[o4 c16<b16a16g16 a16g16f16g16 a16g16f16e16 d16c16d16e16<
+o3 c16<b16a16g16 a16g16f16g16 a16g16f16e16 d16c16d16e16]4
+> @32 o3
+$e6 $00 [rg]12  ra >c< agf ga $e6 $01
+
+#2 
+
+						;r1 ;COMMENT THIS LINE TO REMOVE INTRO
+
+/[@35a@35a@36a@35a16@35a@35a16@35a@36a@10a]99
+
+#3 
+
+						;r1 ;COMMENT THIS LINE TO REMOVE INTRO
+
+/$e6 $00 [o4 q2f @34 e16]99 $e6 $99
+
+#4 sngp 
+						;o2 cefa>cr4. @32 q5f  ;COMMENT THIS LINE TO REMOVE INTRO
+													
+@37 v240 q7f [o1 a.g.a]8 /o2
+[g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 f<f16>f<f16>f16f16 e<e16>e<e16>e16e16 d<d16>d<d16>d16d16 e<e16>e<e16>e16e16]4
+[f16rfr16f f16rfr16f f16rfr16f f16rfr16f e16rer16e e16rer16e e16rer16e e16rer16e d16rdr16d d16rdr16d d16rdr16d d16rdr16d e16rer16e e16rer16e e16rer16e e16rer16e]4
+[g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 f<f16>f<f16>f16f16 e<e16>e<e16>e16e16 d<d16>d<d16>d16d16 e<e16>e<e16>e16e16]2
+[d16f16a16 d16f16a16 d16f16 <a16>d16 <a16>f16 a16f16d16a16]99
+
+#5 
+						;r1 ;COMMENT THIS LINE TO REMOVE INTRO
+v140sngp
+[r1]4/q6f v220
+@38 o3
+[g2>g2 e2 e. c. <a a4>c4<b2 g.a.>c<b2
+g2 e2 f2 d4 g4> c2 <b2 b2>c2<]2
+@32 o4
+[a.g.a >c2< a4>c4<a2 gfedcded c. f. a >c2<]2
+@38 o4
+[a.g.a >c2< a4>c4<a2 gfedcded c. f. a >c2<]2
+@38 o3
+[g2>g2 e2 e. c. <a a4>c4<b2 g.a.>c<b2
+g2 e2 f2 d4 g4> c2 <b2 b2>c2<]2
+@32
+[o5 c16<b16a16g16 a16g16f16g16 a16g16f16e16 d16c16d16e16<
+o4 c16<b16a16g16 a16g16f16g16 a16g16f16e16 d16c16d16e16]4
+> @32 o4
+$e6 $00 [rg]12  ra >c< agf ga $e6 $01
+
+#6 
+						;r1 ;COMMENT THIS LINE TO REMOVE INTRO
+v160 sngp
+[r1]4 /q6f v220
+@32 o2
+[g2>g2 e2 e. c. <a a4>c4<b2 g.a.>c<b2
+g2 e2 f2 d4 g4> c2 <b2 b2>c2<]2
+@32 o3
+[a.g.a >c2< a4>c4<a2 gfedcded c. f. a >c2<]2
+@38 o3
+[a.g.a >c2< a4>c4<a2 gfedcded c. f. a >c2<]2
+@32 o2
+[g2>g2 e2 e. c. <a a4>c4<b2 g.a.>c<b2
+g2 e2 f2 d4 g4> c2 <b2 b2>c2<]2
+@32
+[o4 c16<b16a16g16 a16g16f16g16 a16g16f16e16 d16c16d16e16<
+o3 c16<b16a16g16 a16g16f16g16 a16g16f16e16 d16c16d16e16]4
+> @32 o3
+$e6 $00 [rg]12  ra >c< agf ga $e6 $01
+
+
+
+#7 							
+
+					;v160 @31 o4 cf>cf>cr4. ;COMMENT THIS LINE TO REMOVE INTRO
+					
+v120 r
+@32 o5 sngp
+[c16d16f16e16 d16e16g16f16 g16a16 
+>c16<c16 a16<a16> f16<f16>]3
+c16d16f16e16 d16e16g16f16 g16a16 
+>c16<c16 a16<a16>/ r
+@30 o3
+[g4.b16>c16g2 e4.f16g16 e. c. <a16g16 a4>c4<b2 g.a.>c<b2
+g4>c16<b16a16g16 e4 a16g16f16e16 f4 b16a16g16f16 d4 e16f16g16a16> c4.<b16a16b2 b4.g16a16>c2<]2
+@31 o5
+[a.g.a >c4.< a16g16 a4>c4<a4. 
+e16f16 gfedcded c. f. a >c2<]4
+@32 o4
+[g4.b16>c16g2 e4.f16g16 e. c. <a16g16 a4>c4<b2 g.a.>c<b2
+g4>c16<b16a16g16 e4 a16g16f16e16 f4 b16a16g16f16 d4 e16f16g16a16> c4.<b16a16b2 b4.g16a16>c2<]2
+@33
+[o5 c16<b16a16g16 a16g16f16g16 a16g16f16e16 d16c16d16e16<
+o4 c16<b16a16g16 a16g16f16g16 a16g16f16e16 d16c16d16e16]4
+> @32 o4
+$e6 $00 [rg]12  ra >c< agf ga $e6 $01

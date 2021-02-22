@@ -1,0 +1,107 @@
+#am4
+
+#SPC
+{
+	#author "Koji Kondo"
+	#title "Hammer Bros."
+	#game "Super Mario Bros. 3"
+	#comment "Ported by someone"
+}
+
+;-- HEADER AUTOMATICALLY GENERATED --
+$ED $80 $6D $2B 
+$ED $80 $7D $00 
+$F0
+;-- END OF HEADER -------------------
+
+#0 @8 q7f v240 y10 w245 t62 l16
+
+o2
+g4a+4>c4f+1<
+[crcrd+rerfrfrg+rar]2
+/
+[crcrd+rerfrfrg+rarcrcrd+rerfrfrar>cr<]2
+grgra+rbr>drdrergr<frfrg+rar>crcrdrfr<crcrd+rerfrfrg+rar8^
+[gr]3
+ararbrbr;
+
+#1 @6 q7f v240 y10 l16 p4,32
+
+o5
+c4d+4f4f+1
+[r1]2
+@9
+/
+l8
+[d+ed+edc<a>cr8cd+16d16c16r2^16]2
+ggaa+bgr8gffefr8cdcd+d+dd+dc<a>cr8
+[g]7;
+
+#2 @21 q7f v255 y10 l8
+
+o3
+r1^2^4
+[cc@10e@21ccc@10ee@21]2
+/
+[cc@10e@21ccc@10ee@21]7
+c
+@10
+[e]7
+@21;
+
+#3 @6 q7f v240 y10 l16 p4,32
+
+o3
+e4g4a4>c+1
+[r1]2
+@9
+/
+l8
+[b>c<b>c<aafer8ef+16f16er8a>cr8<]2
+bb>cc+d<br8baagar8
+[f]3
+[g]4
+[f]3
+er8
+[b]3
+>ccdd;
+
+#4 @26 q7f v255 y10 l16
+
+o3
+[c4]3
+[c8]8
+@5
+v240
+>
+[r4c8r4^8crcr]2
+/
+r4
+[c8r4^8crcr4^]4
+d8r4^8drdr4^
+[c8r4^8crc]1r4^
+*r8^
+[dr]7;
+
+#5 @26 q7f v255 y10 l16
+
+o3
+r2^4^
+[c8]8
+@5
+v240
+r8^>
+[e8r4^8frf]1r4^
+*r
+/
+r4[e8r4^8frfr4^]4
+g8r4^8grgr4^f8r4^8frfr4^e8r4^8frfr8^
+[gr]7;
+
+#6 @9 q7f v240 y10 l32
+
+o4
+c4d+4f4f+<f+>f+<f+>f+<f+>f+<f+>f+<f+>f+<f+>f+<f+>f+<f+>f+<f+>f+<f+>f+<f+>f+<f+>f+<f+>f+<f+>f+<f+>f+16
+[r1]2
+/
+[r1]8;

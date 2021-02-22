@@ -1,0 +1,214 @@
+#amk 2
+#SPC
+{
+	#author "Ruberjig"
+	#game "Extra Mario World"
+	#title "I'm A Ghost"
+	#comment "git spooked"
+}
+#samples
+{
+	#optimized
+	
+"String002.brr"
+"Piano.brr"
+"synth lead.brr"
+"square 50%.brr"
+
+"Plucked Strings.brr"
+"String Ensemble 2.brr"
+
+	"conga.brr"
+	"Kick.brr"
+	"Synth Snare.brr"
+	"izu_chat.brr"
+	
+	"synth bass 1.brr"
+"chinese cymbal.brr"
+"Crash Cymbal.brr"
+}
+#instruments
+{
+"Piano.brr" $8E $88 $B8 $06 $00
+"square 50%.brr" $FF $EC $B8 $02 $00
+
+	"Kick.brr" $8E $BC $00 $03 $00 
+	"izu_chat.brr" $fe $B5 $00 $09 $00
+	"Synth Snare.brr" $ef $B0 $B8 $04 $00
+	"conga.brr" $06 $B3 $60 $06 $00
+"Plucked Strings.brr" $AC $0C $00 $01 $80 ;@36
+"String Ensemble 2.brr" $AB $A6 $00 $02 $8C
+
+"synth lead.brr" $AC $A6 $df $01 $00
+"synth bass 1.brr"		$Fd $65 $B8 $02 $00
+
+"String002.brr" $8A $0A $00 $03 $08
+	"chinese cymbal.brr" $8f $0E $B8 $06 $00
+	"Crash Cymbal.brr" $8D $0F $CF $05 $F0	;@40	
+	
+}
+
+"tgec = $F4 $03"
+
+$EF $FD $04 $04
+$F1 $04 $A0 $00
+$F2 $0F $24 $24
+t45 w180
+
+#0 q7f v200
+[r1.]4
+/
+$DE $20 $0C $50
+@30 o4 l8
+[f4a>c4<afab>c4.
+c<fa>c4<abge<b4>
+efgab4 efeab4
+fdgef <b> faagfr4]2
+
+V130
+(11)[@31 o5 l8
+c4cc4<ffag>c4
+afga>c4<fbge $DD $17 $06 b^4
+defab4 dfeab4]
+r
+[agfedc]2
+
+(11)
+
+b>fec<a4> <f>ffecr4
+
+#1 o4 v250
+[@32e@33etgec@35>c<@34etgec@33e@33e]8
+/
+*99
+
+
+#2 v220
+@36 o3 l8
+(20)[faa faa faa fe16d16f
+faa faa faa fe16d16f
+egg egg egg ed16c16e
+egg egg egg ed16c16e]
+/
+(20)2
+
+[faa faa faa fe16d16f
+egg egg egg ed16c16e
+dff dff dff dc16<b16>d
+egg egg egg ed16c16e]2
+
+#3 q7f v200
+[r1.]4
+/
+P0,0
+@37 o4 l8
+[f1.
+c1.
+e1.
+<b1.>]2
+
+(31)[@38 p0,0 o5 l8
+c1.
+<a1.>
+d1.]
+
+<a2.e2.>
+
+(31)
+
+<b^2 f>ffecr4
+
+#4 q7f v230
+[r1.]4
+/
+P0,0
+@37 o3 l8
+[f1.
+c1.
+e1.
+<b1.>]2
+
+(41)[@39 o3 l8
+c1.
+<a1.>
+d1.]
+
+<a2.e2.>
+
+(41)
+
+<b^2 f>ffecr4
+
+#5 q7f v240
+[r1.]4
+/
+$DE $20 $0C $50
+@40 o4 l8
+[f4a>c4<afab>c4.
+c<fa>c4<abge<b4>
+efgab4 efeab4
+fdgef <b> faagfr4]2
+
+V150
+(51)[@31 $ED $0C $D1 o4 l8
+c4cc4<ffag>c4
+afga>c4<fbgeb4
+defab4 dfeab4]
+r
+[agfedc]2
+
+(51)
+
+b>fec<a4> <f>ffecr4
+
+#6 q7f v200
+[r1.]4
+/
+P0,0 $EE $0C
+@39 o3 l8
+[f1.
+c1.
+e1.
+<b1.>]2
+
+(61)[@38 p0,0 o3 l8
+c1.
+<a1.>
+d1.]
+
+<a2.e2.>
+
+(61)
+
+<b^2 f>ffecr4
+
+#7 q7f v160
+[r1.]4
+/
+@42 o4 l8 c2.
+r16.
+$EE $12
+
+@0 $ED $0E $D1 o4 l8
+
+[fab>c4.
+c<fa>c4<abge<b4>
+efgab4 efeab4
+fdgef <b> faagfr]
+
+rf4a>c4<a
+*1
+r32
+@41 o4 l8 c2^8..
+
+(71)[@0 $ED $0C $D1 o4 l8
+<ffag>c4
+afga>c4<fbgeb4
+defab4 dfeab4]
+r
+[agfedc]2
+
+c4cc4
+(71)
+
+b>fec<a4> <f>ffecr4

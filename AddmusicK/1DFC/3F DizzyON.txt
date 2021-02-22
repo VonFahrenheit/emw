@@ -1,0 +1,26 @@
+#jsr dizzyON
+v127 @3 $18 $20 $DD $AC $10 $40 $A8 $0F $46 $EB $00 $0C $B5 $30 $20 $DD $AF $00 $30 $B5 $02 $80 $00
+#asm dizzyON
+{
+	mov a, $0384
+	bne +
+	mov a, $51
+	mov $0384, a
+
+	mov $51, #$28			; mess the tempo up
+	
+	mov   x, #$0e            ; foreach voice
+	mov   $48, #$80
+	-
+	mov a, #$8E				; turns out pitch of the arpeggio is more reliable than tuning
+	mov   $0270+x, a
+	
+	mov   a, $31+x		
+	
+	lsr   $48
+	dec   x
+	dec   x
+	bpl   -             ; loop for each voice
++
+	ret
+}

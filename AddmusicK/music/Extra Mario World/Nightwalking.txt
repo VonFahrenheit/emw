@@ -1,0 +1,118 @@
+#amk 2
+#SPC
+{
+	#author "Ruberjig"
+	#game "Extra Mario World"
+	#title "Nightwalking"
+}
+#samples
+{
+	#optimized
+	"pianoclear.brr" 
+	"Oboe.brr"
+	"String Ensemble 2.brr"
+	"izu_snare.brr"
+	"Bass Drum.brr"
+	"izu_chat.brr"
+	"Guitar.brr"
+	"electric piano.brr"
+	"celesta.brr"
+	"Choir Aahs.brr"
+	"Bell Pad 2.brr"
+}
+#instruments
+{
+	"electric piano.brr" $AE $AC $00 $05 $40
+	@0 $EF $74 $df $03 $00
+	"Oboe.brr" $FE $8C $B8 $06 $00
+	"izu_chat.brr" $fc $45 $00 $0C $00
+	"Bass Drum.brr" $ff $41 $00 $07 $d2 
+	"izu_snare.brr" $01 $23 $60 $0A $80	;@35
+	"Guitar.brr" $BE $B0 $0A $06 $00
+	"String Ensemble 2.brr" $FC $AC $45 $02 $8A
+	"celesta.brr" $8D $8F $B8 $00 $C0
+	"Choir Aahs.brr" $8A $AA $00 $02 $00
+	"Bell Pad 2.brr" $FE $72 $B8 $0F $10
+}
+"alp=$EE $00"	;Pitch of everything. Please change to your liking.
+
+$EF $D7 $04 $04
+$F1 $04 $50 $00
+$F2 $08 $14 $14
+w180 
+
+#0 t50 r $F4 $02
+@33 v230 o3 
+[q7e c16 q7a c16 q7c c16 q78 c16 ]28
+[q7b @35c16 @12q7d>>c16<< q7e@34c16]4 q7d@35c16 q7b@35c16 q79@35c16 q7d@35c16
+/
+[q7f@34c16 q7d@33c16 q7b@12>>c<< q7f@35c16 q7d@33c16 q7b@33c]99
+
+
+#1 r v120 alp y15,1,1
+(10)[@30 o4 $DE $20 $0A $20 $EB $00 $00 $00 c.e.g16^2e32f32g1 <b.>d.f16^2d32e32f1]2
+/(10)2
+@38 o4 $ED $0E $CE v160
+c4e4a2 a.g.f d4e4g2.d4<a1> c.e.g^2 d.f.a16^2 f32g32a1^1
+c4e4a2 a.g.f d4e4g2.c4<a1 a.>c.f^2 c.e.g16^2 d32e32f^2d.e.f1
+@32 o4 v180
+$EB $A0 $20 $78 a1 $EB $00 $00 $00 e.d.<b>d.c.ge1^2...
+d32f32a4.f4g16f16e4 d4.f4a.>g.e1^1<
+c.e.g^2 d.f.a^2 g^2 e.f.g1
+c4d4e4f4d4e4g4a4 >er<bra4rb>g16rc16r<b $EB $40 $20 $78 a2
+
+#2 r v180 alp y5,1,1
+/ p0,0
+(20)[@13 o4 $DE $20 $0A $20 $EB $00 $00 $00 c.e.g16^2e32f32g1 <b.>d.f16^2d32e32f1]2/(20)2
+@16 o4 $ED $0E $CE v220
+c4e4a2 a.g.f d4e4g2.d4<a1> c.e.g^2 d.f.a16^2 f32g32a1^1
+c4e4a2 a.g.f d4e4g2.c4<a1 a.>c.f^2 c.e.g16^2 d32e32f^2d.e.f1
+@40 o3 v120 p5,15
+$EB $A0 $20 $78 a1 $EB $00 $00 $00 e.d.<b>d.c.ge1^2...
+d32f32a4.f4g16f16e4 d4.f4a.>g.e1^1<
+c.e.g^2 d.f.a^2 g^2 e.f.g1
+c4d4e4f4d4e4g4a4 >er<bra4rb>g16rc16r<b $EB $40 $20 $78 a2
+
+#3 v120 q7b alp y10,1,1
+/rr
+(30)[@0 o3 $DE $20 $0A $20 c.e.g16^2e32f32g1 <b.>d.f16^2d32e32f1]2/(30)2
+@0 o3 $ED $0E $CE v160
+c4e4a2 a.g.f d4e4g2.d4<a1> c.e.g^2 d.f.a16^2 f32g32a1^1
+c4e4a2 a.g.f d4e4g2.c4<a1 a.>c.f^2 c.e.g16^2 d32e32f^2d.e.f1
+@11 o5 v120
+$EB $A0 $20 $78 a1 $EB $00 $00 $00 e.d.<b>d.c.ge1^2...
+d32f32a4.f4g16f16e4 d4.f4a.>g.e1^1<
+c.e.g^2 d.f.a^2 g^2 e.f.g1
+c4d4e4f4d4e4g4a4 >er<bra4rb>g16rc16r<ba2
+
+#4 r  q7f alp y19
+v250
+
+(40)[@31 o2 g1g1e1e1]2
+/(40)2
+[g4rg^2 g4rg^2 e4re^2 e4re^2]4
+o4 v180
+(12)[c.e.a]4 (13)[<b.>d.f]4
+(12)4 (13)4
+(12)4 (13)4
+(12)4 (13)4
+
+#5 r alp
+/
+[@36 v230 p5,15 y10,1,1
+o2 g.g.g4 g.g. g.g.g4 g.g. e.e.e4 e.e. e.e.e4 e.e.]99
+
+#6 r v220 alp y10
+/
+
+(60)[@39 o3 g1g1e1e1]2
+/(60)2
+[@31g4rg^2 g4rg^2 e4re^2 e4re^2]4
+[@37 g1^1e1^1g1^1a1^1]2
+
+#7 r v190 alp y1
+/
+(70)[@37 o4 g1g1e1e1]2
+/(70)2
+[@31g4rg^2 g4rg^2 e4re^2 e4re^2]4
+[@37 g1^1e1^1g1^1a1^1]2

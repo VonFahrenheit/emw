@@ -1,0 +1,340 @@
+
+	SNES only SA-1 write registers:
+
+		$2200			; SA-1 CPU Control (CCNT)
+		Format:
+		 bit 0		SMEG0 - SNES message 0 to SA-1
+		 bit 1		SMEG1 - SNES message 1 to SA-1
+		 bit 2		SMEG2 - SNES message 2 to SA-1
+		 bit 3		SMEG3 - SNES message 3 to SA-1
+		 bit 4		SA-1 CPU NMI (from SNES CPU)
+		 bit 5		SA-1 CPU reset (0 = reset, 1 = no reset)
+		 bit 6		SA-1 CPU RDY B (0 = wait, 1 = pause SA-1)
+		 bit 7		SA-1 CPU IRQ (from SNES CPU)
+
+		$2201			; SNES CPU INT ENABLE (SIE)
+		Format:
+		 bit 5		CHDMA IRQEN
+		 bit 7		SA-1 CPU IRQEN
+		Bit 5 enables character conversion DMA IRQ.
+		Bit 7 enables IRQ for SA-1.
+
+		$2202			; SNES CPU INT CLEAR (SIC)
+		Format:
+		 bit 5		CHDMA IRQCL
+		 bit 7		SA-1 CPU IRQCL
+		Bit 5 stops character conversion DMA IRQ.
+		Bit 7 stops IRQ for SA-1.
+
+		$2203			; SA-1 CPU RESET VECTOR (CRV) lo byte
+		$2204			; SA-1 CPU RESET VECTOR (CRV) hi byte
+
+		$2205			; SA-1 CPU NMI VECTOR (CNV) lo byte
+		$2206			; SA-1 CPU NMI VECTOR (CNV) hi byte
+
+		$2207			; SA-1 CPU IRQ VECTOR (CIV) lo byte
+		$2208			; SA-1 CPU IRQ VECTOR (CIV) hi byte
+
+
+		$2220			; SET SUPER MMC BANK C (CXB)
+		$2221			; SET SUPER MMC BANK D (DXB)
+		$2222			; SET SUPER MMC BANK E (EXB)
+		$2223			; SET SUPER MMC BANK F (FXB)
+		Format:
+		 bits 0-2	Bank area selection
+		 bit 7		Bank image projection
+		Setting bit 7 causes the area specified by bits 0-2 to be projected into $8000-$FFFF of LoROM banks.
+		MMC bank C is projected to banks $00-$1F.
+		MMC bank D is projected to banks $20-$3F.
+		MMC bank E is projected to banks $80-$9F.
+		MMC bank F is projected to banks $A0-$BF.
+		MMC banks are HiROM and are projected like this:
+		 $C00000-$C07FFF -> $008000-$00FFFF
+		 $C08000-$C0FFFF -> $018000-$01FFFF
+		 $C10000-$C17FFF -> $028000-$02FFFF
+		 $C18000-$C1FFFF -> $038000-$03FFFF
+		 [...]
+		 $CF8000-$CFFFFF -> $1F8000-$1FFFFF
+
+		$2224			; SNES CPU BW-RAM ADDRESS MAPPING (BMAPS)
+		Selects which 2KB chunk of BW-RAM will be projected to the BW-RAM image.
+		Only affects SNES, and only values 0x00-0x1F are usable.
+
+		$2226			; SNES CPU BW-RAM WRITE ENABLE (SBWE)
+		Bit 7 toggles BW-RAM write enable for SNES.
+		 0 = SNES can not write to BW-RAM.
+		 1 = SNES can write to BW-RAM.
+
+		$2228			; BW-RAM WRITE PROTECTED AREA (BWPA)
+		Specifies how much of BW-RAM is protected.
+		Formula for number of bytes protected is:
+		 0x200*0x2^$2228
+
+		$2229			; SA-1 I-RAM WRITE PROTECTED AREA (SIWP)
+		Each bit enables a corresponding 256 byte area.
+		Bit X enables the area $3X00-$3XFF.
+
+
+
+	SA-1 only SA-1 write registers:	
+
+		$2209			; SNES CPU CONTROL (SCNT)
+		Format:
+		 bit 0		CMEG0 - SA-1 message 0 to SNES
+		 bit 1		CMEG1 - SA-1 message 1 to SNES
+		 bit 2		CMEG2 - SA-1 message 2 to SNES
+		 bit 3		CMEG3 - SA-1 message 3 to SNES
+		 bit 4		SNES CPU NVSW
+		 bit 6		SNES CPU IVSW
+		 bit 7		SNES CPU IRQ
+		Bit 4 toggles ROM (0) and SNES CPU NMI vector register (1)
+		Bit 6 toggles ROM (0) and SNES CPU IRQ vector register (1)
+		Bit 7 toggles IRQ interrupt, 0 = no interrupt, 1 = IRQ interrupt
+
+		$220A			; SA-1 CPU INT ENABLE (CIE)
+		Format:
+		 bit 4		SNES CPU NMIEN
+		 bit 5		DMA IRQEN - IRQ control to SA-1 at end of SA-1 DMA
+		 bit 6		Timer IRQEN
+		 bit 7		CPU IRQEN
+		Setting bit 4 allows SNES to control NMI for SA-1.
+		Setting bit 6 allows SA-1 IRQ to trigger naturally.
+		Setting bit 7 allows SNES to control IRQ for SA-1.
+
+		$220B			; SA-1 CPU INT CLEAR (CIC)
+		Format:
+		 bit 4		SNES CPU NMICL
+		 bit 5		DMA IRQCL - IRQ clear to SA-1 at end of SA-1 DMA
+		 bit 6		Timer IRQCL
+		 bit 7		CPU IRQCL
+		Setting bit 4 disables SNES control of SA-1 NMI.
+		Setting bit 6 disables SA-1 IRQ to trigger naturally.
+		Setting bit 7 disables SNES control of SA-1 IRQ.
+
+		$220C			; SNES CPU NMI VECTOR (SNV) lo byte
+		$220D			; SNES CPU NMI VECTOR (SNV) hi byte
+
+		$220E			; SNES CPU IRQ VECTOR (SIQ) lo byte
+		$220F			; SNES CPU IRQ VECTOR (SIQ) hi byte
+
+		$2210			; H/V TIMER CONTROL (TMC)
+		Format:
+		 bit 0		HEN - Toggle IRQ at H-timer value
+		 bit 1		VEN - Toggle IRQ at V-timer value
+		 bit 7		HVSELB - 0 = HV timer, 1 = Linear timer
+
+		$2211			; SA-1 CPU TIMER RESTART (CTR)
+		Writing any value to this register resets the timer to 0.
+
+		$2212			; SET H-COUNT (HCNT) lo byte
+		$2213			; SET H-COUNT (HCNT) hi bit
+		HV timer: Timer IRQ H count value (0x000-0x154)
+		Linear timer: Lower 9 bits of the timer IRQ linear counter (0x000-0x1FF)
+
+		$2214			; SET-V COUNT (VCNT) lo byte
+		$2215			; SET-V COUNT (VCNT) hi bit
+		HV timer: Timer IRQ V count value. NTSC: 0x000-0x105, PAL: 0x000-0x137
+		Linear timer: Upper 9 bits of the timer IRQ linear counter (0x000-0x1FF)
+
+		$2225			; SA-1 CPU BW-RAM ADDRESS MAPPING (BMAP)
+		Bit 7 toggles the BW-RAM area to be projected:
+		 0 = Banks $40-$43 are projected.
+		 1 = Banks $60-$6F are projected.
+		Bits 0-6 specify the 2KB chunk of BW-RAM to be projected.
+		Only values 0x00-0x1F are valid for banks $40-$43.
+		Because of how the modern emulators work, only 0x00-0x0F and 0x80-0x9F are valid in practice.
+		00 - $400000 / 80 - $600000
+		01 - $402000 / 81 - $602000
+		02 - $404000 / 82 - $604000
+		03 - $406000 / 83 - $606000
+		04 - $408000 / 84 - $608000
+		05 - $40A000 / 85 - $60A000
+		06 - $40C000 / 86 - $60C000
+		07 - $40E000 / 87 - $60E000
+		08 - $410000 / 88 - $610000
+		09 - $412000 / 89 - $612000
+		0A - $414000 / 8A - $614000
+		0B - $416000 / 8B - $616000
+		0C - $418000 / 8C - $618000
+		0D - $41A000 / 8D - $61A000
+		0E - $41C000 / 8E - $61C000
+		0F - $41E000 / 8F - $61E000
+		90 - $620000
+		91 - $622000
+		92 - $624000
+		93 - $626000
+		94 - $628000
+		95 - $62A000
+		96 - $62C000
+		97 - $62E000
+		98 - $630000
+		99 - $632000
+		9A - $634000
+		9B - $636000
+		9C - $638000
+		9D - $63A000
+		9E - $63C000
+		9F - $63E000
+
+
+		$2227			; SA-1 CPU BW-RAM WRITE ENABLE (CBWE)
+		Bit 7 toggles BW-RAM write enable for SA-1:
+		 0 = SA-1 can not write to BW-RAM.
+		 1 = SA-1 can write to BW-RAM.
+
+		$222A			; SA-1 I-RAM WRITE PROTECTION (CIWP)
+		Each bit enables a corresponding 256 byte area.
+		Bit X enables the area $3X00-$3XFF.
+
+		$2230			; DMA CONTROL (DCNT)
+		Format:
+		 bits 0-1		Source Device: 00 = ROM, 01 = BW-RAM, 10 = I-RAM
+		 bit 2			Destination Device: 0 = BW-RAM, 1 = I-RAM
+		 bit 4			Character conversion DMA type:
+					 0 = SA-1 CPU -> I-RAM (CHR conv 2)
+					 1 = BW-RAM -> I-RAM (CHR conv 1)
+		 bit 5			DMA mode selection: 0 = Normal DMA, 1 = Character conversion DMA
+		 bit 6			Priority setting: 0 = SA-1 CPU priority, 1 = DMA priority
+		 bit 7			DMA control: 0 = DMA disable, 1 = DMA enable
+
+		$2238			; DMA TERMINAL COUNTER (DTC) lo byte
+		$2239			; DMA TERMINAL COUNTER (DTC) hi byte
+		Number of bytes to transfer during DMA.
+
+		$223F			; BW-RAM BITMAP FORMAT (BBF)
+		Bit 7 toggles format:
+		 0 = 4bpp
+		 1 = 2bpp
+
+		$2240-$2247		; BIT MAP REGISTER FILE (BRF) buffer 1
+		$2248-$224F		; BIT MAP REGISTER FILE (BRF) buffer 2
+
+		$2250			; ARITHMETIC CONTROL (MCNT)
+		Bit 0 toggles between multiplication and division (0 = mul, 1 = div)
+		Bit 1 enables cumulative sum and overwrites bit 0.
+		Storing 1 to bit 1 also clears the result register.
+
+		$2251			; ARITHMETIC PARAMETERS: MULTIPLICAND/DIVIDEND (MA) lo byte
+		$2252			; ARITHMETIC PARAMETERS: MULTIPLICAND/DIVIDEND (MA) hi byte
+		Expected format is signed 16-bit data.
+
+		$2253			; ARITHMETIC PARAMETERS: MULTIPLIER/DIVISOR (MD) lo byte
+		$2254			; ARITHMETIC PARAMETERS: MULTIPLIER/DIVISOR (MD) hi byte
+		Expected format is signed 16-bit data for multiplication and unsigned 16-bit data for division.
+		Operation is performed upon writing to $2254.
+		Multiplier/divisor must be reset for every operation.
+
+		$2258			; VARIABLE-LENGTH BIT PROCESSING (VBD)
+		Format:
+		 bits 0-3		Significant bit length of data previously stored.
+		 bit 7			Variable-length data read mode:
+					 0 = Auto-increment
+					 1 = Fixed mode
+
+		$2259			; VARIABLE-LENGTH BIT GAME PAK ROM START ADDRESS (VDA) lo byte
+		$225A			; VARIABLE-LENGTH BIT GAME PAK ROM START ADDRESS (VDA) hi byte
+		$225B			; VARIABLE-LENGTH BIT GAME PAK ROM START ADDRESS (VDA) bank byte
+		Variable-length bit execution starts upon writing to $225B.
+
+
+	Global SA-1 write registers:
+
+		$2231			; CHARACTER CONVERSION DMA PARAMETERS (CDMA)
+		Format:
+		 bits 0-1	Character conversion DMA color mode:
+				 00 = 8bpp
+				 01 = 4bpp
+				 10 = 2bpp
+				 11 = invalid
+		bits 2-4	Number of virtual VRAM horizontal characters:
+				 000 = 1	8px
+				 001 = 2	16px
+				 010 = 4	32px
+				 011 = 8	64px
+				 100 = 16	128px
+				 101 = 32	256px
+				 110 = invalid
+				 111 = invalid
+		bit 7		Set to 1 when character conversion DMA is completed.
+
+		$2232			; DMA SOURCE DEVICE START ADDRESS (SDA) lo byte
+		$2233			; DMA SOURCE DEVICE START ADDRESS (SDA) hi byte
+		$2234			; DMA SOURCE DEVICE START ADDRESS (SDA) bank byte
+		Must be written in the order lo -> hi -> bank.
+
+		$2235			; DMA DESTINATION START ADDRESS (DDA) lo byte
+		$2236			; DMA DESTINATION START ADDRESS (DDA) hi byte
+		$2237			; DMA DESTINATION START ADDRESS (DDA) bank byte
+		Must be written in the order lo -> hi -> bank.
+		Writing the last byte of the destination address initiates character conversion DMA.
+		It the target is I-RAM writing to $2236 initiates transfer, otherwise it is initiated by writing to $2237.
+
+
+	SNES only SA-1 read registers:
+
+		$2300			; SNES CPU FLAG READ (SFR)
+		Format:
+		 bits 0-3	SA-1 to SNES message
+		 bit 4		SNES CPU NMI vector setting: 0 = ROM data, 1 = SNV register data
+		 bit 5		Character conversion DMA IRQ flag: 0 = No IRQ, 1 = IRQ (Character conversion 1 standby)
+		 bit 6		SNES IRQ CPU vector setting: 0 = ROM data, 1 = SIV register data
+		 bit 7		IRQ-flag from SA-1 CPU
+		This register can not be cleared by reading it.
+
+		$230E			; VERSION CODE REGISTER (VC)
+		SA-1 device version.
+
+
+	SA-1 only SA-1 read registers:
+
+		$2301			; SA-1 CPU FLAG READ (CFR)
+		Format:
+		 bits 0-3	SNES to SA-1 message
+		 bit 4		SNES CPU NMI: 0 = No NMI, 1 = NMI
+		 bit 5		DMA IRQ: 0 = No IRQ, 1 = IRQ (end of DMA)
+		 bit 6		Timer IRQ: 0 = No IRQ, 1 = Timer IRQ
+		 bit 7		SNES IRQ: 0 = No IRQ, 1 = IRQ
+		This register can not be cleared by reading it.
+
+		$2302			; H-COUNT READ (HCR) lo byte
+		$2303			; H-COUNT READ (HCR) hi bit
+		HV timer: Timer IRQ H count value (0x000-0x154)
+		Linear timer: Lower 9 bits of the timer IRQ linear counter (0x000-0x1FF)
+		All HV counters are latched when register $2302 is read.
+
+		$2304			; V-COUNT READ (VCR) lo byte
+		$2305			; V-COUNT READ (VCR) hi bit
+		HV timer: Timer IRQ V count value. NTSC: 0x000-0x105, PAL: 0x000-0x137
+		Linear timer: Upper 9 bits of the timer IRQ linear counter (0x000-0x1FF)
+
+		$2306-$230A		; ARITHMETIC RESULT: PRODUCT/QUOTIENT/ACCUMULATIVE SUM (MR)
+		Format:
+		 Multiplication yields 32-bit signed data.
+		 Division yields 16-bit unsinged data.
+		 Cumulative sum yields 40-bit signed data.
+
+		$230B			; ARITHMETIC OVERFLOW FLAG (OF)
+		Bit 7 is set if overflow occured.
+
+		$230C			; VARIABLE-LENGTH DATA READ PORT (VDP) lo byte
+		$230D			; VARIABLE-LENGTH DATA READ PORT (VDP) hi byte
+		16-bit data resulting from barrel-shifting the values stored in $2258.
+
+
+Some ideas:
+
+	Use 2 of the message flags as indexes for IRQ behaviour.
+	Kill LM ExAnimation. It eats way too much memory.
+	Have SA-1 process sprites while SNES processes level_code from WRAM.
+	 SNES should still be able to access WRAM in FastROM speed.
+
+
+
+
+
+
+
+
+
+
+

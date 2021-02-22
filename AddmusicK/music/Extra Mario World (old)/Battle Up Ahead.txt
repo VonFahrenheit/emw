@@ -1,0 +1,196 @@
+#amk 2
+#SPC
+{
+	#author "Ruberjig"
+	#game "Extra Mario World"
+	#title "Battle Up Ahead"
+}
+#path "allsamp"
+#samples
+{
+	#optimized
+	"Guitar.brr"
+	"String Ensemble 2.brr"
+	"izu_snare.brr"
+	"izu_chat.brr"
+	"Oboe.brr"
+	"Crash Cymbal.brr"
+	"Synth lead.brr"
+	"Piano.brr"
+	"Brasschord001.brr"
+	"chinese cymbal.brr"
+	"Tom.brr"
+	"Bass Drum.brr"
+	"Kick.brr"
+}
+#instruments
+{
+	"Brasschord001.brr" $AC $8B $BA $02 $94
+	"Synth lead.brr" $8E $6B $B8 $03 $F0
+	"Oboe.brr" $FE $8C $B8 $05 $F0
+	"String Ensemble 2.brr" $FD $AA $00 $02 $86
+	"synth lead.brr" $8E $75 $df $01 $00
+	;@8 $BE $B0 $0A $07 $80
+	"Guitar.brr" $BE $B0 $0A $01 $80
+	"izu_chat.brr" $BF $75 $00 $05 $00
+	"Kick.brr" $8F $75 $00 $04 $00 
+	"izu_snare.brr" $03 $20 $60 $05 $00
+	@0 $BF $48 $7F $06 $00
+	"Crash Cymbal.brr" $FD $F0 $CF $05 $F0	;@40
+	@13 $8F $76 $B8 $06 $00
+	@6 $FE $8A $00 $06 $00	
+	@3 $CD $14 $B8 $03 $01
+	"chinese cymbal.brr" $8f $F0 $B8 $06 $00
+	"Tom.brr" $8F $B5 $00 $04 $40 
+}
+
+$EF $B7 $02 $02
+$F1 $04 $A0 $00		;Outside
+$F2 $0C $08 $08
+
+"swoopa=$ee $0C"
+"noeb=$ee $00"
+"tgec= $F4 $03"
+"droop= $eb $01 $04 $01 h-1"
+"nodr= $eb $00 $00 $00 h0"
+
+"brass= @30 y10,1,1 q7b p0,0"
+"leada= @31 y11 $DE $30 $0C $40 q7b"
+"oboe= @32 y10 q6f"
+"stra= @33 q7f p0,0"
+"bassa= @34 q7d y13"
+"bassb= @35 q7d y7"
+
+"chat= @36 q79 y8"
+"drum= @37 q7D y10"
+"snar= @38 q7F y12"
+
+"leadb= @39 y9 p0,0"
+"crash= @40 y10,1,1 p0,0"
+"harp= @41 y15,1,1 q6d"
+"smwa= @42 y5 $DE $30 $0C $20 q7a $ee $12"
+"smwb= @43 y15 q1f"
+"chin= @44 y10,1,1 p0,0"
+"tom= @45 q78 y10,1,1"
+
+t58 #0 $F4 $02 w170 v200 o5 w190
+
+brass $DE $30 $0C $20
+c12d12e12 d12e12f12 e12f12g12 f12g12a12
+d12e12f12 e12f12g12 f12g12a12 g12a12b12 >swoopa c1^1^1^1^1^1 noeb
+[r1]6
+/swoopa leada o4 v170	
+g4.noeb b16>c16g2 e4.f16g16 e. c. <a g4. e^1. 
+g4>c16<b16a16g16 f4 b16a16g16f16 e4 a16g16f16e16 d4 e16f16g16a16>swoopac2noeb< e16f16g16a16 f16g16a16b16 >c<g16>c<g16>c<gab>c
+o4
+g4.b16>c16g2 e4.f16g16 e. c. <a g4. e^1.
+g4>c16<b16a16g16 f4 b16a16g16f16 e4 a16g16f16e16 d4 e16f16g16a16>c.c.cc.c.cer16er16e gr4. 
+
+oboe o3 v190 
+swoopag4.noeb b16>c16 g^2 e16f16 gfedcd droop e nodr r c<g^1.
+g4.b16>c16 droop g1 nodr g4 a4 b^2 >c< a b^1<
+g4.b16>c16 g^2  e16f16 gfedcd droop e nodr r c<g^1.
+g4.b16>c16 droop g1 nodr g4 a4 b2. >c4 g1 
+
+leadb o4 v220
+g1..>c16<b16a16g16 f1.. b16a16g16f16 e1.. a16g16f16e16 d1..e16f16g16a16
+[ar16ar16a16a16g4rf gr16gr16g16g16f4r4 fr16fr16f16f16e4rd f.g.a >c16<g16a16b16>cr]2
+<g.a.b16>c16 $DE $30 $0C $30 q69 $ED $7F $EB g2^1^1^1[r1]4
+
+#5 v210 o3
+
+stra y2,1,1 
+c12d12e12 d12e12f12 e12f12g12 f12g12a12
+d12e12f12 e12f12g12 f12g12a12 g12a12b12 >c1^1^1^1[r1]8
+/
+o3
+g2>g2 e2 e2 g4. e^1. 
+g2 f2 e2 d2 >c2< e16f16g16a16 f16g16a16b16 >c<g16>c<g16>c<gab>c<
+g4.b16>c16g2 e4.f16g16 e. c. <a g4. e^1.
+g2 f2 e2 d2 >c1er16er16egr4.<
+
+g1^1f1^1e1^1f1^1 g1^1f1^1e1^1f1
+
+harp o3 v90
+
+$E8 $60 $B0 c32d32e32f32g32a32b32>c32 d32e32f32g32a32b32>c32d32 e32d32c32<b32a32g32f32e32 $E8 $28 $25 d32c32<b32a32g32f32e32d32 
+
+stra o4 v210
+g1..>c16<b16a16g16 f1.. b16a16g16f16 e1.. a16g16f16e16 d1..e16f16g16a16
+[ar16ar16a16a16g4rf gr16gr16g16g16f4r4 fr16fr16f16f16e4rd f.g.a >c16<g16a16b16>cr]2< $ed $7c $e8
+g1^1^1^1[r1]4
+
+#1
+@6 o4 y2,1,1
+c2 e2 g2 a2 >c1^1^1^1
+bassb o4 v210
+(11)[g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 f<f16>f<f16>f16f16 e<e16>e<e16>e16e16 d<d16>d<d16>d16d16 e<e16>e<e16>e16e16]2
+/
+(11)3
+g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 f<f16>f<f16>f16f16 e<e16>e<e16>e16e16 d<d16>d<d16>d16d16 er4.
+(11)4
+[f16rfr16f f16rfr16f f16rfr16f f16rfr16f e16rer16e e16rer16e e16rer16e e16rer16e d16rdr16d d16rdr16d d16rdr16d d16rdr16d e16rer16e e16rer16e e16rer16e e16rer16e]99
+ 
+#4 smwb o4
+[r1]2
+[gg16g16g g16ggg16gg]12/
+[gg16g16g g16ggg16gg]15 gg16g16g g16g16gr4.
+[o5 q7ag16 q76g16 q7ag16g16 q76g g16g16]32
+[o4 q7f gg16g16g g16ggg16gg]99
+
+#3 y10o4 v240
+[ drum c12 chat e12tgec snar e12 snar e12 snar e12 snar e12tgec]4
+[r1]4 v180
+[ chat q7fe q79e16 q7be.q7de]16/
+[ chat q7fe q79e16 q7be.q7de]31
+r16 tom g16 e16 c16 <g16 e c16>
+[ chat q7fe q79e16 q7be.q7de]99
+
+#2
+brass o3 v220
+c2 e2 g2 a2 o4 
+crash c1[r1]7 tgec
+[ drum cr]12
+[ drum c16 chat e16tgec snar e16 snar e16 snar e16tgec chat e16]2
+ drum c16tgec snar e16 snar e16 snar e16/tgec
+(41)[ drum c16 chat ee16tgec snar e chat e16tgec drum c chat e16 drum ctgec snar e chat etgec]15
+v250  drum c16 chat ee16tgec snar e chat e16tgec drum c chat e16 $FB $80 $0C $01  drum c chat e16 drum c16 chat e16 drum c16v220 $FB $80 $00 $00
+(41)99
+
+#6
+stra o4 y18,1,1
+c2 e2 g2 a2 >c1^1^1^1
+bassa o3 v120
+(61)[g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 f<f16>f<f16>f16f16 e<e16>e<e16>e16e16 d<d16>d<d16>d16d16 e<e16>e<e16>e16e16]2
+/
+(61)3
+g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 f<f16>f<f16>f16f16 e<e16>e<e16>e16e16 d<d16>d<d16>d16d16 er4.
+chin o3 v200 a1
+bassa o3 v120 g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 f<f16>f<f16>f16f16 e<e16>e<e16>e16e16 d<d16>d<d16>d16d16 e<e16>e<e16>e16e16
+(61)3o3
+[f16rfr16f f16rfr16f f16rfr16f f16rfr16f e16rer16e e16rer16e e16rer16e e16rer16e d16rdr16d d16rdr16d d16rdr16d d16rdr16d e16rer16e e16rer16e e16rer16e e16rer16e]99
+
+#7
+smwa o3 v200 
+c12d12e12 d12e12f12 e12f12g12 f12g12a12
+d12e12f12 e12f12g12 f12g12a12 g12a12b12 >c1^1^1^1^1^1[r1]6/ o4
+crash v180 c1
+r10
+leada o5 v100
+;g4.b16>c16g2 
+e4.f16g16 e. c. <a g4. e^1. 
+g4>c16<b16a16g16 f4 b16a16g16f16 e4 a16g16f16e16 d4 e16f16g16a16>c2< e16f16g16a16 f16g16a16b16 >c<g16>c<g16>c<gab>c
+o4
+g4.b16>c16g2 e4.f16g16 e. c. <a g4. e^1.
+g4>c16<b16a16g16 f4 b16a16g16f16 e4 a16g16f16e16 d4 e16f16g16a16>c.c.cc.c.cer16er16er2
+
+oboe o3 v110
+g4.b16>c16g^2 e16f16 gfedcder c<g^1.
+g4.b16>c16g1 g4 a4 b^2 >c< a b^1<
+g4.b16>c16g^2 e16f16 gfedcder c<g^1.
+g4.b16>c16g1 g4 a4 b2. >c4 g1 
+
+leadb o4 v100
+g1..>c16<b16a16g16 f1.. b16a16g16f16 e1.. a16g16f16e16 d1..e16f16g16a16
+[ar16ar16a16a16g4rf gr16gr16g16g16f4r4 fr16fr16f16f16e4rd f.g.a >c16<g16a16b16>cr]2
+<g.a.b16>c16g2^1^1^1[r1]4

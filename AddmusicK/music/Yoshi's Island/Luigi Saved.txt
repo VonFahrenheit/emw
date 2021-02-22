@@ -1,0 +1,137 @@
+﻿;*******************************************************************
+;Title = Luigi Saved
+;Ported by LadiesMan217
+;*******************************************************************
+; Insert size: 1015 bytes
+; Number of channels: 6 (Channels 7, 8 unused)
+; Total song length: 0:32
+; Version: AddmusicK 2
+; Samples: Yes (brr)
+;*******************************************************************
+; SPC Generator Info
+#SPC
+{
+	#author "Koji Kondo"
+	#title "Luigi Saved"
+	#game "Yoshi's Island"
+	#comment "Ported by LadiesMan217"
+}
+;*******************************************************************
+;Commands In Song
+#tempoimmunity
+;VCMD_PAN_FADE=$dc
+;VCMD_PITCH_SLIDE=$dd
+;VCMD_VIBRATO_ON=$de
+;VCMD_VIBRATO_OFF=$df
+;VCMD_MASTER_VOL_FADE=$e1
+;VCMD_TEMPO_FADE=$e3
+;VCMD_VOL_FADE=$e8
+;VCMD_ECHO_ON=$ef
+;VCMD_ECHO_PARAM=$f1
+;*******************************************************************
+;Samples and Info
+#samples
+{
+	#optimized
+	#YI
+}
+#instruments
+{
+	"YI/yi-2B.brr" $ff $e0 $00 $03 $00	;@30 buzz
+	"YI/yi-2A.brr" $ff $e0 $00 $03 $cc	;@31 baby cry
+	"YI/yi-16.brr" $ff $e0 $00 $03 $74	;@32 french horn
+	@2		$8f $19 $00 $03 $01	;@33 glockenspiel
+	"YI/yi-29.brr" $8b $e0 $00 $03 $00	;@34 smooth violin
+}
+;*******************************************************************
+;Channel 1
+
+#0
+t25 w175 @34 v220 y4 
+$ef $ff $00 $00 
+$f1 $02 $1e $02
+$f5 $0c $21 $2b $2b $13 $fe $f3 $f9
+$de $00 $01 $5a 
+$dc $30 $10 
+q7e o4 d4 $dd $18 $18 $9f $dc $30 $04 ^4 $dd $00 $30 $a6 
+^2 $dd $00 $50 $b2 $e8 $c8 $1e $dc $b4 $0a ^2 ^2 ^8 
+w150 t23 @32 v200 y6 $df 
+q7e o2 g6... q3e > g16 g16 g16 $e1 $28 $96 q7e 
+< g6... q3e > g16 g16 g16 $e1 $28 $be $e3 $b4 $0b
+q7e < g6... q3e > g16 g16 g16 $e1 $28 $b9 q7e < g4 > g4 ^8 $e1 $28 $5a ^4. 
+t13 $e3 $50 $15 w140 @33 v200 $df
+(1)[r96 q5e o6 c8. c8 r16 q7e < g8 q5e a8. a8. q6e c8]
+(2)[o5 f8. f8. c8 d8 q7e < b8 g8 e=22]
+(1) o5 f8 d8 f8 d8 r=94 r192 
+t21 (1)(2)/ (1) o5 f8 d8 f8 d8 r=94 r192 (1)(2)
+
+;*******************************************************************
+;Channel 2
+
+#1
+@34 v220 y4 $dc $30 $10 $de $00 $12 $5a 
+q7e o5 g4 $dd $18 $18 $b0 $dc $30 $04 ^4 $dd $00 $30 $b7 
+$dc $32 $06 ^2 $dd $00 $50 $c3 $dc $32 $0a $e8 $c8 $1e ^2 $dc $32 $0c ^2 ^8 
+@32 v220 $de $12 $1c $1e
+r16 q4e o4 d16 d16 e16 e16 f8. r16 f16 f16 g16 g16 a8. r16 
+a16 a16 b16 b16 > c16 c16 d16 d16 e16 e16 f16 q7e g4 ^2 
+@33 v190 y12 $df
+(3)[q7e o4 c16 c4 e8. f8 f8. e8 r16 d4 e4 r16 < a4 > a8 f16] 
+[r96 q7e o4 c16 c4 e8. f8 f8. e8 r16 d4 g=46 r16 g8 g8. r8 r192] (3)/
+*(3)
+
+;*******************************************************************
+;Channel 3
+
+#2
+@31 v240 y4 
+r6... q7e o4 g=5 g=5 f=5 > c=5 < d24 < g24 y10
+v120 r6... > a=5 a=5 g=5 > d=5 < e24 < a24 
+> a=5 a=5 g=5 > d=5 < e24 < a24 r6... y10
+v100 > a+=5 a+=5 g+=5 > d+=5 < f24 < a+24 
+> a+=5 a+=5 g+=5 > d+=5 < f24 < a+24 r8 r8
+@32 v220 $de $12 $1c $1e
+y12 r16 q4e b16 b16 > c16 c16 d8. r16 d16 d16 e16 e16 f8. 
+r16 f16 f16 g16 g16 a16 a16 b16 b16 > c16 c16 d16 q7e d4 ^2 
+@33 v200 $df
+(4)[r=26 q5e b8 b8 r8 r8 q5e g8 g4 r8 q6e e8 e4 r16 c8 q7e < a8 f8 d=10] 
+[r=25 q5e o5 b8 b8 r8 r8 q5e g8 g4 r16 q6e e8 e8 e8 c16 c2] (4)/
+*(4) 
+
+;*******************************************************************
+;Channel 4
+
+#3
+@30 v120 y4 $dc $30 $10 $de $00 $12 $5a
+q7e o5 g4 $dd $18 $18 $b0 $dc $30 $04 ^4 $dd $00 $30 $b7 
+$dc $32 $06 ^2 $dd $00 $50 $c3 $dc $32 $0a 
+$e8 $c8 $1e ^2 $dc $32 $0c ^2 ^8 
+@32 v200 $de $12 $1c $1e
+y8 r16 q4e o3 a16 a16 b16 b16 > c8. r16 c16 c16 d16 d16 e8. 
+r16 e16 e16 f16 f16 g16 g16 a16 a16 b16 b16 > c16 q7e < b4 ^2 
+@33 v190 y8 $df
+(5)[r8 q7e g4 g8 q5e ^16 q7e c8 a8. g8 q5e ^16 
+q7e f16 a8 q5e ^16 q7e g16 a8 f+8 d8 b8 g8] 
+(6)[r8 q7e o4 g4 g8 q5e ^16 q7e c8 a8. g8 q5e ^16 
+q7e o4 f16 a8 q5e ^16 q7e f16 b8 c8 e8 c4 r192] (5)/
+(6)(5) 
+
+;*******************************************************************
+;Channel 5
+
+#4
+r=408 r=480 @33 v200 $df
+(7)[q4e o5 e8 e8 r4 f8 f8 r4 c8 c8 r4 r2]2 r192 (7)/ (7) r192 (7) 
+
+;*******************************************************************
+;Channel 6
+
+#5
+r=408 @32 v140 $de $12 $1c $1e
+y4 r16. q4e o4 d16 d16 e16 e16 f8. r16 f16 f16 g16 g16 a8. 
+r16 a16 a16 b16 b16 > c16 c16 d16 d16 e16 e16 f16 q7e g4 ^4...
+r=384 r=385 r=384/ r=385 r=384
+             
+;*******************************************************************
+
+#amk 2

@@ -1,0 +1,147 @@
+#amk 2
+#SPC
+{
+	#author "Ruberjig"
+	#game "What-a-Blast!"
+	#title "Forlorn Ruins"
+}
+#samples
+{
+	#optimized
+	"piccolo.brr"
+	"Organ (Church).brr"
+	"String Ensemble 2.brr"
+	"izu_snare.brr"
+	"Kick.brr" ;"Bass Drum.brr"
+	"izu_chat.brr"
+	"conga.brr"
+	"Guitar.brr" ;"Electric Bass (Pick).brr"
+	"Claves.brr"
+	"Choir Aahs.brr"
+}
+#instruments
+{
+	"Organ (Church).brr" $FA $88 $B8 $04 $02
+	@0 $EC $BA $B8 $0B $F8
+	"piccolo.brr" $AB $AC $AD $03 $04
+	"String Ensemble 2.brr" $F4 $A7 $00 $02 $86
+	"Guitar.brr" $FF $B0 $B8 $06 $00 ;"Electric Bass (Pick).brr" $BE $B1 $0A $19 $00
+	"izu_chat.brr" $fd $4f $00 $05 $08
+	"Kick.brr" $8E $75 $00 $05 $00 ;"Bass Drum.brr" $FF $50 $B8 $03 $7F
+	"izu_snare.brr" $01 $23 $60 $04 $a0
+	"conga.brr" $fe $B8 $00 $07 $00	;@38
+	"Claves.brr" $ff $f5 $00 $06 $1a
+	"Choir Aahs.brr" $8A $AA $00 $02 $00
+}
+"orgn= @30 q7f y10"
+"bing= @31 q7c y10 $eb $00 $00 $00"
+"pico= @32 q7f y10 $de $30 $0b $40"
+"stra= @33 q7c p0,0"
+"bass= @34 o2 v200 q7d"
+
+"chat= @35 y15 q7a"
+"drum= @36 y10 q7b"
+"snar= @37 q7f"
+"cong= @38 q7c"
+
+$EF $DF $04 $04
+$F1 $06 $30 $00
+$F2 $08 $20 $20
+;length 2:53.4
+
+#0 t60 w160 v180 l8 $F4 $02
+orgn o4 $eb $f0 $f0 $78 d1^1^1 
+$eb $00 $00 $00 
+[bingo3 fgafga>c<b]4
+;0:11
+/ bingo3
+v170 fgafga>c<b v160 fgafga>c<b v155 fgafga>c<b v150 fgafga>c<b 
+v140 fgafga>c<b v135 fgafga>c<b v130fgafga>c<b v125 fgafga>c<b [r1]8
+v125 fgafga>c<b v130fgafga>c<b v135 fgafga>c<b v140 fgafga>c<b 
+v150 fgafga>c<b v155 fgafga>c<b v160 fgafga>c<b v170 fgafga>c<b 
+v180 fgafga>c<b v170 fgafga>c<b v160 fgafga>c<b v150 fgafga>c<b 
+v140 fgafga>c<b v130 fgafga>c<b v125 fgafga>c<b v120fgafga>c<b
+picoo3 v200 ;1:03
+
+
+d2f2a1 d2f2a2d4f4a1..f4a1^1
+d2f2a1 d2f2a2d4g4b1..a4g1^1
+d2f2a2f4c4 d2f2a2defga1..fga1^1
+d2f2a2gfec d2f2a2dfgab1..>c4<b1^1
+;1:54
+[dfar]8 [<b>dfr]8 [<a>cer]8 [cegr]8 
+[dfar]8 [<b>dfr]8 [<a>cer]8 [cegr]8 
+[r1]8
+
+#1 v180 y5,1,1
+orgn o4 $eb $e8 $f0 $7C r4f1^1..
+^1^1^1^1
+/
+stra $eb $00 $00 $00
+[f1^1^1^1d1^1^1^1c1^1^1^1e1^1^1^1]4
+$ed $eb $f4
+[f4r4]8 [d4r4]8 [c4r4]8 [e4r4]8 
+[fa>c<r]8 [dfar]8 [cegr]8 [egbr]8 
+[r1]8
+
+#2 v180 y10,1,1
+orgn$eb $e0 $f0 $7F r2a1^1.
+^1^1^1^1
+/
+stra $eb $00 $00 $00
+[a1^1^1^1f1^1^1^1e1^1^1^1g1^1^1^1]4
+$ed $eb $f4
+[<a4r4>]8 [f4r4]8 [e4r4]8 [g4r4]8 
+[<a>cer]8 [fa>c<r]8 [egbr]8 [gb>d<r]8 
+[r1]8
+
+#3 v180  y15,1,1
+orgn  o5 $eb $d8 $f0 $76 r2.c1^1^4
+^1^1^1^1
+/
+stra $eb $00 $00 $00
+[d1^1^1^1<b1^1^1^1a1^1^1^1>c1^1^1^1]4
+$ed $eb $f4
+[d4r4]8 [<b4r4>]8 [<a4r4>]8 [c4r4]8 
+[dfar]8 [<b>dfr]8 [<a>cer]8 [cegr]8 
+[r1]8
+
+#5
+[r1]7 
+/
+[o4 drum c cong a@24q79ec $f4$03 snar g $f4$03 chaty5a chat a chaty5a]100
+
+#4 v130 l8 
+orgn o3 $eb $f0 $f0 $78 d1^1^1
+$eb $00 $00 $00 r. q78 $ee $12
+[bingo3q1c fgafga>c<b]3
+fgafga>c16<
+;0:11
+/ r. bingo3q78
+v170 fgafga>c<b v160 fgafga>c<b v155 fgafga>c<b v150 fgafga>c<b 
+v140 fgafga>c<b v135 fgafga>c<b v130fgafga>c<b v125 fgafga>c<b [r1]8
+v125 fgafga>c<b v130fgafga>c<b v135 fgafga>c<b v140 fgafga>c<b 
+v150 fgafga>c<b v155 fgafga>c<b v160 fgafga>c<b v170 fgafga>c<b
+v180 fgafga>c<b v170 fgafga>c<b v160 fgafga>c<b v150 fgafga>c<b 
+v140 fgafga>c<b v130 fgafga>c<b v125 fgafga>c<b v120fgafga>c<b
+picoo3 ;1:03
+d2f2a1 d2f2a2d4f4a1..f4a1^1
+d2f2a1 d2f2a2d4g4b1..a4g1^1
+d2f2a2f4c4 d2f2a2defga1..fga1^1
+d2f2a2gfec d2f2a2dfgab1..>c4<b1..r16
+;1:54
+@40 o4 v160
+[f1]4 [d1]4 [c1]4 [e1]4 
+[f1]4 [d1]4 [c1]4 [e1]4 
+[@23e4re]8;2:46
+
+#6 bass
+[r1]6 r^2
+<b $dd $10 $10 $18 ^8& b=2r9>
+/
+[rdfadfaf]96
+[r1]4
+
+#7 @39 v80
+[r1]7/
+[r2 $ED $0F $F4 o4 q7f c q7d c q7b c q79 c]100

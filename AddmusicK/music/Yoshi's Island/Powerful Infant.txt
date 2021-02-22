@@ -1,0 +1,131 @@
+﻿;*******************************************************************
+;Title = Powerful Baby
+;Ported by LadiesMan217
+;*******************************************************************
+; Insert size: 945 bytes
+; Number of channels: 8
+; Total song length: 0:32
+; Version: AddmusicK 2
+; Samples: Yes (brr)
+;*******************************************************************
+; SPC Generator Info
+#SPC
+{
+	#author "Koji Kondo"
+	#title "Powerful Infant"
+	#game "Yoshi's Island"
+	#comment "Ported by LadiesMan217"
+}
+;*******************************************************************
+;Commands In Song
+#tempoimmunity
+;VCMD_PITCH_SLIDE=$dd
+;VCMD_VIBRATO_ON=$de
+;VCMD_ECHO_ON=$ef
+;VCMD_ECHO_PARAM=$f1
+;*******************************************************************
+;Samples and Info
+#samples
+{
+	#optimized
+	#YI
+}
+#instruments
+{
+	"YI/yi-1C.brr" $ff $e0 $00 $07 $a8	;@30 bongos
+	"YI/yi-22.brr" $8f $f6 $00 $03 $ff	;@31 xylophone
+	"YI/yi-21.brr" $ff $ec $00 $0a $02	;@32 bass
+	"YI/yi-2C.brr" $ff $e0 $00 $0a $12	;@33 acoustic steel guitar
+	"YI/yi-29.brr" $8b $e0 $00 $03 $00	;@34 smooth violin
+	"YI/yi-25.brr" $ff $e0 $00 $07 $a8	;@35 maracas
+}
+;*******************************************************************
+;Channel 1
+
+#0
+w170 t48 v200 @33 y8
+$ef $ff $00 $00 
+$f1 $02 $1e $01
+$f5 $0c $21 $2b $2b $13 $fe $f3 $f9
+(1)[q7f o4 f=13 q0d f=11 q7e f=13 q0d f=11 q7e f=13 q0d f=11 q0d f=13 q7f f=11 
+q1d f=13 q7f f=11 q1d f=13 f=11 q7ff=13 q0d f=11 q7f f=13 q2d f=11 q7f e=13 q0d 
+e=11 q7e e=13 q0d e=11 q7e e=13 q0d e=11 q0d e=13 q7f e=11 q1d e=13 q7f e=11 
+q1d e=13 e=11 q7f e=13 q0d e=11 q7f e=13 q2d e=11]4/ (1)4
+
+;*******************************************************************
+;Channel 2
+
+#1
+v180 @33 y13
+(2)[r192 q7f o4 d=11 q0d d=13 q7e d=11 q0d d=13 q7e d=11 q0d d=13 q5e d=11 q7f 
+d=13 q1d d=11 q7f d=13 q0d d=11 d=13 q7f d=11 q6f d=13 q7f d=11 q2c d=13 q7f 
+c=11 q0d c=13 q5e c=11 q0d c=13 q7e c=11 q0d c=13 q5e c=11 q7f c=13 q1d c=11 
+q7f c=13 q0d c=11 c=13 q7f c=11 q6f c=13 q7f c=11 q2c c16]4/ (2)4
+
+;*******************************************************************
+;Channel 3
+
+#2
+r=384  v140 @34 y14
+r2 r2 r2 r4 $de $14 $15 $14 q7f o4 g8 g+8 
+q7f a2 ^4 > e4 < b2 ^4 g4 q7f a2 ^4 > e4 < b2 b6 > c6 c+6/
+q7f d2 ^4 a4 e2 c4 c+4 q7f d2 ^4 a4 e2 b4 g4 q7f a4. f8 
+e6 d6 c6 < b2 g4 g+4 q7f a2 ^4 > e4 < b2 b6 > c6 c+6 
+
+;*******************************************************************
+;Channel 4
+
+#3
+v200 @32 
+(3)[q6f o2 d8. q3f d16 q6f d8. ^32 q2f d32]2
+(4)[q6f o2 c8. q3f c16 q6f c8. ^32 q3f c32 q6f c8. q3f c16 q6f c8. ^32 q2f c32] 
+(3)2(4)(3)2(4)(3)2(4)/
+(5)[q6f o2 d8. < a8. > d8 ^8. q3b < a16 q1f 
+a8 q6f > d16 q3b d16 q6f c8. < g8.]
+q6f o2 c8 ^8. q3b o1 g16 q1f g8 q6f > c16 q3b c16
+(5) q6f o2 c8 ^8. q3b o1 g16 q1f g8 q6f > c16 q3b c16 
+(5) q6f o2 c8 ^8. q1f o2 g16 q4f < g16 q1f > g16 q5f < g8 
+(5) q6f o2 c8 q2c o2 g16 q4f g16 q2c g16 q4f g16 q2e 
+< g16 g16 q7f g16 $dd $00 $04 $9f 
+q4d g16 $dd $08 $04 $8c
+
+;*******************************************************************
+;Channel 5
+
+#4
+(6)[v200 @30 q7fo5 b16 v120 @31 q2b > d+16 q7e d+16 v200 @30 q7f 
+< b16 v120 @31 q2b  > d+16 d+16 v200 @30 q7f < b16 v120 @31 q2b 
+> d+16 d+16 d+16 v200 @30 q7e < b16 v120 @31 q2b > d+16 d+16 v200 
+@30 q7f < b16 v120 @31 q7e > d+16 q2b d+16]8/ (6)8
+
+;*******************************************************************
+;Channel 6
+
+#5
+r=384 r=384 v140 @34 y6 $de $12 $16 $13
+q7f o4 f2 ^2 e2 ^4 r4  q7f f2 ^2 e2 ^2/
+q7f f2 d2 c2 e2 q7f f4. e8 d8 c8 < b8 g8 a4. > e8 
+g4 e4 q7f f2 c6 < b6 a6 g2 b2 q7f > d2 c2 < g2 ^2 
+
+;*******************************************************************
+;Channel 7
+
+#6
+v170 @35 y4 
+(7)[q7f o3 f16 q7c f16 q5d f16 q7c f16 q7e f16 q7c f16 f16 q7f f16 q1c f16 q7f 
+f16 q7c f16 f16 q7f f16 q7c f16 q7f f16 q7c f16]8/ (7)8
+
+;*******************************************************************
+;Channel 7
+
+#7
+r=384 v120 @34 y10 
+r2 r2 r2 r6.. $de $14 $15 $15
+q7f o4 g8 g+12 r24 q7f a2 ^4 > e4 < b2 ^4 
+g=40 r24 q7f a2 ^4 > e4 < b2 b6 > c6 c+8/
+r24 q7f d2 ^4 a=40 v140 < b2 g2 q7f a2 ^4 b4 g2 > e2 
+q7f o5 d2 < f4 e4 d2 e2 q7f f2 ^4 > e4 < e2 r6 g6 f+6 
+
+;*******************************************************************
+
+#amk 2

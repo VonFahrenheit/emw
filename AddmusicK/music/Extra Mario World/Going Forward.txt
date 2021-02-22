@@ -1,0 +1,81 @@
+#amk 2
+#SPC
+{
+	#author "Ruberjig"
+	#game "Extra Mario World"
+	#title "Going Forward"
+}
+#samples
+{
+	#optimized
+	"String Ensemble 2.brr"
+	"Clavinet.brr"
+	"Bass Drum.brr"
+	"Synth snare.brr"
+	"izu_chat.brr"
+	"String Ensemble 1.brr"
+	"piccolo.brr"
+	"saxophone.brr"
+}
+#instruments
+{
+	@16 $8C $60 $B8 $05 $F8
+	"String Ensemble 2.brr" $86 $A8 $00 $05 $10
+	"Clavinet.brr" $8E $72 $B8 $06 $00
+	"Bass Drum.brr" $8F $74 $00 $05 $00 
+	"izu_chat.brr" $8E $76 $00 $09 $00	;@34
+	"Synth snare.brr" $8f $70 $B8 $03 $80
+	@1 $8E $74 $00 $01 $80
+	"String Ensemble 1.brr" $86 $A8 $00 $01 $E6 ;@37
+	"saxophone.brr" $8A $70 $00 $02 $00
+}
+
+$EF $F7 $04 $04
+$F1 $07 $A0 $00
+$F2 $0F $14 $14
+$F4 $02
+#0 w140 v210 l8 t50 $F4 $02
+
+@30 q7f y15 o4
+
+[a<a16>a<a16>a<a>aa<a>gr2..
+g<g16>g<g16>g<g>gg<g>fr2..
+f<f16>f<f16>f<f>ff<f>er2..
+g<g16>g<g16>g<g>gg<g>ar2..]2
+> q7e
+[e.f.ag2 e.f.agefd e.f.ag^4 a16g16 e.f.ag2]2
+
+#1 v160
+@32 o2 q7e
+[fg >a< gf >a< f >a< f >a< f >a< f >a g4<
+ef >g< fe >g< e >g< e >g< e >g< e >g f4<
+de >f< ed >f< d >f< d >f< d >f< d >f e4<
+ef >g< fe >g< e >g< e >g< e >g< e >g a4<]4
+
+#2
+@36 q7c v220
+[o3 a16a16 o4 aa. a16 o3 g16 o4 a16 o3 g16 o4 a16 o3 g16 o4 a16 o3 g16a16]32
+
+#3 o4q7f v240
+[@33e @34e16e16 @35e @34e16 @33e @34e16 @33e16 @34e16 @35e @34e]32
+
+#4
+[@30 o3 q4a  v230 y5
+a<a16>a<a16>a<a>aa4gr2..
+g<g16>g<g16>g<g>gg4fr2..
+f<f16>f<f16>f<f>ff4er2..
+g<g16>g<g16>g<g>gg4ar2..]4
+
+#5 @31 o4 v180 y15,1,1 q7f
+[a1^1g1^1f1^1g1^1]2
+o3
+[a2a2g2g2f2f2g2g2]2
+
+#6 @37  o3 v180 y5,1,1 q7f
+[a1^1g1^1f1^1g1^1]2o2
+[a2a2g2g2f2f2g2g2]2
+
+#7 @38 o4 q78 v240 $DE $30 $0C $20 y10,1,1
+[a1^1g1^1f1^1g1^1]2
+@37
+[a2a2g2g2f2f2g2g2]2

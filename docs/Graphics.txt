@@ -1,0 +1,76 @@
+
+;================;
+;  introduction  ;
+;================;
+
+To deal with the scope of the hack we have a slightly more complex setup for graphics. ALL of the game's graphics are found in Graphics Library/source. The source folder contains several other folders, each meant to hold a certain category of graphics. The naming convention for these files is very important. The names start with the Lunar Magic file name (such as GFX28, ExGFX80, or ExGFX100) but can have anything appended after that (for example, GFX28 is named "GFX28 default LG1"). This lets us have named files while still using the Lunar Magic insertion/compression system. Graphics Library has a file called extract.bat, which takes all the source GFX, copies them, then sorts them into Graphics, ExGraphics and RawGraphics. Graphics and ExGraphics files have their file names trimmed and are ready to be inserted with Lunar Magic right away. RawGraphics holds uncompressed files that are used by various patches. The RawGraphics folder should be placed alongside Graphics and ExGraphics.
+
+
+
+;=========;
+;  usage  ;
+;=========;
+
+1. Extract Graphics and ExGraphics from your ROM.
+2. Go to Graphics Library and run extract.bat.
+3. Go to the output folder and copy the contents of the Graphics/ExGraphics folders into the ones you extracted from your ROM (replacing any duplicates, naturally). Place the RawGraphics folder with the Graphics/ExGraphics folders.
+4. Insert the new Graphics and ExGraphics with Lunar Magic.
+5. Run assemble.bat to repatch the ROM and insert the RawGraphics.
+
+
+
+;=======================;
+;  graphics categories  ;
+;=======================;
+
+-- Vanilla GFX --
+While this category is known as vanilla, it actually only stores custom graphics. All the unedited SMW graphics that are still in use must be extracted from an original ROM. Note that GFX01, GFX02 and GFX03 are only used for display purposes in Lunar Magic. GFX00 however, is used in-game and should always be loaded in SP1.
+slots: 00-33 (52)
+
+-- Alt ExGFX --
+Lunar Magic's special ExGFX60-63 are stored here.
+slots: 60-63 (4)
+
+-- Static Sprite GFX --
+A small handful of sprites do not use any of the dynamic systems, usually because said sprites are very rarely used. Bosses, for example, tend to make use of both dynamic and static parts. All the static parts are stored here, in 4 KB 4bpp SNES files. GUI objects also use graphics stored here. Static sprites should fill out from below, starting at 80 and couting up. GUI objects should fill out from the top, starting at FF and counting down. This will make it easier to remember what each file is instead of creating a mess.
+slots: 80-FF (128)
+
+-- Foreground GFX --
+Any 4bpp SNES ExGFX meant for layer 1 foregrounds are stored here. These files are typically loaded into Lunar Magic's FG1, FG2 and FG3 slots. Expected file size is 4 KB.
+slots: 100-4FF
+
+-- Background GFX --
+Any 4bpp SNES ExGFX meant for layer 2 backgrounds are stored here. These files are typically loaded into Lunar Magic's BG1, BG2 and BG3 slots. Expected file size is 4 KB.
+slots: 500-8FF (1024)
+
+-- AN2 --
+Files meant to be used for Lunar Magic's AN2 slot are stored here. Almost always 4bpp SNES, though 2bpp GB can be used as well.
+slots: 900-9FF (256)
+
+-- 2bpp --
+Exactly what you'd expect. Any ExGFX that is in 2bpp GB format is stored here. Expected file size is 2 KB.
+slots: A00-AFF (256)
+
+-- tilemaps --
+All tilemap files are stored here. As you'd expect, this includes layer 3 tilemaps. Tilemaps for other formats, such as mode7, are also stored here however. Layer 3 tilemaps are expected to be 2, 4 or 8 KB in size. Mode7 tilemaps must be 16 KB.
+slots: B00-CFF (512)
+
+-- Misc Format GFX --
+This folder holds all the formats that don't fit anywhere else. This includes mode7 GFX, 8bpp SNES GFX, and anything else that doesn't fit into another category. File size is arbitrary.
+slots: D00-DFF (256)
+
+-- Linear GFX --
+Compressed linear graphics (2bpp packed, 4bpp packed, 8bpp linear) are stored here. This is primarily used for super-dynamic sprites but can potentially be used for backgrounds as well. Linear graphics compress better than planar formats (2bpp GB / 4bpp SNES), but the biggest upside is that they can be scaled and rotated. Note that linear graphics that have to be accessed very quickly, such as portraits, should be stored in Uncompressed GFX instead. File size is arbitrary.
+slots: E00-EFF (256)
+
+-- Sprite GFX --
+The vast majority of our sprites are psuedo-dynamic, meaning that they upload their graphics from this folder when the level loads. All the graphics for those sprites are stored here. The format is 4bpp SNES, and the file size is expected to be 4 KB, but the tiles must be laid out in a special way. Sprite graphcis are uploaded in 8x16 px chunks, so the tiles should be laid out to use as few of those chunks as possible. While this is not technically required, it increases the number of sprites we can place into a single level so it should be done whenever possible.
+slots: F00-FFF (256)
+
+-- Uncompressed GFX --
+This last category is for any GFX that must be accessed quickly in-game. These files can be in any format and are not compressed, meaning they can be loaded directly from ROM. There is no real order to the files here as they have only names and no GFX/ExGFX file number. As a rule of thumb, if a file has to be loaded during gameplay and doing so causes lag, it should be moved to this category to remove the lag. An example of this is the portraits displayed with text boxes. Many dynamic sprites, including bosses, also store graphics here.
+slots: N/A
+
+
+
+

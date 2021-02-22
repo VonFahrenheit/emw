@@ -1,0 +1,186 @@
+#amk 2
+#SPC
+{
+	#author "Ruberjig"
+	#game "Extra Mario World"
+	#title "Lightning Lounge"
+}
+#samples
+{
+	#optimized
+	"Choir Aahs.brr" 
+	"izu_snare.brr"
+	"Kick.brr" 
+	"izu_chat.brr"
+	"String Ensemble 1.brr"
+	"Crash Cymbal.brr"
+	"Organ (Church).brr"
+	"Timpani.brr"
+	"String Ensemble 2.brr"
+	"Guitar.brr"
+	"lead.brr" 
+	"synth bass 1.brr"
+	"ocarina.brr"
+	"conga.brr"
+}
+#instruments
+{
+	"Organ (Church).brr" $FD $C8 $B8 $02 $00
+	"Choir Aahs.brr" $FD $CA $B8 $04 $00
+	"lead.brr" $8f $EE $B8 $06 $00
+	"ocarina.brr" $FC $CE $B8 $04 $00
+	@10 $02 $B8 $60 $03 $00
+	"Kick.brr" $8E $B5 $00 $03 $00
+	"izu_chat.brr" $fe $75 $00 $05 $08
+	"izu_snare.brr" $02 $B5 $60 $05 $00
+	"conga.brr" $06 $B3 $60 $06 $00
+	"Guitar.brr" $BE $B0 $0A $03 $00	
+	"String Ensemble 1.brr" $FE $AA $00 $01 $E6	
+	"String Ensemble 2.brr" $FE $CA $00 $02 $8A
+	"Crash Cymbal.brr" $FE $D2 $CF $0A $40	;@39
+	"Timpani.brr" $fe $70 $00 $04 $00
+	
+}
+"tgec= $F4 $03"
+
+$EF $fd $20 $20
+$F1 $04 $60 $00
+
+#0 t54 l8 w200
+$DE $10 $0C $30
+q7f
+(1)[@30 o5 l16 v180
+c g+agg+f+gff+ed+dd+dcd]4
+
+@31 $ED $0E $F2 o3 v230 l8
+[e4. e^2]4
+@32 o3 v190
+[e4age1. ;Electric Rush
+e.a.ed1^4 ;straight from the Clouds
+cde4.f4g4.a2.ge ;you dont want to be struck,by the 
+d4>d4c.<a.>c<b1]2 ;bolting power of the sky
+@33 o5 v180
+[e4<a>e4<a1 def ;frightening lightning
+e.f.>c<b1.> ;one thousand watts in the air
+d4<g>d4<g^1 cd ;frightning lightning
+e>c4<a4g4ab1]2 ;thunder striking everywhere
+(1)4
+l8
+
+#7
+$DE $10 $0C $10
+q7f r12
+  
+(11)[@1 o5 $ED $0E $F6 l16 v110
+c g+agg+f+gff+ed+dd+dcd]4
+
+@13 o4 $ED $0E $F0 v180 l8
+[e4. e^2]4
+
+@0 o3 $ED $0C $EC v120
+[e4age1. ;Electric Rush
+e.a.ed1^4 ;straight from the Clouds
+cde4.f4g4.a2.ge ;you dont want to be struck,by the 
+d4>d4c.<a.>c<b1]2 ;bolting power of the sky
+
+@1 o5 $ED $0C $EC v110
+[e4<a>e4<a1 def ;frightening lightning
+e.f.>c<b1.> ;one thousand watts in the air
+d4<g>d4<g^1 cd ;frightning lightning
+e>c4<a4g4ab1]2 ;thunder striking everywhere
+
+(11)4
+
+#1
+v240 o4
+[@34c @34c16 @34c16]16
+[@35c tgec @38>>c<< tgec @36c @35c @36c tgec @34c16 @34c16 @37c tgec @36c]36
+[@34c @34c16 @34c16]16
+
+#5
+$DE $10 $0C $50
+q7f
+@39 o3 $ED $0E $EC v240
+[g1^1]2
+$ED $0E $F2
+[e4. e^2]4
+[e4<a>e4<a4.>
+d4<g>d4<g4.>
+c4<f>c4<f4.>
+d4<g>d4<g4.>]4
+
+[e.g.f16d16ce16f16^4
+d.f.e16c16<b>d16e16^4
+c.e.d16<b16a>c16e16^4
+d.f.e16c16<b>d16e16^4]4
+
+[g1^1]2
+
+#2
+$DE $10 $0C $10
+q7f
+@40 o3 $ED $0A $EA v230
+[g1^1]2
+$ED $0A $EE
+[e4. e^2]4
+[e1^1d1^1e1^1d2..ef1]
+$ED $0A $EC
+r2.l16 <ab>cd l8
+e1^1d1^1e1^1d2..e
+
+[e4<a>e4<a1 l16 fgab>cd l8
+e2..c<b1>
+d4<g>d4<g1 l16 fgab>cd l8
+e2..gb1]2
+
+$ED $08 $EC
+[g1^1]2
+
+#3
+$DE $10 $0C $10
+q7f
+@41 o4 $ED $0A $EA v180
+[g1^1]2
+$ED $0A $EE
+[e4. e^2]4
+$ED $0A $EC
+[r1]7
+r2.l16 <ab>cd l8
+
+[e1^1d1^1e1^1d2..ef1]
+[e4<a>e4<a1 l16 fgab>cd l8
+e2..c<b1>
+d4<g>d4<g1 l16 fgab>cd l8
+e2..gb1]2
+
+[g1^1]2
+
+#4
+$DE $10 $0C $10
+q7f
+@41 o5 $ED $0A $EA v140
+[g1^1]2
+$ED $0A $EE
+[e4. e^2]4
+$ED $0A $EC
+[r1]7
+r2.l16 <ab>cd l8
+[e1^1d1^1e1^1d2..ef1]
+
+[e4<a>e4<a1 l16 fgab>cd l8
+e2..c<b1>
+d4<g>d4<g1 l16 fgab>cd l8
+e2..gb1]2
+
+[g1^1]2
+
+#6 $FA $03 $40
+v240/ o3 l32
+@42 c1 [r2]5
+@43 v100 (2)[$E8 $30 $FF c]16 
+@42 c1 [r1]18 r2 
+@43 v100 (2)16
+@42 c1 [r1]14 r2 
+@43 v100 (2)16
+@42 c1 [r1]3
+v0

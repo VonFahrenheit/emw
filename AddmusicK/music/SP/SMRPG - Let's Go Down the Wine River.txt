@@ -1,0 +1,209 @@
+#am4
+; **************************************************************
+; Super Mario RPG - Let's Go Down the Wine River
+; ported by imamelia
+;
+; This is the music from Midas River in Super Mario RPG.
+;
+; Insert size: 2097 bytes
+; Number of channels: 8
+; Total song length: 0:30
+; Loop length: 0:30
+; MORE.bin: HuFlungDu's/Addmusic 4.05
+; Samples: None
+; ************************************************************
+
+#SPC
+{
+	#title "Let's Go Down the Wine River"
+}
+
+w250 t52
+
+$ED $80 $2D $00
+$ED $80 $6D $1D
+$ED $80 $7D $00
+$F0
+$ED $82 $61 $36 $00 $1D
+$01 $F9 $E3 $00 $03
+$03 $FF $E3 $00 $03
+$0D $CE $EF $00 $07
+$07 $FF $77 $00 $07
+$04 $AA $8E $00 $03
+$00 $EB $E0 $00 $06
+
+; $13 - strings
+; $14 - marimba
+; $15 - guitar
+; $16 - twangy instrument
+; $17 - bass
+; $18 - flute
+
+; ************************************************************
+; Channel info:
+; ************************************************************
+;
+; 0 - most of the melody
+; 1 - string countermelody/marimba countermelody/string harmony 1/marimba chord 1
+; 2 - guitar 1/string harmony 2/marimba chord 2
+; 3 - guitar 2
+; 4 - plucked strings/"tock"
+; 5 - guitar 3
+; 6 - bass
+; 7 - swish/tambourine
+;
+; 1 - mostly melody
+; 2 - bass
+; 3 - guitar 1
+; 4 - guitar 2
+; 5 - swish/tambourine
+; 6 - plucked strings/"tock"
+; 7 - string countermelody/marimba countermelody/string harmony 1/marimba chord 1
+; 8 - guitar 3/string harmony 2/marimba chord 2
+;
+; 1, 7, 8, 4, 6, 3, 2, 5
+;
+; ************************************************************
+
+#0	$DA $13	q7F v225 y11
+#1	$DA $13	q7F v200 y9
+#2	$DA $15	q7F v190 y10
+#3	$DA $15	q7F v190 y9
+#4	$DA $16	q7F v205 y13
+#5	$DA $15	q7F v190 y7
+#6	$DA $17	q7F v185 y10
+#7	@22		q7F v170 y10
+
+; ************************************************************
+
+#0 o4 l8
+
+$EF $00 $00 $00
+$F1 $07 $69 $00
+v0c8
+$EF $2F $0C $0C
+$ED $80 $0F $7F
+$ED $80 $1F $00
+$ED $80 $2F $00
+$ED $80 $3F $00
+$ED $80 $4F $00
+$ED $80 $5F $00
+$ED $80 $6F $00
+$ED $80 $7F $00
+/
+$DA $13 $DF o5 v215 y11
+[c4<a-4b-4e-4>]3 c4<a-4b-4>e-4
+$DA $14 o4 v225 y10
+(1)[e-16r16c32c32c32c32c16r16<a-16r16] b-16r16>d-32d-32d-32d-32d-8d-8
+(1) <[b-32]16>
+(1) d-16r16f32f32f32f32f16r16a-8
+g16r16e-32e-32e-32e-32d-16r16<b-16r16[a-32]14
+$DA $18 $DE $03 $0C $18 v205 o5g16
+(2)[a-4a-4g16r16f4 q3F f8a-8a-8f8 q7F e-=120]
+d-4d-4c16r16<b-4b-16r16>c8d-16r16f16r16e-=120
+(2)
+d-4d-8.e-16<b-8.>c32r32d-16e-16f16g16a-1
+
+; ************************************************************
+
+#1 o3 l8
+
+r8/
+
+$DA $13 $DF o4 y9
+[a-4e-4e-4<b-4>]3 a-4e-4e-4b-4
+$DA $14 v220 y10
+q3F c<a-a-e-fb-4b->c<a-a-e-gg4g>
+c<a-a-e-a->d-4fe-<b-b-ge-4. q7F r16 $DA $13 v195 y9 >b-16
+>(10)[d-4d-4<a-16r16a-4a-16r16>c8c16r16<b-16r16a-4e-4v205a-8v195]
+g4g4e-16r16e-4e-16r16e-8g16r16b-16r16a-4 $DA $14 v220c32v210c32c16v220e-8v205e-32v195e-32v205e-32v210e-32>
+$DA $13 v195 (10)
+<g4g8.a-16e-8.e32r32f16g16a-16b-16v190a-=120v195c4g8
+
+; ************************************************************
+
+#2 o3 l16
+
+r8/
+$DA $15 o3 y10
+[r8v190a-a-v180a-rv190a-a-v170g8v190ggv180grv190gg]3 r8v190a-a-v180a-rv190a-a-<v165a-8v190a-a-g8gg
+(20)[r8v190a-a-v180a-rv190a-a-]3 (21)[v170grv190ggv180grv190gg]
+(20)2 (21) v170a-8v190a-a-a-v185a-v190a- $DA $13 o5 y11 e-
+(22)[f4f4e-rd-4d-16r16e-8e-8d-rc4<v195a-8v200b-r>v205cr<v190]
+b-4b-4a-rg4gra-8b-r>d-rc4 $DA $14 y10 <v225e-32v210e-32v218e-16v225a-32v210a-32rv218g32v195g32v205g32v210g32>
+$DA $13 y11 v200 (22)
+<b-4b-8.>c<g4a-b->cd-v190c=120v195<e-8a-8b-8
+
+; ************************************************************
+
+#3 o4 l16
+
+r8/
+[r8v190ccv180crv190cc<v170b-8v190b-b-v180b-rv190b-b->]3 r8v190ccv180crv190ccr8d-d-<b-rb-b->
+(30)[r8v190ccv180crv190ccv170d-8v190d-d-v180d-rv190d-d-r8] v190ccv180crv190ccv170<b-8v190b-b-v180b-rv190b-b->
+(30) <v190b-b-v180b-rv190b-b->v170c8v190cccv180cv190cv195c
+(31)[r8v190d-d-v180d-rv190d-d-v170d-8v190d-d-v180d-rv190d-d-]
+(32)[r8v190ccv180crv190ccv170c8v190cccv180cv190cv195c]
+(33)[<r8v190b-b-v180b-rv190b-b-b-8b-b-v180b-rv190b-b->]
+(32)(31)(32)(33)
+r8v190ccv180crv190ccv170c8v190e-e-e-v180e-v190e-v195e-
+
+; ************************************************************
+
+#4 o3 l16
+
+r8/
+[a-a->e-e-de-fe-gge-e-de-fe-<]3 a-a->e-e-de-fe-r8ffe-e-d-d-
+<a-a->e-e-de-fe-a-a-d-d-cd-e-d-
+<a-a->e-e-de-fe-gge-e-de-fe-
+<a-a->e-e-de-fe-a-a-d-d-cd-e-d-
+<gg>e-e-de-fe-a-a-e-e-de-fe-
+@12 o5
+[v220 y13a-r>y16cc<y13a-y12a->y14cr<y13a-r>y16cc<y13a-y12a->y14c<y13a-]7 y13a-r>y16cc<y13a-y12a-y16a-y12a->y14cr<
+$DA $16 v205 y10 o3 e-e-de-fe-
+
+; ************************************************************
+
+#5 o4 l16
+
+r8/
+(50)[r8v190e-e-v180e-rv190e-e-v170e-8v190e-e-v180e-rv190e-e-]3 r8v190e-e-v180e-rv190e-e-r8ffe-rd-d-
+[r8v190e-e-v180e-rv190e-e-v170f8v190ffv180frv190ff
+r8v190e-e-v180e-rv190e-e-v170e-8v190e-e-v180e-rv190e-e-]2
+(51)[r8v190ffv180frv190ffv170f8v190ffv180frv190ff]
+(52)[r8v190e-e-v180e-rv190e-e-v170e-8v190e-e-v180e-e-v190e-e-]
+(50)(52)(51)(52)
+r8v190e-e-v180e-rv190e-e-v170d-8v190d-d-v180d-rv190d-d-
+r8v190e-e-v180e-rv190e-e-v170e-rv190a-a-a-v180a-v190a-v195a-
+
+; ************************************************************
+
+#6 o2 l8
+
+r8/
+a-4a-4e-4e-4a-4a-4e-4e-8e-=8f=8g=8
+(60)[a-16r16>e-8<e-16r16>e-16e-16<]
+(61)[e-16r16b-8<b-16r16>b-16b-16]
+a-16r16>e-8<e-16r16>c16d-16
+e-16r16<d-8e-8.>e-16<
+(60) (62)[d-16r16a-8<a-16r16>a-16a-16]
+(60)(61)(60)(62)(61)(60)
+(62)2 (60)2 (61)2 (60)2
+(62)2 (60)2 (61) g16r16>e-8<e-16r16>e-16e-16<
+(60)2
+
+; ************************************************************
+
+#7 o3 l16
+
+r8/
+(70)[v170y3@23a-v150@23a-v155@23a-v150@23a- $EF $AF $0C $0C v185y17 @22a- $EF $2F $0C $0C v150y3@23a-v155@23a- $EF $AF $0C $0C v185y17@22a- $EF $2F $0C $0C]
+(71)[v175y3@23a-v150@23a-v155@23a-v150@23a- $EF $AF $0C $0C v185y17@22a-v145@22a- $EF $2F $0C $0C v150y3@23a-v155@23a-]
+(70) (72)[v175y3@23a-v150@23a- $EF $AF $0C $0C v175y17@22a- $EF $2F $0C $0C v150y3@23a- $EF $AF $0C $0C v175y17@22a- $EF $2F $0C $0C v150y3@23a-v155@23a-v150@23a-]
+(70)(71)(70) (73)[v175y3@23a-v155@23a- $EF $AF $0C $0C v155y17@22a-v140@22a-v150@22a-v155@22a-v165@22a- $EF $2F $0C $0C v150y3@23a-]
+(70)(71)(70)(72)
+(70)(71)(70) v170y3@23a-v150@23a- $EF $AF $0C $0C v160y17@22a-v165@22a-v170@22a- $EF $2F $0C $0C v150y3@23a-v155@23a-v150@23a-
+(70)(71)(70)(72)(70)(71)(70)(73)
+(70)(71)(70)(72)(70)(71)(70)(73)
+
+

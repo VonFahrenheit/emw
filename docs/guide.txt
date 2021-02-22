@@ -1,0 +1,72 @@
+This is a brief guide to the material you'll find in the EMW dev pack!
+
+;========;
+;  code  ;
+;========;
+To the surprise of absolutely no one, this folder contains all the code used in the hack. At times, it holds unused code as well, I suppose. Generally, patches should not be applied individually. Instead, assemble.bat should be run.
+SP_Files.asm is responsible for inserting and cataloguing uncompressed data.
+SP_Level.asm is the levelASM-esque patch of the hack and runs code during levels.
+SP_Menu.asm is responsible for the presents screen, title screen, save files, and status bar.
+SP_Patch.asm contains everything that had no place anywhere else, including a library of global routines.
+
+-- Fe26 --
+This is the sprite engine we use. It has no tool and is instead controlled through just code. It has code and data for all original sprites. It also makes modifications to some vanilla sprites.
+Additionally, this folder contains FusionCore.asm, the engine that handles all extended/minor sprites. FusionCore makes blocks, smoke, extended projectiles and other particle effects significantly more flexible to use.
+
+-- levelcode --
+This folder contains code that runs per level. If you ever used levelASM or uberASM you'll be very familiar with how this is set up. The code here is split into files based on which realm they belong to. This strikes a nice balance between being able to easily find what you're looking for and having a small number of files. SP_Level.asm is the main patch that inserts all this code.
+
+-- MSG --
+This is the text engine we use. It allows for several different fonts that can be changed on the fly, a large number of commands, a handful of window styles, flags for pausing/running the game while the box is open, NPC interaction, and full layer 3 compatibility. When used properly, this will never disrupt layer 3 in any way as it backs up all the registers, graphics and tilemap. The text is rendered using SA-1 CCDMA, which is why the fonts must be stored in linear format.
+
+-- PCE --
+It might be an overly boring name, but the Playable Characters Engine is what allows for co-op, multiple player characters, and uppgrades. This folder contains bespoke code for all the original characters, Mario modifications, and the CORE folder which holds most of the shared code.
+
+-- VR3 --
+You can think of this as the graphics engine. It is responsible for handling communication between CPU and PPU (transfer of GFX, palette data, tilemaps, and block updates), optimizing NMI and allows for up to 6KB of graphics to be updated every frame. Together with LevelGFXIndex.asm and some Fe26 modifications, it is allows for almost every sprite in the game to display properly in-game regardless of what SP1-SP4 are set to in Lunar Magic. Finally, VR3 allows for VRAM remapping, which can let you use up to 8 files of GFX for layers 1 and 2 in a level.
+
+
+
+
+;========;
+;  docs  ;
+;========;
+This folder holds detailed information about the hack. Here you can find everything from a step-by-step guide on how to set up the dev folder to technical information about the hack's RAM map.
+
+
+;====================;
+;  Graphics Library  ;
+;====================;
+The graphics library is really just a way to have named ExGFX. The way it works is that files are sorted into categories such as 2bpp, Sprite GFX, Tilemaps, and so on. The files are all named "ExGFXxxx [name]". Running extract.bat will copy all the graphics in the source folder and organize the copies into 3 output folders: Graphics, ExGraphics, and RawGraphics. Graphics and ExGraphics are inserted with Lunar Magic. These files are compressed. RawGraphics holds uncompressed graphics inserted by SP_Files.asm. The reason we use this system is that it is very easy to see what everything is, even at a glance, while still maintaining effortless compatibility with Lunar Magic. See Graphics doc for more information.
+
+
+;==========;
+;  levels  ;
+;==========;
+This folder holds the most recent version of each level in .mwl format. Generally, old versions can be found in the backup vault but not here.
+
+
+;=========;
+;  music  ;
+;=========;
+Audio is stored here. You can find all the music used in the hack in both .txt and .spc format. All the sound effects are also stored here.
+
+
+;===============;
+;  PaletteData  ;
+;===============;
+This is where we store any palette data that is not stored with the level.
+
+-- HSL --
+This folder holds palette data in HSL format. This format is not directly compatible with the SNES and must be processed by the game before it can be used. The HSL format allows for very pleasant visual effects however and is a worthy inclusion. Unfortunately, there is no easy way to preview HSL palettes. The ones that we use in the hack are however stored here.
+
+-- raw --
+This is where we put any palette data that doesn't fit anywhere else. As you can probably guess from the name, the palettes are uncompressed (.mw3 format) and can be loaded directly by the SNES. Since the first 2 bytes in a palette are unused, these act as a header. This can cause color 0 to look odd in programs like YY-CHR.
+
+-- SpritePalset --
+The palset system is a way of organizing shared sprite palettes. A palset is defined as "up to 15 colors loaded into a row in the SNES' palette". In our hack sprites generally load their palsets automatically and share them as required. Naturally, the limit of 8 sprite palettes at a time still applies. Player character palsets are also stored here. Many palsets have alternate versions (dusk, underwater, etc) that can be applied to achieve faux environmental lighting. Using the palset mixer, these can be partially loaded to fine-tune the effect.
+
+
+
+
+

@@ -1,0 +1,88 @@
+#amk 2
+#SPC
+{
+	#author "Ruberjig"
+	#title "There is Joy (Indoors)"
+	#game "Extra Mario World"
+}
+#samples
+{
+	#optimized
+	"Guitar.brr"
+	"Marimba.brr"
+	"String Ensemble 1.brr"
+	"String Ensemble 2.brr"
+	"izu_chat.brr"
+}
+#instruments
+{
+	@16 $8C $6E $00 $0B $F8
+	"izu_chat.brr" $8E $72 $00 $07 $08
+	"Guitar.brr" $8E $70 $b8 $03 $00
+	"String Ensemble 1.brr" $8C $6A $00 $01 $E6
+	"String Ensemble 2.brr" $8C $6A $00 $02 $8A
+	"Marimba.brr" $8E $70 $00 $05 $08
+}
+
+"pico= @30 y10 $de $20 $0c $40 q7d"
+"chat= @31 p0,0 q7a y10,1,1"
+"stra= @33 p0,0 q7f"
+"strb= @34 p0,0 q7f"
+"bass= @32 y10,1,1 q4e p0,0"
+"mrmb= @35 y10,1,1 p0,0 q7c"
+$EF $FF $02 $02
+$F1 $06 $A0 $00
+$f2 $0f $14 $14
+$F2 $0F $10 $10
+$F4 $02
+#0 w80 v200 l8 t41
+pico o3
+
+[<b>c d4d4d4c<b>ce dc16 d4^16
+<b>cd4. c<bag4f2.]2 r4 >
+(1)[f4f4ed16c16^4
+e4e4dc16<b16^4>]
+d4.dedc<b> c4d4e2
+(1)
+<g4.b>c<bagf2.
+
+#1 v200 o4
+[ chat q7d e  chat q7c e @12q7e e  chat q7f e16  chat q7e e16  chat q7d e16  chat q7c e16  chat q7d e16  chat q7c e16 @12q7e >e<  chat q7f e16  chat q7e e16]99
+
+#2 v200
+@32 o2 q7f
+[c>c<d>d<d>d<d>d<d>d< c>c<c>c<c>c<c>c<< b>b<b>b<b>b<b>b< a>a<a>a<b>b]99
+
+#3 v200
+stra o3 q7f
+[r4d1c1d1f2.]2r4 [f1e1d1c4d4e2]2
+
+#7 v200
+@30 o3 q78 $ee $12 r
+
+[<b>c d4d4d4c<b>ce dc16 d4^16
+<b>cd4. c<bag4f2.]2 r4 >
+(2)[f4f4ed16c16^4
+e4e4dc16<b16^4>]
+d4.dedc<b> c4d4e2
+(2)
+<g4.b>c<bagf2.
+
+
+#5 v200
+strb o4 q7b
+[r4d1c1d1f2.]2 ^4 [f1e1d1c4d4e2]2
+
+#6 v200
+stra o4 q7b
+[r4d1c1d1f2.]2 ^4 [f1e1d1c4d4e2]2
+
+#4 v180
+mrmb o3
+
+[<b>c d4d4d4c<b>ce dc16 d4^16
+<b>cd4. c<bag4f2.]2 r4 >
+(1)
+d4.dedc<b> c4d4e2
+(1)
+<g4.b>c<bagf2.

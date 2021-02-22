@@ -1,0 +1,155 @@
+;*******************************************************************
+; Title = Adventure Begins
+; Ported by LadiesMan217
+;*******************************************************************
+; Insert size: 1378 bytes
+; Number of channels: 7 (Channel 8 unused)
+; Total song length: 0:37
+; Version: AddmusicK 2
+; Samples: Yes (brr)
+;*******************************************************************
+; SPC Generator Info
+#SPC
+{
+	#author "Koji Kondo"
+	#title "Adventure Begins"
+	#game "Yoshi's Island"
+	#comment "Ported by LadiesMan217"
+}
+;*******************************************************************
+;Commands In Song
+
+;VCMD_VIBRATO_ON=$de
+;VCMD_TEMPO_FADE=$e3
+;VCMD_VOL_FADE=$e8
+;VCMD_ECHO_ON=$ef
+;VCMD_ECHO_PARAM=$f1
+;VCMD_ECHO_VOL_FADE=$f2
+;*******************************************************************
+;Samples and Info
+#samples
+{
+	#optimized
+	#YI
+}
+#instruments
+{
+	"YI/yi-29.brr" $8b $e0 $00 $03 $00	;@30 smooth violin
+	"YI/yi-1D.brr" $ff $f6 $00 $01 $82	;@31 strings
+	"YI/yi-1B.brr" $ff $e0 $00 $05 $3d	;@32 violin
+}
+;*******************************************************************
+;Channel 1
+
+#0
+w150 t27 @30 v60 y14 
+$ef $ff $00 $00 
+$f1 $02 $1e $02 
+$f2 $5a $36 $36
+$f5 $0c $21 $2b $2b $13 $fe $f3 $f9
+$de $0e $1c $1e
+q7e o5 c2 $e8 $50 $a0 ^2 $e3 $46 $1f ^2 $e3 $1e $19 ^4.. r16 
+v80 $e8 $b4 $a0 $e3 $46 $1f q7e o4 a+2 $e3 $1e $19
+^4.. r16 v80 $e8 $b4 $a0 $e3 $3c $1f a2 $e3 $1e $19 ^4.. r16 
+v160 $e8 $b4 $a0 $e3 $50 $10 q7e o4 g+2 y14t25 < < c2 c2 c2 c2/
+t29 @32 q7e o2 f2 f2 d2 d2 q7e o2 g2 g2 c2 c2 
+
+;*******************************************************************
+;Channel 2
+
+#1
+@32 v60 y16
+$e8 $c8 $a0 
+$de $0e $1c $1e
+q7e o5 c2 ^2 ^2 ^4.. r16 v80 $e8 $b4 $a0 q7e < a+2 ^4.. r16 v80 $e8 $b4 $a0
+a2 ^4.. r16 v100 $e8 $c8 $c8
+q7e g+2 y4 < c16 q4e c16 q7e c16 q4e c16 q7e c16 q4e c16 q7e c16 q4e c16 
+[q7e c16 q4e c16 q7e c16 q4e c16 q7e c16 q4e c16 q7e c16 q4e c16]3/
+r16 q7b o3 f16 f16 f16 q7c f16 f16 f16 f16 r16 q7d f16 f16 f16 
+q7e f16 f16 f16 f16 r16 q7b d16 d16 d16 q7c d16 d16 d16 d16 r16 
+q7d d16 d16 d16 q7e d16 d16 d16 d16 
+r16 q7b g16 g16 g16 q7c g16 g16 g16 g16 r16 q7d g16 g16 g16 
+q7e g16 g16 g16 g16 r16 q7b c16 c16 c16 q7c c16 c16 c16 c16 r16 
+q7d c16 c16 c16 c16 c16 c16 c16 
+
+;*******************************************************************
+;Channel 3
+
+#2
+@32 v100 y10 
+$de $0e $1c $1e 
+$e8 $c8 $c8
+r2 r2 q7e o4 g16 q4d a16 q7e g16 q4d a16 q7e g16 q4d a16 q7e g16 q4d 
+a16 q7e g16 q4d a16 q7e g16 q4d a16 q7d g16 q4c > c16 q4b e16 q49 g16 
+[v100 $e8 $c8 $c8 q7e < g16 q4d a16 q7e g16 q4d a16 q7e g16 q4d a16 q7e g16 q4d
+a16 q7e g16 q4d a16 q7e g16 q4d a16 q7e g16 q4d > c16 q4c e16 q4b g16]2
+v100 $e8 $c8 $c8 q7e o5 g16 q4d f16 q7e c16 q4d < g+16 q7e g16 q4d f16 q7e c16 
+q4d f16 q7e e2 f2 g4 a4 a+4 > c4/ v180
+[r16 q7b < c16 c16 c16 q7c e16 e16 e16 e16 r16 g16 g16 g16 b16 b16 q7b b16 b16]
+r16 o4 c16 c16 c16 q7c e16 e16 e16 e16 r16 g16 g16 g16 b16 b16 q7b b16 b16 
+* r16 o4 e16 e16 e16 e16 e16 e16 e16 e16 e16 e16 e16 e16 e16 e16 e16 
+
+;*******************************************************************
+;Channel 4
+
+#3
+@32 v100 y12 
+$de $0e $20 $20 
+$e8 $c8 $b4
+r2 r2 q7e o4 e16 q4d f16 q7e e16 q4d f16 q7e e16 q4d f16 q7e e16 q4d f16 q7e 
+e16 q4d f16 q7e e16 q4d f16 q7d e16 q4c g16 q4b > c16 q49 e16 
+[v100 $e8 $c8 $b4 q7e < e16 q4d f16 q7e e16 q4d f16 q7e e16 q4d f16 q7e e16 q4d 
+f16 q7e e16 q4d f16 q7e e16 q4d f16 q7e e16 q4d g16 q4c > c16 q4b e16]2
+v100 $e8 $c8 $c8 q7e o5 d16 q4d c16 q7e < g+16 q4d f16 q7e d16 q4d c16 q7e 
+< g+16 q4d > c16 q7e < g2 a2 a+4 > c4 d4 e4/
+v180 r16 q7b < a16 a16 a16 q7c > c16 c16 c16 c16 r16 e16 e16 e16 g16 g16 q7b 
+g16 g16 r16 < a16 a16 a16 q7c > c16 c16 c16 c16 r16 e16 e16 e16 g16 g16 q7b 
+g16 g16 r16 q7b < a16 a16 a16 q7c b16 b16 b16 b16 r16 > d16 d16 d16 f16 f16 q7b 
+f16 f16 r16 < b16 b16 b16 q7c a16 a16 a16 a16 > c16 c16 c16 < b16 q7d 
+b16 b16 b16 b16 
+
+;*******************************************************************
+;Channel 5
+
+#4
+r=768 @31 y16 v130 
+r2 r2 r2 r2 q7e o6 g24 q7d e24 c24 q7c < a24 q7e > e24 q7d 
+c24 < a24 q7c f24 q7e > c24 q7d < a24 f24 q7c d24/ 
+@32 y8 v180 $de $0c $1c $1c
+r16 q7b < < f16 f16 f16 q7c a16 a16 a16 a16 r16 > c16 c16 c16 e16 e16 q7b 
+e16 e16 r16 < f16 f16 f16 q7c a16 a16 a16 a16 r16 > c16 c16 c16 e16 e16 q7b 
+e16 e16 r16 q7b < f16 f16 f16 q7c a16 a16 a16 a16 r16 b16 b16 b16 > d16 d16 q7b 
+d16 d16 r16 < g16 g16 g16 q7c f16 f16 f16 f16 a16 a16 a16 g16 g16 g16 q7b 
+g16 g16 
+
+;*******************************************************************
+;Channel 6
+
+#5
+r=768
+@31 y18 v130 
+r2 r2 r2 r2 r48 q7e o6 f24 q7d d24 < a+24 q7c g24 q7e > d24 q7d 
+< a+24 g24 q7c e24 q7e a+24 q7d g24 e24 q7c c48/ r=768
+
+;*******************************************************************
+;Channel 7
+
+#6
+@32 v60 y4 
+$de $0c $1a $1e
+$e8 $c8 $78 r2 r2 
+r32 q7e o4 g16 q4d a16 q7e g16 q4d a16 q7e g16 q4d a16 q7e g16 q4d a16 q7e 
+g16 q4d a16 q7e g16 q4d a16 q7d g16 q4c > c16 q4b e16 q49 g32 v60 $e8 $c8 $78
+r32 q7e < g16 q4d a16 q7e g16 q4d a16 q7e g16 q4d a16 q7e g16 q4d a16 q7e 
+g16 q4d a16 q7e g16 q4d a16 q7e g16 q4d > c16 q4c e16 q7b g16 v60 $e8 $c8 $78
+q7e < g16 q4d a16 q7e g16 q4d a16 q7e g16 q4d a16 q7e g16 q4d a16 q7e g16 q4d 
+a16 q7e g16 q4d a16 q7e g16 q4d > c16 q4c e16 q4b g32 v60 $e8 $c8 $78
+r32 q7e g16 q4d f16 q7e c16 q4d < g+16 q7e g16 q4d f16 q7e c16 q4d f16 q7e 
+e2 f2 g4 a4 a+4 > c8../
+[r16. q7b < c16 c16 c16 q7c e16 e16 e16 e16 r16 g16 g16 g16 b16 b16 q7b b16 b16]
+r16 o4 c16 c16 c16 q7c e16 e16 e16 e16 r16 g16 g16 g16 b16 b16 q7b b16 b32 
+* r16 o4 e16 e16 e16 e16 e16 e16 e16 e16 e16 e16 e16 e16 e16 e16 e32 
+
+;******************************************************************* 
+
+#amk 2

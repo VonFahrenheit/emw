@@ -1,0 +1,289 @@
+#amk 2
+#SPC
+{
+	#author "Ruberjig"
+	#game "Extra Mario World"
+	#title "Perilous Plains"
+	#comment "part of a balanced breakfast"
+}
+#samples
+{
+	#optimized
+	
+"Trumpet.brr"
+"Sine Marimba.brr"
+"Marimba.brr"
+"Flute.brr"
+"ocarina.brr"
+"Saxophone.brr"
+
+"String Ensemble 2.brr"
+
+	"conga.brr"
+	"Kick.brr"
+	"Synth Snare.brr"
+	"izu_chat.brr"
+	
+	"Guitar.brr"
+	"synth bass 1.brr"
+	"piano.brr"
+}
+#instruments
+{
+"Trumpet.brr" $8C $60 $B8 $04 $00
+"Sine Marimba.brr" $8D $8C $B8 $08 $00
+"Saxophone.brr" $fC $CC $00 $02 $00
+"Marimba.brr" $8E $7C $B8 $02 $80
+"ocarina.brr" $8C $CC $B8 $04 $00
+
+"Guitar.brr" $8F $72 $B8 $03 $00
+
+	"Kick.brr" $8E $BC $00 $06 $00 
+	"izu_chat.brr" $fe $B5 $00 $09 $00
+	"Synth Snare.brr" $ef $B0 $B8 $04 $00
+	"conga.brr" $06 $B3 $60 $06 $00
+	
+"String Ensemble 2.brr" $AB $AA $00 $02 $8C
+;@2 $FF $72 $B8 $0C $00
+
+
+	
+	
+	"synth bass 1.brr"		$AE $66 $B8 $02 $00
+	"piano.brr"		$AE $D0 $B8 $06 $00
+}
+
+"tgec = $F4 $03"
+
+
+$EF $DF $04 $04
+$F1 $04 $A0 $00
+$F2 $0F $14 $14
+t90 w185
+
+#0 q7F 
+@33 o5 p0,0
+[v200 g v180 g v160 g v120 g v100 g v80 g v60 g v40 g]8/
+[@30 v170 o5 116 $DE $30 $08 $60
+g4rg2..gfecef
+e4r
+d4r
+d1.
+$eb $01 $04 $03 e $eb $00 $00 $00
+rgercrerdrfregr
+@31 v180 o4 116
+ce agfe <a>ea>c gec<a]2
+
+[@32 v220 o4 116 p0,0
+g4rg2..gfecef $DD $18 $02 e^4r
+d4r
+d1.
+grgercrerdrfregr
+@33 v190 o5 116 $DE $30 $08 $60
+a>c gec<a4ea>c gec<a]2
+
+@34 o4 116
+cegdgfr
+grfrerdrc
+frr
+err
+d1.
+
+fdfgr
+grfrerdre
+g2.
+ge
+g^1
+
+>ed<bged agfedc
+egd
+$EB $01 $08 $03 <a4. $EB $00 $00 $00 a4. f1.>
+
+<ag>cdefg
+defdefga
+efgefgab
+fgafab>c
+[gec<aga>ce]4
+
+#6 
+[r1]8/r5 $EE $0C q7F 
+[@4 $ED $0E $EA o5 116 p0,0 v100 
+g4rg2..gfecef
+e4r
+d4r
+d1.
+grgercrerdrfregr 
+@13 $ED $0E $EA o5 116 v120
+ce agfe <a>ea>c gec<a]2
+
+[@1 $ED $0E $CA o4 116 v150
+g4rg2..gfecef
+e4r
+d4r
+d1.
+grgercrerdrfregr
+@16 $ED $0E $EA o5 116 v130
+a>c gec<a4ea>c gec<a]2
+
+@0 $ED $0E $EA o4 116 v100
+cegdgfr
+grfrerdrc
+frr
+err
+d1.
+
+fdfgr
+grfrerdre
+g2.
+ge
+g^1
+
+>ed<bged agfedc
+egd
+c4.< a4. f1.>
+
+<ag>cdefg
+defdefga
+efgefgab
+fgafab>c
+[gec<aga>ce]4
+
+
+#1 v250 o3 @35 p0,0
+[g<g>gg<g>eg4<g>e4<e>a4<a>e]99
+
+#2 v250 o4 $ED $0F $E0
+[@36c @37c @39>c<
+@36c @37c @37c
+@37c @39>c<]8
+/
+[@36c @37c @37c
+@36c @37c @37c
+@39>c< @37c
+@36c @36c @37c
+@38c @37c @37c
+@38c @37c]99
+
+#3 q7F v180
+[@40 o5 116 p0,0
+g4g4g4g
+f4f4ff4
+ee4e4ee4e
+f4f4fg4a4]2
+/
+[$ED $0B $AA g1^1
+e1^1
+d1^1
+$ED $0B $B4
+g1^1]2
+o4
+[$ED $0B $AA g1^1
+e1^1
+d1^1
+$ED $0B $B4
+] g1^1
+
+*1 g1
+ @42
+l24
+o6dc<bag fedc <abgf edc
+<bag fedc
+r
+l8
+@40 o5
+$ED $0B $AA
+c1^1
+<b1^1
+a1^1>
+e1^1
+g1^1
+d1^1
+f1g1a1b1>
+c1^1^1^1
+
+#5 q7F v250
+[@40 o3 116 p0,0
+g4g4g4g
+f4f4ff4
+ee4e4ee4e
+f4f4fg4a4]2
+/
+[$ED $0B $AA g1^1
+e1^1
+d1^1
+$ED $0B $B4
+g1^1]4
+$ED $0B $AA
+c1^1
+<b1^1
+a1^1>
+e1^1
+g1^1
+d1^1
+f1g1a1b1>
+c1^1^1^1
+
+#4 q7F v250
+[@41 o3 116
+g4g4g4g
+f4f4ff4
+ee4e4ee4e
+f4f4fg4a4]2
+/
+[$ED $0B $AA g1^1
+e1^1
+d1^1
+$ED $0B $B4
+g1^1]4
+$ED $0B $AA
+c1^1
+<b1^1
+a1^1>
+e1^1
+g1^1
+d1^1
+f1g1a1b1>
+c1^1^1^1
+
+#7 q7F 
+[r1]8/ p0,0 $EE $08
+[@30 v170 o4 116
+g4rg2..gfecef
+e4r
+d4r
+d1.
+grgercrerdrfregr
+@31 v180 o3 116
+ce agfe <a>ea>c gec<a]2
+
+[@32 v220 o3 116 
+g4rg2..gfecef
+e4r
+d4r
+d1.
+grgercrerdrfregr
+@2 $ED $0F $6C v150 o4 116 
+a>c gec<a4ea>c gec<a]2
+
+@2 $ED $0F $6C o4 116
+cegdgfr
+grfrerdrc
+frr
+err
+d1.
+
+fdfgr
+grfrerdre
+g2.
+ge
+g^1
+
+>ed<bged agfedc
+egd
+c4.< a4. f1.>
+
+<ag>cdefg
+defdefga
+efgefgab
+fgafab>c
+[gec<aga>ce]4

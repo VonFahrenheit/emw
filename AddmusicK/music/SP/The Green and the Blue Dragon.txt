@@ -1,0 +1,165 @@
+#am4
+
+#SPC
+{
+	#author "ThinkOneMoreTime"
+	#title "The Green and the Blue Dragon"
+}
+
+;The green and the blue dragon(Who will win?) - ThinkOneMoreTime
+	$ED $80 $6D $2B
+	$ED $80 $7D $00
+	$F0
+
+#0  w0 y10  t80
+(100)[@0  $ED $5C $C1 v160]1 ;Flute
+(101)[$DE $30 $07 $30]1 ;Vibrato
+
+$F1 $04 $4A $01
+$EF $FD $15 $15
+r2w255/
+(25)[o4
+<
+
+
+f16
+^16 $DD $00 $05 $9f
+^8
+
+b4>d8g8
+
+e16
+
+^4 $DD $00 $05 $a9
+r16
+
+d4f8d+4^8c4
+d+8d4<a+4g4
+>c4^8d+4c8d4
+<g4g8a+8a4^8f4
+d8g2^4
+f16
+^16 $DD $00 $05 $9f
+^8
+
+b4>d8g8
+
+e16
+
+^4 $DD $00 $05 $a9
+r16
+
+
+d4f8d+4^8c4
+d+8d4<a+4g4
+>c4^8d+4c8d4
+<g4>g8a8b16>c16<a8g8f8
+g8a8g2g8a8
+b4^8>d4<b8>c4
+<b4a4f4^8a4
+>c8<b4g4g8a8
+b4^8>d4<b8>c4
+<b4a4f4^8a4
+>c8<b2g8a8
+b4^8>d4<b8>c4
+<b4a4f4^8a4
+>c8<b4g4g8a8
+b4^8>d4<b8>c4
+<b4a4f4^8a4
+>c8d16c16<b16a16g16f16e16d16c16<b16>c16d16
+b8g8d8b8g8d8<f16a16>d16e16
+f16g16a16b16>c16d16c16<b16f16c16f16g16a16b16>c16<b16
+a16g16f16c16g8b8>d8<b8>d8<b8
+b8g8d8b8g8d8<f16a16>d16e16
+f16g16a16b16>c16d16c16<b16f16c16f16g16a16b16>c16<b16
+a16g16f16c16g8b8>d8<b8>d8<b8
+b4^8>d4<b8>c4
+<b4a4f4^8a4
+>c8<b4g4g8a8
+b4^8>d4<b8>c4
+<b4a4f4^8a4
+>c8<b2g8a8]
+;
+
+
+#3 @3
+r2/
+(25)
+
+
+#1 @1 v240 y10 r2/
+(101)
+o3
+(1)[b4>d4a8b8a4^8
+f4a8g4^8d+4
+g8f4d4<a+4
+>d+4^8g4d+8f4
+<a+4]a+8>d8c4^8<a4
+f8a+2^4
+(1)>b8>c8d8c8<b8a8
+b8>c8<b2^4
+(2)[d4^8f4d8e4
+d4c4<a4^8>c4
+e8d4<b4b8>c8
+d4^8f4d8e4
+d4c4<a4^8>c4
+e8d2<b8>c8]
+g8a8b8>c8d8e8f4
+e4d4<(3)[a4^8>c4
+<a8]b8>c8d8e8f8g8
+g4^8b4g8a4
+f4f4(3)b2^4
+(4)[
+g8d8<b8>g8d8<b8>f4
+d4<a4>f8c8<a8>f8]
+(5)[c8<a8>g4d4<b4]
+>(4)
+(5)
+
+(2)
+
+;
+#2 @8 v255 y10 r2/
+o3
+
+<
+(91)[g4^8>d4<g8d4
+f4d4d+4^8a+4
+d+8g4>d4<g4
+>c4d+4c4<]g4
+a+4g4d4f4d4g2^4(91)g2^4d4^8f4^8g2^4(92)[g4>d8<g8>d8<g8d4a8d8a8d8f4>c8<f8]
+(93)[>c8<f8g4>d8<g8>d8<g8]
+(92)(93)(92)(93)(92)(93)(92)(93)(92)(93)(92)(93)(92)(93)
+
+
+#7 @9 v240 y10 r2/
+
+o4(59)[d8<b8>d8<b8>d8<b8>c4
+<a4>c4r8d+8g8d+8
+g8d+8<a+4g4a+4
+r8>c8d+8c8d+8c8d4]
+<a+4>d4r8d8f8d8
+f8d8g4d4<a+8>c8
+(59)<a+4>d8e8f8e8f8d8
+f8d8g4d4<b8>c8
+(52)[r8g8>d8<g8>d8<g8r8d8
+a8d8a8d8r8f8>c8<f8
+>c8<f8b8a8g8f8g8a8
+g8b8>d8<g8>d8<g8r8d8
+a8d8a8d8r8f8>c8<f8]
+(53)[>c8<f8b8a8g8f8g8a8]
+(52)(53)(54)[b8g8d8b8g8d8a4]
+(55)[f4d4>c8<a8f8>c8]
+(56)[<a8f8>d4<b4g4]
+(54)(55)(56)(52)(53)
+
+
+
+;
+#5 @0 v240 y10 r2/
+o3
+[@22a8@22a8@22a8@24a8@22a8r8@22a8@22a8@22a8@24a8@22a8r8]8
+
+[@21a8@22a8@22a8@24a8@22a8@21a8@29a8@22a8@22a8@24a8@22a8@21a8]15
+
+@22a8@22a8@22a8@24a8@22a8r8@22a8@22a8@22a8@24a8@22a8r8;

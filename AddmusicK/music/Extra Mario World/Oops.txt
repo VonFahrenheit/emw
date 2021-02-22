@@ -1,0 +1,41 @@
+#am4
+#SPC
+{
+	#author "Ruberjig"
+	#game "Extra Mario World"
+	#title "Oops"
+}
+#tempoimmunity
+$EF $FF $02 $02
+$F1 $06 $50 $00
+$F2 $0F $14 $14
+$F4 $02
+#0 w230 v180 l8 t48
+@15 o4 a2
+@0 o4 $de $20 $0a $40
+a16g16f16e16 g16f16e16d16 c16<a16>c16<a16>c1 
+/r1
+
+#1 v200
+@29 o4 a2
+@0 o3 
+a16g16f16e16 g16f16e16d16 c16<a16>c16<a16>c1 
+/r1
+
+#2 v240
+@6 o5 ar4.
+@1 o4
+a4 g4 <a4> c1 
+/r1
+
+#3 v240
+@0 o4 ar4.
+@1 o3
+a4 g4 <a4> c1 
+/r1
+
+#5 v240
+@3 o3 ar4.
+@8 o2 $de $20 $0a $40
+a2 <a4> c1 
+/r1

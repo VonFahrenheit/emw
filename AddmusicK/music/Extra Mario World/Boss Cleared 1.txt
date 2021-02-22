@@ -1,0 +1,62 @@
+#amk 2
+#SPC
+{
+	#author "Ruberjig"
+	#game "Extra Mario World"
+	#title "Boss Cleared 1"
+}
+#samples
+{
+	#optimized
+	"izu_snare.brr"
+	"Bass Drum.brr"
+	"izu_chat.brr"
+	"String Ensemble 2.brr"
+	"XG_Crash.brr"
+	"Orchestral Harp.brr" 
+	"Trumpet003.brr"
+	"Timpani.brr"
+	"Piano.brr"
+}
+#instruments
+{
+	"Trumpet003.brr" $FC $E8 $B8 $06 $00
+	"String Ensemble 2.brr" $FB $E8 $00 $02 $8A
+	@10 $ff $f0 $00 $06 $00
+	"izu_snare.brr" $02 $26 $60 $0C $80
+	"XG_Crash.brr" $FE $CE $CF $04 $82	;@34
+}
+$EF $FF $14 $14
+$F1 $06 $48 $01
+$F5 $50 $BF $DB $E0 $E0 $0A $C8 $C8
+
+#0 w140 v220 l8 t49
+@30 o4 q5f r^4
+e2. f12f12f12  g2. g12g12g12 a2b12r12g12r12b12r12 $ed $0f $ea q7f >c1^1^1^1 /r1
+
+#1 v240
+@30 o3 q5f r^4
+e2. f12f12f12  g2. g12g12g12 a2b12r12g12r12b12r12 $ed $0f $ea q7f >c1^1^1^1 /r1
+
+#2 v200
+@31 o4 q5f r^4
+e1g1a1 q7f >c1^1^1^1 /r1
+
+#3 v200
+@31 o5 q5f r^4
+e1g1a1 q7f >c1^1^1^1 /r1
+
+#4 v200
+@31 o3 q5f r^4
+e1g1a1 q7f >c1^1^1^1 /r1
+
+#5 v200
+@31 o4 q5f r^4
+c1e1f1 q7f g1^1^1^1 /r1
+
+#6v100 o1 q5f $E8 $40 $F0 o2
+@33[e24]9 e1e1e1 q7f e1^1^1^1/r1
+
+#7 v250 q6f $ed $0f $f0 $FA $03 $40 r^4
+[@32o2e12e24e24e12 e12e12e12 e12e12e12 @33 e12e12e12]3
+o4@34c1^1^1^1/r1

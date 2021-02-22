@@ -1,0 +1,26 @@
+#jsr dizzyOFF
+#asm dizzyOFF
+{
+	mov a, $0384
+	beq +
+	mov $51, a
+	mov a, #$00
+	mov $0384, a	
+	mov $50, #$00
+	
+	
+	mov x, #$0e            ; foreach voice
+	mov $48, #$80
+	-
+	mov a, #$00				
+	mov $0270+x, a		; pitch back to normal
+	
+	mov   a, $31+x		
+	
+	lsr   $48
+	dec   x
+	dec   x
+	bpl   -             ; loop for each voice
+	+
+	ret
+}

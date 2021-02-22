@@ -1,0 +1,122 @@
+#amk 2
+#SPC
+{
+	#author "Ruberjig"
+	#game "Extra Mario World"
+	#title "Castle Crusade"
+}
+#path "allsamp"
+#samples
+{
+	#optimized
+	"Choir Aahs.brr" 
+	"izu_snare.brr"
+	"Kick.brr" 
+	"izu_chat.brr"
+	"String Ensemble 1.brr"
+	"Crash Cymbal.brr"
+	"Organ (Church).brr"
+	"Timpani.brr"
+	"String Ensemble 2.brr"
+}
+#instruments
+{
+	"Organ (Church).brr" $FD $88 $B8 $04 $02
+	"Choir Aahs.brr" $FD $AA $B8 $02 $00
+	"Organ (Church).brr" $FE $82 $B8 $04 $00
+	"izu_snare.brr" $02 $26 $60 $05 $00
+	@10 $ff $70 $00 $01 $80
+	@8 $8E $6C $B8 $1E $00;						;SMW Bass is actually great here
+	"izu_chat.brr" $fe $75 $00 $05 $08
+	"Kick.brr" $8E $75 $00 $03 $00
+	"String Ensemble 2.brr" $FE $A6 $00 $02 $8A
+	"Crash Cymbal.brr" $FE $D2 $CF $05 $40	;@39
+	@8 $8E $6C $B8 $1E $00
+	"Timpani.brr" $fe $70 $00 $03 $00
+	@13 $8f $97 $B8 $06 $00
+	"String Ensemble 1.brr" $FE $A6 $00 $01 $E6
+}
+"tgec= $F4 $03"
+"rgec= $EF $DF $04 $04"
+$F1 $06 $50 $00
+$F2 $0F $20 $20
+
+#0 w170 v180 o5 $F4 $02
+t40 @30 q4f y7
+c2..<b16b16b1 b2..a16a16a1 a2..g16g16g2.. g16g16 a4> t39 c4< t38 b2 t37 g. t34 a. t31 >c<b2 t45 ^1^1
+t54
+o4 $EF $FC $04 $04  q6f
+[d16f16a16 e16g16b16 d16f16a16 e16g16b16 d16f16a16f16]4
+/ o4 $EF $FF $04 $04
+[c2..<b16b16b1 b2..a16a16a1 a2..g16g16g2.. g16g16 a4>c4<b2 g.a.>c<b2]2
+@42 v170
+[a.g.a a.g.a a.g.a a.g.a g.f.g g.f.g g.f.g g.f.g a.g.a a.g.a a.g.a a.g.a b.a.b b.a.b b.a.b b.a.b]2 q7f
+@30 v180
+[d16f16a16 d16f16a16 d16f16 <a16>d16 <a16>f16 a16f16d16a16]4
+>
+[d16f16a16 d16f16a16 d16f16 <a16>d16 <a16>f16 a16f16d16a16]4
+
+#1 @30 o4 q4f v200 y13
+c2..<b16b16b1 b2..a16a16a1 a2..g16g16g2.. g16g16 a4>c4<b2 g.a.>c<b2 ^1^1
+o3  q6f
+[d16f16a16 e16g16b16 d16f16a16 e16g16b16 d16f16a16f16]4
+/ o3
+[c2..<b16b16b1 b2..a16a16a1 a2..g16g16g2.. g16g16 a4>c4<b2 g.a.>c<b2]2
+@42 v180
+[a.g.a a.g.a a.g.a a.g.a g.f.g g.f.g g.f.g g.f.g a.g.a a.g.a a.g.a a.g.a b.a.b b.a.b b.a.b b.a.b]2 q7f
+@30 v200
+[d16f16a16 d16f16a16 d16f16 <a16>d16 <a16>f16 a16f16d16a16]4
+>
+[d16f16a16 d16f16a16 d16f16 <a16>d16 <a16>f16 a16f16d16a16]4
+
+#2 @43 o5 v220 y15 q7f
+c1<b1 b1a1 a1g1 a4>c4<b2 g4.>c<b2 ^1^1
+
+[r1]2 $ed $04 $A8 g1^1 $ed $7e $AA
+/ o4
+[c1<b1 b1a1 a1g1 a4>c4<b2 g4.>c<b2]2
+o4 v160
+[a1^1 g1^1 a1^1 b1^1]2
+[d. d. d. d. a4]8
+
+
+#3 @31 o4 v170 y5 q7f
+c1<b1 b1a1 a1g1 a4>c4<b2 g4.>c<b2 ^1^1
+
+[r1]2 $ed $04 $A8 g1^1 $ed $7e $AA
+/ o5
+[c1<b1 b1a1 a1g1 a4>c4<b2 g4.>c<b2]2
+o4
+[a1^1 g1^1 a1^1 b1^1]2
+[d. d. d. d. a4]8
+
+#4 @40 q7f o1 v180 $DE $20 $0C $20
+[b16>c16d16e16f16g16a16b16>c16 d16e16f16g16a16g16f16]6
+o2 <a4>c4<b2 g.a.>c<b2 ^1^1
+[r1]2 @38 o3 $ed $04 $A8 e1^1 $ed $7e $AA
+/@32 o3 v160
+$E6 $00[a16g16f16g16]8 [g16f16e16f16]8 [f16e16d16e16]8 [g16f16e16f16]8 $E6 $32
+
+#5 o4 v230 q7f
+[ tgec @33e rgec @34e24e24e24 tgec @33e rgec @34e24e24e24 tgec @33e rgec @34e24e24e24 tgec @33e@33e]7
+@33e rgec @34e24e24e24 tgec @33e@33e  rgec q4e v70 $e8 $f0 $f0
+@34[e32]80 v200
+[@36e16e16e]16 v230
+/
+[q7f@37e16@36q4de16e16e16 q7f tgec @33e16 rgec @36q4de16e16@37q7fe16]99
+
+#7 v240 q7f
+@31 o3
+c1<b1 b1a1 a1g1 a4>c4<b2 g4.>c<b2 ^1^1 q7f $FA $03 $80
+[@35 o2 d<d16>d16<d16>d16<d]8
+/
+[@35 o2 df16a16g16f16e df16a16g16f16e df16a16g16f16e df16a16g16f16e
+ce16g16f16e16d ce16g16f16e16d ce16g16f16e16d ce16g16f16e16d
+<b>d16f16e16d16c <b>d16f16e16d16c <b>d16f16e16d16c <b>d16f16e16d16c
+ce16g16f16e16d ce16g16f16e16d ce16g16f16e16d ce16g16f16e16d]99
+ 
+#6 v200 o4 $FA $03 $40 q7f $e5 $01 $50 $10
+@39 [c1]7@39c2@39c2^1 $ed $01 $f0 c1 @39 $ed $0f $f0 c1 r1 @38 $ed $04 $e8 o2 e1^1 $ed $7e $ea
+/@39 o4 v200 c1  (71)[@38o2b1 b1a1 a1g1 a4>c4<b2] g4.>c<b2> c1 (71) v100 $E8 $60 $FF @41[e32]32@39
+o4 v200 c1^1 (72)[@38o2 g1^1 a1^1] b1^1 a1^1(72) b1 v100 $E8 $60 $FF @41[e32]32@39 o4 v200
+c1 (73)[@0o3 d. d. d. d. a4]6 v100 $E8 $60 $FF @41[e32]32

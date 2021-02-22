@@ -1,0 +1,65 @@
+;*******************************************************************
+;Title = Game Start
+;Pobted by LadiesMan217
+;*******************************************************************
+; Insert size: 146 bytes
+; Number of channels: 3 (Channels 4, 5, 6, 7, 8 unused)
+; Total song length: 0:03
+; Version: AddmusicK 2
+; Samples: Yes (brr)
+;*******************************************************************
+; SPC Generator Info
+#SPC
+{
+	#author "Koji Kondo"
+	#title "Game Start"
+	#game "Yoshi's Island"
+	#comment "Ported by LadiesMan217"
+}
+;*******************************************************************
+;Commands In Song
+?
+#tempoimmunity
+;VCMD_PITCHENV_TO=$eb
+;VCMD_ECHO_ON=$ef
+;VCMD_ECHO_PARAM=$f1
+;*******************************************************************
+;Samples and Info
+#samples
+{
+	#optimized
+	#YI
+}
+#instruments
+{
+	"YI/yi-1C.brr" $ff $e0 $00 $07 $a8	;@30 bongos
+	"YI/yi-18.brr" $8f $e0 $00 $07 $a8	;@31 snare
+}
+;*******************************************************************
+;Channel 1
+
+#0
+w185 t24 @30 v200 y12 
+$ef $07 $00 $00 
+$f1 $02 $1e $01
+$f5 $0c $21 $2b $2b $13 $fe $f3 $f9
+$eb $02 $04 $fb
+r12... q7f o3 d16 q1c < b48.. q3b > c32 q7f d16 q7d 
+< b32 q2c > c32 q3f d32 q3c < b32 q19 b=5 q7f > d12... 
+
+;*******************************************************************
+;Channel 2
+
+#1
+@30 v200 y8
+r12... q7f o2 e8 e8 e16. e12... 
+
+;*******************************************************************
+;Channel 3
+
+#2
+@31 v200 y10
+r12... q7f o1 f8 q1d f8 q7f f16 r32 f12... 
+;*******************************************************************
+
+#amk 2

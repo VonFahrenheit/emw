@@ -1,0 +1,244 @@
+#amk 2
+#SPC
+{
+	#author "Ruberjig"
+	#game "Extra Mario World"
+	#title "Dilapidated Badlands"
+	#comment "rattle me bones"
+}
+#samples
+{
+	#optimized
+	
+"Pizzicato001.brr"
+"Violin.brr"
+"French Horn.brr"
+"Marimba.brr"
+"Sine Wave.brr"
+"pan flute.brr"
+
+"String Ensemble 2.brr"
+
+	"conga.brr"
+	"Kick.brr"
+	"Synth Snare.brr"
+	"izu_chat.brr"
+	
+	"Guitar.brr"
+	"synth bass 1.brr"
+}
+#instruments
+{
+"Pizzicato001.brr" $8C $60 $B8 $02 $60
+"Violin.brr" $8f $AC $00 $02 $E8
+"French Horn.brr" $8C $AF $df $04 $80
+"Marimba.brr" $8E $7C $B8 $02 $78
+"Sine Wave.brr" $EA $B2 $df $02 $00
+"pan flute.brr" $8A $48 $B8 $03 $00
+
+"String Ensemble 2.brr" $AB $A6 $00 $02 $8C
+@2 $FF $72 $B8 $0C $00
+
+	"Kick.brr" $8E $BC $00 $06 $00 
+	"izu_chat.brr" $fe $B5 $00 $09 $00
+	"Synth Snare.brr" $ef $B0 $B8 $04 $00
+	"conga.brr" $06 $B3 $60 $06 $00
+	
+	"Guitar.brr" $8F $72 $B8 $03 $00
+	"synth bass 1.brr"		$Fd $75 $B8 $02 $00
+}
+
+"tgec = $F4 $03"
+
+$EF $DF $04 $04
+$F1 $01 $A0 $00
+$F2 $0F $24 $24
+t50 w185
+
+#0 q7F v200
+
+@1 @30 $ED $0E $D2 o4 l8 $DE $30 $0C $60
+[egb2 egb2 >ec<g4]2
+[df-a2 df-a2 >d<bf-4]2
+[egb2 egb2 >ec<g4]2
+[df-a2 df-a2 >d<bf-4]2
+
+@0 @31 $ED $0E $CC o4 l8 $DE $30 $0C $10
+[d4f-a2. >dc<af-4d4
+<b4>d $DD $1C $04 f-^2. baf-d4<b4>
+d4f-a2. >dc<af-4d4
+e4rb2 >e $DD $1A $04 <b^1]2
+
+@1 @32 $ED $0A $CC o4 l8 $DE $30 $0C $60
+[bdgb4.
+bdgb4. >d<bgd
+adga4d adga4a gadf-
+a4.g4.dbg2.df-
+b4.g^4f-4 $EB $A0 $C0 $78 b1 $EB $00 $00 $00
+]2
+
+@1 @33 $ED $0E $D4 o4 l8 $DE $30 $0C $10
+[egb2 egb1]2
+[df-a2 df-a1]2
+[egb2 egb1]2
+[df-a2 df-a1]2
+
+#7 q7F v120 $ee $08 r12.
+
+@1 @30 $ED $0E $D2 o4 l8 $DE $30 $0C $60
+[egb2 egb2 >ec<g4]2
+[df-a2 df-a2 >d<bf-4]2
+[egb2 egb2 >ec<g4]2
+[df-a2 df-a2 >d<bf-4]2
+
+@0 @31 $ED $0E $CC o4 l8 $DE $30 $0C $10
+[d4f-a2. >dc<af-4d4
+<b4>df-2. baf-d4<b4>
+d4f-a2. >dc<af-4d4
+e4rb2 >e<b1]2
+
+@1 @32 $ED $0A $CC o4 l8 $DE $30 $0C $60
+[bdgb4.
+bdgb4. >d<bgd
+adga4d adga4a gadf-
+a4.g4.dbg2.df-
+b4.g^4f-4b1]2
+
+@1 @33 $ED $0E $D4 o4 l8 $DE $30 $0C $10
+[egb2 egb1]2
+[df-a2 df-a1]2
+[egb2 egb1]2
+[df-a2 df-a1]2
+
+#3 q7F v200
+
+@1 @30 $ED $0E $D2 o3 l8 $DE $30 $0C $60
+[egb2 egb2 >ec<g4]2
+[df-a2 df-a2 >d<bf-4]2
+[egb2 egb2 >ec<g4]2
+[df-a2 df-a2 >d<bf-4]2
+
+@0 @34 $ED $0E $CC o3 l8 $DE $30 $0C $10
+[d4f-a2. >dc<af-4d4
+<b4>df-2. baf-d4<b4>
+d4f-a2. >dc<af-4d4
+e4rb2 >e<b1]2
+
+@1 @35 $ED $0A $CC o4 l8 $DE $30 $0C $60
+[bdgb4.
+bdgb4. >d<bgd
+adga4d adga4a gadf-
+a4.g4.dbg2.df-
+b4.g^4f-4b1]2
+
+@1 @30 $ED $0E $D4 o4 l8 $DE $30 $0C $20
+[egb2 egb1]2
+[df-a2 df-a1]2
+[egb2 egb1]2
+[df-a2 df-a1]2
+
+#1 q7f v200
+
+@1 @43 $ED $0A $CC o2 l8 p30,10
+[e2. e2. >e2<]2
+[d2. d2. >d2<]2
+[e2. e2. >e2<]2
+[d2. d2. >d2<]2
+$ED $0A $CA
+[d1^1 <b1^1> d1^1 e1^1]2
+$ED $0C $D4
+[q7f b q7d b q7b b q7f b q7d b q7b b q7f b q7d b]2
+[q7f a q7d a q7b a q7f a q7d a q7b a q7f a q7d a]2
+[q7f g q7d g q7b g q7f g q7d g q7b g q7f g q7d g]2
+[q7f a q7d a q7b a q7f a q7d a q7b a q7f a q7d a]2
+
+[q7f b q7d b q7b b q7f b q7d b q7b b q7f b q7d b]2
+[q7f a q7d a q7b a q7f a q7d a q7b a q7f a q7d a]2
+[q7f g q7d g q7b g q7f g q7d g q7b g q7f g q7d g]2
+[q7f a q7d a q7b a q7f a q7d a q7b a q7f a q7d a]2
+
+@1 @37 $ED $0E $D0 o2 l8 p0,0
+[e2. e2. >e2<]2
+[d2. d2. >d2<]2
+[e2. e2. >e2<]2
+[d2. d2. >d2<]2
+
+#2 q7f v200 p30,10
+
+@1 @36 $ED $0A $CC o4 l8
+[e2. e2. >e2<]2
+[d2. d2. >d2<]2
+[e2. e2. >e2<]2
+[d2. d2. >d2<]2
+$ED $0A $CA
+[d1^1 <b1^1> d1^1 e1^1]2
+$ED $0C $D4
+[q7f b q7d b q7b b q7f b q7d b q7b b q7f b q7d b]2
+[q7f a q7d a q7b a q7f a q7d a q7b a q7f a q7d a]2
+[q7f g q7d g q7b g q7f g q7d g q7b g q7f g q7d g]2
+[q7f a q7d a q7b a q7f a q7d a q7b a q7f a q7d a]2
+
+[q7f b q7d b q7b b q7f b q7d b q7b b q7f b q7d b]2
+[q7f a q7d a q7b a q7f a q7d a q7b a q7f a q7d a]2
+[q7f g q7d g q7b g q7f g q7d g q7b g q7f g q7d g]2
+[q7f a q7d a q7b a q7f a q7d a q7b a q7f a q7d a]2
+
+@1 @37 $ED $0E $D0 o3 l8 p0,0
+[e2. e2. >e2<]2
+[d2. d2. >d2<]2
+[e2. e2. >e2<]2
+[d2. d2. >d2<]2
+
+
+#4 q7F v130 r16.
+
+
+@1 @30 $ED $0E $D2 o4 l8 $DE $30 $0C $60
+[egb2 egb2 >ec<g4]2
+[df-a2 df-a2 >d<bf-4]2
+[egb2 egb2 >ec<g4]2
+[df-a2 df-a2 >d<bf-4]2
+
+@0 @31 $ED $0E $CC o4 l8 $DE $30 $0C $10
+[d4f-a2. >dc<af-4d4
+<b4>df-2. baf-d4<b4>
+d4f-a2. >dc<af-4d4
+e4rb2 >e<b1]2
+
+@1 @32 $ED $0A $CC o4 l8 $DE $30 $0C $60
+[bdgb4.
+bdgb4. >d<bgd
+adga4d adga4a gadf-
+a4.g4.dbg2.df-
+b4.g^4f-4b1]2
+
+@1 @33 $ED $0E $D4 o4 l8 $DE $30 $0C $10
+[egb2 egb1]2
+[df-a2 df-a1]2
+[egb2 egb1]2
+[df-a2 df-a1]2
+
+#5 q7F v240
+o4
+[r1]7 r2 tgec
+[@39e32]8 [@39e24]3 [@39e16]2 tgec
+[@38e@39etgec@41>c<tgec@38e
+@38e@39e@39e@38e
+@39e@38e@39e@39e
+tgec@40e@41>c<tgec@39etgec@41>c<tgec]99
+
+#6 q7F v180
+@42 $ED $0E $D2 o3 l8 $DE $30 $0C $20
+[r1]8
+(60)[egb2 egb2 >e2<]2
+(61)[df-a2 df-a2 >d2<]2
+
+[egb2 egb2 >e2<
+df-a2 df-a2 >d2<
+ceg2 ceg2 >c2<
+df-a2 df-a2 >e2<]2
+
+(60)2 (61)2
+(60)2 (61)2
+(60)2 (61)2
+(60)2 (61)2

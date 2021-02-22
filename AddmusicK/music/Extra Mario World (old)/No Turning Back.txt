@@ -1,0 +1,138 @@
+#amk 2
+#SPC
+{
+	#author "Ruberijg"
+	#game "Extra Mario World"
+	#title "No Turning Back"
+}
+#path "allsamp"
+#samples
+{
+	#optimized
+	"Marimba.brr"
+	"Guitar.brr"
+	"String Ensemble 2.brr" 
+	"Bass Drum.brr"
+	"izu_snare.brr"
+	"Trumpet.brr"
+	"izu_chat.brr"
+	"Tom.brr"
+	"chinese cymbal.brr"
+	"Crash Cymbal.brr"
+	"Brasschord001.brr"
+}
+#instruments
+{
+	@16 $8E $75 $00 $03 $00
+	"Trumpet.brr" $8F $6C $00 $04 $00
+	"String Ensemble 2.brr" $8B $6A $00 $02 $8A
+	@6 $8E $6A $B8 $06 $00
+	@13 $8E $75 $B8 $03 $00
+	@2 $8E $75 $B8 $03 $00
+	@3 $8E $75 $B8 $06 $00
+	@0 $8E $6A $00 $06 $00				;@37
+	"Bass Drum.brr" $EE $75 $00 $07 $40
+	"izu_snare.brr" $01 $23 $60 $0A $a0
+	"izu_chat.brr" $8E $75 $00 $08 $08
+	"Guitar.brr" $BE $B0 $0A $06 $00
+	"Tom.brr" $8E $75 $00 $06 $40 
+	"chinese cymbal.brr" $8E $70 $B8 $06 $00
+	"Crash Cymbal.brr" $8E $70 $CF $07 $00
+	"Brasschord001.brr" $FD $6C $B8 $02 $a0
+}
+"pico=@30"
+"trum=@31"
+"stra=@32"
+"oboe=@33"
+"soft=@34"
+"glck=@35"
+"mrmb=@36"
+"flut=@37"
+"drum=@38"
+"snar=@39"
+"chat=@40"
+"bass=@41"
+"tom=@42"
+"chin=@43"
+"crash=@44"
+"bras=@45"
+$F0
+$EF $FF $02 $02
+$F1 $05 $A0 $00		;Outside
+$F2 $0C $0F $0F
+l8
+#0r/ t56
+$DE $30 $0A $50 w180
+ v180	y13
+pico o5	[g16a16g16a16b16>c16<b16a16]8
+trum o4 a1>e.d.<b> d.c.<bg2.. a16f16g1	a1>e.d.<b> c.d.ge1^1
+		a1>e.d.<b> d.c.<bg2.. a16f16g1	a2..>ce.d.<b> d.c.eg1^1
+oboe o3 b4.a16g16a2 a4.g16f16g2 g4.a16g16a2 f4gea2
+		b4.a16g16a2 a4.g16f16g2 b4>c16<b16a16g16b2 g4>c4<b2
+		b4.a16g16a2 a4.g16f16g2 g4.a16g16a2 f4g4a2
+		b4.a16g16b2 a4.g16f16a2 b4>c16<b16a16g16b2 >c4c16<b16a16b16>c2
+trum o4 [a4.ra4.ra4rfa4.r g4.rg4.rg4geg4.r a4.ra4.ra4rfa4.r b4.rb4.rb4rgb4.r]2
+
+#1r/r12 q7a
+ v180 y10
+@13 o5 [g16a16g16a16b16>c16<b16a16]8
+@1 o4	a1>e.d.<b> d.c.<bg2.. a16f16g1	a1>e.d.<b> c.d.ge1^1
+		a1>e.d.<b> d.c.<bg2.. a16f16g1	a2..>ce.d.<b> d.c.eg1^1
+@6 o4	b4.a16g16a2 a4.g16f16g2 g4.a16g16a2 f4gea2
+		b4.a16g16a2 a4.g16f16g2 b4>c16<b16a16g16b2 g4>c4<b2
+		b4.a16g16a2 a4.g16f16g2 g4.a16g16a2 f4g4a2
+		b4.a16g16b2 a4.g16f16a2 b4>c16<b16a16g16b2 >c4c16<b16a16b16>c2
+@1 o3 [a4.ra4.ra4rfa4.r g4.rg4.rg4geg4.r a4.ra4.ra4rfa4.r b4.rb4.rb4rgb4.r]2
+
+#2r /
+ v180
+ $DE $30 $0A $50 y7
+glck q79 o5 [g16a16g16a16b16>c16<b16a16]8
+bras q7f o4 a1>e.d.<b> d.c.<bg2.. a16f16g1	a1>e.d.<b> c.d.ge1^1
+			a1>e.d.<b> d.c.<bg2.. a16f16g1	a2..>ce.d.<b> d.c.eg1^1
+pico o2 	b4.a16g16a2 a4.g16f16g2 g4.a16g16a2 f4gea2
+			b4.a16g16a2 a4.g16f16g2 b4>c16<b16a16g16b2 g4>c4<b2
+			b4.a16g16a2 a4.g16f16g2 g4.a16g16a2 f4g4a2
+			b4.a16g16b2 a4.g16f16a2 b4>c16<b16a16g16b2 >c4c16<b16a16b16>c2
+@15 q7e o3 [a4.ra4.ra4rfa4.r g4.rg4.rg4geg4.r a4.ra4.ra4rfa4.r b4.rb4.rb4rgb4.r]2
+
+#3r/
+ v180	y5,1,1
+stra o4 	[g]28 <g16a16b16>c16 d16e16f16 g16
+			a1>e2 d2<g1g1	a1>e2 c2e1^1<
+			a1>e2 d2<g1g1	a2..>ce2 d2g1^1<
+flut o4 	b2a2 a2g2 g2a2 f4gea2
+			b2a2 a2g2 b4>c16<b16a16g16b2 g4>c4<b2
+			b2a2 a2g2 g2a2 f4g4a2
+			b2b2 a2a2 b4>c16<b16a16g16b2 >c4c16<b16a16b16>c2
+stra o5 	[a4.ra4.ra4rfa4.r g4.rg4.rg4geg4.r a4.ra4.ra4rfa4.r b4.rb4.rb4rgb4.r]2
+
+
+#4r/ v180	y15,1,1
+stra o3 [g]28 <g16a16b16>c16 d16e16f16 g16
+		a1>e2 d2<g1g1	a1>e2 c2e1^1<
+		a1>e2 d2<g1g1	a2..>ce2 d2g1^1<
+flut o3 b2a2 a2g2 g2a2 f4gea2
+		b2a2 a2g2 b4>c16<b16a16g16b2 g4>c4<b2
+		b2a2 a2g2 g2a2 f4g4a2
+		b2b2 a2a2 b4>c16<b16a16g16b2 >c4c16<b16a16b16>c2
+stra o4 [a4.ra4.ra4rfa4.r g4.rg4.rg4geg4.r a4.ra4.ra4rfa4.r b4r4b4r4b4rgb4r4]2
+
+#5r/ v255 y10[snar o3 q7F c24 q7d c24 q7b c24 q7d c24 q7b c24 q79 c24 q7e c16 q7c c16 q7d c16 q7b c16]7
+q7f snar o3 c16 tom o3 g16 tom o3 f16 snar o3 c16 tom o3 e16 snar o3 c16 tom o3 d16 tom o3 c16
+[q7d drum c16 q7b chat e q79 e16 q7f snar c q7d chat e16 q7b e16]99
+
+#6r/v230 y10,1,1
+stra o2 [g]28 o5g16e16c16<a16> c16<a16g16e16
+bass o2 y10 [e16<e16>e16<e16>e16e16<e16e16> d16<d16>d16<d16>d16d16<d16d16> c16<c16>c16<c16>c16c16<c16c16> d16<d16>d16<d16>d16d16<d16d16>
+o2e16<e16>e16<e16>e16e16<e16e16> e16<e16>e16<e16>e16e16<e16e16> c16<c16>c16<c16>c16c16<c16c16> d16<d16>d16<d16>d16d16<d16d16>]8
+stra o3 y10,1,1 [a4r4a4r4a4rfa4r4 g4r4g4r4g4geg4r4 a4r4a4r4a4rfa4r4 b4r4b4r4b4rgb4r4]2
+
+#7r/ v200 y15,1,1
+mrmb o4 [q7c g q7b g16q79 g16]16 q7f
+crash o3 a1 oboe o2 >e.d.<b> d.c.<bg2.. a16f16g1	a1>e.d.<b> c.d.ge1^1
+stra o5 a1>e.d.<b> d.c.<bg2.. a16f16g1	a2..>ce.d.<b> d.c.eg1^1
+mrmb o2 [q3e g q7d g16q7c g16]64 q7f
+$DE $30 $0A $40 
+chin o4 e1 [r1]6 r2.
+oboe o3 c16d16e16f16[g1 g1 e1 e1 g1 g1 b2. g4 b1]2

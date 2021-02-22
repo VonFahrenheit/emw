@@ -1,0 +1,207 @@
+#amk 2
+#SPC
+{
+	#author "Ruberjig"
+	#game "Extra Mario World"
+	#title "Onto the Crossroads"
+	#comment "a fork in the road go pick it up"
+}
+#samples
+{
+	#optimized
+"Electric Piano.brr"
+"ocarina.brr"
+"lead.brr"
+"String Ensemble 2.brr"
+	"Kick.brr"
+	"Synth Snare.brr"
+	"izu_chat.brr"
+	"piano.brr"
+	"Guitar.brr"
+	"conga.brr"
+	"French Horn.brr"
+}
+#instruments
+{
+"lead.brr" $8E $8D $B8 $06 $00
+"ocarina.brr" $8C $CA $B8 $04 $00
+"piano.brr" $fC $CA $00 $06 $00
+
+"String Ensemble 2.brr" $AB $EA $00 $02 $8C
+
+"Guitar.brr" $8F $72 $B8 $03 $00
+
+	"Kick.brr" $8E $4C $00 $08 $00 
+	"izu_chat.brr" $fe $55 $00 $09 $00
+	"Synth Snare.brr" $ef $70 $B8 $08 $00
+	"conga.brr" $06 $23 $60 $0C $00
+"French Horn.brr" $8C $AF $df $04 $80
+}
+
+
+$EF $FF $04 $04
+$F1 $04 $A0 $00
+$F2 $0F $24 $24
+t50 w150
+
+#0 q7f v180
+
+/
+@30 o4 l16 $DE $30 $0C $20
+l8
+e.e.e^2 e.e.e^2 d.d.d^2 dd16c16d16ed16^2 e.e.e^2 e.e.e4.a4 d.d.d^2 cd16c16d16d16r16dr4..
+
+@31 o4 l8 $DE $30 $0C $20
+c.e.g2.f agfedc<a. >e. e2. e4e16f16edec
+c4e4g4f4 c4e4d4f4a1^1 
+c.e.g2.f agfedc<a. >e. e2. e4e16f16edec 
+c.g.e4f4e16f16ecedfedeg1^1
+
+@32 o4 l8 $DE $30 $0C $20
+a1a.g.fg.f.c<a1a2.>c16e16d16f16
+g1e4.c4.e4a1^1
+>c2.c16<b16a16f16 g4 a16g16f16d16 e4 f16e16d16<b16 a2..ga2..g>
+[gg16f16e16d16]5 g16f16
+[gg16f16e16d16]2 gg16f16
+<e32a32g32b32 >c32e32d32f32 g32b32a32>c32 d32f32e32g32 ggg4
+
+#6 q7f v220
+
+/
+@30 o3 l16 $DE $30 $0C $20
+l8
+e.e.e^2 e.e.e^2 d.d.d^2 dd16c16d16ed16^2 e.e.e^2 e.e.e4.a4 d.d.d^2 cd16c16d16d16r16dr4..
+
+@31 o3 l8 $DE $30 $0C $20
+c.e.g2.f agfedc<a. >e. e2. e4e16f16edec
+c4e4g4f4 c4e4d4f4a1^1 
+c.e.g2.f agfedc<a. >e. e2. e4e16f16edec 
+c.g.e4f4e16f16ecedfedeg1^1
+
+@32 o3 l8 $DE $30 $0C $20
+a1a.g.fg.f.c<a1a2.>c16e16d16f16
+g1e4.c4.e4a1^1
+>c2.c16<b16a16f16 g4 a16g16f16d16 e4 f16e16d16<b16 a2..ga2..g>
+[gg16f16e16d16]5 g16f16
+[gg16f16e16d16]2 gg16f16
+<e32a32g32b32 >c32e32d32f32 g32b32a32>c32 d32f32e32g32 ggg4
+
+#4 q7f r10
+
+/
+v120
+@0 $ED $0C $2C o4 l16 $DE $30 $0C $20 $EE $10
+l8
+e.e.e^2 e.e.e^2 d.d.d^2 dd16c16d16ed16^2 e.e.e^2 e.e.e4.a4 d.d.d^2 cd16c16d16d16r16dr4..
+v150
+@1 $ED $0D $2C o4 l8 $DE $30 $0C $20
+c.e.g2.f agfedc<a. >e. e2. e4e16f16edec
+c4e4g4f4 c4e4d4f4a1^1 
+c.e.g2.f agfedc<a. >e. e2. e4e16f16edec 
+c.g.e4f4e16f16ecedfedeg1^1
+v60
+@6 $ED $0E $2C o5 l8 $DE $30 $0C $20
+a1a.g.fg.f.c<a1a2.>c16e16d16f16
+g1e4.c4.e4a1^1
+>c2.c16<b16a16f16 g4 a16g16f16d16 e4 f16e16d16<b16 a2..ga2..g>
+[gg16f16e16d16]5 g16f16
+[gg16f16e16d16]2 gg16f16
+<e32a32g32b32 >c32e32d32f32 g32b32a32>c32 d32f32e32g32 ggg4
+
+
+#1 q7f v100
+
+@33 o5 l16
+;cdefefg>c<
+/
+l8
+e1e1d1d4..d2^16e1e1d1c4..d8r4..
+
+c.e.g^1.<a. >e. e^1.
+c2g2 c2d2a1^1 
+c.e.g^1.<a. >e. e^1.
+c.g.e4f4.e4e4f4d4g1^1
+
+a1^1<a1^1>
+g1^1a1^1
+>c1< g2 e2< a2..ga2..g>
+[g4.]5 e
+[g4.]2 e4
+<e2> gggr
+
+
+#2 q7f v160
+
+@33 o4 l16
+;cdefefg>c<
+/
+l8
+e1e1d1d4..d2^16e1e1d1c4..d8r4..
+
+c.e.g^1.<a. >e. e^1.
+c2g2 c2d2a1^1 
+c.e.g^1.<a. >e. e^1.
+c.g.e4f4.e4e4f4d4g1^1
+
+a1^1<a1^1>
+g1^1a1^1
+>c1< g2 e2< a2..ga2..g>
+[g4.]5 e
+[g4.]2 e4
+<e2> gggr
+
+#3 q7f v240
+
+@34 o3 l8 $DE $30 $0C $20
+/
+[e.e.e4e.e.
+e.e.e4e.e.
+d.d.d4d.d.]
+d.d.d4d.d.
+*1
+c.c.d4r4.
+
+[c.e.gce16g.e
+c.e.gce16g.e
+<b.>d.f<b>d16f.d
+<b.>d.f<b>d16f.d
+<a.>c.e<a>c16e.c
+<a.>c.e<a>c16e.c
+<b.>d.f<b>d16f.d
+<b.>d.f<b>d16f.d]2
+
+[e.e.e4e.e.
+e.e.e4e.e.
+d.d.d4d.d.
+d.d.d4d.d.
+
+e.e.e4e.e.
+e.e.e4e.e.
+d.d.d4d.d.
+c.c.d4r4.]2
+
+#5
+o3 v230
+/
+[@35c@36c16@36c16@35c16@36c16@36c @35c16@36c@36c16@37c@36c]8
+[@35c@36c16@36c16@37c16@36c16@36c @35c16@36c16@38>c16<@36c16@37c@38>c16<@36c16]99
+
+#7 q7f v240
+
+@39 o4 l16 $DE $30 $0C $20
+;cdefefg>c<
+/
+l8
+e1e1d1d4..d2^16e1e1d1c4..d8r4..
+
+c.e.g^1.<a. >e. e^1.
+c2g2 c2d2a1^1 
+c.e.g^1.<a. >e. e^1.
+c.g.e4f4.e4e4f4d4g1^1
+
+a1^1<a1^1>
+g1^1a1^1
+>c1< g2 e2< a2..ga2..g>
+[g4.]5 e
+[g4.]2 e4
+<e2> g^4r

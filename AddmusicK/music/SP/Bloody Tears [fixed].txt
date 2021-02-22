@@ -1,0 +1,197 @@
+;Slightly altered by Von Fahrenheit:
+;	- Removed channel 6.
+;	- Moved channel 7 to channel 6 to avoid SFX conflicts.
+
+#samples
+{
+	#default
+}
+
+#instruments
+{
+	@1 $94 $E2 $00 $03 $00				;@30
+	@13 $FE $E0 $00 $03 $00				;@31
+	@8 $FE $F3 $00 $1E $00				;@32
+	@1 $F9 $CB $00 $03 $00				;@33
+	@1 $F9 $CA $00 $03 $00				;@34
+	@21 $FF $E0 $00 $03 $00				;@35
+	@10 $FF $E0 $00 $08 $00				;@36
+	@4 $FF $E9 $00 $03 $00				;@37
+	@1 $F9 $ED $00 $03 $00				;@38
+	@0 $A9 $E2 $00 $03 $00				;@39
+	@1 $FD $E0 $00 $03 $00				;@40
+	@29 $FF $E0 $00 $03 $00				;@41
+	@13 $FE $E0 $00 $02 $F5				;@42
+	@22 $00 $00 $7F $06 $00				;@43
+}
+
+#SPC
+{
+	#title "Bloody Tears"
+	#game "Super Castlevania 4"
+	#author "Konami soundteam"
+	#comment "Ported by Harumi Makoto."
+}
+
+#0 w255 t48
+
+@31 v130 y11 $F4 $02
+
+o4l16 (000)[d<a>a<a>g<a>f<a>e<a>f<a>e<a>d<a>e<a>f<a>g<a>f<a>e<a>c<a>e<a>d<a]2 /
+
+v220 y10
+
+(001)[@35 o4e8 @36 <c16 @35 >e8e16 @36 <c8 @35 >e8 @36 <c8 @35 >e16e16 @36 <c8]3
+
+(002)[@35 o4e8 @36 <c16 @35 >e8e16 @36 <c8 @35 >e8 @36 <c8 @35 >e16 @36 q7D <c32c32 q7E c16 q7F c16]
+
+(001)3
+
+@35 o4e8 @36 <c16 @35 >e8e16 @36 <c8c16 q7A c16c24 q7B c24 q7C c24 q7E c16 q7F c16 @35 >e16 @36 <c16
+
+(001)3
+
+@35 o4e8 @36 <c16 @35 >e8e16 @36 <c16c16 @35 >e16 @36 <c16c8 @35 q7D >e16 q7F e16 @36 q7D <c32 q7C c32 q7F c16
+
+(001)3 (002) (001)3
+
+@35 o4e16 @36 <c16 @35 >e16e16 @36 <c16 @35 >e8e32e32 @36 <c8 q7C e-32 q7E e-32 q7F e-16 q7C d-32 q7E d-32 q7F d-16<a16a16
+
+@36 o2 q7D g-16 q7B g-16g-16 q7D g-16 q7B g-16g-16 @35 q7F >a24a24a24 @36 q7D <g-16 q7B g-16g-16 q7D g-16 q7B g-16g-16 @35 q7F >a24a24a24 @36 q7D <g-16 q7B g-16g-16 q7D g-16 q7B g-16g-16 @35 q7F >a24a24a24 @36 q7D <g-16 q7B g-16g-16 q7D g-16 q7B g-16g-16 q7D g-16 q7B g-16
+
+@36 o2 q7D g-16 q7B g-16g-16 q7D g-16 q7B g-16g-16 @35 q7F >a24a24a24 @36 q7D <g-16 q7B g-16g-16 q7D g-16 q7B g-16g-16 @35 q7F >a24a24a24 t42 @36 q7D <g-16 q7B g-16g-16 q7D g-16 q7B g-16g-16 @35 q7F >a24a24a24 @36 t34 q7D <g-16 q7B g-16 g-16 q7D g-16 t26 q7B g-16 g-16 t16 q7D g-16 q7B g-8
+
+t48 r8.
+
+@31 v80 y11
+
+$E8 $90 $82
+
+(000)
+
+#1
+
+@42 v110 y9 $F4 $02
+
+l16 (000)2 /
+
+@32 v255 y10 (100)[q7F o2d8. q7E a8 > q7D d16< q7E d16e16 q7F d8. q7E a8. q7D >d8 q7F <c8. q7E g8.d16 q7D >c4 q7E <g8.c8
+
+q7F <b-8. q7E >f8.b-4^16f16 q7F <b-8 q7E >b-8 q7F a8. q7E e8 q7D e-16 q7E e16g16 q7F a8. q7E a8. q7D d-8
+
+q7F o2d8. q7E a8 q7D >d16 q7E <d16 q7D e16 q7F d8. q7E a8.d8 q7F c8. q7E g8.d16 q7D >c4 q7E <g8.b8
+
+q7F <b-8. q7E >d8.f16 q7F b-4 q7E d16f16d16b-8 q7F g8. q7E g8e-16e16g16 q7F a8. q7D a8. q7F a8]
+
+(101)[q7F o2d8. q7E a8>d16<<a16>e16 q7F c8. q7E g8. q7D >c8 q7F <<b-8. q7E >f8.b-8 q7F c8. q7E g8.] q7D o3c8
+
+(101) o2 q7E c8
+
+(100)
+
+@41
+
+v190 q7E o2g16 q7A g16g16 q7E g16 q7A g16g16 q7C a8 q7E g16 q7A g16g16 q7E g16 q7A g16g16 q7C a8 q7E g16 q7A g16g16 q7E g16 q7A g16g16 q7C a8 q7A b16b16b16 q7B b16 q7C b16 q7D b16b24 q7E b24 q7F b24
+q7E g16 q7A g16g16 q7E g16 q7A g16g16 q7C a8 q7E g16 q7A g16g16 q7E g16 q7A g16g16 q7C a8 q7E >c16 q7A <e16>c16 q7E <e16 q7A >c16<e16 q7C >c8 q7A c16<e16>c16 q7B <e16 q7C >c16 q7D <c16 q7E >c16<e8r8.
+
+@42 v80 y9
+
+$E8 $90 $6E
+
+(000)2
+
+[r1]127
+
+#2
+
+@31 v80 y10 $F4 $02
+
+l16 r(000) o4d<a>a<a>g<a>f<a>e<a>f<a>e<a>d<a>e<a>f<a>g<a>f<a>e<a>c @36 v220 o2 q7C e32> q7F c32c16<e8 /
+
+@33 $DE $00 $0C $1C v160 y12 o5(200)[g8>c16<a2^16g8f8g8.>c8.<a4.g8f8g8>c16<a2^16g8a8b-8.>c4^16] o5a8.b-4^16
+
+(200) o5a8b8>d-8e8
+
+@31 v140 y11 $F4 $02 $F4 $01
+
+o4(201)[d<a>a<a>g<a>f<a>e<g>f<g>e<g>d<g>e<g>f<g>g<g>f<g>e<g>c<g>e<g>d] o3g (201) g32 $F4 $01 $F4 $02 ^32
+
+@33 y12 (200) o5a8.b-4^16 (200) o5a8b8>d-8e8
+
+@40 y10 v140 $F4 $02 $F4 $01 o2d2c2<b-2>c2d2c4 $F4 $01 $F4 $02 ^4 $F4 $02 $F4 $01 <b-2 q7D >c4c8 c8 $F4 $01 $F4 $02 ^16 $ED $0F $F1 ^8.
+
+@31 v50 y10 $E8 $90 $50 r(000)
+
+[r1]127
+
+#3
+
+@30 v140 y10 $DE $18 $0C $1C $F4 $02
+
+o2d1^1^1 $E8 $3C $DC ^2^8. $DE $00 $0C $1C d4^16 /
+
+@34 v160 y8 o5(300)[e8g16f2^16e8d8e8.g8.f4.e8d8d8g16f2^16d-8d8g2d8.d-4^16e8g16f2^16e8d8e8.g8.f4.e8d8d8g16d2^16e8f8d2] o5e8d8<a8>d-8
+
+@37 y9 v120 o3(301)[q7F e8. q7E d4^16]3 v140 q7C f8 q7D e8 q7E d8 q7F c8
+
+v120 o2[q7F e8. q7E d4^16]2 q7F e8. q7E d4. $F4 $02 $F4 $01 q7F f16g16 $F4 $01 $F4 $02 ^16 q7E e16 q7F f8.
+
+@34 q7F v160 y8 o5(302)[e8g16f2^16e8d8e8.g8.f4.e8d8d8g16f2^16d-8d8g2d8.] o5d-4^16e8g16f2^16e8d8e8.g8.f4.e8d8d8g16f2^16d-8d8d2e2
+
+@37 y6 v110 q7F o2(303)[a8.a4^16g8.g4^16f8.f4^16g8g8g8]g8 (303) g8.r8.
+
+@30 y10 v150 $DE $18 $0C $1C $F4 $02 $F4 $01 o3 q7E d1 q7D e4 $F4 $01 $F4 $02 ^4> $DE $00 $0C $1C q7F d-2
+
+[r1]127
+
+#4
+
+@30 v120 y9 $DE $18 $0C $1C $F4 $02
+
+o2d1 v150 $DE $00 $0C $1C a1^1 $E8 $3C $DC ^2^8.>>d4^16 /
+
+@33 v100 y12 r16(200) o5a8.b-4^16 (200) o5a8b8>d-8e16
+
+@38 v140 y10
+
+o4d2c2f2g2a2g2f2>c2
+
+@33 v100 y12 r16(200) o5a8.b-4
+
+@39 v120 $DE $00 $0C $2C y7
+
+r4^16o3(400)[a16>d16e16f2^4^16e16f16a16>d8e8f8a8>d2^8.e8.f8e2<e8d8<a8] o5d-8
+
+@37 $DE $00 $0C $1C y14 v110 q7F o3[e8.d4^16]3 f8e8d8c8 o3[e8.d4^16]3f8g8e8f8.r8.
+
+@30 y9 v140 $DE $18 $0C $1C $F4 $02 $F4 $01 o2 q7E a1 q7D g2 q7F a4 $F4 $01 $F4 $02 ^4
+
+[r1]127
+
+#5
+
+@42 v70 y10 $F4 $02
+
+o4l16 r(000) d<a>a<a>g<a>f<a>e<a>f<a>e<a>d<a>e<a>f<a>g<a>f<a>e<a>c<a>e<a>d /
+
+@43 v160 y9
+
+o4(600)[q7F c q7A c q7E c q7A c]32
+
+@42 v120 y9 $F4 $02 $F4 $01 q7F
+
+o4(201) o3g (201) g32 $F4 $01 $F4 $02 ^32
+
+@43 v160 y9
+
+(600)32
+
+o3[q7D g-16 q7A g-16g-16 q7D g-16 q7A g-16g-16 q7D g-16 q7A g-16]8
+
+r4
+
+@42 q7F v50 y10 $E8 $90 $46 r(000)
+
+[r1]127
+
+#amk=1

@@ -1,0 +1,121 @@
+#am4
+;LEVEL HEADER
+$ED $80 $6D $2B 
+$ED $80 $7D $00 
+$F0
+
+
+;Mario and Luigi: Superstar Saga - Stardust Fields (Supertails)
+
+
+#0	@0	q7F v210 y10 w250 t44
+
+
+r1^1
+/
+l16
+[gg+arg+4r8>c+r<bra+r
+g+rgrg+ra+r32g32g+rfrg8^r
+g+a+g+gf^32r32g+a+g+gf^32r4^8^32
+f^32r32grd+rfrgrg+a+>cr
+<g+rfrg8^r32g32g+rfrg8^r8^
+>c+^32r32cr<g+ra+rg+rg8^r
+g+rg+r<g+rg+r>g+8r8<g+8r4
+g+ra+r>crc+rd+rerf+r]2
+;
+
+
+#1	@6	q7F v180 y10
+
+
+l16
+r1^1
+/
+o3
+[>c+r8^<g+r8^>c+r8^<g+r8^
+>c+r8^<g+r8^>c+r8^<g+8r8
+>c+r8^<g+r8^>c+r8^<g+r8^
+>c+r8^<g+r8^>c+r8^<g+8r8
+>c+r8^<g+r8^>c+r8^<g+r8^
+>c+r8^<g+r8^>c+r8^<d+8r8
+g+r4^8^g+r2^8^
+g+r8^g+r8^g+8r8]2
+[r1]100;
+
+
+#2	@3	q7F v240 y10
+
+
+l16
+r1^1
+/
+r4
+[frg+r4^g+rbr4^
+frg+r4^g+rbr
+fgfd+c+rfgfd+c+rc+rfr8^
+frfrg+r4^g+r>c+r
+<g+rfrfra+r4^g+r>c+r4^
+<frg+r4^gra+r
+d+rd+r<g+rg+r>d+rd+r<g+rg+r8^
+>g+rg+rg+rg+rg+rg+rg+r4^]2
+[r1]100;
+
+
+#3	@3	q7F v240 y10
+
+
+l16
+r1^1
+/
+r4
+[c+rfr4^frg+r4^
+c+rfr4^frg+r
+c+d+c+<a+g+r>c+d+c+<a+g+rg+r>c+r8^
+c+rc+rfr4^frg+r
+frc+rc+rgr4^fra+r4^
+c+rfr4^d+rgr
+crcr<d+rd+r>crcr<d+rd+r8^
+>g+rgrgrf+rf+rerd+r4^]2
+[r1]100;
+
+
+#4	@1	q7F v210 y10
+
+
+l16
+r1^1
+/
+[r1]8
+>
+g+8rgg+8rgg+ra+rg+8^r
+grd+rf4^rd+rc+8^r4^8^
+fgfd+c+rg+gg+r8^
+c+rd+rd+rc+rd+rfgg+r
+g+8rgg+8rgg+ra+rg+8^r
+grd+rf4^rerd+8^
+[r1]100;
+
+
+#5	@10	q7F v200 y10
+
+
+l32
+o3
+d8d8
+[d]8
+d8d8r4
+d8d8ddd16d16d16d8d8o4r8^16<dd
+/
+[dd16^d8ddd16d16d16d8d8dddddddd
+d8d8ddd16d16d16d8d8d16d16d8]100
+;
+
+#6  @22 q7F v255 y10
+
+r2^4e4
+o4
+r2^4
+e8^16
+/
+[r1]100
+;

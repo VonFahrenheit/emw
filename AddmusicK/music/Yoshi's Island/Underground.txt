@@ -1,0 +1,148 @@
+﻿;*******************************************************************
+;Title = Underground
+;Ported by LadiesMan217
+;*******************************************************************
+; Insert size: 1124 bytes
+; Number of channels: 8
+; Total song length: 0:48
+; Version: AddmusicK 2
+; Samples: Yes (brr)
+;*******************************************************************
+; SPC Generator Info
+#SPC
+{
+	#author "Koji Kondo"
+	#title "Underground"
+	#game "Yoshi's Island"
+	#comment "Ported by LadiesMan217"
+}
+;*******************************************************************
+;Commands In Song
+
+;VCMD_PITCH_SLIDE=$dd
+;VCMD_ECHO_ON=$ef
+;VCMD_ECHO_PARAM=$f1
+;VCMD_ECHO_VOL_FADE=$f2
+;*******************************************************************
+;Samples and Info
+#samples
+{
+	#optimized
+	#YI
+}
+#instruments
+{
+	"YI/yi-1C.brr" $ff $e0 $00 $07 $a8	;@30 bongos
+	"YI/yi-21.brr" $ff $ec $00 $0a $02	;@31 bass
+	"YI/yi-26.brr" $ff $e0 $00 $05 $40	;@32 cowbell
+	"YI/yi-16.brr" $ff $e0 $00 $03 $74	;@33 french horn
+	@2	       $8f $19 $00 $06 $04	;@34 glockenspiel
+	@0	       $8d $e0 $00 $03 $00	;@35 recorder
+	"YI/yi-18.brr" $8f $e0 $00 $07 $a8	;@36 snare
+	"YI/yi-25.brr" $ff $e0 $00 $07 $a8	;@37 maracas
+}
+;*******************************************************************
+;Channel 1
+
+#0
+t19 w150 @34 y13 v205 
+$ef $ff $00 $00
+$f1 $02 $1e $01
+$f2 $28 $5f $5f
+$f5 $0c $21 $2b $2b $13 $fe $f3 $f9
+r8. q7e o5 g64 q7f f64 q7e e64 q7d d64 q7b f64 q7d e64 q7b d64 q79 c64 
+q7e e48 q7d d48 q7b c48 q79 < b48 q77 > d48 q75 c48 < b=5 a=5 > d96/
+w170 @31 y10 v200
+(1)[q2e o2 d4 q4f d16. q1d d=19 q7e c=11 q3f ^=71 q7f c=25]6
+q2e o1 a+4 q4f a+16. q1d a+=19 q7e a=11 q3f ^=71 q7f a=25 
+q2e o2 d4 q4f d16. q1d d=19 q7e d=11 q5e e=71 q7fe=25 
+q2e o2 f4 q4f f16. q1d f=19 q7e f=11 g4 q7f a8. q3b > a16 $dd $06 $08 $95
+
+;*******************************************************************
+;Channel 2
+
+#1
+@34 y2 v205 
+r=37 q7b o5 e64 q79 d64 q77 c64 q7c e64 q7b d64 q79 c64 q77 
+< b64 q75 > d48 q73 c48 < b48 a48 > d48 c=5 < b=5 a=5 b64/
+@34 y15 v180
+(2)[q7e o4 e32 q7d g32 q7c a32 q7b > d32 q7d < e32 q7c g32 q7b a32 q79 > d32 
+q7c < e32 q7b g32 q79 a32 q77 > d32 q7b < e32 q79 g32 q77 a32 q75 > d32 q79 < 
+e32 q77 g32 q75 a32 > d32 q77 < e32 q75 g32 a32 > d32 q77 < e32 q75 g32 a32 > 
+d32 q77 < e32 q75 g32 a32 > d64 r64]6 
+@32 v200 y18 [q7c o4 g8 g8 q7d g16 q7f g16 g16 r16]6
+
+;*******************************************************************
+;Channel 3
+
+#2
+@34 y10 v205 
+r=38 q7e o5 b64 q7d a64 q7c g64 q7b f64 q7d b64 q7c a64 q7b g64 q79 f64 q7c 
+b64 q7b a64 q79 g64 q77 f64 q75 b64 q79 a64 q77 g64 q75 f64 q73 b64 b64 b48/
+@34 y5 v180 
+(9)[r48 q7e o4 e32 q7d g32 q7c a32 q7b > d32 q7d < e32 q7c g32 q7b a32 q79 > 
+d32 q7c < e32 q7b g32 q79 a32 q77 > d32 q7b < e32 q79 g32 q77 a32 q75 > d32 q79 
+< e32 q77 g32 q75 a32 > d32 q77 < e32 q75 g32 a32 > d32 q77 < e32 q75 g32 a32 > 
+d32 q77 < e32 q75 g32 a32 > d96]6
+@35 y13 v160
+r2 r=88 q7d o5 e32 f96 r48 q5d d4 q5c d16. q5d e16. q5d f16 q6d g4.. q7d < e32 
+> f96 r48 q5d d4 q5c d16. q5d e16. q5d f16 q6d g4. q7d f16 e24
+
+;*******************************************************************
+;Channel 4
+
+#3
+@33 y8 v200 
+r16 q0c o4 a16 q1d f32 q1d d32 q7d < a16 q3b > f16 q7c e8./
+@33 y8 v200 
+(4)[q5d < a=13 q0c > d=35 q1d < a16. q1d > d=19 
+q7d c=11 q3b ^=71 < a=11 q7c > c48 r=10]2
+(5)[q5d f16. q5c < a16. q3d > e16 q5d d4 q5d e16. q5c < g16. q3d > e16 q5d 
+d8.. c32]2 q5d d2 r2 (4) 
+q5d < a+=13 q0c > d=35 q1d < a+16. q1d > d=19 q7d e=11 q3c ^4.. @35
+y8 q7d > e32 f32 q5d d4 q5c d16. q5d e16. q5d f16 q6d g4.. q7d < e32 > f32 
+q5d d4 q5c d16. q5d e16. q5d f16 q6d g4. q7d f16 e16 
+
+;*******************************************************************
+;Channel 5
+
+#4
+@30 y4 v200 
+r32 r32 r32 r32 q7e o3 a16 q1d > > c16 y14 q7e < < a16 < b8 > a16/
+@33 y12 v150 (6)[q5d o3 f=13 q0c f=35 q1d 
+f16. q1d f=19 q7d e=11 q3b ^=71 e=11 q7c e48 r=10]7
+@35 y12 v200 
+q5d o4 a4 q5c a16. q3d a16. q7d a+16 q4d b4.. q3b b16 
+q5d a4 q0c a16. q1d a16. q1d a+16 q6d b4. a16 g16 
+
+;*******************************************************************
+;Channel 6
+
+#5
+@33 y12 v200 
+r16 q0c o4 f16 q1d d32 q1d < a32 q7d f16 q3b d16 q7c > c8./
+@36 y16 v220 
+(7)[r8 q7f o1 b8 q7d > f16 f16 q7f < b8 ^8 b8 q7d > f16 f16 q7f < b8]9
+
+;*******************************************************************
+;Channel 7
+
+#6
+@36 y16 v200 r8 q7f o1 b8 q7d > f16 < b8./
+@37 y2 v200 (8)[q7e o4 d+16 q7c d+16 q7d d+16 
+q7c d+16 q7e d+16 q7c d+16 q7d d+16 q7c d+16]18
+
+;*******************************************************************
+;Channel 8
+
+#7
+@31 y10 v200
+q2e o2 d4 q5e d16 q7e c8 q5c > d16 $dd $02 $08 $8e/
+@30 y4 v200
+(3)[q1c o5 c32 q0d c32 q2c c32 q49 c32 q7e < < a16 q1d > > c16 y14 q7e < < a16 
+< b16 > a8 y4 q1c > > c32 q0d c32 q2c c32 q49 c32 q7e < < a16 q1d > > c16 y14 
+q7e < < a16 < b16 > a8]9
+                
+;*******************************************************************
+
+#amk 2

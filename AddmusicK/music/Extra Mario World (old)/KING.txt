@@ -1,0 +1,136 @@
+#amk 2
+#SPC
+{
+	#author "Ruberjig"
+	#game "Extra Mario World"
+	#title "KING"
+}
+#path "allsamp"
+#samples
+{
+	#optimized
+	"Choir Aahs.brr" 
+	"izu_snare.brr"
+	"Kick.brr"
+	"izu_chat.brr"
+	"String Ensemble 2.brr"
+	"Organ (Church).brr"
+	"Piano.brr"
+}
+#instruments
+{
+	"Organ (Church).brr" $8D $68 $B8 $04 $02
+	"Choir Aahs.brr" $8B $6A $B8 $02 $00
+	"String Ensemble 2.brr" $8E $A6 $00 $02 $8A
+	"Piano.brr" $8f $71 $B8 $06 $00
+	"izu_chat.brr" $8e $75 $00 $05 $08	;@34
+	"Kick.brr" $8E $75 $00 $03 $00
+	"izu_snare.brr" $02 $26 $60 $05 $00
+	@1 $8E $6F $B8 $03 $00
+	@10 $8f $70 $00 $01 $80
+	"izu_chat.brr" $8E $75 $00 $05 $08
+}
+"sngp= h1 $ee $08"	;Pitch of everything
+"tgec= $F4 $03"
+$EF $7F $02 $02
+$F1 $06 $50 $00
+$f2 $0C $1f $1F
+$F4 $02
+#0 w160 v220 l4  tgec
+@30o2 v210 sngp
+a4>c4<b1^1 t66 ^2/
+[@39o4c@39o4c8@39o4c8@39o4c@39o4c]8 
+[@35o4c8tgec@36o4c8tgec]99
+*99 *99
+
+#2 v240
+r1^1^1/
+[r1]8
+[@39o4 q7f c16 @39o4 q7e c16 @39o4 q7d c16 @39o4 q7c c16]99
+*99 *99
+
+#1 @30o4 l16  v150 sngp y9
+t46
+a4>c4<b1^1^2/ $ed $0e $f5
+(11)[c<c>e<e>g<g>a<a> d<d>f<f>a<a>b<b> e<e>>e<e>c<c><a<a> >d<db<b>g<g>e<e>]4
+(12)[c<c>e<e>g<g>a<a> >e<e>c<ca<a>e<e>]4
+(13)[<b<b>>d<d>f<f>g<g> >d<db<b>g<g>d<d>]4
+(12)4 (13)4
+(14)[c<c>g<g>>e<eg<g>]4
+(15)[b<b>>f<f>>d<df<f>]4
+(16)[<a<a>>e<e>>c<ce<e>]4
+(17)[<b<b>>f<f>>d<df<f>]4
+(14)4 (15)4 (16)4 (17)4
+(12)4(13)4
+(12)4(13)4
+(11)8
+[r1]8
+
+#6 @1o4 l16  q79 r12 v210 sngp y11
+a4>c4<b1^1^2/ $ed $0e $f5
+(21)[c<c>e<e>g<g>a<a> d<d>f<f>a<a>b<b> e<e>>e<e>c<c><a<a> >d<db<b>g<g>e<e>]4
+(22)[c<c>e<e>g<g>a<a> >e<e>c<ca<a>e<e>]4
+(23)[<b<b>>d<d>f<f>g<g> >d<db<b>g<g>d<d>]4
+(22)4 (13)4
+(24)[c<c>g<g>>e<eg<g>]4
+(25)[b<b>>f<f>>d<df<f>]4
+(26)[<a<a>>e<e>>c<ce<e>]4
+(27)[<b<b>>f<f>>d<df<f>]4
+(24)4 (25)4 (26)4 (27)4
+(22)4(23)4
+(22)4(23)4
+(21)8
+[r1]8
+
+#3 
+@38o5v200[c8c16c16]2$E8 $FF $67[c24]60/
+@31o4 l16 v255 sngp y18,1,1
+c1^1<b1^1a1^1b1^1>
+(31)[c1c1<b1b1a1a1b1b1>]
+@33o3
+[g2>g2. g4e4c4 <b1^1
+g1 f2 d4 e16f16g16a16b2.f4b1]2
+@30o4
+[a4g4a2>c4< a4>c4<a4
+g2e2c4 a4 >c2<
+a4g4a2>c4< a4>c4<a4
+g4f4e4d4 >c1<]2
+(31)2
+@37 o3 l8 v230 [a4ra4rar a4ra2r g4rg4rgr g4rg2r a4ra4rar a4ra2r b4rb4rbr b4rb2r]2
+
+#5 @32o3 l16 v255 sngp y10,1,1
+r1^1^1/
+c1^1<b1^1a1^1b1^1>
+(41)[c1c1<b1b1a1a1b1b1>]
+@32o3
+[g1^1f1^1e1^1f1^1]2
+[a1^1g1^1a1^1>c1^1<]4
+(41)2
+l8 [a4ra4rar a4ra2r g4rg4rgr g4rg2r a4ra4rar a4ra2r b4rb4rbr b4rb2r]2
+
+#4 
+@0 $ed $0d $f0 o4 v135 y12,1,1 r1 h-2 q7a
+$E8 $60 $B0 c24d24e24f24g24a24b24>c24 d24e24f24g24a24b24>c24d24 e24d24c24<b24a24g24f24e24 $E8 $80 $25 d24c24<b24a24g24f24e24d24 r8^2/
+@32o3 v180 q7e $E8 $60 $B0 sngp
+c1^1<b1^1a1^1b1^1>
+(51)[c1c1<b1b1a1a1b1b1>]
+@32o2 
+[g1^1f1^1e1^1f1^1]2
+[a1^1g1^1a1^1>c1^1<]4
+(51)2
+l8 [a4ra4rar a4ra2r g4rg4rgr g4rg2r a4ra4rar a4ra2r b4rb4rbr b4rb2r]2
+
+#7
+r1^1^1/ @1o4 l16 q7b r v180 sngp
+c1^1<b1^1a1^1b1^1>
+(61)[c1c1<b1b1a1a1b1b1>]
+@0o3
+[g2>g2. g4e4c4 <b1^1
+g1 f2 d4 e16f16g16a16b2.f4b1]2
+@1o4
+[a4g4a2>c4< a4>c4<a4
+g2e2c4 a4 >c2<
+a4g4a2>c4< a4>c4<a4
+g4f4e4d4 >c1<]2
+(61)2
+@37 o3 l8 q79 [a4ra4rar a4ra2r g4rg4rgr g4rg2r a4ra4rar a4ra2r b4rb4rbr b4rb2r]2

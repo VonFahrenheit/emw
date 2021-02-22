@@ -1,0 +1,83 @@
+﻿#am4
+#samples
+{
+	"Chrono Trigger - Wind Scene.bnk"
+}
+;title=Chrono Trigger - Wind Scene
+;Note: If you want to insert this song in an overworld, change "$2B" in the line below to "$68". If it's $2B, it is compatible with a level.
+$ED $80 $6D $2B
+$ED $80 $7D $00
+$F0
+
+#SPC
+{
+	#author "Nobuo Uematsu"
+	#title "Wind Scene"
+	#game "Chrono Trigger"
+	#comment "Ported by Joey"
+}
+
+;Chrono Trigger - Wind Scene iƒNƒƒmƒgƒŠƒK[ - •—‚Ì“²œÛj
+;by Joey : )
+;ª‚ðŽg‚í‚È‚¢‚Æ³‚µ‚­“®ì‚µ‚Ü‚¹‚ñ
+;Insert size: 1300 bytes i1300ƒoƒCƒgj
+
+#0
+
+
+$EF $00 $00 $00	t49		;This is the echo command.
+v0@0c8					;To get rid of it, replace these 3 lines with "r8"!
+$EF $FF $14 $14 $F1 $05 $46 $01 w230 t33 q7F   ;That means this, too!
+
+o4 $E5 $94 $08 $ED $7F $E0 $EE $28 $ED $81 $02 v225 {d16r8^16^8 e16r8^16^8}
+/ o4 {f16r8 e16r8 c16r8 <a16r8> d16r2 d16r8 c16r8<a16r8f16r8g16r8 a16r4^16  g16r4^16
+e16r8f16r8a16r8>c16r8 e16r4^16 f16r4^16 c16r1^16e16r4^16
+f16r8 e16r8 c16r8 <a16r8> d16r2 d16r8 c16r8<a16r8f16r8g16r8 a16r4^16  g16r4^16
+e16r8f16r8a16r8>c16r8e16r8d16r8c16r8 d16r8d16r2^8^16} r2 [r1]24
+
+#1 q7F ;Pizzicato Strings 1/Strings 1
+
+r8 o4 $E5 $95 $08 $ED $7F $E0 $EE $37 $ED $81 $02 v210
+d16r8^16e16r8^16
+/[f16r16e16r16c16r16<a16r16>d16r16^4 d16r16 c16r16<a16r16f16r16g16r16 a16r16^8 g16r16^8]1
+e16r16f16r16a16r16>c16r16 e16r16^8 f16r16^8 c16r2^8^16 e16r16^8 * <
+e16r16f16r16a16r16>c16r16e16r16d16r16c16r16d16r16 d16r16^8^4
+o4 $E5 $96 $08 $ED $78 $E0 $EE $A0 v200 $ED $81 $00 d4e4
+[f8e8c8<a8>d4^8d8c8<a8f8g8a4g4e8f8a8>c8] e4f4c2^4e4 * 
+e8d8c8d8 d2^4^8 a8
+a2g4f4e2f4g4e2^4c4<a2^4>c4<a+2>c4d4e2f4g4e1c1 a2g4f4e2f4g4a2g4f4e4d4e4f4a2g4f4e4d4c+4d4e1^2
+o4 $E5 $95 $08 $ED $7F $E0 $EE $37 $ED $81 $02 v210 d16r8^16e16r8^16
+
+#2 q7F ;Pizzicato Strings 2/Strings 2
+
+r2^8 / o3 $E5 $95 $08 $ED $7F $E0 $EE $37 $ED $81 $02 v185 y10 [r4 e4 r4 c4 r4^8 c4 r8 d4 r4<e4>>c4] r8 <<g8>g4 r8 f8 e4r4 * a4a8<a8>e8r8a4r4
+o3 $E5 $96 $08 $ED $78 $E0 $EE $A0 v190 $ED $81 $00 y15 f1e4d4c4c+4c1f2e2f1e4d4c4c+4c1g2f+2>
+f2e4d4c2d4e4c2^4<a4 f4e4f4a4 g2a4a+4>c2d4e4c4<a4g4a4 d+4f4g8a8a+8>c8 f2e4d4 c2d4e4 f2e4d4< a2^8g8a8>c8<a1b1^1>c+1
+
+#3 q7F ;Pizzicato Strings 3/Strings 3
+
+r2^8 / o2 $E5 $95 $08 $ED $7F $E0 $EE $37 $ED $81 $02 v190 [r8 a4 r4 f4 r4 e4 r4 f4 e4 < a4 r8 >>g8<] d4 r8>f8<g8>d4 c4r4 < * g4a8>g4r8g8f+4r4
+o3 $E5 $96 $08 $ED $78 $E0 $EE $A0 v185 $ED $81 $00 c2d2<g4a+4a2a1g1>c2d2<g4a+4a2a1a1>
+[d16r16d16r16^8d16r16]2 [c16r16c16r16^8c16r16]4 < [a16r16a16r16^8a16r16]2 [a+16r16a+16r16^8a+16r16]2 [g16r16g16r16^8g16r16]2
+[a16r16a16r16^8a16r16]4 > [d16r16d16r16^8d16r16]2 [c16r16c16r16^8c16r16]2 [d16r16d16r16^8d16r16]10 c+1
+
+#4 q7F ;Pizzicato Strings 4
+
+r2^8 / o3 $E5 $95 $04 $ED $7F $E0 $EE $37 $ED $81 $02 v170 [d2<a+2a4>c4<f4e4d2]1 g2>c1 * < g4a4>d2>d2 [r1]24
+
+#5 q7F ;Bass/Strings 4
+
+r2^8 / o3 $E5 $97 $06 $ED $7F $F0 $EE $54 $ED $81 $01 v220 y10 [d4^8d8<a+4^8a+8a4>c4f4e4d4^8d8]<g4^8g8 >c4^8<g8>c2 < * g4a4d1
+o2 $E5 $96 $08 $ED $78 $E0 $EE $A0 v185 $ED $81 $00 y0 d2<a+2a4>c4f4e4d2<g2>c1d2<a+2a4>c4f4e4d2<g4a4>d1<
+[a+16r16a+16r16^8a+16r16]4 [a16r16a16r16^8a16r16]2 > [d16r16d16r16^8d16r16]2 < [g16r16g16r16^8g16r16]2 > [c16r16c16r16^8c16r16]2 <
+[f16r16f16r16^8f16r16]4 [a+16r16a+16r16^8a+16r16]4 [b16r16b16r16^8b16r16]4 [g16r16g16r16^8g16r16]2 [g+16r16g+16r16^8g+16r16]2
+[a16r16a16r16^8a16r16]2 a1
+
+#6 ;Bells/Rim
+
+r2^8/ o4 $ED $81 $01 [$E5 $98 $06 $ED $7F $E0 $EE $CF v255 r4 d4 $E5 $99 $06 $ED $7F $E0 $EE $3C r4 e4]7
+$E5 $98 $06 $ED $7F $E0 $EE $CF r4 d+4 r2 [r1]8 [$E5 $99 $06 $ED $7F $E0 $EE $3C v255 r4e4r2]16
+
+#7 ;Reverse Cymbal
+
+o3 $E5 $9A $0B $ED $73 $EE $EE $30 v245 r2^8/ [r1]7 c+1  [r1]24

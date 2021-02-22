@@ -1,0 +1,199 @@
+﻿;*******************************************************************
+; Title = Bonus Game
+; Ported by LadiesMan217
+;*******************************************************************
+; Insert size: 1814 bytes
+; Number of channels: 7 (Channel 8 unused)
+; Total song length: 0:37
+; Version: AddmusicK 2
+; Samples: Yes (brr)
+;*******************************************************************
+; SPC Generator Info
+#SPC
+{
+	#author "Koji Kondo"
+	#title "Bonus Game"
+	#game "Yoshi's Island"
+	#comment "Ported by LadiesMan217"
+}
+;*******************************************************************
+;Commands In Song
+
+;VCMD_TREMOLO_ON=$e5
+;VCMD_ECHO_ON=$ef
+;VCMD_ECHO_PARAM=$f1
+;*******************************************************************
+;Samples and Info
+#samples
+{
+	#optimized
+	#YI
+}
+#instruments
+{
+	"YI/yi-1C.brr" $ff $e0 $00 $07 $a8	;@30 bongos
+	@2	       $8f $19 $00 $06 $04	;@31 glockenspiel
+	"YI/yi-23.brr" $ff $e2 $00 $03 $01	;@32 harmonica
+}
+;*******************************************************************
+;Channel 1
+
+#0
+t50 w145 @32 y10 v200 
+$ef $79 $00 $00 
+$f1 $02 $1e $01
+$f5 $0c $21 $2b $2b $13 $fe $f3 $f9
+q7c o5 g8 q7c g16 g16 g8 g8 f8 d8 < b=34 q4c 
+b=10 b=10 b=10 b=10 b=10 b=10 b=10 b=10 b=10 b=10 b=10/
+w155 @32 y10 v220 $e5 $00 $28 $46
+(3)[q7c o6 c=70 q7c < b=50 > c8 q7c < b4. q4c g=70 q7c b96 ^=23 q7a a=22 q7b 
+b=25 q7c a8 q6c g=25 q7c e=25] q7b o5 f3... 
+r8 q7d o6 d=70 q7c c=47 q7c d8 q7c c64 ^=68 
+(4)[q4c o5 b=73 q7d > d64 ^=23 q7c c=23 q7c d8 q7c c=23 q6c < b=23 q7c a=22]
+q7c e32 ^3... r8 q7c o6 c=69 < b=49 > c8 < b96 ^=69 
+(5)[q5c o5 g=74 q7d e192 ^=22 q6c f=25 q7c g8 q7c > c=23 d=25 q7c e=23] 
+< a96 q5c ^3... r8 
+(6)[q7d o6 f=69 q7b e=50 q7c d=23 q7b e96 ^=69 q5c < g=49 q6c 
+g+=22 q7c a48 ^=46 > c=23 q6c < b=47 q7a > e=23]
+q7b c=5 q5c ^3... r8 
+(7)[q7e o5 a16 q7a f16 q7c a16 q79 f16 q7a a16 q69 f=13 q78 a=13 q75 f=13 q7c 
+> c8... q7e < g16 q7a e=13 q7c g16 q7a e16 q7c g=11 q7a e16 q7c g=11 q7b 
+e=13 q7c > c4 q7e < f16 q7c d16 f16 q7b d16 f=11 q6b d=11 q3c f24.. q73 d16 q7c 
+b4 q7e o5 e16 q79 c16 q7c e=11 q6a c=13 q69 e=10 q7a c24.. q7c e32. c=13]
+q6c g=50 q7c o5 a16 f=13 q7b a=10 f24.. q7c a=10 
+q6b f24.. q7c a32. q6c f24... q7c > c=47 
+(8)[q7c o5 g16 q78 e16 q7c g=11 q7a e=13 g=10 q6b e=13 q7c g=11 q6b e16 q7d 
+> e=38 e16 e=22 q7b d=26 q7a c8 q7c < a=26 q6b b16.. q7c > d=22] c64 ^3... r8 
+
+;*******************************************************************
+;Channel 2
+
+#1
+@32 v200 y12
+q7c o3 g8 q7c g16 g16 
+g8 g8 a8 a+8 b3... r8/
+@32 v180 y14 
+q4d c4. < g4. > c4. < g4. > c4. < g4. > d4. < a4. 
+q4d > d4. < a4. > d4. < a4. > d4. < a4. > c4. < g4. 
+q4d > c4. < g4. > c4. < g4. > c4. e4. f4. c4. 
+q4d f4. f+4. g4. a4. d4. < g4. > c4. < g4. 
+q2d > f4. f4. e4. e4. d4. d4. c4. c4. 
+q2d f4. f4. e4. a4. d4. g4. c4. c4. 
+
+;*******************************************************************
+;Channel 3
+
+#2
+@32 y8 v200 
+q7c o4 b8 q7c b16 b16 b8 b8 b8 b8 g=34 q4c 
+g=10 g=10 g=10 g=10 g=10 g=10 g=10 g=10 g=10 g=10 g=10/
+@32v160 y8 
+r8 q4d g8 g4 g8 q7d g8 
+(9)[q4d ^8 o4 g8 g4 g8 q7d g8]2
+(10)[q4d ^8 o4 a8 a4 a8 q7d a8]4
+(9) r8 q4d g8 g4 g8 q7d g8 
+q4d ^8 g8 g4 g8 q7d g8 
+(9)(10)
+q4d ^8 a8 a4 a8 q7d a8 q4d ^8 g8 g4 a8 q7d a8 
+q4d ^8 a8 a4 b8 q7d b8 q4d ^8 > c8 c4 c8 q7d c8 
+r8 q4d < a8 a8 r8 a8 a8 r8 g8 g8 r8 g8 g8 r8 f8 f8 r8 f8 f8 
+r8 o4 e8 e8 r8 e8 e8 
+r8 q4d a8 a8 r8 a8 a8 r8 g8 g8 r8 g8 g8 r8 f8 f8 r8 f8 f8 
+r8 o4 e8 e8 e4. 
+
+;*******************************************************************
+;Channel 4
+
+#3
+@32 y6 v200
+q7c o4 g8 q7c g16 g16 g8 g8 g8 g8 d=29 q4c 
+d=10 d=10 d=10 d=10 d=10 d=10 d=10 d=10 d=10 d=10 d24.../
+@32 v160 y6
+r8 q4d e8 e4 e8 q7d e8 
+[q4d ^8 e8 e4 e8 q7d e8]2
+[q4d ^8 f8 f4 f8 q7d f8]3
+q4d ^8 f8 f4 q6d f8 q7d f8 
+q4d ^8 e8 e4 e8 q7d e8 
+r8 q4d e8 e4 e8 q7d e8 
+[q4d ^8 e8 e4 e8 q7d e8]2
+q4d ^8 o4 f8 f4 f8 q7d f8 
+q4d ^8 f8 f4 f+8 q7d 
+f+8 q4d ^8 e8 e4 e8 q7d 
+e8 q4d ^8 f8 f4 f8 q7d 
+f8 q4d ^8 e8 e4 e8 q7d e8 
+[r8 q4d f8 f8 r8 f8 f8 r8 e8 e8 r8 e8 e8 r8 
+d8 d8 r8 d8 d8 r8 o4 c8 c8] r8 c8 c8 * c4. 
+
+;*******************************************************************
+;Channel 5
+
+#4
+@32 y14 v200
+q7c o3 d8 q7c d16 d16 d8 d8 e8 f8 > f=29 q4c 
+f=10 f=10 f=10 f=10 f=10 f=10 f=10 f=10 f=10 f=10 f24.../
+@32 y12 v180 $e5 $00 $1e $46
+q7c > e=70 q7c e=50 e8 q7c e4. q4c e=70 q7c e96 ^=23 q7a 
+e=22 q7b e=25 q7c e8 q6c e=25 q7c c=25 q7b d4. r4. 
+q7c f=70 q7c f=50 f8 q7c f4. q4c f=70 q7c f96 ^=23 q7a 
+f=22 q7b f=25 q7c f8 q6c f=25 q7c f=25 q7b < g4. r4. 
+q7c > e=70 q7c e=50 e8 q7c e4. q4c c=70 q7c < g96 ^=23 q7a 
+a=22 q7b b=25 q7c > e8 q6c f=25 q7c g=25 q7b c4. r4. 
+q7d a=69 q7b a=50 q7c a=23 q7b g96 ^=69 q5c c=49 q6c c=22 q7c 
+d48 ^=46 f=23 q6c f=47 q7a g=23 q7b e=5 q5c ^4. r4. 
+q7e c16 r16 q7c c16 r16 q7a c16 r=13 c=13 r=13 q7c a8... q7e 
+c16 r16 q7c c16 r16 q7a c16 r=13 c=13 r=13 q7c g8... q7e 
+< b16 r16 b16 r16 q7a b16 r=13 b=13 r=13 q7c 
+g8... q7e g16 r16 q7c g16 r16 q7a g16 r=13 g=13 r=13 q7c > e8... 
+q7e c16 r16 q7c c16 r16 q7a c16 r=13 c=13 r=13 q7c a8... q7e 
+c16 r16 q7c c16 r16 q7a c16 r=13 c=13 r=13 q7c 
+> c+=33 c+16 q7e < a8 a8 a8 f8 f8 f8 e3... r8 
+
+;*******************************************************************
+;Channel 6
+
+#5
+@30
+v220
+r4. r4. r8 q79 o5 f24 q7c f24 q7d f24 q7e 
+f24 q7f f24 q7e f24 q7e f24 q7d f24 q7d f24 q7c 
+f24 q7c f24 q7b f24 q7a f24 q79 f24 q78 f24/
+r=576 r4. r4. r4. r4. r4. r4. 
+@30 v220
+r8 q79 o5 f24 q7c f24 q7d f24 q7e f24 q7f
+f24 q7e f24 q7e f24 q7d f24 q7d f24 q7c 
+f24 q7c f24 q7b f24 q7a f24 q79 f24 q78 f24 
+r=576 r4. r4. r4. r4. r4. r4. r8 q79
+f24 q7c f24 q7d f24 q7e f24 q7f f24 q7e 
+f24 q7e f24 q7d f24 q7d f24 q7c f24 q7c 
+f24 q7b f24 q7a f24 q79 f24 q78 f24 
+@31 v140 y16
+q7e o5 e16 q7a c16 q7c e16 q79 c16 q7a e16 q69 
+c=13 q78 e=13 q75 c=13 q7c g8... q7e d16 q7a 
+< b=13 q7c > d16 q7a < b16 q7c > d=11 q7a < b16 q7c 
+> d=11 q7b < b=13 q7c > g4 q7e c16 q7c 
+< a16 > c16 q7b < a16 > c=11 q6b < a=11 q3c 
+> c24.. q73 < a16 q7c > f+4 q7e < b16 q79 
+g16 q7c b=11 q6a g=13 q69 b=10 q7a 
+g24.. q7c b32. g=13 q6c > d=50 
+q7c e16 c=13 q7b e=10 c24.. q7c e=10 q6b 
+c24.. q7c e32. q6c c24... q7c g=47 q7c d16 q78 
+< b16 q7c > d=11 q7a < b=13 > d=10 q6b < b=13 q7c 
+> d=11 q6b < b16 q7d > b=38 b16 b=22 q7b 
+a=26 q7a g8 q7c e=26 q6b f+16.. q7c a=22 g64 ^3... r8 
+
+;*******************************************************************
+;Channel 7
+
+#6
+r=288/
+@32 y4 v140 
+r32 (3) q7b o5 f4. r=66 r32 q7d > d=70 q7c c=47 q7c d8 q7c c64 ^=68 
+(4) q7c o5 e32 q5c ^4. r=66 r32 q7c o6 c=69 < b=49 > c8 < b96 ^=69 
+(5) o5 a96 q5c ^4. r=66 r32 
+(6) q7b o6 c=5 q5c ^4. r=66 r32 
+(7) q6c o5 g=44 r32 q7c a16 f=13 q7b a=10 f24.. q7c a=10 q6b f24.. q7c a32. q6c 
+f24... q7c > c=47 (8) c64 ^3... r16. 
+
+;*******************************************************************
+
+#amk 2

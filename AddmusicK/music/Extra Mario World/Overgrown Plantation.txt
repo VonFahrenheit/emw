@@ -1,0 +1,177 @@
+#amk 2
+#SPC
+{
+	#author "Ruberjig"
+	#game "Extra Mario World"
+	#title "Overgrown Plantation"
+	#comment "eat them greens boi"
+}
+#samples
+{
+	#optimized
+	
+	"synth lead.brr"
+	"Marimba.brr"
+	"pan flute.brr"
+	"ocarina.brr"
+	"conga.brr"
+	"Sine Wave.brr"
+	"Kick.brr"
+	"Synth Snare.brr"
+	"izu_chat.brr"
+	"Trumpet003.brr"
+	"String Ensemble 2.brr"
+	"synth bass 1.brr"
+	"Brasschord001.brr"
+}
+#instruments
+{
+"Marimba.brr" $8E $7C $B8 $05 $00
+"Sine Wave.brr" $EA $72 $df $02 $00
+
+"ocarina.brr" $8C $E8 $B8 $04 $00
+"synth lead.brr" $8E $E8 $df $02 $00
+"Trumpet003.brr" $FE $C8 $00 $03 $04
+"pan flute.brr" $8B $88 $B8 $03 $00
+
+"String Ensemble 2.brr" $AB $A8 $00 $02 $8C
+"synth bass 1.brr"		$Fd $75 $B8 $02 $00
+
+	"Kick.brr" $8E $4C $00 $06 $00 
+	"izu_chat.brr" $fe $55 $00 $09 $00
+	"Synth Snare.brr" $ef $70 $B8 $04 $00
+	"conga.brr" $06 $23 $60 $06 $00
+	
+	"Brasschord001.brr" $FD $6C $B8 $02 $98
+}
+"tgec = $F4 $03"
+$EF $DF $04 $04
+$F1 $04 $A0 $00
+$F2 $0F $24 $24
+t59 w140
+
+#0 q7f v180
+
+@0 @30 $ED $0E $D8 o3 l8
+[e<b>g4rg4r e<b>g4]32
+[r1]99
+
+#1 q7f v120
+
+@0 @31 $ED $0E $D8 o4 l8
+[e<b>g4rg4r e<b>g4]32
+[r1]99
+
+#2 q7f v200
+$EB $00 $00 $00
+[r1.]4
+
+@1 @32 $ED $0E $8A o3 l8 $DE $30 $0C $40 
+[g4rg2.baf d^1 cegceg2.. dfab1.]2
+
+@0 @33 $ED $0C $8C o4 l8 $DE $30 $0C $40 
+[g4rg $DD $88 $01 b^2.af d^1 cegceg2.. dfa $DD $20 $04 b^1.]2
+
+@0 @34 $ED $0D $8E o5 l8 $DE $30 $0C $40 
+v170
+[e4re2.gfd
+d4rd2.fec
+g4rg2.baf
+c4rc2.]dfa
+*1 <fab>
+*1 dfa
+*1 ab $EB $12 $30 $78 b
+
+#7 q7f v140 r.
+
+[r1.]4
+
+@1 @0 $ED $0E $8A o3 l8 $DE $30 $0C $40 
+[g4rg2.baf d^1 cegceg2.. dfab1.]2
+
+@0 @0 $ED $0C $8C o3 l8 $DE $30 $0C $40 
+[g4rg2.baf d^1 cegceg2.. dfab1.]2
+
+@1 @1 $ED $0D $8E o5 l8 $DE $30 $0C $40 
+v120
+[e4re2.gfd
+d4rd2.fec
+g4rg2.baf
+c4rc2.]dfa
+*1 <fab>
+*1 dfa
+*1 abb
+
+#3 q7f v200
+
+[r1.]4
+
+@1 @35 $ED $0E $8A o4 l8 $DE $30 $0C $40 
+[g4rg2.baf d^1 cegceg2.. dfab1.]2
+
+@0 @32 $ED $0C $8C o4 l8 $DE $30 $0C $40 
+[g4rg2.baf d^1 cegceg2.. dfab1.]2
+
+@0 @42 $ED $0D $8E o5 l8 $DE $30 $0C $40 
+v160
+[e4re2.gfd
+d4rd2.fec
+g4rg2.baf
+c4rc2.]dfa
+*1 <fab>
+*1 dfa
+*1 abb
+
+#5 q7f v200
+o4
+(50)[@41>e<@41>c< @38e@39e @39e@38e @39e@39e tgec @40e tgec @41>e< tgec @40e tgec @39e]3
+(51)[@41>e<@41>c< @38e@39e16@39e16 @39e@38e @40e@39e16@39e16 tgec @40e tgec @41>e< tgec @40e@40e tgec]
+(50)3 (51)1
+(50)3 (51)1
+(50)3 (51)1
+(50)3 (51)1
+(50)3 (51)1
+(50)3 (51)1
+(50)3 (51)1
+(50)3 (51)1
+(50)3 (51)1
+(50)3 (51)1
+(50)3 (51)1
+
+#6 q7f v240
+
+[r1.]4
+
+@1 @36 $ED $08 $8A o3 l8 $DE $30 $0C $20 
+[g1. f1. g1. b1.]2
+
+@0 @36 $ED $0E $8C o3 l8 $DE $30 $0C $10 
+[g1. f1. g1. b1.]2
+
+@1 @36 $ED $08 $8A o4 l8 $DE $30 $0C $20 
+[e1.
+d1.
+g1.
+a^1]dfa
+*1 <fab>
+*1 dfa
+*1 abb
+
+#4 q7f v200
+
+[r1.]4
+
+@1 @37 $ED $08 $8A o2 l8 $DE $30 $0C $20 
+[g1. f1. g1. b1.]2
+
+@0 @37 $ED $0E $8C o2 l8 $DE $30 $0C $10 
+[g1. f1. g1. b1.]2
+
+@1 @37 $ED $08 $8A o3 l8 $DE $30 $0C $20 
+[e1.
+d1.
+g1.
+a^1]dfa
+*1 <fab>
+*1 dfa
+*1 abb

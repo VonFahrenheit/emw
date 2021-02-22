@@ -1,0 +1,78 @@
+;*******************************************************************
+;Title = Map 1
+;Ported by LadiesMan217
+;*******************************************************************
+; Insert size: 385 bytes
+; Number of channels: 4 (Channels 5, 6, 7, 8 unused)
+; Total song length: 0:09
+; Version: AddmusicK 2
+; Samples: Yes (brr)
+;*******************************************************************
+; SPC Generator Info
+#SPC
+{
+	#author "Koji Kondo"
+	#title "Map 1"
+	#game "Yoshi's Island"
+	#comment "Ported by LadiesMan217"
+}
+;*******************************************************************
+;Commands In Song
+
+;VCMD_ECHO_ON=$ef
+;VCMD_ECHO_PARAM=$f1
+;*******************************************************************
+;Samples and Info
+#samples
+{
+	#optimized
+	#YI
+}
+#instruments
+{
+	"YI/yi-19.brr" $fe $f3 $00 $04 $ff	;@30 jazz guitar
+}
+;*******************************************************************
+;Channel 1
+
+#0
+t24 w175 @30 y8 v220 
+$ef $ff $00 $00 
+$f1 $02 $1e $02
+$f5 $0c $21 $2b $2b $13 $fe $f3 $f9
+q2d o3 b32 q3c b32 q0e > c16 q2e e16 q0d c16 q4e d16. q0e d12... q3e e32 q2d 
+e16. q0e e16 q0b c16 q6e d16. q0e c12... q2e < b32 q3d b32 q2d > c16 q2e e16 
+q0d c16 q5e d16. q0e d12... q4e e32 q3d e32 q0b e16 q0d e16 c16 q6f d16. q0e 
+c16. q7e < b16 ^4 
+
+;*******************************************************************
+;Channel 2
+
+#1
+@30 y10 v220 
+q3e o2 g8 q0e a8 q6e b16. q0e > c12... q3e d8 q0e c8 q6e < b16. q0d a12... q3e 
+g8 q0e a8 q6e b16. q0e > c12... q3e d8 q0e c8 q6e < a+16. q0e g+16. q7e g16 ^4 
+
+;*******************************************************************
+;Channel 3
+
+#2
+@30 y12 v220 
+q3e o4 d32 d32 q0d e16 q2e g16 q0d e16 q5e g16. q0e b12... q4e > c32 q7d c32 
+q0d < b16 q0e g16 q0d e16 q5e g16. q0e g12... q2e d32 q3e d32 q0d e16 q2e g16 
+q0d e16 q4e g16. q0e b12... q5e o5 c32 q6d c32 q0d < b16 q0e g16 e16 q6f g16. 
+q0e g16. q7e g16 ^4 
+
+;*******************************************************************
+;Channel 4
+
+#3
+@30 y4 v140 
+r48 q3e o4 d32 d32 q0d e16 q2e g16 q0d e16 q5e g16. q0e b12... q4e > c32 q7d 
+c32 q0d < b16 q0e g16 q0d e16 q5e g16. q0e g12... q2e d32 q3e d32 q0d e16 q2e 
+g16 q0d e16 q4e g16. q0e b12... q5e > c32 q6d c32 q0d < b16 q0e g16 e16 q6f g16. 
+q0e g16. q7e g24 ^4 
+
+;*******************************************************************
+
+#amk 2

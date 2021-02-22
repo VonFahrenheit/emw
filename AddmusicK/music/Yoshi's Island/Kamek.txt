@@ -1,0 +1,106 @@
+;*******************************************************************
+;Title = Kamek
+;Ported by LadiesMan217
+;*******************************************************************
+; Insert size: 631 bytes
+; Number of channels: 5 (Channels 6, 7, 8 unused)
+; Total song length: 0:13
+; Version: AddmusicK 2
+; Samples: Yes (brr)
+;*******************************************************************
+; SPC Generator Info
+#SPC
+{
+	#author "Koji Kondo"
+	#title "Kamek"
+	#game "Yoshi's Island"
+	#comment "Ported by LadiesMan217"
+}
+;*******************************************************************
+;Commands In Song
+
+;VCMD_PITCH_SLIDE=$dd
+;VCMD_ECHO_ON=$ef
+;VCMD_ECHO_PARAM=$f1
+;VCMD_ECHO_VOL_FADE=$f2
+;*******************************************************************
+;Samples and Info
+#samples
+{
+	#optimized
+	#YI
+}
+#instruments
+{
+	"YI/yi-1C.brr" $ff $e0 $00 $07 $a8	;@30 bongos
+	"YI/yi-21.brr" $ff $ec $00 $0a $02	;@31 bass
+	"YI/yi-19.brr" $fe $f3 $00 $04 $ff	;@32 jazz guitar
+}
+;*******************************************************************
+;Channel 1
+
+#0
+t22 w175 
+$ef $ff $00 $00 
+$f1 $02 $1e $01
+$f2 $50 $1b $1b 
+$f5 $0c $21 $2b $2b $13 $fe $f3 $f9
+@30 y12 v240
+r2 r2 r12/
+w160 @30 y12 v240 
+q1d o3 a=11 q05 > b=13 q0d b=11 q0f b16 q7c < d16 q7c d16 q7b < b16 q0e > a16 
+q7e a192 q03 ^=11 > b16 q0c b16 q0f b16 q7d < d16 d16 q7b < b16 q0e > a=13 q1d 
+a=11 q01 a=13 q0d > b16 q0f b=11 q7c < d16 q7c d16 q7b < b=13 q0f> a16 q1c a32 
+q1e a32 q6fa=11 q08 > b16 q0f b16 q7c < d=11 d=13 q7b < b16 q7e > a96 r=11 
+
+;*******************************************************************
+;Channel 2
+
+#1
+@31 y10 v200 
+r4 r16 q0d o3 g16 g16 q0c g16 q4c g16 $dd $06 $04 $93 
+< g16 g16 g16 q7c g4 r12/
+@31 y10 v200 
+q4c c8. q1d e=11 q0d g=13 g16 q6d e8 q5d f8. q0d a16 > c16 q0c c16 q4c < a=23 
+q7c c192 q6d ^8. q1d e=11 q0d g16 g16 q6d e=25 q4d f=35 q1c a16 q0d > c16 c16 
+q7d < a16 q3b a32 q3c > c48.. 
+
+;*******************************************************************
+;Channel 3
+
+#2
+@32 y7 v240
+r16 q1d o5 g16 g16 q1c g16 g4 r16 q1d < g16 q1d 
+g16 q0c g16 q7c g12... ^32 > g32 d32 < a32 e=10/
+@32 y7 v240 
+r8 q1d > c16 < g16 q1c a+16 a+16 q5d g8 r8 q1d > f16 q1d c16 q0c d+16 q0c d+16 
+q6d f8 r8 q1d c16 q0c < g16 q0c a+16 a+16 q5d g8 r8 q1d > f16 q0d c16 d+16 q0c 
+d+16 q7e f16.. r64 
+
+;*******************************************************************
+;Channel 4
+
+#3
+@32 y8 v240
+r16 q1d o4 b16 b16 q1c b16 b4 r16 q1d < b16 q1d 
+b16 q0c b16 q7c b12... ^24 > > f32 c32 < g32 d24/
+@32 y8 v230 
+r8 q0d g16 q1c e16 q0c g16 q1d e16 q6d e8 r8 q0b > c16 q0c < a16 q05 a+16 q1c 
+a+16 q6d > c8 r8 q0d < g16 q0c e16 q0d e16 q1d e16 q6c e8 r8 q0c > c16 q0d < 
+a16 q0c a+16 a+16 q7d > c16.. r64 
+
+;*******************************************************************
+;Channel 5
+
+#4
+@32 y9 v240
+r16 q1d o4 g16 g16 q1c g16 g4 r16 q1d < g16 q1d 
+g16 q0c g16 q7c g12... ^=10 > > e32 < b32 f32 c32/
+@32 y9 v230
+r8 q1c o4 e16 q1d c16 e16 c16 q6d c8 r8 q1b a16 q0d f16 q0c g16 q0c g16 q6d a8 
+r8 q1c e16 q0c c16 q0c c16 q0c c16 q6d c8 r8 q1a a16 q0c f16 q0d g16 q0c g16 
+q7d a=20 r48 
+                
+;*******************************************************************
+
+#amk 2

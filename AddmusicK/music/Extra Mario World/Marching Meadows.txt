@@ -1,0 +1,93 @@
+#amk 2
+#SPC
+{
+	#author "Ruberjig"
+	#game "Extra Mario World"
+	#title "Marching Meadows"
+}
+#samples
+{
+	#optimized
+	"String Ensemble 2.brr"
+	"saxophone.brr"
+	"synth bass 1.brr"
+	"Electric Bass (Pick).brr"
+	"Drum.brr"
+	"izu_snare.brr"
+	"izu_chat.brr"
+	"Synth lead.brr"
+	"piccolo.brr"
+}
+#instruments
+{
+	"piccolo.brr" $AC $C7 $AC $03 $08
+	"String Ensemble 2.brr" $FA $CA $00 $05 $10
+	"saxophone.brr" $FD $CF $B8 $04 $00
+	"Electric Bass (Pick).brr" $BF $B1 $0A $0C $80
+	"synth bass 1.brr"	$Fd $75 $B8 $04 $00
+	@0 $Fd $CE $B8 $03 $00
+	"Synth lead.brr" $8E $C8 $B8 $04 $00
+	"Drum.brr" $ff $B2 $00 $03 $42 
+	"izu_chat.brr" $fE $B6 $00 $09 $00	;@38
+	"izu_snare.brr" $01 $2F $60 $09 $a0
+}
+
+$EF $7F $04 $04
+$F1 $07 $A0 $00
+$F2 $0F $14 $14
+$F4 $02
+"tgec= $F4 $03"
+#0 w130 v180 y10 l8 t50
+@30 o4 q3f $DE $18 $0C $50 $F4 $02
+[ag16f16 ed cded ag16f16 ed cdec gf16e16 dc <b>cdc gf16e16 d<b>  cd c16d16e16f16]2
+@36 o4 v210
+[gcefg2 g.d.fg2 f<b>def2 f.c.ef2 >>c<<cdegfed >>c<<cdegfe >b>c<<cdegfe >>c16<b16>c<<cdegfed]2
+@32 o4 v190
+(1)[a^1.f16g16>f16e16d16c16< a^1.f16g16>f16e16d16c16< f^1.e16d16c16d16e16f16] g^1.f16e16d16e16f16g16
+(1) g^1. fdf
+
+#1
+@35 o4 q6f $DE $2C $0C $50
+[a1a1g1g2.c16d16e16f16]2
+@31 o2 q6f p0,0
+[g1^1 f1^1 >>cr2..cr2.<b>cr2.c16<b16>cr2..]2
+@31  o3 
+[a1^1a1^1f1^1g1^1]2
+
+#2
+@33 o2 v160 q7f $ee $10
+[g>g<g>g<g>g<g>g<g>g<g>g<g>g<g>g< f>f<f>f<f>f<f>f<f>f<f>f<f>f<f>f<]6
+[g>g<g>g<g>g<g>g<g>g<g>g<g>g<g>g< f>f<f>f<f>f<f>f<f>f<f>f<f>f<f>f< e>e<e>e<e>e<e>e<e>e<e>e<e>e<e>e< f>f<f>f<f>f<f>f<f>f<f>f<f>f<f>f<]2
+
+#5
+@34 o1q5f 
+[g>g<g>g<g>g<g>g<g>g<g>g<g>g<g>g< f>f<f>f<f>f<f>f<f>f<f>f<f>f<f>f<]6
+[g>g<g>g<g>g<g>g<g>g<g>g<g>g<g>g< f>f<f>f<f>f<f>f<f>f<f>f<f>f<f>f< e>e<e>e<e>e<e>e<e>e<e>e<e>e<e>e< f>f<f>f<f>f<f>f<f>f<f>f<f>f<f>f<]2
+
+#4 v180
+@35o5 q3d
+[ag16f16 ed cded ag16f16 ed cdec gf16e16 dc <b>cdc gf16e16 d<b>  cd c16d16e16f16]2
+@3o3 
+[gcefg2 g.d.fg2 f<b>def2 f.c.ef2 >>c<<cdegfed >>c<<cdegfe >b>c<<cdegfe >>c16<b16>c<<cdegfed]2
+@32 o3 
+(2)[a^1.f16g16>f16e16d16c16< a^1.f16g16>f16e16d16c16< f^1.e16d16c16d16e16f16] g^1.f16e16d16e16f16g16
+(2) g^1. fdf
+
+#7 o3
+[q7f@37eq7d@38e16q7a@38e16q7f tgecq7f@39eq7dtgec@38e16q7a@38e16]99
+
+#6 v180
+@35o4 q2f 
+[f1f1e1e2.<a16b16>c16d16]2
+@31 o3 q4f
+[e1^1 d1^1 >er2..er2.der2.e16d16er2..<]2
+@31  o3 
+[f1^1f1^1d1^1e1^1]2
+
+#3
+@35 o5 q38
+[a1a1g1g2.c16d16e16f16]2
+@31o3 q6c
+[g1^1 f1^1 >>cr2..cr2.<b>cr2.c16<b16>cr2..]2
+@31o4
+[a1^1a1^1f1^1g1^1]2
