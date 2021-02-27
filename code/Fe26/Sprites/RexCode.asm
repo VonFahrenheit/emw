@@ -612,7 +612,18 @@ Rex:
 		STZ !SpriteAnimTimer
 
 		LDA !ExtraProp1,x		;\ check golden bandit mode
-		CMP #$FF : BNE .NotGolden	;/
+		CMP #$FF : BEQ .GoldenBandit	;/
+		CMP #$05 : BNE +		;\
+		LDA !ExtraProp2,x		; |
+		AND #$3F			; | if rex is a knight (sword + helmet)
+		CMP #$08 : BNE +		; | enable chase
+		LDA !RexAI			; |
+		ORA #$40			; |
+		STA !RexAI			;/
+	+	JMP .NotGolden
+
+
+		.GoldenBandit
 		LDA $33C0,x			;\
 		AND #$0E			; | only spawn one yoshi coin
 		CMP #$04 : BEQ .NotGolden	;/
@@ -647,11 +658,10 @@ Rex:
 		LDA !SpriteTweaker4,x		;\
 		ORA #$04			; | prevent from despawning off-screen
 		STA !SpriteTweaker4,x		;/
-
 		.Fail
 		STZ $3230,x
-
 		.NotGolden
+
 		PLB
 		RTL
 
