@@ -690,7 +690,7 @@
 
 		!P1Dead			= $7FFF
 
-		!MarioHasFire		= $58
+		!MarioFireCharge	= $58
 		!MarioClimb		= $62
 
 
