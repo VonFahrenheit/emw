@@ -35,7 +35,19 @@ levelinit2:
 		JSL CLEAR_DYNAMIC_BG3
 		RTL				; > Return
 
+
+
 levelinit3:
+		LDA #$02 : STA !BG2ModeH
+		LDA #$04 : STA !BG2ModeV
+		%GradientRGB(HDMA_BlueSky)
+		LDA #$BA : STA !Level+4			; > negative 0x3F
+		LDA #$07 : STA !Level+5			; > Size of chunks
+		JML levelinit5_HDMA
+
+
+
+; legacy version
 		LDA #$03 : STA !Translevel
 		INC !SideExit
 		LDA #$C1 : STA !MsgPal		; > Portrait CGRAM location
@@ -771,12 +783,17 @@ level3:
 		LDY #$01				; | Regular exit (screen 0x15)
 		JSL END_Right				;/
 		LDA #$1F				;\ Put everything on mainscreen
-		STA $6D9D				;/
-		STZ $6D9E				; > Disable subscreen
+		STA !MainScreen				;/
+		STZ !SubScreen				; > Disable subscreen
 
-		LDA.b #.HDMA : STA !HDMAptr		;\
-		LDA.b #.HDMA>>8 : STA !HDMAptr+1	; | Set up pointer
-		LDA.b #.HDMA>>16 : STA !HDMAptr+2	;/
+	;	LDA.b #.HDMA : STA !HDMAptr		;\
+	;	LDA.b #.HDMA>>8 : STA !HDMAptr+1	; | Set up pointer
+	;	LDA.b #.HDMA>>16 : STA !HDMAptr+2	;/
+
+		LDA.b #level5_HDMA : STA !HDMAptr		;\
+		LDA.b #level5_HDMA>>8 : STA !HDMAptr+1		; | Set up pointer
+		LDA.b #level5_HDMA>>16 : STA !HDMAptr+2		;/
+
 		RTL					; > Return
 
 		.HDMA
@@ -1531,7 +1548,7 @@ level5:
 		LSR #3					; |
 		STA $22					; | BG3 scroll = 112.5%
 		LDA $1C					; | (this only applies if BG3 scroll is turned off in LM)
-		SEC : SBC #$00C0			; |
+		SEC : SBC #$00C0			; | (used for ramparts in castle rex)
 		STA $00					; |
 		ASL #3					; |
 		CLC : ADC $00				; |

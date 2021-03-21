@@ -4021,6 +4021,50 @@ LOAD_HIDEOUT:
 
 
 
+
+macro oamtable(source)
+		LDA.w !OAMindex_<source> : BEQ ?next
+		CMP $00 : BCC ?notcapped
+		LDA $00
+		STZ $00
+		BRA ?go
+	?notcapped:
+		LDA $00
+		SEC : SBC.w !OAMindex_<source>
+		STA $00
+		LDA.w !OAMindex_<source>
+	?go:
+		DEC A
+		LDX.w #!OAM_<source>
+		PHB
+		MVN $00,!OAM_<source>>>16
+		PLB
+	?next:
+endmacro
+
+macro oamtablehi(source)
+		LDA.w !OAMindex_<source> : BEQ ?next
+		LSR #2
+		STA $02
+		CMP $00 : BCC ?notcapped
+		LDA $00
+		STZ $00
+		BRA ?go
+	?notcapped:
+		LDA $00
+		SEC : SBC.w !OAMindex_<source>
+		STA $00
+		LDA $02
+	?go:
+		DEC A
+		LDX.w #!OAMhi_<source>
+		PHB
+		MVN $00,!OAMhi_<source>>>16
+		PLB
+	?next:
+endmacro
+
+
 ;=========;
 ;BUILD OAM;
 ;=========;
@@ -4041,6 +4085,34 @@ BUILD_OAM:
 
 		.Assemble
 		PHB
+		PHP
+		SEP #$30
+		LDA #$41
+		PHA : PLB
+		REP #$30
+		LDA #$0200 : STA $00			; lo table size
+		LDY.w #!OAM				; dest address (lo table)
+		%oamtable(p3)				;\ prio 3 lo table
+		LDA $00 : BEQ ..hitable			;/
+		%oamtable(p2)				;\ prio 2 lo table
+		LDA $00 : BEQ ..hitable			;/
+		%oamtable(p1)				;\ prio 1 lo table
+		LDA $00 : BEQ ..hitable			;/
+		%oamtable(p0)				; prio 0 lo table
+
+		..hitable
+		LDA #$0080 : STA $00			; hi table size
+		LDY.w #!OAMhi				; dest address (hi table)
+	..p3	%oamtablehi(p3)				;\ prio 3 hi table
+		LDA $00 : BEQ ..finish			;/
+	..p2	%oamtablehi(p2)				;\ prio 2 hi table
+		LDA $00 : BEQ ..finish			;/
+	..p1	%oamtablehi(p1)				;\ prio 1 hi table
+		LDA $00 : BEQ ..finish			;/
+	..p0	%oamtablehi(p0)				; prio 0 hi table
+
+		..finish
+		SEP #$30
 		LDA #$00
 		PHA : PLB
 		LDY #$1E				; > Start loop at 0x1E to reach all tiles (32 bytes)
@@ -4063,8 +4135,12 @@ BUILD_OAM:
 		STA.w !OAM+$201,y			; |
 		DEY #2					; |
 		BPL -					;/
+		PLP
 		PLB
 		RTL					; > Return
+
+
+
 
 
 
@@ -4088,6 +4164,8 @@ BUILD_OAM:
 
 		.SA1
 		PHB : PHK : PLB
+		PHP
+		SEP #$30
 		LDA #$F0
 		STA !OAM+$001 : STA !OAM+$005 : STA !OAM+$009 : STA !OAM+$00D
 		STA !OAM+$011 : STA !OAM+$015 : STA !OAM+$019 : STA !OAM+$01D
@@ -4121,7 +4199,14 @@ BUILD_OAM:
 		STA !OAM+$1D1 : STA !OAM+$1D5 : STA !OAM+$1D9 : STA !OAM+$1DD
 		STA !OAM+$1E1 : STA !OAM+$1E5 : STA !OAM+$1E9 : STA !OAM+$1ED
 		STA !OAM+$1F1 : STA !OAM+$1F5 : STA !OAM+$1F9 : STA !OAM+$1FD
-		STZ !OAMindex
+		REP #$20
+		LDA #$0000
+		STA !OAMindex
+		STA !OAMindex_p0
+		STA !OAMindex_p1
+		STA !OAMindex_p2
+		STA !OAMindex_p3
+		PLP
 		PLB
 		RTL
 
@@ -4908,8 +4993,6 @@ db $FF
 ..UploadPalette
 
 ..DrawPortrait
-
-
 
 ;=========;
 ;BRK RESET;

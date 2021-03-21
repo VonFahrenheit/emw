@@ -41,7 +41,7 @@
 					; if the comparison concludes invalid, the slot is considered free
 
 
-	!CameraPower	= #$19		; remap to address later
+	!CameraPower	= #$19		; remap to address later, this is how far ahead the camera is allowed to scroll
 
 	!CameraXMem	= $7432		; 16-bit used for PCE camera baybee
 
@@ -690,7 +690,7 @@
 
 		!P1Dead			= $7FFF
 
-		!MarioHasFire		= $58
+		!MarioFireCharge	= $58
 		!MarioClimb		= $62
 
 
@@ -850,6 +850,25 @@
 		!TrackPCE		= 2
 		!TrackMSG		= 3
 		!TrackPlaneSplit	= 4
+		!TrackFe26		= 5
+
+
+; tracker format:
+; 00 - number of times called (16-bit)
+; 02 - average scanline cost
+; 03 - highest scanline cost
+; 04 - lowest scanline cost
+; 05 - running tally 1
+; 06 - running tally 2
+; 07 - running tally 3
+; 08 - running tally 4
+; 09 - running tally 5
+; 0A - running tally 6
+; 0B - running tally 7
+; 0C - running tally 8
+; 0D - 24-bit work area
+;
+
 
 
 macro ResetTracker()
@@ -981,9 +1000,49 @@ endmacro
 
 		!OAM			= $6200			;\ Main mirror
 		!OAMhi			= $6420			;/
-
 		!OAMindex		= $7473			; lo byte
-		!OAMindexhi		= $7475			; hi bit
+		!OAMindexhi		= $7474			; hi bit
+		; $7474 has been remapped to $7475 to allow oam index to be used in 16-bit mode
+
+		!OAM_p0			= $419000
+		!OAM_p1			= $419200
+		!OAM_p2			= $419400
+		!OAM_p3			= $419600
+		!OAMhi_p0		= $419800
+		!OAMhi_p1		= $419880
+		!OAMhi_p2		= $419900
+		!OAMhi_p3		= $419980
+
+		!OAMindex_p0		= $418FF8
+		!OAMindex_p1		= $418FFA
+		!OAMindex_p2		= $418FFC
+		!OAMindex_p3		= $418FFE
+
+		!Particle_Base		= $9A00			; bank $41
+
+		; each particle is a 17-byte struct laid out as follows:
+		!Particle_Type		= !Particle_Base+$00	; type + air resistance flag
+		!Particle_Tile		= !Particle_Base+$01	; oam +2
+		!Particle_Prop		= !Particle_Base+$02	; oam +3
+		!Particle_Layer		= !Particle_Base+$03	; determines scrolling
+		!Particle_Timer		= !Particle_Base+$04	; particle despawns when this hits 0 (if this is set to 0 at spawn, particle lasts indefinitely)
+		!Particle_XSub		= !Particle_Base+$05	;\
+		!Particle_XLo		= !Particle_Base+$06	; | 24-bit X coordinate
+		!Particle_XHi		= !Particle_Base+$07	;/
+		!Particle_XSpeed	= !Particle_Base+$08	; 16-bit X speed
+		!Particle_XAcc		= !Particle_Base+$0A	; 8-bit X acceleration
+		!Particle_YSub		= !Particle_Base+$0B	;\
+		!Particle_YLo		= !Particle_Base+$0C	; | 24-bit Y coordinate
+		!Particle_YHi		= !Particle_Base+$0D	;/
+		!Particle_YSpeed	= !Particle_Base+$0E	; 16-bit Y coordinate
+		!Particle_YAcc		= !Particle_Base+$10	; 8-bit Y acceleration
+
+		; these are used as scratch during the drawing routine
+		!Particle_XTemp		= $00
+		!Particle_YTemp		= $04
+		!Particle_TileTemp	= $08
+
+
 
 		!PlayerBackupData	= $404E00		; > 128 bytes
 
@@ -1188,42 +1247,40 @@ endmacro
 
 	; -- Fusion Core --
 
-		!Ex_Amount	= $1B		; highest index is $1A
-		!Ex_Index	= $785D
+		!Ex_Amount		= $25			; highest index is $24
+		!Ex_Index		= $785D
 
-		!CoinOffset	= $00
-		!MinorOffset	= $02
-		!ExtendedOffset	= $0E
-		!SmokeOffset	= $21
-		!BounceOffset	= $27
-		!QuakeOffset	= $2F
-		!CustomOffset	= $32
+		!CoinOffset		= $00
+		!MinorOffset		= $02
+		!ExtendedOffset		= $0E
+		!SmokeOffset		= $21
+		!BounceOffset		= $27
+		!QuakeOffset		= $2F
+		!ShooterOffset		= $32
+		!CustomOffset		= $35
 
-		!Ex_Palset	= $6050		; which palset a FusionCore sprite is using
 
-		!Ex_YLo		= $7699
-		!Ex_XLo		= !Ex_YLo+(!Ex_Amount*1)
-		!Ex_YHi		= !Ex_YLo+(!Ex_Amount*2)
-		!Ex_XHi		= !Ex_YLo+(!Ex_Amount*3)
-		!Ex_YSpeed	= !Ex_YLo+(!Ex_Amount*4)
-		!Ex_XSpeed	= !Ex_YLo+(!Ex_Amount*5)
-		!Ex_YFraction	= !Ex_YLo+(!Ex_Amount*6)
-		!Ex_XFraction	= !Ex_YLo+(!Ex_Amount*7)
+		!Ex_Palset		= $6050			; which palset a FusionCore sprite is using (hidden 13th reg, i suppose)
 
-; order has to be:
-; YLo
-; XLo
-; YHi
-; XHi
-; YSpeed
-; XSpeed
-; YFraction
-; XFraction
+		!Ex_Index		= $7699			; rolling index for fusion sprites
+		!Particle_Index		= $769A			; rolling index for particles (16-bit)
 
-		!Ex_Num		= $77F0
+	; $1C3 bytes in this chunk
+	; note that the order of the physics regs is important
+		!Ex_Num		= $769C
 		!Ex_Data1	= !Ex_Num+(!Ex_Amount*1)
 		!Ex_Data2	= !Ex_Num+(!Ex_Amount*2)
 		!Ex_Data3	= !Ex_Num+(!Ex_Amount*3)
+		!Ex_YLo		= !Ex_Num+(!Ex_Amount*4)
+		!Ex_XLo		= !Ex_Num+(!Ex_Amount*5)
+		!Ex_YHi		= !Ex_Num+(!Ex_Amount*6)
+		!Ex_XHi		= !Ex_Num+(!Ex_Amount*7)
+		!Ex_YSpeed	= !Ex_Num+(!Ex_Amount*8)
+		!Ex_XSpeed	= !Ex_Num+(!Ex_Amount*9)
+		!Ex_YFraction	= !Ex_Num+(!Ex_Amount*10)
+		!Ex_XFraction	= !Ex_Num+(!Ex_Amount*11)
+
+
 
 
 
@@ -1358,8 +1415,10 @@ endmacro
 		!MarioScreenYPosHi	= $81
 		!WaterLevel		= $85
 		!IceLevel		= $86
+		!MarioXPos		= $94
 		!MarioXPosLo		= $94
 		!MarioXPosHi		= $95
+		!MarioYPos		= $96
 		!MarioYPosLo		= $96
 		!MarioYPosHi		= $97
 		!GameMode		= $6100

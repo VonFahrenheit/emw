@@ -231,6 +231,12 @@ endmacro
 		.coin
 
 
+; -- Remap $7474 to $7475 --
+	org $03C53F
+		STA $7475
+	org $03C595
+		LDA $7475
+
 ;==============;
 ;LAYER PRIORITY;
 ;==============;
@@ -675,8 +681,14 @@ Build_RAM_Code:
 		RTL
 
 	.Main
-		STZ !OAMindex					;\ clear these at the end of every game loop
-		STZ !OAMindexhi					;/
+		REP #$20
+		LDA #$0000
+		STA !OAMindex					; clear OAM index regs
+		STA.l !OAMindex_p0
+		STA.l !OAMindex_p1
+		STA.l !OAMindex_p2
+		STA.l !OAMindex_p3
+		SEP #$20
 		LDA !AnimToggle					;\ check for disabled tilemap update
 		AND #$02 : BNE .NoScrollData			;/
 		LDA !GameMode

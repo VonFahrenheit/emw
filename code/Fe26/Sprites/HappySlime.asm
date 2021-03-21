@@ -18,7 +18,7 @@ HappySlime:
 ; $32A0 - Ceiling Ypos
 ; $32B0 - Wall Xpos
 ; $32D0 - Invinc timer
-; $3340 - Used to determine if slime is red or not
+; $3340 - Used to determine if slime is red or not (different from $BE because of hurt animation still being green)
 ;
 ; $3390 - Happiness value:
 ;	  00 - prioritize reaching goal
@@ -49,6 +49,8 @@ HappySlime:
 ;	  Play in area/wander:
 ;	  tttttt Y position (tiles) of area (X position in vertical levels)
 ;	  TTTTTTTT X position (tiles) of area (Y position in vertical levels)
+
+
 
 
 		!SlimeInvincTimer	= $32D0,x
@@ -787,6 +789,7 @@ HappySlime:
 		LDY.w #!File_HappySlime
 		JSL !GetFileAddress
 		PLY
+		SEP #$10
 		LDA #$0004
 		STA !BigRAM+$00
 		STZ !BigRAM+$03

@@ -270,6 +270,152 @@ print " "
 print "-- Fe26 --"
 print "Fe26 sprite engine starts at $", pc, "."
 
+macro decreg(reg)
+	LDA <reg>,x
+	BEQ ?skip
+	DEC <reg>,x
+	?skip:
+endmacro
+
+
+MainSpriteLoop:
+
+		%TrackSetup(!TrackFe26)
+
+		LDA.b #.Main : STA $3180
+		LDA.b #.Main>>8 : STA $3181
+		LDA.b #.Main>>16 : STA $3182
+		JSR $1E80
+
+		%TrackCPU(!TrackFe26)
+		RTL
+
+
+		.Main
+		PHB : PHK : PLB
+		LDA $748F : STA $7470
+		STZ $748F
+		STZ $7471
+		STZ $78C2
+		LDA $78DF : STA $78E2
+		STZ $78DF
+		LDX #$0F
+	.Loop	STX !SpriteIndex
+		REP #$20
+		LDA !SpriteIndex
+		AND #$00FF
+		CLC : ADC #$3200
+		STA $D8
+		ADC #$0010
+		STA $DA
+		ADC #$0010
+		STA $DE
+		SEP #$20
+		LDA ($D8) : STA $87
+		STZ $33B0,x
+		LDA $3330,x : BEQ .NoDec
+		LDA $9D : BNE .NoDec
+		%decreg($32D0)
+		%decreg($32F0)
+		%decreg($3300)
+		%decreg($3360)
+		%decreg($3420)
+		%decreg($34D0)
+		.NoDec
+		PHK : PEA.w .Return-1		; RTL address: .Return
+		PEA.w $80CA-1			; RTS address: $80CA ($0180CA points to RTL)
+		JMP HandleStatus
+
+		.Return
+		; sort OAM here, right after the sprite was processed
+		; legacy hi prio goes into prio 2
+		; legacy lo prio goes into prio 2 if pp = 3, otherwise into prio 1
+		; because hi prio is copied first, it will still appear in front of lo prio tiles with pp = 3
+		PHX
+		LDY #$00						;\
+		REP #$30						; |
+		LDA.l !OAMindex_p2 : TAX				; |
+	-	CPY !OAMindex : BEQ .FinishHiTable			; |
+		LDA !OAM+$000,y : STA.l !OAM_p2+$000,x			; | copy the main table from legacy hi prio to prio 2
+		LDA !OAM+$002,y : STA.l !OAM_p2+$002,x			; |
+		INY #4							; |
+		INX #4							; |
+		BRA -							;/
+
+	.FinishHiTable
+		LDA !OAMindex : BEQ .HiPrioDone				;\
+		LSR #2							; |
+		STA $00							; |
+		LDA.l !OAMindex_p2					; |
+		LSR #2							; |
+		TAX							; | copy hi table from legacy hi prio to hi table of prio 2
+		SEP #$20						; |
+	-	LDA !OAMhi+$00,y : STA.l !OAMhi_p2+$00,x		; |
+		INX							; |
+		INY							; |
+		CPY $00 : BCC -						; |
+		REP #$20						;/
+
+	.HiPrioDone
+		LDA.l !OAMindex_p2					;\
+		CLC : ADC !OAMindex					; | update index regs
+		STA.l !OAMindex_p2					; |
+		STZ !OAMindex						;/
+		SEP #$30						; all regs 8-bit
+		LDY #$00						; Y = 00
+	-	LDA !OAM+$101,y						;\ end upon hitting a "dead" tile
+		CMP #$F0 : BEQ .TilesDone				;/
+		LDA !OAM+$103,y						;\
+		AND #$30						; | if pp = 3, use prio 2, otherwise use prio 1
+		CMP #$30 : BEQ .P2					;/
+	.P1	REP #$30						;\
+		LDA.l !OAMindex_p1 : TAX				; | get and update index
+		CLC : ADC #$0004					; |
+		STA.l !OAMindex_p1					;/
+		LDA !OAM+$100,y : STA.l !OAM_p1+$000,x			;\ copy main data
+		LDA !OAM+$102,y : STA.l !OAM_p1+$002,x			;/
+		PHY							;\
+		TYA							; |
+		LSR #2							; |
+		TAY							; |
+		TXA							; | copy hi byte
+		LSR #2							; |
+		TAX							; |
+		SEP #$20						; |
+		LDA !OAMhi+$40,y : STA.l !OAMhi_p1+$00,x		; |
+		PLY							; |
+		SEP #$30						;/
+		BRA .NextLoPrio						; next
+	.P2	REP #$30						;\
+		LDA.l !OAMindex_p2 : TAX				; | get and update index
+		CLC : ADC #$0004					; |
+		STA.l !OAMindex_p2					;/
+		LDA !OAM+$100,y : STA.l !OAM_p2+$000,x			;\ copy main data
+		LDA !OAM+$102,y : STA.l !OAM_p2+$002,x			;/
+		PHY							;\
+		TYA							; |
+		LSR #2							; |
+		TAY							; |
+		TXA							; | copy hi byte
+		LSR #2							; |
+		TAX							; |
+		SEP #$20						; |
+		LDA !OAMhi+$40,y : STA.l !OAMhi_p2+$00,x		; |
+		PLY							; |
+		SEP #$30						;/
+
+	.NextLoPrio
+		INY #4 : BRA -						; loop
+
+		.TilesDone
+		PLX
+		DEX : BMI .SpritesDone
+		JMP .Loop
+
+		.SpritesDone
+		PLB
+		RTL
+
 
 incsrc "SpriteData.asm"
 
@@ -558,7 +704,6 @@ incsrc "SpriteData.asm"
 
 
 	HandleStatus:
-
 		SEP #$20
 		LDA !GameMode
 		CMP #$14 : BNE +

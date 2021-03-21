@@ -2901,7 +2901,7 @@ levelC6:
 
 		.CheckFire
 		LDA !CurrentMario : BEQ .Return
-		LDA !MarioHasFire : BEQ .Return
+		LDA !MarioFireCharge : BEQ .Return
 		LDY #$02
 		BRA .LoadTilemap
 

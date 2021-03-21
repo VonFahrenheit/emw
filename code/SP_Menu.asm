@@ -349,8 +349,17 @@ print "-- SP_MENU --"
 	warnpc $008DFE
 
 
+	org $00A5D5
+		JSR STATUS_BAR_Main
+
 	org $008E1A					; Code that handles the status bar
 	STATUS_BAR:
+		PHB : PHK : PLB
+		JSR .Main
+		PLB
+		RTL
+
+	.Main
 		LDA !Difficulty				;\
 		AND #$10				; | Only use timer during Time Mode
 		BEQ .Coins				;/
@@ -1017,7 +1026,10 @@ Mode7Presents:
 		LDA #$0000
 	-	STA $400000+!MsgRAM,x
 		DEX #2 : BPL -
-
+		STA !OAMindex_p0
+		STA !OAMindex_p1
+		STA !OAMindex_p2
+		STA !OAMindex_p3
 		SEP #$30
 
 	-	BIT $4212 : BPL -			; wait for v-blank to avoid tearing

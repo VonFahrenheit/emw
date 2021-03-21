@@ -202,6 +202,22 @@ org $188000		; Bank already claimed because of Fe26
 	.VRAM_map
 incsrc "LevelGFXIndex.asm"
 
+;=======================;
+;LEVEL GAME MODE REWRITE;
+;=======================;
+print "Level game mode code inserted at $", pc, "."
+	pushpc
+	org $00A1DA
+		JML GAMEMODE14
+	pullpc
+
+incsrc "GameMode14.asm"
+
+
+
+
+
+
 print "Level code handler inserted at $", pc, "."
 	INIT_Level:
 
@@ -1056,15 +1072,9 @@ dl levelinit1FF
 print "Level MAIN inserted at $", pc
 
 	MAIN_Level:
-		LDA $73D4				;\
-		PHA					; | Don't clear OAM while game is paused
-		BNE +					;/
-		LDA !MsgTrigger : BEQ ++		; > Always clear if there's no message box
-		LDA $7B88 : BNE +			; > Don't clear while window is closing
-		LDA.l !MsgMode				;\
-		BNE +					; | Don't clear OAM during !MsgMode non-zero
-	++	JSL $138010				;/
-	+	LDA #$01 : STA !LevelInitFlag		; set level MAIN
+		LDA #$01 : STA !LevelInitFlag		; set level MAIN
+
+
 		JSL $138020				; > Handle Yoshi Coins (A=1)
 
 		PHB : PHK : PLB				; > Bank wrapper
@@ -1088,14 +1098,11 @@ print "Level MAIN inserted at $", pc
 		ADC !P2YPosLo				;/
 		STA !RNG				; Store RNG back (it should be at least kind of random now)
 
-
-
 		SEP #$30
 		LDA.b #HandleGraphics : STA $3180
 		LDA.b #HandleGraphics>>8 : STA $3181
 		LDA.b #HandleGraphics>>16 : STA $3182
 		JSR $1E80
-
 
 		REP #$30			; > All registers 16 bit
 		LDA !Level			;\
@@ -1111,11 +1118,7 @@ print "Level MAIN inserted at $", pc
 		JML [$0000]			; execute pointer
 		.Return
 		PLB				; > End of bank wrapper
-		PLA				;\
-		BEQ +				; | Pull pause flag and execute overwritten branch
-		JML $00A25B			; |
-	+	JML $00A28A			;/
-
+		RTS
 
 
 .Table
@@ -1645,7 +1648,6 @@ HandleGraphics:
 		SEP #$30
 
 		JSR .RotateSimple
-		JSR .RainbowShifter
 
 		LDA !GlobalPalsetMix					;\
 		CMP !GlobalPalsetMix+1 : BEQ +				; |
@@ -1819,6 +1821,7 @@ HandleGraphics:
 
 
 	; handler for player rainbow effect
+	; called by GameMode14.asm
 	.RainbowShifter
 		PHP
 		SEP #$20
