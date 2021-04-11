@@ -634,7 +634,6 @@ LoadPalset:
 		JML [$3000]
 
 
-
 ;======================;
 ;SUPREME TILEMAP LOADER;
 ;======================;
@@ -652,31 +651,96 @@ LoadPalset:
 ;
 ; returns with index to next OAM tile in $0E (static) or last written tile (psuedo-dynamic)
 
-LOAD_TILEMAP:	JSR .Setup
-		LDA #$01 : XBA		; add 0x100 to access second block OAM
-		LDA $33B0,x : TAX
+macro OAMhook(index)
+	if <index> == 2
+	.HiPrio
+	endif
+	.p<index>
+		LDA.b #<index>*2
+		BRA .Shared
+
+	..Long
+	if <index> == 1
+	.Long
+	elseif <index> == 2
+	.HiPrio_Long
+	endif
+		JSR .p<index>
+		RTL
+endmacro
+
+LOAD_TILEMAP:
+; default to prio 1 if not specified
+		%OAMhook(1)
+		%OAMhook(2)
+		%OAMhook(0)
+		%OAMhook(3)
+
+	.Shared
+		STA !ActiveOAM
+		STZ !ActiveOAM+1
+		PHP
+		SEP #$30
+		LDA $3220,x : STA $00
+		LDA $3250,x : STA $01
+		LDA $3240,x : XBA
+		LDA $3210,x
+		REP #$20
+		SEC : SBC $1C
+		STA $02
+		LDA $00
+		SEC : SBC $1A
+		STA $00
+		LDA ($04) : STA $08
+		INC $04
+		INC $04
+		STZ $0C
+		LDA $3320,x
+		LSR A : BCS +
+		LDA #$0040 : STA $0C
+	+	LDY #$00
+		REP #$30
+		LDX !ActiveOAM
+		LDA !OAMindex_offset,x
+		CLC : ADC #$0200
+		STA !BigRAM+$7E				; index break point
+		LDA !OAMindex_offset,x
+		CLC : ADC !OAMindex_p0,x
+		TAX
+		SEP #$20
 		JSR .Loop
-		SEP #$10
+		REP #$20
+		STX $0E					; return $0E = effective index
+		TXA
+		LDX !ActiveOAM
+		SEC : SBC !OAMindex_offset,x
+		STA !OAMindex_p0,x
+		PLP
 		LDX !SpriteIndex
 		RTS
 
-.Loop		LDA ($04),y		;\
-		AND #$10		; |
-		ASL A			; |
-		STA $0A			; | YXPPCCCT
-		LDA ($04),y		; | (lower P bit is shifted 1 bit left)
-		AND.b #$20^$FF		; |
-		ORA $0A			; |
-		EOR $0C			; |
-		STA !OAM+$003,x		;/
+
+.Loop		CPX !BigRAM+$7E : BCC .WithinBounds
+		RTS
+
+		.WithinBounds
+		LDA ($04),y				;\
+		AND #$10				; |
+		ASL A					; |
+		STA $0A					; | YXPPCCCT
+		LDA ($04),y				; | (lower P bit is shifted 1 bit left)
+		AND.b #$20^$FF				; |
+		ORA $0A					; |
+		EOR $0C					; |
+		STA !OAM_p0+$003,x			;/
 
 		PHA
-		LDA ($04),y		;\
-		AND #$20		; | tile size bit
-		BEQ $02 : LDA #$02	; |
-		STA $0A			;/
-		STZ $0B			;\ n flag trigger
-		BEQ $02 : DEC $0B	;/
+		LDA ($04),y				;\
+		AND #$20				; | tile size bit
+		BEQ $02 : LDA #$02			; |
+		STA $0A					;/
+		STZ $0B					;\ n flag trigger
+		BEQ $02 : DEC $0B			;/
 		PLA
 
 		REP #$20
@@ -693,164 +757,129 @@ LOAD_TILEMAP:	JSR .Setup
 		BMI $03 : ORA #$FF00
 		EOR $0E
 		CLC : ADC $00
-		BIT $0E : BPL +		;\
-		BIT $0A : BMI +		; | x-flipped 8x8 tiles move 8px right
-		CLC : ADC #$0008	;/
+		BIT $0E : BPL +				;\
+		BIT $0A : BMI +				; | x-flipped 8x8 tiles move 8px right
+		CLC : ADC #$0008			;/
 	+	CMP #$0100
 		BCC .GoodX
 		CMP #$FFF0
 		BCS .GoodX
-		INX #4
-		INY #3
+		INY
+.BadCoord	INY #2
 		SEP #$20
-		CPY $08
-		BNE .Loop
-		BRA .End
+		CPY $08 : BCC .Loop
+		RTS
 
-.GoodX		STA $06			; Save tile xpos
+.GoodX		STA $06					; Save tile xpos
 		INY
 		LDA ($04),y
 		AND #$00FF
 		CMP #$0080
 		BMI $03 : ORA #$FF00
 		CLC : ADC $02
-		CMP #$00E8
-		BCC .GoodY
-		CMP #$FFF0
-		BCS .GoodY
-		INX #4
-		INY #2
-		SEP #$20
-		CPY $08
-		BNE .L
-		BRA .End
+		CMP #$00E8 : BCC .GoodY
+		CMP #$FFF0 : BCC .BadCoord
 
 .GoodY		SEP #$20
-		STA !OAM+$001,x
-		LDA $06
-		STA !OAM+$000,x
+		STA !OAM_p0+$001,x
+		LDA $06 : STA !OAM_p0+$000,x
 		INY
-		LDA ($04),y
-		STA !OAM+$002,x
+		LDA ($04),y : STA !OAM_p0+$002,x
 		INY
 		PHX
-		REP #$20		; added
+		REP #$20
 		TXA
 		LSR #2
 		TAX
-		SEP #$20		; added
+		SEP #$20
 		LDA $07
 		AND #$01
 		ORA $0A
-		STA !OAMhi+$00,x	; 0x40 for second block
+		STA !OAMhi_p0+$00,x
 		PLX
-		INX #4			; moved this to before end branch to work with first block access
-		CPY $08
-		BCS .End
+		INX #4
+		CPY $08 : BCS .End
 	.L	JMP .Loop
-.End		STX $0E
-		RTS
+.End		RTS
 
-.Long		JSR LOAD_TILEMAP
-		RTL
-
-
-.HiPrio		JSR .Setup
-		LDA !OAMindexhi : XBA
-		LDA !OAMindex
-		TAX
-		JSR .Loop		; go to loop
-		REP #$20
-		TXA
-		SEP #$20
-		STA !OAMindex
-		XBA : STA !OAMindexhi
-		SEP #$10
-		LDX !SpriteIndex
-		RTS
-
-
-..Long		JSR .HiPrio
-		RTL
-
-
-
-.Setup		LDA $3220,x : STA $00
-		LDA $3250,x : STA $01
-		LDA $3210,x : STA $02
-		LDA $3240,x : STA $03
-		REP #$20
-		LDA $00
-		SEC : SBC $1A
-		STA $00
-		LDA $02
-		SEC : SBC $1C
-		STA $02
-		LDA ($04)
-		STA $08
-		LDA $04
-		INC #2
-		STA $04
-		STZ $0C
-		LDA $3320,x
-		LSR A
-		BCS +
-		LDA #$0040
-		STA $0C
-	+	SEP #$20
-		LDY #$00
-		REP #$10
-		RTS
 
 
 LOAD_PSUEDO_DYNAMIC:
+; default to prio 1 if not specified
+
+		%OAMhook(1)
+		%OAMhook(2)
+		%OAMhook(0)
+		%OAMhook(3)
+
+
+	.Shared
+		STA !ActiveOAM
+		STZ !ActiveOAM+1
+		PHP
+		SEP #$30
 		LDA $3220,x : STA $00
 		LDA $3250,x : STA $01
-		LDA $3210,x : STA $02
-		LDA $3240,x : STA $03
-.Main		LDA !SpriteTile,x : STA $0A
+		LDA $3240,x : XBA
+		LDA $3210,x
 		REP #$20
+		SEC : SBC $1C
+		STA $02
 		LDA $00
 		SEC : SBC $1A
 		STA $00
-		LDA $02
-		SEC : SBC $1C
-		STA $02
-		LDA ($04)
-		STA $08
-		LDA $04
-		INC #2
-		STA $04
+		LDA ($04) : STA $08
+		INC $04
+		INC $04
 		STZ $0C
 		LDA $3320,x
-		LSR A
-		BCS +
-		LDA #$0040
-		STA $0C
-	+	SEP #$20
-		LDA !SpriteProp,x
-		ORA $33C0,x
-		TSB $0C			; add RAM palette
-		LDA $33B0,x : TAX
-		LDY #$00
+		LSR A : BCS +
+		LDA #$0040 : STA $0C
+	+	LDY #$00
+		SEP #$20
+		LDA !SpriteTile,x : STA $0A		; dynamic tile
+		LDA !SpriteProp,x			;\
+		ORA $33C0,x				; | add RAM palette
+		TSB $0C					;/
+		REP #$30
+		LDX !ActiveOAM
+		LDA !OAMindex_offset,x
+		CLC : ADC #$0200
+		STA !BigRAM+$7E				; index break point
+		LDA !OAMindex_offset,x
+		CLC : ADC !OAMindex_p0,x
+		TAX
+		SEP #$20
+		JSR .Loop
+		REP #$20
+		STX $0E					; return $0E = effective index
+		TXA
+		LDX !ActiveOAM
+		SEC : SBC !OAMindex_offset,x
+		STA !OAMindex_p0,x
+		PLP
+		LDX !SpriteIndex
+		RTS
 
-.Loop		LDA ($04),y
+.Loop		CPX !BigRAM+$7E : BCC .WithinBounds
+		RTS
+
+		.WithinBounds
+		LDA ($04),y
 		AND.b #$30^$FF
 		EOR $0C
 		ORA $64
-		STA !OAM+$103,x
+		STA !OAM_p0+$003,x
 		LDA ($04),y
 		AND #$20
-		LSR #4 : STA $06	; tile size bit
+		LSR #4 : STA $06			; tile size bit
 		BEQ $02 : LDA #$80
-		STA $07			; n flag trigger for 16-bit mode (n = 0 -> small tile, n = 1 -> big tile)
+		STA $07					; n flag trigger for 16-bit mode (n = 0 -> small tile, n = 1 -> big tile)
 		REP #$20
 		STZ $0E
-		LDA !OAM+$103,x
-		AND #$0040
-		BEQ +
-		LDA #$FFFF
-		STA $0E
+		LDA !OAM_p0+$003,x
+		AND #$0040 : BEQ +
+		LDA #$FFFF : STA $0E
 	+	INY
 
 		LDA ($04),y
@@ -861,86 +890,121 @@ LOAD_PSUEDO_DYNAMIC:
 		CLC : ADC $00
 		BIT $06 : BMI +
 		BIT $0E : BPL +
-		CLC : ADC #$0008	; add 8 to x-flipped 8x8 tile
+		CLC : ADC #$0008			; add 8 to x-flipped 8x8 tile
 	+	CMP #$0100
 		BCC .GoodX
 		CMP #$FFF0
 		BCS .GoodX
-		INX #4
-		INY #3
+		INY
+.BadCoord	INY #2
 		SEP #$20
-		CPY $08
-		BNE .Loop
-		BRA .End
+		CPY $08 : BCC .Loop
+		RTS
 
-.GoodX		PHA			; push 16-bit tile xpos
+.GoodX		PHA					; push 16-bit tile xpos
 		INY
 		LDA ($04),y
 		AND #$00FF
 		CMP #$0080
 		BMI $03 : ORA #$FF00
 		CLC : ADC $02
-		CMP #$00E8
-		BCC .GoodY
-		CMP #$FFF0
-		BCS .GoodY
-		PLA			; get this off the stack
-		INX #4
-		INY #2
-		SEP #$20
-		CPY $08
-		BCC .L
-		BRA .End
+		CMP #$00E8 : BCC .GoodY
+		CMP #$FFF0 : BCS .GoodY
+		PLA					; get this off the stack
+		BRA .BadCoord
 
 .GoodY		SEP #$20
-		STA !OAM+$101,x
-		PLA : STA !OAM+$100,x	; lo byte of tile xpos
-		PLA : STA $07		; hi byte of tile xpos
+		STA !OAM_p0+$001,x
+		PLA : STA !OAM_p0+$000,x		; lo byte of tile xpos
+		PLA : STA $07				; hi byte of tile xpos
 		INY
 		LDA ($04),y
 		CLC : ADC $0A
-		STA !OAM+$102,x
+		STA !OAM_p0+$002,x
 		INY
 		PHX
+		REP #$20
 		TXA
 		LSR #2
 		TAX
-		LDA $07			; hi byte of tile xpos
+		SEP #$20
+		LDA $07					; hi byte of tile xpos
 		AND #$01
-		ORA $06			; tile size bit
-		STA !OAMhi+$40,x
+		ORA $06					; tile size bit
+		STA !OAMhi_p0+$00,x
 		PLX
+		INX #4
 		CPY $08 : BCS .End
-	.L	INX #4
-		JMP .Loop
-.End		STX $0E
-		LDX !SpriteIndex
-		RTS
-
-.Long		JSR LOAD_PSUEDO_DYNAMIC
-		RTL
+	.L	JMP .Loop
+.End		RTS
 
 
 
 ; This routine should be used with dynamic sprites that use the GFX claim system
 LOAD_CLAIMED:
-		LDA !SpriteTile,x : PHA
+	.p1	LDA !SpriteTile,x : PHA
 		LDA !ClaimedGFX
 		AND #$0F
 		ASL A
 		CMP #$10 : BCC +
 		CLC : ADC #$10
-	+	CLC : ADC !SpriteTile,x		; add claim offset to sprite tile offset
+	+	CLC : ADC !SpriteTile,x			; add claim offset to sprite tile offset
 		STA !SpriteTile,x
-		JSR LOAD_PSUEDO_DYNAMIC
+		JSR LOAD_PSUEDO_DYNAMIC_p1
 		PLA : STA !SpriteTile,x
 		RTS
-
-
-.Long		JSR LOAD_CLAIMED
+	..Long
+	.Long
+		JSR .p1
 		RTL
 
 
+	.p0	LDA !SpriteTile,x : PHA
+		LDA !ClaimedGFX
+		AND #$0F
+		ASL A
+		CMP #$10 : BCC +
+		CLC : ADC #$10
+	+	CLC : ADC !SpriteTile,x			; add claim offset to sprite tile offset
+		STA !SpriteTile,x
+		JSR LOAD_PSUEDO_DYNAMIC_p0
+		PLA : STA !SpriteTile,x
+		RTS
+	..Long
+		JSR .p0
+		RTL
+
+
+	.p2	LDA !SpriteTile,x : PHA
+		LDA !ClaimedGFX
+		AND #$0F
+		ASL A
+		CMP #$10 : BCC +
+		CLC : ADC #$10
+	+	CLC : ADC !SpriteTile,x			; add claim offset to sprite tile offset
+		STA !SpriteTile,x
+		JSR LOAD_PSUEDO_DYNAMIC_p2
+		PLA : STA !SpriteTile,x
+		RTS
+	..Long
+		JSR .p2
+		RTL
+
+
+	.p3	LDA !SpriteTile,x : PHA
+		LDA !ClaimedGFX
+		AND #$0F
+		ASL A
+		CMP #$10 : BCC +
+		CLC : ADC #$10
+	+	CLC : ADC !SpriteTile,x			; add claim offset to sprite tile offset
+		STA !SpriteTile,x
+		JSR LOAD_PSUEDO_DYNAMIC_p3
+		PLA : STA !SpriteTile,x
+		RTS
+	..Long
+		JSR .p3
+		RTL
 
 
 
@@ -1067,7 +1131,9 @@ DontInteract:
 		PHY
 		PHX
 		TYX
-		JSL $07F7D2			; | > Reset sprite tables
+		STZ !ExtraBits,x
+		STZ !NewSpriteNum,x
+		JSL !ResetSprite		; | > Reset sprite tables
 		PLX
 		PLY
 		RTS
@@ -1079,8 +1145,7 @@ DontInteract:
 		PHY
 		PHX
 		TYX
-		JSL $07F7D2			; | > Reset sprite tables
-		JSL $0187A7			; | > Reset custom sprite tables
+		JSL !ResetSprite		; | > Reset sprite tables
 		PLX
 		PLY
 		RTS

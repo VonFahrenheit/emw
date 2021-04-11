@@ -941,6 +941,33 @@ GET_SMALL_CCDMA:
 
 
 
+; remap all $00BEB0 calls
+pushpc
+org $00F25C : JSL Hijack00BEB0			; changed from JSL $00BEB0
+org $00F285 : JSL Hijack00BEB0			; changed from JSL $00BEB0
+org $00F2D1 : JSL Hijack00BEB0			; changed from JSL $00BEB0
+org $00F36F : JSL Hijack00BEB0			; changed from JSL $00BEB0
+org $01BCB5 : JSL Hijack00BEB0			; changed from JSL $00BEB0
+org $01C1E9 : JSL Hijack00BEB0			; changed from JSL $00BEB0
+org $01E33F : JSL Hijack00BEB0			; changed from JSL $00BEB0
+org $028784 : JSL Hijack00BEB0			; changed from JSL $00BEB0
+org $0287E8 : JSL Hijack00BEB0			; changed from JSL $00BEB0
+org $0291E8 : JSL Hijack00BEB0			; changed from JSL $00BEB0
+org $02B9B8 : JSL Hijack00BEB0			; changed from JSL $00BEB0
+org $02BB06 : JSL Hijack00BEB0			; changed from JSL $00BEB0
+org $02C2C1 : JSL Hijack00BEB0			; changed from JSL $00BEB0
+org $02C2DE : JSL Hijack00BEB0			; changed from JSL $00BEB0
+org $02CD7B : JSL Hijack00BEB0			; changed from JSL $00BEB0
+org $02D20B : JSL Hijack00BEB0			; changed from JSL $00BEB0
+org $02E2D9 : JSL Hijack00BEB0			; changed from JSL $00BEB0
+org $02E54A : JSL Hijack00BEB0			; changed from JSL $00BEB0
+org $02E8DD : JSL Hijack00BEB0			; changed from JSL $00BEB0
+org $02E8FD : JSL Hijack00BEB0			; changed from JSL $00BEB0
+org $03939F : JSL Hijack00BEB0			; changed from JSL $00BEB0
+org $03C01E : JSL Hijack00BEB0			; changed from JSL $00BEB0
+
+pullpc
+
 
 ;====================;
 ;CHANGE MAP16 ROUTINE;
@@ -955,111 +982,181 @@ CHANGE_MAP16:
 
 ;
 ; - update map16 table
-; - see if tile is within zip (1, 2 or 4 tiles)
+; - see if tile is within zip (0, 1, 2 or 4 tiles)
 ; - use block update table to update any tiles within zip
 ;
 
 
+; if a tile is within the zip box, it has to be updated
+; otherwise it must not be updated
+;
+; $45	16 bytes for zip purposes
+; order: left, right, top, bottom
+; (first for BG1 then for BG2)
 
+		PHP
+		REP #$30
+		STA $0E
 
-
+		SEP #$30
 		LDA $98
 		AND #$F0
-		STA $00
+		STA $98
 		LDA $9A
-		AND #$0F
-		ORA $00
+		AND #$F0
+		STA $9A
+		LSR #4
+		ORA $98
 		LDX $9B
 		CLC : ADC $6CB6,x
 		XBA
-		LDA $6CD6,x
-		ADC $99
+		LDA $99
+		ADC $6CD6,x
 		XBA
 		REP #$30
 		TAX
 		SEP #$20
-		LDA $41C800,x : XBA
-		LDA $40C800,x
+		LDA $0F : STA $410000,x
+		XBA
+		LDA $0E : STA $400000,x
 		REP #$30
+		ASL A
 		PHP
 		JSL $06F540
 		PLP
 		STA $0A
 
+		LDA $9A : BMI .Fail
+		CMP $45 : BCC .Fail
+		CMP $47 : BCS .Fail
+		LDA $98 : BMI .Fail
+		CMP $49 : BCC .Fail
+		CMP $4B : BCC .WithinScreen
+	.Fail	PLP
+		RTS
+
+	.WithinScreen
+		LDA $98							;\
+		AND #$00F0						; | > only 256px tall so cut the lowest screen bit
+		ASL #2							; |
+		STA $02							; |
+		LDA $9A							; |
+		AND #$00F0						; | address within tilemap
+		LSR #3							; | -----Xyy yyyxxxxx
+		STA $00							; | (word address, each tile is 2 bytes)
+		LDA $9A							; | $00: x
+		AND #$0100						; | $02: y
+		ASL #2							; | $04: X
+		STA $04							; | $06: tilemap address
+		LDA !BG1Address : STA $06				;/
+
 
 		PHB
 		PEA $4040
 		PLB : PLB
-
 		LDX !TileUpdateTable
-
-		LDA $98							;\
-		AND #$01F0						; |
-		ASL A							; |
-		STA $02							; |
-		LDA $9A							; |
-		AND #$01F0						; | address within tilemap
-		LSR #4							; | -----Xyy yyyxxxxx
-		STA $00							; | (word address, each tile is 2 bytes)
-		LDA $9A							; | $00: x
-		AND #$0200						; | $02: y
-		ASL A							; | $04: X
-		STA $04							;/ $06: tilemap address
-
-		; add tilemap address here
-
-		LDA $00
-		ORA $02
-		ORA $04
-		ORA $06
-		STA !TileUpdateTable+$02,x				; top left tile
-
-		LDA $00
-		INC A
-		CMP #$0020
-		AND #$001F
-		BCC $03 : ORA #$0400
-		STA $08							; save this value
-		ORA $02
-		EOR $04
-		ORA $06
-		STA !TileUpdateTable+$06,x				; top right tile
-
-		LDA $02
-		CLC : ADC #$0020
-		AND #$03E0
-		STA $02							; update Y
-		ORA $00
-		ORA $04
-		ORA $06
-		STA !TileUpdateTable+$0A,x				; bottom left tile
-
-		LDA $08
-		ORA $02
-		EOR $04
-		ORA $06
-		STA !TileUpdateTable+$0E,x				; bottom right tile
+		LDY #$0000						;\
+		LDA [$0A],y : STA !TileUpdateTable+$04,x		; |
+		LDY #$0002						; |
+		LDA [$0A],y : STA !TileUpdateTable+$0C,x		; | tile data
+		LDY #$0004						; |
+		LDA [$0A],y : STA !TileUpdateTable+$08,x		; |
+		LDY #$0006						; |
+		LDA [$0A],y : STA !TileUpdateTable+$10,x		;/
 
 
-		LDY #$0000
-		LDA [$0A],y : STA !TileUpdateTable+$04,x
-		LDY #$0002
-		LDA [$0A],y : STA !TileUpdateTable+$08,x
-		LDY #$0004
-		LDA [$0A],y : STA !TileUpdateTable+$0C,x
-		LDY #$0006
-		LDA [$0A],y : STA !TileUpdateTable+$10,x
+		LDA $00							;\
+		ORA $02							; |
+		ORA $04							; | top left tile address
+		ORA $06							; |
+		STA !TileUpdateTable+$02,x				;/
+		LDA $00							;\
+		INC A							; |
+		CMP #$0020						; |
+		AND #$001F						; |
+		BCC $03 : ORA #$0400					; | top right tile address
+		STA $08							; |
+		ORA $02							; |
+		EOR $04							; |
+		ORA $06							; |
+		STA !TileUpdateTable+$06,x				;/
+		LDA $02							;\
+		CLC : ADC #$0020					; |
+		AND #$03E0						; |
+		STA $02							; | bot right tile address
+		ORA $08							; |
+		EOR $04							; |
+		ORA $06							; |
+		STA !TileUpdateTable+$0E,x				;/
+		LDA $02							;\
+		ORA $00							; |
+		ORA $04							; | bot left tile address
+		ORA $06							; |
+		STA !TileUpdateTable+$0A,x				;/
 
 		TXA
 		CLC : ADC #$0010
 		STA !TileUpdateTable
 
 		PLB
-
+		PLP
 		RTS
 
 
+	Hijack00BEB0:
+	; NOTE!
+	; if $9C = $01/$16/$17/$18, item memory bit has to be set!
+		PHX
+		PHP
+		REP #$30
+		LDA $9C
+		AND #$00FF
+		CMP #$0018
+		BCC .SingleTile
+		BEQ .YoshiCoin
+		CMP #$0019 : BEQ .NetDoor
+		CMP #$001A : BEQ .NetDoor
 
+		; 1B and up uses this one
+	.32x32
+		LDA #$0025 : JSR CHANGE_MAP16
+		LDA $98 : PHA
+		CLC : ADC #$0010
+		STA $98
+		LDA #$0025 : JSR CHANGE_MAP16
+		PLA : STA $98
+		LDA $9A
+		CLC : ADC #$0010
+		STA $9A
+
+	.YoshiCoin
+		LDA #$0025 : JSR CHANGE_MAP16
+		LDA $98
+		CLC : ADC #$0010
+		STA $98
+		LDA #$0025 : JSR CHANGE_MAP16
+		PLP
+		PLX
+		RTL
+
+	.SingleTile
+		ASL A
+		TAX
+		LDA.l .TileTranslation,x : BMI .Fail		; some values are invalid
+		JSR CHANGE_MAP16
+	.Fail	PLP
+		PLX
+		RTL
+
+	.NetDoor
+		PLP
+		PLX
+		RTL
+
+	.TileTranslation
+		dw $FFFF,$0025,$0025,$0006,$0049,$0048,$002B,$00A2	; 00-07
+		dw $00C6,$0152,$011B,$0123,$011E,$0132,$0113,$0115	; 08-0F
+		dw $0116,$012B,$012C,$0112,$0168,$0169,$0132,$015E	; 10-17
 
 
 
@@ -3359,132 +3456,125 @@ SCROLL_OPTIONS:
 
 
 
-		LDX !GameMode
-		CPX #$11 : BNE .NoInit
+		LDX !GameMode					;\
+		CPX #$11 : BNE .NoInit				; |
+		PHP						; |
+		SEP #$20					; |
+		LDX !Level					; |
+		LDA.l .LevelTable,x				; |
+		LDX !Level+1					; |
+		AND.l .LevelSwitch,x				; |
+		BEQ .NormalCoords				; | game mode 0x11 = INIT camera
+		CMP #$10 : BCC +				; |
+		LSR #4						; |
+	+	DEC A						; |
+		ASL A						; |
+		CMP.b #.CoordsEnd-.CoordsPtr			; |
+		BCS .NormalCoords				; |
+		TAX						; |
+		JSR (.CoordsPtr,x)				; |
+	.NormalCoords						; |
+		PLP						; |
+		JML $00F7C2					;/
 
-		; ladies and gentlemen. we got em.
+	.NoInit	CPX #$14 : BNE .NoBox				; if not game mode 0x14, no camera box
 
-		PHP
-		SEP #$20
-		LDX !Level
-		LDA.l .LevelTable,x
-		LDX !Level+1
-		AND.l .LevelSwitch,x
-		BEQ .NormalCoords
-		CMP #$10 : BCC +
-		LSR #4
-	+	DEC A
-		ASL A
-		CMP.b #.CoordsEnd-.CoordsPtr
-		BCS .NormalCoords
-		TAX
-		JSR (.CoordsPtr,x)
+		.Expand						;\
+		LDY #$01					; |
+	-	LDX !CameraForceTimer,y : BEQ .NextForce	; |
+		DEX						; |
+		TXA						; |
+		SEP #$20					; |
+		STA !CameraForceTimer,y				; |
+		REP #$20					; |
+		LDX !CameraForceDir,y				; |
+		PHY						; |
+		LDY #$00					; |
+		TXA						; |
+		AND #$0002					; | apply forced camera movement
+		BNE $02 : LDY #$02				; |
+		STY $55						; |
+		PLY						; |
+		LDA !CameraBackupX				; |
+		CLC : ADC.l .ForceTableX,x			; |
+		AND #$FFF8					; |
+		STA $1A						; |
+		LDA !CameraBackupY				; |
+		CLC : ADC.l .ForceTableY,x			; |
+		AND #$FFF8					; |
+		STA $1C						; |
+		JMP .CameraBackup				; |
+.NextForce	DEY : BPL -					;/
 
-	.NormalCoords
-		PLP
-		JML $00F7C2
-
-	.NoInit	CPX #$14 : BNE .NoBox
-
-		.Expand
-		LDY #$01
-	-	LDX !CameraForceTimer,y : BEQ .NextForce
-		DEX
-		TXA
-		SEP #$20
-		STA !CameraForceTimer,y
-		REP #$20
-		LDX !CameraForceDir,y
-		PHY
-		LDY #$00
-		TXA
-		AND #$0002
-		BNE $02 : LDY #$02
-		STY $55
-		PLY
-		LDA !CameraBackupX
-		CLC : ADC.l .ForceTableX,x
-		AND #$FFF8
-		STA $1A
-		LDA !CameraBackupY
-		CLC : ADC.l .ForceTableY,x
-		AND #$FFF8
-		STA $1C
-		JMP .CameraBackup
-.NextForce	DEY : BPL -
-
-
-		BIT !CameraBoxU : BMI .NoBox
-		LDA.w #.SA1 : STA $3180
-		LDA.w #.SA1>>8 : STA $3181
-		PHP
-		SEP #$20
-		JSR $1E80
-		PLP
-		JMP .CameraBackup
+		BIT !CameraBoxU : BMI .NoBox			;\
+		LDA.w #.SA1 : STA $3180				; |
+		LDA.w #.SA1>>8 : STA $3181			; |
+		PHP						; | if camera box is enabled, have SA-1 run that code then jump to backup
+		SEP #$20					; | otherwise run the no box code
+		JSR $1E80					; |
+		PLP						; |
+		JMP .CameraBackup				;/
 
 		.NoBox
-		LDX !SmoothCamera : BEQ .CameraBackup
-		PHB : PHK : PLB
-		STZ $00
-		LDX $5D
-		DEX
-		STX $01
-		LDA !LevelHeight
-		SEC : SBC #$00E0
-		STA $02
-		LDA !P2XPosLo-$80
-		CLC : ADC !P2XPosLo
-		LSR A
-		SEC : SBC #$0080
-		BPL $03 : LDA #$0000
-		CMP $00
-		BCC $02 : LDA $00
-		STA $1A
-		LDY !EnableVScroll : BEQ +
-		LDA !P2YPosLo-$80
-		CLC : ADC !P2YPosLo
-		BPL $03 : LDA #$0000
-		LSR A
-		SEC : SBC #$0070
-		BPL $03 : LDA #$0000
-		CMP $02
-		BCC $02 : LDA $02
-		STA $1C
-	+	LDX #$02
-	-	LDA !CameraBackupX,x
-		CMP $1A,x : BEQ +
-		LDY #$00
-		BCC $02 : LDY #$02
-		CLC : ADC.w .SmoothSpeed,y
-		STA $00
-		LDA !CameraBackupX,x
-		SEC : SBC $1A,x
-		BPL $04 : EOR #$FFFF : INC A
-		CMP #$0006 : BCC +
-		LDA $00 : STA $1A,x
-	+	DEX #2 : BPL -
-		PLB
-
-
+		LDX !SmoothCamera : BEQ .CameraBackup		; > see if smooth cam is enabled
+		PHB : PHK : PLB					;\
+		STZ $00						; |
+		LDX $5D						; |
+		DEX						; |
+		STX $01						; |
+		LDA !LevelHeight				; |
+		SEC : SBC #$00E0				; |
+		STA $02						; |
+		LDA !P2XPosLo-$80				; |
+		CLC : ADC !P2XPosLo				; |
+		LSR A						; |
+		SEC : SBC #$0080				; |
+		BPL $03 : LDA #$0000				; |
+		CMP $00						; |
+		BCC $02 : LDA $00				; |
+		STA $1A						; |
+		LDY !EnableVScroll : BEQ +			; |
+		LDA !P2YPosLo-$80				; |
+		CLC : ADC !P2YPosLo				; | smooth cam logic
+		BPL $03 : LDA #$0000				; |
+		LSR A						; |
+		SEC : SBC #$0070				; |
+		BPL $03 : LDA #$0000				; |
+		CMP $02						; |
+		BCC $02 : LDA $02				; |
+		STA $1C						; |
+	+	LDX #$02					; |
+	-	LDA !CameraBackupX,x				; |
+		CMP $1A,x : BEQ +				; |
+		LDY #$00					; |
+		BCC $02 : LDY #$02				; |
+		CLC : ADC.w .SmoothSpeed,y			; |
+		STA $00						; |
+		LDA !CameraBackupX,x				; |
+		SEC : SBC $1A,x					; |
+		BPL $04 : EOR #$FFFF : INC A			; |
+		CMP #$0006 : BCC +				; |
+		LDA $00 : STA $1A,x				; |
+	+	DEX #2 : BPL -					; |
+		PLB						;/
 
 		.CameraBackup
-		LDA !CameraBackupX : STA !BG1ZipRowX	;\
-		LDA !CameraBackupY : STA !BG1ZipRowY	; | coordinates from previous frame
-		LDA $1E : STA !BG2ZipRowX		; | (used for updating tilemap)
-		LDA $20 : STA !BG2ZipRowY		;/
-		LDA $1A : STA !CameraBackupX		;\ backup for next frame
-		LDA $1C : STA !CameraBackupY		;/
+		LDA !CameraBackupX : STA !BG1ZipRowX		;\
+		LDA !CameraBackupY : STA !BG1ZipRowY		; | coordinates from previous frame
+		LDA $1E : STA !BG2ZipRowX			; | (used for updating tilemap)
+		LDA $20 : STA !BG2ZipRowY			;/
+		LDA $1A : STA !CameraBackupX			;\ backup for next frame
+		LDA $1C : STA !CameraBackupY			;/
 
 		JSL .Main
 
-		LDA.l !HDMAptr+0 : BEQ .Return		;\
-		STA $00					; |
-		LDA.l !HDMAptr+1			; |
-		STA $01					; | Execute HDMA code
-		PEA $0000 : PLB				; |
-		PEA $F7C2-1				; |
-		JML [$3000]				;/
+		LDA.l !HDMAptr+0 : BEQ .Return			;\
+		STA $00						; |
+		LDA.l !HDMAptr+1				; |
+		STA $01						; | Execute HDMA code
+		PEA $0000 : PLB					; |
+		PEA $F7C2-1					; |
+		JML [$3000]					;/
 
 	.Return	JML $00F7C2
 
@@ -3509,104 +3599,100 @@ SCROLL_OPTIONS:
 		SEP #$10
 		REP #$20
 
-		JSR .Aim
-		JSR .Forbiddance
-		JSR .Process
+		JSR .Aim					; get camera target
+		JSR .Forbiddance				; apply forbiddance box
+		JSR .Process					; process movement
 
-		LDX #$02
-	-	LDY #$00
-		LDA $1A,x
-		CMP !CameraBackupX,x
-		BEQ +
-		BCC $02 : LDY #$02
-		STY $55
-	+	DEX #2 : BPL -
+		LDX #$02					;\
+	-	LDY #$00					; |
+		LDA $1A,x					; |
+		CMP !CameraBackupX,x : BEQ +			; | special backup for camera box
+		BCC $02 : LDY #$02				; |
+		STY $55						; |
+	+	DEX #2 : BPL -					;/
 
+		LDA !CameraBoxL					;\
+		SEC : SBC #$0020				; |
+		STA $04						; |
+		LDA !CameraBoxR					; |
+		CLC : ADC #$0110				; |
+		STA $06						; | coords from box borders
+		LDA !CameraBoxU					; |
+		SEC : SBC #$0020				; |
+		STA $08						; |
+		LDA !CameraBoxD					; |
+		CLC : ADC #$00F0				; |
+		STA $0A						;/
 
+		LDX #$0F					;\
+	-	LDY $3230,x : BNE $03 : JMP .Next		; |
+		LDA $3470,x					; |
+		ORA #$0004					; |
+		STA $3470,x					; |
+		LDY !CameraForceTimer : BNE .Freeze		; |
+		LDY $3220,x : STY $00				; | search for sprites to interact with
+		LDY $3250,x : STY $01				; |
+		LDY $3210,x : STY $02				; |
+		LDY $3240,x : STY $03				; |
+		LDA $00						; |
+		SEC : SBC $04					; |
+		BPL .CheckR					; |
+		CMP #$FF00 : BCC .Delete			; |
+		CMP #$FFE0 : BCC .Freeze			;/
 
-		LDA !CameraBoxL
-		SEC : SBC #$0020
-		STA $04
-		LDA !CameraBoxR
-		CLC : ADC #$0110
-		STA $06
-		LDA !CameraBoxU
-		SEC : SBC #$0020
-		STA $08
-		LDA !CameraBoxD
-		CLC : ADC #$00F0
-		STA $0A
+	.Delete	LDA $3230,x					;\
+		AND #$FF00					; |
+		STA $3230,x					; |
+		LDY $33F0,x					; |
+		CPY #$FF : BEQ .Next				; |
+		PHX						; |
+		TYX						; | delete sprite
+		LDA $418A00,x					; |
+		AND #$00FF					; |
+		CMP #$00EE : BEQ +				; |
+		LDA $418A00,x					; |
+		AND #$FF00					; |
+		STA $418A00,x					; |
+	+	PLX						; |
+		BRA .Next					;/
 
+	.CheckR	LDA $00						;\
+		SEC : SBC $06					; |
+		BMI .GoodX					; | see if fully outside
+		CMP #$0020 : BCC .Delete			; |
+		CMP #$0100 : BCS .Delete			;/
 
-		LDX #$0F
-	-	LDY $3230,x : BNE $03 : JMP .Next
-		LDA $3470,x
-		ORA #$0004
-		STA $3470,x
-		LDY !CameraForceTimer : BNE .Freeze
-		LDY $3220,x : STY $00
-		LDY $3250,x : STY $01
-		LDY $3210,x : STY $02
-		LDY $3240,x : STY $03
-		LDA $00
-		SEC : SBC $04
-		BPL .CheckR
-		CMP #$FF00 : BCC .Delete
-		CMP #$FFE0 : BCC .Freeze
+	.Freeze	LDA !SpriteStasis,x				;\
+		ORA #$0002					; | freeze sprite
+		STA !SpriteStasis,x				; |
+		BRA .Next					;/
 
-	.Delete	LDA $3230,x
-		AND #$FF00
-		STA $3230,x
-		LDY $33F0,x
-		CPY #$FF : BEQ .Next
-		PHX
-		TYX
-		LDA $418A00,x
-		AND #$00FF
-		CMP #$00EE : BEQ +
-		LDA $418A00,x
-		AND #$FF00
-		STA $418A00,x
-	+	PLX
-		BRA .Next
+	.GoodX	LDA $02						;\
+		CMP $08 : BMI .Freeze				; | see if sprite should freeze
+		CMP $0A : BPL .Freeze				;/
+	.Next	DEX : BMI $03 : JMP -				; > next sprite
 
-	.CheckR	LDA $00
-		SEC : SBC $06
-		BMI .GoodX
-		CMP #$0020 : BCC .Delete
-		CMP #$0100 : BCS .Delete
-
-	.Freeze	LDA !SpriteStasis,x
-		ORA #$0002
-		STA !SpriteStasis,x
-		BRA .Next
-
-	.GoodX	LDA $02
-		CMP $08 : BMI .Freeze
-		CMP $0A : BPL .Freeze
-	.Next	DEX : BMI $03 : JMP -
-
-		PLP
+		PLP						; return
 		PLB
 		RTL
 
 
 		.Aim
-		LDA !P2XPosLo-$80
-		CLC : ADC !P2XPosLo
-		LSR A
-		SEC : SBC #$0080
-		CMP #$4000
-		BCC $03 : LDA #$0000
-		STA $1A
-		LDA !P2YPosLo-$80
-		CLC : ADC !P2YPosLo
-		LSR A
-		SEC : SBC #$0070
-		CMP #$4000
-		BCC $03 : LDA #$0000
-		STA $1C
-		RTS
+		LDA !P2XPosLo-$80				;\
+		CLC : ADC !P2XPosLo				; |
+		LSR A						; |
+		SEC : SBC #$0080				; |
+		CMP #$4000					; |
+		BCC $03 : LDA #$0000				; |
+		STA $1A						; |
+		LDA !P2YPosLo-$80				; | logic for finding camera target
+		CLC : ADC !P2YPosLo				; |
+		LSR A						; |
+		SEC : SBC #$0070				; |
+		CMP #$4000					; |
+		BCC $03 : LDA #$0000				; |
+		STA $1C						; |
+		RTS						;/
 
 		.Process
 		LDX #$02
@@ -3616,7 +3702,7 @@ SCROLL_OPTIONS:
 		BRA ++
 	+	CMP !CameraBoxR,x : BCC ++ : BEQ ++
 		LDA !CameraBoxR,x : STA $1A,x
-	++	LDA !CameraBackupX,x			; apply smooth camera
+	++	LDA !CameraBackupX,x				; apply smooth camera
 		CMP $1A,x : BEQ +
 		LDY #$00
 		BCC $02 : LDY #$02
@@ -3855,6 +3941,9 @@ SCROLL_OPTIONS:
 		RTS
 
 
+; honestly i don't really know what this is...
+; some way of setting camera coords on level init?
+
 ; lo nybble is used by levels 0x000-0x0FF, hi nybble is used by levels 0x100-0x1FF
 ; 0 means it's unused, so just use normal coords
 ; any other number is treated as an index to the coordinate routine pointer table
@@ -4052,7 +4141,7 @@ macro oamtablehi(source)
 		BRA ?go
 	?notcapped:
 		LDA $00
-		SEC : SBC.w !OAMindex_<source>
+		SEC : SBC $02
 		STA $00
 		LDA $02
 	?go:
@@ -4080,7 +4169,6 @@ BUILD_OAM:
 		.SA1
 		JSL .Assemble
 		RTS
-
 
 
 		.Assemble

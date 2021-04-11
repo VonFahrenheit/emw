@@ -819,13 +819,11 @@ HappySlime:
 		STA !BigRAM+$13
 
 		JSL !UpdateClaimedGFX
-		JSR LOAD_CLAIMED
-
-
-		LDA !ExtraBits,x			; move slime to hi prio OAM if it's bouncy
-		AND #$04 : BEQ .Invis
-		JSR HI_PRIO_OAM				; note that A is always 4 here
-
+		PEA .Invis-1
+		LDA !ExtraBits,x
+		AND #$04 : BNE .p2			; extra bit: clear = p1, set = p2
+	.p1	JMP LOAD_CLAIMED_p1
+	.p2	JMP LOAD_CLAIMED_p2
 
 		.Invis
 		PLB

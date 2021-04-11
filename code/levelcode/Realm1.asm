@@ -915,28 +915,35 @@ level3:
 		.Castle
 		LDA $1E
 		LSR #3
-		SEP #$30				; > Regs 8 bit
+		STA $00
+		LDA !OAMindex_p0 : TAX
+		CLC : ADC #$0008
+		STA !OAMindex_p0
+		SEP #$20				; > A 8 bit
+		LDA $00
 		EOR #$FF				;\
-		STA !OAM+$1F8				; | Xpos of castle
-		STA !OAM+$1FC				;/
-		LDA #$30				;\
-		STA !OAM+$1F9				; | Ypos of castle
-		LDA #$40				; |
-		STA !OAM+$1FD				;/
-		LDA #$A2				;\
-		STA !OAM+$1FA				; | Tile numbers of castle
-		LDA #$A4				; |
-		STA !OAM+$1FE				;/
+		STA !OAM_p0+$000,x			; | Xpos of castle
+		STA !OAM_p0+$004,x			;/
+		LDA #$30 : STA !OAM_p0+$001,x		;\ Ypos of castle
+		LDA #$40 : STA !OAM_p0+$005,x		;/
+		LDA #$A2 : STA !OAM_p0+$002,x		;\ tile numbers of castle
+		LDA #$A4 : STA !OAM_p0+$006,x		;/
 		LDA #$0E				;\
-		STA !OAM+$1FB				; | YXPPCCCT of castle
-		STA !OAM+$1FF				;/
-		XBA					;\
-		BEQ +					; |
-		LDA #$01				; | Hi table of castle
+		STA !OAM_p0+$003,x			; | YXPPCCCT of castle
+		STA !OAM_p0+$007,x			;/
+		XBA : BEQ +				;\
+		LDA #$01				; | hi byte of castle
 	+	ORA #$02				; |
-		STA !OAMhi+$7E				; |
-		STA !OAMhi+$7F				;/
-	..R	SEP #$20
+		STA $00
+		REP #$20
+		TXA
+		LSR #2
+		TAX
+		SEP #$20
+		LDA $00
+		STA !OAMhi_p0+$00,x			; |
+		STA !OAMhi_p0+$01,x			;/
+	..R	SEP #$30
 		LDA $14					;\
 		AND #$01				; | use the table we just made
 		ORA #$04				; |
@@ -1419,40 +1426,37 @@ level5:
 
 
 		.NoExit
-		LDA #$60				;\
-		STA !OAM+$1F0				; |
-		STA !OAM+$1F8				; | Xpos of sun
-		LDA #$68				; |
-		STA !OAM+$1F4				; |
-		STA !OAM+$1FC				;/
-		LDA #$30				;\
-		STA !OAM+$1F1				; |
-		STA !OAM+$1F5				; | Ypos of sun
-		LDA #$40				; |
-		STA !OAM+$1F9				; |
-		STA !OAM+$1FD				;/
-		LDA #$88				;\
-		STA !OAM+$1F2				; |
-		STA !OAM+$1F6				; | Tile numbers of sun
-		STA !OAM+$1FA				; |
-		STA !OAM+$1FE				;/
-		LDA #$0E				;\
-		STA !OAM+$1F3				; |
-		LDA #$4E				; |
-		STA !OAM+$1F7				; | Properties of sun
-		LDA #$8E				; |
-		STA !OAM+$1FB				; |
-		LDA #$CE				; |
-		STA !OAM+$1FF				;/
-		LDA #$02				;\
-		STA !OAMhi+$7C				; |
-		STA !OAMhi+$7D				; | Tile size of sun
-		STA !OAMhi+$7E				; |
-		STA !OAMhi+$7F				;/
+		PHB : PHK : PLB
+		REP #$30
+		LDA !OAMindex_p0 : TAX
+		CLC : ADC #$0010
+		STA !OAMindex_p0
+		LDY #$0000
+	-	LDA .SunTilemap,y : STA !OAM_p0,x
+		INY #2
+		INX #2
+		CPY #$0010 : BCC -
+		TXA
+		SEC : SBC #$0010
+		LSR #2
+		TAX
+		LDA #$0202
+		STA !OAMhi_p0+$00,x
+		STA !OAMhi_p0+$02,x
+		SEP #$30
+		PLB
+
 		LDA.b #.HDMA : STA !HDMAptr		;\
 		LDA.b #.HDMA>>8 : STA !HDMAptr+1	; | Set up pointer
 		LDA.b #.HDMA>>16 : STA !HDMAptr+2	;/
 		RTL					; > Return
+
+		.SunTilemap
+		db $60,$30,$88,$0E
+		db $68,$30,$88,$4E
+		db $60,$40,$88,$8E
+		db $68,$40,$88,$CE
+
 
 		.HDMA
 		PHP
@@ -1812,40 +1816,44 @@ level6:
 		LDA !Level+2
 		ROR A
 		STA $00
-		LDA #$60				;\
-		SEC : SBC $00				; |
-		STA !OAM+$1F0				; |
-		STA !OAM+$1F8				; | Xpos of sun
-		LDA #$68				; |
-		SEC : SBC $00				; |
-		STA !OAM+$1F4				; |
-		STA !OAM+$1FC				;/
-		LDA #$60				;\
-		CLC : ADC $00				; |
-		STA !OAM+$1F1				; |
-		STA !OAM+$1F5				; | Ypos of sun
-		LDA #$70				; |
-		CLC : ADC $00				; |
-		STA !OAM+$1F9				; |
-		STA !OAM+$1FD				;/
-		LDA #$EE				;\
-		STA !OAM+$1F2				; |
-		STA !OAM+$1F6				; | Tile numbers of sun
-		STA !OAM+$1FA				; |
-		STA !OAM+$1FE				;/
-		LDA #$0D				;\
-		STA !OAM+$1F3				; |
-		LDA #$4D				; |
-		STA !OAM+$1F7				; | Properties of sun
-		LDA #$8D				; |
-		STA !OAM+$1FB				; |
-		LDA #$CD				; |
-		STA !OAM+$1FF				;/
-		LDA #$02				;\
-		STA !OAMhi+$7C				; |
-		STA !OAMhi+$7D				; | Tile size of sun
-		STA !OAMhi+$7E				; |
-		STA !OAMhi+$7F				;/
+
+		REP #$30
+		LDA !OAMindex_p0 : TAX
+		CLC : ADC #$0010
+		STA !OAMindex_p0
+		SEP #$20
+		LDA #$60					;\
+		SEC : SBC $00					; |
+		STA !OAM_p0+$000,x				; |
+		STA !OAM_p0+$008,x				; | Xpos of sun
+		LDA #$68					; |
+		SEC : SBC $00					; |
+		STA !OAM_p0+$004,x				; |
+		STA !OAM_p0+$00C,x				;/
+		LDA #$60					;\
+		CLC : ADC $00					; |
+		STA !OAM_p0+$001,x				; |
+		STA !OAM_p0+$005,x				; | Ypos of sun
+		LDA #$70					; |
+		CLC : ADC $00					; |
+		STA !OAM_p0+$009,x				; |
+		STA !OAM_p0+$00D,x				;/
+		LDA #$EE					;\
+		STA !OAM_p0+$002,x				; |
+		STA !OAM_p0+$006,x				; | tile numbers of sun
+		STA !OAM_p0+$00A,x				; |
+		STA !OAM_p0+$00E,x				;/
+		LDA #$0D : STA !OAM_p0+$003,x			;\
+		LDA #$4D : STA !OAM_p0+$007,x			; | YXPPCCCT of sun
+		LDA #$8D : STA !OAM_p0+$00B,x			; |
+		LDA #$CD : STA !OAM_p0+$00F,x			;/
+		REP #$20					;\
+		TXA						; |
+		LSR #2						; |
+		TAX						; | tile size of sun
+		LDA #$0202					; |
+		STA !OAMhi_p0+$00,x				; |
+		STA !OAMhi_p0+$02,x				;/
 		PLP
 		RTL
 

@@ -17,74 +17,125 @@ macro index(source, index)
 	!DebugRemapCount := !DebugRemapCount+1
 endmacro
 
+macro getindex_X(address, end)
+	org <address>
+		JSL Ex_GetIndex_X
+		BRA ?End
+	org <end>
+		?End:
+endmacro
+
+macro getindex_Y(address, end)
+	org <address>
+		JSL Ex_GetIndex_Y
+		BRA ?End
+	org <end>
+		?End:
+endmacro
+
+
+;	overwritten bytes ($77BC-$77BF)
+
+
+	; $77BC
+	%remap($00F7D3, !BG1_Y_Delta)
+	%remap($00FF09, !BG1_Y_Delta)
+	%remap($02CC2F, !BG1_Y_Delta)
+	%remap($05BC20, !BG1_Y_Delta)
+	%remap($05BC23, !BG1_Y_Delta)
+
+	; $77BD
+	%remap($00F7CA, !BG1_X_Delta)
+	%remap($00FBB6, !BG1_X_Delta)
+	%remap($01E9EE, !BG1_X_Delta)
+	%remap($02CC11, !BG1_X_Delta)
+	%remap($02D3F7, !BG1_X_Delta)
+	%remap($038561, !BG1_X_Delta)
+	%remap($0390D1, !BG1_X_Delta)
+	%remap($05BC13, !BG1_X_Delta)
+	%remap($05BC16, !BG1_X_Delta)
+	%remap($05C476, !BG1_X_Delta)
+	%remap($05C4EF, !BG1_X_Delta)
+	%remap($05C7D8, !BG1_X_Delta)
+
+	; $77BE
+	%remap($00EF45, !BG2_Y_Delta)
+	%remap($00F7E5, !BG2_Y_Delta)
+	%remap($05BC3C, !BG2_Y_Delta)
+
+	; $77BF
+	%remap($00F7DC, !BG2_X_Delta)
+	%remap($0191A9, !BG2_X_Delta)
+	%remap($05BC33, !BG2_X_Delta)
+
+
 
 
 ;	table size:
-	%index($01F7EC, !Ex_Amount-1)		;\
-	%index($028677, !Ex_Amount-1)		; |
-	%index($0298E9, !Ex_Amount-1)		; | minor extended (index mem)
-	%index($02C0FF, !Ex_Amount-1)		; |
-	%index($03902F, !Ex_Amount-1)		;/
-	%index($00FDA9, !Ex_Amount-1)		;\
-	%index($0284DD, !Ex_Amount-1)		; |
-	%index($0285BA, !Ex_Amount-1)		; |
-	%index($0285E4, !Ex_Amount-1)		; |
-	%index($028668, !Ex_Amount-1)		; | minor extended (spawn checks)
-	%index($028BC0, !Ex_Amount-1)		; |
-	%index($028C30, !Ex_Amount-1)		; |
-	%index($0298DA, !Ex_Amount-1)		; |
-	%index($02C0F0, !Ex_Amount-1)		; |
-	%index($039020, !Ex_Amount-1)		; |
-	%index($03AD69, !Ex_Amount-1)		;/
-	%index($028B67, !Ex_Amount-1)		; minor extended (main loop)
-	%index($018EFE, !Ex_Amount-1)		; extended (index mem)
-	%index($00FD19, !Ex_Amount-1)
+;	%index($01F7DD, !Ex_Amount-1)		;\ egg pieces (minor, unused)
+;	%index($01F7EC, !Ex_Amount-1)		;/
+;	%index($028677, !Ex_Amount-1)		; | minor extended (index mem)
+;	%index($0298E9, !Ex_Amount-1)		; |
+;	%index($02C0FF, !Ex_Amount-1)		; |
+;	%index($03902F, !Ex_Amount-1)		;/
+;	%index($00FDA9, !Ex_Amount-1)		;\
+;	%index($0284DD, !Ex_Amount-1)		; |
+;	%index($0285BA, !Ex_Amount-1)		; |
+;	%index($0285E4, !Ex_Amount-1)		; |
+;	%index($028668, !Ex_Amount-1)		; | minor extended (spawn checks)
+;	%index($028BC0, !Ex_Amount-1)		; |
+;	%index($028C30, !Ex_Amount-1)		; |
+;	%index($0298DA, !Ex_Amount-1)		; |
+;	%index($02C0F0, !Ex_Amount-1)		; |
+;	%index($039020, !Ex_Amount-1)		; |
+;	%index($03AD69, !Ex_Amount-1)		;/
+;	%index($028B67, !Ex_Amount-1)		; MINOR EXTENDED (MAIN LOOP)
+;	%index($018EFE, !Ex_Amount-1)		; extended (index mem)
+;	%index($00FD19, !Ex_Amount-1)
 	%index($00FDFE, $07)		; special index: loop counter for how many bubbles spawn when mario enters water
 ;	%index($00FEA8, !Ex_Amount-1) ; mario fireball, special index handled by PCE
-	%index($018EEF, !Ex_Amount-1)
+;	%index($018EEF, !Ex_Amount-1)
 	%index($01D3B8, !Ex_Amount-1) ; special case, uses full index
-	%index($018EEF, !Ex_Amount-1)
 	%index($01FD0A, !Ex_Amount-1) ; special case, uses full index + 1 normally
-	%index($028534, !Ex_Amount-1)
-	%index($029BF5, !Ex_Amount-1)
-	%index($02B422, !Ex_Amount-1)
-	%index($02C46E, !Ex_Amount-1)
-	%index($02DAB8, !Ex_Amount-1)
-	%index($02E085, !Ex_Amount-1)
-	%index($02E1C2, !Ex_Amount-1)
-	%index($02EFB1, !Ex_Amount-1)
-	%index($02F2D7, !Ex_Amount-1)
-	%index($039AF8, !Ex_Amount-1)
-	%index($03C456, !Ex_Amount-1)
-	%index($07FC47, !Ex_Amount-1)
+;	%index($028534, !Ex_Amount-1)
+;	%index($029BF5, !Ex_Amount-1)
+;	%index($02B422, !Ex_Amount-1)
+;	%index($02C46E, !Ex_Amount-1)
+;	%index($02DAB8, !Ex_Amount-1)
+;	%index($02E085, !Ex_Amount-1)
+;	%index($02E1C2, !Ex_Amount-1)
+;	%index($02EFB1, !Ex_Amount-1)
+;	%index($02F2D7, !Ex_Amount-1)
+;	%index($039AF8, !Ex_Amount-1)
+;	%index($03C456, !Ex_Amount-1)
+;	%index($07FC47, !Ex_Amount-1)
 	%index($00FAD4, !Ex_Amount-1) ; this is a loop that clears extended sprites at level end
 	%index($039906, !Ex_Amount-1) ; this is a loop that clears extended sprites for reznor
-;	%index($029B0A, !Ex_Amount-1)		; extended (main loop, hijacked)
-	%index($01C5CC, !Ex_Amount-1)		; smoke (index mem)
-	%index($00FB82, !Ex_Amount-1)		;\
-	%index($00FD60, !Ex_Amount-1)		; |
-	%index($00FE67, !Ex_Amount-1)		; |
-	%index($018068, !Ex_Amount-1)		; |
-	%index($01AB78, !Ex_Amount-1)		; |
-	%index($01AB9F, !Ex_Amount-1)		; |
-	%index($01BD98, !Ex_Amount-1)		; | smoke (spawn checks)
-	%index($01C4F0, !Ex_Amount-1)		; |
-	%index($01C5BD, !Ex_Amount-1)		; |
+;	%index($029B0A, !Ex_Amount-1)		; EXTENDED (MAIN LOOP, HIJACKED)
+;	%index($01C5CC, !Ex_Amount-1)		; smoke (index mem)
+;	%index($00FB82, !Ex_Amount-1)		;\
+;	%index($00FD60, !Ex_Amount-1)		; |
+;	%index($00FE67, !Ex_Amount-1)		; |
+;	%index($018068, !Ex_Amount-1)		; |
+;	%index($01AB78, !Ex_Amount-1)		; |
+;	%index($01AB9F, !Ex_Amount-1)		; |
+;	%index($01BD98, !Ex_Amount-1)		; | smoke (spawn checks)
+;	%index($01C4F0, !Ex_Amount-1)		; |
+;	%index($01C5BD, !Ex_Amount-1)		; |
 ;	%index($028A45, !Ex_Amount-1)		; | > overwritten by remap, see $028A44
 ;	%index($029ADA, !Ex_Amount-1)		; | > overwritten by optimization, see $029ADA
 ;	%index($02A41C, !Ex_Amount-1)		; | > overwritten by optimization, see $02A419
-	%index($02B4DE, !Ex_Amount-1)		; |
-	%index($02B952, !Ex_Amount-1)		; |
-	%index($038A16, !Ex_Amount-1)		;/
-	%index($0287A1, !Ex_Amount-1)		; bounce (index mem)
-	%index($028792, !Ex_Amount-1)		; bounce (spawn check
-	%index($0286ED, !Ex_Amount-1)		;\ quake (spawn check)
-	%index($0286ED, !Ex_Amount-1)		;/
-	%index($02903B, !Ex_Amount-1)		; main loop for bounce, quake, and smoke sprites
-	%index($028A66, !Ex_Amount-1)		; coin (spawn check)
-	%index($028A75, !Ex_Amount-1)		; coin (index mem)
-	%index($029356, !Ex_Amount-1)		; coin (spawn check)
-	%index($0299D2, !Ex_Amount-1)		; coin (main loop)
+;	%index($02B4DE, !Ex_Amount-1)		; |
+;	%index($02B952, !Ex_Amount-1)		; |
+;	%index($038A16, !Ex_Amount-1)		;/
+;	%index($0287A1, !Ex_Amount-1)		; bounce (index mem)
+;	%index($028792, !Ex_Amount-1)		; bounce (spawn check
+;	%index($0286ED, !Ex_Amount-1)		; quake (spawn check)
+;	%index($02903B, !Ex_Amount-1)		; MAIN LOOP FOR BOUNCE, QUAKE, AND SMOKE SPRITES
+;	%index($028A66, !Ex_Amount-1)		; coin (spawn check)
+;	%index($028A75, !Ex_Amount-1)		; coin (index mem)
+;	%index($029356, !Ex_Amount-1)		; coin (spawn check)
+;	%index($0299D2, !Ex_Amount-1)		; COIN (MAIN LOOP)
 	%index($00FEB0, $00)			;\
 	%index($01D406, $00)			; | special case, minumum fireball index
 	%index($01FD4B, $00)			;/
@@ -92,8 +143,8 @@ endmacro
 	%index($02B556, !Ex_Amount)		; (FULL) part of extended physics routine
 	%index($02B51C, !Ex_Amount)		; (FULL) part of bounce physics routine
 
-	%index($02AB7F, !Ex_Amount-1)		; shooter spawn
-	%index($02B38B, !Ex_Amount-1)		; shooter main
+	%index($02AB7F, !Ex_Amount-1)		; SHOOTER SPAWN
+	%index($02B38B, !Ex_Amount-1)		; SHOOTER MAIN
 
 ;	minor extended num writes
 	%remap($00FDEA, !Ex_Num)
@@ -518,7 +569,7 @@ endmacro
 	%remap($02886E, !Ex_Num)	; remapped!
 	%remap($02904D, !Ex_Num)	; part of main loop
 	%remap($029185, !Ex_Num)	; remapped!
-	%remap($02924E, !Ex_Num)	; remapped!
+;	%remap($02924E, !Ex_Num)	; remapped by GFX code
 
 	; remap bounce num writes
 
@@ -679,6 +730,12 @@ endmacro
 	%remap($028A70, !Ex_Index)		;\
 	%remap($028A77, !Ex_Index)		; | coin
 	%remap($028A7A, !Ex_Index)		;/
+
+
+;	shooter stored index:
+	%remap($02AB89, $75E9)
+	%remap($02AB90, $75E9)
+	%remap($02AB93, $75E9)
 
 
 ; only reads should go in this list
@@ -1318,8 +1375,8 @@ endmacro
 	%remap($0287BC, !Ex_XLo)
 	%remap($028837, !Ex_XLo)
 	%remap($0291BC, !Ex_XLo)
-	%remap($029221, !Ex_XLo)
-	%remap($02923B, !Ex_XLo)
+;	%remap($029221, !Ex_XLo)
+;	%remap($02923B, !Ex_XLo)
 	%remap($02928C, !Ex_XLo)
 	%remap($0292DF, !Ex_XLo)
 	%remap($02936A, !Ex_XLo)
@@ -1328,7 +1385,7 @@ endmacro
 	%remap($0287C1, !Ex_XHi)
 	%remap($02883C, !Ex_XHi)
 	%remap($0291C6, !Ex_XHi)
-	%remap($029226, !Ex_XHi)
+;	%remap($029226, !Ex_XHi)
 	%remap($029291, !Ex_XHi)
 	%remap($0292E4, !Ex_XHi)
 	%remap($029370, !Ex_XHi)
@@ -1340,7 +1397,7 @@ endmacro
 	%remap($029096, !Ex_YLo)
 	%remap($029145, !Ex_YLo)
 	%remap($0291CD, !Ex_YLo)
-	%remap($029215, !Ex_YLo)
+;	%remap($029215, !Ex_YLo)	; remapped by GFX code
 ;	%remap($029230, !Ex_YLo)	; part of OAM remap
 	%remap($029273, !Ex_YLo)
 	%remap($0292CA, !Ex_YLo)
@@ -1358,7 +1415,7 @@ endmacro
 	%remap($02909E, !Ex_YHi)
 	%remap($02914D, !Ex_YHi)
 	%remap($0291D7, !Ex_YHi)
-	%remap($02921A, !Ex_YHi)
+;	%remap($02921A, !Ex_YHi)
 	%remap($02927D, !Ex_YHi)
 	%remap($0292D4, !Ex_YHi)
 	%remap($02933E, !Ex_YHi)
@@ -1434,7 +1491,7 @@ endmacro
 	%remap($02912B, !Ex_Data1)
 	%remap($029163, !Ex_Data1)
 	%remap($0291DE, !Ex_Data1)
-	%remap($0291FA, !Ex_Data1)
+;	%remap($0291FA, !Ex_Data1)	; remapped by GFX code
 	%remap($029267, !Ex_Data1)
 	%remap($029382, !Ex_Data1)
 
@@ -1517,7 +1574,7 @@ endmacro
 ;	coin XLo:
 	%remap($028A86, !Ex_XLo)
 	%remap($02936D, !Ex_XLo)
-	%remap($029A29, !Ex_XLo)
+;	%remap($029A29, !Ex_XLo)	; overwritten by GFX code
 	%remap($029ABD, !Ex_XLo)
 ;	%remap($029AEF, !Ex_XLo)	; overwritten by optimization, see $029ADA
 
@@ -1529,8 +1586,8 @@ endmacro
 ;	coin YLo:
 	%remap($028A93, !Ex_YLo)
 	%remap($029379, !Ex_YLo)
-	%remap($029A1D, !Ex_YLo)
-	%remap($029A35, !Ex_YLo)
+;	%remap($029A1D, !Ex_YLo)	; overwritten by GFX code
+;	%remap($029A35, !Ex_YLo)	; overwritten by GFX code
 	%remap($029AB1, !Ex_YLo)
 ;	%remap($029AF9, !Ex_YLo)	; overwritten by optimization, see $029ADA
 	%remap($02B5AE, !Ex_YLo)
@@ -1539,7 +1596,7 @@ endmacro
 ;	coin YHi:
 	%remap($028A9A, !Ex_YHi)
 	%remap($02937F, !Ex_YHi)
-	%remap($029A22, !Ex_YHi)
+;	%remap($029A22, !Ex_YHi)	; overwritten by GFX code
 	%remap($029AB7, !Ex_YHi)
 	%remap($02B5B5, !Ex_YHi)
 	%remap($02B5B8, !Ex_YHi)
@@ -1559,7 +1616,7 @@ endmacro
 ;	coin Data1:
 	%remap($028AA0, !Ex_Data1)
 	%remap($029389, !Ex_Data1)
-	%remap($029A08, !Ex_Data1)
+;	%remap($029A08, !Ex_Data1)	; overwritten by GFX code
 	%remap($029ACE, !Ex_Data1)
 ;	%remap($029AEA, !Ex_Data1)	; overwritten by optimization, see $029ADA
 
@@ -1632,6 +1689,91 @@ endmacro
 ;	shooter Data2:
 	%remap($02AB96, !Ex_Data2)
 	%remap($02ABE1, !Ex_Data2)
+
+
+
+;=====================;
+; INDEX SEARCH RECODE ;
+;=====================;
+
+	org $028663
+	ShatterBlock:
+		PHX
+		STA $00
+		LDA #$07 : STA !SPC4		; shatter brick SFX
+		LDY #$03
+	.Loop	JSL Ex_GetIndex_X
+		BMI .Return
+		LDA.b #$01+!MinorOffset : STA !Ex_Num,x
+		LDA $9A
+		CLC : ADC $8742,y
+		STA !Ex_XLo,x
+		LDA $9B
+		ADC #$00
+		STA !Ex_XHi,x
+		LDA $98
+		CLC : ADC $8746,y
+		STA !Ex_YLo,x
+		LDA $99
+		ADC #$00
+		STA !Ex_YHi,x
+		LDA $874A,y : STA !Ex_YSpeed,x
+		LDA $874E,y : STA !Ex_XSpeed,x
+		LDA $00 : STA !Ex_Data1,x
+		DEY : BPL .Loop
+
+	.Return
+		PLX
+		RTL
+	warnpc $0286BF
+
+
+	%getindex_X($00FD19, $00FD26)		; special case: uses X
+	%getindex_X($00FB82, $00FB8D)		; special case: uses X
+	%getindex_X($028A66, $028A7D)		; special case: uses X
+
+	; the rest use Y for indexing
+	%getindex_Y($00FDA9, $00FDB4)
+	%getindex_Y($00FD60, $00FD6B)
+	%getindex_Y($00FE67, $00FE72)
+
+	%getindex_Y($018068, $018073)
+	%getindex_Y($018EEF, $018F07)
+	%getindex_Y($01AB78, $01AB83)
+	%getindex_Y($01AB9F, $01ABAA)
+	%getindex_Y($01BD98, $01BDA3)
+	%getindex_Y($01C4F0, $01C4FB)
+	%getindex_Y($01C5BD, $01C5D4)
+
+	%getindex_Y($0284DD, $0284E8)
+	%getindex_Y($028534, $02853F)
+	%getindex_Y($0285BA, $0285C5)
+	%getindex_Y($0285E4, $0285EF)
+	%getindex_Y($0286ED, $0286F8)
+	%getindex_Y($028792, $028807)
+	%getindex_Y($028BC0, $028BCB)
+	%getindex_Y($028C30, $028C3B)
+	%getindex_Y($029356, $029361)
+	%getindex_Y($0298DA, $0298F1)
+	%getindex_Y($029BF5, $029C00)
+	%getindex_Y($02B422, $02B42D)
+	%getindex_Y($02B4DE, $02B4EB)
+	%getindex_Y($02B952, $02B969)
+	%getindex_Y($02C0F0, $02C107)
+	%getindex_Y($02C46E, $02C479)
+	%getindex_Y($02DAB8, $02DAC3)
+	%getindex_Y($02E085, $02E090)
+	%getindex_Y($02E1C2, $02E1CD)
+	%getindex_Y($02EFB1, $02EFBC)
+	%getindex_Y($02F2D7, $02F2E2)
+
+	%getindex_Y($038A16, $038A21)
+	%getindex_Y($039020, $039037)
+	%getindex_Y($039AF8, $039B03)
+	%getindex_Y($03AD69, $03AD74)
+	%getindex_Y($03C456, $03C461)
+
+	%getindex_Y($07FC47, $07FC52)
 
 
 

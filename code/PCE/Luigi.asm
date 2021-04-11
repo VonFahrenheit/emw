@@ -196,7 +196,7 @@ namespace Luigi
 		BIT $6DA7 : BVC .NoFireStart
 		LDX.b #!Ex_Amount-1
 	-	LDA !Ex_Num,x
-		CMP #$34 : BEQ .NoFireStart
+		CMP #$02+!CustomOffset : BEQ .NoFireStart
 		DEX : BPL -
 		LDA #!Lui_Hammer : STA !P2Anim
 		STZ !P2AnimTimer
@@ -211,7 +211,7 @@ namespace Luigi
 	-	LDA !Ex_Num,x : BEQ +
 		DEX : BPL -
 		BRA .NoFire
-	+	LDA #$34 : STA !Ex_Num,x
+	+	LDA #$02+!CustomOffset : STA !Ex_Num,x
 		LDY !P2Direction
 		LDA .FireballXSpeed,y : STA !Ex_XSpeed,x
 		LDA !P2XPosLo
@@ -240,9 +240,9 @@ namespace Luigi
 		LDA !P2FireLife : BNE .FireAlive
 		LDX !P2FireIndex
 		LDA !Ex_Num,x
-		CMP #$34 : BNE .FireAlive
-		LDA #$0F : STA !Ex_Num,x
-		LDA #$0F : STA !Ex_Data2,x
+		CMP #$02+!CustomOffset : BNE .FireAlive
+		LDA #$01+!SmokeOffset : STA !Ex_Num,x
+		LDA #$17 : STA !Ex_Data1,x
 		.FireAlive
 
 

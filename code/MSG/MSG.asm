@@ -69,21 +69,26 @@ sa1rom
 
 		.Mode0					; full pause mode
 		JSL !BuildOAM
-		JML $00A1E3
+		RTL
 
 		.Mode1					; run animations but don't let players move
 		LDA #$02
 		STA !P2Stasis-$80
 		STA !P2Stasis
 
-		.Mode2					; Everything moves during message
+		.Mode2					; everything moves during message
 		LDX #$25				;\
 		LDA #$02				; |
 	-	STA !OAMhi,x				; | Set proper OAM size
 		DEX					; |
 		CPX #$03 : BNE -			;/
 		LDA #$98 : STA !OAMindex		; > Set OAM index to after message tiles
-		JML $00A1E4				; > Execute game mode
+		REP #$20
+		LDA $01,s
+		INC A
+		STA $01,s
+		SEP #$20
+		RTL
 
 
 	MESSAGE_ENGINE:

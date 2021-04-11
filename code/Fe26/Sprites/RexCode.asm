@@ -633,10 +633,8 @@ Rex:
 		PHX				; |
 		TYX				; |
 		LDA #$22 : STA !NewSpriteNum,x	; |
-		LDA #$36 : STA $3200,x		; |
 		LDA #$08 : STA !ExtraBits,x	; |
 		JSL !ResetSprite		; | spawn yoshi coin (hidden)
-		JSL !ResetSpriteExtra		; |
 		LDA #$01 : STA $3230,x		; |
 		PLA				; |
 		STA $3290,x			; |
@@ -4600,14 +4598,11 @@ SHAMAN_CAST:	LDA !Difficulty			;\
 		LDA !SpriteProp,x : STA !SpriteProp,y
 		PHX
 		TYX
-		LDA #$07 : STA !NewSpriteNum,x	;\  > Custom sprite number
-		LDA #$36 : STA $3200,x		; | > Sprite number
-		LDA #$08 : STA $3230,x		; | > Sprite status
-		JSL $07F7D2			; | \ Clear tables
-		JSL $0187A7			; | /
-		LDA #$08 : STA !ExtraBits,x	;/  > Custom sprite flag
-		LDA #$08			;\ Don't interact with sprites for 8 frames
-		STA $3300,y			;/
+		LDA #$07 : STA !NewSpriteNum,x	; > Custom sprite number
+		LDA #$08 : STA !ExtraBits,x	; > Custom sprite flag
+		LDA #$08 : STA $3230,x		; > Sprite status
+		JSL !ResetSprite		; > Clear tables
+		LDA #$08 : STA $3300,y		; > Don't interact with sprites for 8 frames
 		LDA #$3C : STA $32D0,y		; > Life timer (1 sec)
 		LDA #$82 : STA $BE,x		; > Behaviour (line + anim)
 		LDA #$03 : STA $33E0,x		; > Number of frames (3)
@@ -4667,17 +4662,11 @@ DROP_MASK:	LDA !RexMovementFlags		;\
 		PHA
 		LDA #$07			;\  > Custom sprite number
 		TYX				; | > X = new sprite index
-		STA !NewSpriteNum,x		; |
-		LDA #$36			; | > Acts like
-		STA $3200,x			; |
-		LDA #$08			; | > MAIN routine
-		STA $3230,x			; |
-		JSL $07F7D2			; | > Reset sprite tables
-		JSL $0187A7			; | > Reset custom sprite tables
-		LDA #$08			; |
-		STA !ExtraBits,x		;/
-		LDA #$5F			;\ Life timer
-		STA $32D0,x			;/
+		STA !NewSpriteNum,x		; | custom sprite num
+		LDA #$08 : STA $3230,x		; | status = MAIN
+		LDA #$08 : STA !ExtraBits,x	;/ extra bits = custom
+		JSL !ResetSprite		; | > Reset sprite tables
+		LDA #$5F : STA $32D0,x		; life timer
 		PLA				;\
 		CLC : ADC !SpriteTile,x		; | GFX tile
 		STA $33D0,x			;/
@@ -4834,11 +4823,9 @@ QUICK_CAST:	PHA
 		PHX
 		TYX
 		LDA #$07 : STA !NewSpriteNum,x	;\  > Custom sprite number
-		LDA #$36 : STA $3200,x		; | > Sprite number
 		LDA #$08 : STA $3230,x		; | > Sprite status
-		JSL $07F7D2			; | \ Clear tables
-		JSL $0187A7			; | /
 		LDA #$08 : STA !ExtraBits,x	;/  > Custom sprite flag
+		JSL !ResetSprite		; | \ Clear tables
 		LDA #$FF : STA $32D0,x		; > Life timer (max)
 		LDA #$45			;\
 		CLC : ADC !SpriteTile,x		; | Base tile

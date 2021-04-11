@@ -6,13 +6,8 @@ DISPLAY_CONTACT:
 
 	DISPLAYCONTACT:
 		PHX
-		LDX.b #!Ex_Amount-1
-	-	LDA !Ex_Num,x : BEQ +
-		DEX : BPL -
-		PLX
-		RTS
-
-	+	LDA $00 : STA $0C
+		%Ex_Index_X()
+		LDA $00 : STA $0C
 		LDA $08 : STA $0D
 		LDA $01 : STA $0E
 		LDA $09 : STA $0F

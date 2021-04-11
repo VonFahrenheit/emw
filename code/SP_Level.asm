@@ -489,6 +489,10 @@ print "Level code handler inserted at $", pc, "."
 		REP #$20
 		SEP #$10
 		JSL read3($048434)		; set scroll values for BG2
+		LDA $20
+		SEC : SBC #$0008
+		STA !BG2ZipColumnY		; store first value
+
 
 		SEP #$30			;
 		PLB				; > End of bank wrapper
@@ -499,6 +503,9 @@ print "Level code handler inserted at $", pc, "."
 		.SA1
 		PHP
 		PHB : PHK : PLB
+
+		%ReloadOAMData()		; reload
+
 		REP #$20			;\
 		LDA $6701 : STA $6703		; copy this (so it gets written as HSL)
 		LDA $96				; |
@@ -1827,7 +1834,7 @@ HandleGraphics:
 		SEP #$20
 		REP #$10
 
-		LDA $7490 : BNE .Shift
+		LDA !StarTimer : BNE .Shift
 
 	..P1	LDA !P2LockPalset-$80 : BNE ..P2
 		LDA !Palset8

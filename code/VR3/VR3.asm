@@ -590,6 +590,11 @@ Build_RAM_Code:
 
 		LDA !HDMA : STA $1F0C				; double mirror HDMA enable to minimize errors caused by lag
 
+	if !TrackOAM == 1
+	endif
+
+
+
 	if !TrackCPU == 1
 	; 00 - call count
 	; 02 - average
@@ -899,8 +904,10 @@ Build_RAM_Code:
 	.Level
 		LDA !AnimToggle
 		AND #$0002 : BNE .NoScroll			; if bit 1 is set, disable tilemap update
-		JSR .AppendColumn1
-		JSR .AppendRow1
+		LDA.l !UpdateBG1Column				;\ update column
+		BEQ $03 : JSR .AppendColumn1			;/
+		LDA.l !UpdateBG1Row				;\ update row
+		BEQ $03 : JSR .AppendRow1			;/
 		LDA.l $7925					;\
 		AND #$00FF : BEQ .Layer2BG			; |
 		CMP #$0003 : BCC .Layer2Level			; |
@@ -909,11 +916,14 @@ Build_RAM_Code:
 		CMP #$000F : BEQ .Layer2Level			; |
 		CMP #$001F : BEQ .Layer2Level			;/
 	.Layer2BG
-		PEA .NoScroll-1
-		JMP .AppendBackground
+		LDA.l !UpdateBG2Row : BEQ .NoScroll		;\
+		PEA .NoScroll-1					; | update background
+		JMP .AppendBackground				;/
 	.Layer2Level
-		JSR .AppendColumn2
-		JSR .AppendRow2
+		LDA.l !UpdateBG2Column				;\ update column
+		BEQ $03 : JSR .AppendColumn2			;/
+		LDA.l !UpdateBG2Row				;\ update row
+		BEQ $03 : JSR .AppendRow2			;/
 		.NoScroll
 
 
@@ -1481,13 +1491,13 @@ Build_RAM_Code:
 
 
 ; three:
-; row 1: 6150+0, w bytes
-; row 2: 6150+w, 64 bytes
-; row 3: 6150+w+64, 16-w bytes
+; row 1: 6950+0, w bytes
+; row 2: 6950+w, 64 bytes
+; row 3: 6950+w+64, 16-w bytes
 
 ; two:
-; row 1: 6150+0, w bytes
-; row 2: 6150+w, 80-w bytes
+; row 1: 6950+0, w bytes
+; row 2: 6950+w, 80-w bytes
 
 		..three
 		SEC : SBC #$0040
@@ -2505,34 +2515,55 @@ Build_RAM_Code:
 ; (repeat for each slot)
 
 
-
 GetTilemapData:
 
 		REP #$30
-
+		STZ !UpdateBG1Row			;\ clear update flags
+		STZ !UpdateBG1Column			;/
 
 		LDA $1A					;\
-		CMP !BG1ZipRowX : BCS .Right		; |
+		AND #$FFF8				; |
+		CMP !BG1ZipRowX : BCS .Right		; | (compare to row because the column jumps left/right)
 	.Left	SEC : SBC #$0010			; | x position of zip column
 		BRA +					; |
 	.Right	CLC : ADC #$0110			; |
 	+	BPL $03 : LDA #$0000			; > no negative numbers allowed
+		CMP !BG1ZipColumnX			; |
+		BEQ $03 : INC !UpdateBG1Column		; > if different, set update flag
 		STA !BG1ZipColumnX			;/
 		LDA $1C : STA !BG1ZipColumnY		; > y coordinate of zip column
 		LDA $1C					;\
-		CMP !BG1ZipRowY				; |
+		AND #$FFF8				; |
+		CMP !BG1ZipRowY				; | (somehow this comparison is fine)
 		BEQ .Up					; |
 		BCS .Down				; |
-	.Up	SEC : SBC #$0008			; | y position of zip row
+	.Up	SEC : SBC #$0004 ;#$0008		; | y position of zip row
 		BRA +					; |
-	.Down	CLC : ADC #$00F0			; |
-	+	BPL $03 : LDA #$0000			; > no negative numbers allowed
+	.Down	CLC : ADC #$00EC ;#$00F0		; |
+	+	AND #$FFF8				; |
+		BPL $03 : LDA #$0000			; > no negative numbers allowed
+		CMP !BG1ZipRowY				; |
+		BEQ $03 : INC !UpdateBG1Row		; > if different, set update flag
 		STA !BG1ZipRowY				;/
 		LDA $1A					;\
 		SEC : SBC #$0010			; | x coordinate of zip row
 		BPL $03 : LDA #$0000			; > no negative numbers allowed
 		STA !BG1ZipRowX				;/
 
+
+		; what are these for???
+		LDA $1A					;\
+		SEC : SBC #$0010			; | L = -16
+		BPL $03 : LDA #$0000			; |
+		STA !BG1ZipBoxL				;/
+		CLC : ADC #$0120			;\ R = +272
+		STA !BG1ZipBoxR				;/
+		LDA $1C					;\
+		SEC : SBC #$0008			; | U = -8
+		BPL $03 : LDA #$0000			; |
+		STA !BG1ZipBoxU				;/
+		CLC : ADC #$00F8			;\ D = +240
+		STA !BG1ZipBoxD				;/
 
 
 		LDA $7925				;\
@@ -2582,8 +2613,13 @@ GetTilemapData:
 		LDA $6CD6,y
 		ADC !BG1ZipRowY+1			; for horizontal levels, add Y screen and $6CD6 value to get hi byte
 	.GetRow	STA $06					; store hi byte (later code gets bank byte)
-		JSR .Row
 
+
+		LDA !UpdateBG1Row			;\ if camera has moved vertically, update row
+		BEQ $03 : JSR .Row			;/
+
+		LDA !UpdateBG1Column			;\ if camera hasn't moved horizontally, return without updating column
+		BNE $01 : RTS				;/
 
 
 
@@ -2630,6 +2666,15 @@ GetTilemapData:
 		DEC $07
 		LDA [$05]
 		REP #$30				; A = 16-bit map16 number
+	if !DebugZips == 1
+		PHA
+		LDA $15
+		AND #$0020 : BEQ +
+		PLA
+		LDA #$0000
+		BRA $01
+	+	PLA
+	endif
 		ASL A					; double to index 16-bit pointer
 		PHX
 		PHP
@@ -2679,6 +2724,15 @@ GetTilemapData:
 		DEC $07
 		LDA [$05]
 		REP #$30
+	if !DebugZips == 1
+		PHA
+		LDA $15
+		AND #$0020 : BEQ +
+		PLA
+		LDA #$0000
+		BRA $01
+	+	PLA
+	endif
 		ASL A
 		PHX
 		PHP
@@ -2728,16 +2782,29 @@ GetTilemapData:
 
 ; since the map16 tiles are laid out in two 16x32 chunks, and we're getting a 32-tile wide row, index calculation is simple
 ; it is just equal to Y, but with the lo nybble cleared
+; note that for this mode, !BG2ZipColumnY holds the previous BG2 Y coordinate and is used to determine whether update should be above or below
 
 	.BackgroundRow
+		STZ !UpdateBG2Row			; clear update flag
 		LDA $20
-		CMP !BG2ZipRowY
-		BEQ ..up
-		BCS ..down
-	..up	SEC : SBC #$0008
+		AND #$FFF8
+		CMP !BG2ZipColumnY
+		STA !BG2ZipColumnY
+		BEQ ..r
+		BPL ..down
+	..up	LDA $20
+		SEC : SBC #$0004 ;#$0008
 		BRA +
-	..down	CLC : ADC #$00F0
-	+	STA !BG2ZipRowY
+	..down	LDA $20
+		CLC : ADC #$00EC ;#$00F0
+	+	AND #$01F8
+		CMP !BG2ZipRowY
+		BEQ $03 : INC !UpdateBG2Row		; set update flag if different
+		STA !BG2ZipRowY
+		LDA !UpdateBG2Row			;\
+		BNE $01					; | if no change, don't update
+	..r	RTS					;/
+
 
 		LDA !BG2ZipRowY
 		AND #$01F0
@@ -2815,22 +2882,32 @@ GetTilemapData:
 
 
 Layer2Level:
+		STZ !UpdateBG2Row			;\ clear update flags
+		STZ !UpdateBG2Column			;/
+
 		LDA $1E					;\
-		CMP !BG2ZipRowX : BCS .Right		; |
+		AND #$FFF8				; |
+		CMP !BG2ZipRowX : BCS .Right		; | (compare to row because column jumps left/right)
 	.Left	SEC : SBC #$0010			; | x position of zip column
 		BRA +					; |
 	.Right	CLC : ADC #$0110			; |
 	+	BPL $03 : LDA #$0000			; > no negative numbers allowed
+		CMP !BG2ZipColumnX			; |
+		BEQ $03 : INC !UpdateBG2Column		; > if different, set update flag
 		STA !BG2ZipColumnX			;/
 		LDA $20 : STA !BG2ZipColumnY		; > y coordinate of zip column
 		LDA $20					;\
+		AND #$FFF8				; |
 		CMP !BG2ZipRowY				; |
 		BEQ .Up					; |
 		BCS .Down				; |
-	.Up	SEC : SBC #$0008			; | y position of zip row
+	.Up	SEC : SBC #$0004 ;#$0008		; | y position of zip row
 		BRA +					; |
-	.Down	CLC : ADC #$00F0			; |
+	.Down	CLC : ADC #$00EC ;#$00F0		; |
 	+	BPL $03 : LDA #$0000			; > no negative numbers allowed
+		AND #$FFF8				; |
+		CMP !BG2ZipRowY				; |
+		BEQ $03 : INC !UpdateBG2Row		; > if different, set update flag
 		STA !BG2ZipRowY				;/
 		LDA $1E					;\
 		SEC : SBC #$0010			; | x coordinate of zip row
@@ -2866,9 +2943,14 @@ Layer2Level:
 		LDA $6CD6,y
 		ADC !BG2ZipRowY+1			; for horizontal levels, add Y screen and $6CD6 value to get hi byte
 	.GetRow	STA $06					; store hi byte (later code gets bank byte)
-		JSR .AddOffset
-		JSR .Row
 
+		LDA !UpdateBG2Row : BEQ .RowDone	;\
+		JSR .AddOffset				; | if camera has moved vertically, update row
+		JSR .Row				; |
+		.RowDone				;/
+
+		LDA !UpdateBG2Column			;\ if camera hasn't moved horizontally, return without updating column
+		BNE $01 : RTS				;/
 
 
 		LDA !BG2ZipColumnX			;\
@@ -2913,6 +2995,15 @@ Layer2Level:
 		DEC $07
 		LDA [$05]
 		REP #$30				; A = 16-bit map16 number
+	if !DebugZips == 1
+		PHA
+		LDA $15
+		AND #$0020 : BEQ +
+		PLA
+		LDA #$0000
+		BRA $01
+	+	PLA
+	endif
 		ASL A					; double to index 16-bit pointer
 		PHX
 		PHP
@@ -2962,6 +3053,15 @@ Layer2Level:
 		DEC $07
 		LDA [$05]
 		REP #$30
+	if !DebugZips == 1
+		PHA
+		LDA $15
+		AND #$0020 : BEQ +
+		PLA
+		LDA #$0000
+		BRA $01
+	+	PLA
+	endif
 		ASL A
 		PHX
 		PHP
@@ -3102,7 +3202,8 @@ FetchExAnim:
 
 
 ; to do:
-;	- only update tilemaps when needed rather than every frame
+;	- make sure BG2 background works
+;	( sometimes misses a row )
 
 macro CCDMA(slot)
 	LDY $97+(<slot>*8) : STY.w $2231	; CCDMA mode

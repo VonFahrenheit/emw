@@ -1030,6 +1030,9 @@ Mode7Presents:
 		STA !OAMindex_p1
 		STA !OAMindex_p2
 		STA !OAMindex_p3
+		STA !HDMAptr+0
+		STA !HDMAptr+1
+		%ReloadOAMData()
 		SEP #$30
 
 	-	BIT $4212 : BPL -			; wait for v-blank to avoid tearing
@@ -1087,6 +1090,11 @@ Mode7Presents:
 
 		PLP
 		RTL
+
+		.PriorityData
+		dw $0000,$0002,$0004,$0006		; holds the index to the current OAM index reg
+		dw $0000,$0200,$0400,$0600		; holds the offset to the current OAM index
+
 .SourcePal
 incbin "PresentsScreenPalette.mw3"
 
@@ -2179,22 +2187,23 @@ endmacro
 		PHB
 		PHP
 		REP #$30
-		LDA !SaveINIT+0
-		CMP #$4E49 : BNE .Invalid
-		LDA !SaveINIT+2
-		CMP #$5449 : BEQ .Valid
 
-		.Invalid
 		LDA #$0000					;\
 		STA $6000					; |
 		STA $410000					; |
-		LDA #$FFFF					; |
+		LDA #$FFFF					; | always clear $400000-$40FFFF
 		LDX #$0000					; |
 		LDY #$0001					; |
-		MVN $40,$40					; |
-		LDA #$FFFF					; |
-		LDX #$0000					; | have SA-1 clear all BWRAM and initialize SRAM
-		LDY #$0001					; |
+		MVN $40,$40					;/
+		LDA !SaveINIT+0					;\
+		CMP #$4E49 : BNE .Invalid			; | check if SRAM was initialized
+		LDA !SaveINIT+2					; |
+		CMP #$5449 : BEQ .Valid				;/
+
+		.Invalid
+		LDA #$FFFF					;\
+		LDX #$0000					; |
+		LDY #$0001					; | if SRAM was not initialized, fully clear bank $41
 		MVN $41,$41					; |
 		LDA #$4E49 : STA !SaveINIT+0			; |
 		LDA #$5449 : STA !SaveINIT+2			; |
@@ -2218,11 +2227,20 @@ endmacro
 		RTL						;/
 
 		.Valid
+		LDA #$AFFF					;\
+		LDX #$0000					; | clear $410000-$41AFFF
+		LDY #$0001					; |
+		MVN $41,$41					;/
+		LDA #$0000 : STA $41C000			;\
+		LDA #$3FFF					; |
+		LDX #$C000					; | clear $41C000-$41FFFF
+		LDY #$C001					; |
+		MVN $41,$41					;/
 		LDA #$0000					;\
 		STA !SRAM_buffer				; |
 		LDA.w #!SaveFileSize-1				; |
 		LDX.w #!SRAM_buffer				; |
-		LDY.w #!SRAM_buffer				; | have SA-1 clear SRAM buffer
+		LDY.w #!SRAM_buffer+1				; | clear SRAM buffer
 		MVN $41,$41					; |
 		PLP						; |
 		PLB						; |

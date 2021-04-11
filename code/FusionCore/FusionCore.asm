@@ -133,13 +133,19 @@ incsrc "../Defines.asm"
 
 	org $148000
 	HandleEx:
+		LDA !CoinTimer				;\
+		CMP #$02 : BCC .CoinTimerReset		; |
+		LDA $9D : BNE .CoinTimerReset		; | coin timer code from $02902D
+		DEC !CoinTimer				; |
+		.CoinTimerReset				;/
 
-		LDX #!Ex_Amount-1		; full index
-		LDA $64 : PHA			; preserve this
 
-	.Loop	STX $75E9			; store index
-		STX $7698			; store index
-		PHX				; just in case
+		LDX #!Ex_Amount-1			; full index
+		LDA $64 : PHA				; preserve this
+
+	.Loop	STX $75E9				; store index
+		STX $7698				; store index
+		PHX					; just in case
 
 		LDA !DizzyEffect : BEQ +
 		REP #$20
@@ -165,7 +171,43 @@ incsrc "../Defines.asm"
 
 		LDA !Ex_Num,x
 		AND #$7F : BEQ .Clear
+		CMP #!MinorOffset : BEQ .Clear
+		CMP #!ExtendedOffset : BEQ .Clear
+		CMP #!SmokeOffset : BEQ .Clear
+		CMP #!BounceOffset : BEQ .Clear
+		CMP #!QuakeOffset : BEQ .Clear
+		CMP #!ShooterOffset : BEQ .Clear
+		CMP #!CustomOffset : BNE .GetNum
 
+	.Clear
+		STZ !Ex_Num,x
+	;	STZ !Ex_Data1,x
+	;	STZ !Ex_Data2,x
+	;	STZ !Ex_Data3,x
+	;	STZ !Ex_XLo,x
+	;	STZ !Ex_XHi,x
+	;	STZ !Ex_YLo,x
+	;	STZ !Ex_YHi,x
+	;	STZ !Ex_XSpeed,x
+	;	STZ !Ex_YSpeed,x
+	;	STZ !Ex_XFraction,x
+	;	STZ !Ex_YFraction,x
+		LDA #$FF : STA !Ex_Palset,x
+
+	.Return
+		PLX				; restore X
+		DEX : BMI $03 : JMP .Loop
+
+		PHP
+		REP #$20
+		LDA !DizzyEffect
+		AND #$00FF : BEQ +
+		LDA !CameraBackupY : STA $1C
+	+	PLP
+		PLA : STA $64			; restore this
+		RTL
+
+	.GetNum
 		PHA
 		TAX
 		LDA.l .PalsetIndex,x : BMI .PalsetDone	; if index is negative, keep the current one
@@ -186,49 +228,15 @@ incsrc "../Defines.asm"
 
 		.PalsetDone
 		LDX $75E9
+		LDA !Ex_Palset,x
+		CMP #$FF : BEQ +
 		LDA $64
 		AND #$F0
 		ORA !Ex_Palset,x
 		STA $64
+		+
 
 		PLA
-		CMP #!MinorOffset : BEQ .Clear
-		CMP #!ExtendedOffset : BEQ .Clear
-		CMP #!SmokeOffset : BEQ .Clear
-		CMP #!BounceOffset : BEQ .Clear
-		CMP #!QuakeOffset : BEQ .Clear
-		CMP #!ShooterOffset : BEQ .Clear
-		CMP #!CustomOffset : BNE .GetNum
-
-	.Clear
-		STZ !Ex_Num,x
-		STZ !Ex_Data1,x
-		STZ !Ex_Data2,x
-		STZ !Ex_Data3,x
-		STZ !Ex_XLo,x
-		STZ !Ex_XHi,x
-		STZ !Ex_YLo,x
-		STZ !Ex_YHi,x
-		STZ !Ex_XSpeed,x
-		STZ !Ex_YSpeed,x
-		STZ !Ex_XFraction,x
-		STZ !Ex_YFraction,x
-		LDA #$FF : STA !Ex_Palset,x
-
-	.Return
-		PLX				; restore X
-		DEX : BMI $03 : JMP .Loop
-
-		PHP
-		REP #$20
-		LDA !DizzyEffect
-		AND #$00FF : BEQ +
-		LDA !CameraBackupY : STA $1C
-	+	PLP
-		PLA : STA $64			; restore this
-		RTL
-
-	.GetNum
 		CMP #$01 : BEQ .Coin
 		CMP #$0C+!MinorOffset : BCC .MinorExtended
 		CMP #$13+!ExtendedOffset : BCC .Extended
@@ -237,7 +245,7 @@ incsrc "../Defines.asm"
 		CMP #$03+!QuakeOffset : BCC .Quake
 		CMP #$02+!ShooterOffset : BCC .Shooter
 		CMP.b #((.CustomPtr_End-.CustomPtr)/2)+!CustomOffset+1 : BCC .Custom
-		BRA .Clear			; invalid numbers should be cleared
+		JMP .Clear			; invalid numbers should be cleared
 
 	.Coin
 		PHK : PEA .Return-1		; RTL address = .Return
@@ -775,6 +783,7 @@ incsrc "../Defines.asm"
 
 
 	LuigiFireball:
+STZ $7FFF
 		LDX $75E9
 
 		LDA !Ex_YLo,x : PHA
@@ -797,6 +806,52 @@ incsrc "../Defines.asm"
 		JML $02A16B			; enemy fireball code
 		.Return
 		RTS
+
+
+
+
+;
+; input:
+;	none
+; output:
+;	X = free index (if using X version)
+;	Y = free index (if using Y version)
+;	!Ex_Index = free index that was just found
+;	the unused index reg is unchanged
+;	if there is no index free, it will default to 00 and that exsprite will be overwritten
+
+
+	Ex_GetIndex:
+
+		.Y
+		PHX
+		LDX.b #!Ex_Amount-1		; loop counter
+		LDY !Ex_Index			; starting index
+	..loop	LDA !Ex_Num,y : BEQ ..thisone	;\
+		DEY				; | search table
+		BPL $02 : LDY.b #!Ex_Amount-1	; |
+		DEX : BPL ..loop		;/
+		LDY #$00			; default index = 00
+	..thisone
+		PLX
+		STY !Ex_Index			; update index
+		CPY #$00			; update P
+		RTL
+
+		.X
+		PHY
+		LDY.b #!Ex_Amount-1		; Y = loop counter
+		LDX !Ex_Index			; X = starting index
+	..loop	LDA !Ex_Num,x : BEQ ..thisone	;\
+		DEX				; | search table
+		BPL $02 : LDX.b #!Ex_Amount-1	; |
+		DEY : BPL ..loop		;/
+		LDX #$00			; default index = 00
+	..thisone
+		PLY
+		STX !Ex_Index			; update index
+		CPX #$00			; update P
+		RTL
 
 
 ;
@@ -876,8 +931,14 @@ incsrc "../Defines.asm"
 
 
 		REP #$30
-		LDA.l !OAMindex_p3 : TAX		; X = OAM index
-		LDY #$0000				; Y = per-tile data
+		LDA.l !OAMindex_p3
+		CMP #$0200 : BCC .Draw
+		SEP #$30
+		PLX
+		BRA .Return
+
+	.Draw	TAX					; X = OAM index
+		LDY #$0000				; Y = index to per-tile data
 		LDA $00
 		SEC : SBC $1A
 		STA $00
@@ -893,7 +954,8 @@ incsrc "../Defines.asm"
 		SEP #$30
 		PLX
 		STZ !Ex_Num,x
-		STZ $00
+		STX !Ex_Index				; index = slot that was just freed up
+	.Return	STZ $00
 		RTL
 
 	.BadX	INY					;\
@@ -901,7 +963,7 @@ incsrc "../Defines.asm"
 		SEP #$20				; |
 		JMP .Next				;/
 
-	.Loop	REP #$20				; A 16-bit
+	.Loop	REP #$20				; A 16-bit (required, see end of loop)
 		LDA [$04],y				;\
 		AND #$00FF				; |
 		CMP #$0080				; |
@@ -948,16 +1010,22 @@ incsrc "../Defines.asm"
 		PLX					; |
 		INY					;/
 		INX #4					; increment OAM index
+		CPX #$0200 : BCC .Next			;\
+		LDX #$0200				; | handle maximum index
+		BRA .Full				;/
 	.Next	CPY $0A : BCS $03 : JMP .Loop		; loop
 
-		REP #$20
-		STZ $00					;\
+	.Full	REP #$20				;\
 		TXA					; |
 		SEC : SBC.l !OAMindex_p3		; | return $00 = number of tiles written
 		LSR #2					; |
 		STA $00					;/
+		LDA.l !OAMindex_p3			;\
+		CLC : ADC.w #!OAM_p3			; | $02 = pointer to start of OAM write
+		STA $02					;/
 		TXA : STA.l !OAMindex_p3		; update OAM index
 		SEP #$30
+		LDA.b #!OAM_p3>>16 : STA $04		; $04 = bank byte of pointer
 		PLX					; pull X
 		RTL					; return
 
@@ -1037,7 +1105,42 @@ incsrc "ParticleSystem.asm"
 incsrc "FusionSprites/MalleableExtendedSprite.asm"
 
 	; -- coin gfx fix --
-	; (coin needs no fix)
+	org $029A08
+	Coin:
+		PEI ($1A)				;\ preserve BG1 coords
+		PEI ($1C)				;/
+		REP #$20				;\
+		LDA !Ex_Data1,x				; |
+		AND #$0003				; |
+		ASL #2					; | layer that coin is on
+		TAY					; | 0 = BG1
+		LDA $301A,y : STA $1A			; | 1 = BG2
+		LDA $301C,y : STA $1C			; | 2 = BG3
+		SEP #$20				;/
+		TXA
+		CLC : ADC $14
+		AND #$0C : BEQ .frame0
+		CMP #$08 : BNE .frame1
+	.frame2	JSL DisplayGFX
+		db $08,$FF
+		db $04,$00,$57,$00
+		db $04,$08,$57,$80
+		BRA .Return
+	.frame1	JSL DisplayGFX
+		db $08,$FF
+		db $04,$00,$47,$00
+		db $04,$08,$47,$80
+		BRA .Return
+	.frame0	JSL DisplayGFX
+		db $04,$FF
+		db $00,$00,$45,$02
+	.Return	REP #$20				;\
+		PLA : STA $1C				; | restore BG1 coords
+		PLA : STA $1A				; |
+		SEP #$20				;/
+		RTS
+	warnpc $029AA8
+
 
 	; -- minor gfx fix --
 	org $028FCA
@@ -1052,16 +1155,17 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		AND #$07
 		TAY
 		LDA $8B84,y
-		LDY !OAMindex
-		STA !OAM+$002-4,y
+		LDY #$02
+		STA [$02],y
 		LDA !Ex_Data1,x : BEQ .Return
-		LDA !OAM+$003-4,y
+		LDY #$03
+		LDA [$02],y
 		AND.b #$0E^$FF
 		STA $00
 		LDA $14
 		AND #$0E
 		ORA $00
-		STA !OAM+$003-4,y
+		STA [$02],y
 	.Return	RTS
 	warnpc $02902D
 
@@ -1080,8 +1184,8 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		INY #3
 		.SmallStar
 		LDA $8ECC,y				; same table but different offsets
-		LDY !OAMindex
-		STA !OAM+$002-4,y
+		LDY #$02
+		STA [$02],y
 	.Return	RTS
 	warnpc $028F2B
 
@@ -1096,8 +1200,8 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		TAY
 		LDA $8F2B,y
 		CLC : ADC $0C
-		LDY !OAMindex
-		STA !OAM+$002-4,y
+		LDY #$02
+		STA [$02],y
 	.Return	RTS
 
 	org $028E20
@@ -1112,8 +1216,8 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		TAY
 		LDA $8DD7,y
 		CLC : ADC $0C
-		LDY !OAMindex
-		STA !OAM+$002-4,y
+		LDY #$02
+		STA [$02],y
 	.Return	RTS
 	warnpc $028E76
 
@@ -1147,8 +1251,8 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		db $00,$00,$00,$02
 		PLA
 		LDY $00 : BEQ .Return
-		LDY !OAMindex
-		STA !OAM+$002-4,y
+		LDY #$02
+		STA [$02],y
 	.Return	RTS
 		.Water00
 		JSL DisplayGFX
@@ -1168,20 +1272,21 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		db $04,!GFX_Boo-!GFX_status
 		db $00,$00,$00,$02
 		LDA $00 : BEQ .Return
-		LDY !OAMindex
 		PHX
 		TXA
 		AND #$0B
 		TAX
 		LDA $8CB8,x
 		PLX
-		CLC : ADC !OAM+$002-4,y
-		STA !OAM+$002-4,y
+		LDY #$02
+		CLC : ADC [$02],y
+		STA [$02],y
 		LDA !Ex_XSpeed,x
 		LSR A
 		AND #$40
-		ORA !OAM+$003-4,y
-		STA !OAM+$003-4,y
+		LDY #$03
+		ORA [$02],y
+		STA [$02],y
 	.Return	RTS
 	warnpc $028D42
 
@@ -1204,8 +1309,8 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		LSR #2
 		TAY
 		LDA $A347,y
-		LDY !OAMindex
-		STA !OAM+$002-4,y
+		LDY #$02
+		STA [$02],y
 	.Return	RTS
 	warnpc $02A3AE
 
@@ -1217,13 +1322,13 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		db $04,!GFX_ReznorFireball-!GFX_status
 		db $00,$00,$00,$02
 		LDA $00 : BEQ .Return
-		LDY !OAMindex
-		LDA !OAM+$003-4,y
+		LDY #$03
+		LDA [$02],y
 		AND #$3F
 		BIT !Ex_Data3,x
 		BPL $02 : ORA #$C0
 		BVC $02 : EOR #$40
-		STA !OAM+$003-4,y
+		STA [$02],y
 	.Return	RTS
 	warnpc $02A1A4
 
@@ -1239,8 +1344,8 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		TAY
 		LDA $A217,y
 		ADC $0C			; trick due to VERY limited space: the LSR always clears C
-		LDY !OAMindex
-		STA !OAM+$002-4,y
+		LDY #$02
+		STA [$02],y
 	.Return	RTS
 	warnpc $02A254
 
@@ -1258,12 +1363,12 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		db $04,!GFX_Hammer-!GFX_status
 		db $00,$00,$00,$02
 		LDA $00 : BEQ .Return
-		LDY !OAMindex
-		LDA !OAM+$003-4,y
+		LDY #$03
+		LDA [$02],y
 		BIT !Ex_Data3,x
 		BPL $02 : ORA #$C0
 		BVC $02 : EOR #$40
-		STA !OAM+$003-4,y
+		STA [$02],y
 	.Return	RTS
 	warnpc $02A344
 
@@ -1287,15 +1392,15 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		db $00,$00,$00,$40
 
 	.Shared	LDA $00 : BEQ .Return
-		LDY !OAMindex
-		LDA !OAM+$003-4,y
+		LDY #$03
+		LDA [$02],y
 		BIT !Ex_XSpeed,x
 		BMI $02 : EOR #$40
 	;	AND #$3F
 	;	BIT !Ex_Data3,x
 	;	BPL $02 : ORA #$C0
 	;	BVC $02 : EOR #$40
-		STA !OAM+$003-4,y
+		STA [$02],y
 	.Return	RTS
 
 
@@ -1312,9 +1417,9 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		BEQ $02 : LDA #$C0
 		BIT !Ex_XSpeed,x
 		BMI $02 : EOR #$40
-		LDY !OAMindex
-		ORA !OAM+$003-4,y
-		STA !OAM+$003-4,y
+		LDY #$03
+		ORA [$02],y
+		STA [$02],y
 	.Return	RTS
 	warnpc $02A2EF			; we can overwrite the hammer tile table since it's unused
 	org $03C44E
@@ -1332,8 +1437,8 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		AND #$03
 		TAY
 		LDA $9E82,y
-		LDY !OAMindex
-		STA !OAM+$002-4,y
+		LDY #$02
+		STA [$02],y
 	.Return	RTS
 	warnpc $029EE6
 
@@ -1398,9 +1503,9 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		BEQ $02 : LDA #$C0
 		BIT !Ex_XSpeed,x
 		BMI $02 : EOR #$40
-		LDY !OAMindex
-		ORA !OAM+$003-4,y
-		STA !OAM+$003-4,y
+		LDY #$03
+		ORA [$02],y
+		STA [$02],y
 	.Return	RTS
 	warnpc $02A2BF
 	org $02C466
@@ -1449,11 +1554,12 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		db $04,$FF
 		db $00,$00,$00,$02
 		LDA $00 : BEQ .Return
-		LDY !OAMindex
 		LDA !Ex_Data1,x
 		LSR #2
 		TAX
-		LDA $9922,x : STA !OAM+$102-4,y
+		LDA $9922,x
+		LDY #$02
+		STA [$02],y
 	.Return	LDX $7698
 		RTS
 
@@ -1477,8 +1583,8 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		LSR #2
 		TAY
 		LDA $96D8,y
-		LDY !OAMindex
-		STA !OAM+$002-4,y
+		LDY #$02
+		STA [$02],y
 	.Return	RTS
 	warnpc $02974A
 	org $02974A
@@ -1492,8 +1598,8 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		LDA $00 : BEQ .Return
 		LDY !Ex_Data1,x
 		LDA.w .Tiles,y
-		LDY !OAMindex
-		STA !OAM+$002-4,y
+		LDY #$02
+		STA [$02],y
 	.Return	RTS
 	.Tiles	db $6A,$6A,$6A,$68,$68,$68,$66,$66
 
@@ -1506,15 +1612,45 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		db $04,$FF
 		db $00,$00,$00,$00
 		LDA $00 : BEQ .Return
-		LDY !OAMindex
 		PHX
 		LDA !Ex_Data1,x
 		LSR #2
 		TAX
-		LDA.w $9922,x : STA !OAM+$002-4,y
+		LDA.w $9922,x
+		LDY #$02
+		STA [$02],y
 		PLX
 	.Return	RTS
 
+
+	; -- bounce gfx fix --
+	org $0291F8
+	Bounce:
+		PEI ($1A)				;\ backup BG1 coords
+		PEI ($1C)				;/
+		LDY #$00				;\
+		BIT !Ex_Data1,x				; |
+		BPL $02 : LDY #$04			; | layer
+		REP #$20				; | 00 = BG1
+		LDA $301A,y : STA $1A			; | 80 = BG2
+		LDA $301C,y : STA $1C			; |
+		SEP #$20				;/
+		JSL DisplayGFX
+		db $04,$FF
+		db $00,$00,$00,$02
+		LDA $00 : BEQ .Return
+		LDA !Ex_Num,x
+		AND #$7F
+		TAY
+		LDA $91F0-!BounceOffset,y
+		LDY #$02
+		STA [$02],y
+	.Return	REP #$20				;\
+		PLA : STA $1C				; | restore BG1 coords
+		PLA : STA $1A				; |
+		SEP #$20				;/
+		RTS
+	warnpc $029265
 
 
 	; to DO:
@@ -1531,18 +1667,18 @@ incsrc "Remap.asm"
 
 print " "
 print "FusionCore V1.2"
-print " - Ex_Num mapped to ........$", hex(!Ex_Num)
-print " - Ex_Data1 mapped to ......$", hex(!Ex_Data1)
-print " - Ex_Data2 mapped to ......$", hex(!Ex_Data2)
-print " - Ex_Data3 mapped to ......$", hex(!Ex_Data3)
-print " - Ex_XLo mapped to ........$", hex(!Ex_XLo)
-print " - Ex_XHi mapped to ........$", hex(!Ex_XHi)
-print " - Ex_YLo mapped to ........$", hex(!Ex_YLo)
-print " - Ex_YHi mapped to ........$", hex(!Ex_YHi)
-print " - Ex_XSpeed mapped to .....$", hex(!Ex_XSpeed)
-print " - Ex_YSpeed mapped to .....$", hex(!Ex_YSpeed)
-print " - Ex_XFraction mapped to ..$", hex(!Ex_XFraction)
-print " - Ex_YFraction mapped to ..$", hex(!Ex_YFraction)
+print " - Ex_Num mapped to ........$", hex(!Ex_Num), " - $", hex(!Ex_Num+!Ex_Amount-1)
+print " - Ex_Data1 mapped to ......$", hex(!Ex_Data1), " - $", hex(!Ex_Data1+!Ex_Amount-1)
+print " - Ex_Data2 mapped to ......$", hex(!Ex_Data2), " - $", hex(!Ex_Data2+!Ex_Amount-1)
+print " - Ex_Data3 mapped to ......$", hex(!Ex_Data3), " - $", hex(!Ex_Data3+!Ex_Amount-1)
+print " - Ex_YLo mapped to ........$", hex(!Ex_YLo), " - $", hex(!Ex_YLo+!Ex_Amount-1)
+print " - Ex_XLo mapped to ........$", hex(!Ex_XLo), " - $", hex(!Ex_XLo+!Ex_Amount-1)
+print " - Ex_YHi mapped to ........$", hex(!Ex_YHi), " - $", hex(!Ex_YHi+!Ex_Amount-1)
+print " - Ex_XHi mapped to ........$", hex(!Ex_XHi), " - $", hex(!Ex_XHi+!Ex_Amount-1)
+print " - Ex_YSpeed mapped to .....$", hex(!Ex_YSpeed), " - $", hex(!Ex_YSpeed+!Ex_Amount-1)
+print " - Ex_XSpeed mapped to .....$", hex(!Ex_XSpeed), " - $", hex(!Ex_XSpeed+!Ex_Amount-1)
+print " - Ex_YFraction mapped to ..$", hex(!Ex_YFraction), " - $", hex(!Ex_YFraction+!Ex_Amount-1)
+print " - Ex_XFraction mapped to ..$", hex(!Ex_XFraction), " - $", hex(!Ex_XFraction+!Ex_Amount-1)
 print dec(!DebugRemapCount), " addresses remapped"
 print "Number of ExSprites allowed: ", dec(!Ex_Amount), " (0x", hex(!Ex_Amount), ")"
 print "Number of ExSprite types: ", dec(HandleEx_PalsetIndex_End-HandleEx_PalsetIndex), " (0x", hex(HandleEx_PalsetIndex_End-HandleEx_PalsetIndex), ")"

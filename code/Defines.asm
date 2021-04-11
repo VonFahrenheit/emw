@@ -3,6 +3,94 @@
 ;=======;
 
 
+; turns out this function is pretty useless because LDA/STA addr,x and LDA/STA long,x both use 5 cycles...
+macro mapBWRAM(address)
+	if <address>&$01FFFF == 0
+		STZ $2225
+		STZ $318F
+	else
+		LDA.b #((<address>&$01FFFF)/$2000)&$1F
+		STA $2225
+		STA $318F
+	endif
+endmacro
+
+
+; these macros can be used to quickly find an index to FusionCore
+; _fast versions shred regs instead of pushing/pulling them
+macro Ex_Index_X()
+		PHY
+		LDY.b #!Ex_Amount-1		; Y = loop counter
+		LDX !Ex_Index			; X = starting index
+	?loop:	LDA !Ex_Num,x : BEQ ?thisone	;\
+		DEX				; | search table
+		BPL $02 : LDX.b #!Ex_Amount-1	; |
+		DEY : BPL ?loop			;/
+		LDX #$00			; default index = 00
+	?thisone:
+		PLY
+		STX !Ex_Index			; update index
+		CPX #$00			; update P
+endmacro
+
+macro Ex_Index_X_fast()
+		LDY.b #!Ex_Amount-1		; Y = loop counter
+		LDX !Ex_Index			; X = starting index
+	?loop:	LDA !Ex_Num,x : BEQ ?thisone	;\
+		DEX				; | search table
+		BPL $02 : LDX.b #!Ex_Amount-1	; |
+		DEY : BPL ?loop			;/
+		LDX #$00			; default index = 00
+	?thisone:
+		STX !Ex_Index			; update index
+		CPX #$00			; update P
+endmacro
+
+macro Ex_Index_Y()
+		PHX
+		LDX.b #!Ex_Amount-1		; loop counter
+		LDY !Ex_Index			; starting index
+	?loop:	LDA !Ex_Num,y : BEQ ?thisone	;\
+		DEY				; | search table
+		BPL $02 : LDY.b #!Ex_Amount-1	; |
+		DEX : BPL ?loop			;/
+		LDY #$00			; default index = 00
+	?thisone:
+		PLX
+		STY !Ex_Index			; update index
+		CPY #$00			; update P
+endmacro
+
+macro Ex_Index_Y_fast()
+		LDX.b #!Ex_Amount-1		; loop counter
+		LDY !Ex_Index			; starting index
+	?loop:	LDA !Ex_Num,y : BEQ ?thisone	;\
+		DEY				; | search table
+		BPL $02 : LDY.b #!Ex_Amount-1	; |
+		DEX : BPL ?loop			;/
+		LDY #$00			; default index = 00
+	?thisone:
+		STY !Ex_Index			; update index
+		CPY #$00			; update P
+endmacro
+
+
+macro ReloadOAMData()
+		PHP
+		REP #$20
+		STZ !OAMindex_index+0
+		STZ !OAMindex_offset+0
+		LDA #$0002 : STA !OAMindex_index+2
+		LDA #$0004 : STA !OAMindex_index+4
+		LDA #$0006 : STA !OAMindex_index+6
+		LDA #$0200 : STA !OAMindex_offset+2
+		LDA #$0400 : STA !OAMindex_offset+4
+		LDA #$0600 : STA !OAMindex_offset+6
+		PLP
+endmacro
+
+
+
 	; -- Free RAM --		; Point to unused addresses, please.
 					; Don't change addressing mode (16-bit to 24-bit and vice versa).
 					; Doing that requires changing some code.
@@ -25,7 +113,7 @@
 
 
 		!BG1Address		= $3140		;\ tilemap addresses for layers 1/2
-		!BG2Address		= $3142		;/
+		!BG2Address		= $3142		;/ (based on 2107/2108, meant to be read for VRAM calc)
 		!2107			= $3144		; $2107 mirror, BG1 tilemap address control
 		!2108			= $3145		; $2108 mirror, BG2 tilemap address control
 		!2109			= $3146		; $2109 mirror, BG3 tilemap address control
@@ -68,6 +156,21 @@
 
 		!SmoothCamera		= $6AF6			; enables smooth camera (always on with camera box)
 
+
+		!BG1ZipBoxL		= $45
+		!BG1ZipBoxR		= $47
+		!BG1ZipBoxU		= $49
+		!BG1ZipBoxD		= $4B
+		!BG2ZipBoxL		= $4D
+		!BG2ZipBoxR		= $4F
+		!BG2ZipBoxU		= $51
+		!BG2ZipBoxD		= $53
+
+		!UpdateBG1Row		= $6908
+		!UpdateBG1Column	= $690A
+		!UpdateBG2Row		= $690C
+		!UpdateBG2Column	= $690E
+
 		!BG1ZipColumnX		= $61F0
 		!BG1ZipColumnY		= $61F2
 		!BG1ZipRowX		= $61F4
@@ -77,6 +180,10 @@
 		!BG2ZipRowX		= $61FC
 		!BG2ZipRowY		= $61FE
 
+		!BG1_Y_Delta		= $7858			; remapped from $77BC
+		!BG1_X_Delta		= $7859			; remapped from $77BD
+		!BG2_Y_Delta		= $785A			; remapped from $77BE
+		!BG2_X_Delta		= $785B			; remapped from $77BF
 
 
 		!Level			= $610B
@@ -455,7 +562,9 @@
 			; if d is clear, the tile's tt bits are replaced by the remap tt bits
 
 
-		!BigRAM			= $6080
+		!BigRAM			= $6080			; if this is moved to $3700, !TransformGFX has to be recoded
+								; all defines have to have their highest bit cleared ($80-$FF -> $00-$7F)
+								; and DP should be set to !BigRAM instead of !BigRAM-$80
 
 		!P1CoinIncrease		= $6F34			;\ Write here to increment player coins
 		!P2CoinIncrease		= $6F35			;/
@@ -841,16 +950,23 @@
 								; - previous entries, used to calculate averages (8 bytes)
 								; - 3 bytes of padding to make data easier to read in debugger
 
+		; misc
+		!DebugZips		= 1			; 0 = normal, 1 = while holding select zips use map16 tile 0x0000
+
+		; do not use several trackers at the same time!
+		!TrackSpriteLoad	= 0			; 0 = do not track sprite load, 1 = track sprite load
+		!TrackOAM		= 0			; 0 = do not track OAM, 1 = track OAM
 		!TrackCPU		= 1			; 0 = do not track CPU performance, 1 = track CPU performance and save in .srm file
 		!ResetTracker		= 1			; 0 = keep tracker on bootup, 1 = reset tracker on bootup
 
+		; toggles for !TrackCPU
 		!TrackFull		= 0
-
 		!TrackVR3		= 1
 		!TrackPCE		= 2
 		!TrackMSG		= 3
 		!TrackPlaneSplit	= 4
 		!TrackFe26		= 5
+		!TrackFusionCore	= 6
 
 
 ; tracker format:
@@ -868,9 +984,6 @@
 ; 0C - running tally 8
 ; 0D - 24-bit work area
 ;
-
-
-
 macro ResetTracker()
 	if !ResetTracker == 1
 		PHP
@@ -1017,6 +1130,20 @@ endmacro
 		!OAMindex_p1		= $418FFA
 		!OAMindex_p2		= $418FFC
 		!OAMindex_p3		= $418FFE
+
+		!PrioData		= $7FB0			; 16 bytes in mirror (generic bank)
+		; holds a static block:
+		; $0000,$0002,$0004,$0006
+		; $0000,$0200,$0400,$0600
+		; the first 4 entries are used to index the !OAMindex_px regs
+		; the last 4 entries are added to the OAM index
+		; this way, they can all be accessed with the same code
+
+		!OAMindex_index		= !PrioData+0
+		!OAMindex_offset	= !PrioData+8
+
+		!ActiveOAM		= $7FC0			; 2 bytes, index to currently used !PrioData
+
 
 		!Particle_Base		= $9A00			; bank $41
 
@@ -1267,20 +1394,22 @@ endmacro
 
 	; $1C3 bytes in this chunk
 	; note that the order of the physics regs is important
-		!Ex_Num		= $769C
-		!Ex_Data1	= !Ex_Num+(!Ex_Amount*1)
-		!Ex_Data2	= !Ex_Num+(!Ex_Amount*2)
-		!Ex_Data3	= !Ex_Num+(!Ex_Amount*3)
-		!Ex_YLo		= !Ex_Num+(!Ex_Amount*4)
-		!Ex_XLo		= !Ex_Num+(!Ex_Amount*5)
-		!Ex_YHi		= !Ex_Num+(!Ex_Amount*6)
-		!Ex_XHi		= !Ex_Num+(!Ex_Amount*7)
-		!Ex_YSpeed	= !Ex_Num+(!Ex_Amount*8)
-		!Ex_XSpeed	= !Ex_Num+(!Ex_Amount*9)
-		!Ex_YFraction	= !Ex_Num+(!Ex_Amount*10)
-		!Ex_XFraction	= !Ex_Num+(!Ex_Amount*11)
+		!Ex_Num			= $769C
+		!Ex_Data1		= !Ex_Num+(!Ex_Amount*1)
+		!Ex_Data2		= !Ex_Num+(!Ex_Amount*2)
+		!Ex_Data3		= !Ex_Num+(!Ex_Amount*3)
+		!Ex_YLo			= !Ex_Num+(!Ex_Amount*4)
+		!Ex_XLo			= !Ex_Num+(!Ex_Amount*5)
+		!Ex_YHi			= !Ex_Num+(!Ex_Amount*6)
+		!Ex_XHi			= !Ex_Num+(!Ex_Amount*7)
+		!Ex_YSpeed		= !Ex_Num+(!Ex_Amount*8)
+		!Ex_XSpeed		= !Ex_Num+(!Ex_Amount*9)
+		!Ex_YFraction		= !Ex_Num+(!Ex_Amount*10)
+		!Ex_XFraction		= !Ex_Num+(!Ex_Amount*11)
 
-
+		; ends at $7857
+		; 4 bytes that are overwritten by the FusionCore data ($77BC-$77BF) are mapped to $7858-$785B
+		; this means that there are no free bytes at the end of this block
 
 
 
@@ -1434,6 +1563,7 @@ endmacro
 		!PauseTimer		= $73D3
 		!Pause			= $73D4
 		!LevelHeight		= $73D7
+		!CapeImg		= $73DF
 		!MarioImg		= $73E0
 		!MarioWallWalk		= $73E3
 		!CapeEnable		= $73E8
@@ -1441,18 +1571,22 @@ endmacro
 		!CapeXPosHi		= $73EA
 		!CapeYPosLo		= $73EB
 		!CapeYPosHi		= $73EC
+		!MarioBehind		= $73F9
 		!EnableHScroll		= $7411
 		!EnableVScroll		= $7412
-		!MarioBehind		= $73F9
 		!ScrollLayer1		= $7404
 		!MarioSpinJump		= $740D
 		!BG2ModeH		= $7413
 		!BG2ModeV		= $7414
 		!BG2BaseV		= $7417		; 16-bit
 		!MsgTrigger		= $7426
+		!ScrollSpriteNum	= $743E
+		!ScrollSpriteNum_L1	= !ScrollSpriteNum
+		!ScrollSpriteNum_L2	= $743F
 		!BG3BaseSettings	= $745E		; first 5 bits determine y position, last 2 bits used by LM
 		!BG3BaseSpeed		= $745F		; hi nybble is vertical option, lo nybble is horizontal option
 		!MarioCarryingObject	= $7470
+		!StarTimer		= $7490
 		!LevelEnd		= $7493
 		!MarioFlashTimer	= $7497
 		!MarioCapeFloat		= $74A5
@@ -1463,6 +1597,7 @@ endmacro
 		!MarioRidingYoshi	= $787A
 		!ShakeTimer		= $7887
 		!YoshiIndex		= $78E2
+		!GeneratorNum		= $78B9
 		!WindowDir		= $7B88
 		!WindowSize		= $7B89
 		!SideExit		= $7B96
@@ -1478,11 +1613,14 @@ endmacro
 		!LevelTable4		= $7938		; U-ssssss (unlock (0 = locked, 1 = unlocked), best time seconds (0-59))
 		!LevelTable5		= $7F49		; --mmmmmm (best time minutes (0-63))
 
-
+		!SpriteLoadStatus	= $418A00	; 255 bytes, 1 for each sprite in level data
 
 	; -- Custom routines --
 
 		!InitSpriteTables	= $07F7D2
+		; same as !ResetSprite
+		; procedure: set sprite num + extra bits, then call, then set ID, then store coords + status
+		; NOTE: shreds $00-$02 when called for a custom sprite!
 
 		!GetMap16Sprite		= $138008
 		!KillOAM		= $138010
@@ -1510,6 +1648,7 @@ endmacro
 		!GetBigCCDMA		= $1380A8
 		!GetSmallCCDMA		= $1380B0
 		!BuildOAM		= $1380B8
+		!ChangeMap16		= $1380C0
 
 		!PortraitPointers	= $378000		; DATA pointer stored with SP_Files.asm, along with portrait GFX
 		!PalsetData		= $3F8000		; DATA pointer stored with SP_Files.asm, along with palset data
@@ -1547,8 +1686,13 @@ endmacro
 		!GetP1Clipping		= $03B664		; < Gets MARIO's clipping
 		!CheckContact		= $03B72B
 
-		!ResetSprite		= $07F7D2		; this is really an Fe26 routine
-		!ResetSpriteExtra	= $0187A7
+		!LoadTweakers		= $07F78B		; reloads vanilla tweakers and set OAM prop
+		!ResetSprite		= $07F7D2		; hijacked by Fe26 to work with custom sprites
+		; same as !InitSpriteTables
+		; procedure: set sprite num + extra bits, then call, then set ID, then store coords + status
+		; NOTE: shreds $00-$02 when called for a custom sprite!
+
+		!ResetSpriteExtra	= $0187A7		; reloads spawn data
 
 		!DecompressFile		= $0FF900
 

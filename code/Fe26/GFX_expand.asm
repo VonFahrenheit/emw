@@ -2144,15 +2144,9 @@
 		LDA $02
 		AND #$3E
 		ORA !SpriteProp,x
+		AND.b #$20^$FF			; clear size bit
 		STA !BigRAM+$02
 		JSR LOAD_TILEMAP_HiPrio
-		LDA !OAMindex
-		LSR #2
-		DEC A
-		TAY
-		LDA !OAMhi,y
-		AND #$01
-		STA !OAMhi,y
 		JSR SPRITE_OFF_SCREEN		; despawn if necessary
 		JML $02F42B			; go to RTS
 
@@ -2641,13 +2635,16 @@
 
 
 	; -- bounce --
-	org $029258
-		JSL .Remap2				; source : TYA : LSR #2 : TAY (bounce)
+	;org $029258
+	;	JSL .Remap2				; source : TYA : LSR #2 : TAY (bounce)
+	; now handled by FusionCore
 
 
 	; -- coin --
-	org $029A5A
-		JSL .Remap				; source: TYA : LSR #2 : TAY (coin)
+	;org $029A5A
+	;	JSL .Remap				; source: TYA : LSR #2 : TAY (coin)
+	; now handled by FusionCore
+
 
 
 	pullpc

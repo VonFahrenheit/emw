@@ -93,7 +93,9 @@ sa1rom
 		.Return
 
 		LDA #$01 : STA !ProcessingSprites
-		JML $1081A6	; new constant (how did i come up with this?????)
+	;	JML $1081A6			; new constant (how did i come up with this?????)
+	; note: the "constant" is just the pointer to the SNES -> SA-1 wrapper for the sprite engine
+		RTL				; now called by GameMode14.asm
 
 
 		.Pipe
@@ -252,41 +254,50 @@ sa1rom
 
 
 		.GetCharacter
-		REP #$30			; > All regs 16-bit
-		LDA.w #$007F			;\
-		LDX.w #!P2Base			; | Backup player 2 data
-		LDY.w #!PlayerBackupData	; |
-		MVN $40,$00			;/
-		LDA.w #$007F			;\
-		LDX.w #!P1Base			; | Copy player 1 data to player 2 regs
-		LDY.w #!P2Base			; |
-		MVN $00,$00			;/
-		SEP #$30			; > All regs 8-bit
+		SEP #$30				;\
+		STZ !MarioMaskBits			; |
+		LDA #$00 : PHA : PLB			; |
+		LDA $73CB				; | run the mario code at $00C47E
+		PHK : PEA .MarioReturn-1		; |
+		PEA $84CF-1				; |
+		JML $00C483				; |
+		.MarioReturn				;/
 
-		PHK : PLB			; > Switch banks
-		LDA !Characters			;\
-		LSR #4				; |
-		ASL A				; | Check for player 1 character ID
-		CMP.b #..End-..List		; |
-		BCC ..P1 : JMP ..P2		;/
+		REP #$30				; > All regs 16-bit
+		LDA.w #$007F				;\
+		LDX.w #!P2Base				; | Backup player 2 data
+		LDY.w #!PlayerBackupData		; |
+		MVN $40,$00				;/
+		LDA.w #$007F				;\
+		LDX.w #!P1Base				; | Copy player 1 data to player 2 regs
+		LDY.w #!P2Base				; |
+		MVN $00,$00				;/
+		SEP #$30				; > All regs 8-bit
+
+		PHK : PLB				; > Switch banks
+		LDA !Characters				;\
+		LSR #4					; |
+		ASL A					; | Check for player 1 character ID
+		CMP.b #..End-..List			; |
+		BCC ..P1 : JMP ..P2			;/
 
 		..P1
-		TAX				; > X = index
-		LDA #$00 : STA !CurrentPlayer	; > Processing P1
-		TDC : STA $3000			;\ Backup DP
-		XBA : STA $3001			;/
-		LDA #$6D : XBA			;\ DP = $6DA0
-		LDA #$A0 : TCD			;/
-		LDA $03 : PHA			;\
-		LDA $05 : PHA			; |
-		LDA $07 : PHA			; |
-		LDA $09 : PHA			; | Copy P1 input to P2
-		LDA $02 : STA $03		; |
-		LDA $04 : STA $05		; |
-		LDA $06 : STA $07		; |
-		LDA $08 : STA $09		;/
-		LDA $3001 : XBA			;\ Restore DP
-		LDA $3000 : TCD			;/
+		TAX					; > X = index
+		LDA #$00 : STA !CurrentPlayer		; > Processing P1
+		TDC : STA $3000				;\ Backup DP
+		XBA : STA $3001				;/
+		LDA #$6D : XBA				;\ DP = $6DA0
+		LDA #$A0 : TCD				;/
+		LDA $03 : PHA				;\
+		LDA $05 : PHA				; |
+		LDA $07 : PHA				; |
+		LDA $09 : PHA				; | Copy P1 input to P2
+		LDA $02 : STA $03			; |
+		LDA $04 : STA $05			; |
+		LDA $06 : STA $07			; |
+		LDA $08 : STA $09			;/
+		LDA $3001 : XBA				;\ Restore DP
+		LDA $3000 : TCD				;/
 		LDA !P2Status
 		CMP #$02 : BNE +
 		REP #$20

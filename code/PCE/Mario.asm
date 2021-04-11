@@ -235,6 +235,13 @@ namespace Mario
 
 
 	Mario:
+		JSR MarioAnimations			; $00E2BD, transcribed and modified
+
+		REP #$20				;\
+		LDA !MarioXPos : STA $D1		; | copy of $00A2F3
+		LDA !MarioYPos : STA $D3		; |
+		SEP #$20				;/
+
 		STZ !P2Gravity				; no extra gravity for Mario
 		LDA #$46 : STA !P2FallSpeed		; Mario's fall speed is 0x46
 		REP #$20
@@ -288,6 +295,11 @@ namespace Mario
 
 		LDA !P2FireFlash
 		BEQ $03 : DEC !P2FireFlash
+
+		LDA !MarioBlocked
+		AND #$03 : BEQ +
+		STZ !MarioClimb				; clear this if mario touches no walls
+		+
 
 		RTS
 
@@ -379,7 +391,6 @@ namespace Mario
 		STA !P2Stasis-$80,x
 		STA !P2ExternalAnimTimer-$80,x
 		STZ !P2ExternalAnim-$80,x
-		STZ $73DF
 		STZ !MarioSpinJump
 
 		BIT $16 : BPL ..R
@@ -737,7 +748,6 @@ namespace Mario
 	;	PHY
 
 		SEP #$20
-
 		LDY #$00
 	;	LDA !MarioUpgrades				;\
 	;	AND #$40					; | always use fire palette with flower DNA
@@ -748,78 +758,73 @@ namespace Mario
 	;	CMP #$03					; | fire palette if mario has fire flower
 	;	BNE $02 : LDY.b #!palset_mario_fire		;/
 
+
+		LDA !MarioFireCharge				;\ fire palette if mario has palette charge
+		BEQ $02 : LDY.b #!palset_mario_fire		;/
 		LDA !CurrentMario : BNE $03 : JMP ..NoUpdate
 		DEC A
 		TAX
 		PHX
 	;	TYA : STA !Palset8,x
 
-	LDA !P2FireFlash-$80,x : BNE +
-	CPY.b #!palset_mario_fire : BEQ $03 : JMP ..NoGlow
-	+
+		LDA !P2FireFlash-$80,x : BNE +
+		CPY.b #!palset_mario_fire : BEQ $03 : JMP ..NoGlow
+		+
 
+		PHY
+		TXY
+		BEQ $02 : LDY #$80
+		LDA !P2FireFlash-$80,y : BEQ +
+		PHX
+		PHA
+		LDA #$01 : STA !P2LockPalset-$80,y
+		CPX #$00
+		BEQ $02 : LDX #$20
+		REP #$20
+		LDA #$7FFF
+		STA.l !PaletteHSL+$904+$100,x
+		STA.l !PaletteHSL+$906+$100,x
+		STA.l !PaletteHSL+$908+$100,x
+		STA.l !PaletteHSL+$90A+$100,x
+		STA.l !PaletteHSL+$90C+$100,x
+		STA.l !PaletteHSL+$90E+$100,x
+		STA.l !PaletteHSL+$910+$100,x
+		STA.l !PaletteHSL+$912+$100,x
+		STA.l !PaletteHSL+$914+$100,x
+		STA.l !PaletteHSL+$916+$100,x
+		STA.l !PaletteHSL+$918+$100,x
+		STA.l !PaletteHSL+$91A+$100,x
+		STA.l !PaletteHSL+$91C+$100,x
+		STA.l !PaletteHSL+$91E+$100,x
+		SEP #$20
+		LDA $02,s
+		BEQ $02 : LDA #$10
+		CLC : ADC #$82
+		TAX
+		LDY #$0E
+		PLA
+		CMP #$10 : BCC ++
+		SBC #$10
+		ASL #3
+		BRA +++
+	++	ASL A
+		EOR #$1F
+	+++	JSL !MixRGB_Upload
+		PLX
+		PLY
+		JMP ..NoGlow
 
-	PHY
-
-	TXY
-	BEQ $02 : LDY #$80
-	LDA !P2FireFlash-$80,y : BEQ +
-	PHX
-	PHA
-	LDA #$01 : STA !P2LockPalset-$80,y
-	CPX #$00
-	BEQ $02 : LDX #$20
-	REP #$20
-	LDA #$7FFF
-	STA.l !PaletteHSL+$904+$100,x
-	STA.l !PaletteHSL+$906+$100,x
-	STA.l !PaletteHSL+$908+$100,x
-	STA.l !PaletteHSL+$90A+$100,x
-	STA.l !PaletteHSL+$90C+$100,x
-	STA.l !PaletteHSL+$90E+$100,x
-	STA.l !PaletteHSL+$910+$100,x
-	STA.l !PaletteHSL+$912+$100,x
-	STA.l !PaletteHSL+$914+$100,x
-	STA.l !PaletteHSL+$916+$100,x
-	STA.l !PaletteHSL+$918+$100,x
-	STA.l !PaletteHSL+$91A+$100,x
-	STA.l !PaletteHSL+$91C+$100,x
-	STA.l !PaletteHSL+$91E+$100,x
-	SEP #$20
-	LDA $02,s
-	BEQ $02 : LDA #$10
-	CLC : ADC #$82
-	TAX
-	LDY #$0E
-	PLA
-	CMP #$10 : BCC ++
-	SBC #$10
-	ASL #3
-	BRA +++
-++	ASL A
-	EOR #$1F
-+++	JSL !MixRGB_Upload
-	PLX
-	PLY
-	JMP ..NoGlow
-
-	+
-	LDA #$00 : STA !P2LockPalset-$80,y
-	PLY
-	LDA !Palset8,x
-	AND #$7F : BEQ +
-	STZ !Palset8,x
-	+
-
-	;	CMP #$09 : BNE ..NoGlow
-
-	CPY #$09 : BNE ..NoGlow
-
-
-		..Glow
+		+
+		LDA #$00 : STA !P2LockPalset-$80,y
+		PLY
+		LDA !Palset8,x
+		AND #$7F : BEQ +
+		STZ !Palset8,x
+		+
+		CPY #$09 : BNE ..NoGlow
 
 	; write to colors 2, 3, 8 and A
-
+		..Glow
 		CPX #$00
 		BEQ $02 : LDX #$20
 		LDA #$1F
@@ -851,58 +856,9 @@ namespace Mario
 		LDY #$01
 		JSL !MixRGB_Upload
 
-	;	CPX #$00
-	;	BEQ $02 : LDX #$30
-	;	LDA #$0C
-	;	STA !PaletteHSL+$180+($2*3),x
-	;	STA !PaletteHSL+$180+($3*3),x
-	;	STA !PaletteHSL+$180+($8*3),x
-	;	STA !PaletteHSL+$180+($A*3),x
-	;	LDA #$3F
-	;	STA !PaletteHSL+$181+($2*3),x
-	;	STA !PaletteHSL+$181+($3*3),x
-	;	STA !PaletteHSL+$181+($8*3),x
-	;	STA !PaletteHSL+$181+($A*3),x
-	;	LDA $14
-	;	AND #$3F
-	;	SEC : SBC #$20
-	;	BPL $03 : EOR #$FF : INC A
-	;	STA !PaletteHSL+$182+($2*3),x
-	;	STA !PaletteHSL+$182+($3*3),x
-	;	STA !PaletteHSL+$182+($8*3),x
-	;	STA !PaletteHSL+$182+($A*3),x
-	;	TXA
-	;	BEQ $02 : LDA #$10
-	;	CLC : ADC #$82
-	;	TAX
-	;	LDY #$02
-	;	PHX
-	;	JSL !HSLtoRGB
-	;	PLX
-	;	INX #6
-	;	LDY #$01
-	;	PHX
-	;	JSL !HSLtoRGB
-	;	PLX
-	;	INX #2
-	;	LDY #$01
-	;	JSL !HSLtoRGB
-
 		..NoGlow
 		PLX
 		..NoUpdate
-
-
-
-	;	TYA
-	;	CLC : ADC.w #$E2A2
-	;	STA $00
-	;	LDA ($00) : STA $00
-	;	LDY #$12
-	;-	LDA ($00),y : STA !MarioPalData,y		; move Mario's palette into buffer
-	;	DEY #2 : BPL -
-	;	PLY
-	;	PLA : STA $00
 
 		..override
 		RTL
@@ -1100,6 +1056,551 @@ namespace Mario
 		BRA -
 
 
+; $00E2BD - $00E4B8 + the JSR at $00F636 - $00F69E
+MarioAnimations:
+		PHB								;\ wrapper to bank 0x00
+		LDA #$00 : PHA : PLB						;/
+		LDA !MarioImg : PHA						; push this
+
+		LDA !P2ExternalAnimTimer : BEQ .ClearExternal			;\
+		DEC !P2ExternalAnimTimer					; | enforce external animations for Mario
+		LDA !P2ExternalAnim : STA !MarioImg				; |
+		LDA !P2Anim : STA !CapeImg					; > enforce cape too
+		BRA .NoOverride							;/
+		.ClearExternal
+		STZ !P2ExternalAnim						; clear once timer runs out
+		STZ !P2Anim
+		.NoOverride
+
+		LDA #$05							;\
+		CMP !MarioWallWalk : BCS +					; |
+		LDA !MarioWallWalk						; |
+		LDY $19 : BEQ ++						; |
+		CPX #$13 : BNE +++						; | mario's screen-relative Xpos
+	++	EOR #$01							; |
+	+++	LSR A								; |
+	+	REP #$20							; |
+		LDA !MarioXPos							; |
+		SBC $1A								; | (yep, no SEC)
+		REP #$20							; |
+		STA $7E								; |
+		LDX !MarioClimb : BEQ ..NoClimb					; |
+		LDA !MarioDirection						; |
+		AND #$00FF							; |
+		ASL A								; |
+		TAX								; | climb offset code
+		LDA.l .ClimbOffsets,x						; |
+		CLC : ADC $7E							; |
+		STA $7E								; |
+		..NoClimb							;/
+
+
+		LDA $788B							;\
+		AND #$00FF							; > offset caused by shaking camera
+		CLC : ADC !MarioYPos						; |
+
+
+		; $00E34F reference
+	;	LDY $19								; |
+	;	CPY #$01							; |
+	;	LDY #$01							; |
+	;	LDX !MarioImg							; |
+	;	BCS $02 : DEC A : DEY						; | mario's screen-relative Ypos
+	;	CPX #$0A							; |
+	;	BCS $03 : CPY $73DB						; > bop up and down while walking/running
+	;	SBC $1C								; | (frames 00-09)
+	;	CPX #$1C							; |
+	;	BNE $03 : ADC #$0001						; |
+
+		DEC A
+		LDX !MarioImg : BEQ +
+		CPX #$1C : BEQ ..D1
+		CPX #$0A : BCS +
+		LDY $19
+		BNE $01 : INX
+		CPX #$02 : BEQ ..U1
+		CPX #$06 : BEQ ..U1
+		CPX #$09 : BNE +
+	..U1	DEC #2
+	..D1	INC A
+	+	SEC : SBC $1C
+
+		STA $0E								; |
+
+		LDA !DizzyEffect						;\
+		AND #$00FF : BEQ ..NoDizzy					; |
+		LDA !MarioXPos							; |
+		SEC : SBC $1A							; |
+		AND #$00FF							; |
+		LSR #3								; |
+		ASL A								; |
+		TAX								; > adjust mario during dizzy effect
+		LDA $40A040,x							; |
+		AND #$1FFF							; |
+		SEC : SBC $1C							; |
+		EOR #$FFFF : INC A						; |
+		CLC : ADC $0E							; |
+		STA $0E								; |
+		..NoDizzy							;/
+
+		LDA $0E								;\
+		LDY !Level+1 : BNE ..NoDown					; |
+		LDY !Level							; |
+		CPY #$25 : BNE ..NoDown						; |
+		LDY !Level+4 : BEQ ..NoDown					; |
+		REP #$20							; |
+		STA $0E								; |
+		LDA $6DF6							; > move down with screen on upgrade menu
+		AND #$00FF							; |
+		CLC : ADC $0E							; |
+		CMP #$00F0							; |
+		BCC $03 : LDA #$00F0						; |
+		SEP #$20							; |
+		..NoDown							; |
+		STA $80								;/
+
+		SEP #$20							;\
+		LDA !MarioFlashTimer : BEQ .GFX					; |
+		LSR #3								; |
+		TAY								; |
+		LDA $E292,y							; | figure out if mario should be drawn (flash logic)
+		AND !MarioFlashTimer						; |
+		ORA $9D								; |
+		ORA $73FB							; |
+		BNE .GFX							;/
+		PLA : STA !MarioImg						;\
+		PLB								; | return
+		RTS								;/
+
+
+; -info-
+; $00	16-bit	index to table with X/Y disp, 2 bytes for each (facing left + facing right), only lo byte is used
+; $02	16-bit	index to table with tile numbers (values 0x80+ are skipped), only lo byte is used
+; $04	8-bit	collection of size bits for mario's tiles
+; $05	8-bit	YXPPCCCT
+; $06	16-bit	which tile we're on (starts at 0 and counts up)
+; $08	16-bit	copy of !CapeImg, with hi byte cleared
+; $0A	16-bit	used for VRAM transfer
+; $0C	16-bit	used for VRAM transfer (should be 0 if cape is not used)
+; $0E	16-bit	used as scratch by cape
+
+; $7E	16-bit	mario xpos relative to screen
+; $80	16-bit	mario ypos relative to screen
+
+; compared to original:
+; $05 was remapped to $00
+; $06 was remapped to $02
+
+
+	.GFX
+		LDX #$00							;\
+		LDA !MarioBehind						; |
+		CMP #$02							; |
+		BCS $02 : LDX #$02						; | !BigRAM+0: which index to use (_p0 or _p1)
+		REP #$20							; | !BigRAM+2: how much to add to X (0x000 or 0x200)
+		LDA.l !OAMindex_index,x : STA !BigRAM+0				; |
+		LDA.l !OAMindex_offset,x : STA !BigRAM+2			;/
+		STZ $00								;\
+		STZ $02								; |
+		STZ $06								; |
+		LDA !CapeImg							; | set up scratch
+		AND #$00FF							; |
+		STA $08								; |
+		STZ $0C								;/
+		LDX !MarioImg							; X = mario image
+		SEP #$20
+
+		; i believe these are used to determine the size of mario's tiles
+		LDA #$C8							;\
+		CPX #$43							; | if mario is a big balloon, $04 = 0xE8
+		BNE $02 : LDA #$E8						; | otherwise, $04 = 0xC8
+		STA $04								;/
+		LDA $DCEC,x							;\
+		ORA !MarioDirection						; | write $00 based on indexed table + direction
+		TAY								; | this will index the X/Y coord table
+		LDA $DD32,y : STA $00						;/
+		TXA								;\
+		CMP #$3D : BCS +						; |
+		LDY $19								; > if !MarioImg <= 0x3D, add a value indexed by powerup status
+		ADC $DF16,y							; | Y = that sum
+	+	TAY								;/
+		LDA $DF1A,y : STA $02						;\
+		LDA $E00C,y : STA $0A						; | use Y to set up $02 and $0A
+		LDA $E0CC,y : STA $0B						;/
+		LDA $3E								;\
+		AND #$07							; | Y = current screen mode
+		TAY								;/
+
+		LDA $64								;\
+		LDX !MarioBehind						; | get PP bits
+		BEQ $03 : LDA $E2B9,x						;/
+		LDX !MarioDirection						;\ get X bit
+		ORA $E18C,x							;/
+		CLC : ADC !MarioPropOffset					; > add player palette offset
+		ORA !MarioClimb							; > add extra priority during ledge hang
+		CPY #$02							;\ clear lowest P bit during mode2
+		BNE $02 : AND #$EF						;/
+		STA $05								; store YXPPCCCT in scratch
+
+		REP #$30							;\
+		LDX !BigRAM+0							; |
+		LDA !OAMindex_p1,x						; | index to _p1 or _p2
+		CLC : ADC !BigRAM+2						; |
+		TAX								; |
+		SEP #$20							;/
+		LDA !MarioImg							;\
+		CMP #$25 : BEQ .BehindCape					; |
+		CMP #$44 : BNE .NotBehindCape					; | frames 0x25 and 0x45 are drawn behind the cape
+		.BehindCape							; |
+		LDA #$F0 : STA !OAM_p1+$001,x					; > hide this tile
+		INX #4								; |
+		.NotBehindCape							;/
+
+		JSR .Draw
+		JSR .Draw
+		JSR .Draw
+		JSR .Draw
+
+		LDA !MarioUpgrades
+		AND #$04 : BNE $03 : JMP .Finish
+
+
+	; cape code
+		LDA !MarioSpinJump : BEQ .NoCapeRemap
+		BIT !MarioYSpeed : BMI .AscendingCape
+
+	.DescendingCape
+		LDA $19 : BNE .NoCapeRemap
+		LDA !MarioImg : BEQ +
+		CMP #$0F : BEQ ..45
+	..44	LDA #$44 : BRA $02
+	..45	LDA #$45
+	+	STA !MarioImg
+		BEQ ..c_07
+	..c_09	LDA #$09 : BRA .W
+	..c_07	LDA #$07 : BRA .W
+
+	.AscendingCape
+		LDA $19 : BEQ +
+		LDA !MarioImg : BEQ +
+		CMP #$44 : BEQ ..25
+	..0F	LDA #$0F : BRA $02
+	..25	LDA #$25
+		STA !MarioImg
+	+	LDA !MarioImg : BEQ .W
+		LDA #$0B
+	.W	STA !CapeImg
+		.NoCapeRemap
+
+		LDA $19 : BNE +
+		LDY $08
+		REP #$20
+		LDA $E448+6,y							; | ("MarioCapeY")
+		AND #$00FF
+		CMP #$0080
+		BCC $03 : ORA #$FF00
+		CLC : ADC $80
+		STA $80
+		SEP #$20
+		+
+
+		LDA #$00 : XBA							; clear B
+		LDA #$2C : STA $02
+		LDA #$FF : STA $04
+		LDA !MarioImg : TAY
+		LDA $E18E,y : TAY
+		LDA $E1D5,y : STA $0C
+		CMP #$04 : BCS .DrawCape
+		LDA !CapeImg
+		ASL #2
+		ORA $0C
+		TAY
+		LDA $E23A,y : STA $0C
+		LDA $E266,y
+		BRA +
+
+	.DrawCape
+		LDA !MarioImg : TAY
+		LDA $E1D6,y
+	+	ORA !MarioDirection
+		TAY
+		LDA $E21A,y : STA $00
+		LDA !MarioImg							;\
+		CMP #$25 : BEQ +						; |
+		CMP #$44 : BNE ++						; |
+	+	PHX								; |
+		REP #$20							; |
+		LDX !BigRAM+0							; |
+		LDA !OAMindex_p1,x						; | for mario images 0x25 and 0x44 cape is drawn in front
+		CLC : ADC !BigRAM+2						; |
+		TAX								; |
+		SEP #$20							; |
+		JSR .Draw							; |
+		PLX								; |
+		BRA .Finish							;/
+
+	++	JSR .Draw							; draw cape (normally behind mario)
+
+	.Finish
+		REP #$20							;\
+		TXA								; |
+		SEC : SBC !BigRAM+2						; | store new OAM index
+		LDX !BigRAM+0							; |
+		STA !OAMindex_p1,x						;/
+		SEP #$10
+	; HIJACK: mario sprite sheet expansion
+	; this code is for uploading GFX from sources other than the main file at $7E2000
+	; should be merged into the above code for efficiency
+		LDA !MarioClimb : BEQ .NormalVRAM
+		REP #$20
+		LDA !MarioPowerUp-1
+		AND #$FF00
+		BEQ $03 : LDA #$0080
+		CLC : ADC #$7D00+$C00
+		STA $6D85
+		CLC : ADC #$0200
+		STA $6D8F
+		SEC : SBC #$01C0
+		STA $6D87
+		CLC : ADC #$0200
+		STA $6D91
+		BRA .c_VRAM
+
+	.NormalVRAM
+		LDX #$00
+		LDA $09
+		ORA #$0800
+		CMP $09
+		BEQ $01 : CLC
+		AND #$F700
+		ROR A
+		LSR A
+		ADC #$2000
+		STA $6D85
+		CLC : ADC #$0200
+		STA $6D8F
+		LDX #$00
+		LDA $0A
+		ORA #$0800
+		CMP $0A
+		BEQ $01 : CLC
+		AND #$F700
+		ROR A
+		LSR A
+		ADC #$2000
+		STA $6D87
+		CLC : ADC #$0200
+		STA $6D91
+	.c_VRAM	LDA $0B
+		AND #$FF00
+		LSR #3
+		ADC #$2000
+		STA $6D89
+		CLC : ADC #$0200
+		STA $6D93
+		LDA $0C
+		AND #$FF00
+		LSR #3
+		ADC #$2000
+		STA $6D99
+
+		; fire flash code
+		SEP #$30
+		LDY #$00
+		LDA !MarioFireCharge							;\ fire palette if mario has palette charge
+		BEQ $02 : LDY.b #!palset_mario_fire					;/
+		LDA !CurrentMario : BNE $03 : JMP ..NoUpdate
+		LDA !P2FireFlash : BNE +
+		CPY.b #!palset_mario_fire : BEQ $03 : JMP ..NoGlow
+		+
+
+		PHY
+		TXY
+		BEQ $02 : LDY #$80
+		LDA !P2FireFlash : BEQ +
+		PHX
+		PHA
+		LDA #$01 : STA !P2LockPalset
+		CPX #$00
+		BEQ $02 : LDX #$20
+		REP #$20
+		LDA #$7FFF
+		STA.l !PaletteHSL+$904+$100,x
+		STA.l !PaletteHSL+$906+$100,x
+		STA.l !PaletteHSL+$908+$100,x
+		STA.l !PaletteHSL+$90A+$100,x
+		STA.l !PaletteHSL+$90C+$100,x
+		STA.l !PaletteHSL+$90E+$100,x
+		STA.l !PaletteHSL+$910+$100,x
+		STA.l !PaletteHSL+$912+$100,x
+		STA.l !PaletteHSL+$914+$100,x
+		STA.l !PaletteHSL+$916+$100,x
+		STA.l !PaletteHSL+$918+$100,x
+		STA.l !PaletteHSL+$91A+$100,x
+		STA.l !PaletteHSL+$91C+$100,x
+		STA.l !PaletteHSL+$91E+$100,x
+		SEP #$20
+		LDA $02,s
+		BEQ $02 : LDA #$10
+		CLC : ADC #$82
+		TAX
+		LDY #$0E
+		PLA
+		CMP #$10 : BCC ++
+		SBC #$10
+		ASL #3
+		BRA +++
+	++	ASL A
+		EOR #$1F
+	+++	JSL !MixRGB_Upload
+		PLX
+		PLY
+		JMP ..NoGlow
+
+		+
+		LDA #$00 : STA !P2LockPalset
+		PLY
+		LDA !Palset8,x
+		AND #$7F : BEQ +
+		STZ !Palset8,x
+		+
+		CPY #$09 : BNE ..NoGlow
+
+	; write to colors 2, 3, 8 and A
+		..Glow
+		CPX #$00
+		BEQ $02 : LDX #$20
+		LDA #$1F
+		STA !PaletteHSL+$904+$100,x
+		STA !PaletteHSL+$906+$100,x
+		STA !PaletteHSL+$910+$100,x
+		STA !PaletteHSL+$914+$100,x
+		TXA
+		BEQ $02 : LDA #$10
+		CLC : ADC #$82
+		TAX
+		LDY #$02
+		LDA $14
+		AND #$3F
+		SEC : SBC #$20
+		BPL $03 : EOR #$FF : INC A
+		PHA
+		PHX
+		JSL !MixRGB_Upload
+		PLX
+		LDA $01,s
+		INX #6
+		LDY #$01
+		PHX
+		JSL !MixRGB_Upload
+		PLX
+		PLA
+		INX #2
+		LDY #$01
+		JSL !MixRGB_Upload
+
+		..NoGlow
+		..NoUpdate
+
+	.Return	PLA : STA !MarioImg						;\
+		PLB								; | return
+		RTS								;/
+
+
+		.Draw
+		LSR !MarioMaskBits : BCS .Fail					; if tile is masked, skip it
+
+		LDY $02								;\ if tile doesn't exist, skip it
+		LDA $DFDA,y : BMI .Fail						;/
+		CLC : ADC !MarioTileOffset					; add player offset
+		STA !OAM_p1+$002,x						; store tile num
+
+		LDA $05 : STA !OAM_p1+$003,x					; store YXPPCCCT
+		LDA !MarioImg							;\
+		CMP #$43 : BNE .NoFlip						; |
+		LDA $06								; |
+		CMP #$04 : BNE .NoFlip						; | unless mario is big balloon, xflip the 5th tile
+		LDA !OAM_p1+$003,x						; |
+		EOR #$40							; |
+		STA !OAM_p1+$003,x						; |
+		.NoFlip								;/
+
+		LDA $0C								;\
+		CMP #$2C : BNE .NotCapeY					; |
+		REP #$20							; | special cape check Y
+		LDA $80								; |
+		CLC : ADC #$0010						; > add 16px
+		BRA +								;/
+
+		.NotCapeY							;\
+		LDY $00								; |
+		REP #$20							; |
+		LDA $80								; |
+		CLC : ADC $DE32,y						; |
+	+	PHA								; | see if tile is on-screen vertically
+		CLC : ADC #$0010						; |
+		CMP #$0100							; |
+		PLA								; |
+		SEP #$20							; |
+		BCS .Fail							;/
+		STA !OAM_p1+$001,x						; > store Y coord
+
+		LDA $0C								;\
+		CMP #$2C : BNE .NotCapeX					; |
+		REP #$20							; | special cape check X
+		LDA $7E								; |
+		BRA +								;/
+
+	.Fail	INC $00								;\ increment coord index
+		INC $00								;/
+		INC $02								; increment tile index
+		INC $06								; increment tile counter
+		ASL $04								; always shift this
+		RTS
+
+		.NotCapeX							;\
+		LDY $00								; |
+		REP #$20							; |
+		LDA $7E								; |
+		CLC : ADC $DD4E,y						; | see if tile is on-screen horizontally
+	+	PHA								; |
+		CLC : ADC #$0080						; |
+		CMP #$0200							; |
+		PLA								; |
+		SEP #$20							; |
+		BCS .Fail							;/
+		STA !OAM_p1+$000,x						; > store X coord
+		XBA								;\ swap
+		LSR A								;/
+
+		.WriteHi							;\
+		PHX								; |
+		PHP								; |
+		REP #$20							; |
+		TXA								; |
+		LSR #2								; |
+		TAX								; |
+		SEP #$20							; | write OAM hi byte
+		ASL $04								; |
+		ROL A								; |
+		PLP								; |
+		ROL A								; |
+		AND #$03							; |
+		STA !OAMhi_p1+$00,x						; |
+		PLX								;/
+		INX #4								; increment OAM index
+		INC $00								;\ increment coord index
+		INC $00								;/
+		INC $02								; increment tile index
+		INC $06								; increment tile counter
+		RTS
+
+
+	.ClimbOffsets
+	dw $FFFD,$0004
+
+
+
 MarioTileRemap:	CLC : ADC !MarioTileOffset		; > add player offset
 		STA !OAM+$102-$18,y			; original code
 		LDX $05					; original code
@@ -1155,7 +1656,6 @@ MarioTileRemap:	CLC : ADC !MarioTileOffset		; > add player offset
 		..NoDizzy				; |
 		LDA $0E					;/
 
-
 		LDY !Level+1 : BNE ..NoDown		;\
 		LDY !Level				; |
 		CPY #$25 : BNE ..NoDown			; |
@@ -1170,11 +1670,9 @@ MarioTileRemap:	CLC : ADC !MarioTileOffset		; > add player offset
 		SEP #$20				; |
 		..NoDown				;/
 
-
 		..WriteY
 		PLY					;\ write Ypos
 		STA !OAM+$101-$18,y			;/
-
 
 		REP #$20				;\
 		LDA $7E					; |
@@ -1214,7 +1712,7 @@ MarioTileRemap:	CLC : ADC !MarioTileOffset		; > add player offset
 		LDY !MarioAir				; |
 		RTL					;/
 
-.Expand		LDA #$0A : STA $6D84			; overwritten code, only necessary to update palette
+.Expand		LDA #$0A : STA $6D84			; overwritten code, number of 8x8 tiles to upload for mario
 		LDA !MarioClimb : BEQ ..R
 
 		REP #$20
