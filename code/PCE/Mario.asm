@@ -235,6 +235,10 @@ namespace Mario
 
 
 	Mario:
+		LDA $19					;\
+		BEQ $02 : LDA #$01			; | HP
+		STA !P2HP				;/
+
 		JSR MarioAnimations			; $00E2BD, transcribed and modified
 
 		REP #$20				;\

@@ -3,26 +3,70 @@
 ;====================;
 
 ;
-; TO DO
+; TO DO:
+; TODO:
 ; - Fe26
-;	- spawn from level code
 ;	- HI_PRIO_OAM
 ;	- RexCode.asm special hi prio OAM code
 ; - FusionCore
-;	- shooters
 ;	- particles
+;	- custom shooter
 ; - generators
-; - camera
+; - scroll sprites ??
+; - BG3 auto scroll: missing too many bits
 ; - MSG
-
-
+; - starman sparkles (Leeway crawl X offset)
+; - have SNES process colors in WRAM during phase 2 (maybe)
 
 GAMEMODE14:
+namespace GAMEMODE14
 
-		LDA !MsgTrigger : BEQ .NoMSG
-		JSL read3($00A1DF+1)		; go to MSG
-		RTS
-		.NoMSG
+
+
+;
+; structure
+;
+; phase 1:
+; - combined
+;	- MSG
+;	- pause code
+;
+; phase 2:
+; - SNES
+;	- MAIN_Level
+; - SA-1
+;	- status bar
+;	- rainbow shifter + simple rotate
+;	- starman sparkles
+;
+; phase 3:
+; - SNES
+;	- vanilla animations
+; - SA-1
+;	- camera
+;	- scroll sprites
+;	- camera shake
+;	- PCE
+;	- Fe26
+;	- FusionCore
+;	- build OAM
+;
+;
+; rationale
+;	- MSG and pause code are first because they have the right to end the routine, meaning they can't be dual-threaded
+;	- the bottleneck is MAIN_Level, which has to be run by SNES and has to be run before camera
+;	- since the major systems (PCE, Fe26, FusionCore) have to be run after camera, this leaves the SA-1 with few things to do before MAIN_Level is done
+;	- with this setup, i'm putting as much as possible in SA-1 phase 2 to maximize the dual thread yield
+;	- during phase 3, SNES runs vanilla animations (because it can only be run by SNES, that's the only reason)
+;	- this means that SA-1 will run at 50% speed while SNES is processing, which is only when it otherwise would have run at 0% speed (waiting), most of the time SA-1 will run at 100% speed
+;
+
+
+; phase 1: accelerator mode
+		LDA !MsgTrigger : BEQ .NoMSG		;\
+		JSL read3($00A1DF+1)			; | MSG
+		RTS					; |
+		.NoMSG					;/
 
 	; disable down and X/Y during animations and level end
 		LDA !MarioAnim
@@ -33,7 +77,6 @@ GAMEMODE14:
 		TRB $16
 		TRB $18
 		+
-
 
 	; optimized pause code
 		LDA !PauseTimer : BEQ .CheckPause
@@ -68,7 +111,7 @@ GAMEMODE14:
 		LDA #$0B : STA !GameMode
 		.GameIsPaused
 		; RETURN
-		JML $00A289	; JML to RTS
+		JML $00A289				; JML to RTS
 		.PauseDone
 
 		LDA !MsgTrigger : BEQ ++		; > always clear if there's no message box
@@ -77,33 +120,149 @@ GAMEMODE14:
 	++	JSL !KillOAM				;/
 		+
 
-	; calls
-		JSL $008E1A				; status bar (added JSL/RTL wrapper at the start)
-		JSR MAIN_Level
+; phase 2: MPU operation
 
-		JSL Camera
-		JSL $05BC00				; scroll sprites
-		; $05C40 holds LM's hijack for layer 3 scrolling
+		STZ !MPU_SNES				;\ start new MPU operation
+		STZ !MPU_SA1				;/
+
+		LDA.b #.SA1 : STA $3180			;\
+		LDA.b #.SA1>>8 : STA $3181		; | start SA-1 thread
+		LDA.b #.SA1>>16 : STA $3182		; |
+		LDA #$80 : STA $2200			;/
+
+	.SNES
+		JSR MAIN_Level				; SNES thread is just MAIN level code
+		JSL Camera				; camera (ran in accelerator mode)
+		%MPU_SNES($01)				; end of SNES phase 1
+		PHD					; push DP
+		%MPU_copy()				; set up SNES MPU DP
+		JSL read3($00A2A5+1)			; call routine
+		PLD					; restore DP
+	;	JSR $1E85				; wait for SA-1 to finish MPU operation
+
+		JSR !MPU_light
+
+		JML $00A289				; JML to RTS
 
 
+	.SA1
+		PHB
+		PHP
+		SEP #$30
+		PHD
+		%MPU_copy()				; set up SA-1 MPU DP
+		JSL $008E1A				; status bar
+		JSL HandleGraphics			; rotate simple + rainbow shifter (part of SP_Level.asm)
+		PLD
 
-		JSL read3($00A2A5+1)			; use LM's version of vanilla animation
-		PEI ($1C)				; push BG1 Y
+		LDA $14					;\
+		AND #$1F				; |
+		TAY					; | index RNG table
+		DEC A					; |
+		AND #$1F				; |
+		TAX					;/
+		JSL !Random				; get vanilla RN
+		ADC !RNGtable,x				; add RNG from last frame
+		ADC $13					; add true frame counter
+		ADC $6DA2				;\
+		ADC $6DA3				; |
+		ADC $6DA4				; |
+		ADC $6DA5				; | add player controller input
+		ADC $6DA6				; |
+		ADC $6DA7				; |
+		ADC $6DA8				; |
+		ADC $6DA9				;/
+		ADC !P2XSpeed-$80			;\ add player 1 speed
+		ADC !P2YSpeed-$80			;/
+		ADC !P2XPosLo-$80			;\ add player 1 position
+		ADC !P2YPosLo-$80			;/
+		ADC !P2XSpeed				;\ add player 2 speed
+		ADC !P2YSpeed				;/
+		ADC !P2XPosLo				;\ add player 2 position
+		ADC !P2YPosLo				;/
+		STA !RNGtable,y				; store new RN
+		STA !RNG				; most recently generated
+
+		%MPU_SA1($01)				; end of SA-1 phase 1
+
 		REP #$20
-		STZ $7888				;
-		LDA $7887 : BEQ .noshake		; note that $7888 was JUST cleared so hi byte is fine
-		DEC $7887
-		AND #$0003
-		ASL A
-		TAY
-		LDA $A1CE,y : STA $7888
-		BIT $6BF4
-		BVC $02 : DEC #2
-		STA $7888
-		CLC : ADC $1C
-		STA $1C
-		.noshake
+		LDA $1A
+		LSR #2
+	;	STA !LightR
+		STA !LightG
+		STA !LightB
 		SEP #$20
+
+		LDA !LightBuffer : BPL +
+		REP #$20
+		AND #$0001
+		EOR #$0001
+		BEQ $03 : LDA #$0200
+		CLC : ADC.w #!LightData_SNES+2 : STA !VRAMbase+!CGRAMtable+$02
+		LDA.w #!LightData_SNES>>16 : STA !VRAMbase+!CGRAMtable+$04
+		LDA #$01FE : STA !VRAMbase+!CGRAMtable+$00
+		SEP #$20
+		LDA #$01 : STA !VRAMbase+!CGRAMtable+$05
+		LDA #$80 : TRB !LightBuffer
+		+
+
+		%ApplyLight($01,$00)
+
+
+
+
+
+
+		JSL $05BC00				; scroll sprites (includes LM's hijack for BG3 controller)
+		PEI ($1C)				;\
+		REP #$20				; |
+		STZ $7888				; |
+		LDA $7887 : BEQ .noshake		; > note that $7888 was JUST cleared so hi byte is fine
+		DEC $7887				; |
+		AND #$0003				; |
+		ASL A					; |
+		TAY					; | camera shake routine
+		LDA $A1CE,y : STA $7888			; |
+		BIT $6BF4				; |
+		BVC $02 : DEC #2			; |
+		STA $7888				; |
+		CLC : ADC $1C				; |
+		STA $1C					; |
+		.noshake				; |
+		SEP #$30				;/
+		JSL $158008				; call PCE
+		JSL $168000				; call Fe26 main loop
+		JSL $148000				; call FusionCore (fusion sprites + particles)
+		REP #$20
+		PLA : STA $1C
+		SEP #$30
+
+		JSL !BuildOAM				; build OAM at the end of the game mode code
+
+		PLP
+		PLB
+		RTL
+
+	pushpc
+	org $05BC42
+		JML .BypassLM
+		NOP
+	pullpc
+	.BypassLM
+		BNE ..return
+		LDA !BG3BaseSettings
+		LSR A : BCS ..return
+		PEA.w $05BC47-1
+		LDA !BG3TideSettings : BEQ ..notide
+	..tide
+		JML $05C494
+	..notide
+		JML $05C414
+	..return
+		JML $05BC47
+
+
+
 
 
 ;
@@ -124,61 +283,6 @@ GAMEMODE14:
 ;
 ;
 
-		JSL $158008				; call PCE (will swap to SA-1 automatically)
-		JSL $168000				; call main sprite loop (will swap to SA-1 automatically)
-
-		LDA.b #.SA1 : STA $3180
-		LDA.b #.SA1>>8 : STA $3181
-		LDA.b #.SA1>>16 : STA $3182
-		JSR $1E80
-		PLA : STA $1C
-		PLA : STA $1D
-		; RETURN
-		JML $00A289	; JML to RTS
-
-		; generator: JSR $AFFE (bank $02)
-		; load sprite from level
-
-
-		.SA1
-		PHB
-		LDA #$02
-		PHA : PLB
-		JSR HandleGraphics_RainbowShifter
-		LDA $7490 : BEQ .nostar
-		CMP #$08 : BCC .nostar
-		LSR #5
-		TAY
-		LDA $13
-		AND $8AA9,y
-		BRA +
-		.nostar
-		LDA $78D3 : BEQ ++
-		DEC $78D3
-		AND #$01
-	+	ORA $7F
-		ORA $81
-		BNE ++
-		LDA $80
-		CMP #$D0 : BCS ++
-		JSL $02858F				; sparkles
-		; - contents?
-		++
-
-
-		%SA1TrackSetup(!TrackFusionCore)
-		JSL $148000				; call FusionCore
-		%SA1TrackCPU(!TrackFusionCore)
-
-
-	;	PHK : PEA.w .End-1
-	;	PEA.w $02A772-1
-	;	JML $02A7FC
-
-	;	.End
-		JSL !BuildOAM
-		PLB
-		RTL
 
 
 
@@ -262,6 +366,8 @@ Camera:
 		LDA $7466 : STA $1E
 		LDA $7468 : STA $20
 
+		STZ $08					; clear "forbid X" flag (used for composite)
+
 		SEP #$20
 		LDA !MultiPlayer : BEQ .P1
 		LDA !P2Status : BEQ +
@@ -278,6 +384,13 @@ Camera:
 		LDA !P2YPosLo-$80
 		CLC : ADC !P2YPosLo
 		STA $0E
+
+		LDA !P2XPosLo-$80
+		SEC : SBC !P2XPosLo
+		BPL $04 : EOR #$FFFF : INC A
+		CMP #$00C0
+		BCC ++
+		INC $08
 		BRA ++
 
 	+	LDA !P2Status-$80 : BEQ .Composite
@@ -368,15 +481,31 @@ Camera:
 	..92	CLC : ADC $1C
 		CMP $F6AD,y
 		BPL $03 : LDA $F6AD,y
-		STA $1C					; i'll be honest, i don't understand this logic
+
+		STA $00						;\
+		STZ $02						; |
+		SEC : SBC $1C					; |
+		BPL $06 : EOR #$FFFF : INC A : INC $02		; |
+		CMP #$0008 : BCC .OkY				; |
+		LDA $02 : BEQ .Add7Y				; |
+	.Sub7Y	LDA #$FFF9					; | cap vertical camera movement to 7 px / frame to prevent zip tears
+		BRA ++						; |
+	.Add7Y	LDA #$0007					; |
+	++	CLC : ADC $1C					; |
+		BRA +						; |
+	.OkY	LDA $00						; |
+	+	BPL $03 : LDA #$0000				; |
+		STA $1C						;/
+
 		LDA $04					;\
 		CMP $1C : BPL .ReturnVScroll		; | prevent camera from moving too far down
 		STA $1C					;/
 		STA $73F1				; also set this flag, i guess
 		.ReturnVScroll
 
+		LDY $08 : BNE .BanH
 		LDY !EnableHScroll : BNE .ScrollHorizontally
-		JMP .FinishCamera
+	.BanH	JMP .FinishCamera
 
 		.ScrollHorizontally
 		LDY #$02
@@ -429,14 +558,29 @@ Camera:
 		LDA $02
 		CLC : ADC $1A
 		BPL $03 : LDA #$0000
-		STA $1A
-		LDA $5E
-		DEC A
-		XBA
-		AND #$FF00
-		BPL $03 : LDA #$0080
-		CMP $1A
-		BPL $02 : STA $1A
+
+		STA $00						;\
+		STZ $02						; |
+		SEC : SBC $1A					; |
+		BPL $06 : EOR #$FFFF : INC A : INC $02		; |
+		CMP #$0008 : BCC .OkX				; |
+		LDA $02 : BEQ .Add7X				; |
+	.Sub7X	LDA #$FFF9					; | cap horizontal camera movement to 7 px / frame to prevent zip tears
+		BRA ++						; |
+	.Add7X	LDA #$0007					; |
+	++	CLC : ADC $1A					; |
+		BRA +						; |
+	.OkX	LDA $00						; |
+	+	BPL $03 : LDA #$0000				; |
+		STA $1A						;/
+
+		LDA $5E						;\
+		DEC A						; |
+		XBA						; |
+		AND #$FF00					; | cap at right edge of level
+		BPL $03 : LDA #$0080				; |
+		CMP $1A						; |
+		BPL $02 : STA $1A				;/
 
 
 		.FinishCamera
@@ -519,7 +663,8 @@ Camera:
 ;	+	DEX #2 : BPL -					; |
 ;		PLB						;/
 
-		JSL .BG2Controller
+		JSL BG2Controller
+		JSL BG3Controller
 
 		.EndBox
 ; 99% sure this is not needed
@@ -558,14 +703,14 @@ Camera:
 		SEC : SBC $7468				; |
 		STA !BG1_X_Delta			; |
 		REP #$20				;/
+		LDA !CameraBackupX : STA !BG1ZipRowX	;\
+		LDA !CameraBackupY : STA !BG1ZipRowY	; | coordinates from previous frame
+		LDA $7466 : STA !BG2ZipRowX		; | (used for updating tilemap)
+		LDA $7468 : STA !BG2ZipRowY		;/
 		LDA $1A : STA $7462			;\
 		LDA $1C : STA $7464			; | i believe these act as work buffers for scroll sprites
 		LDA $1E : STA $7466			; |
 		LDA $20 : STA $7468			;/
-		LDA !CameraBackupX : STA !BG1ZipRowX	;\
-		LDA !CameraBackupY : STA !BG1ZipRowY	; | coordinates from previous frame
-		LDA $1E : STA !BG2ZipRowX		; | (used for updating tilemap)
-		LDA $20 : STA !BG2ZipRowY		;/
 		LDA $1A : STA !CameraBackupX		;\ backup for next frame
 		LDA $1C : STA !CameraBackupY		;/
 		PLP
@@ -815,9 +960,109 @@ Camera:
 
 
 
+	.InitCamera
+		PHP						;\
+		SEP #$20					; |
+		LDX !Level					; |
+		LDA.l .LevelTable,x				; |
+		LDX !Level+1					; |
+		AND.l .LevelSwitch,x				; |
+		BEQ .NormalCoords				; |
+		CMP #$10 : BCC +				; |
+		LSR #4						; | game mode 0x11 = INIT camera
+	+	DEC A						; |
+		ASL A						; |
+		CMP.b #.CoordsEnd-.CoordsPtr			; |
+		BCS .NormalCoords				; |
+		TAX						; |
+		JSR (.CoordsPtr,x)				; |
+	.NormalCoords						; |
+		PLP						; |
+		JMP .EndBox					;/
+
+
+; honestly i don't really know what this is...
+; some way of setting camera coords on level init?
+
+; lo nybble is used by levels 0x000-0x0FF, hi nybble is used by levels 0x100-0x1FF
+; 0 means it's unused, so just use normal coords
+; any other number is treated as an index to the coordinate routine pointer table
+
+.LevelTable	db $00,$00,$00,$00,$00,$00,$00,$00		; 00-07
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 08-0F
+		db $00,$00,$00,$00,$01,$00,$00,$00		; 10-17
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 18-1F
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 20-27
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 28-2F
+		db $00,$00,$00,$00,$01,$00,$00,$00		; 30-37
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 38-3F
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 40-47
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 48-4F
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 50-57
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 58-5F
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 60-67
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 68-6F
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 70-77
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 78-7F
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 80-87
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 88-8F
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 90-97
+		db $00,$00,$00,$00,$00,$00,$00,$00		; 98-9F
+		db $00,$00,$00,$00,$00,$00,$00,$00		; A0-A7
+		db $00,$00,$00,$00,$00,$00,$00,$00		; A8-AF
+		db $00,$00,$00,$00,$00,$00,$00,$00		; B0-B7
+		db $00,$00,$00,$00,$00,$00,$00,$00		; B8-BF
+		db $00,$00,$00,$00,$00,$00,$00,$00		; C0-C7
+		db $00,$00,$00,$00,$00,$00,$00,$00		; C8-CF
+		db $00,$00,$00,$00,$00,$00,$00,$00		; D0-D7
+		db $00,$00,$00,$00,$00,$00,$00,$00		; D8-DF
+		db $00,$00,$00,$00,$00,$00,$00,$00		; E0-E7
+		db $00,$00,$00,$00,$00,$00,$00,$00		; E8-EF
+		db $00,$00,$00,$00,$00,$00,$00,$00		; F0-F7
+		db $00,$00,$00,$00,$00,$00,$00,$00		; F8-FF
+
+
+.LevelSwitch	db $0F,$F0
+
+	; this is entered with all regs 8-bit
+	; PLP is used at return, so no need to bother keeping track of P
+	.CoordsPtr
+	dw .Coords1
+	.CoordsEnd
+
+
+	.Coords1
+		STZ $1A
+		REP #$20
+		LDX #$00
+		LDA $1C
+	-	CMP #$00E0 : BCC ..Yes
+		INX #2
+		SBC #$00E0
+		BRA -
+
+	..Yes	CMP #$0070
+		BCC $02 : INX #2
+		LDA.l ..Y,x : STA $1C
+		LDX #$02
+	-	LDA $1A,x
+		STA !CameraBackupX,x
+		STA !CameraBoxL,x
+		STA $7462,x
+		INC A
+		STA !CameraBoxR,x
+		DEX #2
+		BPL -
+		RTS
+
+	..Y	dw $0000,$00E0,$01C0,$02A0
+		dw $0380,$0460,$0540,$0620
+
+
+
 
 ; BG2 controller
-		.BG2Controller
+	BG2Controller:
 		LDA !BG2ModeH			;\
 		ASL A				; | X = pointer index
 		TAX				;/
@@ -929,111 +1174,148 @@ Camera:
 		STA $20				;/
 		RTL
 
-.NoVert		LDA !BG2BaseV
-		STA $20
+.NoVert		LDA !BG2BaseV : STA $20
 		RTL
 
-.GetDiv		NOP #2
-		RTS
 
 
+; LM hijack at $05C40C (JSL)
+	BG3Controller:
+		LDA !BG3BaseSettings
+		LSR A : BCS .Bypass
+		RTL
 
-	.InitCamera
-		PHP						;\
-		SEP #$20					; |
-		LDX !Level					; |
-		LDA.l .LevelTable,x				; |
-		LDX !Level+1					; |
-		AND.l .LevelSwitch,x				; |
-		BEQ .NormalCoords				; |
-		CMP #$10 : BCC +				; |
-		LSR #4						; | game mode 0x11 = INIT camera
-	+	DEC A						; |
-		ASL A						; |
-		CMP.b #.CoordsEnd-.CoordsPtr			; |
-		BCS .NormalCoords				; |
-		TAX						; |
-		JSR (.CoordsPtr,x)				; |
-	.NormalCoords						; |
-		PLP						; |
-		JMP .EndBox					;/
-
-
-; honestly i don't really know what this is...
-; some way of setting camera coords on level init?
-
-; lo nybble is used by levels 0x000-0x0FF, hi nybble is used by levels 0x100-0x1FF
-; 0 means it's unused, so just use normal coords
-; any other number is treated as an index to the coordinate routine pointer table
-
-.LevelTable	db $00,$00,$00,$00,$00,$00,$00,$00		; 00-07
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 08-0F
-		db $00,$00,$00,$00,$01,$00,$00,$00		; 10-17
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 18-1F
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 20-27
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 28-2F
-		db $00,$00,$00,$00,$01,$00,$00,$00		; 30-37
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 38-3F
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 40-47
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 48-4F
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 50-57
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 58-5F
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 60-67
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 68-6F
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 70-77
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 78-7F
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 80-87
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 88-8F
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 90-97
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 98-9F
-		db $00,$00,$00,$00,$00,$00,$00,$00		; A0-A7
-		db $00,$00,$00,$00,$00,$00,$00,$00		; A8-AF
-		db $00,$00,$00,$00,$00,$00,$00,$00		; B0-B7
-		db $00,$00,$00,$00,$00,$00,$00,$00		; B8-BF
-		db $00,$00,$00,$00,$00,$00,$00,$00		; C0-C7
-		db $00,$00,$00,$00,$00,$00,$00,$00		; C8-CF
-		db $00,$00,$00,$00,$00,$00,$00,$00		; D0-D7
-		db $00,$00,$00,$00,$00,$00,$00,$00		; D8-DF
-		db $00,$00,$00,$00,$00,$00,$00,$00		; E0-E7
-		db $00,$00,$00,$00,$00,$00,$00,$00		; E8-EF
-		db $00,$00,$00,$00,$00,$00,$00,$00		; F0-F7
-		db $00,$00,$00,$00,$00,$00,$00,$00		; F8-FF
-
-
-.LevelSwitch	db $0F,$F0
-
-	; this is entered with all regs 8-bit
-	; PLP is used at return, so no need to bother keeping track of P
-	.CoordsPtr
-	dw .Coords1
-	.CoordsEnd
-
-
-	.Coords1
-		STZ $1A
+		.Bypass
+		LDY !BG3ScrollSettings
 		REP #$20
-		LDX #$00
-		LDA $1C
-	-	CMP #$00E0 : BCC ..Yes
-		INX #2
-		SBC #$00E0
-		BRA -
+		TYA
+		AND #$000F
+		ASL A
+		TAX
+		LDA $1A
+		JMP (.HPtr,x)
 
-	..Yes	CMP #$0070
-		BCC $02 : INX #2
-		LDA.l ..Y,x : STA $1C
-		LDX #$02
-	-	LDA $1A,x
-		STA !CameraBackupX,x
-		STA !CameraBoxL,x
-		STA $7462,x
-		INC A
-		STA !CameraBoxR,x
-		DEX #2
-		BPL -
+		.HPtr
+		dw .NoHorz		; 0 - 0%
+		dw .ConstantHorz	; 1 - 100%
+		dw .VariableHorz	; 2 - 50%
+		dw .Variable2Horz	; 3 - 25%
+		dw .Slow2Horz		; 4 - 3%
+		dw .SlowHorz		; 5 - 6% (unused by LM)
+		dw .AutoXSlow		; 6 - speed + slow
+		dw .AutoXConstant	; 7 - speed + constant
+		dw .AutoXFast		; 8 - speed + variable
+		dw .AutoXFast2		; 9 - speed + constant
+		dw .AutoXSlow		; A - speed + slow
+		dw .AutoXConstant	; B - speed + constant
+		dw .AutoXFast		; C - speed + variable
+		dw .AutoXFast2		; D - speed + constant
+		dw .Variable3Horz	; E - 12% (unused by LM)
+		dw .NoHorz		; F - 0% (UNUSED)
+
+.AutoXFast2	JSR .AutoX
+		BRA .ConstantHorz
+
+.AutoXFast	JSR .AutoX
+		BRA .VariableHorz
+
+.AutoXSlow	JSR .AutoX
+		BRA .SlowHorz
+
+.AutoXConstant	JSR .AutoX
+		BRA .ConstantHorz
+
+.AutoX		LDX $9D : BEQ ..run
+		LDA !BG3XFraction
+		BRA +
+	..run	LDA !BG3XSpeed
+		CLC : ADC !BG3XFraction
+		STA !BG3XFraction
+	+	LSR #7
+		BIT !BG3XFraction
+		BPL $03 : ORA #$FE00
+		CLC : ADC $1A
 		RTS
 
-	..Y	dw $0000,$00E0,$01C0,$02A0
-		dw $0380,$0460,$0540,$0620
+.Slow2Horz	LSR A
+.SlowHorz	LSR A
+.Variable3Horz	LSR A
+.Variable2Horz	LSR A
+.VariableHorz	LSR A
+.ConstantHorz	CLC : ADC !BG3BaseH
+		BRA +
+.NoHorz		LDA !BG3BaseH
+	+	STA $22
 
+
+		LDA !BG3BaseSettings
+		AND #$00F8
+		ASL A
+		STA $00
+
+		TYA
+		AND #$00F0
+		LSR #3
+		TAX
+		LDA $1C
+		JMP (.VPtr,x)
+
+		.VPtr
+		dw .NoVert		; 0 - 0%
+		dw .ConstantVert	; 1 - 100%
+		dw .VariableVert	; 2 - 50%
+		dw .Variable2Vert	; 3 - 25%
+		dw .Slow2Vert		; 4 - 3%
+		dw .SlowVert		; 5 - 6% (unused by LM)
+		dw .AutoYSlow		; 6 - speed + slow
+		dw .AutoYConstant	; 7 - speed + constant
+		dw .AutoYFast		; 8 - speed + variable
+		dw .AutoYFast2		; 9 - speed + constant
+		dw .AutoYSlow		; A - speed + slow
+		dw .AutoYConstant	; B - speed + constant
+		dw .AutoYFast		; C - speed + variable
+		dw .AutoYFast2		; D - speed + constant
+		dw .Variable3Vert	; E - 12% (unused by LM)
+		dw .NoVert		; F - 0% (UNUSED)
+
+.AutoYFast2	JSR .AutoY
+		BRA .ConstantVert
+
+.AutoYFast	JSR .AutoY
+		BRA .VariableVert
+
+.AutoYSlow	JSR .AutoY
+		BRA .SlowVert
+
+.AutoYConstant	JSR .AutoY
+		BRA .ConstantVert
+
+.AutoY		LDX $9D : BEQ ..run
+		LDA !BG3YFraction
+		BRA +
+	..run	LDA !BG3YSpeed
+		CLC : ADC !BG3YFraction
+		STA !BG3YFraction
+	+	LSR #7
+		BIT !BG3YFraction
+		BPL $03 : ORA #$FE00
+		CLC : ADC $1C
+		RTS
+
+.Slow2Vert	LSR A
+.SlowVert	LSR A
+.Variable3Vert	LSR A
+.Variable2Vert	LSR A
+.VariableVert	LSR A
+.ConstantVert	CLC : ADC $00
+		BRA +
+.NoVert		LDA $00
+	+	STA $24
+		SEP #$20
+		RTL
+
+
+
+
+namespace off
 

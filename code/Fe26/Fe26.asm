@@ -315,15 +315,17 @@ endmacro
 
 MainSpriteLoop:
 
-		%TrackSetup(!TrackFe26)
 
-		LDA.b #.Main : STA $3180
-		LDA.b #.Main>>8 : STA $3181
-		LDA.b #.Main>>16 : STA $3182
-		JSR $1E80
+	; should now be called by the processor that runs it
+	;	%TrackSetup(!TrackFe26)
 
-		%TrackCPU(!TrackFe26)
-		RTL
+	;	LDA.b #.Main : STA $3180
+	;	LDA.b #.Main>>8 : STA $3181
+	;	LDA.b #.Main>>16 : STA $3182
+	;	JSR $1E80
+
+	;	%TrackCPU(!TrackFe26)
+	;	RTL
 
 
 		.Main
@@ -675,10 +677,17 @@ incsrc "SpriteData.asm"
 
 	; shoutout to Vitor for straight up giving me these
 	.min_y_range
-	dw -192, -48, -128, -16383		; Horizontal, Vertical, Enhanced Vertical, Infinity
+	dw $FF40,$FFD0,$FF80,$C001		; Horizontal, Vertical, Enhanced Vertical, Infinity
 	.max_y_range
-	dw +432, 288, +352, +16383		; Horizontal, Vertical, Enhanced Vertical, Infinity
+	dw $01B0,$0120,$0160,$3FFF		; Horizontal, Vertical, Enhanced Vertical, Infinity
 
+
+
+macro NegZero(address)
+	LDA <address> : BPL ?Ok
+	STZ <address>
+	?Ok:
+endmacro
 
 
 	LoadSpriteFromLevel:
@@ -745,6 +754,15 @@ incsrc "SpriteData.asm"
 		STA $51						;/
 		CLC : ADC #$0111				;\ bottom border forbiddance box
 		STA $53						;/
+
+		%NegZero($45)					;\
+		%NegZero($47)					; |
+		%NegZero($49)					; |
+		%NegZero($4B)					; | no negative coordinates allowed
+		%NegZero($4D)					; |
+		%NegZero($4F)					; |
+		%NegZero($51)					; |
+		%NegZero($53)					;/
 
 		LDA !GameMode					;\
 		AND #$00FF					; |
@@ -1596,6 +1614,7 @@ incsrc "Replace/SP_HammerPlat.asm"
 incsrc "Replace/SP_SumoLightning.asm"
 incsrc "Replace/SP_Swooper.asm"
 incsrc "Replace/SP_Rip.asm"
+incsrc "Replace/SP_BulletBill.asm"
 
 macro InsertSprite(name)
 	START_<name>:

@@ -470,7 +470,6 @@ print "-- SP_MENU --"
 		BCC $01 : INX				;/
 		LDA.w .YoshiCoinGFX,x			; Load tile to use
 		STA !StatusBar+$0B,y			; Base address of Yoshi Coins on status bar
-
 		INY
 		CPY $01 : BNE -				; Loop
 		CPY #$0A : BNE +
@@ -1033,7 +1032,26 @@ Mode7Presents:
 		STA !HDMAptr+0
 		STA !HDMAptr+1
 		%ReloadOAMData()
+
+
+		SEP #$20
+		REP #$10
+
+		LDX #$8000 : STX $4300					;\
+		LDX.w #.MPU_wait : STX $4302				; |
+		LDA.b #.MPU_wait>>16 : STA $4304			; |
+		LDX.w #.MPU_wait_end-.MPU_wait : STX $4305		; | DMA !MPU_wait routine into place
+		LDX.w #!MPU_wait : STX $2181				; |
+		STZ $2183						; |
+		LDA #$01 : STA $420B					;/
+		LDX.w #.MPU_light : STX $4302				;\
+		LDX.w #.MPU_light_end-.MPU_light : STX $4305		; |
+		LDX.w #!MPU_light : STX $2181				; | DMA !MPU_light routine into place
+		STZ $2183						; |
+		STA $420B						;/
+
 		SEP #$30
+
 
 	-	BIT $4212 : BPL -			; wait for v-blank to avoid tearing
 		LDA #$80 : STA $2100			; f-blank baybeee
@@ -1094,6 +1112,159 @@ Mode7Presents:
 		.PriorityData
 		dw $0000,$0002,$0004,$0006		; holds the index to the current OAM index reg
 		dw $0000,$0200,$0400,$0600		; holds the offset to the current OAM index
+
+
+	.MPU_wait							;\
+		STA !MPU_SNES						; |
+		STA !MPU_phase						; |
+		LDA !MPU_phase						; | RAM code that waits for SA-1 handshake
+	-	CMP !MPU_SA1 : BNE -					; |
+		RTS							; |
+	..end								;/
+
+
+
+; buffer = 0: work on buffer 0
+; buffer = 1: work on buffer 1
+
+	.MPU_light
+		PHB							;\
+		PHP							; |
+		PHD							; |
+		SEP #$30						; | which part to go to
+	..wait	LDA !ProcessLight : BEQ ..init				; | (0 = start new, 1 = continue, 2 = wait for signal)
+		LDX $3189 : BNE ..break					; > detect SA-1 being done with its thread
+		CMP #$02 : BCS ..wait					; |
+		REP #$30						; |
+		LDX !LightIndex_SNES					; |
+		BRA ..main						;/
+
+		..break							;\
+		SEP #$20						; |
+		STZ $3189						; |
+		STX !LightIndex_SNES					; > save current index in WRAM
+		PLD							; | if SA-1 finishes its thread, this routine must end
+		PLP							; |
+		PLB							; |
+		RTS							;/
+
+	..init	INC !ProcessLight					;\
+		REP #$10						; | this code runs once at the start of a new process
+		LDX #$8000 : STX $4300					; |
+		LDX.w #!PaletteRGB : STX $4302				; | use DMA to copy the data (fuck version 1.1.1)
+		STZ $4304						; |
+		LDX #$0200 : STX $4305					; |
+		STZ $2183						; |
+		LDX.w #!LightData_SNES					; |
+		LDA !LightBuffer					; |
+		AND #$01						; |
+		BEQ $03 : LDX.w #!LightData_SNES+$200			; |
+		STX $2181						; |
+		LDA #$01 : STA $420B					; |
+		REP #$30						; > all regs 16-bit
+		LDA !LightIndexStart : STA !LightIndexStart_SNES	; |
+		LDA !LightIndexEnd : STA !LightIndexEnd_SNES		; |
+		LDA !LightBuffer-1					; |
+		AND #$0100						; > add 512 to access second buffer
+		ASL A							; |
+		TSB !LightIndexStart_SNES				; |
+		TSB !LightIndexEnd_SNES					; |
+		LDA !LightR : STA !LightR_SNES				; |
+		LDA !LightG : STA !LightG_SNES				; |
+		LDA !LightB : STA !LightB_SNES				; |
+		LDX !LightIndexStart_SNES				;/
+
+	..main	LDA #$0100 : TCD					;\
+	..loop	LDA $3189						; > check for SA-1 being done with its thread
+		AND #$00FF : BNE ..break				; | this is the main loop controller
+		CPX !LightIndexEnd_SNES : BNE ..shade			;/
+
+		..done
+		LDA !LightBuffer					;\
+		EOR #$0001						; | flip buffer
+		ORA #$0080						; > mark as finished
+		STA !LightBuffer					;/
+		INC !ProcessLight					; mark as finished
+		PLD							;\
+		PLP							; | pull stuff
+		PLB							;/
+		JMP $1E85						; > go wait for SA-1
+
+		..shade
+		LDA !LightBuffer-1					;\
+		AND #$0100						; |
+		ASL A							; | wrap values
+		STA $22							; |
+		ADC #$0200						; |
+		STA $20							;/
+		LDA.l !LightData_SNES,x : STA $0E			;\
+		AND #$001F						; |
+		STA $00							; |
+		LDA $0E							; |
+		LSR #5							; |
+		STA $0E							; | unpack color
+		AND #$001F						; | 36 B
+		STA $02							; |
+		LDA $0E							; |
+		LSR #5							; |
+		AND #$001F						; |
+		STA $04							;/
+		SEP #$20						;\
+		LDA $00 : STA $4202					; |
+		LDA !LightR_SNES : STA $4203				; |
+		NOP #3							; |
+		REP #$20						; |
+		LDA $4216 : STA $10					; |
+		LDA !LightR_SNES+1 : STA $4203				; | calculate red
+		LDA $10							; |
+		CMP #$0F80						; |
+		XBA							; |
+		AND #$00FF						; |
+		ADC $4216						; |
+		CMP #$001F						; |
+		BCC $03 : LDA #$001F					; |
+		STA $00							;/
+		SEP #$20						;\
+		LDA $02 : STA $4202					; |
+		LDA !LightG_SNES : STA $4203				; |
+		NOP #3							; |
+		REP #$20						; |
+		LDA $4216 : STA $10					; |
+		LDA !LightG_SNES+1 : STA $4203				; | calculate green
+		LDA $10							; |
+		CMP #$0F80						; |
+		XBA							; |
+		AND #$00FF						; |
+		ADC $4216						; |
+		CMP #$001F						; |
+		BCC $03 : LDA #$001F					; |
+		STA $02							;/
+		SEP #$20						;\
+		LDA $04 : STA $4202					; |
+		LDA !LightB_SNES : STA $4203				; |
+		NOP #3							; |
+		REP #$20						; |
+		LDA $4216 : STA $10					; |
+		LDA !LightB_SNES+1 : STA $4203				; | calculate blue
+		LDA $10							; |
+		CMP #$0F80						; |
+		XBA							; |
+		AND #$00FF						; |
+		ADC $4216						; |
+		CMP #$001F						; |
+		BCC $03 : LDA #$001F					;/
+		ASL #5							;\
+		ORA $02							; |
+		ASL #5							; |
+		ORA $00							; | assemble color
+		STA.l !LightData_SNES,x					; | 29 B
+		INX #2							; |
+		CPX $20							; |
+		BCC $02 : LDX $22					; |
+		BRL ..loop						;/
+	..end
+
+print "Shader RAM code is $", hex(..end-.MPU_light), " bytes long"
 
 .SourcePal
 incbin "PresentsScreenPalette.mw3"
@@ -1178,6 +1349,7 @@ endmacro
 ; $400-$BFF:	buffer for loading layer 1 tilemap from map16
 ; $C00-$C1F:	2 tables for layer 1 HDMA (mode 3)
 ; $D00-$D1F:	2 tables for layer 3 HDMA (mode 3)
+; $D80-$D9F:	2 tables for window HDMA (mode 1)
 ;
 ;
 
@@ -1218,13 +1390,14 @@ MAIN_MENU:
 		LDA $13
 		AND #$01
 		BEQ $02 : LDA #$10
+		ORA #$80
 		STA !HDMA5source
 		CLC : ADC .WindowIndex,y
 		TAX
 		LDA !MenuEraseTimer
 		CLC : ADC .WindowOffset,y
-		STA $0E02,x
-		LDA .WindowOffset,y : STA $0E01,x
+		STA $0D82,x
+		LDA .WindowOffset,y : STA $0D81,x
 		BRA .NoWindow
 
 		.RestoreWindow
@@ -1233,15 +1406,17 @@ MAIN_MENU:
 		BEQ $02 : LDA #$10
 		TAX
 		LDA #$FF
-		STA $0E01,x
-		STZ $0E02,x
-		STA $0E04,x
-		STZ $0E05,x
-		STA $0E07,x
-		STZ $0E08,x
-		STA $0E0A,x
-		STZ $0E0B,x
-		STX !HDMA5source
+		STA $0D81,x
+		STZ $0D82,x
+		STA $0D84,x
+		STZ $0D85,x
+		STA $0D87,x
+		STZ $0D88,x
+		STA $0D8A,x
+		STZ $0D8B,x
+		TXA
+		ORA #$80
+		STA !HDMA5source
 		.NoWindow
 
 
@@ -1361,24 +1536,24 @@ MAIN_MENU:
 
 
 		LDA #$2601 : STA $4350						;\
-		LDA #$0E00 : STA !HDMA5source					; |
-		LDA #$0030 : STA $0E00 : STA $0E10				; |
-		LDA #$0030 : STA $0E03 : STA $0E13				; |
-		LDA #$0030 : STA $0E06 : STA $0E16				; |
-		LDA #$0001 : STA $0E09 : STA $0E19				; | window 1 HDMA table
-		STZ $0E0C : STZ $0E1C						; |
+		LDA #$0D80 : STA !HDMA5source					; |
+		LDA #$0030 : STA $0D80 : STA $0D90				; |
+		LDA #$0030 : STA $0D83 : STA $0D93				; |
+		LDA #$0030 : STA $0D86 : STA $0D96				; |
+		LDA #$0001 : STA $0D89 : STA $0D99				; | window 1 HDMA table
+		STZ $0D8C : STZ $0D9C						; |
 		LDA #$00FF							; |
-		STA $0E01 : STA $0E11						; |
-		STA $0E04 : STA $0E14						; |
-		STA $0E07 : STA $0E17						; |
-		STA $0E0A : STA $0E1A						;/
+		STA $0D81 : STA $0D91						; |
+		STA $0D84 : STA $0D94						; |
+		STA $0D87 : STA $0D97						; |
+		STA $0D8A : STA $0D9A						;/
 
 
 		LDA.w #!DecompBuffer : STA $00					;\
 		LDA.w #!DecompBuffer>>8 : STA $01				; |
 		LDA.w #$B01							; |
 		JSL !DecompressFile						; |
-		JSL !GetVRAM							; | decompress file $C00 and upload it to VRAM
+		JSL !GetVRAM							; | decompress file $B01 and upload it to VRAM
 		LDA #$2000 : STA !VRAMbase+!VRAMtable+$00,x			; |
 		LDA.w #!DecompBuffer : STA !VRAMbase+!VRAMtable+$02,x		; |
 		LDA.w #!DecompBuffer>>8 : STA !VRAMbase+!VRAMtable+$03,x	; |

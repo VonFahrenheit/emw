@@ -1477,11 +1477,13 @@ endmacro
 	%remap($02919F, !Ex_Data2)
 
 ;	bounce Data3:
-	%remap($02886B, !Ex_Data3)
-	%remap($029056, !Ex_Data3)
-	%remap($02905B, !Ex_Data3)
-	%remap($029085, !Ex_Data3)
-	%remap($02915E, !Ex_Data3)
+	org $028869
+		LDA #$0A
+	%remap($02886B, !Ex_Data3)	; STA,x
+	%remap($029056, !Ex_Data3)	; LDY,x
+	%remap($02905B, !Ex_Data3)	; DEC,x
+	%remap($029085, !Ex_Data3)	; LDA,x
+	%remap($02915E, !Ex_Data3)	; LDA,x
 
 ;	bounce Data1:
 	%remap($028861, !Ex_Data1)

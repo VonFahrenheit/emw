@@ -1306,6 +1306,15 @@ CONTACT16:
 ;	$0A = H + scratch
 ;	$0C = S + scratch
 ;	$0E = L
+;
+; HSL format:
+;	3 bytes per color
+;	$00 H: 0-239 with R pole at 0/240, G pole at 80, B pole at 160
+;	$01 S: 0-63
+;	$02 L: 0-63
+;
+
+
 
 
 	!color1		= !BigRAM+$00

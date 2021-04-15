@@ -221,126 +221,131 @@ incsrc "GameMode14.asm"
 print "Level code handler inserted at $", pc, "."
 	INIT_Level:
 
-		PHB : PHK : PLB			; > Bank wrapper
+		PHB : PHK : PLB				; > Bank wrapper
 		PHP
 		SEP #$30
 
-		LDA !CurrentMario : BNE +	;\
-		LDA #$7F : STA !MarioMaskBits	; | hide mario if he's not in play
-		+				;/
+		LDA !CurrentMario : BNE +		;\
+		LDA #$7F : STA !MarioMaskBits		; | hide mario if he's not in play
+		+					;/
 		LDA #$00
-		STA !PauseThif			; unpause Thif
-		STA !LevelInitFlag		; set level INIT
-		STA !3DWater			; disable 3D water
-		STA !DizzyEffect		; disable dizzy effect
-		LDA #$FF			;\
-		STA !CameraBoxU+1		; | disable camera box
-		STA !CameraForbiddance		;/
-		LDX #$00			;\
-	-	STA !Map16Remap,x		; | default map16 remap = 0xFF (disabled)
-		INX : BNE -			;/
-		LDA #$00 : JSL $138020		; > Load Yoshi Coins (A must be 0x00)
-		LDA.b #.SA1 : STA $3180		;\
-		LDA.b #.SA1>>8 : STA $3181	; | Have SA-1 clear VR2 RAM
-		LDA.b #.SA1>>16 : STA $3182	; |
-		JSR $1E80			;/
+		STA !PauseThif				; unpause Thif
+		STA !LevelInitFlag			; set level INIT
+		STA !3DWater				; disable 3D water
+		STA !DizzyEffect			; disable dizzy effect
+		LDA #$FF				;\
+		STA !CameraBoxU+1			; | disable camera box
+		STA !CameraForbiddance			;/
+		LDX #$00				;\
+	-	STA !Map16Remap,x			; | default map16 remap = 0xFF (disabled)
+		INX : BNE -				;/
+		LDA #$00 : JSL !ProcessYoshiCoins	; > Load Yoshi Coins (A must be 0x00)
+		LDA.b #.SA1 : STA $3180			;\
+		LDA.b #.SA1>>8 : STA $3181		; | Have SA-1 clear VR2 RAM
+		LDA.b #.SA1>>16 : STA $3182		; |
+		JSR $1E80				;/
 		PLP
-		LDY !Translevel			;\
-		LDA.w LEVEL_MegaLevel,y		; | Set mega level
-		STA !MegaLevelID		;/
-		LDA !Level			;\
-		ASL A				; |
-		CLC : ADC !Level		; | load pointer based on level number
-		TAX				; | x3
-		LDA .Table,x : STA $0000	; |
-		LDA .Table+1,x : STA $0001	;/
-		STZ !Level+2			;\ Clear extra bytes
-		STZ !Level+4			;/
-		STZ !GlobalPalset1		;\ reset global palset option
-		STZ !GlobalPalset2		;/
-		STZ !SmoothCamera		; Clear smooth camera
-		LDA #$0000			; > Set up clear
-		STA !HDMAptr+0			;\ Clear HDMA pointer
-		STA !HDMAptr+1			;/
-		SEP #$10			; > Index 8 bit
-		LDX #$80 : STX $2100		; start f-blank
+		LDY !Translevel				;\
+		LDA.w LEVEL_MegaLevel,y			; | Set mega level
+		STA !MegaLevelID			;/
+		LDA !Level				;\
+		ASL A					; |
+		CLC : ADC !Level			; | load pointer based on level number
+		TAX					; | x3
+		LDA .Table,x : STA $0000		; |
+		LDA .Table+1,x : STA $0001		;/
+		STZ !Level+2				;\ Clear extra bytes
+		STZ !Level+4				;/
+		STZ !GlobalPalset1			;\ reset global palset option
+		STZ !GlobalPalset2			;/
+		STZ !SmoothCamera			; Clear smooth camera
+		LDA #$0000				; > Set up clear
+		STA !HDMAptr+0				;\ Clear HDMA pointer
+		STA !HDMAptr+1				;/
+		SEP #$10				; > Index 8 bit
+		LDX #$80 : STX $2100			; start f-blank
 
-		LDX #$14			;\
-	-	LDA $6703+2,x : STA $00A0,x	; | store this palette in SNES WRAM
-		DEX #2 : BPL -			;/
+		LDX #$14				;\
+	-	LDA $6703+2,x : STA $00A0,x		; | store this palette in SNES WRAM
+		DEX #2 : BPL -				;/
 
-		LDA #$2200 : STA $4300		;\
-		LDA !Characters			; |
-		AND #$000F			; |
-		ASL #5				; |
-		CLC : ADC.w #!PalsetData+5	; |
-		STA $4302			; | f-blanked-wrapped CGRAM upload for P2 palette
-		LDX.b #!PalsetData>>16		; |
-		STX $4304			; |
-		LDA #$0020 : STA $4305		; |
-		LDX #$90 : STX $2121		; |
-		LDX #$01 : STX $420B		;/
-		LDA #$2200 : STA $4300		;\
-		LDA !Characters			; |
-		AND #$00F0			; |
-		ASL A				; |
-		CLC : ADC.w #!PalsetData+5	; |
-		STA $4302			; | f-blanked-wrapped CGRAM upload for P1 palette
-		LDX.b #!PalsetData>>16		; |
-		STX $4304			; |
-		LDA #$0020 : STA $4305		; |
-		LDX #$80 : STX $2121		; |
-		LDX #$01 : STX $420B		;/
-		LDX #$80 : STX $2118		; > Setup for Mario GFX upload
-		LDA !MultiPlayer		;\ Ignore P2 during single player
-		AND #$00FF : BEQ +		;/
-		LDA !Characters			;\
-		AND #$000F			; |
-		BNE +				; |
-		LDA #$6260			; |
-		BRA ++				; |
-	+	LDA !Characters			; |
-		AND #$00F0			; |
-		BNE +				; |
-		LDA #$6060			; | Upload non-dynamic Mario tiles if Mario is in play
-	++	STA $2116 : PHA			; |
-		LDA #$1801 : STA $4310		; |
+		LDA #$0100				;\
+		STA !LightR				; | default lighting
+		STA !LightG				; |
+		STA !LightB				;/
 
-		LDY.b #!File_Mario_Supplement	; |
-		JSL !GetFileAddress		; |
-		LDA !FileAddress : STA $4312	; |
-		LDA !FileAddress+1 : STA $4313	; |
+		LDA #$2200 : STA $4300			;\
+		LDA !Characters				; |
+		AND #$000F				; |
+		ASL #5					; |
+		CLC : ADC.w #!PalsetData+5		; |
+		STA $4302				; | f-blanked-wrapped CGRAM upload for P2 palette
+		LDX.b #!PalsetData>>16			; |
+		STX $4304				; |
+		LDA #$0020 : STA $4305			; |
+		LDX #$90 : STX $2121			; |
+		LDX #$01 : STX $420B			;/
+		LDA #$2200 : STA $4300			;\
+		LDA !Characters				; |
+		AND #$00F0				; |
+		ASL A					; |
+		CLC : ADC.w #!PalsetData+5		; |
+		STA $4302				; | f-blanked-wrapped CGRAM upload for P1 palette
+		LDX.b #!PalsetData>>16			; |
+		STX $4304				; |
+		LDA #$0020 : STA $4305			; |
+		LDX #$80 : STX $2121			; |
+		LDX #$01 : STX $420B			;/
+		LDX #$80 : STX $2118			; > Setup for Mario GFX upload
+		LDA !MultiPlayer			;\ Ignore P2 during single player
+		AND #$00FF : BEQ +			;/
+		LDA !Characters				;\
+		AND #$000F				; |
+		BNE +					; |
+		LDA #$6260				; |
+		BRA ++					; |
+	+	LDA !Characters				; |
+		AND #$00F0				; |
+		BNE +					; |
+		LDA #$6060				; | Upload non-dynamic Mario tiles if Mario is in play
+	++	STA $2116 : PHA				; |
+		LDA #$1801 : STA $4310			; |
+
+		LDY.b #!File_Mario_Supplement		; |
+		JSL !GetFileAddress			; |
+		LDA !FileAddress : STA $4312		; |
+		LDA !FileAddress+1 : STA $4313		; |
 
 ;	LDA #$FC00 : STA $4312		; |
 ;	LDX #$31 : STX $4314		; |
 
-		LDA #$0140 : STA $4315		; |
-		LDX #$02 : STX $420B		; |
-		PLA				; |
-		CLC : ADC #$0100		; |
-		STA $2116			; |
+		LDA #$0140 : STA $4315			; |
+		LDX #$02 : STX $420B			; |
+		PLA					; |
+		CLC : ADC #$0100			; |
+		STA $2116				; |
 
-		LDA !FileAddress		; |
-		CLC : ADC #$0200		; |
-		STA $4312			; |
+		LDA !FileAddress			; |
+		CLC : ADC #$0200			; |
+		STA $4312				; |
 
 ;	LDA #$FE00 : STA $4312		; |
 
-		LDA #$0140 : STA $4315		; |
-		LDX #$02 : STX $420B		;/
-		STZ $2182			;\
-		LDA #$7D00+$C00 : STA $2181	; > this is RAM address for GFX33
-		LDA #$8000 : STA $4310		; |
+		LDA #$0140 : STA $4315			; |
+		LDX #$02 : STX $420B			;/
+		STZ $2182				;\
+		LDA #$7D00+$C00 : STA $2181		; > this is RAM address for GFX33
+		LDA #$8000 : STA $4310			; |
 
-		LDY.b #!File_Mario_Expand	; |
-		JSL !GetFileAddress		; |
-		LDA !FileAddress : STA $4312	; |
-		LDA !FileAddress+1 : STA $4313	; |
+		LDY.b #!File_Mario_Expand		; |
+		JSL !GetFileAddress			; |
+		LDA !FileAddress : STA $4312		; |
+		LDA !FileAddress+1 : STA $4313		; |
 
 ;	LDA #$C400 : STA $4312		; | upload expansion tiles to GFX33
 ;	LDX #$31 : STX $4314		; |
-		LDA #$0400 : STA $4315		; |
-		LDX #$02 : STX $420B		;/
+		LDA #$0400 : STA $4315			; |
+		LDX #$02 : STX $420B			;/
 		+
 
 	; to use alt player palettes, just add an offset here
@@ -371,12 +376,12 @@ print "Level code handler inserted at $", pc, "."
 
 		JSR GFXIndex
 
-		LDA #$7EB0			;\ Default border tiles are $1EB-$1EF, $1FB-$1FF
-		STA $400000+!MsgVRAM3		;/
-		LDA #$7C00			;\
-		STA $400000+!MsgVRAM1		; | Default portrait tiles
-		LDA #$7C80			; |
-		STA $400000+!MsgVRAM2		;/
+		LDA #$7EB0				;\ Default border tiles are $1EB-$1EF, $1FB-$1FF
+		STA $400000+!MsgVRAM3			;/
+		LDA #$7C00				;\
+		STA $400000+!MsgVRAM1			; | Default portrait tiles
+		LDA #$7C80				; |
+		STA $400000+!MsgVRAM2			;/
 
 
 
@@ -393,163 +398,163 @@ print "Level code handler inserted at $", pc, "."
 ; 210C: BG3 GFX control
 
 	.Map01
-		LDA #$4000 : STA !BG1Address	;\  VRAM map 01:
-		LDA #$4800 : STA !BG2Address	; | - 0x0000: 32KB of 4bpp GFX for layer 1/2
-		SEP #$30			; | - 0x4000: layer 1 tilemap (64x32)
-		LDA #$41 : STA !2107		; | - 0x4800: layer 2 tilemap (64x32)
-		LDA #$49 : STA !2108		; | - 0x5000: 4KB of 2bpp GFX for layer 3
-		LDA #$59 : STA !2109		; | - 0x5800: layer 3 tilemap (64x32)
-		LDA #$05 : STA !210C		;/
+		LDA #$4000 : STA !BG1Address		;\  VRAM map 01:
+		LDA #$4800 : STA !BG2Address		; | - 0x0000: 32KB of 4bpp GFX for layer 1/2
+		SEP #$30				; | - 0x4000: layer 1 tilemap (64x32)
+		LDA #$41 : STA !2107			; | - 0x4800: layer 2 tilemap (64x32)
+		LDA #$49 : STA !2108			; | - 0x5000: 4KB of 2bpp GFX for layer 3
+		LDA #$59 : STA !2109			; | - 0x5800: layer 3 tilemap (64x32)
+		LDA #$05 : STA !210C			;/
 		BRA .MapDone
 
 	.Map00
-		LDA #$3000 : STA !BG1Address	;\  VRAM map 00:
-		LDA #$3800 : STA !BG2Address	; | - 0x0000: 24KB of 2bpp GFX for layer 1/2
-		SEP #$30			; | - 0x3000: layer 1 tilemap (64x32)
-		LDA #$31 : STA !2107		; | - 0x3800: layer 2 tilemap (64x32)
-		LDA #$39 : STA !2108		; | - 0x4000: 8KB of 2bpp GFX for layer 3
-		LDA #$53 : STA !2109		; | - 0x5000: layer 3 tilemap (64x64)
-		LDA #$04 : STA !210C		;/
+		LDA #$3000 : STA !BG1Address		;\  VRAM map 00:
+		LDA #$3800 : STA !BG2Address		; | - 0x0000: 24KB of 2bpp GFX for layer 1/2
+		SEP #$30				; | - 0x3000: layer 1 tilemap (64x32)
+		LDA #$31 : STA !2107			; | - 0x3800: layer 2 tilemap (64x32)
+		LDA #$39 : STA !2108			; | - 0x4000: 8KB of 2bpp GFX for layer 3
+		LDA #$53 : STA !2109			; | - 0x5000: layer 3 tilemap (64x64)
+		LDA #$04 : STA !210C			;/
 		.MapDone
 
-		LDA #$70 : STA !AnimToggle	; default !AnimToggle setting: everything allowed, max 4KB
+		LDA #$70 : STA !AnimToggle		; default !AnimToggle setting: everything allowed, max 4KB
 
-		LDA !P2Status			;\
-		CMP #$02 : BCS +		; |
-		STZ !P2Status			; | Reset player 2
-		LDX #$77			; |
-	-	CPX #$28 : BEQ ++		; |
-		CPX #$30 : BEQ ++		; |
-		STZ !P2Base+$08,x		; |
-	++	DEX : BPL -			; |
-		STZ !P2XSpeed			; |
-		INC !P2Direction		; |
-		+				;/
-		LDA !P2Status-$80		;\
-		CMP #$02 : BCS +		; |
-		STZ !P2Status-$80		; | Reset player 1
-		LDX #$77			; |
-	-	CPX #$28 : BEQ ++		; |
-		CPX #$30 : BEQ ++		; |
-		STZ !P2Base+$08-$80,x		; |
-	++	DEX : BPL -			; |
-		STZ !P2XSpeed-$80		; |
-		INC !P2Direction-$80		; |
-		+				;/
-		LDA !MarioDirection		;\
-		STA !P2Direction-$80		; | character facing
-		STA !P2Direction		;/
-		LDA $741A			;\ How many doors have been entered
-		BNE +				;/
-		LDA !Characters			;\
-		AND #$0F : TAX			; |
-		LDA .PlayerHP,x : STA !P2HP	; > Reset player HP if it's the first sublevel
-		LDA !Characters			; |
-		LSR #4 : TAX			; |
-		LDA .PlayerHP,x : STA !P2HP-$80	; |
-		+				;/
+		LDA !P2Status				;\
+		CMP #$02 : BCS +			; |
+		STZ !P2Status				; | Reset player 2
+		LDX #$77				; |
+	-	CPX #$28 : BEQ ++			; |
+		CPX #$30 : BEQ ++			; |
+		STZ !P2Base+$08,x			; |
+	++	DEX : BPL -				; |
+		STZ !P2XSpeed				; |
+		INC !P2Direction			; |
+		+					;/
+		LDA !P2Status-$80			;\
+		CMP #$02 : BCS +			; |
+		STZ !P2Status-$80			; | Reset player 1
+		LDX #$77				; |
+	-	CPX #$28 : BEQ ++			; |
+		CPX #$30 : BEQ ++			; |
+		STZ !P2Base+$08-$80,x			; |
+	++	DEX : BPL -				; |
+		STZ !P2XSpeed-$80			; |
+		INC !P2Direction-$80			; |
+		+					;/
+		LDA !MarioDirection			;\
+		STA !P2Direction-$80			; | character facing
+		STA !P2Direction			;/
+		LDA $741A				;\ How many doors have been entered
+		BNE +					;/
+		LDA !Characters				;\
+		AND #$0F : TAX				; |
+		LDA .PlayerHP,x : STA !P2HP		; > Reset player HP if it's the first sublevel
+		LDA !Characters				; |
+		LSR #4 : TAX				; |
+		LDA .PlayerHP,x : STA !P2HP-$80		; |
+		+					;/
 
-		LDA #$00 : STA !CurrentMario	; > No one plays Mario by default
-		LDA !Characters			;\
-		AND #$F0 : BNE +		; |
-		LDA #$01 : STA !CurrentMario	; |
-		BRA .Mario			; |
-	+	LDA !MultiPlayer		; |
-		BEQ .KillMario			; | Determine who plays Mario and if he's alive
-		LDA !Characters			; |
-		AND #$0F : BNE .KillMario	; |
-		LDA #$02 : STA !CurrentMario	; |
-		BRA .Mario			; |
-		.KillMario			; |
-		LDA #$01 : STA !P1Dead		; |
-		.Mario				;/
-
-
-		LDX #$18			;\
-		LDA #$00			; | Make sure these regs are wiped
-	-	STA.l !VineDestroy,x		; |
-		DEX : BPL -			;/
-
-		LDA #$18 : STA !TextPal		; Default text palette (colors 0x19 and 0x1B)
+		LDA #$00 : STA !CurrentMario		; > No one plays Mario by default
+		LDA !Characters				;\
+		AND #$F0 : BNE +			; |
+		LDA #$01 : STA !CurrentMario		; |
+		BRA .Mario				; |
+	+	LDA !MultiPlayer			; |
+		BEQ .KillMario				; | Determine who plays Mario and if he's alive
+		LDA !Characters				; |
+		AND #$0F : BNE .KillMario		; |
+		LDA #$02 : STA !CurrentMario		; |
+		BRA .Mario				; |
+		.KillMario				; |
+		LDA #$01 : STA !P1Dead			; |
+		.Mario					;/
 
 
-		LDA !P1Dead			;\
-		BEQ +				; | Keep P1 dead between sub-levels
-		LDA #$09 : STA $71		; |
-		+				;/
-		LDA #$A1 : STA !MsgPal		; > Default portrait palettes are A-B
+		LDX #$18				;\
+		LDA #$00				; | Make sure these regs are wiped
+	-	STA.l !VineDestroy,x			; |
+		DEX : BPL -				;/
+
+		LDA #$18 : STA !TextPal			; Default text palette (colors 0x19 and 0x1B)
+
+
+		LDA !P1Dead				;\
+		BEQ +					; | Keep P1 dead between sub-levels
+		LDA #$09 : STA $71			; |
+		+					;/
+		LDA #$A1 : STA !MsgPal			; > Default portrait palettes are A-B
 		PHB
 		LDA $0002
 		PHA : PLB
-		PHK : PEA.w .Return-1		; set return address
-		JML [$0000]			; execute pointer
+		PHK : PEA.w .Return-1			; set return address
+		JML [$0000]				; execute pointer
 		.Return
 		PLB
 
 		REP #$20
 		SEP #$10
-		JSL read3($048434)		; set scroll values for BG2
+		JSL read3($048434)			; set scroll values for BG2
 		LDA $20
 		SEC : SBC #$0008
-		STA !BG2ZipColumnY		; store first value
+		STA !BG2ZipColumnY			; store first value
 
 
-		SEP #$30			;
-		PLB				; > End of bank wrapper
-		PEA $A5F3-1			;\ Set return address and execute subroutine
-		JML $00919B			;/
+		SEP #$30				;
+		PLB					; > End of bank wrapper
+		PEA $A5F3-1				;\ Set return address and execute subroutine
+		JML $00919B				;/
 
 
 		.SA1
 		PHP
 		PHB : PHK : PLB
 
-		%ReloadOAMData()		; reload
+		%ReloadOAMData()			; reload
 
-		REP #$20			;\
-		LDA $6701 : STA $6703		; copy this (so it gets written as HSL)
-		LDA $96				; |
-		SEC : SBC #$0010		; |
-		STA $01				; |
-		STA $08				; |
-		LDA $94				; |
-		SEC : SBC #$0020		; |
-		STA $07				; |
-		SEP #$30			; |
-		STA $00				; | despawn sprites that are withing 32px of players upon level entry
-		LDA #$50			; |
-		STA $02				; |
-		STA $03				; |
-		LDX #$0F			; |
-	-	LDA $3230,x : BEQ +		; |
-		JSL !GetSpriteClipping04	; |
-		JSL !CheckContact		; |
-		BCC +				; |
-		STZ $3230,x			; |
-	+	DEX : BPL -			;/
+		REP #$20				;\
+		LDA $6701 : STA $6703			; copy this (so it gets written as HSL)
+		LDA $96					; |
+		SEC : SBC #$0010			; |
+		STA $01					; |
+		STA $08					; |
+		LDA $94					; |
+		SEC : SBC #$0020			; |
+		STA $07					; |
+		SEP #$30				; |
+		STA $00					; | despawn sprites that are withing 32px of players upon level entry
+		LDA #$50				; |
+		STA $02					; |
+		STA $03					; |
+		LDX #$0F				; |
+	-	LDA $3230,x : BEQ +			; |
+		JSL !GetSpriteClipping04		; |
+		JSL !CheckContact			; |
+		BCC +					; |
+		STZ $3230,x				; |
+	+	DEX : BPL -				;/
 
-		LDX #$00			;\
-		LDY #$00			; | get HSL format palette
-		JSL !RGBtoHSL			;/
+		LDX #$00				;\
+		LDY #$00				; | get HSL format palette
+		JSL !RGBtoHSL				;/
 		LDA #$41 : PHA
 		LDA #$40
 		PHA : PLB
-		STZ.w $4406			; clear !MsgVertOffset
-		STZ.w !NPC_ID+0			;\
-		STZ.w !NPC_ID+1			; | reset NPC ID table
-		STZ.w !NPC_ID+2			;/
-		STZ !VRAMtable+$3FF		;\ set up wipes
-		LDA #$00 : STA.l !3D_Base+$7FF	;/
-		REP #$30			; all regs 16 bit
-		LDA.w #$03FE			;\
-		LDX.w #!VRAMtable+$3FF		; | wipe VRAM table
-		LDY.w #!VRAMtable+$3FE		; |
-		MVP $40,$40			;/
-		PLB				; change to bank 0x41
-		LDA.w #$07FE			;\
-		LDX.w #!3D_Base+$7FF		; | wipe 3D cluster joints
-		LDY.w #!3D_Base+$7FE		; |
-		MVP !3D_Base>>16,!3D_Base>>16	;/
+		STZ.w $4406				; clear !MsgVertOffset
+		STZ.w !NPC_ID+0				;\
+		STZ.w !NPC_ID+1				; | reset NPC ID table
+		STZ.w !NPC_ID+2				;/
+		STZ !VRAMtable+$3FF			;\ set up wipes
+		LDA #$00 : STA.l !3D_Base+$7FF		;/
+		REP #$30				; all regs 16 bit
+		LDA.w #$03FE				;\
+		LDX.w #!VRAMtable+$3FF			; | wipe VRAM table
+		LDY.w #!VRAMtable+$3FE			; |
+		MVP $40,$40				;/
+		PLB					; change to bank 0x41
+		LDA.w #$07FE				;\
+		LDX.w #!3D_Base+$7FF			; | wipe 3D cluster joints
+		LDY.w #!3D_Base+$7FE			; |
+		MVP !3D_Base>>16,!3D_Base>>16		;/
 		PLB
 		PLP
 		RTL
@@ -1081,50 +1086,23 @@ print "Level MAIN inserted at $", pc
 	MAIN_Level:
 		LDA #$01 : STA !LevelInitFlag		; set level MAIN
 
-
-		JSL $138020				; > Handle Yoshi Coins (A=1)
+		JSL !ProcessYoshiCoins			; > Handle Yoshi Coins (A=1)
 
 		PHB : PHK : PLB				; > Bank wrapper
-		LDA !RNG				; Load RNG from last frame
-		ADC $13					; Add true frame counter
-		ADC $15					;\
-		ADC $16					; | Add player 1 controller input
-		ADC $17					; |
-		ADC $18					;/
-		ADC $6DA3				;\
-		ADC $6DA5				; | Add player 2 controller input
-		ADC $6DA7				; |
-		ADC $6DA9				;/
-		ADC $7B					;\ Add player 1 speed
-		ADC $7D					;/
-		ADC $94					;\ Add player 1 position
-		ADC $96					;/
-		ADC !P2XSpeed				;\ Add player 2 speed
-		ADC !P2YSpeed				;/
-		ADC !P2XPosLo				;\ Add player 2 position
-		ADC !P2YPosLo				;/
-		STA !RNG				; Store RNG back (it should be at least kind of random now)
-
-		SEP #$30
-		LDA.b #HandleGraphics : STA $3180
-		LDA.b #HandleGraphics>>8 : STA $3181
-		LDA.b #HandleGraphics>>16 : STA $3182
-		JSR $1E80
-
-		REP #$30			; > All registers 16 bit
-		LDA !Level			;\
-		ASL A				; |
-		CLC : ADC !Level		; | load pointer based on level number
-		TAX				; | x3
-		LDA .Table,x : STA $0000	; |
-		LDA .Table+1,x : STA $0001	;/
-		SEP #$30			; > All registers 8 bit
+		REP #$30				; > All registers 16 bit
+		LDA !Level				;\
+		ASL A					; |
+		CLC : ADC !Level			; | load pointer based on level number
+		TAX					; | x3
+		LDA .Table,x : STA $0000		; |
+		LDA .Table+1,x : STA $0001		;/
+		SEP #$30				; > All registers 8 bit
 		LDA $0002
-		PHA : PLB			; set bank
-		PHK : PEA.w .Return-1		; set return address
-		JML [$0000]			; execute pointer
+		PHA : PLB				; set bank
+		PHK : PEA.w .Return-1			; set return address
+		JML [$0000]				; execute pointer
 		.Return
-		PLB				; > End of bank wrapper
+		PLB					; > End of bank wrapper
 		RTS
 
 
@@ -1655,6 +1633,7 @@ HandleGraphics:
 		SEP #$30
 
 		JSR .RotateSimple
+		JSR .RainbowShifter					; also spawns sparkles
 
 		LDA !GlobalPalsetMix					;\
 		CMP !GlobalPalsetMix+1 : BEQ +				; |
@@ -1828,13 +1807,25 @@ HandleGraphics:
 
 
 	; handler for player rainbow effect
-	; called by GameMode14.asm
 	.RainbowShifter
 		PHP
-		SEP #$20
-		REP #$10
-
+		SEP #$30
 		LDA !StarTimer : BNE .Shift
+
+	; from $00E2EB in all.log
+		LDA $6DDA
+		CMP #$FF : BEQ +
+		AND #$7F
+		STA $6DDA
+		TAX
+		LDA $74AD
+		ORA $74AE
+		ORA $790C
+		BEQ ++
+		LDX #$0E
+	++	STX !SPC3
+		+
+
 
 	..P1	LDA !P2LockPalset-$80 : BNE ..P2
 		LDA !Palset8
@@ -1848,6 +1839,26 @@ HandleGraphics:
 		RTS
 
 	.Shift
+		XBA
+		LDA $14
+		AND #$03
+		BNE $03 : DEC !StarTimer
+		LDA #$00
+		XBA
+		LSR #5
+		TAX
+		LDA $13
+		AND.l $028AA9,x : BNE ..nosparkle
+		LDA !P2Status-$80 : BNE ..nop1
+		LDY #$00
+		JSR .SpawnSparkles
+		..nop1
+		LDA !MultiPlayer : BEQ ..nosparkle
+		LDA !P2Status : BNE ..nosparkle
+		LDY #$80
+		JSR .SpawnSparkles
+		..nosparkle
+		REP #$10
 		LDX #$0080
 		LDY #$0020
 		JSL !RGBtoHSL
@@ -1875,6 +1886,70 @@ HandleGraphics:
 		JSL !MixRGB
 
 		PLP
+		RTS
+
+
+		.SpawnSparkles
+	;	LDA !P2Character-$80,y : BNE ..PCE
+	;	PHP
+	;	SEP #$10
+	;	JSL $02858F
+	;	PLP
+	;	RTS
+
+		..PCE
+		LDA #$1F : STA $0C			;\ AND value for Y coord
+		STZ $0D					;/
+		LDA #$EE : STA $0E			;\ Y offset = -18
+		LDA #$FF : STA $0F			;/
+
+		LDA !P2Character-$80,y : BNE +		;\ Y offset for big Mario = -20
+		LDX #$EC : STX $0E			;/
+		LDA !P2HP-$80,y : BNE ++
+		LDA #$0F : STA $0C
+		LDA $0E
+		CLC : ADC #$10
+		STA $0E
+		BRA ++
+
+	+	LDA !P2Hurtbox+5-$80,y
+		CMP #$11 : BCS ++
+		LDA #$0F : STA $0C
+		LDA #$FE : STA $0E
+		++
+
+
+		LDA $14
+		AND #$1F
+		TAX
+		REP #$20
+		LDA !RNGtable,x
+		AND #$000F
+		DEC #2
+		STA $00
+		TXA
+		EOR #$0010
+		TAX
+		LDA !RNGtable+1,x
+		AND $0C
+		CLC : ADC $0E
+		STA $02
+		SEP #$20
+		%Ex_Index_X()
+		LDA #$05+!MinorOffset : STA !Ex_Num,x	; sparkle
+		LDA #$17 : STA !Ex_Data1,x		; timer
+		LDA !P2XPosLo-$80,y			;\
+		CLC : ADC $00				; |
+		STA !Ex_XLo,x				; | Xpos
+		LDA !P2XPosHi-$80,y			; |
+		ADC $01					; |
+		STA !Ex_XHi,x				;/
+		LDA !P2YPosLo-$80,y			;\
+		CLC : ADC $02				; |
+		STA !Ex_YLo,x				; | Ypos
+		LDA !P2YPosHi-$80,y			; |
+		ADC $03					; |
+		STA !Ex_YHi,x				;/
 		RTS
 
 

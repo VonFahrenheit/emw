@@ -44,6 +44,10 @@ SPRITE_OFF_SCREEN:
 		STA $3350,x
 
 		.GoodX
+		LDA $6BF4
+		AND #$03
+		ASL A
+		TAY
 		LDA $3240,x : XBA
 		LDA $3210,x
 		REP #$20
@@ -55,15 +59,25 @@ SPRITE_OFF_SCREEN:
 
 		.NoBoxY
 		CMP !LevelHeight : BCS .OutOfBoundsY
-		SEC : SBC $1C
-		BPL +
-		EOR #$FFFF
-		LDY #$00
-		BRA ++
-	+	LDY #$02
-	++	CMP.w .YBounds,y
-		SEP #$20
-		BCC .GoodY
+
+		STA $00
+		LDA $1C
+		CLC : ADC.w InitSpriteEngine_min_y_range,y
+		CMP $00 : BPL .OutOfBoundsY
+		LDA $1C
+		CLC : ADC.w InitSpriteEngine_max_y_range,y
+		CMP $00 : BPL .GoodY
+
+
+;		SEC : SBC $1C
+;		BPL +
+;		EOR #$FFFF
+;		LDY #$00
+;		BRA ++
+;	+	LDY #$02
+;	++	CMP.w .YBounds,y
+;		SEP #$20
+;		BCC .GoodY
 
 		.OutOfBoundsY
 		SEP #$20
@@ -96,7 +110,7 @@ SPRITE_OFF_SCREEN:
 		RTS
 
 
-.YBounds	dw $00E0,$01C0			; above, below
+;.YBounds	dw $00E0,$01C0			; above, below
 
 .Long		PHB : PHK : PLB
 		JSR SPRITE_OFF_SCREEN

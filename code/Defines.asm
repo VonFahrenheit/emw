@@ -90,12 +90,84 @@ macro ReloadOAMData()
 endmacro
 
 
+macro ApplyLight(S, E)				; this macro starts a new shade operation, but only if one is not being processed currently
+		PHP				; lighting values have to be set previously, only
+		SEP #$20
+		LDA !ProcessLight
+		CMP #$02 : BCC ?CantSend
+		REP #$20
+		LDA.w #<S>*2 : STA !LightIndexStart
+		LDA.w #<E>*2 : STA !LightIndexEnd
+		SEP #$20
+		STZ !ProcessLight
+		?CantSend:
+		PLP
+endmacro
+
+
+
+macro MPU_SNES(value)
+		PHP				;\ wrap to 8-bit A
+		SEP #$20			;/
+		LDA.b #<value>			; phase to wait for
+		JSR !MPU_wait			; wait for SA-1
+		PLP				; restore P
+endmacro
+
+macro MPU_SA1(value)
+		PHP				;\ wrap to 8-bit A
+		SEP #$20			;/
+		LDA.b #<value> : STA !MPU_SA1	; phase to wait for
+	?Loop:	CMP !MPU_SNES : BNE ?Loop	; wait for SNES
+		PLP				; restore P
+endmacro
+
+
+macro MPU_copy()
+		PHP				;\
+		REP #$20			; |
+		LDA $13 : STA $0113		; |
+		LDA $94 : STA $0194		; | copy the important DP data to MPU page
+		LDA $96 : STA $0196		; | (MPU page is $0100, which is WRAM for SNES and I-RAM for SA-1)
+		LDA $9D : STA $019D		; |
+		LDA #$0100 : TCD		; > DP = $0100
+		PLP				;/
+endmacro
+
+
+
+
+
 
 	; -- Free RAM --		; Point to unused addresses, please.
 					; Don't change addressing mode (16-bit to 24-bit and vice versa).
 					; Doing that requires changing some code.
 
-		!AnimToggle		= $60			; see VR3.asm for info on how to use
+		!AnimToggle		= $60		; see VR3.asm for info on how to use
+
+
+
+		!LightData_SNES		= $7EFC00	; 2 buffers of 512 bytes each for processing lighting
+
+
+		!LightBuffer		= $3171		; 1 bit used by SNES to signal which buffer holds the finished palette
+		!LightIndexStart	= $3172
+		!LightIndexEnd		= $3174
+
+		!LightR			= $3176		; these are 16-bit numbers with 8-bit fixed point fractions
+		!LightG			= $3178		; normal value is 01.00, 01.00, 01.00, meaning that each color is applied 100%
+		!LightB			= $317A		; SNES will apply rounded shading in background mode using these values
+		!ProcessLight		= $317C		; 0 = not processing, 1 = in process, 2 = done
+
+		!LightIndexStart_SNES	= $0FF4		; these are copied to WRAM at the start of a shade operation
+		!LightIndexEnd_SNES	= $0FF6		; this way, SA-1 can queue as much as it wants without disrupting anything
+		!LightR_SNES		= $0FF8
+		!LightG_SNES		= $0FFA
+		!LightB_SNES		= $0FFC
+		!LightIndex_SNES	= $0FFE
+
+		!MPU_SNES		= $317D		; SNES status in dual thread operation
+		!MPU_SA1		= $317E		; SA-1 status in dual thread operation
 
 		!CCDMA_SLOTS		= $317F
 		!CCDMA_TABLE	 	= $3190
@@ -188,7 +260,8 @@ endmacro
 
 		!Level			= $610B
 		!BossData		= $66F9			; 7 bytes
-		!RNG			= $6700			; Updated every frame during level (game mode = 0x14)
+		!RNGtable		= $6660			; 32 random values, a new one is generated each frame
+		!RNG			= $6700			; most recently generated RN
 
 		!MarioGFX1		= $6F42			; VRAM address for first Mario GFX upload
 		!MarioGFX2		= $6F44			; VRAM address for second Mario GFX upload
@@ -1232,7 +1305,7 @@ endmacro
 	; next entry at $4059FE
 
 
-
+		; these are values not addresses
 		!VineDestroyHorzTile1	= $92
 		!VineDestroyHorzTile2	= $93
 		!VineDestroyHorzTile3	= $C2
@@ -1551,6 +1624,7 @@ endmacro
 		!MarioYPosLo		= $96
 		!MarioYPosHi		= $97
 		!GameMode		= $6100
+		!PaletteRGB		= $6703
 		!LevelMode		= $6D9B
 		!MainScreen		= $6D9D
 		!SubScreen		= $6D9E
@@ -1572,10 +1646,11 @@ endmacro
 		!CapeYPosLo		= $73EB
 		!CapeYPosHi		= $73EC
 		!MarioBehind		= $73F9
-		!EnableHScroll		= $7411
-		!EnableVScroll		= $7412
+		!BG3TideSettings	= $7403		; 0 = no tide, 1 = tide that goes up/down, 2 = static tide
 		!ScrollLayer1		= $7404
 		!MarioSpinJump		= $740D
+		!EnableHScroll		= $7411
+		!EnableVScroll		= $7412
 		!BG2ModeH		= $7413
 		!BG2ModeV		= $7414
 		!BG2BaseV		= $7417		; 16-bit
@@ -1583,8 +1658,13 @@ endmacro
 		!ScrollSpriteNum	= $743E
 		!ScrollSpriteNum_L1	= !ScrollSpriteNum
 		!ScrollSpriteNum_L2	= $743F
+		!BG3XSpeed		= $7458		; 16-bit
+		!BG3YSpeed		= $745A		; 16-bit
+		!BG3XFraction		= $745C		; 16-bit
 		!BG3BaseSettings	= $745E		; first 5 bits determine y position, last 2 bits used by LM
-		!BG3BaseSpeed		= $745F		; hi nybble is vertical option, lo nybble is horizontal option
+		!BG3ScrollSettings	= $745F		; hi nybble is vertical option, lo nybble is horizontal option
+		!BG3YFraction		= $7460		; 16-bit
+		!BG3BaseH		= $746A		; 16-bit
 		!MarioCarryingObject	= $7470
 		!StarTimer		= $7490
 		!LevelEnd		= $7493
@@ -1617,6 +1697,11 @@ endmacro
 
 	; -- Custom routines --
 
+		!MPU_light		= $0E00
+		!MPU_wait		= $1EA6		; SNES routine that waits for SA-1
+		!MPU_phase		= $1EFF		; phase SA-1 has to get to before MPU_wait can stop
+
+
 		!InitSpriteTables	= $07F7D2
 		; same as !ResetSprite
 		; procedure: set sprite num + extra bits, then call, then set ID, then store coords + status
@@ -1625,6 +1710,7 @@ endmacro
 		!GetMap16Sprite		= $138008
 		!KillOAM		= $138010
 		!GetMap16		= $138018
+		!ProcessYoshiCoins	= $138020
 		!GetVRAM		= $138028
 		!GetCGRAM		= $138030
 		!PlaneSplit		= $138038
@@ -1672,6 +1758,9 @@ endmacro
 
 
 	; -- SMW and LM routines --
+
+		!Random			= $01ACF9
+
 
 		!BouncePlayer		= $01AA33
 		!ContactGFX		= $01AB99

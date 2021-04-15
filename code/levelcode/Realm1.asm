@@ -1542,8 +1542,11 @@ level5:
 		BPL -					;/
 		PLB					; > Restore bank
 
+		LDA !Level
+		CMP #$0003 : BEQ +
+
 		LDA !BG3BaseSettings			;\ > Include LM initial offset
-		AND #$00FC				; |
+		AND #$00F8				; |
 		ASL A					; |
 		STA $02					; |
 		LDA $1A					; |
@@ -1560,7 +1563,7 @@ level5:
 		CLC : ADC #$00C4			; |
 		CLC : ADC $02				; |
 		STA $24					;/
-		PLP
+	+	PLP
 		RTL
 
 

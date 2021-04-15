@@ -72,21 +72,25 @@ sa1rom
 		STA.l !VRAMbase+!VRAMsize+$01		;/
 		LDA !GameMode
 
-	if !TrackCPU == 0
+;	if !TrackCPU == 0
 		CMP #$14 : BNE .Return
-	else
-		CMP #$14 : BEQ $03 : JMP .Return
-	endif
+;	else
+;		CMP #$14 : BEQ $03 : JMP .Return
+;	endif
 		PHB : PHK : PLB
 
-		%TrackSetup(!TrackPCE)
+		JSL .GetCharacter
 
-		LDA.b #.GetCharacter : STA $3180
-		LDA.b #.GetCharacter>>8 : STA $3181
-		LDA.b #.GetCharacter>>16 : STA $3182
-		JSR $1E80
 
-		%TrackCPU(!TrackPCE)
+	; should now be called by SA-1
+	;	%TrackSetup(!TrackPCE)
+
+	;	LDA.b #.GetCharacter : STA $3180
+	;	LDA.b #.GetCharacter>>8 : STA $3181
+	;	LDA.b #.GetCharacter>>16 : STA $3182
+	;	JSR $1E80
+
+	;	%TrackCPU(!TrackPCE)
 
 		PLB
 

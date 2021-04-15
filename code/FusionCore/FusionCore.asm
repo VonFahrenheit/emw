@@ -133,6 +133,9 @@ incsrc "../Defines.asm"
 
 	org $148000
 	HandleEx:
+		PHB					;\
+		LDA #$02				; | wrap to bank 0x02
+		PHA : PLB				;/
 		LDA !CoinTimer				;\
 		CMP #$02 : BCC .CoinTimerReset		; |
 		LDA $9D : BNE .CoinTimerReset		; | coin timer code from $02902D
@@ -205,6 +208,7 @@ incsrc "../Defines.asm"
 		LDA !CameraBackupY : STA $1C
 	+	PLP
 		PLA : STA $64			; restore this
+		PLB				; restore bank
 		RTL
 
 	.GetNum
@@ -587,6 +591,7 @@ incsrc "../Defines.asm"
 		PLX
 		RTL
 
+
 		.Timer
 		;   00  01  02  03  04  05
 		db $00,$1B,$08,$13,$00,$10
@@ -783,7 +788,6 @@ incsrc "../Defines.asm"
 
 
 	LuigiFireball:
-STZ $7FFF
 		LDX $75E9
 
 		LDA !Ex_YLo,x : PHA
@@ -1099,9 +1103,22 @@ incsrc "ParticleSystem.asm"
 
 
 
+;==============;
+; FUSION REMAP ;
+;==============;
+pushpc
+incsrc "Remap.asm"
+pullpc
+
+
+
 ;=========;
 ; BANK 02 ;
 ;=========;
+incsrc "FusionSprites/BulletBillShooter.asm"
+
+print pc
+
 incsrc "FusionSprites/MalleableExtendedSprite.asm"
 
 	; -- coin gfx fix --
@@ -1626,6 +1643,7 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 	; -- bounce gfx fix --
 	org $0291F8
 	Bounce:
+		LDA !Ex_Data3,x : BEQ .Die
 		PEI ($1A)				;\ backup BG1 coords
 		PEI ($1C)				;/
 		LDY #$00				;\
@@ -1649,18 +1667,10 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		PLA : STA $1C				; | restore BG1 coords
 		PLA : STA $1A				; |
 		SEP #$20				;/
-		RTS
+	.Die	RTS
 	warnpc $029265
 
 
-	; to DO:
-	; integrate GFX_expand edits
-	; test EVERYTHING
-	; make sure new GFX code works
-
-
-
-incsrc "Remap.asm"
 
 
 
