@@ -1,6 +1,9 @@
 header
 sa1rom
 
+print " "
+print "FusionCore V1.2"
+
 ; done:
 ; - make DAMN sure no score sprites can write anything anywhere
 ; - reprogram engines to subtract their offset value
@@ -305,9 +308,10 @@ incsrc "../Defines.asm"
 		JMP (.CustomPtr,x)
 
 		.CustomPtr
-		dw DizzyStar
-		dw LuigiFireball
-		dw BigFireball
+		dw DizzyStar			; 01
+		dw LuigiFireball		; 02
+		dw BigFireball			; 03
+		dw CustomShooter		; 04
 		..End
 
 
@@ -625,195 +629,20 @@ incsrc "../Defines.asm"
 		RTL
 
 
-	; data 1: --ppssss
-	; pp	= which player to attach to
-	; ssss	= which sprite to attach to if pp = 0
-	;
-	; data 2: timer
-	; data 3: y offset to attachment
-
-	DizzyStar:
-		LDX $75E9
-		LDA !Ex_Data2,x : BNE .Go
-	.Kill	STZ !Ex_Num,x
-		RTS
-
-	.Go	LDA $14
-		AND #$03 : BNE +
-		DEC !Ex_Data2,x
-		+
-
-		LDA !Ex_Data1,x
-		CMP #$10 : BCC .Sprite
-		CMP #$30 : BCS .Sprite
-
-	.Player
-		ASL #2
-		AND #$80
-		TAY
-		LDA !P2Status-$80,y : BNE .Kill
-		LDA !P2XPosLo-$80,y : STA !Ex_XLo,x
-		LDA !P2XPosHi-$80,y : STA !Ex_XHi,x
-		STZ $00
-		LDA !Ex_Data3,x
-		BPL $02 : DEC $00
-		CLC : ADC !P2YPosLo-$80,y
-		STA !Ex_YLo,x
-		LDA $00
-		ADC !P2YPosHi-$80,y
-		STA !Ex_YHi,x
-		BRA .Graphics
-
-	.Sprite
-		AND #$0F
-		TAY
-		LDA $3230,y : BEQ .Kill
-		LDA $3220,y : STA !Ex_XLo,x
-		LDA $3250,y : STA !Ex_XHi,x
-		STZ $00
-		LDA !Ex_Data3,x
-		BPL $02 : DEC $00
-		CLC : ADC $3210,y
-		STA !Ex_YLo,x
-		LDA $00
-		ADC $3240,y
-		STA !Ex_YHi,x
-
-	.Graphics
-		REP #$20
-		STZ $0C
-		JSR .Draw
-		LDA #$0155 : STA $0C
-		JSR .Draw
-		LDA #$02AA : STA $0C
-		JSR .Draw
-		SEP #$30
-		RTS
-
-
-		.Draw
-		LDA !Ex_XLo,x : STA $00
-		LDA !Ex_XHi,x : STA $01
-		LDA !Ex_YLo,x : STA $02
-		LDA !Ex_YHi,x : STA $03
-		REP #$20
-		STZ $0E
-		LDA $14
-		LDY !Ex_Data2,x
-		CPY #$40 : BCC +
-		ASL A
-	+	CPY #$20 : BCC +
-		ASL A
-	+	AND #$00FF
-		ASL #2
-		CLC : ADC $0C
-		AND #$03FF
-		STA $04				; angle
-		CMP #$0200
-		BCC $02 : DEC $0E
-		AND #$01FE
-		REP #$10
-		TAX
-		LDA.l !TrigTable,x
-		EOR $0E
-		BPL $01 : INC A
-		CLC : ADC #$0100
-		LSR #4
-		CLC : ADC $00
-		SEC : SBC #$000C
-		SEC : SBC $1A
-		STA $00
-		CMP #$FFF8 : BCS .GoodX
-		CMP #$0100 : BCC .GoodX
-	.BadCoord
-		SEP #$10
-		REP #$20
-		LDX $75E9
-		RTS
-
-	.GoodX	LDA $02
-		SEC : SBC $1C
-		CMP #$FFF8 : BCS .GoodY
-		CMP #$00E0 : BCS .BadCoord
-
-	.GoodY	SEP #$10
-		LDY $05
-		CPY #$01 : BEQ .HiPrio
-		CPY #$02 : BEQ .HiPrio
-
-	.LoPrio
-		STA $02
-		LDY #$FC
-	-	LDA !OAM+$101,y
-		AND #$00FF
-		CMP #$00F0 : BEQ +
-		DEY #4
-		CPY #$FC : BCC -
-		LDX $75E9
-		RTS
-
-	+	LDA $02 : STA !OAM+$101,y
-		LDA #$3448 : STA !OAM+$102,y
-		SEP #$30
-		LDA $00 : STA !OAM+$100,y
-		LDX $75E9
-		TYA
-		LSR #2
-		TAY
-		LDA $01
-		AND #$01
-		STA !OAMhi+$40,y
-		REP #$20
-		RTS
-
-	.HiPrio
-		LDY !OAMindex
-		STA !OAM+$001,y
-		LDA #$3448 : STA !OAM+$002,y
-		SEP #$20
-		LDA $00 : STA !OAM+$000,y
-		LDX $75E9
-		PHY
-		TYA
-		LSR #2
-		TAY
-		LDA $01
-		AND #$01
-		STA !OAMhi+$00,y
-		PLA
-		CLC : ADC #$04
-		STA !OAMindex
-		REP #$20
-		RTS
-
-
-	LuigiFireball:
-		LDX $75E9
-
-		LDA !Ex_YLo,x : PHA
-		LDA !Ex_YHi,x : PHA
-		STZ !Ex_YSpeed,x
-
-		PHK : PEA.w .Return-1
-		PEA $8B66-1			; point to RTL
-		JML $029FAF
-
-		.Return
-		PLA : STA !Ex_YHi,x
-		PLA : STA !Ex_YLo,x
-		RTS
-
-	BigFireball:
-		LDX $75E9
-		PHK : PEA.w .Return-1
-		PEA $8B66-1
-		JML $02A16B			; enemy fireball code
-		.Return
-		RTS
+;=======================;
+; CUSTOM FUSION SPRITES ;
+;=======================;
+incsrc "FusionSprites/DizzyStar.asm"
+incsrc "FusionSprites/LuigiFireball.asm"
+incsrc "FusionSprites/BigFireball.asm"
+incsrc "FusionSprites/CustomShooter.asm"
 
 
 
 
+;=================;
+; SHARED ROUTINES ;
+;=================;
 ;
 ; input:
 ;	none
@@ -861,6 +690,9 @@ incsrc "../Defines.asm"
 ;
 ; input:
 ;	JSL followed by table, returns to first byte after table
+; returns:
+;	$00	number of tiles drawn
+;	$02	24-bit pointer to start write area
 ; table format:
 ;	header (number of per-tile bytes to read, highest bit is p (0 = use $64, 1 = use PP bits))
 ;	GFX status index
@@ -1034,6 +866,12 @@ incsrc "../Defines.asm"
 		RTL					; return
 
 
+
+
+;============;
+; HAMMER FIX ;
+;============;
+
 	HammerSpinJump:
 		JSL !CheckContact
 		BCS .Contact
@@ -1116,9 +954,6 @@ pullpc
 ; BANK 02 ;
 ;=========;
 incsrc "FusionSprites/BulletBillShooter.asm"
-
-print pc
-
 incsrc "FusionSprites/MalleableExtendedSprite.asm"
 
 	; -- coin gfx fix --
@@ -1674,9 +1509,6 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 
 
 
-
-print " "
-print "FusionCore V1.2"
 print " - Ex_Num mapped to ........$", hex(!Ex_Num), " - $", hex(!Ex_Num+!Ex_Amount-1)
 print " - Ex_Data1 mapped to ......$", hex(!Ex_Data1), " - $", hex(!Ex_Data1+!Ex_Amount-1)
 print " - Ex_Data2 mapped to ......$", hex(!Ex_Data2), " - $", hex(!Ex_Data2+!Ex_Amount-1)

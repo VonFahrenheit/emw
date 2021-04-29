@@ -670,7 +670,10 @@ EliteKoopa:
 		PLY
 		STA $00
 		LDA.w ANIM+4,y : JSR GetDynamo
-		JSL !UpdateClaimedGFX
+		PHY
+		LDY.b #!File_EliteKoopa
+		JSL !UpdateFromFile
+		PLY
 
 		.NoUpdate
 		STZ $06						; initialize RAM transfer
@@ -691,7 +694,14 @@ EliteKoopa:
 		LDA.w ANIM+0,y : JSR LakituLovers_TilemapToRAM
 		LDA.w #!BigRAM : STA $04
 		SEP #$20
-		JSL LOAD_TILEMAP_Long
+
+		LDA !SpriteAnimIndex
+		CMP #$11 : BCC ..p1
+	..p2	JSL LOAD_TILEMAP_p2_Long
+		PLB
+		RTL
+
+	..p1	JSL LOAD_TILEMAP_p1_Long
 		PLB
 		RTL
 
@@ -723,12 +733,13 @@ EliteKoopa:
 		LDA.w #!BigRAM : STA $04			; |
 		SEP #$20					;/
 
-		JSL LOAD_CLAIMED_Long				; load tilemap
 		LDA !SpriteAnimIndex
-		CMP #$11 : BCC .Return
-		LDA #$10 : JSL HI_PRIO_OAM_Long
+		CMP #$11 : BCC ..p1
+	..p2	JSL LOAD_CLAIMED_p2_Long
+		PLB
+		RTL
 
-
+	..p1	JSL LOAD_CLAIMED_p1_Long			; load tilemap
 		.Return
 		PLB
 		RTL
@@ -911,7 +922,7 @@ EliteKoopa:
 		LDA !ExtraBits,x
 		AND.b #$08^$FF
 		STA !ExtraBits,x
-		JSL $07F7D2				; | > Reset sprite tables
+		JSL !ResetSprite			; | > Reset sprite tables
 		LDA #$02 : STA $32D0,x			; spawn shelless koopa
 		RTS
 
@@ -921,16 +932,9 @@ EliteKoopa:
 	; load Y with plume tile
 	; then call this
 	GetDynamo:
-		PHA
-		PHY
-		LDY.b #!File_EliteKoopa
-		JSL !GetFileAddress
-		PLY
-		PLA
 		REP #$20
 		AND #$00FF
 		ASL #5
-		CLC : ADC.w !FileAddress
 		STA !BigRAM+$04
 		CLC : ADC #$0200
 		STA !BigRAM+$0B
@@ -938,7 +942,6 @@ EliteKoopa:
 		LDA $00
 		AND #$00FF
 		ASL #5
-		CLC : ADC.w !FileAddress
 		STA !BigRAM+$12
 		CLC : ADC #$0200
 		STA !BigRAM+$19
@@ -959,11 +962,10 @@ EliteKoopa:
 		LDA #$6160 : STA !BigRAM+$1C
 
 		SEP #$20
-		LDA !FileAddress+2
-		STA !BigRAM+$06
-		STA !BigRAM+$0D
-		STA !BigRAM+$14
-		STA !BigRAM+$1B
+		STZ !BigRAM+$06
+		STZ !BigRAM+$0D
+		STZ !BigRAM+$14
+		STZ !BigRAM+$1B
 
 		RTS
 

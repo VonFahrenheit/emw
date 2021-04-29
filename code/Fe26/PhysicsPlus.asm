@@ -6,7 +6,7 @@
 		PLY						;/ (PLY will act as LDY #$00 but takes only 1 byte)
 
 	org $019140
-		JSL PhysicsPlus_ExtraCollision			;\ Source: STZ $7694 : STZ $3330,x
+		JSL PhysicsPlus_ExtraCollision			;\ org: STZ $7694 : STZ $3330,x
 		NOP #2						;/
 
 	org $01914C
@@ -14,9 +14,14 @@
 								;	STA $7695
 								;	STZ !SpriteWater,x
 
+	org $019258
+		STA !SpriteWater,x
+		JML PhysicsPlus_Phase				;\ org: LDA !SpriteTweaker5,x : BMI $B0 ($019210)
+		NOP						;/
+
+
 	pullpc
 	PhysicsPlus:
-
 		LDA !SpriteStasis,x : BNE .NoVectors		; > Don't update gravity or vectors during stasis
 		LDA !SpriteGravityTimer,x : BEQ .NormalGravity	;\
 		DEC !SpriteGravityTimer,x			; |
@@ -74,5 +79,13 @@
 		STA !SpriteWater,x				;/
 		STZ !SpriteExtraCollision,x			; clear after it's applied
 		RTL
+
+.Phase		LDA !SpritePhaseTimer,x : BEQ .NoPhase		;\ phase timer
+		DEC !SpritePhaseTimer,x				;/
+.CODE_019210	JML $019210					; return to RTS
+		.NoPhase					;\ check tweaker
+		LDA !SpriteTweaker5,x : BMI .CODE_019210	;/
+.CODE_019260	JML $019260					; run collission code
+
 
 

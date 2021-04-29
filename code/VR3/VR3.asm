@@ -512,7 +512,7 @@ LoadGFX:	LDA #$1801 : STA $4300			;\
 ; here is Lunar Magic's BG3 GFX uploader!
 ; it can actually upload anything... even 4bpp files >:D
 ; it uses hardcoded VRAM addresses, so we can easily repoint those
-
+; VRAM map mode
 	.GFX
 		PHX
 		REP #$10
@@ -532,33 +532,7 @@ LoadGFX:	LDA #$1801 : STA $4300			;\
 		REP #$20
 		LDX #$80 : STX $2115		; word writes
 		PLX : PHX			; get index from stack without removing it
-		CPX #$02 : BCS ...2bpp		; GFX28 and GFX29 are still 2bpp
-
-	...4bpp	LDA.l ...addr-1,x		;\
-		AND #$FF00			; | preserve VRAM address
-		PHA				;/
-
-		LDA #$3981 : STA $4310		; DMA parameters: VRAM download
-		LDA #$0200 : STA $4312		;\ download into $7E0200 (currently empty SNES WRAM)
-		LDX #$00 : STX $4314		;/
-		LDA #$1000 : STA $4315		; 4KB
-		PLA : PHA			;\ VRAM address
-		STA $2116			;/
-		LDA $2139			; dummy read
-		LDX #$02 : STX $420B		; start download
-		LDA #$1801 : STA $4310		;\
-		LDA #$0200 : STA $4312		; |
-		LDX #$00 : STX $4314		; |
-		LDA #$1000 : STA $4315		; | upload downloaded data to 0x4000 area
-		PLA : PHA			; |
-		CLC : ADC #$1000		; |
-		STA $2116			; |
-		LDX #$02 : STX $420B		;/
-		LDA #$AD00 : STA $4312		;\
-		LDX #$7E : STX $4314		; | and finally, upload decompressed 4KB of GFX
-		PLA : STA $2116			; |
-		LDA #$1000			; |
-		BRA ...go			;/
+		CPX #$02 : BCC ...4bpp		; GFX28 and GFX29 are still 2bpp
 
 	...2bpp	TXA				;\
 		ASL A				; |
@@ -570,9 +544,53 @@ LoadGFX:	LDA #$1801 : STA $4300			;\
 		LDA #$AD00 : STA $4312		;\ source: $7EAD00
 		LDX #$7E : STX $4314		;/
 		LDA #$0800			; 2KB
-	...go	STA $4315
+		STA $4315
 		LDX #$02 : STX $420B		; start DMA
 		JML Return_BG3_GFX_Next
+
+	...4bpp	LDA.l ...addr-1,x		;\
+		AND #$FF00			; | preserve VRAM address
+		PHA				;/
+
+		LDA #$3981 : STA $4310		; DMA parameters: VRAM download
+		LDA #$0200 : STA $4312		;\ download into $7E0200 (currently empty SNES WRAM)
+		LDX #$00 : STX $4314		;/
+		LDA #$0800 : STA $4315		; 4KiB (2KiB times 2)
+		PLA : PHA			;\ VRAM address
+		STA $2116			;/
+		LDA $2139			; dummy read
+		LDX #$02 : STX $420B		; start download
+		LDA #$1801 : STA $4310		;\
+		LDA #$0200 : STA $4312		; |
+		LDX #$00 : STX $4314		; |
+		LDA #$0800 : STA $4315		; | upload downloaded data to 0x4000 area
+		PLA : PHA			; |
+		CLC : ADC #$1000		; |
+		STA $2116			; |
+		LDX #$02 : STX $420B		;/
+		LDA #$3981 : STA $4310		;\
+		LDA #$0200 : STA $4312		; |
+		LDX #$00 : STX $4314		; |
+		LDA #$0800 : STA $4315		; |
+		PLA : PHA			; |
+		STA $2116			; |
+		LDA $2139			; |
+		LDX #$02 : STX $420B		; | i decided to do this in 2 passes so i don't touch sensitive data in $0E00 and up
+		LDA #$1801 : STA $4310		; |
+		LDA #$0200 : STA $4312		; |
+		LDX #$00 : STX $4314		; |
+		LDA #$0800 : STA $4315		; |
+		PLA : PHA			; |
+		CLC : ADC #$1400		; |
+		STA $2116			; |
+		LDX #$02 : STX $420B		;/
+
+		LDA #$AD00 : STA $4312		;\
+		LDX #$7E : STX $4314		; |
+		PLA : STA $2116			; | and finally, upload decompressed 4KB of GFX
+		LDA #$1000 : STA $4315		; |
+		LDX #$02 : STX $420B		; |
+		JML Return_BG3_GFX_Next		;/
 
 	...addr	db $38,$30			; hi byte of VRAM address for GFX2A and GFX2B with map 01 (reverse order)
 
@@ -586,7 +604,15 @@ Build_RAM_Code:
 		LDA.b #.SA1 : STA $3180
 		LDA.b #.SA1>>8 : STA $3181
 		LDA.b #.SA1>>16 : STA $3182
+
+		LDA !GameMode
+		CMP #$14 : BEQ .Light
 		JSR $1E80
+		BRA +
+
+	.Light	LDA #$80 : STA $2200				;\ SNES will run light shader while SA-1 is generating NMI code
+		JSR !MPU_light					;/
+		+
 
 		LDA !HDMA : STA $1F0C				; double mirror HDMA enable to minimize errors caused by lag
 
@@ -979,6 +1005,18 @@ Build_RAM_Code:
 		RTS						; |
 		.LoopCGRAM					; |
 		CPY #$00FC : BCC -				;/
+
+
+	;
+	; light shader
+	;
+		LDA.l !LightBuffer-1 : BPL .NoLight		;\
+		AND #$7FFF : STA.l !LightBuffer-1		; | if a new shade operation is complete, clear the flag and append it
+		JSR .AppendLight				; |
+		.NoLight					;/
+
+
+
 
 
 	;
@@ -1950,6 +1988,88 @@ Build_RAM_Code:
 		CLC : ADC #$000F				; | increment RAM code index
 		TAX						;/
 		RTS
+
+
+
+	.AppendLight
+		PHD						; push DP
+		LDA #$0100 : TCD				; access !LightList on DP
+		TXY						; Y = RAM code index
+		LDA.b !LightIndexStart				;\
+		ASL #3						; |
+		XBA						; | X = !LightList index
+		AND #$000F					; |
+		TAX						;/
+	-	LDA.b !LightList,x				;\ see if this row is included or not
+		AND #$00FF : BEQ ..includethis			;/
+		..exclude					;\
+		INX						; | loop through list
+		CPX #$0010 : BCC -				; |
+		TYX						; > restore X
+		PLD						; |
+		RTS						;/
+
+		..includethis					; include code
+		LDA.w #$02A9 : STA.w !RAMcode+$00,y		; LDA #$XX02
+		LDA.w #$8522 : STA.w !RAMcode+$02,y		; 22 : STA.b $XX
+		LDA.w #$A900 : STA.w !RAMcode+$04,y		; 00 : LDA #$XXXX
+		LDA.b !LightBuffer-1				;\
+		AND #$0100					; |
+		EOR #$0100					; |
+		ASL A						; |
+		ADC.w #!LightData_SNES+2			; | source address (skip first transparent color)
+		STA.w !RAMcode+$06,y				; | (takes the place of previous XXXX)
+		TXA						; |
+		XBA						; |
+		LSR #3						; |
+		CLC : ADC.w !RAMcode+$06,y			; |
+		STA.w !RAMcode+$06,y				;/
+		LDA.w #$0285 : STA.w !RAMcode+$08,y		; STA $02
+		LDA.w #$7EA2 : STA.w !RAMcode+$0A,y		; LDX #$7E (source bank always 0x7E)
+		LDA.w #$0486 : STA.w !RAMcode+$0C,y		; STX $04
+		LDA.w #$1EA9 : STA.w !RAMcode+$0E,y		; LDA #$XX1E
+		LDA.w #$8500 : STA.w !RAMcode+$10,y		; 00 : STA.b $XX
+		LDA.w #$A205 : STA.w !RAMcode+$12,y		; 05 : LDX #$XX
+		TXA						;\
+		ASL #4						; | dest CGRAM (takes place of previous XX)
+		ORA #$8E01					; | > STX $XXXX
+		STA.w !RAMcode+$14,y				;/
+		LDA.w #$2121 : STA.w !RAMcode+$16,y		; 2121
+		LDA.w #$0B8C : STA.w !RAMcode+$18,y		; STY $XX0B
+		LDA.w #$6B42 : STA.w !RAMcode+$1A,y		; 42XX : RTL
+		LDA $00300E					;\
+		SEC : SBC #$001E				; | update size remaining
+		STA $00300E					;/
+
+	-	INX						;\
+		CPX #$0010 : BCS ..done				; |
+		LDA.b !LightList,x				; |
+		AND #$00FF : BNE ..next				; | increment upload size to minimize number of uploads
+		LDA.w !RAMcode+$0F,y				; |
+		CLC : ADC #$0020				; |
+		STA.w !RAMcode+$0F,y				; |
+		LDA $00300E					; |
+		SEC : SBC #$0020				; > update size remaining 
+		STA $00300E					; |
+		BRA -						;/
+
+		..next						;\
+		TYA						; |
+		CLC : ADC #$001B				; | add another upload
+		TAY						; |
+		JMP ..exclude					;/
+
+		..done
+		TYA						;\
+		CLC : ADC #$001B				; | increment RAM code index
+		TAX						;/
+		PLD						; restore DP
+		RTS						; return
+
+
+
+
+
 
 
 
@@ -3131,10 +3251,10 @@ Layer2Level:
 
 
 macro movedynamo(num)
-	LDA $C0C0+(<num>*7) : STA $00+(<num>*7)
-	LDA $C0C2+(<num>*7) : STA $02+(<num>*7)
-	LDA $C0C4+(<num>*7) : STA $04+(<num>*7)
-	LDA $C0C5+(<num>*7) : STA $05+(<num>*7)
+	LDA $C0C0+(<num>*7) : STA $80+(<num>*7)
+	LDA $C0C2+(<num>*7) : STA $82+(<num>*7)
+	LDA $C0C4+(<num>*7) : STA $84+(<num>*7)
+	LDA $C0C5+(<num>*7) : STA $85+(<num>*7)
 	LDA #$0000 : STA $C0C0+(<num>*7)
 endmacro
 
@@ -3144,7 +3264,7 @@ FetchExAnim:
 		PHP
 		PHD
 		REP #$20
-		LDA.w #$6180 : TCD		; we're dumping it in $6180 because that can be accessed at $0180 in bank $40 by SA-1
+		LDA.w #$6100 : TCD		; we're dumping it in $6180 because that can be accessed at $0180 in bank $40 by SA-1
 		%movedynamo(0)			; this will make RAM code generation much smoother
 		%movedynamo(1)
 		%movedynamo(2)
@@ -3637,13 +3757,12 @@ OAM_handler:	PHX : TXY				; > Use Y as sprite index
 	;	(sprite to read from)
 
 
-
-		LDA $3590+1,x				;\
+		LDA !ExtraBits+1,x			;\
 		AND #$08				; |
 		BEQ .Vanilla				; |
-		LDA $35C0+1,x				; | Handle custom sprite
+		LDA !NewSpriteNum+1,x			; | Handle custom sprite
 	CMP #$12 : BNE +
-	LDA $3590+1,x
+	LDA !ExtraBits+1,x
 	AND #$04					; EXCEPTION FOR CUSTOM SPRITE 0x12!!
 	EOR #$04
 	BEQ +

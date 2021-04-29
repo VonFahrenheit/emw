@@ -71,39 +71,40 @@ LoadTable:
 ; a value of 0xFE means the sprite is included in SP1 and should have its offsets set to 0
 ; a value of 0xFF means the sprite is dynamic and does not load anything at level init
 ; note that if value is 0xFF, the super dynamic table will be searched so see if there's a match
-;  --0 --1 --2 --3 --4 --5 --6 --7 --8 --9 --A --B --C --D --E --F
-db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$01,$02,$03 ; 00-
-db $0A,$1D,$FF,$0D,$0D,$45,$45,$45,$45,$FF,$04,$1E,$05,$0E,$10,$13 ; 01-
-db $13,$FE,$14,$14,$14,$14,$15,$16,$3C,$FF,$04,$33,$FF,$FF,$1F,$07 ; 02-
-db $46,$55,$54,$17,$50,$FF,$FF,$3D,$56,$56,$2D,$2D,$2D,$2E,$08,$8F ; 03-
-db $90,$2F,$2F,$2F,$30,$06,$47,$45,$23,$0F,$FF,$10,$FD,$34,$34,$04 ; 04-
-db $04,$39,$91,$FE,$3E,$25,$26,$25,$26,$FE,$FE,$24,$25,$27,$27,$24 ; 05-
-db $FF,$20,$24,$25,$28,$29,$29,$40,$2A,$FF,$FF,$FE,$FE,$09,$4E,$4F ; 06-
-db $35,$36,$36,$92,$FE,$FE,$06,$FF,$FE,$04,$FF,$FF,$FF,$11,$6B,$6B ; 07-
-db $02,$FF,$FF,$09,$09,$FF,$12,$5C,$FF,$FF,$3B,$FF,$FF,$FF,$FF,$2B ; 08-
-db $93,$47,$47,$47,$47,$47,$FF,$47,$47,$37,$38,$48,$5A,$57,$18,$49 ; 09-
-db $FF,$51,$52,$24,$2C,$59,$41,$FF,$21,$FF,$19,$4A,$42,$42,$58,$0C ; 0A-
-db $3D,$09,$1A,$43,$40,$FF,$1B,$4B,$4B,$FF,$4C,$1C,$44,$00,$22,$4D ; 0B-
-db $26,$09,$31,$32,$24,$3C,$3A,$FF,$FE,$05,$30,$56,$8F,$90,$FC,$2F ; 0C-
-db $2F,$45,$FF,$36,$57,$05,$05,$05,$43,$FF,$5B,$5B,$5B,$5B,$56,$5B ; 0D-
-db $24,$3D,$3D,$3D,$22,$3D,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 0E-
-db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 0F-
-db $FF,$80,$4A,$82,$FF,$83,$FF,$FF,$FF,$FF,$FF,$84,$84,$FF,$FF,$09 ; 10-
-db $FF,$0B,$FF,$00,$00,$FF,$85,$85,$86,$87,$87,$88,$89,$89,$8A,$8A ; 11-
-db $FF,$8C,$8B,$FF,$FF,$FF,$FF,$8D,$FF,$8E,$FF,$57,$A1,$A2,$A3,$24 ; 12-
-db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 13-
-db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 14-
-db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 15-
-db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 16-
-db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 17-
-db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 18-
-db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 19-
-db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 1A-
-db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 1B-
-db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 1C-
-db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 1D-
-db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 1E-
-db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 1F-
+
+	;  --0 --1 --2 --3 --4 --5 --6 --7 --8 --9 --A --B --C --D --E --F
+	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$01,$02,$03 ; 00-
+	db $0A,$1D,$FF,$0D,$0D,$45,$45,$45,$45,$FF,$04,$1E,$05,$0E,$10,$13 ; 01-
+	db $13,$FE,$14,$14,$14,$14,$15,$16,$3C,$FF,$04,$33,$FF,$FF,$1F,$07 ; 02-
+	db $46,$55,$54,$17,$50,$FF,$FF,$3D,$56,$56,$2D,$2D,$2D,$2E,$08,$8F ; 03-
+	db $90,$2F,$2F,$2F,$30,$06,$47,$45,$23,$0F,$FF,$10,$FD,$34,$34,$04 ; 04-
+	db $04,$39,$91,$FE,$3E,$25,$26,$25,$26,$FE,$FE,$24,$25,$27,$27,$24 ; 05-
+	db $FF,$20,$24,$25,$28,$29,$29,$40,$2A,$FF,$FF,$FE,$FE,$09,$4E,$4F ; 06-
+	db $35,$36,$36,$92,$FE,$FE,$06,$FF,$FE,$04,$FF,$FF,$FF,$11,$6B,$6B ; 07-
+	db $02,$FF,$FF,$09,$09,$FF,$12,$5C,$FF,$FF,$3B,$FF,$FF,$FF,$FF,$2B ; 08-
+	db $93,$47,$47,$47,$47,$47,$FF,$47,$47,$37,$38,$48,$5A,$57,$18,$49 ; 09-
+	db $FF,$51,$52,$24,$2C,$59,$41,$FF,$21,$FF,$19,$4A,$42,$42,$58,$0C ; 0A-
+	db $3D,$09,$1A,$43,$40,$FF,$1B,$4B,$4B,$FF,$4C,$1C,$44,$00,$22,$4D ; 0B-
+	db $26,$09,$31,$32,$24,$3C,$3A,$FF,$FE,$05,$30,$56,$8F,$90,$FC,$2F ; 0C-
+	db $2F,$45,$FF,$36,$57,$05,$05,$05,$43,$FF,$5B,$5B,$5B,$5B,$56,$5B ; 0D-
+	db $24,$3D,$3D,$3D,$22,$3D,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 0E-
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 0F-
+	db $FF,$80,$4A,$82,$FF,$83,$FF,$FF,$FF,$FF,$FF,$84,$84,$FF,$FF,$09 ; 10-
+	db $FF,$0B,$FF,$00,$00,$FF,$85,$85,$86,$87,$87,$88,$89,$89,$8A,$8A ; 11-
+	db $FF,$8C,$8B,$FF,$FF,$FF,$FF,$8D,$FF,$8E,$FF,$57,$A1,$A2,$A3,$24 ; 12-
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 13-
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 14-
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 15-
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 16-
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 17-
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 18-
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 19-
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 1A-
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 1B-
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 1C-
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 1D-
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 1E-
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 1F-
 
 ; $188650
 
@@ -1902,6 +1903,12 @@ ReadLevelData:
 		LDA [$CE],y				;/
 		TAX					; X = index to sprite file correspondance table
 		STX $0E					; (save this for later)
+
+		CPX #$0123 : BCC ..notelitekoopa	;\
+		CPX #$0127 : BCS ..notelitekoopa	; | elite koopas also load normal koopas
+		LDA #$01 : STA !FileMark+$00		; |
+		..notelitekoopa				;/
+
 		LDA #$00 : XBA				; clear B
 		JSR MarkPalette				; remember which palette sprite uses
 		LDA LoadTable,x				;\
@@ -1992,6 +1999,7 @@ ReadLevelData:
 	..fish	LDA #$01 : STA !FileMark+$45		;\ 0 = fish
 		BRA .Command				;/
 		..notexplodingblock
+
 		CPX #$0059 : BNE .Command		;\
 		LDA $792B				; |
 		CMP #$02 : BNE .Command			; | on sprite tileset 0x02, sparky should be replaced by fuzzy

@@ -1488,10 +1488,10 @@ namespace Leeway
 		.Advanced
 		LDA $3230,x
 		CMP #$08 : BCC .LoopEnd
-		LDA $3590,x
+		LDA !ExtraBits,x
 		AND #$08
 		BEQ +
-		LDA $35C0,x
+		LDA !NewSpriteNum,x
 		CMP #$08
 		BNE +
 		JSR CaptainWarrior
@@ -1506,12 +1506,12 @@ namespace Leeway
 
 		JSR CORE_ATTACK_Setup
 
-		LDA $3590,x
+		LDA !ExtraBits,x
 		AND #$08
 		BEQ .LoBlock
 
 		.HiBlock
-		LDY $35C0,x
+		LDY !NewSpriteNum,x
 		LDA HIT_TABLE+$100,y
 		BRA .AnyBlock
 
@@ -2013,7 +2013,7 @@ namespace Leeway
 		db $F0,$10
 
 	HIT_1C:
-		LDA $3590,x
+		LDA !ExtraBits,x
 		AND #$04 : BNE HIT_19		; can't hit mask
 		LDA $3280,x
 		AND #$03

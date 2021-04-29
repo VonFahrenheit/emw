@@ -1201,7 +1201,12 @@ MarioAnimations:
 		LDA !MarioBehind						; |
 		CMP #$02							; |
 		BCS $02 : LDX #$02						; | !BigRAM+0: which index to use (_p0 or _p1)
-		REP #$20							; | !BigRAM+2: how much to add to X (0x000 or 0x200)
+		LDA $7499 : BEQ +						; | !BigRAM+2: how much to add to X (0x000 or 0x200)
+		LDA !MarioImg							; |
+		CMP #$0F : BEQ ++						; |
+		CMP #$45 : BNE +						; |
+	++	LDX #$00							; |
+	+	REP #$20							; |
 		LDA.l !OAMindex_index,x : STA !BigRAM+0				; |
 		LDA.l !OAMindex_offset,x : STA !BigRAM+2			;/
 		STZ $00								;\
@@ -1756,6 +1761,248 @@ MarioHurtbox:	PHA
 		STA !P2Hurtbox-$80+3,x
 		PLX
 		RTL
+
+
+
+macro CommentOut()
+
+
+;=====================;
+; TRANSCRIBED $00C47E ;
+;=====================;
+MarioMain:
+		STZ $78
+	; this feature was scrapped during vanilla
+	;	LDA $73CB : BPL +
+	;	JSL $01C580
+	;	STZ $73CB
+	;	+
+
+	; keyhole logic
+	; BEQ to BRA to $00C4F8
+
+.CODE_00C4F8	LDA $73FB : BEQ .ProcessMario
+		JMP .CODE_00C58F
+
+.ProcessMario
+.CODE_00C500	LDA $9D : BNE .CODE_00C569
+		INC $14				; oh gosh
+		LDX #$13			;\
+	-	LDA $7495,x			; | auto-decrement $7496-$74A8
+		BEQ $03 : DEC $7495,x		; | (note the BNE, $7495 is not decremented)
+		DEX : BNE -			;/
+		LDA $14
+		AND #$03 : BNE .CODE_00C569
+		LDA $7495 : BEQ .CODE_00C533	; something related to score count
+		; useless score code here??
+.CODE_00C533	LDY $74AD			;\
+		CPY $74AE			; |
+		BCS $03 : LDY $74AE		; |
+		LDA $6DDA : BMI +		; |
+		CPY #$01 : BNE +		; | POW (blue and silver) timer + music
+		LDY $790C : BNE +		; |
+		STA !SPC3			; |
+	+	CMP #$FF : BEQ .CODE_00C55C	; |
+		CPY #$1E : BNE .CODE_00C55C	; |
+		LDA #$24 : STA !SPC4		;/
+.CODE_00C55C	LDX #$06			;\
+	-	LDA $74A8,x			; | auto-decrement $74A9-$74AE
+		BEQ $03 : DEC $74A8,x		; | (same as above: $74A8 is not decremented)
+		DEX : BNE -			;/
+.CODE_00C569	JSR .MARIO_ANIM			; this seems to be the main part of mario's code
+		LDA $16				;\ if mario is not pressing select on this frame, skip the item box drop thing
+		AND #$20 : BEQ .CODE_00C58F	;/
+		; unused debug code here (BRAd past)
+.CODE_00C585	PHB				;\
+		LDA #$02			; |
+		PHA : PLB			; | process item box swap
+		JSL $028008			; |
+		PLB				;/
+.CODE_00C58F	STZ $7402			; clear "mario on note block" flag
+		RTS				; return
+
+
+.MARIO_ANIM	LDA !MarioAnim
+		JSL $0086DF
+
+		.ANIM_ptr
+		dw .Normal			; 00
+		dw .PowerDown			; 01
+		dw .MushroomGet			; 02
+		dw .CapeGet			; 03
+		dw .FlowerGet			; 04
+		dw .HorizontalPipe		; 05
+		dw .VerticalPipe		; 06
+		dw .SlantPipe			; 07
+		dw .YoshiWings			; 08
+		dw .Death			; 09
+		dw .EnterCastle			; 0A
+		dw .Freeze			; 0B
+		dw .RandomMovement		; 0C
+		dw .Door			; 0D
+
+
+
+
+
+;
+; MARIO MAIN START
+;
+
+.Normal		; a bunch of debug code at the start
+.CODE_00CCBB	LDA $7493			; end level?
+		BEQ $03 : JMP .CODE_00C915
+		JSR .CODE_00CDDD		; unknown
+		LDA $9D : BNE .CODE_00CCDF
+
+		STZ $73E8
+		STZ $73DE
+		LDA !MarioStunTimer : BEQ .CODE_00CCE0
+		DEC !MarioStunTimer
+		STZ !MarioXSpeed
+		LDA #$0F : STA !MarioImg
+.CODE_00CCDF	RTS
+
+.CODE_00CCE0	; special level code
+.CODE_00CD24	LDA !MarioYSpeed : BPL +	;\
+		LDA !MarioBlocked		; |
+		AND #$08 : BEQ +		; | mario y speed = 0 when bonking
+		STZ !MarioYSpeed		; |
+		+				;/
+
+		JSR .CODE_00DC2D		; > mario X + Y speed
+		JSR .CODE_00E92B		; > mario collision
+		JSR .CODE_00F595		; > mario screen border interaction
+
+		STZ $73DD
+		LDY $73F3 : BNE .CODE_00CD95
+		LDA $78BE : BEQ +
+		LDA #$1F : STA $8B
+	+	LDA !MarioClimbing : BNE .CODE_00CD72
+		LDA $748F
+		; yoshi check
+		BNE .CODE_00CD79
+		LDA $8B
+		AND #$1B
+		CMP #$1B
+		BNE .CODE_00CD79
+		LDA $15
+		AND #$0C : BEQ .CODE_00CD72
+		LDY $72 : BNE .CODE_00CD72
+		LDA $8B
+		AND #$04 : BEQ .CODE_00CD79
+.CODE_00CD72	LDA $8B : STA !MarioClimbing
+		JMP .CODE_00DB17		; mario climb handler
+
+.CODE_00CD79	LDA !MarioUnderWater : BEQ .CODE_00CD82
+		JSR .CODE_00D988		; mario swim handler
+		; BRA to next yoshi check
+		RTS
+
+.CODE_00CD82	JSR .CODE_00D5F2		; > controls, includes jump/spin jump
+		JSR .CODE_00D062		; > shoot fireball routine
+		JSR .CODE_00D7E4		; > handle flight + jump Y speed influence
+		JSL .CODE_00CEB1		; > set cape image
+		; yoshi check
+		RTS
+
+.CODE_00CD95	LDA #$42			;\
+		LDX $19				; |
+		BEQ $02 : LDA #$43		; |
+		DEY				; | mario pose during level end
+		BEQ $05 : STY $73F3 : LDA #$0F	; |
+		STA !MarioImg			; |
+		RTS				;/
+
+;
+; MARIO MAIN SUB
+;
+
+.CODE_00DC2D	LDA !MarioYSpeed : STA $8A
+		LDA $73E3 : BEQ +		; wall run stuff
+		LSR A
+		LDA !MarioXSpeed
+		BCC $03 : EOR #$FF : INC A
+		STA !MarioYSpeed
+	+	LDX #$00 : JSR .MarioSpeed
+		LDX #$02 : JSR .MarioSpeed
+		LDA $8A : STA !MarioYSpeed
+		RTS
+
+		.MarioSpeed
+		LDA !MarioXSpeed,x
+		ASL #4
+		CLC : ADC $73DA,x
+		STA $73DA,x
+		REP #$20
+		PHP
+		LDA !MarioXSpeed,x
+		LSR #4
+		AND #$000F
+		CMP #$0008
+		BCC $03 : ORA #$FFF0
+		PLP
+		ADC !MarioXPos,x
+		STA !MarioXPos,x
+		SEP #$20
+		RTS
+
+
+
+;
+; OTHER ANIMS
+;
+
+
+
+; anim 0B
+.Freeze		STZ $73DE
+		STZ $73ED
+		LDA $7493 : BEQ .CODE_00C5CE	; end level timer
+		JSL $0CAB13
+		LDA !GameMode
+		CMP #$14 : BEQ .CODE_00C5D1
+		JMP .CODE_00C95B
+
+.CODE_00C5CE	STZ !HDMA
+.CODE_00C5D1	LDA #$01 : STA $7B88
+		LDA #$07 : STA $7928
+		JSR .NoButtons
+		JMP .CODE_00CD24
+
+
+.RandomMovement	JSR .NoButtons
+		STZ $73DE
+		JSR
+
+
+
+
+
+.CODE_00DC2D
+.CODE_00E92B
+.CODE_00F595
+
+
+
+
+.NoButtons	STZ $15
+		STZ $16
+		STZ $17
+		STZ $18
+		RTS
+
+
+
+
+
+endmacro
+
+
+
+
+
+
 
 
 namespace off

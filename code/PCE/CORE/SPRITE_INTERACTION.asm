@@ -124,10 +124,10 @@ SPRITE_INTERACTION:
 		.NoCarry
 
 
-		LDA $3590,x			;\
+		LDA !ExtraBits,x		;\
 		AND #$08			; | Determine if it's a custom sprite
 		BEQ .FirstBlock			;/
-		LDA $35C0,x : TAY		;\
+		LDA !NewSpriteNum,x : TAY	;\
 		LDA.w INTERACTION_TABLE+$100,y	; | Get custom sprite interaction
 		BRA .Shared			;/
 
@@ -778,7 +778,7 @@ GOOMBAXSPEED:	db $2C,$D4
 
 	INT_07:
 		LDX $7695			;\
-		LDA $35C0,x			; | Check for custom projectile
+		LDA !NewSpriteNum,x		; | Check for custom projectile
 		CMP #$05			; |
 		BNE .NoCustomShot		;/
 		LDA $BE,x			;\ Don't destroy unless fireball
@@ -854,7 +854,7 @@ GOOMBAXSPEED:	db $2C,$D4
 		LDA #$01 : STA !SPC4		; Play "collect coin"-sound
 		LDA $3200,x
 		CMP #$7E : BEQ .5		; check for flying red coin
-		LDA $3590,x
+		LDA !ExtraBits,x
 		AND #$04 : BEQ .1
 
 	.100	LDA !CurrentPlayer

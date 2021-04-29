@@ -36,6 +36,7 @@
 
 
 	org $029D5E
+	print "Malleable Extended Sprite inserted at $", pc
 	MalleableExtendedSprite:
 		LDA $14						;\
 		LSR A						; | timer decrements every other frame
@@ -85,25 +86,23 @@
 		.NoContact
 
 		.GFX
-		JSL DisplayGFX
+		LDA !Ex_Data3,x
+		AND #$40 : BEQ ..8x8
+	..16x16	JSL DisplayGFX
 		db $04,$FF
 		db $00,$00,$00,$02
-
-	;	JSR $A1A4					; borrow reznor GFX routine
-		LDA $00 : BEQ .Return
-
-		LDY !OAMindex
-		LDA !Ex_Data1,x					;\
-		AND #$EF					; | set tile
-		STA !OAM+$002-4,y				;/
-		LDA !Ex_Palset,x : STA !OAM+$003-4,y		; > set YXPPCCCT
-		TYA						;\
-		LSR #2						; |
-		TAY						; |
-		LDA #$00					; | set tile size
-		BIT !Ex_Data3,x					; |
-		BVC $02 : LDA #$02				; |
-		STA !OAMhi-1,y					;/
+		BRA ..finish
+	..8x8	JSL DisplayGFX
+		db $04,$FF
+		db $00,$00,$00,$00
+		..finish
+		LDA $00 : BEQ .Return				; return if no tile is on-screen
+		LDY #$02					;\
+		LDA !Ex_Data1,x					; | set tile
+		AND #$EF					; |
+		STA [$02],y					;/
+		LDY #$03					;\ set YXPPCCCT
+		LDA !Ex_Palset,x : STA [$02],y			;/
 
 		.Return
 		RTS						; > return

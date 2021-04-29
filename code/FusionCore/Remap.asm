@@ -1632,9 +1632,9 @@ endmacro
 ;	$7793 -> !Ex_YHi
 ;	$779B -> !Ex_XLo
 ;	$77A3 -> !Ex_XHi
-;	$77AB -> !Ex_Data1
-;	$77B3 -> !Ex_Data2
-;
+;	$77AB -> !Ex_Data1 (auto-decrementing timer)
+;	$77B3 -> !Ex_Data2 (shooter index to level table)
+;		 !Ex_Data3 (which sprite to spawn)
 
 ;	shooter XLo:
 	%remap($02ABB2, !Ex_XLo)

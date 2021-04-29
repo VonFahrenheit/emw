@@ -273,6 +273,28 @@ print "Level code handler inserted at $", pc, "."
 		STA !LightR				; | default lighting
 		STA !LightG				; |
 		STA !LightB				;/
+		LDA #$0002 : STA !LightIndexStart	;\ default: shade all colors except background
+		STZ !LightIndexEnd			;/
+		STZ !LightList+$0			;\
+		STZ !LightList+$2			; |
+		STZ !LightList+$4			; |
+		STZ !LightList+$6			; | default setting is to include all colors in SNES shader
+		LDA #$0101 : STA !LightList+$8		; | except for player palettes!
+		STZ !LightList+$A			; |
+		STZ !LightList+$C			; |
+		STZ !LightList+$E			;/
+
+		LDA #$8000 : STA $4300			;\
+		LDA.w #!PaletteRGB : STA $4302		; |
+		STZ $4304				; |
+		LDA #$0200 : STA $4305			; |
+		STZ $2182				; | initialize light buffers
+		LDA.w #!LightData_SNES : STA $2181	; |
+		LDX #$01 : STX $420B			; |
+		LDA.w #!PaletteRGB : STA $4302		; |
+		LDA #$0200 : STA $4305			; |
+		STX $420B				;/
+		LDX #$02 : STX !ProcessLight		; stop light from running first frame
 
 		LDA #$2200 : STA $4300			;\
 		LDA !Characters				; |
@@ -1086,23 +1108,23 @@ print "Level MAIN inserted at $", pc
 	MAIN_Level:
 		LDA #$01 : STA !LevelInitFlag		; set level MAIN
 
-		JSL !ProcessYoshiCoins			; > Handle Yoshi Coins (A=1)
+		JSL !ProcessYoshiCoins			; > handle Yoshi Coins (A=1)
 
-		PHB : PHK : PLB				; > Bank wrapper
-		REP #$30				; > All registers 16 bit
+		PHB : PHK : PLB				; > bank wrapper
+		REP #$30				; > all registers 16 bit
 		LDA !Level				;\
 		ASL A					; |
 		CLC : ADC !Level			; | load pointer based on level number
 		TAX					; | x3
 		LDA .Table,x : STA $0000		; |
 		LDA .Table+1,x : STA $0001		;/
-		SEP #$30				; > All registers 8 bit
+		SEP #$30				; > all registers 8 bit
 		LDA $0002
 		PHA : PLB				; set bank
 		PHK : PEA.w .Return-1			; set return address
 		JML [$0000]				; execute pointer
 		.Return
-		PLB					; > End of bank wrapper
+		PLB					; > end of bank wrapper
 		RTS
 
 
@@ -1624,6 +1646,20 @@ dl level1FF
 
 
 
+; alt palset light values:
+
+
+LightValues:	;    R     G     B
+.Default	dw $0100,$0100,$0100	; 00
+.Dawn		dw $0100,$0100,$0100	; 01
+.Dusk		dw $0140,$00E0,$00C0	; 02
+.Night		dw $0080,$00C0,$00E0	; 03
+.Lava		dw $0180,$0080,$0080	; 04
+.Water		dw $00C0,$00E0,$00F0	; 05
+
+
+
+
 ;================;
 ;GRAPHICS HANDLER;
 ;================;
@@ -1635,16 +1671,80 @@ HandleGraphics:
 		JSR .RotateSimple
 		JSR .RainbowShifter					; also spawns sparkles
 
-		LDA !GlobalPalsetMix					;\
-		CMP !GlobalPalsetMix+1 : BEQ +				; |
-		LDX #$07						; |
-	-	LDA !Palset8,x						; | if global mix has changed, reload all palsets
-		AND #$7F						; |
-		STA !Palset8,x						; |
-		DEX : BPL -						; |
-		+							;/
+
+	; update light RGB
+		LDA !GlobalLightMix					;\
+		CMP !GlobalLightMix+1 : BNE .UpdateLight		; | see if there was a change this frame
+		JMP .NoLightUpdate					;/
+		.UpdateLight
+		STZ $2250						; prepare multiplication
+		REP #$20						;\
+		LDA !GlobalLight1					; |
+		AND #$00FF						; |
+		ASL A							; |
+		STA $00							; |
+		ASL A							; | RGB values of light 1
+		ADC $00							; |
+		TAX							; |
+		LDA.w LightValues+0,x : STA $04				; |
+		LDA.w LightValues+2,x : STA $06				; |
+		LDA.w LightValues+4,x : STA $08				;/
+		LDA !GlobalLight2					;\
+		AND #$00FF						; |
+		ASL A							; |
+		STA $00							; |
+		ASL A							; | RGB values of light 2
+		ADC $00							; |
+		TAX							; |
+		LDA.w LightValues+0,x : STA $0A				; |
+		LDA.w LightValues+2,x : STA $0C				; |
+		LDA.w LightValues+4,x : STA $0E				;/
+		LDA !GlobalLightMix					;\
+		AND #$00FF						; |
+		CMP #$0021						; | (min 0x00, max 0x20)
+		BCC $03 : LDA #$0020					; | strength of lights 1 and 2
+		STA $02							; |
+		LDA #$0020						; |
+		SEC : SBC $02						; |
+		STA $00							;/
+		STA $2251						;\
+		LDA $04 : STA $2253					; |
+		NOP : BRA $00						; |
+		LDA $2306 : STA $04					; |
+		LDA $06 : STA $2253					; |
+		NOP : BRA $00						; | update light 1
+		LDA $2306 : STA $06					; |
+		LDA $08 : STA $2253					; |
+		LDA #$0020						; |
+		SEC : SBC $00						; |
+		STA $02							; |
+		LDA $2306 : STA $08					;/
+		LDA $02 : STA $2251					;\
+		LDA $0A : STA $2253					; |
+		NOP							; |
+		LDA $04							; |
+		CLC : ADC $2306						; |
+		LSR #5							; |
+		STA !LightR						; |
+		LDA $0C : STA $2253					; |
+		NOP							; |
+		LDA $06							; | update light 2, merge with light 1, then update light RGB values
+		CLC : ADC $2306						; |
+		LSR #5							; |
+		STA !LightG						; |
+		LDA $0E : STA $2253					; |
+		NOP							; |
+		LDA $08							; |
+		CLC : ADC $2306						; |
+		LSR #5							; |
+		STA !LightB						; |
+		SEP #$20						;/
+		.NoLightUpdate
+		LDA !GlobalLightMix : STA !GlobalLightMix+1		; update for next frame
 
 
+
+	; update palsets
 		LDX #$07						;\
 	-	STZ $00,x						; | clear $00-$07
 		DEX : BPL -						;/
@@ -1694,10 +1794,6 @@ HandleGraphics:
 		JSR UpdatePalset
 
 	.next	DEY : BPL .loop						; loop
-
-		LDA !GlobalPalsetMix : STA !GlobalPalsetMix+1
-
-
 		PLP
 		PLB
 		RTL
@@ -1812,6 +1908,7 @@ HandleGraphics:
 		SEP #$30
 		LDA !StarTimer : BNE .Shift
 
+	; music backup function
 	; from $00E2EB in all.log
 		LDA $6DDA
 		CMP #$FF : BEQ +
@@ -1997,66 +2094,107 @@ LoadPalset:
 
 UpdatePalset:
 		REP #$30
-		STY $08							;\
-		JSL !GetCGRAM						; | get CGRAM table index
-		TYX							;/
-		LDA !GlobalPalset1					;\
-		AND #$00FF						; | globel palset variation
-		STA $02							;/
+		STY $08								;\
+		JSL !GetCGRAM							; | get CGRAM table index
+		TYX								;/
 
-		LDA !GlobalPalsetMix
-		AND #$00FF : BEQ .NoMix
 
-	.Mix
-		JSR GetAddress : STA $0A
-		LDA !GlobalPalset2
-		AND #$00FF
-		STA $02
-		JSR GetAddress : STA $02
-		LDA $0A : STA $00
-		PHX
-		LDA $08
-		ORA #$0008
-		ASL #4
-		INC A
-		ASL A
-		TAX
-		PHX
-		LDY #$0000
-		JSR FadePalset
-		PLA
-		CLC : ADC #$6703
-		PLX
-		LDY $08
-		BRA .addr
-
-	.NoMix
-		JSR GetAddress
+		LDY $08								;\
+		LDA $00								; |
+		XBA								; | address for variation 0 palset
+		LSR #3								; |
+		CLC : ADC.w #!PalsetData+7					;/
 		STA $00								; also copy palette to RAM mirror
-		LDA.w #!PalsetData>>16 : STA $02
-		PHX
-		PHY
-		TYA
-		ORA #$0008
-		ASL #4
-		INC A
-		ASL A
-		TAX
-		STA $04
-		LDY #$0000
-	-	LDA [$00],y : STA $6703,x
-		INX #2
-		INY #2
-		CPY #$001E : BCC -
-		PLY
-		PLX
-		LDA $04
-		CLC : ADC.w #$6703
+		LDA.w #!PalsetData>>16 : STA $02				;\
+		PHX								; |
+		PHY								; |
+		TYA								; |
+		ORA #$0008							; | set up pointer or whatever
+		ASL #4								; | (i don't remember what the ORA #$0008 is for)
+		INC A								; |
+		ASL A								; |
+		TAX								; |
+		STA $04								;/
+		LDA #$0080 : TSB !ProcessLight					; SA-1 currently writing to !PaletteRGB
+		LDY #$0000							; index
+		LDA #$0100							;\
+		CMP !LightR : BNE .PreShade					; | see if preshading is required
+		CMP !LightG : BNE .PreShade					; |
+		CMP !LightB : BNE .PreShade					;/
 
-	.addr	STA !VRAMbase+!CGRAMtable+$02,x					; store source address
+	.Raw
+	-	LDA [$00],y : STA !PaletteRGB,x					;\
+		INX #2								; | update palette in RAM
+		INY #2								; |
+		CPY #$001E : BCC -						;/ > loop
+		LDA #$0080 : TRB !ProcessLight					; SA-1 no longer writing to !PaletteRGB
+		PLY								;\
+		PLX								; | source address
+		LDA $04								; |
+		CLC : ADC.w #!PaletteRGB					;/
+		STA !VRAMbase+!CGRAMtable+$02,x					; store source address
 		LDA #$001E : STA !VRAMbase+!CGRAMtable+$00,x			; upload size
 		SEP #$30							; A 8-bit
-		LDA.b #!PalsetData>>16 : STA !VRAMbase+!CGRAMtable+$04,x	; source bank
+		LDA.b #!PaletteRGB>>16 : STA !VRAMbase+!CGRAMtable+$04,x	; source bank
+		TYA								;\
+		ORA #$08							; |
+		ASL #4								; | dest CGRAM
+		INC A								; |
+		STA !VRAMbase+!CGRAMtable+$05,x					;/
+		RTS
+
+	.PreShade
+		PEI ($04)							; preserve
+		STZ $2250							; multiplication
+		LDA !LightR : STA $04						;\
+		LDA !LightG : STA $06						; | DP speedup
+		LDA !LightB : STA $08						;/
+	-	LDA [$00],y : STA $0E						; > get source color
+		AND #$001F							;\
+		STA $2251							; |
+		LDA $04 : STA $2253						; |
+		NOP : BRA $00							; | shade R
+		LDA $2307							; |
+		CMP #$0020							; |
+		BCC $03 : LDA #$001F						; |
+		STA $0A								;/
+		LDA $0E								;\
+		LSR #5								; |
+		STA $0E								; |
+		AND #$001F							; |
+		STA $2251							; |
+		LDA $06 : STA $2253						; | shade G
+		NOP : BRA $00							; |
+		LDA $2307							; |
+		CMP #$0020							; |
+		BCC $03 : LDA #$001F						; |
+		STA $0C								;/
+		LDA $0E								;\
+		LSR #5								; |
+		AND #$001F							; |
+		STA $2251							; |
+		LDA $08 : STA $2253						; | shade B
+		NOP : BRA $00							; |
+		LDA $2307							; |
+		CMP #$0020							; |
+		BCC $03 : LDA #$001F						;/
+		ASL #5								;\
+		ORA $0C								; |
+		ASL #5								; |
+		ORA $0A								; | assemble color and write to palette
+		STA !PaletteBuffer,x						; |
+		INX #2								; |
+		INY #2								; |
+		CPY #$001E : BCC -						;/ > loop
+		LDA #$0080 : TRB !ProcessLight					; SA-1 no longer writing to !PaletteRGB
+		PLA								;\ > pull from $04
+		PLY								; | source address
+		PLX								; |
+		CLC : ADC.w #!PaletteBuffer					;/
+		STA !VRAMbase+!CGRAMtable+$02,x					; store source address
+		LDA #$001E : STA !VRAMbase+!CGRAMtable+$00,x			; upload size
+		SEP #$30							; A 8-bit
+		LDA.b #!PaletteBuffer>>16 : STA !VRAMbase+!CGRAMtable+$04,x	; source bank
 		TYA								;\
 		ORA #$08							; |
 		ASL #4								; | dest CGRAM
@@ -2065,36 +2203,6 @@ UpdatePalset:
 		RTS
 
 
-GetAddress:
-; input:
-; $00 = palset id
-; $02 = suffix id (treated as 0 if invalid)
-		PHX
-		LDX #$0000						;
-		LDA $02 : BEQ .type0					; if variation is 0, skip search
-	-	LDA.l read3(!PalsetData),x				;\
-		AND #$00FF						; |
-		CMP $00 : BNE +						; | search for alt palset that matches both global palset option and palset id
-		LDA.l read3(!PalsetData)+1,x				; |
-		AND #$00FF						; |
-		CMP $02 : BNE +						;/
-		TXA							;\
-		CLC : ADC.l !PalsetData					; |
-		INC #2							; | if there's a match, use this upload address
-		LDY $08							; |
-		PLX							; |
-		RTS							;/
-	+	TXA							;\
-		CLC : ADC #$0020					; | keep searching if a match was not found
-		TAX							; |
-		CMP.l !PalsetData+3 : BCC -				;/
-	.type0	LDY $08							;\
-		LDA $00							; |
-		XBA							; | address for variation 0 palset
-		LSR #3							; |
-		CLC : ADC.w #!PalsetData+7				; |
-		PLX							; |
-		RTS							;/
 
 
 
@@ -2196,15 +2304,15 @@ FadePalset:
 print "Unsorted code inserted at $", pc, "."
 incsrc "levelcode/Unsorted.asm"
 
-print "Realm 1 code inserted at $", pc, "."
-incsrc "levelcode/Realm1.asm"
-
 print "Bank $18 level code ends at $", pc, "."
 
 org $198000
 db $53,$54,$41,$52
 dw $FFF7
 dw $0008
+
+print "Realm 1 code inserted at $", pc, "."
+incsrc "levelcode/Realm1.asm"
 
 print "Realm 2 code inserted at $", pc, "."
 incsrc "levelcode/Realm2.asm"

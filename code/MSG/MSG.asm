@@ -54,6 +54,9 @@ sa1rom
 	print "Lunar Magic's message data is located at $", hex(read3($03BC0B)), "."
 	print "Custom code inserted at $", pc, "."
 
+
+	; this code is only run if MSG was called with a normal JSL
+	; if it was called with the %CallMSG() macro, this part is skipped
 	TrueReturn:
 		%TrackCPU(!TrackMSG)
 
@@ -68,8 +71,7 @@ sa1rom
 		CMP #$02 : BEQ .Mode2
 
 		.Mode0					; full pause mode
-		JSL !BuildOAM
-		RTL
+		JML !BuildOAM
 
 		.Mode1					; run animations but don't let players move
 		LDA #$02
@@ -85,7 +87,7 @@ sa1rom
 		LDA #$98 : STA !OAMindex		; > Set OAM index to after message tiles
 		REP #$20
 		LDA $01,s
-		INC A
+		INC #2
 		STA $01,s
 		SEP #$20
 		RTL

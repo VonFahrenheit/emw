@@ -54,18 +54,17 @@ UPDATE_SPEED:
 		ASL #4
 		CLC : ADC !P2YFraction
 		STA !P2YFraction
+		REP #$20
 		PHP
-		LDY #$00
 		LDA !P2YSpeed
 		LSR #4
-		CMP #$08
-		BCC +
-		ORA #$F0
-		DEY
-	+	PLP
-		ADC !P2YPosLo : STA !P2YPosLo
-		TYA
-		ADC !P2YPosHi : STA !P2YPosHi
+		AND #$000F
+		CMP #$0008
+		BCC $03 : ORA #$FFF0
+		PLP
+		ADC !P2YPosLo
+		STA !P2YPosLo
+		SEP #$20
 
 		.ReturnY
 		LDY #$00
@@ -118,18 +117,17 @@ UPDATE_SPEED:
 		ASL #4
 		CLC : ADC !P2XFraction
 		STA !P2XFraction
+		REP #$20
 		PHP
-		LDY #$00
 		LDA !P2XSpeed
 		LSR #4
-		CMP #$08
-		BCC +
-		ORA #$F0
-		DEY
-	+	PLP
-		ADC !P2XPosLo : STA !P2XPosLo
-		TYA
-		ADC !P2XPosHi : STA !P2XPosHi
+		AND #$000F
+		CMP #$0008
+		BCC $03 : ORA #$FFF0
+		PLP
+		ADC !P2XPosLo
+		STA !P2XPosLo
+		SEP #$20
 
 		LDA !P2Slope
 		BEQ .ReturnX
@@ -149,25 +147,24 @@ UPDATE_SPEED:
 		ASL #4					; |
 		CLC : ADC !P2VectorMemX			; |
 		STA !P2VectorMemX			; |
+		REP #$20				; |
 		PHP					; |
-		LDY #$00				; |
 		LDA !P2VectorX				; |
 		LSR #4					; | Apply X vector
-		CMP #$08				; |
-		BCC +					; |
-		ORA #$F0				; |
-		DEY					; |
-	+	PLP					; |
-		ADC !P2XPosLo : STA !P2XPosLo		; |
-		TYA					; |
-		ADC !P2XPosHi : STA !P2XPosHi		;/
+		AND #$000F				; |
+		CMP #$0008				; |
+		BCC $03 : ORA #$FFF0			; |
+		PLP					; |
+		ADC !P2XPosLo				; |
+		STA !P2XPosLo				; |
+		SEP #$20				;/
 		LDA !P2VectorAccX			;\
 		CLC : ADC !P2VectorX			; | Update X vector
 		STA !P2VectorX				;/
 		LDA !P2VectorTimeX			;\
 		BNE +					; |
 		STZ !P2VectorX				; |
-		STZ !P2VectorAccX			; | Update X timer
+		STZ !P2VectorAccX			; | Update X vector timer
 		STZ !P2VectorMemX			; |
 		BRA .ReturnVectorX			; |
 	+	DEC !P2VectorTimeX			; |
@@ -179,24 +176,23 @@ UPDATE_SPEED:
 		CLC : ADC !P2VectorMemY			; |
 		STA !P2VectorMemY			; |
 		PHP					; |
-		LDY #$00				; |
+		REP #$20				; |
 		LDA !P2VectorY				; |
 		LSR #4					; | Apply Y vector
-		CMP #$08				; |
-		BCC +					; |
-		ORA #$F0				; |
-		DEY					; |
-	+	PLP					; |
-		ADC !P2YPosLo : STA !P2YPosLo		; |
-		TYA					; |
-		ADC !P2YPosHi : STA !P2YPosHi		;/
+		AND #$000F				; |
+		CMP #$0008				; |
+		BCC $03 : ORA #$FFF0			; |
+		PLP					; |
+		ADC !P2YPosLo				; |
+		STA !P2YPosLo				; |
+		SEP #$20				;/
 		LDA !P2VectorAccY			;\
 		CLC : ADC !P2VectorY			; | Update Y vector
 		STA !P2VectorY				;/
 		LDA !P2VectorTimeY			;\
 		BNE +					; |
 		STZ !P2VectorY				; |
-		STZ !P2VectorAccY			; | Update Y timer
+		STZ !P2VectorAccY			; | Update Y vector timer
 		STZ !P2VectorMemY			; |
 		BRA .ReturnVectorY			; |
 	+	DEC !P2VectorTimeY			; |

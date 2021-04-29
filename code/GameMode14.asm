@@ -5,18 +5,38 @@
 ;
 ; TO DO:
 ; TODO:
-; - Fe26
-;	- HI_PRIO_OAM
-;	- RexCode.asm special hi prio OAM code
+; - PCE
+;	- side exit and camera border interaction
+;	- mario powerup anim
+;	- starman sparkles (Leeway crawl X offset)
+;	- mario tile interaction: continue past level borders
 ; - FusionCore
 ;	- particles
-;	- custom shooter
 ; - generators
 ; - scroll sprites ??
-; - BG3 auto scroll: missing too many bits
-; - MSG
-; - starman sparkles (Leeway crawl X offset)
-; - have SNES process colors in WRAM during phase 2 (maybe)
+; - transitions (level -> level and level -> realm)
+; - replace alt palset with light shader
+
+
+
+; - trim:
+;	- VR3 OAM handler
+;	- Fe26 extra hijacks
+;	- PCE extra Mario hijacks
+;	- smooth camera setting
+;	- SP_Patch
+;		- camera hijacks
+
+
+
+
+
+
+
+
+
+
+
 
 GAMEMODE14:
 namespace GAMEMODE14
@@ -34,16 +54,16 @@ namespace GAMEMODE14
 ; phase 2:
 ; - SNES
 ;	- MAIN_Level
+;	- camera
 ; - SA-1
 ;	- status bar
 ;	- rainbow shifter + simple rotate
-;	- starman sparkles
+;	- starman effect (maybe move color shader to SNES side)
 ;
 ; phase 3:
 ; - SNES
 ;	- vanilla animations
 ; - SA-1
-;	- camera
 ;	- scroll sprites
 ;	- camera shake
 ;	- PCE
@@ -65,7 +85,7 @@ namespace GAMEMODE14
 ; phase 1: accelerator mode
 		LDA !MsgTrigger : BEQ .NoMSG		;\
 		JSL read3($00A1DF+1)			; | MSG
-		RTS					; |
+		BRA .RETURN				; |
 		.NoMSG					;/
 
 	; disable down and X/Y during animations and level end
@@ -111,6 +131,9 @@ namespace GAMEMODE14
 		LDA #$0B : STA !GameMode
 		.GameIsPaused
 		; RETURN
+		.RETURN
+		LDA #$00				;\ bank = 0x00
+		PHA : PLB				;/
 		JML $00A289				; JML to RTS
 		.PauseDone
 
@@ -131,30 +154,29 @@ namespace GAMEMODE14
 		LDA #$80 : STA $2200			;/
 
 	.SNES
+	; SNES phase 1, executed on DP 0
 		JSR MAIN_Level				; SNES thread is just MAIN level code
 		JSL Camera				; camera (ran in accelerator mode)
 		%MPU_SNES($01)				; end of SNES phase 1
+
+	; SNES phase 2, executed on DP $0100
 		PHD					; push DP
 		%MPU_copy()				; set up SNES MPU DP
 		JSL read3($00A2A5+1)			; call routine
 		PLD					; restore DP
-	;	JSR $1E85				; wait for SA-1 to finish MPU operation
-
-		JSR !MPU_light
-
-		JML $00A289				; JML to RTS
+		JSR !MPU_light				; SNES will process light shader while SA-1 is running the main game
+		BRA .RETURN
 
 
 	.SA1
-		PHB
-		PHP
-		SEP #$30
-		PHD
+		PHB					;\
+		PHP					; | start of SA-1 thread
+		SEP #$30				;/
+
+	; SA-1 phase 1, executed on DP $0100
+		PHD					; push DP
 		%MPU_copy()				; set up SA-1 MPU DP
 		JSL $008E1A				; status bar
-		JSL HandleGraphics			; rotate simple + rainbow shifter (part of SP_Level.asm)
-		PLD
-
 		LDA $14					;\
 		AND #$1F				; |
 		TAY					; | index RNG table
@@ -182,42 +204,21 @@ namespace GAMEMODE14
 		ADC !P2YPosLo				;/
 		STA !RNGtable,y				; store new RN
 		STA !RNG				; most recently generated
-
+		PLD					; restore DP
 		%MPU_SA1($01)				; end of SA-1 phase 1
 
-		REP #$20
-		LDA $1A
-		LSR #2
-	;	STA !LightR
-		STA !LightG
-		STA !LightB
-		SEP #$20
-
-		LDA !LightBuffer : BPL +
-		REP #$20
-		AND #$0001
-		EOR #$0001
-		BEQ $03 : LDA #$0200
-		CLC : ADC.w #!LightData_SNES+2 : STA !VRAMbase+!CGRAMtable+$02
-		LDA.w #!LightData_SNES>>16 : STA !VRAMbase+!CGRAMtable+$04
-		LDA #$01FE : STA !VRAMbase+!CGRAMtable+$00
-		SEP #$20
-		LDA #$01 : STA !VRAMbase+!CGRAMtable+$05
-		LDA #$80 : TRB !LightBuffer
-		+
-
-		%ApplyLight($01,$00)
-
-
-
-
-
-
-		JSL $05BC00				; scroll sprites (includes LM's hijack for BG3 controller)
+	; SA-1 phase 2, executed on DP 0
+		JSL HandleGraphics			; rotate simple + starman handler (part of SP_Level.asm)
+		SEP #$30				; all regs 8-bit
+		LDA !ProcessLight			;\
+		CMP #$02 : BNE ..noshade		; | start new shade operation when previous one finishes
+		STZ !ProcessLight			; |
+		..noshade				;/
+		JSL $05BC00				; scroll sprites (includes LM's hijack for BG3 controller, which i have KILLED >:D)
 		PEI ($1C)				;\
 		REP #$20				; |
 		STZ $7888				; |
-		LDA $7887 : BEQ .noshake		; > note that $7888 was JUST cleared so hi byte is fine
+		LDA $7887 : BEQ ..noshake		; > note that $7888 was JUST cleared so hi byte is fine
 		DEC $7887				; |
 		AND #$0003				; |
 		ASL A					; |
@@ -228,20 +229,19 @@ namespace GAMEMODE14
 		STA $7888				; |
 		CLC : ADC $1C				; |
 		STA $1C					; |
-		.noshake				; |
+		..noshake				; |
 		SEP #$30				;/
 		JSL $158008				; call PCE
 		JSL $168000				; call Fe26 main loop
 		JSL $148000				; call FusionCore (fusion sprites + particles)
-		REP #$20
-		PLA : STA $1C
-		SEP #$30
-
+		REP #$20				;\
+		PLA : STA $1C				; | restore BG1 Y
+		SEP #$30				;/
 		JSL !BuildOAM				; build OAM at the end of the game mode code
 
-		PLP
-		PLB
-		RTL
+		PLP					;\
+		PLB					; | end of SA-1 thread
+		RTL					;/
 
 	pushpc
 	org $05BC42
@@ -322,24 +322,36 @@ namespace GAMEMODE14
 ;
 ;
 
+pushpc
+	org $009712
+		JSL Camera
+	org $009A58
+		JSL Camera
+	org $00A299
+		JSL Camera
+pullpc
+
+
 
 ; the vanilla routine is also called once during level init
 ; sending that here is almost certainly fine
 ; $00F6DB (scroll routine)
 Camera:
 		LDA.b #.SA1 : STA $3180				;\
-		LDA.b #.SA1>>8 : STA $3181			; | have SA-1 run most of the routine
-		LDA.b #.SA1>>16 : STA $3182			; |
-		JSR $1E80					;/
+		LDA.b #.SA1>>8 : STA $3181			; |
+		LDA.b #.SA1>>16 : STA $3182			; | have SA-1 run most of the routine
+		LDA #$80 : STA $2200				; | (while SNES works on shading)
+		JSR !MPU_light					;/
 		REP #$20					;\
 		LDA.l !HDMAptr+0 : BEQ .Return			; |
 		STA $00						; |
-		LDA.l !HDMAptr+1				; |
-		STA $01						; | execute HDMA code
+		LDA.l !HDMAptr+1 : STA $01			; | execute HDMA code
 		PHK : PLB					; |
 		PHK : PEA .Return-1				; |
 		JML [$3000]					;/
 		.Return						;\
+		REP #$20					; |
+		LDA #$0000 : STA.l !HDMAptr			; > clear pointer
 		SEP #$30					; | return all regs 8-bit
 		RTL						;/
 
@@ -368,7 +380,7 @@ Camera:
 
 		STZ $08					; clear "forbid X" flag (used for composite)
 
-		SEP #$20
+		SEP #$30
 		LDA !MultiPlayer : BEQ .P1
 		LDA !P2Status : BEQ +
 		LDA !P2Status-$80 : BEQ .P1
@@ -408,6 +420,12 @@ Camera:
 		LDA !P2XPosLo-$80 : STA $0C
 		LDA !P2YPosLo-$80 : STA $0E
 		++
+
+		LDX !GameMode
+		CPX #$14 : BEQ +
+		LDA $94 : STA $0C
+		+
+
 
 		LDA $6BF5
 		AND #$0040
@@ -482,6 +500,9 @@ Camera:
 		CMP $F6AD,y
 		BPL $03 : LDA $F6AD,y
 
+		LDX !GameMode					;\ unlimit speed during other game modes
+		CPX #$14 : BNE .UnlimitY			;/
+
 		STA $00						;\
 		STZ $02						; |
 		SEC : SBC $1C					; |
@@ -495,6 +516,7 @@ Camera:
 		BRA +						; |
 	.OkY	LDA $00						; |
 	+	BPL $03 : LDA #$0000				; |
+		.UnlimitY					; |
 		STA $1C						;/
 
 		LDA $04					;\
@@ -559,6 +581,9 @@ Camera:
 		CLC : ADC $1A
 		BPL $03 : LDA #$0000
 
+		LDX !GameMode					;\ unlimit speed during other game modes
+		CPX #$14 : BNE .UnlimitX			;/
+
 		STA $00						;\
 		STZ $02						; |
 		SEC : SBC $1A					; |
@@ -572,6 +597,7 @@ Camera:
 		BRA +						; |
 	.OkX	LDA $00						; |
 	+	BPL $03 : LDA #$0000				; |
+		.UnlimitX					; |
 		STA $1A						;/
 
 		LDA $5E						;\
@@ -664,6 +690,7 @@ Camera:
 ;		PLB						;/
 
 		JSL BG2Controller
+		LDA !MsgTrigger : BNE .EndBox
 		JSL BG3Controller
 
 		.EndBox
@@ -1229,11 +1256,12 @@ Camera:
 		LDA !BG3XFraction
 		BRA +
 	..run	LDA !BG3XSpeed
+		JSR .12percent
 		CLC : ADC !BG3XFraction
 		STA !BG3XFraction
-	+	LSR #7
+	+	LSR #3
 		BIT !BG3XFraction
-		BPL $03 : ORA #$FE00
+		BPL $03 : ORA #$E000
 		CLC : ADC $1A
 		RTS
 
@@ -1294,11 +1322,12 @@ Camera:
 		LDA !BG3YFraction
 		BRA +
 	..run	LDA !BG3YSpeed
+		JSR .12percent
 		CLC : ADC !BG3YFraction
 		STA !BG3YFraction
-	+	LSR #7
+	+	LSR #3
 		BIT !BG3YFraction
-		BPL $03 : ORA #$FE00
+		BPL $03 : ORA #$E000
 		CLC : ADC $1C
 		RTS
 
@@ -1313,6 +1342,15 @@ Camera:
 	+	STA $24
 		SEP #$20
 		RTL
+
+
+.12percent	BPL ..pos
+	..neg	EOR #$FFFF
+		LSR #3
+		EOR #$FFFF
+		RTS
+	..pos	LSR #3
+		RTS
 
 
 

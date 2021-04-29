@@ -791,59 +791,42 @@ Rex:
 		TAY					; |
 		LDA .BagPtr,y : STA $04			; |
 		LDA .BagPtr+1,y : STA $05		; |
+		LDA $06 : STA !BigRAM+$7C		; > location that bag is added to
 		JSR AddTilemap				; |
 		PLA : STA $04				; |
 		PLA : STA $05				;/
 	.Write	REP #$20
 		LDA.w #!BigRAM : STA $04
 		SEP #$20
+		LDY !ExtraProp1,x
+		LDA !BigRAM
+		SEC : SBC .BagFrontTiles,y
+		STA !BigRAM
 		STZ !SpriteTile,x
 		STZ !SpriteProp,x
-		JSR LOAD_PSUEDO_DYNAMIC			; load complete tilemap
+		JSR LOAD_PSUEDO_DYNAMIC_p1			; load complete tilemap
+
 		PLA : STA $33C0,x
 
-
-		LDA $33C0,x : STA $0C
-		LDA !ExtraProp1,x : BEQ +
-		LDX #$04
+		LDY !ExtraProp1,x
+		LDA .BagFrontTiles,y : BEQ +
+		LDY !BigRAM+$7C
 		CMP #$04
-		BNE $02 : LDX #$08
-		STX $0F
-		LDA $0E
-		SEC : SBC #$04
-		TAY
-		LDX !OAMindex
-	-	LDA !OAM+$100,y : STA !OAM+$000,x
-		LDA !OAM+$101,y : STA !OAM+$001,x
-		LDA !OAM+$102,y : STA !OAM+$002,x
-		LDA !OAM+$103,y
-		AND #$F1
-		ORA $0C
-		STA !OAM+$003,x
-		LDA #$F0 : STA !OAM+$101,y
-		PHX
-		PHY
-		TXA
-		LSR #2
-		TAX
+		BNE $04 : INY #4
+		STA !BigRAM+$00,y
+		LDA !BigRAM+$01 : STA !BigRAM+$01,y
 		TYA
-		LSR #2
-		TAY
-		LDA !OAMhi+$40,y : STA !OAMhi+$00,x
-		PLY
-		PLX
-		INX #4
-		LDA $0F
-		SEC : SBC #$04 : BEQ ++
-		STA $0F
-		INY #4
-		BRA -
-	++	STX !OAMindex
-		LDX !SpriteIndex
+		CLC : ADC.b #!BigRAM : STA $04
+		JSR LOAD_PSUEDO_DYNAMIC_p2
 		+
 
 		PLB
 		RTL
+
+	.BagFrontTiles
+		db $00,$04,$04,$04,$08,$08
+
+
 
 	.AnimIdle
 		dw .TM_Idle00 : db $FF,$00	; 00
@@ -928,26 +911,26 @@ Rex:
 		dw .Sword,.Sword_tilt1,.Sword,.Sword_tilt2
 	..End
 
-		.Hat1
+		.Hat1		; green robin hood hat
 		db $04,$94
 		db $3A,$03,$E8,$00
-		.Hat2
+		.Hat2		; red hat with bow
 		db $04,$95
 		db $38,$04,$E9,$00
-		.Hat3
+		.Hat3		; straw hat
 		db $04,$96
 		db $38,$05,$E8,$00
-		.Hat4
+		.Hat4		; fez
 		db $04,$97
 		db $38,$04,$EC,$00
-		.Hat5
+		.Hat5		; bandit bandana
 		db $04,$98
 		db $36,$04,$F0,$00
-		.Hat6
+		.Hat6		; top hat and mustache
 		db $08,$99
 		db $36,$05,$E4,$00
 		db $38,$FD,$F7,$02
-		.Hat7
+		.Hat7		; sports bandana
 		db $04,$9A
 		db $36,$06,$EE,$00
 		.Helmet
@@ -959,37 +942,44 @@ Rex:
 		db $3A,$06,$E8,$06
 
 
-		.Bag1
+; bag 1 - only 8x8 in front
+; bag 2 - only 8x8 in front
+; bag 3 - only 8x8 in front
+; bag 4 - both in front
+; sword - both in front
+
+
+		.Bag1		; coin bag
 		db $08,$9C
-		db $10,$07,$00,$00
 		db $36,$0A,$FB,$01
+		db $10,$07,$00,$00
 		..tilt1
 		db $08,$9C
-		db $10,$08,$00,$00
 		db $36,$0B,$FB,$01
+		db $10,$08,$00,$00
 		..tilt2
 		db $08,$9C
-		db $10,$06,$00,$00
 		db $36,$09,$FB,$01
+		db $10,$06,$00,$00
 
-		.Bag2
+		.Bag2		; mushroom bindle
 		..tilt1
 		db $08,$9D
-		db $18,$07,$FE,$00
 		db $38,$0E,$F7,$01
+		db $18,$07,$FE,$00
 		..tilt2
 		db $08,$9D
-		db $18,$08,$FE,$00
 		db $38,$0F,$F7,$01
+		db $18,$08,$FE,$00
 
-		.Bag3
+		.Bag3		; backpack
 		..tilt1
 		..tilt2
 		db $08,$9E
-		db $10,$08,$FD,$00
 		db $36,$09,$F8,$01
+		db $10,$08,$FD,$00
 
-		.Bag4
+		.Bag4		; box
 		..tilt1
 		..tilt2
 		db $08,$9F

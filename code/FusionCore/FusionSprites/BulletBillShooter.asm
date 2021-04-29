@@ -1,14 +1,20 @@
 
 
+; because bullet bill shooter does not use speed or fractions, those regs are free
+; i'll use !Ex_Data3 to hold the sprite number of the sprite it should spawn
+; !Ex_XFraction will hold the extra bits of the sprite
+
+
 	; bullet bill shooter rewrite
 	pushpc
 	org $02B466
+	print "Bullet Bill shooter inserted at $", pc
 	BulletBillShooter:
 		LDA !Ex_Data1,x : BEQ .Run
 	.r	RTS
 
 		.Run
-		LDA #$60 : STA !Ex_Data1,x
+		LDA #$60 : STA !Ex_Data1,x		; reset timer
 		LDA !Ex_YLo,x				;\
 		CMP $1C					; |
 		LDA !Ex_YHi,x				; |
@@ -65,7 +71,7 @@
 		JSL !GetSpriteSlot			;\ see if bullet can spawn
 		BMI .r2					;/
 		LDA #$09 : STA !SPC4			; bullet bill shoot SFX
-		JSL .ShootBill				; moved to other bank so this fits
+		JSL .Shoot				; moved to other bank so this fits
 	.r2	RTS
 
 		.XDisp
@@ -73,23 +79,71 @@
 	warnpc $02B51A
 	pullpc
 
-		.ShootBill
-		LDA #$1C : STA $3200,y			;\
-		LDA #$01 : STA $3230,y			; |
-		LDA #$00 : STA !ExtraBits,y		; |
-		PHX					; |
-		TYX					; |
-		JSL !InitSpriteTables			; |
-		TXY					; |
-		PLX					; | spawn bullet
+		.Shoot
+		LDA #$01 : STA $3230,y			;\
 		LDA !Ex_XLo,x : STA $3220,y		; |
 		LDA !Ex_XHi,x : STA $3250,y		; |
-		LDA !Ex_YLo,x				; |
+		LDA !Ex_YLo,x				; | setup for spawn
 		SEC : SBC #$01				; |
 		STA $3210,y				; |
 		LDA !Ex_YHi,x				; |
 		SBC #$00				; |
-		STA $3240,y				;/
+		STA $3240,y				; |
+		LDA !Ex_XFraction : STA !ExtraBits,y	;/
+		AND #$08 : BEQ .Vanilla
+
+		.Custom
+		LDA !Ex_Data3,x : STA !NewSpriteNum,x	;\ custom sprite
+		BRA .Spawn				;/
+
+		.Vanilla
+		LDA !Ex_Data3,x : STA $3200,y		;\ special case for bullet bill
+		CMP #$1C : BEQ .BulletBill		;/
+
+		.Spawn
+		PHX					;\
+		LDA $00					; |
+		LSR A					; |
+		PHA					; |
+		TYX					; |
+		JSL !InitSpriteTables			; | set vector for non-bullet bill sprites
+		TXY					; |
+		PLX					; |
+		LDA.l .XSpeed,x : STA !SpriteVectorX,y	; |
+		LDA.l .XAcc,x : STA !SpriteVectorAccX,y	; |
+		LDA #$30 : STA !SpriteVectorTimerX,y	; |
+		LDA #$08				; |
+		STA !SpritePhaseTimer,y			; > phase through shooter block
+		STA !SpriteDisSprite,y			; > don't interact with other sprites while phasing
+		BRA +					;/
+
+		.BulletBill
+		PHX					;\
+		TYX					; | reset sprite
+		JSL !InitSpriteTables			; |
+	+	PLX					;/
 		RTL					; return
+
+		.XSpeed
+		db $D0,$30
+		.XAcc
+		db $01,$FF
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

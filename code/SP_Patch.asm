@@ -193,6 +193,10 @@ CODE_1380C0:
 	JSR CHANGE_MAP16
 	RTL
 
+CODE_1380C4:
+	JSR FADE_LIGHT
+	RTL
+
 
 incsrc "5bpp.asm"
 incsrc "Transform_GFX.asm"
@@ -1160,6 +1164,36 @@ CHANGE_MAP16:
 
 
 
+;==================;
+;FADE LIGHT ROUTINE;
+;==================;
+; this routine will fade !LightR/G/B to the values in $00-$05
+FADE_LIGHT:
+		LDA !LightR
+		CMP $00 : BEQ .RDone
+		BCC .Rp
+	.Rm	DEC #2
+	.Rp	INC A
+		STA !LightR
+	.RDone
+		LDA !LightG
+		CMP $02 : BEQ .GDone
+		BCC .Gp
+	.Gm	DEC #2
+	.Gp	INC A
+		STA !LightG
+	.GDone
+		LDA !LightB
+		CMP $04 : BEQ .BDone
+		BCC .Bp
+	.Bm	DEC #2
+	.Bp	INC A
+		STA !LightB
+	.BDone
+		RTS
+
+
+
 ;=====================;
 ;HURT PLAYER 2 ROUTINE;
 ;=====================;
@@ -1340,7 +1374,7 @@ RGBtoHSL:
 		TXA
 		ASL A
 		TAY
-		CLC : ADC $00
+		ADC $00
 		TAX
 		TYA
 		AND #$01FF
@@ -1361,6 +1395,7 @@ RGBtoHSL:
 		RTS
 
 	.SA1
+		PHB : PHK : PLB
 		PEA.w ..return-1
 		PHP
 		REP #$30
@@ -1368,6 +1403,7 @@ RGBtoHSL:
 		LDY $02
 		BRA .Go
 		..return
+		PLB
 		RTL
 
 	.Go
@@ -1389,7 +1425,23 @@ RGBtoHSL:
 		LSR #2				; | B
 		AND #$001F			; |
 		STA $04				;/
-		JSR .Convert
+
+		PHY
+		TYA
+		ASL #3
+		XBA
+		AND #$000F
+		TAY
+		LDA !LightList,y
+		AND #$00FF
+		CMP #$0001 : BNE ++
+		LDA #$0100
+		CMP !LightR : BNE +
+		CMP !LightG : BNE +
+		CMP !LightB : BEQ ++
+	+	JSR ApplyLight
+	++	JSR .Convert
+		PLY
 
 		SEP #$20
 		LDA $0A : STA !PaletteHSL,x
@@ -1536,7 +1588,7 @@ RGBtoHSL:
 		BRA $00 : NOP
 		LDA $2306
 		ASL A
-		STA $0C		; S get!
+		STA $0C				; S get!
 
 		RTS
 
@@ -1561,7 +1613,7 @@ HSLtoRGB:
 		TXA
 		ASL A
 		TAY
-		CLC : ADC $00
+		ADC $00
 		TAX
 		TYA
 		AND #$01FF
@@ -1582,7 +1634,7 @@ HSLtoRGB:
 		RTS
 
 	.SA1
-		PHB
+		PHB : PHK : PLB
 		PEA.w ..return-1
 		PHP
 		REP #$30
@@ -1594,7 +1646,6 @@ HSLtoRGB:
 		RTL
 
 	.Go
-
 	-	CPY #$01FE			;\
 		BCC $03 : LDY #$01FE		; | cap overflow
 		CPX #$08FD			; |
@@ -1611,6 +1662,19 @@ HSLtoRGB:
 		STA $0E				;/
 
 		JSR .Convert
+		PHY
+		TYA
+		ASL #3
+		XBA
+		AND #$000F
+		TAY
+		LDA !LightList-1,y : BPL ++
+		LDA #$0100
+		CMP !LightR : BNE +
+		CMP !LightG : BNE +
+		CMP !LightB : BEQ ++
+	+	JSR ApplyLight
+	++	PLY
 
 		PHX
 		TYX
@@ -1754,8 +1818,8 @@ MixRGB:
 		PHP
 		REP #$30
 		AND #$00FF
-		CMP #$001F
-		BCC $03 : LDA #$001F
+		CMP #$0020
+		BCC $03 : LDA #$0020
 		STA !colormix
 		LDA #$0020
 		SEC : SBC !colormix
@@ -1764,8 +1828,6 @@ MixRGB:
 		CPY #$0100 : BCC .NotFull
 	.Full	LDY #$0100
 	.NotFull
-		TYA
-		ASL A
 		DEY
 		STY !colorloop
 
@@ -1779,7 +1841,6 @@ MixRGB:
 		AND #$FF00
 		CMP #$3700 : BEQ .Go
 		STX $00
-		STY $02
 		SEP #$30
 		LDA.b #.SA1 : STA $3180
 		LDA.b #.SA1>>8 : STA $3181
@@ -1789,13 +1850,14 @@ MixRGB:
 		RTS
 
 	.SA1
+		PHB : PHK : PLB
 		PEA.w ..return-1
 		PHP
 		REP #$30
 		LDX $00
-		LDY $02
 		BRA .Go
 		..return
+		PLB
 		RTL
 
 	.Go
@@ -1875,6 +1937,7 @@ MixRGB:
 
 
 .Upload
+		PHB : PHK : PLB
 		PHP
 		REP #$10
 		PHX
@@ -1902,6 +1965,7 @@ MixRGB:
 
 
 		PLP
+		PLB
 		RTS
 
 
@@ -1909,8 +1973,6 @@ MixHSL:
 		PHP
 		REP #$30
 		AND #$00FF
-		CMP #$001F
-		BCC $03 : LDA #$001F
 		STA !colormix
 		LDA #$00FF
 		SEC : SBC !colormix
@@ -1919,8 +1981,6 @@ MixHSL:
 		CPY #$0100 : BCC .NotFull
 	.Full	LDY #$0100
 	.NotFull
-		TYA
-		ASL A
 		DEY
 		STY !colorloop
 
@@ -1936,7 +1996,6 @@ MixHSL:
 		AND #$FF00
 		CMP #$3700 : BEQ .Go
 		STX $00
-		STY $02
 		SEP #$30
 		LDA.b #.SA1 : STA $3180
 		LDA.b #.SA1>>8 : STA $3181
@@ -1946,24 +2005,20 @@ MixHSL:
 		RTS
 
 	.SA1
+		PHB : PHK : PLB
 		PEA.w ..return-1
 		PHP
 		REP #$30
 		LDX $00
-		LDY $02
 		BRA .Go
 		..return
+		PLB
 		RTL
 
 	.Go
-
 		SEP #$20			;\
 		STZ $2250			; | prepare multiplication
 		REP #$20			;/
-
-	.Loop	CPX #$02FD			;\ cap overflow
-		BCC $03 : LDX #$02FD		;/
-
 
 ; 00 -> 20	+20 / m
 ; 00 -> 68	-10 / m
@@ -1977,24 +2032,24 @@ MixHSL:
 ; $0A	hue 2 - hue 1
 ; $0E	|hue 2 - hue 1|
 
+	.Loop	CPX #$02FD			;\ cap overflow
+		BCC $03 : LDX #$02FD		;/
 		LDA !PaletteHSL,x
 		AND #$00FF
 		STA $0A
 		LDA !PaletteHSL+$300,x
 		AND #$00FF
 		SEC : SBC $0A
-	STA $0C
-	BMI .Calc
-	CMP #$0078 : BCC .Calc
+		STA $0C
+		BMI .Calc
+		CMP #$0078 : BCC .Calc
 
 	.CClock	LDA #$00F0
 		SEC : SBC $0C
 		EOR #$FFFF : INC A
 
-		BRA .Calc
-
 	.Calc	STA $2251
-		LDA !colormix+2 : STA $2253	; amount to add is based on 32-m
+		LDA !colormix+2 : STA $2253		; amount to add is based on 32-m
 		NOP : BRA $00
 		LDA $2306 : BPL +
 		EOR #$FFFF : INC A
@@ -2054,6 +2109,7 @@ MixHSL:
 
 
 	.Upload
+		PHB : PHK : PLB
 		PHP
 		PHX
 		PHY
@@ -2067,6 +2123,28 @@ MixHSL:
 		TAX
 		JSR HSLtoRGB
 		PLP
+		PLB
+		RTS
+
+
+
+ApplyLight:
+; $00: R
+; $02: G
+; $04: B
+		STZ $2250
+		LDA !LightR : STA $2251
+		LDA $00 : STA $2253
+		NOP : BRA $00
+		LDA $2307 : STA $00
+		LDA !LightG : STA $2251
+		LDA $02 : STA $2253
+		NOP : BRA $00
+		LDA $2307 : STA $02
+		LDA !LightB : STA $2251
+		LDA $04 : STA $2253
+		NOP : BRA $00
+		LDA $2307 : STA $04
 		RTS
 
 

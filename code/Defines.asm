@@ -90,9 +90,25 @@ macro ReloadOAMData()
 endmacro
 
 
-macro ApplyLight(S, E)				; this macro starts a new shade operation, but only if one is not being processed currently
-		PHP				; lighting values have to be set previously, only
+macro ApplyLight_sharp(S, E)			; whatever is written to !LightR/G/B will be applied with no fading
+		PHP				;
+		SEP #$30
+		LDA !LightBuffer : BPL ?NotReady
+		REP #$20
+		AND #$0001
+		EOR #$0001
+		BEQ $03 : LDA #$0200
+		PHA
+		JSL !GetCGRAM
+		PLA
+		TYX
+		CLC : ADC.w #!LightData_SNES+2 : STA !VRAMbase+!CGRAMtable+$02,x
+		LDA.w #!LightData_SNES>>16 : STA !VRAMbase+!CGRAMtable+$04,x
+		LDA #$01FE : STA !VRAMbase+!CGRAMtable+$00,x
 		SEP #$20
+		LDA #$01 : STA !VRAMbase+!CGRAMtable+$05,x
+		LDA #$80 : TRB !LightBuffer
+	?NotReady:
 		LDA !ProcessLight
 		CMP #$02 : BCC ?CantSend
 		REP #$20
@@ -100,12 +116,46 @@ macro ApplyLight(S, E)				; this macro starts a new shade operation, but only if
 		LDA.w #<E>*2 : STA !LightIndexEnd
 		SEP #$20
 		STZ !ProcessLight
-		?CantSend:
+	?CantSend:
+		PLP
+endmacro
+
+
+macro ApplyLight_fade(S, E)			; this macro takes the values in $00-$05 and fades !LightR/G/B to those values
+		PHP				;
+		REP #$20
+		JSL !FadeLight
+		SEP #$30
+		LDA !LightBuffer : BPL ?NotReady
+		REP #$20
+		AND #$0001
+		EOR #$0001
+		BEQ $03 : LDA #$0200
+		PHA
+		JSL !GetCGRAM
+		PLA
+		TYX
+		CLC : ADC.w #!LightData_SNES+2 : STA !VRAMbase+!CGRAMtable+$02,x
+		LDA.w #!LightData_SNES>>16 : STA !VRAMbase+!CGRAMtable+$04,x
+		LDA #$01FE : STA !VRAMbase+!CGRAMtable+$00,x
+		SEP #$20
+		LDA #$01 : STA !VRAMbase+!CGRAMtable+$05,x
+		LDA #$80 : TRB !LightBuffer
+	?NotReady:
+		LDA !ProcessLight
+		CMP #$02 : BCC ?CantSend
+		REP #$20
+		LDA.w #<S>*2 : STA !LightIndexStart
+		LDA.w #<E>*2 : STA !LightIndexEnd
+		SEP #$20
+		STZ !ProcessLight
+	?CantSend:
 		PLP
 endmacro
 
 
 
+; used to sync MPU operation, SNES side
 macro MPU_SNES(value)
 		PHP				;\ wrap to 8-bit A
 		SEP #$20			;/
@@ -114,6 +164,7 @@ macro MPU_SNES(value)
 		PLP				; restore P
 endmacro
 
+; used to sync MPU operation, SA-1 side
 macro MPU_SA1(value)
 		PHP				;\ wrap to 8-bit A
 		SEP #$20			;/
@@ -123,13 +174,15 @@ macro MPU_SA1(value)
 endmacro
 
 
+; sets up page $0100 for DP use
 macro MPU_copy()
 		PHP				;\
 		REP #$20			; |
-		LDA $13 : STA $0113		; |
-		LDA $94 : STA $0194		; | copy the important DP data to MPU page
-		LDA $96 : STA $0196		; | (MPU page is $0100, which is WRAM for SNES and I-RAM for SA-1)
-		LDA $9D : STA $019D		; |
+		SEP #$10			; |
+		LDX #$2E			; | copy some important stuff to DP $0100
+	?Loop:					; | NOTE: DP $40 and up are not accessible on DP in MPU mode!
+		LDA $10,x : STA $0110,x		; |	  to access those, read $3040-$30FF instead!
+		DEX #2 : BPL ?Loop		; | also, no writes to dp will work during MPU mode!
 		LDA #$0100 : TCD		; > DP = $0100
 		PLP				;/
 endmacro
@@ -146,19 +199,35 @@ endmacro
 		!AnimToggle		= $60		; see VR3.asm for info on how to use
 
 
+; settings for shader:
+; !LightList:
+;	operates row-by-row
+;	if an entry is set to 0, it is handled by SNES shader (no interaction with HSL)
+;	if an entry is set to 1, it is shaded by SA-1 before HSL conversion (good for fixed values, or for treating the HSL operation as a lighting op)
+;	if an entry is set to 80, it is shaded by SA-1 after HSL conversion (good for variable values, since it treats the HSL operation as affecting the color rather than the light)
+; !LightIndex:
+;	start and end point for SNES
+;	this is a more efficient way of limiting the palette's shade area, since the SNES won't check excluded colors (leading to higher shade FPS)
+;	for a color to be completely excluded, it has to be disabled in !LightList (00) and be outside the start/end points of the index
+
+
+
 
 		!LightData_SNES		= $7EFC00	; 2 buffers of 512 bytes each for processing lighting
 
 
-		!LightBuffer		= $3171		; 1 bit used by SNES to signal which buffer holds the finished palette
+		!LightBuffer		= $3171		; lowest bit: which buffer SNES is working on (0 = first buffer, 1 = second buffer), highest bit: 0 = not ready for upload, 1 = ready for upload
 		!LightIndexStart	= $3172
 		!LightIndexEnd		= $3174
 
 		!LightR			= $3176		; these are 16-bit numbers with 8-bit fixed point fractions
 		!LightG			= $3178		; normal value is 01.00, 01.00, 01.00, meaning that each color is applied 100%
 		!LightB			= $317A		; SNES will apply rounded shading in background mode using these values
-		!ProcessLight		= $317C		; 0 = not processing, 1 = in process, 2 = done
+		!ProcessLight		= $317C		; 0 = not processing, 1 = in process, 2 = done, if highest bit is set, SA-1 is currently writing to !PaletteRGB and SNES should wait
+		!LightList		= $3160		; 16 bytes
 
+
+		!LightList_SNES		= $0FE4		; 16 bytes that determine whether each row should be shaded or not
 		!LightIndexStart_SNES	= $0FF4		; these are copied to WRAM at the start of a shade operation
 		!LightIndexEnd_SNES	= $0FF6		; this way, SA-1 can queue as much as it wants without disrupting anything
 		!LightR_SNES		= $0FF8
@@ -214,12 +283,11 @@ endmacro
 
 
 
-		!CameraBoxL		= $3160
-		!CameraBoxU		= $3162
-		!CameraBoxR		= $3164
-		!CameraBoxD		= $3166
-
-		!CameraForbiddance	= $3168
+		!CameraBoxL		= $6AC0
+		!CameraBoxU		= $6AC2
+		!CameraBoxR		= $6AC4
+		!CameraBoxD		= $6AC6
+		!CameraForbiddance	= $6AC8
 					; reg2     reg1
 					; yyyyyxxx xxssssss
 					; s = which screen of camera box that forbiddance box starts at
@@ -272,12 +340,18 @@ endmacro
 		!RAMcode_offset		= $6022			; used for RAM code generation
 		!RAMcode		= $404A00
 
+
 		!GlobalPalset1		= $6024			; which sprite palset variation to use
 		!GlobalPalset2		= $6025			; if mixing is used, this is which sprite palset variation to use for mixing
 		!GlobalPalsetMix	= $6026			; balance between palset 1 and palset 2
 								; 0 = 100% palset 1
 								; 16 = 50% palset 1, 50% palset 2
 								; 32 = 0% palset 1, 100% palset 2
+
+		!GlobalLight1		= !GlobalPalset1	; alt names
+		!GlobalLight2		= !GlobalPalset2
+		!GlobalLightMix		= !GlobalPalsetMix
+
 
 
 
@@ -1296,6 +1370,9 @@ endmacro
 								; after that is assembly area for HSL mixing (also 768 bytes)
 								; last 512 bytes is color buffer for upload
 								; so $300 + $300 + $300 + $200 = $B00 bytes, or 2.75KB
+		!PaletteBuffer		= !PaletteHSL+$900
+
+
 
 		!DizzyEffect		= $4059F8		; when enabled, table at $40A040 must be used to adjust sprite heights
 
@@ -1389,13 +1466,15 @@ endmacro
 		!3D_Cache8		= !3D_Cache+$E
 
 
-		!2D_Base		= !3D_Base
+		; the parent's coordinates and total rotation is used along with the child's relative rotation to calculate the child's coordinates
+		; this means that moving the core will move the entire cluster, whereas attempting to move a joint will do nothing as it will be overwritten by the rotation application
 
+		!2D_Base		= !3D_Base
 		!2D_Angle		= !2D_Base+$0	; rotation in relation to parent joint
 		!2D_Rotation		= !2D_Base+$1	; total rotation, used to determine which tile to draw
-		!2D_Distance		= !2D_Base+$2	; 16-bit, each unit represents 1/256th px
-		!2D_X			= !2D_Base+$4
-		!2D_Y			= !2D_Base+$6
+		!2D_Distance		= !2D_Base+$2	; 16-bit, each unit represents 1/256 px
+		!2D_X			= !2D_Base+$4	; 16-bit X position
+		!2D_Y			= !2D_Base+$6	; 16-bit Y position
 		!2D_Attachment		= !2D_Base+$8	; 16-bit index
 		!2D_Slot		= !2D_Base+$A	; 0 if slot is free, otherwise used
 		!2D_Tilemap		= !2D_Base+$B	; tilemap index for this joint
@@ -1404,12 +1483,26 @@ endmacro
 
 	; -- Sprite stuff --
 
+	; these addresses were freed from sprite data being moved to I-RAM:
+	;	$74C8-$75E8:	289 B	last byte unused in vanilla, next byte is !SpriteIndex
+	;	$75EA-$7691:	167 B	next byte is sprite memory setting (from header)
+	;	$786C-$7877:	12 B	sprite off screen flag, vertical
+	;	$787B-$7886:	12 B	sprite stomp immunity flag
+	;	$790F-$791B:	13 B	tweaker 6, last byte is unused in vanilla
+	;	$7FD6-$7FED:	24 B	unused sprite table and misc (water/cape etc) timer
+
+
 		!ExtraBits		= $3590		; extra bits of sprite
 		!ExtraProp1		= $35A0		;
 		!ExtraProp2		= $35B0		;
 		!NewSpriteNum		= $35C0		; custom sprite number
 					; $35F0		; P2 interaction disable timer
 		!CustomBit		= $08
+
+
+		!SpriteDisP1		= $32E0
+		!SpriteDisSprite	= $3300
+		!SpriteDisP2		= $35F0
 
 
 		!SpriteTweaker1		= $3440
@@ -1429,16 +1522,32 @@ endmacro
 
 		!SpriteWater		= $3430
 
-		!SpriteStasis		= $34E0
-		!SpriteGravityMod	= $3500
-		!SpriteGravityTimer	= $3510
-		!SpriteVectorY		= $3520
-		!SpriteVectorX		= $3530
-		!SpriteVectorAccY	= $3540
-		!SpriteVectorAccX	= $3550
-		!SpriteVectorTimerY	= $3560
-		!SpriteVectorTimerX	= $3570
-		!SpriteExtraCollision	= $3580			; Applies only on the frame that it's set
+		!ShellOwner		= $34F0
+
+
+	; after moving physics+ to BWRAM, these tables are free:
+	; $34E0
+	; $3500
+	; $3510
+	; $3520
+	; $3530
+	; $3540
+	; $3550
+	; $3560
+	; $3570
+	; $3580
+
+		!SpriteStasis		= $74D0	;$34E0
+		!SpritePhaseTimer	= $74E0		; while set, sprite will not experience normal collision (extra collision still applies)
+		!SpriteGravityMod	= $74F0	;$3500
+		!SpriteGravityTimer	= $7500	;$3510
+		!SpriteVectorY		= $7510	;$3520
+		!SpriteVectorX		= $7520	;$3530
+		!SpriteVectorAccY	= $7530	;$3540
+		!SpriteVectorAccX	= $7540	;$3550
+		!SpriteVectorTimerY	= $7550	;$3560
+		!SpriteVectorTimerX	= $7560	;$3570
+		!SpriteExtraCollision	= $7570	;$3580			; Applies only on the frame that it's set
 
 		!SpriteTile		= $6030			; offset to add to sprite tilemap numbers
 		!SpriteProp		= $6040			; lowest bit of sprite OAM prop
@@ -1678,6 +1787,7 @@ endmacro
 		!ShakeTimer		= $7887
 		!YoshiIndex		= $78E2
 		!GeneratorNum		= $78B9
+		!MarioStunTimer		= $78BD
 		!WindowDir		= $7B88
 		!WindowSize		= $7B89
 		!SideExit		= $7B96
@@ -1735,6 +1845,7 @@ endmacro
 		!GetSmallCCDMA		= $1380B0
 		!BuildOAM		= $1380B8
 		!ChangeMap16		= $1380C0
+		!FadeLight		= $1380C4
 
 		!PortraitPointers	= $378000		; DATA pointer stored with SP_Files.asm, along with portrait GFX
 		!PalsetData		= $3F8000		; DATA pointer stored with SP_Files.asm, along with palset data

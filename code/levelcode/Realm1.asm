@@ -226,9 +226,12 @@ levelinit6:
 		STA !P2YPosLo
 
 		LDA #$FF : STA !PalsetF					; lock palsetF for the sun BG
-
-	LDA #$02 : STA !GlobalPalset1
-	LDA #$03 : STA !GlobalPalset2
+		LDA #$02 : STA !GlobalLight1				;\
+		LDA #$03 : STA !GlobalLight2				; |
+		LDA #$40 : STA !LightIndexStart				; | initial shader settings
+		LDA #$01 : STA !LightIndexStart+1			; |
+		LDA #$E0 : STA !LightIndexEnd				; |
+		LDA #$01 : STA !LightIndexEnd+1				;/
 
 		STZ $0AFE
 		STZ $0AFF
@@ -335,9 +338,16 @@ levelinit6:
 		LDA #$0A00			; | Set up BG2 Hscroll on channel 6
 		STA !HDMA6source		; |
 		STY $4364			;/
+
+
+		LDA #$3100 : STA $4370
+		LDA.w #.ColorMathHDMA : STA !HDMA7source
+		LDY.b #.ColorMathHDMA>>16 : STY $4374
+
+
 		SEP #$20			; > A 8 bit
-		LDA #$78			;\ Enable HDMA on channels 3 through 6
-		TSB $6D9F			;/
+		LDA #$F8 : TSB !HDMA		; > enable HDMA on channels 3 through 7
+
 
 		JSL !GetVRAM				;\
 		PHB : LDA #!VRAMbank			; |
@@ -357,6 +367,13 @@ levelinit6:
 		PLB					;/
 
 		JML level6
+
+
+		.ColorMathHDMA
+		db $4A,$22				;\ color math on backdrop + BG2
+		db $4A,$22				;/
+		db $01,$20				; color math on backdrop only
+		db $00					; end table
 
 
 levelinitC:
@@ -558,18 +575,6 @@ levelinit39:
 
 
 level1:
-
-		REP #$20
-		LDA $1C
-		LSR #3
-		STA $24
-		LDA $745E
-		AND #$00F8
-		ASL A
-		CLC : ADC $24
-		STA $24
-		SEP #$20
-
 		STZ !SideExit
 		LDA $1B
 		BNE .NoSide
@@ -953,7 +958,6 @@ level3:
 
 
 level4:
-
 		LDA #$20 : STA $64
 		LDA $71
 		CMP #$05 : BEQ ++
@@ -1020,33 +1024,16 @@ level4:
 		LDA .SpawnRate,x
 		AND $14 : BNE .NoSpawn
 		LDX #$0F
-	-	LDA $3230,x : BEQ .Spawn
+	-	LDA $3230,x : BEQ .TriggerSpawn
 		DEX : BPL -
 		BRA .NoSpawn
 
-		.Spawn
-		LDA !RNG
-		AND #$F0
-		CLC : ADC $1C
-		STA $3210,x
-		LDA $1D
-		ADC #$00
-		STA $3240,x
-		LDA !RNG
-		AND #$02
-		TAY
-		REP #$20
-		LDA $1A
-		CLC : ADC .SpawnX,y
-		SEP #$20
-		STA $3220,x
-		XBA : STA $3250,x
-		LDA #$01 : STA $3230,x
-		LDA #$36 : STA $3200,x
-		LDA #$2D : STA $35C0,x
-		LDA #$08 : STA $3590,x
-		JSL !ResetSprite
-		JSL !ResetSpriteExtra
+		.TriggerSpawn
+		STX $00
+		LDA.b #.Spawn : STA $3180
+		LDA.b #.Spawn>>8 : STA $3181
+		LDA.b #.Spawn>>16 : STA $3182
+		JSR $1E80
 		.NoSpawn
 
 
@@ -1070,6 +1057,36 @@ level4:
 	.SpawnX
 	dw $0120
 	dw $FFE0
+
+		.Spawn
+		PHB : PHK : PLB
+		PHP
+		SEP #$30
+		LDX $00
+		LDA !RNG
+		AND #$F0
+		CLC : ADC $1C
+		STA $3210,x
+		LDA $1D
+		ADC #$00
+		STA $3240,x
+		LDA !RNG
+		AND #$02
+		TAY
+		REP #$20
+		LDA $1A
+		CLC : ADC .SpawnX,y
+		SEP #$20
+		STA $3220,x
+		XBA : STA $3250,x
+		LDA #$01 : STA $3230,x
+		LDA #$36 : STA $3200,x
+		LDA #$2D : STA $35C0,x
+		LDA #$08 : STA $3590,x
+		JSL !ResetSprite
+		PLP
+		PLB
+		RTL
 
 
 		.HDMA
@@ -1581,8 +1598,11 @@ level6:
 
 
 		.HDMA
+		PHB
 		PHP
 		SEP #$30
+		LDA.b #MAIN_Level>>16
+		PHA : PLB
 		LDA $14
 		AND #$01
 		ASL #4
@@ -1594,9 +1614,8 @@ level6:
 		ROR A					; |
 		STA $0A07,x				;/
 		STX !HDMA6source			; update table pointer
-		LDA #$17				;\
-		STA $6D9D				; | Main/sub screen settings
-		STZ $6D9E				;/
+		LDA #$17 : STA !MainScreen		;\ Main/sub screen settings
+		STZ !SubScreen				;/
 		LDA !Level+3				;\
 		CMP #$04				; |
 		BEQ .Return				; |
@@ -1605,6 +1624,7 @@ level6:
 		BEQ .Process				; |
 		JMP .CGRAM				; |
 .Return		PLP					; |
+		PLB					; |
 		RTL					;/
 
 .Process	REP #$20				;\
@@ -1636,38 +1656,54 @@ level6:
 		BCC $03 : LDA #$0100
 		LSR #3
 		SEP #$20
-		STA !GlobalPalsetMix
+		STA !GlobalLightMix
 
 
-		LDA $14
-		LSR A
-		STA $00
-		AND #$07 : BEQ .NoHSL
-		ASL #4
-		ORA #$02
-		TAX
-		LDY #$0E
-		LDA $14
-		LSR A : BCS .UploadColor
+		REP #$20			;\
+		LDA !Level+2			; |
+		LSR #4				; |
+		SEC : SBC #$0011		; |
+		BPL $03 : LDA #$0000		; |
+		CMP #$001F			; |
+		BCC $03 : LDA #$001F		; |
+		STA $00				; | fade in star palette
+		ASL #5				; |
+		ORA $00				; |
+		ASL #5				; |
+		ORA $00				; |
+		LDX #$14			; |
+	-	STA $00A0,x			; |
+		DEX #2 : BPL -			; |
+		SEP #$20			;/
 
-		.MixColor
-		LDA !Level+3 : BEQ +
-		LDA #$00 : BRA ++
-	+	LDA !Level+2
-		BNE $01 : INC A
-		EOR #$FF : INC A
-	++	JSL !MixHSL
-		BRA .NoHSL
 
-		.UploadColor
-		REP #$30
-		TXA
-		ORA #$0200
-		TAX
-		LDY #$000E
-		JSL !HSLtoRGB
-		SEP #$30
-		.NoHSL
+
+		LDA $14				;\
+		LSR A				; |
+		AND #$07 : BEQ .NoHSL		; |
+		ASL #4				; |
+		ORA #$02			; |
+		TAX				; |
+		LDY #$0E			; |
+		LDA $14				; |
+		LSR A : BCS .UploadColor	; |
+		.MixColor			; |
+		LDA !Level+3 : BEQ +		; |
+		LDA #$00 : BRA ++		; | alternate between converting and uploading
+	+	LDA !Level+2			; |
+		BNE $01 : INC A			; |
+		EOR #$FF : INC A		; |
+	++	JSL !MixHSL			; |
+		BRA .NoHSL			; |
+		.UploadColor			; |
+		REP #$30			; |
+		TXA				; |
+		ORA #$0200			; |
+		TAX				; |
+		LDY #$000E			; |
+		JSL !HSLtoRGB			; |
+		SEP #$30			; |
+		.NoHSL				;/
 
 
 		LDX #$00
@@ -1799,11 +1835,10 @@ level6:
 		LSR #2					; |
 		ASL A					; |
 		CMP.w #.BGColoursEnd-.BGColours		; |
-		BCC +					; | Update colour 0x02
+		BCC +					; | Update color 0x02
 		LDA.w #.BGColoursEnd-.BGColours		; |
 	+	TAX					; |
-		LDA.w .BGColours,x			; |
-		STA $00A2				; |
+		LDA.l .BGColours,x : STA $00A2		; |
 		SEP #$20				;/
 
 		LDA !Level+3				;\
@@ -1812,6 +1847,7 @@ level6:
 		CMP #$A0				; |
 		BCC .DrawSun				;/
 .OffScreen	PLP
+		PLB					; |
 		RTL
 
 .DrawSun	LDA !Level+3
@@ -1846,10 +1882,10 @@ level6:
 		STA !OAM_p0+$006,x				; | tile numbers of sun
 		STA !OAM_p0+$00A,x				; |
 		STA !OAM_p0+$00E,x				;/
-		LDA #$0D : STA !OAM_p0+$003,x			;\
-		LDA #$4D : STA !OAM_p0+$007,x			; | YXPPCCCT of sun
-		LDA #$8D : STA !OAM_p0+$00B,x			; |
-		LDA #$CD : STA !OAM_p0+$00F,x			;/
+		LDA #$0F : STA !OAM_p0+$003,x			;\
+		LDA #$4F : STA !OAM_p0+$007,x			; | YXPPCCCT of sun
+		LDA #$8F : STA !OAM_p0+$00B,x			; |
+		LDA #$CF : STA !OAM_p0+$00F,x			;/
 		REP #$20					;\
 		TXA						; |
 		LSR #2						; |
@@ -1858,6 +1894,7 @@ level6:
 		STA !OAMhi_p0+$00,x				; |
 		STA !OAMhi_p0+$02,x				;/
 		PLP
+		PLB					; |
 		RTL
 
 .BGColours	dw $006F,$006F
@@ -2460,6 +2497,15 @@ level32:
 		LDA.b #.HDMA : STA.l !HDMAptr+0
 		LDA.b #.HDMA>>8 : STA.l !HDMAptr+1
 		LDA.b #.HDMA>>16 : STA.l !HDMAptr+2
+
+
+		REP #$20
+		LDA #$0080 : STA !LightR
+		LDA #$0100 : STA !LightG
+		LDA #$00E0 : STA !LightB
+		SEP #$20
+
+
 
 		LDA #$7F : TRB !Level+4
 		LDX #$0F

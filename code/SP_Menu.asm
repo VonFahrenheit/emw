@@ -360,12 +360,11 @@ print "-- SP_MENU --"
 		RTL
 
 	.Main
-		LDA !Difficulty				;\
-		AND #$10				; | Only use timer during Time Mode
-		BEQ .Coins				;/
-		LDA $7493				;\
-		ORA $9D					; | Don't decrement timer if level is ending or sprites are locked
-		BNE .NoTimer				;/
+		LDA !Difficulty				;\ only use timer during Time Mode
+		AND #$10 : BEQ .Coins			;/
+		LDA !LevelEnd				;\
+		ORA $309D				; | don't decrement timer if level is ending or sprites are locked
+		BNE .NoTimer				;/ (MPU-safe addr access)
 		LDA $6D9B
 		CMP #$C1
 		BEQ .NoTimer
@@ -380,7 +379,7 @@ print "-- SP_MENU --"
 		LDX #$02				;\
 	-	DEC $6F31,x				; |
 		BPL +					; |
-		LDA #$09				; | Decrement timer
+		LDA #$09				; | decrement timer
 		STA $6F31,x				; |
 		DEX					; |
 		BPL -					;/
@@ -388,17 +387,17 @@ print "-- SP_MENU --"
 		BNE +
 		LDA $6F32				;\
 		AND $6F33				; |
-		CMP #$09				; | Speed up music when time is 99
+		CMP #$09				; | speed up music when time is 99
 		BNE +					; |
 		LDA #$1D				; |
 		STA !SPC1				;/
 	+	LDA $6F31				;\
 		ORA $6F32				; |
-		ORA $6F33				; | Kill Mario when time is zero
+		ORA $6F33				; | kill Mario when time is zero
 		BNE .NoTimer				; |
 		JSL $00F606				;/
 		LDA #$01				;\
-		STA !P2Status-$80			; | Kill PCE characters
+		STA !P2Status-$80			; | kill PCE characters
 		STA !P2Status				;/
 
 .NoTimer	; TIMER WRITE TO OAM GOES HERE
@@ -665,6 +664,7 @@ warnpc $009045
 
 	org $028008
 	ItemBox:
+		LDA !CurrentMario : BEQ .R2		; if Mario isn't in play, return
 		PHX					; preserve X
 		LDX $6DC2				;\
 		LDA.w .Status,x				; |
@@ -689,7 +689,7 @@ warnpc $009045
 		STA !MarioYPosLo			;/
 
 	.Return	PLX					; restore X
-		RTL					; return
+	.R2	RTL					; return
 
 		.Status
 		db $00,$01,$03,$01,$01,$01
@@ -1124,6 +1124,8 @@ Mode7Presents:
 
 
 
+
+
 ; buffer = 0: work on buffer 0
 ; buffer = 1: work on buffer 1
 
@@ -1131,24 +1133,24 @@ Mode7Presents:
 		PHB							;\
 		PHP							; |
 		PHD							; |
-		SEP #$30						; | which part to go to
-	..wait	LDA !ProcessLight : BEQ ..init				; | (0 = start new, 1 = continue, 2 = wait for signal)
-		LDX $3189 : BNE ..break					; > detect SA-1 being done with its thread
-		CMP #$02 : BCS ..wait					; |
 		REP #$30						; |
 		LDX !LightIndex_SNES					; |
+		LDA !LightBuffer-1					; |
+		AND #$0100						; |
+		ASL A							; |
+		STA $0122						; > start wrap value
+		ADC #$0200						; |
+		STA $0120						; > end wrap value
+		SEP #$20						; |
+	..wait	LDA $3189 : BEQ $03 : BRL ..break			; > detect SA-1 being done with its thread
+		LDA !ProcessLight					; |
+		AND #$03 : BEQ ..init					; | (0 = start new, 1 = continue, 2 = wait for signal)
+		CMP #$02 : BCS ..wait					; |
+		REP #$20						; |
 		BRA ..main						;/
 
-		..break							;\
-		SEP #$20						; |
-		STZ $3189						; |
-		STX !LightIndex_SNES					; > save current index in WRAM
-		PLD							; | if SA-1 finishes its thread, this routine must end
-		PLP							; |
-		PLB							; |
-		RTS							;/
-
-	..init	INC !ProcessLight					;\
+	..init	BIT !ProcessLight : BMI ..wait				; > if SA-1 is currently writing to !PaletteRGB, wait
+		INC !ProcessLight					;\
 		REP #$10						; | this code runs once at the start of a new process
 		LDX #$8000 : STX $4300					; |
 		LDX.w #!PaletteRGB : STX $4302				; | use DMA to copy the data (fuck version 1.1.1)
@@ -1169,9 +1171,13 @@ Mode7Presents:
 		ASL A							; |
 		TSB !LightIndexStart_SNES				; |
 		TSB !LightIndexEnd_SNES					; |
+		ADC #$0200						; |
 		LDA !LightR : STA !LightR_SNES				; |
 		LDA !LightG : STA !LightG_SNES				; |
 		LDA !LightB : STA !LightB_SNES				; |
+		LDX #$000E						; |
+	-	LDA !LightList,x : STA !LightList_SNES,x		; |
+		DEX #2 : BPL -						; |
 		LDX !LightIndexStart_SNES				;/
 
 	..main	LDA #$0100 : TCD					;\
@@ -1190,20 +1196,33 @@ Mode7Presents:
 		PLB							;/
 		JMP $1E85						; > go wait for SA-1
 
+		..break							;\
+		SEP #$20						; |
+		STZ $3189						; |
+		STX !LightIndex_SNES					; > save current index in WRAM
+		PLD							; | if SA-1 finishes its thread, this routine must end
+		PLP							; |
+		PLB							; |
+		RTS							;/
+
 		..shade
-		LDA !LightBuffer-1					;\
-		AND #$0100						; |
-		ASL A							; | wrap values
-		STA $22							; |
-		ADC #$0200						; |
-		STA $20							;/
+		TXA							;\
+		ASL #3							; |
+		XBA							; |
+		AND #$000F						; |
+		TAY							; | check exclude list
+		LDA !LightList_SNES,y					; |
+		AND #$00FF : BEQ ..include				; |
+		BRL ..next						; |
+		..include						;/
+
 		LDA.l !LightData_SNES,x : STA $0E			;\
 		AND #$001F						; |
 		STA $00							; |
 		LDA $0E							; |
 		LSR #5							; |
 		STA $0E							; | unpack color
-		AND #$001F						; | 36 B
+		AND #$001F						; |
 		STA $02							; |
 		LDA $0E							; |
 		LSR #5							; |
@@ -1253,18 +1272,20 @@ Mode7Presents:
 		ADC $4216						; |
 		CMP #$001F						; |
 		BCC $03 : LDA #$001F					;/
+
 		ASL #5							;\
 		ORA $02							; |
 		ASL #5							; |
 		ORA $00							; | assemble color
-		STA.l !LightData_SNES,x					; | 29 B
-		INX #2							; |
+		STA.l !LightData_SNES,x					; |
+	..next	INX #2							; |
 		CPX $20							; |
 		BCC $02 : LDX $22					; |
 		BRL ..loop						;/
 	..end
 
 print "Shader RAM code is $", hex(..end-.MPU_light), " bytes long"
+warnpc .MPU_light+$200
 
 .SourcePal
 incbin "PresentsScreenPalette.mw3"

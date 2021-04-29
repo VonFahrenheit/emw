@@ -506,23 +506,23 @@ BITS:	db $01,$02,$04,$08,$10,$20,$40,$80
 	Mario:
 	print " "
 	print "Mario modification code inserted at $", pc, " ($", hex(Luigi-Mario), " bytes)"
-	incsrc "Mario.asm"
+	incsrc "characters/Mario.asm"
 	Luigi:
 	print " "
 	print "Luigi code inserted at $", pc, " ($", hex(Kadaal-Luigi), " bytes)"
-	incsrc "Luigi.asm"
+	incsrc "characters/Luigi.asm"
 	Kadaal:
 	print " "
 	print "Kadaal code inserted at $", pc, " ($", hex(Leeway-Kadaal), " bytes)"
-	incsrc "Kadaal.asm"
+	incsrc "characters/Kadaal.asm"
 	Leeway:
 	print " "
 	print "Leeway code inserted at $", pc, " ($", hex(Alter-Leeway), " bytes)"
-	incsrc "Leeway.asm"
+	incsrc "characters/Leeway.asm"
 	Alter:
 	print " "
 	print "Alter code inserted at $", pc, " ($", hex(End-Alter), " bytes)"
-	incsrc "Alter.asm"
+	incsrc "characters/Alter.asm"
 
 
 End:

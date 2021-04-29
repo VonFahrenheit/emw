@@ -685,6 +685,8 @@ endmacro
 
 LOAD_TILEMAP:
 ; default to prio 1 if not specified
+; !BigRAM+$7C is used by rex!
+
 		%OAMhook(1)
 		%OAMhook(2)
 		%OAMhook(0)
@@ -820,6 +822,7 @@ LOAD_TILEMAP:
 
 LOAD_PSUEDO_DYNAMIC:
 ; default to prio 1 if not specified
+; !BigRAM+$7C is used by rex!
 
 		%OAMhook(1)
 		%OAMhook(2)
@@ -1245,11 +1248,7 @@ DontInteract:
 		LDA.w .PatternY,y : STA $0E
 		BPL $02 : DEC $0F
 
-		LDY #!Ex_Amount-1
-	-	LDA !Ex_Num,y : BEQ .Yes
-	--	DEY : BPL -
-		RTS
-
+	-	%Ex_Index_Y()
 
 		.Yes
 		LDA $08 : STA !Ex_Num,y		; ExSprite number
@@ -1284,7 +1283,7 @@ DontInteract:
 		ADC $0F
 		STA $03
 
-		DEC $06 : BNE --		; Spawn until done
+		DEC $06 : BNE -			; Spawn until done
 
 		RTS
 
@@ -1326,57 +1325,6 @@ DontInteract:
 ; XF	-	water bubble
 
 
-
-; load A with the number of bytes to move, then call this
-; that number of tiles will be moved from the start of the sprite's tilemap to hi prio OAM
-; this has to be called after LOAD_TILEMAP or any of its variants
-
-;===============;
-;HI PRIORITY OAM;
-;===============;
-HI_PRIO_OAM:
-		PHX
-		STA $02
-		LSR #2
-		DEC A
-		STA $03
-		LDA $33B0,x : PHA
-		CLC : ADC.b #!OAM
-		STA $00
-		LDA.b #!OAM>>8
-		ADC #$01
-		STA $01
-		LDY #$00
-		LDX !OAMindex
-	-	LDA ($00),y : STA !OAM+$000,x
-		INY
-		LDA ($00),y : STA !OAM+$001,x
-		LDA #$F0 : STA ($00),y			; remove old tile
-		INY
-		LDA ($00),y : STA !OAM+$002,x
-		LDA #$FF : STA ($00),y			; this signals to the sprite that it was moved to lo OAM
-		INY
-		LDA ($00),y : STA !OAM+$003,x
-		INY
-		INX #4
-		CPY $02 : BCC -
-		LDA !OAMindex
-		STX !OAMindex
-		LSR #2
-		TAX
-		PLA
-		LSR #2
-		TAY
-	-	LDA !OAMhi+$40,y : STA !OAMhi,x
-		INY
-		INX
-		DEC $03 : BPL -
-		PLX
-		RTS
-
-.Long		JSR HI_PRIO_OAM
-		RTL
-		
 
 
 

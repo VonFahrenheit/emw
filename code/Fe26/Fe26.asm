@@ -404,6 +404,7 @@ MainSpriteLoop:
 		LDA !OAMindex : BEQ .HiPrioDone				;\
 		LSR #2							; |
 		STA $00							; |
+		LDY #$0000						; |
 		LDA.l !OAMindex_p2					; |
 		LSR #2							; |
 		TAX							; | copy hi table from legacy hi prio to hi table of prio 2
@@ -871,10 +872,8 @@ endmacro
 		JMP .LoadNewSprite
 	.ThisIndex
 	; TO DO:
-	; - shooters
 	; - generators
 	; - scroll sprites
-	; - multi sprites (eeries etc)
 		INY					; get ready to read num byte
 		LDA $08 : STA !ExtraBits,x		; write extra bits
 		AND #$08 : BEQ .NotCustom		; see if custom or vanilla
@@ -939,7 +938,9 @@ endmacro
 
 		CMP #$C9 : BCC .Vanilla			; C9-CA: shooter
 		.Shooter
-		SBC.b #$C8-!ShooterOffset
+		SBC.b #$C8-!ShooterOffset		;\
+		CMP.b #$01+!ShooterOffset		; | custom bullet bill shooter
+		BNE $02 : LDA.b #$04+!CustomOffset	;/
 		STA $05
 		PHY
 		SEP #$10
@@ -950,8 +951,8 @@ endmacro
 		LDA $01 : STA !Ex_XHi,y			; | coords
 		LDA $02 : STA !Ex_YLo,y			; |
 		LDA $03 : STA !Ex_YHi,y			;/
-		TXA : STA !Ex_Data1,y			; shooter index to level sprite data
-		LDA #$10 : STA !Ex_Data2,y		; timer: 32 frames at spawn (decrements every other frame)
+		TXA : STA !Ex_Data2,y			; shooter index to level sprite data
+		LDA #$10 : STA !Ex_Data1,y		; timer: 32 frames at spawn (decrements every other frame)
 		PLY
 		BRA -
 
@@ -1149,6 +1150,7 @@ endmacro
 
 
 	Erase:
+	; I-RAM tables
 		STZ $9E,x				;\ speed
 		STZ $AE,x				;/
 		STZ $BE,x				; misc
@@ -1198,17 +1200,17 @@ endmacro
 		STZ $34B0,x				; tweaker 6
 		STZ $34C0,x				; misc (unused by vanilla)
 		STZ $34D0,x				; cape interaction disable timer
-		STZ $34E0,x				; PhysicsPlus: stasis timer
+		STZ $34E0,x				; misc
 		STZ $34F0,x				; misc (shell owner)
-		STZ $3500,x				; PhysicsPlus: gravity modifier
-		STZ $3510,x				; PhysicsPlus: gravity timer
-		STZ $3520,x				; PhysicsPlus: vector Y
-		STZ $3530,x				; PhysicsPlus: vector X
-		STZ $3540,x				; PhysicsPlus: vector acceleration Y
-		STZ $3550,x				; PhysicsPlus: vector acceleration X
-		STZ $3560,x				; PhysicsPlus: vector timer Y
-		STZ $3570,x				; PhysicsPlus: vector timer X
-		STZ $3580,x				; PhysicsPlus: extra collision
+		STZ $3500,x				; misc
+		STZ $3510,x				; misc
+		STZ $3520,x				; misc
+		STZ $3530,x				; misc
+		STZ $3540,x				; misc
+		STZ $3550,x				; misc
+		STZ $3560,x				; misc
+		STZ $3570,x				; misc
+		STZ $3580,x				; misc
 	;	STZ $3590,x				; extra bits
 	;	STZ $35A0,x				; extra byte 1
 	;	STZ $35B0,x				; extra byte 2
@@ -1216,6 +1218,19 @@ endmacro
 		STZ $35D0,x				; misc (unused by vanilla)
 		STZ $35E0,x				; misc (unused by vanilla)
 		STZ $35F0,x				; P2 interaction disable timer
+
+	; BWRAM tables:
+		STZ $74D0,x				; PhysicsPlus: stasis timer
+		STZ $74E0,x				; PhysicsPlus: phase timer
+		STZ $74F0,x				; PhysicsPlus: gravity modifier
+		STZ $7500,x				; PhysicsPlus: gravity timer
+		STZ $7510,x				; PhysicsPlus: vector Y
+		STZ $7520,x				; PhysicsPlus: vector X
+		STZ $7530,x				; PhysicsPlus: vector acceleration Y
+		STZ $7540,x				; PhysicsPlus: vector acceleration X
+		STZ $7550,x				; PhysicsPlus: vector timer Y
+		STZ $7560,x				; PhysicsPlus: vector timer X
+		STZ $7570,x				; PhysicsPlus: extra collision
 		RTL
 
 
@@ -1449,12 +1464,26 @@ endmacro
 		INC A
 		CMP $00 : BEQ .HiPrio
 
-	.Return	LDA #$02			;\
-		ORA $3350,x			; | normal routine
-		JML $019F54			;/
+	.Return	LDA #$02				;\
+		ORA $3350,x				; | normal routine
+		JML $019F54				;/
 
-	.Mario	LDA $7499 : BEQ .Return
-	.HiPrio	LDA #$04 : JSR HI_PRIO_OAM
+	.Mario	LDA $7499 : BEQ .Return			; only move to hi prio if mario is facing camera
+	.HiPrio	LDA !OAMindex : TAY			;\
+		CLC : ADC #$04				; |
+		STA !OAMindex				; |
+		REP #$20				; |
+		LDA !OAM+$100 : STA !OAM+$000,y		; |
+		LDA !OAM+$102 : STA !OAM+$002,y		; | smw compatibility moment
+		SEP #$20				; |
+		LDA #$F0 : STA !OAM+$101		; |
+		TYA					; |
+		LSR #2					; |
+		TAY					; |
+		LDA #$02				; |
+		ORA $3350,x				; |
+		STA !OAMhi+$00,y			;/
+		LDY #$00
 		JML $019F5A
 
 
