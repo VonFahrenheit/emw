@@ -10,6 +10,7 @@
 ; $3340 - Movement flags
 ; $33D0	- Animation index
 ; $33E0 - Chase timer
+; $34F0 - misc anim timer for aggro rex
 ; $35D0 - i frames
 
 ; Shaman differences:
@@ -83,14 +84,6 @@
 
 	!AggroRexIFrames	= $35D0,x
 
-
-	!AggroRexIdle		= $00
-	!AggroRexWalk		= $03
-	!AggroRexRoar		= $07
-	!AggroRexCharge		= $09
-	!AggroRexJump		= $11
-	!AggroRexClimb		= $12
-
 	!ShamanMask		= $3290,x
 	!ShamanCast		= $32D0,x
 
@@ -102,1132 +95,6 @@
 ;REX MODULES;
 ;===========;
 
-AggroRex:
-.INIT		PHB : PHK : PLB
-		LDA #!AggroRexWalk		;\ Walk animation
-		STA !SpriteAnimIndex		;/
-		LDA !ExtraBits,x
-		AND #$04 : BEQ +		;\
-		LDA #$FE : STA !SpriteAnimTimer	; > reset animation
-		LDA !RexMovementFlags		; | Enable ambush if extra bit is set
-		ORA #$02			; |
-		STA !RexMovementFlags		;/
-		LDA $3220,x			;\
-		CLC : ADC #$08			; |
-		STA $3220,x			; | Start half a tile to the right
-		LDA $3250,x			; |
-		ADC #$00			; |
-		STA $3250,x			;/
-		STZ !SpriteAnimIndex		;\ Start at idle animation
-		INC !AggroRexTile		;/
-
-	+	LDA #$E4
-		STA !RexAI
-		LDA #$04
-		STA $3330,x
-		JSR SUB_HORZ_POS
-		TYA
-		STA $3320,x
-		LDA $3440,x
-		AND.b #$0F^$FF
-		STA $3440,x
-
-
-		LDA #$03 : JSL !GetDynamicTile
-		BCS +
-		STZ $3230,x
-		PLB
-		RTL
-
-	+	TYA
-		ORA #$40
-		STA !ClaimedGFX
-		TXA
-		STA !DynamicTile+0,y
-		STA !DynamicTile+1,y
-		STA !DynamicTile+2,y
-		STA !DynamicTile+3,y
-		PLB
-
-
-.MAIN		PHB : PHK : PLB
-		JSR REX_BEHAVIOUR
-
-		LDA $32F0,x : BEQ +
-		LDA $3230,x
-		CMP #$02 : BEQ .Hurt
-		LDA #$02 : STA $3230,x
-		LDA #$F0 : STA $9E,x
-		+
-
-		LDA $34D0,x : BEQ +		; hurt frame
-	.Hurt	LDA #$15 : STA !SpriteAnimIndex
-		JMP ++
-		+
-
-		LDA !RexMovementFlags
-		AND #$02
-		BEQ +
-		LDA !SpriteAnimIndex
-		CMP #!AggroRexIdle+3
-		BCS $03 : JMP ++
-		LDA #!AggroRexIdle
-		STA !SpriteAnimIndex
-		STZ !SpriteAnimTimer
-	-	JMP ++
-	+	LDA !RexChase
-		BEQ +
-		LDA #!AggroRexRoar+1
-		CMP !SpriteAnimIndex : BEQ -
-		DEC A
-		CMP !SpriteAnimIndex
-		BNE $03 : JMP ++
-		STA !SpriteAnimIndex
-		STZ !SpriteAnimTimer
-		JMP ++
-	+	BIT !RexMovementFlags
-		BPL +
-		LDA !SpriteAnimIndex
-		CMP #!AggroRexClimb : BCS ++
-		LDA #!AggroRexClimb : STA !SpriteAnimIndex
-		STZ !SpriteAnimTimer
-		BRA ++
-	+	LDA $3330,x
-		AND #$04
-		BNE +
-		LDA $9E,x
-		BPL .Jump
-		LDA !RexMovementFlags
-		AND #$04
-		BEQ .Jump
-		LDA #!AggroRexClimb+1 : STA !SpriteAnimIndex
-		STZ !SpriteAnimTimer
-		BRA ++
-	.Jump	;LDA !Difficulty
-		;AND #$03
-		;CMP #$02 : BNE .NormalJump
-		;LDA #$0D : STA !SpriteAnimIndex
-		;STZ !SpriteAnimTimer
-		;BRA ++
-
-		.NormalJump
-		LDA #!AggroRexJump : STA !SpriteAnimIndex
-		BRA ++
-	+	BIT !RexMovementFlags
-		BVC +
-		LDA !SpriteAnimIndex
-		CMP #!AggroRexCharge : BEQ ++
-		BCC $04 : CMP #!AggroRexCharge+$08 : BCC ++
-		LDA #!AggroRexCharge : STA !SpriteAnimIndex
-		STZ !SpriteAnimTimer
-		BRA ++
-	+	LDA !SpriteAnimIndex
-		CMP #!AggroRexWalk
-		BEQ ++
-		BCC +
-		CMP #!AggroRexWalk+$08 : BCC ++
-	+	LDA #!AggroRexWalk : STA !SpriteAnimIndex
-		STZ !SpriteAnimTimer
-	++	LDA !SpriteAnimIndex
-		STA $00
-		ASL A
-		CLC : ADC $00
-		ASL A
-		TAY
-		LDA !SpriteAnimTimer
-		INC A
-		CMP.w .ANIM_IDLE+4,y : BNE +
-		LDA.w .ANIM_IDLE+5,y : STA !SpriteAnimIndex
-		STA $00
-		ASL A
-		CLC : ADC $00
-		ASL A
-		TAY
-		LDA #$00
-	+	STA !SpriteAnimTimer
-
-		LDA !SpriteAnimIndex
-		CMP #!AggroRexClimb : BNE .NoHold
-		PHA
-		LDA #$02 : STA !SpriteStasis,x
-		PLA
-		.NoHold
-		CMP !AggroRexTile
-		STA !AggroRexTile
-		BEQ .SameFrame
-		REP #$20
-		LDA.w .ANIM_IDLE+2,y : STA $0C
-		SEP #$20
-		PHY
-		LDY.b #!File_AggroRex
-		JSL !UpdateFromFile
-		PLY
-		.SameFrame
-
-		REP #$20
-		LDA.w .ANIM_IDLE+0,y : STA $04
-		SEP #$20
-
-		LDA $34D0,x : BNE .Draw		; no flash during hit stun
-		LDA !AggroRexIFrames
-		AND #$02 : BNE .Return
-	.Draw
-		JSR LOAD_CLAIMED
-
-	.Return
-		PLB
-		RTL
-
-
-
-	.TM32X
-	dw $0010
-	db $30,$00,$F0,$00
-	db $30,$10,$F0,$02
-	db $30,$00,$00,$04
-	db $30,$10,$00,$06
-
-	.TM32X2			; roar
-	dw $0010
-	db $30,$F0,$F0,$00
-	db $30,$00,$F0,$02
-	db $30,$F0,$00,$04
-	db $30,$00,$00,$06
-
-	.TM32			; 14, 15
-	dw $0010
-	db $30,$F8,$F0,$00
-	db $30,$08,$F0,$02
-	db $30,$F8,$00,$04
-	db $30,$08,$00,$06
-
-	.TM32U1			; 4, 8, C, E, 10, 12
-	dw $0010
-	db $30,$F8,$EF,$00
-	db $30,$08,$EF,$02
-	db $30,$F8,$FF,$04
-	db $30,$08,$FF,$06
-
-	.TM32U2			; D, 11
-	dw $0010
-	db $30,$F8,$EE,$00
-	db $30,$08,$EE,$02
-	db $30,$F8,$FE,$04
-	db $30,$08,$FE,$06
-
-	.ANIM_IDLE
-		dw .TM32,.IdleDyn00 : db $FF,$01	; 00
-		dw .TM32,.IdleDyn01 : db $08,$02	; 01
-		dw .TM32,.IdleDyn02 : db $C0,$00	; 02
-	.ANIM_WALK
-		dw .TM32,.WalkDyn00 : db $10,$04	; 03
-		dw .TM32U1,.WalkDyn01 : db $10,$05	; 04
-		dw .TM32,.WalkDyn00 : db $10,$06	; 05
-		dw .TM32U1,.WalkDyn02 : db $10,$03	; 06
-	.ANIM_ROAR
-		dw .TM32,.RoarDyn00 : db $08,$08	; 07
-		dw .TM32X2,.RoarDyn01 : db $FF,$08	; 08
-	.ANIM_RUN
-		dw .TM32,.RunDyn00 : db $05,$0A		; 09
-		dw .TM32U1,.RunDyn01 : db $05,$0B	; 0A
-		dw .TM32U2,.RunDyn02 : db $05,$0C	; 0B
-		dw .TM32U1,.RunDyn01 : db $05,$0D	; 0C
-		dw .TM32,.RunDyn00 : db $05,$0E		; 0D
-		dw .TM32U1,.RunDyn03 : db $05,$0F	; 0E
-		dw .TM32U2,.RunDyn04 : db $05,$10	; 0F
-		dw .TM32U1,.RunDyn03 : db $05,$09	; 10
-	.ANIM_JUMP
-		dw .TM32,.RunDyn02 : db $FF,$11		; 11
-	.ANIM_CLIMB
-		dw .TM32X,.ClimbDyn00 : db $08,$13	; 12
-		dw .TM32X,.ClimbDyn01 : db $08,$14	; 13
-		dw .TM32X,.ClimbDyn02 : db $08,$12	; 14
-	.ANIM_HURT
-		dw .TM32,.HurtDyn : db $FF,$15		; 15
-
-
-
-
-macro AggroDyn(TileCount, SourceTile, DestVRAM)
-	dw <TileCount>*$20
-	dl <SourceTile>*$20
-	dw <DestVRAM>*$10+$6000
-endmacro
-
-	.WalkDyn00
-	.IdleDyn00
-		dw ..end-..start
-		..start
-		%AggroDyn(4, $004, $00)
-		%AggroDyn(4, $014, $10)
-		%AggroDyn(4, $024, $04)
-		%AggroDyn(4, $034, $14)
-		..end
-	.IdleDyn01
-		dw ..end-..start
-		..start
-		%AggroDyn(4, $000, $00)
-		%AggroDyn(4, $010, $10)
-		%AggroDyn(4, $020, $04)
-		%AggroDyn(4, $030, $14)
-		..end
-	.IdleDyn02
-		dw ..end-..start
-		..start
-		%AggroDyn(4, $0C4, $00)
-		%AggroDyn(4, $0D4, $10)
-		%AggroDyn(4, $0E4, $04)
-		%AggroDyn(4, $0F4, $14)
-		..end
-
-	.WalkDyn01
-		dw ..end-..start
-		..start
-		%AggroDyn(4, $008, $00)
-		%AggroDyn(4, $018, $10)
-		%AggroDyn(4, $028, $04)
-		%AggroDyn(4, $038, $14)
-		..end
-	.WalkDyn02
-		dw ..end-..start
-		..start
-		%AggroDyn(4, $00C, $00)
-		%AggroDyn(4, $01C, $10)
-		%AggroDyn(4, $02C, $04)
-		%AggroDyn(4, $03C, $14)
-		..end
-
-	.RoarDyn01
-		dw ..end-..start
-		..start
-		%AggroDyn(4, $040, $00)
-		%AggroDyn(4, $050, $10)
-		%AggroDyn(4, $060, $04)
-		%AggroDyn(4, $070, $14)
-		..end
-
-	.RoarDyn00
-	.RunDyn00
-		dw ..end-..start
-		..start
-		%AggroDyn(4, $044, $00)
-		%AggroDyn(4, $054, $10)
-		%AggroDyn(4, $064, $04)
-		%AggroDyn(4, $074, $14)
-		..end
-	.RunDyn01
-		dw ..end-..start
-		..start
-		%AggroDyn(4, $048, $00)
-		%AggroDyn(4, $058, $10)
-		%AggroDyn(4, $068, $04)
-		%AggroDyn(4, $078, $14)
-		..end
-	.RunDyn02
-		dw ..end-..start
-		..start
-		%AggroDyn(4, $04C, $00)
-		%AggroDyn(4, $05C, $10)
-		%AggroDyn(4, $06C, $04)
-		%AggroDyn(4, $07C, $14)
-		..end
-	.RunDyn03
-		dw ..end-..start
-		..start
-		%AggroDyn(4, $080, $00)
-		%AggroDyn(4, $090, $10)
-		%AggroDyn(4, $0A0, $04)
-		%AggroDyn(4, $0B0, $14)
-		..end
-	.RunDyn04
-		dw ..end-..start
-		..start
-		%AggroDyn(4, $084, $00)
-		%AggroDyn(4, $094, $10)
-		%AggroDyn(4, $0A4, $04)
-		%AggroDyn(4, $0B4, $14)
-		..end
-
-	.ClimbDyn00
-		dw ..end-..start
-		..start
-		%AggroDyn(4, $088, $00)
-		%AggroDyn(4, $098, $10)
-		%AggroDyn(4, $0A8, $04)
-		%AggroDyn(4, $0B8, $14)
-		..end
-	.ClimbDyn01
-		dw ..end-..start
-		..start
-		%AggroDyn(4, $08C, $00)
-		%AggroDyn(4, $09C, $10)
-		%AggroDyn(4, $0AC, $04)
-		%AggroDyn(4, $0BC, $14)
-		..end
-	.ClimbDyn02
-		dw ..end-..start
-		..start
-		%AggroDyn(4, $0C0, $00)
-		%AggroDyn(4, $0D0, $10)
-		%AggroDyn(4, $0E0, $04)
-		%AggroDyn(4, $0F0, $14)
-		..end
-
-	.HurtDyn
-		dw ..end-..start
-		..start
-		%AggroDyn(4, $0C8, $00)
-		%AggroDyn(4, $0D8, $10)
-		%AggroDyn(4, $0E8, $04)
-		%AggroDyn(4, $0F8, $14)
-		..end
-
-
-DropHat:
-		LDA !ExtraProp2,x
-		AND #$3F : BNE .Drop
-		RTS
-
-		.Drop
-		PHA
-		LDA !ExtraProp2,x
-		AND #$C0
-		STA !ExtraProp2,x
-		PLA
-		DEC A
-		ASL A
-		TAY
-		LDA Rex_HatPtr,y : STA $04
-		LDA Rex_HatPtr+1,y : STA $05
-		LDY #$01
-		LDA ($04),y : PHA		; push GFX status
-		LDY #$05
-		LDA ($04),y : PHA		; push tile
-		DEY
-		STZ $03
-		LDA ($04),y : STA $02		; ydisp
-		BPL $02 : DEC $03
-		DEY
-		STZ $01
-		STZ $0F				;\
-		LDA $3320,x			; |
-		BNE $02 : DEC $0F		; |
-		LDA ($04),y			; | xdisp
-		EOR $0F				; |
-		STA $00				; |
-		BPL $02 : DEC $01		;/
-		DEY
-		LDA ($04),y : PHA		; push palette
-		LDY $3320,x
-		LDA .XSpeed,y : STA $04		; xspeed
-		LDA #$F0 : STA $05		; yspeed
-		LDA .Palset,y : PHA		; push YXPPCCCT
-		LDA #$06
-		LDY #$01
-		JSR SpawnExSprite
-
-		PLA : STA $0F			; pull and write YXPPCCCT
-		PLA
-		AND #$0E
-		ORA $0F
-		STA !Ex_Palset,y
-
-		PLA : STA $0F			; pull tile number within file
-		PLA				; pull
-		PHX
-		TAX
-		LDA !GFX_status,x
-		BPL +
-		XBA
-		LDA !Ex_Palset,y		; t bit
-		INC A
-		STA !Ex_Palset,y
-		XBA
-	+	AND #$70
-		ASL A
-		STA $0E
-		LDA !GFX_status,x
-		AND #$0F
-		ORA $0E
-		CLC : ADC $0F
-		AND #$EF
-		STA !Ex_Data1,y			; tile number
-		LDA #$43 : STA !Ex_Data3,y	; set gravity = 3 + tile size = 16x16
-		PLX
-		RTS
-
-	.XSpeed	db $10,$F0
-	.Palset	db $70,$30
-
-
-DropItem:
-		LDA !ExtraProp1,x : BNE .Drop
-	.Return	RTS
-
-		.Drop
-		STZ !ExtraProp1,x
-		TAY
-		LDA $33C0,x
-		CMP #$04 : BEQ .Return
-		LDA .Count-1,y : BEQ .Return
-		STA $08
-	.Again	STZ $00
-		STZ $01
-		CLC : LDA .Items-1,y
-		JSR SpawnSprite
-		CPY #$FF : BEQ .Return
-		LDA #$08 : STA $3230,y
-		LDA #$20			;\
-		STA $32E0,y			; | prevent dropped item from interacting for a bit
-		STA $35F0,y			;/
-		LDA #$D0 : STA.w $9E,y
-		PHX
-		LDA $3320,x : TAX
-		EOR $08
-		AND #$01
-		STA $3320,y
-		TAX
-		LDA .XSpeed,x : STA.w $AE,y
-		PLX
-		DEC $08
-		LDY $08 : BNE .Again
-		RTS
-
-
-	.Items	db $21,$74,$00,$00,$00
-	.Count	db $02,$01,$00,$00,$00
-
-	.XSpeed	db $10,$F0
-
-Rex:
-.INIT		PHB : PHK : PLB
-		LDA !ExtraBits,x
-		AND #$04 : BEQ +		;\
-		LDA #$08			; | no movement if extra bit is set
-	+	ORA #$20			;/
-		STA !RexAI
-		JSR SUB_HORZ_POS
-		TYA : STA $3320,x
-		LDA #$01 : STA !SpriteAnimIndex
-		STZ !SpriteAnimTimer
-
-		LDA !ExtraProp1,x		;\ check golden bandit mode
-		CMP #$FF : BEQ .GoldenBandit	;/
-		CMP #$05 : BNE +		;\
-		LDA !ExtraProp2,x		; |
-		AND #$3F			; | if rex is a knight (sword + helmet)
-		CMP #$08 : BNE +		; | enable chase
-		LDA !RexAI			; |
-		ORA #$40			; |
-		STA !RexAI			;/
-	+	JMP .NotGolden
-
-
-		.GoldenBandit
-		LDA $33C0,x			;\
-		AND #$0E			; | only spawn one yoshi coin
-		CMP #$04 : BEQ .NotGolden	;/
-		JSL !GetSpriteSlot		;\
-		BMI .Fail			; |
-		JSR SPRITE_A_SPRITE_B_COORDS	; |
-		PHX				; |
-		TYX				; |
-		LDA #$22 : STA !NewSpriteNum,x	; |
-		LDA #$36 : STA $3200,x		; |
-		LDA #$08 : STA !ExtraBits,x	; |
-		JSL !ResetSprite		; | spawn yoshi coin (hidden)
-		JSL !ResetSpriteExtra		; |
-		LDA #$01 : STA $3230,x		; |
-		PLA				; |
-		STA $3290,x			; |
-		TAY				; |
-		LDA !ExtraProp2,y		; |
-		ORA #$80			; |
-		STA !ExtraProp1,x		; |
-		TYX				;/
-		LDA $33C0,x			;\
-		AND #$F1			; |
-		ORA #$04			; |
-		STA $33C0,x			; |
-		LDA #$01 : STA !ExtraProp1,x	; | golden bandit config
-		LDA !ExtraProp2,x		; |
-		AND #$C0			; |
-		ORA #$05			; |
-		STA !ExtraProp2,x		; |
-		BRA .NotGolden			;/
-		LDA !SpriteTweaker4,x		;\
-		ORA #$04			; | prevent from despawning off-screen
-		STA !SpriteTweaker4,x		;/
-		.Fail
-		STZ $3230,x
-		.NotGolden
-
-		PLB
-		RTL
-
-.MAIN		PHB : PHK : PLB
-
-		JSR REX_BEHAVIOUR
-
-		LDA $33C0,x			; glitter code for golden bandit
-		CMP #$04 : BNE .NoGlitter
-		JSR MakeGlitter
-		.NoGlitter
-
-		LDA $3230,x
-		CMP #$02 : BEQ .Drop
-		CMP #$04 : BNE .NoFireDrop
-	.Drop	JSR DropHat
-		JSR DropItem
-		JSR SUB_HORZ_POS
-		TYA : STA $3320,x
-		LDA $9E,x : BPL .NoFireDrop
-		LDA #$01
-		STA $34D0,x
-		STA $BE,x
-		.NoFireDrop
-		LDA $BE,x : BEQ ++
-		DEC A
-		BEQ +
-		LDA #$0C : STA !SpriteAnimIndex
-		BRA ++
-	+	LDA $34D0,x : BEQ +
-		JSR DropHat
-		JSR DropItem
-	.Hurt	LDA #$09
-		STA !SpriteAnimIndex
-		BRA ++
-	+	LDA !SpriteAnimIndex
-		CMP #$0A
-		BEQ ++
-		CMP #$0B
-		BEQ ++
-		STZ !SpriteAnimTimer
-		LDA #$0A
-		STA !SpriteAnimIndex
-	++	LDA !SpriteAnimIndex
-		ASL #2
-		TAY
-		LDA.w .AnimIdle+0,y
-		STA $04
-		LDA.w .AnimIdle+1,y
-		STA $05
-		LDA !RexAI			;\
-		AND #$08			; | No animation while standing still
-		BNE ++				;/
-		BIT !RexMovementFlags
-		BVC .RegularSpeed
-
-		.IncreasedSpeed
-		LDA $14
-		LSR A
-		BCC .RegularSpeed
-		LDA !SpriteAnimTimer
-		INC A
-		CMP.w .AnimIdle+2,y
-		BEQ .NewAnim
-		INC A
-		CMP.w .AnimIdle+2,y
-		BEQ .NewAnim
-		BRA +
-
-		.RegularSpeed
-		LDA !SpriteAnimTimer
-		INC A
-		CMP.w .AnimIdle+2,y
-		BNE +
-
-		.NewAnim
-		LDA.w .AnimIdle+3,y
-		STA !SpriteAnimIndex
-		ASL #2
-		TAY
-		LDA.w .AnimIdle+0,y
-		STA $04
-		LDA.w .AnimIdle+1,y
-		STA $05
-	++	LDA #$00
-	+	STA !SpriteAnimTimer
-
-		LDA $33C0,x : PHA
-		STZ $06
-		LDA !SpriteAnimIndex
-		CMP #$09 : BCC .Items
-		JSR AddTilemap
-		STZ $33C0,x
-		BRA .Write
-
-	.Items	STZ $33C0,x
-		LDA !ExtraProp2,x			;\
-		AND #$0F : BEQ +			; |
-		PEI ($04)				; |
-		DEC A					; |
-		ASL A					; |
-		CMP.b #.HatPtr_End-.HatPtr		; |
-		BCC $02 : LDA #$00			; | add hat tilemap
-		TAY					; |
-		LDA .HatPtr,y : STA $04			; |
-		LDA .HatPtr+1,y : STA $05		; |
-		JSR AddTilemap				; |
-		PLA : STA $04				; |
-		PLA : STA $05				;/
-	+	PLA : STA $33C0,x : PHA			; restore palette but keep on stack
-		JSR AddTilemap				; head tilemap
-		REP #$20				;\
-		LDA $04					; |
-		CLC : ADC #$0004			; | legs tilemap
-		STA $04					; |
-		SEP #$20				; |
-		JSR AddTilemap				;/
-		STZ $33C0,x
-		LDA !ExtraProp1,x : BEQ .Write		;\
-		PEI ($04)				; |
-		DEC A					; |
-		ASL #3					; |
-		CMP.b #.BagPtr_End-.BagPtr		; |
-		BCC $02 : LDA #$00			; | add bag tilemap
-		STA $00					; |
-		LDA !SpriteAnimIndex			; |
-		AND #$06				; |
-		CLC : ADC $00				; |
-		TAY					; |
-		LDA .BagPtr,y : STA $04			; |
-		LDA .BagPtr+1,y : STA $05		; |
-		JSR AddTilemap				; |
-		PLA : STA $04				; |
-		PLA : STA $05				;/
-	.Write	REP #$20
-		LDA.w #!BigRAM : STA $04
-		SEP #$20
-		STZ !SpriteTile,x
-		STZ !SpriteProp,x
-		JSR LOAD_PSUEDO_DYNAMIC			; load complete tilemap
-		PLA : STA $33C0,x
-
-
-		LDA $33C0,x : STA $0C
-		LDA !ExtraProp1,x : BEQ +
-		LDX #$04
-		CMP #$04
-		BNE $02 : LDX #$08
-		STX $0F
-		LDA $0E
-		SEC : SBC #$04
-		TAY
-		LDX !OAMindex
-	-	LDA !OAM+$100,y : STA !OAM+$000,x
-		LDA !OAM+$101,y : STA !OAM+$001,x
-		LDA !OAM+$102,y : STA !OAM+$002,x
-		LDA !OAM+$103,y
-		AND #$F1
-		ORA $0C
-		STA !OAM+$003,x
-		LDA #$F0 : STA !OAM+$101,y
-		PHX
-		PHY
-		TXA
-		LSR #2
-		TAX
-		TYA
-		LSR #2
-		TAY
-		LDA !OAMhi+$40,y : STA !OAMhi+$00,x
-		PLY
-		PLX
-		INX #4
-		LDA $0F
-		SEC : SBC #$04 : BEQ ++
-		STA $0F
-		INY #4
-		BRA -
-	++	STX !OAMindex
-		LDX !SpriteIndex
-		+
-
-		PLB
-		RTL
-
-	.AnimIdle
-		dw .TM_Idle00 : db $FF,$00	; 00
-	.AnimWalk
-		dw .TM_Walk00 : db $10,$03	; 01
-		dw .TM_Walk01 : db $08,$03	; 02 CUT
-		dw .TM_Walk02 : db $10,$05	; 03
-		dw .TM_Walk01 : db $08,$05	; 04 CUT
-		dw .TM_Walk00 : db $10,$07	; 05
-		dw .TM_Walk03 : db $08,$07	; 06 CUT
-		dw .TM_Walk04 : db $10,$01	; 07
-		dw .TM_Walk03 : db $08,$01	; 08 CUT
-	.AnimHurt
-		dw .TM_Hurt00 : db $FF,$09	; 09
-	.AnimSmush
-		dw .TM_Smush00 : db $07,$0B	; 0A
-		dw .TM_Smush01 : db $07,$0A	; 0B
-	.AnimDead
-		dw .TM_Dead00 : db $FF,$0C	; 0C
-
-
-	; special format: hi byte of header contains GFX status index
-
-	.TM_Idle00
-	.TM_Walk00
-		db $04,$4A
-		db $30,$00,$F0,$00
-		db $08,$6C		; if bag is held, add 1 to GFX index
-		db $30,$00,$00,$00
-		db $30,$08,$00,$01
-	.TM_Walk02
-		db $04,$4A
-		db $30,$00,$F0,$00
-		db $08,$6C		; if bag is held, add 1 to GFX index
-		db $30,$00,$00,$03
-		db $30,$08,$00,$04
-	.TM_Walk04
-		db $04,$4A
-		db $30,$00,$F0,$00
-		db $08,$6C		; if bag is held, add 1 to GFX index
-		db $30,$00,$00,$06
-		db $30,$08,$00,$07
-
-	.TM_Walk01
-	;	%TM24x32($00, $00, $03, $20)
-	.TM_Walk03
-	;	%TM24x32($00, $00, $09, $20)
-
-	.TM_Hurt00
-		db $08,$6E
-		db $30,$00,$F0,$00
-		db $30,$00,$00,$02
-
-	.TM_Smush00
-		db $04,$6E
-		db $30,$00,$00,$05
-	.TM_Smush01
-		db $04,$6E
-		db $30,$00,$00,$07
-
-	.TM_Dead00
-		db $04,$6E
-		db $30,$00,$00,$09
-
-	.HatPtr
-		dw .Hat1			; 00
-		dw .Hat2			; 01
-		dw .Hat3			; 02
-		dw .Hat4			; 03
-		dw .Hat5			; 04
-		dw .Hat6			; 05
-		dw .Hat7			; 06
-		dw .Helmet			; 07
-		dw .HammerHelmet		; special one used for hammer rex, should always go at the end of the list (safe to add stuff before it)
-	..End
-
-	.BagPtr
-		dw .Bag1,.Bag1_tilt1,.Bag1,.Bag1_tilt2
-		dw .Bag2,.Bag2_tilt1,.Bag2,.Bag2_tilt2
-		dw .Bag3,.Bag3_tilt1,.Bag3,.Bag3_tilt2
-		dw .Bag4,.Bag4_tilt1,.Bag4,.Bag4_tilt2
-		dw .Sword,.Sword_tilt1,.Sword,.Sword_tilt2
-	..End
-
-		.Hat1
-		db $04,$94
-		db $3A,$03,$E8,$00
-		.Hat2
-		db $04,$95
-		db $38,$04,$E9,$00
-		.Hat3
-		db $04,$96
-		db $38,$05,$E8,$00
-		.Hat4
-		db $04,$97
-		db $38,$04,$EC,$00
-		.Hat5
-		db $04,$98
-		db $36,$04,$F0,$00
-		.Hat6
-		db $08,$99
-		db $36,$05,$E4,$00
-		db $38,$FD,$F7,$02
-		.Hat7
-		db $04,$9A
-		db $36,$06,$EE,$00
-		.Helmet
-		db $04,$9B
-		db $36,$04,$EB,$00
-
-		.HammerHelmet
-		db $04,$82
-		db $3A,$06,$E8,$06
-
-
-		.Bag1
-		db $08,$9C
-		db $10,$07,$00,$00
-		db $36,$0A,$FB,$01
-		..tilt1
-		db $08,$9C
-		db $10,$08,$00,$00
-		db $36,$0B,$FB,$01
-		..tilt2
-		db $08,$9C
-		db $10,$06,$00,$00
-		db $36,$09,$FB,$01
-
-		.Bag2
-		..tilt1
-		db $08,$9D
-		db $18,$07,$FE,$00
-		db $38,$0E,$F7,$01
-		..tilt2
-		db $08,$9D
-		db $18,$08,$FE,$00
-		db $38,$0F,$F7,$01
-
-		.Bag3
-		..tilt1
-		..tilt2
-		db $08,$9E
-		db $10,$08,$FD,$00
-		db $36,$09,$F8,$01
-
-		.Bag4
-		..tilt1
-		..tilt2
-		db $08,$9F
-		db $10,$03,$FE,$00
-		db $36,$F9,$FB,$01
-
-		.Sword
-		db $08,$A0
-		db $36,$FF,$F8,$00
-		db $16,$0D,$00,$02
-		..tilt1
-		db $08,$A0
-		db $36,$00,$F8,$00
-		db $16,$0D,$00,$12
-		..tilt2
-		db $08,$A0
-		db $36,$FF,$F8,$00
-		db $16,$0B,$00,$12
-
-
-
-HammerRex:
-.INIT		PHB : PHK : PLB
-		LDA !ExtraBits,x
-		AND #$04			;\
-		BEQ +				; | No movement if extra bit is set
-		LDA #$08			; |
-	+	ORA #$22			;/
-		STA !RexAI
-		JSR SUB_HORZ_POS
-		TYA
-		STA $3320,x
-		LDA #$01
-		STA !SpriteAnimIndex
-		STZ !SpriteAnimTimer
-		LDA !ExtraProp2,x
-		AND #$C0
-		ORA.b #(Rex_HatPtr_End-Rex_HatPtr)/2
-		STA !ExtraProp2,x
-		PLB
-		RTL
-
-.MAIN		PHB : PHK : PLB
-		LDA !SpriteAnimIndex
-		CMP #$0D
-		BCC .NoStun
-
-		LDA $3230,x
-		SEC : SBC #$08
-		ORA $9D
-		BNE .NoStun			; prevent revenge hammer bug
-		JSR REX_BEHAVIOUR_DontTurn
-		STZ $AE,x
-		JSL !SpriteApplySpeed
-		LDA $34D0,x : BNE +
-		JMP ++
-.NoStun		JSR REX_BEHAVIOUR
-
-	+	LDA $3230,x
-		CMP #$02 : BEQ .Drop
-		CMP #$04 : BNE .NoFireDrop
-	.Drop	JSR DropHat
-		JSR SUB_HORZ_POS
-		TYA : STA $3320,x
-		LDA $9E,x : BPL .NoFireDrop
-		LDA #$01
-		STA $34D0,x
-		STA $BE,x
-		.NoFireDrop
-		LDA $BE,x : BNE +
-		LDA !RexAI
-		AND #$08 : BEQ ++
-		JSR SUB_HORZ_POS
-		TYA
-		STA $3320,x
-		LDA !SpriteAnimIndex
-		CMP #$01 : BCC ++
-		CMP #$09 : BCS ++
-		LDA #$00 : STA !SpriteAnimIndex
-		BRA ++
-	+	PHA
-		JSR DropHat
-		PLA
-		DEC A
-		BEQ +
-		LDA #$0C : STA !SpriteAnimIndex
-		BRA ++
-	+	LDA $34D0,x : BEQ +
-		LDA #$09 : STA !SpriteAnimIndex
-		BRA ++
-	+	LDA !SpriteAnimIndex
-		CMP #$0A : BEQ ++
-		CMP #$0B : BEQ ++
-		STZ !SpriteAnimTimer
-		LDA #$0A : STA !SpriteAnimIndex
-	++	LDA !SpriteAnimIndex
-		ASL #2
-		TAY
-		LDA.w .AnimIdle+0,y : STA $04
-		LDA.w .AnimIdle+1,y : STA $05
-		LDA !SpriteAnimTimer
-		INC A
-		CMP.w .AnimIdle+2,y : BNE +
-		LDA.w .AnimIdle+3,y : STA !SpriteAnimIndex
-		CMP #$0E : BNE ++
-		JSR REX_HAMMER_Prep
-		LDA !SpriteAnimIndex
-	++	ASL #2
-		TAY
-		LDA.w .AnimIdle+0,y : STA $04
-		LDA.w .AnimIdle+1,y : STA $05
-		LDA #$00
-	+	STA !SpriteAnimTimer
-
-
-		STZ $33C0,x
-		STZ $06
-		JSR AddTilemap
-		REP #$20
-		LDA.w #!BigRAM : STA $04
-		SEP #$20
-		STZ !SpriteTile,x
-		STZ !SpriteProp,x
-		JSR LOAD_PSUEDO_DYNAMIC
-
-		LDA !SpriteAnimIndex
-		CMP #$0E : BNE .Return
-		REP #$20
-		LDA.w #.TM_SlashLine : STA $04
-		SEP #$20
-		JSR LOAD_TILEMAP_HiPrio
-
-		.Return
-		PLB
-		RTL
-
-.HammerDelay	db $24,$24,$18
-
-
-	.AnimIdle
-		dw .TM_Idle00 : db $20,$00	; 00
-	.AnimWalk
-		dw .TM_Walk00 : db $10,$03	; 01
-		dw .TM_Walk01 : db $08,$03	; 02 CUT
-		dw .TM_Walk02 : db $10,$05	; 03
-		dw .TM_Walk01 : db $08,$05	; 04 CUT
-		dw .TM_Walk00 : db $10,$07	; 05
-		dw .TM_Walk03 : db $08,$07	; 06 CUT
-		dw .TM_Walk04 : db $10,$01	; 07
-		dw .TM_Walk03 : db $08,$01	; 08 CUT
-	.AnimHurt
-		dw .TM_Hurt00 : db $FF,$09	; 09
-	.AnimSmush
-		dw .TM_Smush00 : db $07,$0B	; 0A
-		dw .TM_Smush01 : db $07,$0A	; 0B
-	.AnimDead
-		dw .TM_Dead00 : db $FF,$0C	; 0C
-	.AnimPrep
-		dw .TM_Prep00 : db $20,$0E	; 0D
-	.AnimThrow
-		dw .TM_Throw00 : db $08,$0F	; 0E
-		dw .TM_Throw01 : db $20,$01	; 0F
-
-
-
-	.TM_Idle00
-	.TM_Walk00
-		db $10,$82
-		db $3A,$00,$F0,$00
-		db $3A,$00,$00,$20
-		db $3A,$08,$00,$21
-		db $3A,$06,$E8,$06
-	.TM_Walk01
-	;	%TM24x32($00, $00, $03, $20)
-	.TM_Walk02
-		db $10,$82
-		db $3A,$00,$F0,$00
-		db $3A,$00,$00,$23
-		db $3A,$08,$00,$24
-		db $3A,$06,$E8,$06
-	.TM_Walk03
-	;	%TM24x32($00, $00, $09, $20)
-	.TM_Walk04
-		db $10,$82
-		db $3A,$00,$F0,$00
-		db $3A,$00,$00,$26
-		db $3A,$08,$00,$27
-		db $3A,$06,$E8,$06
-
-	.TM_Hurt00
-		db $08,$6E
-		db $3A,$00,$F0,$00
-		db $3A,$00,$00,$02
-
-	.TM_Smush00
-		db $04,$6E
-		db $3A,$00,$00,$05
-	.TM_Smush01
-		db $04,$6E
-		db $3A,$00,$00,$07
-
-	.TM_Dead00
-		db $04,$6E
-		db $3A,$00,$00,$09
-
-	.TM_Prep00
-		db $14,$82
-		db $36,$06,$FA,$08	; hammer tile
-		db $3A,$00,$F0,$00
-		db $3A,$00,$00,$20
-		db $3A,$08,$00,$21
-		db $3A,$06,$E8,$06
-
-	.TM_Throw00
-		db $10,$82
-		db $3A,$F8,$F0,$0A
-		db $3A,$F8,$00,$29
-		db $3A,$00,$00,$2A
-		db $3A,$00,$E7,$06
-	.TM_Throw01
-		db $14,$82
-		db $3A,$F8,$F0,$0C
-		db $3A,$00,$F0,$0D
-		db $3A,$F8,$00,$2C
-		db $3A,$00,$00,$2D
-		db $3A,$00,$EA,$06
-
-
-	.TM_SlashLine
-		dw $000C		; should be uploaded to hi prio OAM during throw00 tilemap
-		db $36,$F8,$F8,$4B	; 16x16
-		db $06,$08,$F8,$4D	; 8x8
-		db $06,$10,$F8,$4E	; 8x8
-
-
-
 ; $BE: state
 ; $3280: target player
 ; $3290: original Ypos (lo)
@@ -1236,7 +103,7 @@ HammerRex:
 
 FlyingRex:
 .INIT		PHB : PHK : PLB
-		JSR SUB_HORZ_POS
+		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
 		STZ $3280,x			; just in case
 		LDA !Difficulty
@@ -1265,7 +132,7 @@ FlyingRex:
 	.Physics
 		LDA !ExtraBits,x
 		AND #$04 : BEQ .Moving
-		JSR SUB_HORZ_POS
+		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
 		JMP .NoSpeed
 
@@ -1315,9 +182,9 @@ FlyingRex:
 
 		.Swoop
 		LDY $3280,x : BNE +
-		JSR SUB_VERT_POS_1
+		JSL SUB_VERT_POS_P1
 		BRA ++
-	+	JSR SUB_VERT_POS_2
+	+	JSL SUB_VERT_POS_P2
 	++	CPY #$00 : BEQ +
 		LDA #$02 : STA $BE,x
 		BRA .Rise
@@ -1328,7 +195,7 @@ FlyingRex:
 
 		.Forward
 		LDA #$00
-	.Acc	JSR AccelerateY
+	.Acc	JSL AccelerateY
 		LDY $3320,x
 		LDA .XSpeed,y : STA $AE,x
 
@@ -1338,7 +205,7 @@ FlyingRex:
 		.NoSpeed
 
 		JSL !GetSpriteClipping04
-		JSR P2Attack
+		JSL P2Attack
 		BCC .NoHitbox
 		JSR .Interact_nospin
 		BRA ++
@@ -1381,7 +248,7 @@ FlyingRex:
 		REP #$20
 		LDA .ANIM_FLY,y : STA $04
 		SEP #$20
-		JSR LOAD_PSUEDO_DYNAMIC
+		JSL LOAD_PSUEDO_DYNAMIC
 		PLB
 		RTL
 
@@ -1429,7 +296,7 @@ FlyingRex:
 		db $00,$FF
 
 	.Interact
-		LDA $7490 : BEQ ..nostar
+		LDA !StarTimer : BEQ ..nostar
 		JMP SPRITE_STAR
 
 		..nostar
@@ -1454,11 +321,12 @@ FlyingRex:
 		RTS
 
 		..stomp
-		JSR StompSound
-		JSR P2Bounce
+		JSL StompSound
+		JSL P2Bounce
 		LDA !P2Character-$80,y : BNE ..nospin
 		LDA !MarioSpinJump : BEQ ..nospin
-		JMP REX_SPINKILL
+		JSL SPRITE_SPINKILL
+		RTS
 		..nospin
 		LDA #$08 : STA !ExtraBits,x
 		LDA #$02 : STA !NewSpriteNum,x
@@ -1485,7 +353,7 @@ NoviceShaman:
 		LDA #$10			;\ Equip mask
 		STA !RexMovementFlags		;/
 
-		JSR SUB_HORZ_POS
+		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
 		LDA #$01 : STA !SpriteAnimIndex
 		LDA !RNG			;\
@@ -1516,7 +384,7 @@ NoviceShaman:
 		CMP #$0C : BEQ .Stop		;/
 		LDA !ExtraBits,x		;\
 		AND #$04 : BEQ .Walk		; | Aim if extra bit is set
-		JSR SUB_HORZ_POS		; |
+		JSL SUB_HORZ_POS		; |
 		STZ !SpriteAnimIndex		; > Reset animation
 		TYA : STA $3320,x		;/
 
@@ -1539,7 +407,7 @@ NoviceShaman:
 		PLA : STA $3450,x
 		LDA $3230,x
 		CMP #$02 : BNE .NotKnockedOut
-		JSR SUB_HORZ_POS
+		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
 		LDA $BE,x : BEQ .HurtF
 		CMP #$02 : BCS .NotKnockedOut
@@ -1635,7 +503,7 @@ NoviceShaman:
 		REP #$20
 		LDA.w #!BigRAM : STA $04
 		SEP #$20
-		JSL LOAD_TILEMAP_HiPrio_Long
+		JSL LOAD_TILEMAP_p2
 		STZ $06
 		PLY				;
 		.NoSpell
@@ -1666,7 +534,7 @@ NoviceShaman:
 		LDA.w #.MaskTM00 : JSL LakituLovers_TilemapToRAM_Long
 		LDA.w #!BigRAM : STA $04
 		SEP #$20
-		JSL LOAD_TILEMAP_HiPrio_Long
+		JSL LOAD_TILEMAP_p2
 		STZ $06
 		PLY
 		.NoMask
@@ -1685,7 +553,7 @@ NoviceShaman:
 		LDA.w #!BigRAM : STA $04
 		SEP #$20
 
-		JSR LOAD_TILEMAP		; > Upload tilemap
+		JSL LOAD_TILEMAP		; > Upload tilemap
 		PLB
 		RTL
 
@@ -1839,7 +707,7 @@ NoviceShaman:
 
 AdeptShaman:
 .INIT		PHB : PHK : PLB
-		JSR SUB_HORZ_POS
+		JSL SUB_HORZ_POS
 		TYA
 		STA $3320,x
 		LDA #$04 : STA $BE,x		; > HP = 4
@@ -1936,19 +804,19 @@ AdeptShaman:
 		STA $00
 		AND #$70
 		ASL A
-		STA !BigRAM+$7B
+		STA !BigRAM+$6B
 		LDA $00
 		AND #$0F
-		TSB !BigRAM+$7B
+		TSB !BigRAM+$6B
 		LDA $00
 		ASL A
 		ROL A
 		AND #$01
-		STA !BigRAM+$7C
-		STZ !BigRAM+$7D
-		STZ !BigRAM+$7A
-		LDA !BigRAM+$7B : STA !SpriteTile,x
-		LDA !BigRAM+$7C : STA !SpriteProp,x
+		STA !BigRAM+$6C
+		STZ !BigRAM+$6D
+		STZ !BigRAM+$6A
+		LDA !BigRAM+$6B : STA !SpriteTile,x
+		LDA !BigRAM+$6C : STA !SpriteProp,x
 
 		LDA !RexAI
 		AND #$03
@@ -2111,7 +979,7 @@ AdeptShaman:
 		LDA.w #!BigRAM : STA $04
 
 		SEP #$20			; |
-		JSR LOAD_TILEMAP		; |
+		JSL LOAD_TILEMAP		; |
 		PLP				;/
 
 
@@ -2130,7 +998,7 @@ AdeptShaman:
 		LDA.w #!BigRAM : STA $04
 		PHP
 		SEP #$30
-		JSR LOAD_TILEMAP_HiPrio
+		JSL LOAD_TILEMAP_p2
 		PLP
 		.NoSpell
 		SEP #$30
@@ -2194,7 +1062,7 @@ AdeptShaman:
 		XBA
 		STA $0A
 
-		JSR LOAD_TILEMAP_HiPrio		; > Upload tilemap
+		JSL LOAD_TILEMAP_p2		; > Upload tilemap
 		PLB
 		RTL
 
@@ -2291,7 +1159,8 @@ AdeptShaman:
 		.NoReggedHit
 		LDA !P1Dead
 		ORA !MarioAnim
-		BEQ $03 : JMP .NoContact
+		BEQ $03
+	-	JMP .NoContact
 		JSL $03B664			; > Get Mario clipping
 		LDA $3210,x
 		SEC : SBC #$10
@@ -2308,10 +1177,13 @@ AdeptShaman:
 		LDA #$14 : STA $06
 		LDA #$20 : STA $07
 		JSL $03B72B			; > Check for contact
-		BCC .NoContact
+		BCC -
 
-		LDA $7490
-		BEQ $03 : JMP SPRITE_STAR
+		LDA !StarTimer : BEQ .NoStar
+		JSL SPRITE_STAR
+		RTS
+
+		.NoStar
 		LDA $32E0,x : BNE .NoContact
 		LDA #$0C : STA $32E0,x
 		LDA $3240,x : XBA
@@ -2323,7 +1195,7 @@ AdeptShaman:
 		BCC .HurtMario
 .HurtAdept	JSL !BouncePlayer
 		JSL !ContactGFX
-		LDY #$00 : JSR StompSound
+		LDY #$00 : JSL StompSound
 		LDA #$FF : STA $34C0,x		;\
 		LDA !RexAI			; |
 		AND.b #$C0^$FF			; | Cancel magic and attacks
@@ -2519,7 +1391,7 @@ AdeptShaman:
 		LDA $33F0,x : TAX
 		LDA #$EE : STA.l $418A00,x
 		TYX
-		JSR SPRITE_OFF_SCREEN
+		JSL SPRITE_OFF_SCREEN
 
 	..Stay	LDA $3330,x
 		AND #$04 : BNE ..Ground
@@ -2752,9 +1624,9 @@ AdeptShaman:
 		LDA !RexAI
 		AND #$20
 		BEQ +
-		JSR SUB_HORZ_POS_2
+		JSL SUB_HORZ_POS_P2
 		BRA ++
-	+	JSR SUB_HORZ_POS
+	+	JSL SUB_HORZ_POS
 	++	TYA
 		STA $3320,x
 
@@ -2926,7 +1798,7 @@ AdeptShaman:
 		LDA !AnimGrind : STA !SpriteAnimIndex	; -6
 		STZ !SpriteAnimTimer
 		LDA #$2D : STA !SPC1
-	+	JSR SUB_HORZ_POS
+	+	JSL SUB_HORZ_POS
 		TYA
 		STA $3320,x
 
@@ -3211,7 +2083,7 @@ AdeptShaman:
 		LDA .SpellCircle-$01,y		;\
 		AND #$FF00			; | Write prop + Xcoord to tilemap
 		ORA #$003A			; |
-		ORA !BigRAM+$7C			; > add status offset
+		ORA !BigRAM+$6C			; > add status offset
 		STA ($04)			;/
 		PHX				;\
 		LDX !SpriteIndex		; |
@@ -3242,7 +2114,7 @@ AdeptShaman:
 
 		..WriteTile
 		AND #$FF00
-		CLC : ADC !BigRAM+$7A
+		CLC : ADC !BigRAM+$6A
 		STA $0C				; > Save tile
 		LDA .SpellCircle+$12,y		;\
 		AND #$00FF			; | Write Ycoord + tile to tilemap
@@ -3669,7 +2541,7 @@ endmacro
 		REP #$20
 		LDA.w #!BigRAM : STA $04
 		SEP #$20
-		JSR LOAD_TILEMAP
+		JSL LOAD_TILEMAP
 		RTS
 
 	; DO NOTE flow into GFX here! we need to call GFX before updating the 3D cluster and loading tilemap
@@ -3906,6 +2778,10 @@ AddTilemap:	PHX
 		RTS
 
 
+
+
+
+
 REX_BEHAVIOUR:
 		LDA !AggroRexIFrames		;\ Decrement timer
 		BEQ $03 : DEC !AggroRexIFrames	;/
@@ -3913,7 +2789,7 @@ REX_BEHAVIOUR:
 		LDA $33C0,x			;\
 		AND #$0E			; | golden bandit does not despawn
 		CMP #$04 : BEQ .NoDespawn	;/
-		JSR SPRITE_OFF_SCREEN
+		JSL SPRITE_OFF_SCREEN
 		.NoDespawn
 
 		LDA $3230,x
@@ -3943,7 +2819,7 @@ REX_BEHAVIOUR:
 		CMP #$0D
 		BCC .NoHammer
 		BNE .NoHammer
-		JSR SUB_HORZ_POS
+		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
 		JMP .DontTurn
 		.NoHammer
@@ -3951,7 +2827,7 @@ REX_BEHAVIOUR:
 		BIT !RexAI : BVC .Chasing
 		LDA !RexChase			;\ Skip if chase timer is clear
 		BEQ .NoChaseInit		;/
-		JSR SUB_HORZ_POS		;\
+		JSL SUB_HORZ_POS		;\
 		TYA				; | Rex faces player
 		STA $3320,x			;/
 		DEC !RexChase			; > Decrement chase timer
@@ -3983,13 +2859,20 @@ REX_BEHAVIOUR:
 		STA !RexChase			;/
 		.Chasing
 
-		LDA !RexAI
-		LSR A : BCC .NoJumping
-		LDA !RexMovementFlags
-		LSR A : BCS .NoJumping
-		LDA $3330,x
-		AND #$04 : BNE .NoJumping
+		LDA $3330,x : PHA		; > Preserve last frame's collision flags
+		AND #$04 : BEQ .NotOnGround	;\
+		LDA !RexMovementFlags		; |
+		AND.b #$05^$FF			; | Clear jump and getup flags when touching the ground
+		STA !RexMovementFlags		; |
+		LDA #$10 : STA !SpriteYSpeed,x	; |
+		.NotOnGround			;/
 
+		LDA !RexAI			;\
+		LSR A : BCC .NoJumping		; |
+		LDA !RexMovementFlags		; | see if eligible to jump
+		LSR A : BCS .NoJumping		; |
+		LDA $3330,x			; |
+		AND #$04 : BNE .NoJumping	;/
 		LDA !RexMovementFlags		;\
 		AND #$60			; |
 		CMP #$40 : BCC +		; |
@@ -4002,21 +2885,12 @@ REX_BEHAVIOUR:
 		SBC !P2YPosHi-$80,y		; |
 		LDA #$00			; |
 		BCC .Drop			;/
-
 	+	LDA #$C0			;\
-	.Drop	STA $9E,x			; |
+	.Drop	STA !SpriteYSpeed,x		; |
 		LDA !RexMovementFlags		; | Initiate jump
 		ORA #$01			; |
 		STA !RexMovementFlags		;/
 		.NoJumping
-
-		LDA $3330,x : PHA		; > Preserve last frame's collision flags
-		AND #$04			;\
-		BEQ +				; |
-		LDA !RexMovementFlags		; | Clear jump and getup flags when touching the ground
-		AND.b #$05^$FF			; |
-		STA !RexMovementFlags		; |
-		+				;/
 
 		BIT !RexMovementFlags		;\
 		BPL +				; |
@@ -4057,12 +2931,12 @@ REX_BEHAVIOUR:
 		BIT $03 : BMI .Flw2				; |
 		LDA $02						; |
 		CMP #$40 : BCS .NoFollow			; |
-	.Flw2	JSR SUB_HORZ_POS_2				; |
+	.Flw2	JSL SUB_HORZ_POS_P2				; |
 		BRA ++						; | follow target player
 	+	BIT $01 : BMI .Flw1				; |
 		LDA $00						; |
 		CMP #$40 : BCS .NoFollow			; |
-	.Flw1	JSR SUB_HORZ_POS				; |
+	.Flw1	JSL SUB_HORZ_POS				; |
 	++	TYA						; |
 		STA $3320,x					; |
 		.NoFollow					;/
@@ -4092,7 +2966,8 @@ REX_BEHAVIOUR:
 		AND #$04 : BEQ .NormalSpeed	;/
 		PEA.w .SpeedReturn-1		;\
 		LDA.w REX_BEHAVIOUR_XSpeed,y	; | Accelerate
-		JMP AccelerateX			;/
+		JSL AccelerateX			;/
+		RTS
 
 .NormalSpeed	LDA.w .XSpeed,y
 		STA $AE,x
@@ -4182,17 +3057,17 @@ REX_BEHAVIOUR:
 		BCS $01				;\ Return if no contact
 	-	RTS				;/
 
-		LDA $7490 : BEQ .NoStar
+		LDA !StarTimer : BEQ .NoStar
 		JMP SPRITE_STAR
 .NoStar		LDA $32E0,x : BNE -
 		LDA #$08 : STA $32E0,x
 		LDA !MarioYSpeed
+		SEC : SBC !SpriteYSpeed,x
 		BMI .HurtMario
-		CMP #$10
-		BCC .HurtMario
+		CMP #$10 : BCC .HurtMario
 
 .HurtRex	STZ $32D0,x
-		LDY #$00 : JSR StompSound	; Play sound
+		LDY #$00 : JSL StompSound	; Play sound
 		JSL $01AA33			; Give Mario some bounce
 		JSL $01AB99			; Display contact GFX
 		LDA $740D
@@ -4204,10 +3079,11 @@ REX_BEHAVIOUR:
 		LDA !Difficulty			; |
 		AND #$03			; |
 		BNE .NoSpinKill			;/
-	+	JMP REX_SPINKILL
+	+	JSL SPRITE_SPINKILL
+		RTS
 
 .HurtMario	LDA $7497 : BNE .NoContact
-		JSR SUB_HORZ_POS
+		JSL SUB_HORZ_POS
 		TYA
 		STA $3320,x
 		JSL $00F5B7			; Hurt Mario
@@ -4305,26 +3181,6 @@ REX_BEHAVIOUR:
 .ChaseFlags	db $00,$00,$20,$00
 
 .ClimbSpeed	db $E8,$DC,$D0,$D0		; indexed by difficulty&3
-
-
-REX_SPINKILL:	LDA #$04
-		STA $3230,x
-		LDA #$1F
-		STA $32D0,x
-		JSL $07FC3B
-		LDA #$08
-		STA !SPC1
-		RTS
-
-
-REX_HORZ_POS:	STZ $06
-		LDA !P2XPosLo-$80
-		SEC : SBC $3220,x
-		LDA !P2XPosHi-$80
-		SBC $3250,x
-		BPL .Return
-		INC $06
-.Return		RTS
 
 
 
@@ -4441,26 +3297,24 @@ REX_WALLJUMP:	LDA #$B0
 		JMP REX_BEHAVIOUR_DontTurn
 
 
-REX_HAMMER:	LDA $32D0,x
-		BNE .Return
-		LDA $BE,x
-		BNE .Return
-		LDA.l !Difficulty		;\
-		AND #$03			; |
-		TAY				; |
-		LDA !RNG			; | Wait a random number of frames
-		ADC !SpriteIndex		; |
-		LSR #2				; |
-		CLC : ADC #$23			; |
-		CLC : ADC.w .ThrowDelay,y	; |
-		STA $32D0,x			;/
+REX_HAMMER:	LDA $32D0,x : BNE .Return
+		LDA $BE,x : BNE .Return
+		LDA.l !Difficulty			;\
+		AND #$03				; |
+		TAY					; |
+		LDA !RNG				; | Wait a random number of frames
+		ADC !SpriteIndex			; |
+		LSR #2					; |
+		CLC : ADC #$23				; |
+		CLC : ADC.w .ThrowDelay,y		; |
+		STA $32D0,x				;/
 		LDA #$0D : STA !SpriteAnimIndex
 		STZ !SpriteAnimTimer
 		RTS
 .Prep		LDA $BE,x
 		BNE .Return
 		LDY #$EE
-		JSR REX_HORZ_POS
+		JSL SUB_HORZ_POS
 		LDA $06
 		BNE +
 		LDY #$12
@@ -4472,77 +3326,77 @@ REX_HAMMER:	LDA $32D0,x
 
 .ThrowDelay	db $4F,$3F,$27			; EASY, NORMAL, INSANE
 
-.Throw		LDA #$04+!ExtendedOffset	;\ Extended sprite number
-		STA !Ex_Num,y			;/
-		LDA $14				;\
-		LSR A				; |
-		LDA $3320,x			; | default state (hammer belongs to enemy) + direction
-		BEQ $02 : LDA #$40		; | +50% chance to spawn half a rotation ahead
-		EOR #$40			; |
-		BCC $02 : ORA #$80		; |
-		STA !Ex_Data3,y			;/
-		PHY				;\
-		LDA $3320,x			; |
-		TAY				; |
-		LDA $3220,x			; |
-		CLC				; |
-		ADC.w .X1,y			; |
-		PLY				; | Xpos
-		STA !Ex_XLo,y			; |
-		PHY				; |
-		LDA $3320,x			; |
-		TAY				; |
-		LDA $3250,x			; |
-		ADC.w .X2,y			; |
-		PLY				; |
-		STA !Ex_XHi,y			;/
-		LDA $3210,x			;\
-		SEC : SBC #$01			; |
-		STA !Ex_YLo,y			; | Ypos
-		LDA $3240,x			; |
-		SBC #$00			; |
-		STA !Ex_YHi,y			;/
-		LDA !RNG			;\
-		ADC !SpriteIndex		; |
-		AND #$80			; |
-		ORA.b #!P2YPosLo-$80		; | Target a random player
-		STA $00				; |
-		LDA.b #!P2Base>>8 : STA $01	;/
-		LDA $3240,x			;\
-		XBA				; |
-		LDA $3210,x			; |
-		REP #$20			; |
-		SEC : SBC ($00)			; |
-		LSR #2				; |
-		SEP #$20			; | Yspeed
-		EOR #$FF			; |
-		INC A				; |
-		CLC : ADC #$C8			; |
-		CMP #$C0			; |
-		BCS +				; |
-		LDA #$C0			; |
-	+	STA !Ex_YSpeed,y		;/
-		LDA $00				;\
-		SEC : SBC #$04			; | Update pointer
-		STA $00				;/
-		LDA $3250,x			;\
-		XBA				; |
-		LDA $3220,x			; |
-		REP #$20			; |
-		SEC : SBC ($00)			; | Xspeed
-		LSR #2				; |
-		SEP #$20			; |
-		EOR #$FF			; |
-		INC A				; |
-		STA !Ex_XSpeed,y		;/
-		RTS				; > Return
+.Throw		LDA #$04+!ExtendedOffset		;\ Extended sprite number
+		STA !Ex_Num,y				;/
+		LDA $14					;\
+		LSR A					; |
+		LDA $3320,x				; | default state (hammer belongs to enemy) + direction
+		BEQ $02 : LDA #$40			; | +50% chance to spawn half a rotation ahead
+		EOR #$40				; |
+		BCC $02 : ORA #$80			; |
+		STA !Ex_Data3,y				;/
+		PHY					;\
+		LDA $3320,x				; |
+		TAY					; |
+		LDA $3220,x				; |
+		CLC					; |
+		ADC.w .X1,y				; |
+		PLY					; | Xpos
+		STA !Ex_XLo,y				; |
+		PHY					; |
+		LDA $3320,x				; |
+		TAY					; |
+		LDA $3250,x				; |
+		ADC.w .X2,y				; |
+		PLY					; |
+		STA !Ex_XHi,y				;/
+		LDA $3210,x				;\
+		SEC : SBC #$01				; |
+		STA !Ex_YLo,y				; | Ypos
+		LDA $3240,x				; |
+		SBC #$00				; |
+		STA !Ex_YHi,y				;/
+		LDA !RNG				;\
+		ADC !SpriteIndex			; |
+		AND #$80				; | Target a random player
+		ORA.b #!P2YPosLo-$80			; |
+		STA $00					; |
+		LDA.b #!P2Base>>8 : STA $01		;/
+		LDA $3240,x				;\
+		XBA					; |
+		LDA $3210,x				; |
+		REP #$20				; |
+		SEC : SBC ($00)				; |
+		LSR #2					; |
+		SEP #$20				; | Yspeed
+		EOR #$FF				; |
+		INC A					; |
+		CLC : ADC #$C8				; |
+		CMP #$C0				; |
+		BCS +					; |
+		LDA #$C0				; |
+	+	STA !Ex_YSpeed,y			;/
+		LDA $00					;\
+		SEC : SBC.b #(!P2YPosLo)-(!P2XPosLo)	; | Update pointer
+		STA $00					;/
+		LDA $3250,x				;\
+		XBA					; |
+		LDA $3220,x				; |
+		REP #$20				; |
+		SEC : SBC ($00)				; | Xspeed
+		LSR #2					; |
+		SEP #$20				; |
+		EOR #$FF				; |
+		INC A					; |
+		STA !Ex_XSpeed,y			;/
+		RTS					; > Return
 .X1		db $0C,$F4
 .X2		db $00,$FF
 
 
-SHAMAN_CAST:	LDA !Difficulty			;\
-		AND #$03			; | Y = difficulty index
-		TAY				;/
+SHAMAN_CAST:	LDA !Difficulty				;\
+		AND #$03				; | Y = difficulty index
+		TAY					;/
 		LDA !ShamanCast : BEQ .Fire
 		CMP .CastTime,y : BCC .Cast
 		LDA !SpriteAnimIndex
@@ -4553,21 +3407,21 @@ SHAMAN_CAST:	LDA !Difficulty			;\
 		STZ !SpriteAnimTimer
 .Return		RTS
 
-.Fire		LDA !RNG			;\
-		ADC !SpriteIndex		; |
-		LSR #2				; | Wait a random number of frames
-		CLC : ADC #$94			; |
-		STA !ShamanCast			;/
-		LDA #$01 : STA !SpriteAnimIndex	;\ Reset animation
-		STZ !SpriteAnimTimer		;/
+.Fire		LDA !RNG				;\
+		ADC !SpriteIndex			; |
+		LSR #2					; | Wait a random number of frames
+		CLC : ADC #$94				; |
+		STA !ShamanCast				;/
+		LDA #$01 : STA !SpriteAnimIndex		;\ Reset animation
+		STZ !SpriteAnimTimer			;/
 		BRA .Spawn
 
-.Cast		LDA #$09			;\
-		CMP !SpriteAnimIndex		; |
-		BCC .Return			; | Start cast animation
-		BEQ .Return			; |
-		STA !SpriteAnimIndex		; |
-		STZ !SpriteAnimTimer		;/
+.Cast		LDA #$09				;\
+		CMP !SpriteAnimIndex			; |
+		BCC .Return				; | Start cast animation
+		BEQ .Return				; |
+		STA !SpriteAnimIndex			; |
+		STZ !SpriteAnimTimer			;/
 		RTS
 
 
@@ -4577,58 +3431,55 @@ SHAMAN_CAST:	LDA !Difficulty			;\
 		LDA $3320,x
 		BNE .Left
 
-.Right		LDA $3220,x			;\
-		CLC : ADC #$10			; |
-		STA $3220,y			; |
-		LDA $3250,x			; |
-		ADC #$00			; |
-		STA $3250,y			; |
-		BRA .Shared			; | Xpos = 12px in front (4px overlap)
-.Left		LDA $3220,x			; |
-		SEC : SBC #$10			; |
-		STA $3220,y			; |
-		LDA $3250,x			; |
-		SBC #$00			; |
-		STA $3250,y			;/
-.Shared		LDA $3210,x			;\
-		SEC : SBC #$0C			; |
-		STA $3210,y			; | Ypos = 8px above
-		LDA $3240,x			; |
-		SBC #$00			; |
-		STA $3240,y			;/
+.Right		LDA $3220,x				;\
+		CLC : ADC #$10				; |
+		STA $3220,y				; |
+		LDA $3250,x				; |
+		ADC #$00				; |
+		STA $3250,y				; |
+		BRA .Shared				; | Xpos = 12px in front (4px overlap)
+.Left		LDA $3220,x				; |
+		SEC : SBC #$10				; |
+		STA $3220,y				; |
+		LDA $3250,x				; |
+		SBC #$00				; |
+		STA $3250,y				;/
+.Shared		LDA $3210,x				;\
+		SEC : SBC #$0C				; |
+		STA $3210,y				; | Ypos = 8px above
+		LDA $3240,x				; |
+		SBC #$00				; |
+		STA $3240,y				;/
 		LDA !SpriteTile,x : STA !SpriteTile,y
 		LDA !SpriteProp,x : STA !SpriteProp,y
 		PHX
 		TYX
-		LDA #$07 : STA !NewSpriteNum,x	;\  > Custom sprite number
-		LDA #$36 : STA $3200,x		; | > Sprite number
-		LDA #$08 : STA $3230,x		; | > Sprite status
-		JSL $07F7D2			; | \ Clear tables
-		JSL $0187A7			; | /
-		LDA #$08 : STA !ExtraBits,x	;/  > Custom sprite flag
-		LDA #$08			;\ Don't interact with sprites for 8 frames
-		STA $3300,y			;/
-		LDA #$3C : STA $32D0,y		; > Life timer (1 sec)
-		LDA #$82 : STA $BE,x		; > Behaviour (line + anim)
-		LDA #$03 : STA $33E0,x		; > Number of frames (3)
-		LDA #$05 : STA $3310,x		; > Animation frequency
+		LDA #$07 : STA !NewSpriteNum,x		; > Custom sprite number
+		LDA #$08 : STA !ExtraBits,x		; > Custom sprite flag
+		LDA #$08 : STA $3230,x			; > Sprite status
+		JSL !ResetSprite			; > Clear tables
+		LDA #$08 : STA $3300,y			; > Don't interact with sprites for 8 frames
+		LDA #$3C : STA $32D0,y			; > Life timer (1 sec)
+		LDA #$82 : STA $BE,x			; > Behaviour (line + anim)
+		LDA #$03 : STA $33E0,x			; > Number of frames (3)
+		LDA #$05 : STA $3310,x			; > Animation frequency
 		STX $00
 		PLX
-		LDA #$45			;\
-		CLC : ADC !SpriteTile,x		; | Base tile
-		STA $33D0,y			;/
-		LDY $3320,x			;\
-		LDA DROP_MASK_MaskProp,y	; |
-		AND #$F0
-		ORA #$0A
-		ORA !SpriteProp,x		; |
-		PHA				; |
-		LDA .CastXSpeed,y		; |
-		LDY $00				; | Get projectile prop + speed
-		STA $30AE,y			; |
-		PLA				; |
-		STA $33C0,y			; |
-		LDA #$01 : STA $3410,y		;/
+		LDA #$45				;\
+		CLC : ADC !SpriteTile,x			; | Base tile
+		STA $33D0,y				;/
+		LDY $3320,x				;\
+		LDA DROP_MASK_MaskProp,y		; |
+		AND #$F0				; |
+		ORA #$0A				; |
+		ORA !SpriteProp,x			; |
+		PHA					; |
+		LDA .CastXSpeed,y			; |
+		LDY $00					; | Get projectile prop + speed
+		STA $30AE,y				; |
+		PLA					; |
+		STA $33C0,y				; |
+		LDA #$01 : STA $3410,y			;/
 
 .Return2	RTS
 
@@ -4649,7 +3500,7 @@ DROP_MASK:	LDA !RexMovementFlags		;\
 .Spawn		JSL $02A9DE			;\ Get sprite slot
 		BMI SHAMAN_CAST_Return2		;/
 
-		JSR SPRITE_A_SPRITE_B_COORDS	; Ypos is overwritten later anyway
+		JSL SPRITE_A_SPRITE_B_COORDS	; Ypos is overwritten later anyway
 		LDA $3210,x			;\
 		SEC : SBC #$0E			; |
 		STA $3210,y			; | Spawn 0x0E px above
@@ -4667,17 +3518,11 @@ DROP_MASK:	LDA !RexMovementFlags		;\
 		PHA
 		LDA #$07			;\  > Custom sprite number
 		TYX				; | > X = new sprite index
-		STA !NewSpriteNum,x		; |
-		LDA #$36			; | > Acts like
-		STA $3200,x			; |
-		LDA #$08			; | > MAIN routine
-		STA $3230,x			; |
-		JSL $07F7D2			; | > Reset sprite tables
-		JSL $0187A7			; | > Reset custom sprite tables
-		LDA #$08			; |
-		STA !ExtraBits,x		;/
-		LDA #$5F			;\ Life timer
-		STA $32D0,x			;/
+		STA !NewSpriteNum,x		; | custom sprite num
+		LDA #$08 : STA $3230,x		; | status = MAIN
+		LDA #$08 : STA !ExtraBits,x	;/ extra bits = custom
+		JSL !ResetSprite		; | > Reset sprite tables
+		LDA #$5F : STA $32D0,x		; life timer
 		PLA				;\
 		CLC : ADC !SpriteTile,x		; | GFX tile
 		STA $33D0,x			;/
@@ -4722,7 +3567,7 @@ QUICK_CAST:	PHA
 		CMP #$02 : BEQ .P2
 		CMP #$03 : BNE DROP_MASK_Return
 
-.Spray		JSR SPRITE_A_SPRITE_B_COORDS	; Same position
+.Spray		JSL SPRITE_A_SPRITE_B_COORDS	; Same position
 		JSR .SetMode
 		LDA !RNG
 		ADC !SpriteIndex
@@ -4834,11 +3679,9 @@ QUICK_CAST:	PHA
 		PHX
 		TYX
 		LDA #$07 : STA !NewSpriteNum,x	;\  > Custom sprite number
-		LDA #$36 : STA $3200,x		; | > Sprite number
 		LDA #$08 : STA $3230,x		; | > Sprite status
-		JSL $07F7D2			; | \ Clear tables
-		JSL $0187A7			; | /
 		LDA #$08 : STA !ExtraBits,x	;/  > Custom sprite flag
+		JSL !ResetSprite		; | \ Clear tables
 		LDA #$FF : STA $32D0,x		; > Life timer (max)
 		LDA #$45			;\
 		CLC : ADC !SpriteTile,x		; | Base tile

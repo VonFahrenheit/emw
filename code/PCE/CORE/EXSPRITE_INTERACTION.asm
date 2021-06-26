@@ -47,7 +47,7 @@ EXSPRITE_INTERACTION:
 		.Coin
 		LDA #$00 : STA !Ex_Num,y
 		PHY
-		JSR SET_GLITTER
+		JSL SET_GLITTER
 		TYX
 		PLY
 		LDA !Ex_YLo,y : STA !Ex_YLo,x
@@ -70,11 +70,11 @@ EXSPRITE_INTERACTION:
 		BRA .End
 
 		.NoStar
-		JSR HURT
-		LDY #$FF			; This is somehow necessary... yeah, I'm not sure why
+		JSL HURT
+	;	LDY #$FF			; This is somehow necessary... yeah, I'm not sure why
 
 		.Return		
-		RTS
+		RTL
 
 
 

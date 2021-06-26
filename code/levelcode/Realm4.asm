@@ -46,15 +46,13 @@ levelinit11:
 
 levelinit12:
 		LDA #$12 : STA !Translevel
-		LDA #$04 : STA.l !WeatherType
-		LDA #$10 : STA.l !WeatherFreq
+		LDA #$10 : STA !41_WeatherFreq
 		LDA #$00				; snow type (smallest)
 		JSL Weather_LoadSnow
 		RTL
 
 levelinit13:
-		LDA #$01 : STA.l !WeatherType
-		LDA #$04 : STA.l !WeatherFreq
+		LDA #$04 : STA !41_WeatherFreq
 		LDA #$02				; snow type (flake)
 		JSL Weather_LoadSnow
 
@@ -177,7 +175,7 @@ levelF:
 		LDA.b #level13_HDMA : STA !HDMAptr+0
 		LDA.b #level13_HDMA>>8 : STA !HDMAptr+1
 		LDA.b #level13_HDMA>>16 : STA !HDMAptr+2
-		JML Weather
+		LDA #$01 : JML Weather
 
 
 
@@ -715,7 +713,7 @@ level11:
 
 
 level12:
-		JSL Weather
+		LDA #$04 : JSL Weather
 		RTL
 
 level13:
@@ -730,7 +728,7 @@ level13:
 	+	DEX : BPL -
 
 
-		JSL Weather
+		LDA #$01 : JSL Weather
 
 
 		REP #$20

@@ -64,7 +64,7 @@ Monkey:
 		ORA #$04
 		STA $3200,y
 		LDA #$09 : STA $3230,y
-		JSL SPRITE_A_SPRITE_B_COORDS_Long
+		JSL SPRITE_A_SPRITE_B_COORDS
 		TYA
 		INC A
 		STA !MonkeyCarry
@@ -92,7 +92,7 @@ Monkey:
 		LDA #$1B : STA !NewSpriteNum,y
 		LDA #$36 : STA $3200,y
 		LDA #$01 : STA $3230,y
-		JSL SPRITE_A_SPRITE_B_COORDS_Long
+		JSL SPRITE_A_SPRITE_B_COORDS
 		TYA
 		INC A
 		STA !MonkeyCarry
@@ -113,7 +113,7 @@ Monkey:
 
 	MAIN:
 		PHB : PHK : PLB
-		JSL SPRITE_OFF_SCREEN_Long
+		JSL SPRITE_OFF_SCREEN
 		LDA $9D : BNE .gfx
 		LDA $3230,x
 		CMP #$08 : BEQ AI
@@ -257,11 +257,11 @@ Monkey:
 
 	.P2	LDA !P2YPosLo : STA $0E
 		LDA !P2YPosHi : STA $0F
-		JSL SUB_HORZ_POS_Long2
+		JSL SUB_HORZ_POS_P2
 		BRA +
 	.P1	LDA !P2YPosLo-$80 : STA $0E
 		LDA !P2YPosHi-$80 : STA $0F
-		JSL SUB_HORZ_POS_Long1
+		JSL SUB_HORZ_POS_P1
 	+	TYA
 		LDY !MonkeyAI
 		CPY #$02 : BNE +
@@ -588,7 +588,7 @@ Monkey:
 		LDA.w ANIM+0,y : STA $04
 		LDA.w ANIM+1,y : STA $05
 
-		JSL LOAD_PSUEDO_DYNAMIC_Long
+		JSL LOAD_PSUEDO_DYNAMIC
 
 		PLB
 		RTL

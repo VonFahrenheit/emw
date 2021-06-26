@@ -46,7 +46,7 @@ KompositeKoopa:
 	MAIN:
 		PHB : PHK : PLB
 
-		JSL SPRITE_OFF_SCREEN_Long
+		JSL SPRITE_OFF_SCREEN
 
 
 		LDA !HP : BPL .NoDeath
@@ -127,7 +127,7 @@ KompositeKoopa:
 		JSR .Stomp
 
 	.CheckAttack
-		JSL P2Attack_Long
+		JSL P2Attack
 		BCC .NoAttack
 		JSR .Stomp_2
 		.NoAttack
@@ -217,13 +217,13 @@ KompositeKoopa:
 
 
 	.Bounce
-		JSL P2Bounce_Long
+		JSL P2Bounce
 		LDA #$02 : STA !SPC1
 		RTS
 
 
 	.Stomp
-		JSL P2Bounce_Long
+		JSL P2Bounce
 	..2	LDA !HurtTimer : BEQ ..Yes
 		LDA #$02 : STA !SPC1
 		RTS
@@ -240,7 +240,7 @@ KompositeKoopa:
 	Fire:
 		LDY #$01
 		LDA #$01
-		JSL SpawnExSprite_Long
+		JSL SpawnExSprite
 		RTS
 
 
@@ -321,13 +321,13 @@ KompositeKoopa:
 		SEP #$20
 		LDY #$01
 		LDA #$00
-		JSL SpawnExSprite_NoSpeed_Long
+		JSL SpawnExSprite_NoSpeed
 		RTS
 		.NoDeath
 
 		LDA !HurtTimer
 		AND #$02 : BNE .Skip
-	.Go	JSL LOAD_PSUEDO_DYNAMIC_Long
+	.Go	JSL LOAD_PSUEDO_DYNAMIC
 
 		.Skip
 		RTS

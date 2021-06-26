@@ -15,7 +15,7 @@ Thif:
 
 	INIT:
 		PHB : PHK : PLB				; > Start of bank wrapper
-		JSL SUB_HORZ_POS_Long
+		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
 		INC $32A0,x
 		LDA !ExtraBits,x
@@ -31,7 +31,15 @@ Thif:
 	MAIN:
 		PHB : PHK : PLB
 
-		JSL SPRITE_OFF_SCREEN_Long
+		LDA $3230,x
+		SEC : SBC #$08
+		ORA $9D
+		BEQ $03 : JMP GRAPHICS
+
+
+
+
+		JSL SPRITE_OFF_SCREEN
 
 		LDA $3280,x : BEQ .Next
 		JMP .Nope
@@ -112,14 +120,14 @@ Thif:
 		LDA #$FFF0 : STA $02			; |
 		SEP #$20				; |
 		LDA #$80				; |
-		JSL SpawnExSprite_NoSpeed_Long		; | Spawn smoke puffs
+		JSL SpawnExSprite_NoSpeed		; | Spawn smoke puffs
 		LDY #$02				; |
 		LDA #$F8 : STA $00			; |
 		DEC $01					; |
 		STZ $02					; |
 		STZ $03					; |
 		LDA #$80				; |
-		JSL SpawnExSprite_NoSpeed_Long		;/
+		JSL SpawnExSprite_NoSpeed		;/
 
 		LDA #$19 : STA !SPC4			; Clap SFX
 
@@ -143,7 +151,7 @@ Thif:
 		BRA .Go
 	+	LDA $3280,x : BEQ .Apply
 
-		JSL SUB_HORZ_POS_Long
+		JSL SUB_HORZ_POS
 	.Go	TYA : STA $3320,x
 
 
@@ -215,7 +223,7 @@ Thif:
 
 		.NoContact
 
-		JSL P2Attack_KnockBack_Long
+		JSL P2Attack
 		BCC .NoAttack
 		LDA #$02
 		STA $3230,x				; status
@@ -226,7 +234,7 @@ Thif:
 		BMI .NoAttack
 		LDA #$21 : STA $3200,y			; sprite number
 		LDA #$08 : STA $3230,y			; status
-		JSL SPRITE_A_SPRITE_B_COORDS_Long	; coords
+		JSL SPRITE_A_SPRITE_B_COORDS		; coords
 		PHX
 		TYX
 		JSL $07F7D2				; | > Reset sprite tables
@@ -294,7 +302,7 @@ Thif:
 	.NoCoin	LDA.w #!BigRAM : STA $04
 		SEP #$20
 
-		JSL LOAD_TILEMAP_Long
+		JSL LOAD_TILEMAP
 	.Return	PLB
 		RTL
 
@@ -305,7 +313,7 @@ Interact:	LDA #$01 : STA !P2SenkuSmash-$80,y
 		BMI .Side
 		CMP #$10 : BCC .Side
 	.Top	LDA #$02 : STA $3230,x
-		JSL P2Bounce_Long
+		JSL P2Bounce
 		LDA #$13 : STA !SPC1		; stomp sound
 		LDA $3290,x : BEQ +
 		TYA

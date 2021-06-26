@@ -5,7 +5,7 @@
 	org $0388E4
 	SwooperSleep:
 		JML SwooperCeiling
-	.Check	JSL SUB_HORZ_POS_Long
+	.Check	JSL SUB_HORZ_POS
 		REP #$20
 		CLC : ADC #$0050
 		CMP #$00A0
@@ -25,7 +25,7 @@
 		BEQ .Attack
 		JML SwooperSleep_Check
 
-	.Attack	JSL SUB_HORZ_POS_Long
+	.Attack	JSL SUB_HORZ_POS
 
 	SwooperAttack:
 		INC $BE,x

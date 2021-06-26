@@ -240,7 +240,7 @@ BigMax:
 		LDA #$40 : JSL AIM_SHOT_Long			; |
 		LDA $04 : STA $AE,x				; |
 		LDA $06 : STA $9E,x				;/
-		JSL SUB_HORZ_POS_Long				;\ face player
+		JSL SUB_HORZ_POS				;\ face player
 		TYA : STA $3320,x				;/
 		LDA #$FD : STA $3500,x				;\ no gravity during super
 		LDA #$BF : STA $3510,x				;/
@@ -285,7 +285,7 @@ BigMax:
 		LDA !RNG					;\
 		AND #$3F : BNE +				; |
 		LDA #$FF : STA !FireTimer			; |
-		JSL SUB_HORZ_POS_Long				; | randomly jump
+		JSL SUB_HORZ_POS				; | randomly jump
 		TYA						; |
 		STA $3320,x					; |
 		LDA #$C0 : STA $9E,x				; |
@@ -437,7 +437,7 @@ BigMax:
 		LDY $3320,x					;\ run speed
 		LDA Data_XSpeed+0,y : STA $AE,x			;/
 		LDA !ExtraTimer : BNE ..Speed			;\
-		JSL SUB_HORZ_POS_Long				; |
+		JSL SUB_HORZ_POS				; |
 		TYA : STA $3320,x				; |
 		LDA #$A0 : STA $9E,x				; |
 		LDA $3220,x					; | start jump
@@ -465,7 +465,7 @@ BigMax:
 		STZ $03
 		LDY #$01
 		LDA #$00
-		JSL SpawnExSprite_NoSpeed_Long
+		JSL SpawnExSprite_NoSpeed
 
 	+	LDY $3320,x
 		LDA Data_XSpeed+4,y : STA $AE,x
@@ -476,7 +476,7 @@ BigMax:
 		LDY $3320,x
 		LDA $9E,x : BMI ..Speed
 		LDA !Super : BEQ ..Speed
-		JSL SUB_HORZ_POS_Long
+		JSL SUB_HORZ_POS
 		TYA
 		CMP $3320,x : BEQ ..Speed
 		STA $3320,x
@@ -599,7 +599,7 @@ BigMax:
 		SEP #$20					; A 8-bit
 		PLY						; get index
 		LDA #$02 : STA $34E0,y				; stun grabbed sprite
-		JSL SPRITE_A_SPRITE_B_ADD_Long			; move grabbed sprite
+		JSL SPRITE_A_SPRITE_B_ADD			; move grabbed sprite
 		JMP ..NoSpeed
 		..NoEat
 
@@ -737,7 +737,7 @@ BigMax:
 		LDA $3330,x
 		AND #$04 : BEQ ...main
 		LDA #$C0 : STA $9E,x
-		JSL SUB_HORZ_POS_Long
+		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
 		RTS
 
@@ -798,7 +798,7 @@ BigMax:
 		LDA $3330,x
 		AND #$04 : BEQ ...main
 		LDA #$C0 : STA $9E,x
-		JSL SUB_HORZ_POS_Long
+		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
 		LDA Data_XSpeed+6,y : STA $AE,x
 		RTS
@@ -822,7 +822,7 @@ BigMax:
 		AND #$80
 		EOR #$80
 		STA !SubTile
-		JSL SUB_HORZ_POS_Long
+		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
 		LDA $3220,x
 		CLC : ADC ...offset+0,y
@@ -1142,7 +1142,7 @@ BigMax:
 
 		LDA.w #!BigRAM : STA $04
 		SEP #$20
-		JSL LOAD_TILEMAP_Long
+		JSL LOAD_TILEMAP
 
 
 	.DontDraw
@@ -1275,10 +1275,10 @@ BigMax:
 
 
 		.HurtSprite
-		JSL P2Bounce_Long
+		JSL P2Bounce
 		LDA #$10
 		STA !StunTimer
-		JSL DontInteract_Long
+		JSL DontInteract
 
 		LDA !Phase
 		CMP #$03 : BNE .NoGrow

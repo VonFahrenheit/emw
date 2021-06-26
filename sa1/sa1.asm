@@ -540,7 +540,7 @@ BackgroundMode:					;
 	BRA -					; /
 							
 SA1_IRQ:					; SA-1 CPU IRQ
-	;PHP					; \ Preserve P/A/X/Y/D/B
+	PHP					; \ Preserve P/A/X/Y/D/B
 	REP #$30				;  |
 	PHA					;  |
 	PHX					;  |
@@ -586,7 +586,7 @@ SA1_IRQEnding:
 	PLY					;  |
 	PLX					;  |
 	PLA					;  |
-	;PLP					; /
+	PLP					; /
 SA1_NMI:					; SA-1 NMI - not used on this patch. Also, only a few emulators even handle this.
 	RTI					; Return
 

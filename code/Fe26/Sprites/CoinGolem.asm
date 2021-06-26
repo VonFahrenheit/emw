@@ -43,7 +43,7 @@ CoinGolem:
 		JSR ResetModel
 
 		.Main
-		JSL SPRITE_OFF_SCREEN_Long
+		JSL SPRITE_OFF_SCREEN
 		LDA $3230,x
 		SEC : SBC #$08
 		ORA $9D
@@ -96,22 +96,19 @@ CoinGolem:
 		LDA #$01				; |
 		STA !3D_Extra+$30			;/
 
-		JSL !GetSpriteSlot			;\
+		STZ $00					;\
+		STZ $01					; |
+		SEC : LDA #$22				; |
+		JSL SpawnSprite				; |
+		CPY #$FF : BEQ +			; |
 		LDA !3D_X+$30 : STA $3220,y		; |
-		LDA !3D_X+$31 : STA $3250,y		; |
+		LDA !3D_X+$31 : STA $3250,y		; | spawn yoshi coin
 		LDA !3D_Y+$30 : STA $3210,y		; |
 		LDA !3D_Y+$31 : STA $3240,y		; |
-		LDA #$22 : STA !NewSpriteNum,y		; |
-		LDA #$36 : STA $3200,y			; |
-		LDA #$08 : STA $3230,y			; | drop the head as a Yoshi Coin upon death
-		PHX					; |
-		TYX					; |
-		JSL $07F7D2				; | > Reset sprite tables
-		JSL $0187A7				; | > Reset custom sprite tables
-		LDA #$08 : STA !ExtraBits,x		; |
-		LDA #$D0 : STA $9E,x			; |
-		STZ $AE,x				; |
-		PLX					;/
+		LDA #$08 : STA $3230,y			; |
+		LDA #$08 : STA !ExtraBits,y		; |
+		LDA #$D0 : STA.w !SpriteYSpeed,y	; |
+		LDA #$00 : STA.w !SpriteXSpeed,y	;/
 		STZ !CoinGolemEye			; > Reset eye tile so dropped coin won't look weird
 
 	+	JMP GRAPHICS				; just go to graphics if sprite is dead
@@ -597,7 +594,7 @@ CoinGolem:
 		CMP #$02 : BNE .NoTurn			;/
 
 		.CheckTurn				;\
-		JSL SUB_HORZ_POS_Long			; |
+		JSL SUB_HORZ_POS			; |
 		TYA					; |
 		CMP $3320,x : BEQ .NoTurn		; |
 		LDA #$09 : STA !SpriteAnimIndex		; |
@@ -720,7 +717,7 @@ CoinGolem:
 
 		LDA !CoinGolemHurtTimer
 		AND #$04 : BNE +
-		JSL LOAD_TILEMAP_Long
+		JSL LOAD_TILEMAP
 		+
 
 		PLA : STA $3320,x
@@ -1073,7 +1070,7 @@ CoinGolem:
 		PLB
 		SEC : JSL !PlayerClipping
 		BCC $04 : JSL !HurtPlayers
-		JSL P2Attack_Long
+		JSL P2Attack
 		BCC .NoHurt
 		JSR HurtGolem
 		.NoHurt
@@ -1125,7 +1122,7 @@ CoinGolem:
 		XBA : STA $0B
 		LDA #$10 : STA $06
 		LDA #$10 : STA $07
-		JSL P2Attack_Long
+		JSL P2Attack
 		BCC $03 : JSR HurtGolem
 		SEC : JSL !PlayerClipping
 		BCC .NoContact
@@ -1166,7 +1163,7 @@ CoinGolem:
 	Interact:
 		LDA !P2YSpeed-$80,y
 		CMP $9E,x : BCS .Return
-		JSL P2Bounce_Long
+		JSL P2Bounce
 		LDA #$02 : STA !SPC1		; SFX
 		BRA HurtGolem
 	.Return	RTS

@@ -1,6 +1,6 @@
 print "REALM SELECT INSERTED AT $", pc, "!"
 
-	namespace LevelSelect
+	namespace RealmSelect
 
 
 ; This should be included from SP_Patch.asm
@@ -42,33 +42,34 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 
 
 
-	!LevelSelectBase	=	$6DDF
-
-	!MenuPosition		=	!LevelSelectBase+$000
-	!MenuMode		=	!LevelSelectBase+$002
-					; 00 = select realm
-					; 01 = select level
-					; 02 = load level
-
-	!SelectedLevel		=	!LevelSelectBase+$004	; written to !Translevel
-	!NameIndex		=	!LevelSelectBase+$006	; used during stripe upload
-
-	!CharMenuSize		=	!LevelSelectBase+$008
-	!CharMenu		=	!LevelSelectBase+$00A
-					; 00 = no char menu
-					; 01 = char menu opening
-					; 02 = char menu open
-					; 03 = char menu closing
-
-	!CharMenuCursor		=	!LevelSelectBase+$00C
-	!SelectingPlayer	=	!LevelSelectBase+$00E	; who is controlling the char select
-								; 0 = player 1
-								; 1 = player 2
-								; only player 2 can choose "drop out"
+	!IntroLevel		= $0C6
 
 
-	!UploadPlayerPal	=	!LevelSelectBase+$010	; 0 = upload, 1 = don't upload
-	!UploadTilemap		=	!LevelSelectBase+$012	; 0 = upload, 1 = don't upload
+
+	!LevelSelectBase	= $6DDF
+
+	!MenuPosition		= !LevelSelectBase+$000
+	!MenuMode		= !LevelSelectBase+$002
+							; 00 = select realm
+							; 01 = select level
+							; 02 = load level
+
+	!SelectedLevel		= !LevelSelectBase+$004	; written to !Translevel
+	!NameIndex		= !LevelSelectBase+$006	; used during stripe upload
+	!CharMenuSize		= !LevelSelectBase+$008
+	!CharMenu		= !LevelSelectBase+$00A
+							; 00 = no char menu
+							; 01 = char menu opening
+							; 02 = char menu open
+							; 03 = char menu closing
+
+	!CharMenuCursor		= !LevelSelectBase+$00C
+	!SelectingPlayer	= !LevelSelectBase+$00E	; who is controlling the char select
+							; 0 = player 1
+							; 1 = player 2
+							; only player 2 can choose "drop out"
+	!UploadPlayerPal	= !LevelSelectBase+$010	; 0 = upload, 1 = don't upload
+	!UploadTilemap		= !LevelSelectBase+$012	; 0 = upload, 1 = don't upload
 
 
 ; For game mode 0C (the OW loader)
@@ -88,19 +89,36 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 	org $0087A7
 		NOP #3			; org: STA $420B
 
+	org $009F53
+		JSL SetBrightness		;\ org: STA !2100 : CMP $9F33,y
+		NOP #2				;/
+
 	org $00A134
-		LDA #$0000		; coords for base OW position
+	;	LDA #$0000		; coords for base OW position
 	org $00A13B
-		LDA #$0000
-
+	;	LDA #$0000
 	org $00A153
-		JSL LOAD		; org: LDA #$06 : STA $12 : JSR $85D2
-		BRA $01
-		NOP			; this removes the overworld border
-
+	;	JSL LOAD		; org: LDA #$06 : STA $12 : JSR $85D2
+	;	BRA $01
+	;	NOP			; this removes the overworld border
+		LDA #$06 : STA $12
+		JSR $85D2
 	org $00A165
-		BRA $02 : NOP #2	; org: JSL $04D6E9
+	;	BRA $02 : NOP #2	; org: JSL $04D6E9
 					; skip Lunar Magic's overworld layer 2 tilemap loader
+
+	org $00A087			; start of game mode 0C (OW loader)
+		JML LOAD		;\
+		ReturnLoad:		; | org:; JSR $937D : LDA $7B9C
+		RTS			; |
+		NOP			;/
+
+
+	org $00A1C3
+		JSL MAIN
+		RTS
+		NOP #3
+
 
 	org $03BB20
 		RTL			; org: STA $02
@@ -115,11 +133,6 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 	org $049D07
 		RTS			; org: LDA $7F837B
 		NOP #3			; this removes the level name
-
-	org $048249
-		BRA +			; org: AND #$20
-	org $048295
-	+	JML MAIN
 
 	org $0485CF
 		RTS			; org: JSL $00E2BD
@@ -149,27 +162,237 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 		db $01,$01,$01,$01,$01,$01,$01,$01	; 48-4F
 		db $01,$01,$01,$01,$01,$01,$01,$01	; 50-57
 		db $01,$01,$01,$01,$01,$01,$01,$01	; 58-5F
-
-
 	pullpc
 
-	LOAD:
-		PHB
-		PHP
-		SEP #$30
-		LDX #$13
-	-	STZ !LevelSelectBase,x
-		DEX : BPL -
-		LDA #$01 : STA $3E
 
-		LDA #$80 : STA $2100
+	; $00A087 - start of game mode 0C (load overworld)
+	LOAD:
+		STZ $4200				;\
+		STZ $420C				; | JSR $937D ("TurnOffIO" in all.log)
+		LDA #$80 : STA $2100			;/
+		; warp pipe/star check (always 0)
+		REP #$10				; index 16-bit
+		LDX #$03FF				;\
+	-	STZ $3200,x				; | from SA-1 patch
+		DEX : BPL -				;/
+		LDX #$008D				;\
+	-	STZ $1A,x				; | from JSR $A1A6 ("Clear_1A_13D3" in all.log)
+		DEX : BPL -				;/
+		LDX #$0564				;\
+	-	STZ $73D3,x				; |
+		DEX : BPL -				; | from SP_Patch
+		LDX #$0209				; |
+	-	STZ $7998,x				; |
+		DEX : BPL -				;/
+		LDX #$01BE				;\
+		LDA #$FF				; |
+	-	STZ $64A0,x				; | wipe this table too
+		STA $64A1,x				; |
+		DEX #2 : BPL -				;/
+		SEP #$10				; index 8-bit
+		LDX #$13				;\
+	-	STZ !LevelSelectBase,x			; | wipe level select data
+		DEX : BPL -				;/
+
+		; check whether intro level should be loaded!
+		LDA !LevelTable1+$5E : BMI .LoadRealmSelect
+;		.LoadIntroLevel
+;		LDA #$F0 : STA $6DB0
+;		LDA #$10 : STA !GameMode
+;		LDA.b #!IntroLevel+$24 : STA $6109	; intro level (translevel num... but only kind of...)
+;		LDA.b #!IntroLevel>>8 : STA $7F11	; set hi bit of intro level num
+;		LDA #$5E : STA !Translevel		;
+;		LDA #$81 : STA $4200			; enable joypad but keep interrupts disabled
+;		JML ReturnLoad				; return
+
+
+
+	; $00A0B0 is the actual load overworld code in all.log
+		.LoadRealmSelect
+		JSL !KillOAM
+		STZ $2133
+		STZ $2106
+		LDA #$23 : STA $2107
+		LDA #$33 : STA $2108
+		LDA #$53 : STA $2109
+		LDA #$00 : STA $210B
+		LDA #$04 : STA $210C
+		STZ !2123
+		STZ !2124
+		STZ !2125
+		STZ $212A
+		STZ $212B
+		STZ $212E
+		STZ $212F
+		LDA #$80 : STA $211A
+
+		LDA #$01 : STA !2105				; screen mode = 1
+
+		STZ $6DDA					; clear backup music reg
+		; bunch of obsolete code at $00A0BC-$00A0E3 (opcode ends at $00A3E5)
+		LDA #$03 : STA !2130				; sick
+		LDA #$15
+		STA $212C
+		STA $212E
+		LDA #$02
+		STA $212D
+		STA $212F
+		STZ $2131
+		STZ !2131
+
+		REP #$20					; A 16-bit
+		LDA #$3800 : STA !BG1Address			; BG1 tilemap address
+		LDA #$3C00 : STA !BG2Address			; BG2 tilemap address
+		STZ $1A						;\
+		STZ $1C						; |
+		STZ $1E						; | all BG coords (mirrors) = 0
+		STZ $20						; |
+		STZ $22						; |
+		STZ $24						;/
+		SEP #$20					; A 8-bit
+		STZ $210D					;\
+		STZ $210D					; |
+		STZ $210E					; |
+		STZ $210E					; |
+		STZ $210F					; |
+		STZ $210F					; | all BG coords (regs) = 0
+		STZ $2110					; |
+		STZ $2110					; |
+		STZ $2111					; |
+		STZ $2111					; |
+		STZ $2112					; |
+		STZ $2112					;/
+
+		LDA #$38					;\
+		STA !2107					; | BG1 tilemap: address $3800 (0x7000), size 32x32
+		STA $2107					;/
+		LDA #$3C					;\
+		STA !2108					; | BG2 tilemap: address $3C00 (0x7800), size 32x32
+		STA $2108					;/
+		LDA #$53					;\
+		STA !2109					; | BG3 tilemap: address $5000 (0xA000), size 64x64
+		STA $2109					;/
+		LDA #$04					;\
+		STA !210C					; | BG3 GFX: address $4000 (0x8000)
+		STA $210C					;/
+
+		PHB						;\ make sure these don't mess up
+		PHP						;/
+
+		REP #$20					; A 16-bit
+		STZ $2116					; VRAM address = 0
+		LDX #$80 : STX $2115				; word uploads
+		LDX #$02					; X = DMA bit
+		LDA.w #!DecompBuffer : STA $00			;\ decompression location
+		LDA.w #!DecompBuffer>>8 : STA $01		;/
+
+		LDA #$001C					;\
+		JSL !DecompressFile				; |
+		LDA #$1801 : STA $4310				; |
+		LDA.w #!DecompBuffer : STA $4312		; | upload file 01C
+		LDA.w #!DecompBuffer>>8 : STA $4313		; |
+		LDA #$1000 : STA $4315				; |
+		STX $420B					;/
+		LDA #$001D					;\
+		JSL !DecompressFile				; |
+		LDA #$1801 : STA $4310				; |
+		LDA.w #!DecompBuffer : STA $4312		; | upload file 01D
+		LDA.w #!DecompBuffer>>8 : STA $4313		; |
+		LDA #$1000 : STA $4315				; |
+		STX $420B					;/
+		LDA #$0008					;\
+		JSL !DecompressFile				; |
+		LDA #$1801 : STA $4310				; |
+		LDA.w #!DecompBuffer : STA $4312		; | upload file 008
+		LDA.w #!DecompBuffer>>8 : STA $4313		; |
+		LDA #$1000 : STA $4315				; |
+		STX $420B					;/
+
+		LDA #$4000 : STA $2116				; prepare to upload BG3 data
+		LDA #$0028					;\
+		JSL !DecompressFile				; |
+		LDA #$1801 : STA $4310				; |
+		LDA.w #!DecompBuffer : STA $4312		; | upload file 028
+		LDA.w #!DecompBuffer>>8 : STA $4313		; |
+		LDA #$0800 : STA $4315				; |
+		STX $420B					;/
+		LDA #$0029					;\
+		JSL !DecompressFile				; |
+		LDA #$1801 : STA $4310				; |
+		LDA.w #!DecompBuffer : STA $4312		; | upload file 029
+		LDA.w #!DecompBuffer>>8 : STA $4313		; |
+		LDA #$0800 : STA $4315				; |
+		STX $420B					;/
+		LDA #$002A					;\
+		JSL !DecompressFile				; |
+		LDA #$1801 : STA $4310				; |
+		LDA.w #!DecompBuffer : STA $4312		; | upload file 02A
+		LDA.w #!DecompBuffer>>8 : STA $4313		; |
+		LDA #$0800 : STA $4315				; |
+		STX $420B					;/
+		LDA #$0A04					;\
+		JSL !DecompressFile				; |
+		LDA #$1801 : STA $4310				; |
+		LDA.w #!DecompBuffer : STA $4312		; | upload file A04
+		LDA.w #!DecompBuffer>>8 : STA $4313		; |
+		LDA #$0800 : STA $4315				; |
+		STX $420B					;/
+
+		LDA #$0B0E					;\
+		JSL !DecompressFile				; |
+		LDA #$1801 : STA $4310				; |
+		LDA.w #!DecompBuffer : STA $4312		; | BG3 tilemap: file B0E
+		LDA.w #!DecompBuffer>>8 : STA $4313		; |
+		LDA #$2000 : STA $4315				; |
+		STX $420B					;/
+
+		LDA #$6000 : STA $2116				; prepare to upload sprite GFX
+		LDA #$0010					;\
+		JSL !DecompressFile				; |
+		LDA #$1801 : STA $4310				; |
+		LDA.w #!DecompBuffer : STA $4312		; | upload file 010
+		LDA.w #!DecompBuffer>>8 : STA $4313		; |
+		LDA #$1000 : STA $4315				; |
+		STX $420B					;/
+		LDA #$000F					;\
+		JSL !DecompressFile				; |
+		LDA #$1801 : STA $4310				; |
+		LDA.w #!DecompBuffer : STA $4312		; | upload file 00F
+		LDA.w #!DecompBuffer>>8 : STA $4313		; |
+		LDA #$1000 : STA $4315				; |
+		STX $420B					;/
+		LDA #$001C					;\
+		JSL !DecompressFile				; |
+		LDA #$1801 : STA $4310				; |
+		LDA.w #!DecompBuffer : STA $4312		; | upload file 01C
+		LDA.w #!DecompBuffer>>8 : STA $4313		; |
+		LDA #$1000 : STA $4315				; |
+		STX $420B					;/
+		LDA #$001D					;\
+		JSL !DecompressFile				; |
+		LDA #$1801 : STA $4310				; |
+		LDA.w #!DecompBuffer : STA $4312		; | upload file 01D
+		LDA.w #!DecompBuffer>>8 : STA $4313		; |
+		LDA #$1000 : STA $4315				; |
+		STX $420B					;/
+
+		LDA #$0014					;\
+		JSL !DecompressFile				; |
+		LDA #$8000 : STA $4310				; |
+		LDA.w #!DecompBuffer : STA $4312		; |
+		LDA.w #!DecompBuffer>>8 : STA $4313		; | use file 014 as AN2
+		LDA #$1B00 : STA $3415				; |
+		LDA.w #!AN2 : STA $2181				; |
+		LDA.w #!AN2>>8 : STA $2182			; |
+		STX $420B					;/
+
 		STZ $2115					;\
 		REP #$20					; |
 		LDA #$1808 : STA $4310				; |
 		LDA.w #.Tilemap : STA $4312			; | tile numbers for first half of BG2
 		LDX.b #.Tilemap>>16 : STX $4314			; |
 		LDA #$0200 : STA $4315				; |
-		LDA #$3800 : STA $2116				; |
+		LDA #$3C00 : STA $2116				; |
 		LDX #$02 : STX $420B				;/
 		LDA #$1808 : STA $4310				;\
 		LDA.w #.Tilemap+2 : STA $4312			; |
@@ -180,14 +403,14 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 		LDA.w #.Tilemap+4 : STA $4312			; |
 		LDX.b #.Tilemap>>16 : STX $4314			; | clear BG1 tilemap (tiles)
 		LDA #$0400 : STA $4315				; |
-		LDA #$3000 : STA $2116				; |
+		LDA #$3800 : STA $2116				; |
 		LDX #$02 : STX $420B				;/
 		LDX #$80 : STX $2115				;\
 		LDA #$1908 : STA $4310				; |
 		LDA.w #.Tilemap+1 : STA $4312			; |
 		LDX.b #.Tilemap>>16 : STX $4314			; | YXPCCCTT for first half of BG2
 		LDA #$0200 : STA $4315				; |
-		LDA #$3800 : STA $2116				; |
+		LDA #$3C00 : STA $2116				; |
 		LDX #$02 : STX $420B				;/
 		LDA #$1908 : STA $4310				;\
 		LDA.w #.Tilemap+3 : STA $4312			; |
@@ -198,21 +421,53 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 		LDA.w #.Tilemap+5 : STA $4312			; |
 		LDX.b #.Tilemap>>16 : STX $4314			; | clear BG1 tilemap (YXPCCCTT)
 		LDA #$0400 : STA $4315				; |
-		LDA #$3000 : STA $2116				; |
+		LDA #$3800 : STA $2116				; |
 		LDX #$02 : STX $420B				;/
 
-		SEP #$30
-		LDA !2107
-		AND.b #$03^$FF
-		STA !2107
-		LDA !2108
-		AND.b #$03^$FF
-		STA !2108
 
-		JSL Window_SNES
-		PLP
-		PLB
-		JMP KILL_OAM
+		LDY #$33 : STY !SPC3				; realm select music
+
+
+		LDY #$00					;\
+		STY $2121					; | CGRAM address = 0
+		STY $2121					;/
+		LDA #$2202 : STA $4310				;\
+		LDA.w #Palette : STA $4312			; |
+		LDA.w #Palette>>8 : STA $4313			; | upload palette to CGRAM
+		LDA #$0200 : STA $4315				; |
+		STX $420B					;/
+
+		REP #$10					;\
+		LDX #$01FE					; | copy palette to RAM
+	-	LDA.l Palette,x : STA !PaletteRGB,x		; |
+		DEX #2 : BPL -					;/
+		STA !Color0					; store color 0
+
+		LDA !PaletteRGB+$02 : STA $00A0			;\
+		LDA !PaletteRGB+$04 : STA $00A2			; |
+		LDA !PaletteRGB+$06 : STA $00A4			; |
+		LDA !PaletteRGB+$08 : STA $00A6			; |
+		LDA !PaletteRGB+$0A : STA $00A8			; |
+		LDA !PaletteRGB+$0C : STA $00AA			; | BG3 color mirrors
+		LDA !PaletteRGB+$0E : STA $00AC			; |
+		LDA !PaletteRGB+$10 : STA $00AE			; |
+		LDA !PaletteRGB+$12 : STA $00B0			; |
+		LDA !PaletteRGB+$14 : STA $00B2			; |
+		LDA !PaletteRGB+$16 : STA $00B4			;/
+
+		JSL Window_SNES					; set up windowing
+
+		PLP						;\ restore stuff
+		PLB						;/
+
+		STZ $73D9					; some OW flag
+		LDA #$01 : STA $6DB1				; from JSR $9F29 ("KeepModeActive" in all.log)
+		LDA #$02 : STA $6D9B				; disable level IRQ
+		STZ !HDMA					; enable HDMA??? for window???
+		INC !GameMode					; go to game mode 0D
+		LDA #$81 : STA $4200				; enable NMI and joypad
+		JML ReturnLoad					; return
+
 
 
 	.Tilemap
@@ -221,34 +476,75 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 		dw $009F	; BG1 (invisible)
 
 
+	Palette:
+	.BG
+	incbin "../PaletteData/RealmSelect/realm_select_BG.mw3":0-100
+	.Sprite
+	incbin "../PaletteData/RealmSelect/realm_select_pal8.mw3":0-20
+	incbin "../PaletteData/RealmSelect/realm_select_pal9.mw3":0-20
+	incbin "../PaletteData/RealmSelect/realm_select_palA.mw3":0-20
+	incbin "../PaletteData/RealmSelect/realm_select_palB.mw3":0-20
+	incbin "../PaletteData/RealmSelect/realm_select_palC.mw3":0-20
+	incbin "../PaletteData/RealmSelect/realm_select_palD.mw3":0-20
+	incbin "../PaletteData/RealmSelect/realm_select_palE.mw3":0-20
+	incbin "../PaletteData/RealmSelect/realm_select_palF.mw3":0-20
+
+
+
+	SetBrightness:
+		PHA
+		LDA !GameMode
+		CMP #$0D : BNE +
+		JSL MAIN
+	+	PLA
+		STA !2100
+		CMP $9F33,y
+		RTL
+
 	MAIN:
-		PHK : PLB			; Get bank
-		REP #$20			;\
-		STZ $1A				; |
-		STZ $1C				; | Layer 1 & 2 positions
-		STZ $1E				; |
-		STZ $20				;/
+		LDA.b #.SA1 : STA $3180
+		LDA.b #.SA1>>8 : STA $3181
+		LDA.b #.SA1>>16 : STA $3182
+		JSR $1E80
+		RTL
+
+
+		.SA1
+		PHB					;\ wrapper start
+		PHP					;/
+
+		STZ !RAMcode_offset
+		STZ !RAMcode_offset+1
+		STZ !RAMcode_flag
+		STZ !RAMcode_flag+1
+
+		LDA #$00 : STA !VRAMbase+!VRAMtable+$3FF
+		REP #$30
+		LDA.w #$03FE
+		LDX.w #!VRAMtable+$3FF
+		LDY.w #!VRAMtable+$3FE
+		MVP $40,$40
+
+		PHK : PLB				; get bank
+
+		SEP #$10
+		REP #$20				;\
+		STZ $1A					; |
+		STZ $1C					; | Layer 1 & 2 positions
+		STZ $1E					; |
+		STZ $20					;/
+
 
 		LDA #$0040 : STA $22
 		LDA #$0008 : STA $24
 
-		SEP #$20			; 8-bit A
-		LDA #$00 : STA !DizzyEffect	; cancel dizzy
+		SEP #$20				; 8-bit A
+		LDA #$00 : STA !DizzyEffect		; cancel dizzy
+		LDA #$08 : TRB !2105
+		LDA #$1F : STA !MainScreen
+		STZ !SubScreen
 
-;		PHP				;\
-;		LDY #$5F			; |
-;	-	LDA !LevelTable,y		; | autosave
-;		AND.b #$40^$FF			; | (don't include midway points)
-;		STA $7F49,y			; |
-;		DEY : BPL -			; |
-;		LDA $7F2E : STA $7FD5		; > include number of levels beaten
-;		JSL $009BC9			; |
-;		PLP				;/
-
-		LDA #$08 : TRB $3E
-		LDA #$1F : STA $6D9D
-		STZ $6D9E
-
+		JSL KILL_OAM_SA1
 		JSL CLEAR_MSG_SA1
 		JSL CLEAR_PLAYER2
 
@@ -262,6 +558,24 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 		STZ !LevelSelectBase+$B
 		STZ !LevelSelectBase+$D
 		STZ !LevelSelectBase+$F
+
+		LDA !GameMode				;\
+		CMP #$0E : BEQ +			; |
+		STZ $15					; |
+		STZ $16					; |
+		STZ $17					; |
+		STZ $18					; |
+		STZ $6DA2				; | only accept input in game mode 0E
+		STZ $6DA3				; |
+		STZ $6DA4				; |
+		STZ $6DA5				; |
+		STZ $6DA6				; |
+		STZ $6DA7				; |
+		STZ $6DA8				; |
+		STZ $6DA9				; |
+		+					;/
+
+
 
 	; Check controls here
 
@@ -352,7 +666,7 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 	..P1	LDA !Characters					;\
 		AND #$0F					; |
 		STA $0E						; |
-		LDA $0F						; | Set player 1 char
+		LDA $0F : STA !P2Character-$80			; | Set player 1 char
 		ASL #4						; |
 		ORA $0E						; |
 		STA !Characters					; |
@@ -362,7 +676,8 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 		CMP #$06 : BNE ...Y				; |
 		LDA #$00 : STA !MultiPlayer			; |
 		BRA +						; |
-	...Y	LDA !Characters					; | Set player 2 char
+	...Y	STA !P2Character				; | Set player 2 char
+		LDA !Characters					; |
 		AND #$F0					; |
 		ORA $0F						; |
 		STA !Characters					; |
@@ -387,8 +702,12 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 		ORA $01						; |
 		ASL A : BCS ..Pick				; | handle A/B/X/Y
 		ASL A : BCC ..Main				; |
-		BRA ..Back					; |
+		JMP ..Back					; |
 	..Pick	INC !GameMode					;/
+
+
+		JSL !BuildOAM
+		PLP
 		PLB
 		RTL
 
@@ -567,6 +886,32 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 		CMP #$FFFF : BEQ ..NoPortrait
 		STA $00
 		LDA Portrait_CharPtr+2,x : STA $0C
+
+		LDA ($0C) : STA $3700+0				;\
+		INC $0C						; | dynamo header
+		INC $0C						;/
+		LDY #$00					; starting index = 00
+	-	TYX						; update $3700 index
+		LDA ($0C),y : STA $3700+2,x			;\ upload size
+		INY #2						;/
+		LDA ($0C),y					;\
+		AND #$00FF					; |
+		PHY						; |
+		TAY						; |
+		JSL !GetFileAddress				; | source address
+		PLY						; |
+		LDA !FileAddress+1 : STA $3700+5,x		; > source bank
+		INY						; |
+		LDA ($0C),y					; |
+		CLC : ADC !FileAddress+0			; |
+		STA $3700+4,x					; |
+		INY #2						;/
+		LDA ($0C),y : STA $3700+7,x			;\ dest VRAM
+		INY #2						;/
+		CPY $3700+0 : BCC -				; loop
+		LDA.w #$3700 : STA $0C				; pointer ($3700)
+		..DynDone
+
 		LDA ($00)
 		INC $00
 		SEP #$20
@@ -775,7 +1120,10 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 		LDA #$D0 : STA $2209
 	-	LDA $018A : BEQ -
 		STZ $018A
-		PLB				;\ Restore bank and return
+
+		JSL !BuildOAM
+		PLP				;\
+		PLB				; | Restore stuff and return
 		RTL				;/
 
 
@@ -784,7 +1132,6 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 		.SNES
 		PHK : PLB
 		SEP #$30
-
 
 		PHP
 		REP #$20
@@ -805,7 +1152,6 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 		CPY #$08 : BNE -
 		PLP
 
-
 		LDA #$3F : TRB $40		;\ No color math
 		STZ $44				;/
 		LDA #$22 : STA $41		;\ Hide BG1/BG2 inside window, show BG3 ONLY inside window
@@ -818,7 +1164,7 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 		LDA #$0200 : STA !HDMA2source	; > table at $0200
 
 		LDA #$1103 : STA $4330		; > regs 2111 and 2112 (both 16-bit)
-		LDA #$0400 : STA !HDMA3source		; > table at $0400
+		LDA #$0400 : STA !HDMA3source	; > table at $0400
 
 		LDA #$00FF			;\
 		STA $0201			; |
@@ -976,8 +1322,8 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 		LDA #$7F7F : STA !VRAMtable+$04,x
 		LDA $0C
 		XBA
-		AND #$0FFF
-		ORA #$3000
+		AND #$07FF
+		ORA #$3800
 		STA.w !VRAMtable+$05,x
 		LDA #$0026 : STA.w !VRAMtable+$00,x
 		PLB
@@ -1001,49 +1347,49 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 
 
 		.Valid
-		TXA					;\
-		ASL A					; |
-		PHA					; |
-		ASL A					; | portrait address
-		TAX					; |
-		LDA.l !PortraitPointers+2,x : STA $00	; |
-		LDA.l !PortraitPointers+3,x : STA $01	; |
-		LDA.l !PortraitPointers+4,x : STA $02	; |
-		LDA #$10 : STA $03			;/
+		TXA								;\
+		ASL A								; |
+		PHA								; |
+		ASL A								; | portrait address
+		TAX								; |
+		LDA.l !PortraitPointers+2,x : STA $00				; |
+		LDA.l !PortraitPointers+3,x : STA $01				; |
+		LDA.l !PortraitPointers+4,x : STA $02				; |
+		LDA #$10 : STA $03						;/
 
 		LDA #$00 : XBA
-		TXA					;\
-		REP #$20				; |
-		ASL #3					; |
-		CLC : ADC.w #!PlayerPalettes		; |
-		STA $0D					; | Player palette in !BigRAM
-		SEP #$20				; |
-		LDA.b #!PlayerPalettes>>16 : STA $0F	; |
-		LDY #$1F				; |
-	-	LDA [$0D],y : STA !BigRAM+$3E,y		; |
-		DEY : BPL -				;/
+		TXA								;\
+		REP #$20							; |
+		ASL #3								; |
+		CLC : ADC.w #!PlayerPalettes					; |
+		STA $0D								; | Player palette in !BigRAM
+		SEP #$20							; |
+		LDA.b #!PlayerPalettes>>16 : STA $0F				; |
+		LDY #$1F							; |
+	-	LDA [$0D],y : STA !BigRAM+$3E,y					; |
+		DEY : BPL -							;/
 
-		PLX					;\
-		LDA.b #!PortraitPointers>>16 : STA $0F	; |
-		LDA #$00				; |
-		STA.l !VRAMbase+!CGRAMtable+4		; |
-		REP #$20				; |
+		PLX								;\
+		LDA.b #!PortraitPointers>>16 : STA $0F				; |
+		LDA #$00							; |
+		STA.l !VRAMbase+!CGRAMtable+4					; |
+		REP #$20							; |
 		LDA.l (!PortraitPointers&$FF0000)+read2(!PortraitPointers)+0,x	; |
-		STA $0D					; |
-		LDY #$3C				; |
-	-	LDA [$0D],y : STA !BigRAM,y		; | upload player and portrait palettes
-		DEY #2 : BPL -				; |
-		LDA.w #!BigRAM				; |
-		STA.l !VRAMbase+!CGRAMtable+2		; |
-		LDA #$005E				; |
-		LDY !UploadPlayerPal			; \ upload player pal clause
-		BEQ $03 : LDA #$003E			; /
-		STA.l !VRAMbase+!CGRAMtable+0		; |
-		SEP #$20				; |
-		LDA #$C1				; |
-		STA.l !VRAMbase+!CGRAMtable+5		;/
+		STA $0D								; |
+		LDY #$3C							; |
+	-	LDA [$0D],y : STA !BigRAM,y					; | upload player and portrait palettes
+		DEY #2 : BPL -							; |
+		LDA.w #!BigRAM							; |
+		STA.l !VRAMbase+!CGRAMtable+2					; |
+		LDA #$005E							; |
+		LDY !UploadPlayerPal						; \ upload player pal clause
+		BEQ $03 : LDA #$003E						; /
+		STA.l !VRAMbase+!CGRAMtable+0					; |
+		SEP #$20							; |
+		LDA #$C1							; |
+		STA.l !VRAMbase+!CGRAMtable+5					;/
 
-		JSL PLANE_SPLIT_SA1			; > unpack 5bpp portrait
+		JSL PLANE_SPLIT_SA1						; > unpack 5bpp portrait
 
 		PHB
 		LDA.b #!VRAMbank
@@ -1051,36 +1397,36 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 
 		REP #$20
 		JSL !GetBigCCDMA
-		LDA #$0100 : STA !CCDMAtable+$00,x			; upload size = .5 KB
-		LDA.w #!BufferLo : STA !CCDMAtable+$02,x		; source address = !BufferLo
-		LDA #$7600 : STA !CCDMAtable+$05,x			; dest VRAM = 0x7600
+		LDA #$0100 : STA !CCDMAtable+$00,x				; upload size = .5 KB
+		LDA.w #!BufferLo : STA !CCDMAtable+$02,x			; source address = !BufferLo
+		LDA #$7600 : STA !CCDMAtable+$05,x				; dest VRAM = 0x7600
 		SEP #$20
-		LDA.b #!BufferLo>>16 : STA !CCDMAtable+$04,x		; source bank
-		LDA #$09 : STA !CCDMAtable+$07,x			; settings = 4bpp, 32px
+		LDA.b #!BufferLo>>16 : STA !CCDMAtable+$04,x			; source bank
+		LDA #$09 : STA !CCDMAtable+$07,x				; settings = 4bpp, 32px
 		REP #$20
 		JSL !GetBigCCDMA
-		LDA #$0100 : STA !CCDMAtable+$00,x			; upload size = .5 KB
-		LDA.w #!BufferLo+$100 : STA !CCDMAtable+$02,x		; source address = !BufferLo+$100
-		LDA #$7700 : STA !CCDMAtable+$05,x			; dest VRAM = 0x7700
+		LDA #$0100 : STA !CCDMAtable+$00,x				; upload size = .5 KB
+		LDA.w #!BufferLo+$100 : STA !CCDMAtable+$02,x			; source address = !BufferLo+$100
+		LDA #$7700 : STA !CCDMAtable+$05,x				; dest VRAM = 0x7700
 		SEP #$20
-		LDA.b #!BufferLo>>16 : STA !CCDMAtable+$04,x		; source bank
-		LDA #$09 : STA !CCDMAtable+$07,x			; settings = 4bpp, 32px
+		LDA.b #!BufferLo>>16 : STA !CCDMAtable+$04,x			; source bank
+		LDA #$09 : STA !CCDMAtable+$07,x				; settings = 4bpp, 32px
 		REP #$20
 		JSL !GetBigCCDMA
-		LDA #$0100 : STA !CCDMAtable+$00,x			; upload size = .5 KB
-		LDA.w #!BufferHi : STA !CCDMAtable+$02,x		; source address = !BufferHi
-		LDA #$7680 : STA !CCDMAtable+$05,x			; dest VRAM = 0x7680
+		LDA #$0100 : STA !CCDMAtable+$00,x				; upload size = .5 KB
+		LDA.w #!BufferHi : STA !CCDMAtable+$02,x			; source address = !BufferHi
+		LDA #$7680 : STA !CCDMAtable+$05,x				; dest VRAM = 0x7680
 		SEP #$20
-		LDA.b #!BufferHi>>16 : STA !CCDMAtable+$04,x		; source bank
-		LDA #$09 : STA !CCDMAtable+$07,x			; settings = 4bpp, 32px
+		LDA.b #!BufferHi>>16 : STA !CCDMAtable+$04,x			; source bank
+		LDA #$09 : STA !CCDMAtable+$07,x				; settings = 4bpp, 32px
 		REP #$20
 		JSL !GetBigCCDMA
-		LDA #$0100 : STA !CCDMAtable+$00,x			; upload size = .5 KB
-		LDA.w #!BufferHi+$100 : STA !CCDMAtable+$02,x		; source address = !BufferHi+$100
-		LDA #$7780 : STA !CCDMAtable+$05,x			; dest VRAM = 0x7780
+		LDA #$0100 : STA !CCDMAtable+$00,x				; upload size = .5 KB
+		LDA.w #!BufferHi+$100 : STA !CCDMAtable+$02,x			; source address = !BufferHi+$100
+		LDA #$7780 : STA !CCDMAtable+$05,x				; dest VRAM = 0x7780
 		SEP #$20
-		LDA.b #!BufferHi>>16 : STA !CCDMAtable+$04,x		; source bank
-		LDA #$09 : STA !CCDMAtable+$07,x			; settings = 4bpp, 32px
+		LDA.b #!BufferHi>>16 : STA !CCDMAtable+$04,x			; source bank
+		LDA #$09 : STA !CCDMAtable+$07,x				; settings = 4bpp, 32px
 
 		PLB
 		RTS
@@ -1088,22 +1434,23 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 	.Long	PHB : PHK : PLB
 		PHA
 		PHY
-		LDA #$01 : STA !UploadPlayerPal		; don't upload player pal
+		LDA #$01 : STA !UploadPlayerPal					; don't upload player pal
 		JSR .0
 
-		LDA.b #!VRAMbank			;\
-		PHA : PLB				; |
-		PLA : STA !CGRAMtable+5			; > adjust palette
-		PLA					; |
-		STA !VRAMtable+$06,x			; |
-		STA !VRAMtable+$14,x			; |
-		STA !VRAMtable+$22,x			; | adjust upload destination
-		STA !VRAMtable+$30,x			; |
-		INC A					; |
-		STA !VRAMtable+$0D,x			; |
-		STA !VRAMtable+$1B,x			; |
-		STA !VRAMtable+$29,x			; |
-		STA !VRAMtable+$37,x			;/
+		LDA.b #!VRAMbank						;\
+		PHA : PLB							; |
+		PLA : STA !CGRAMtable+5						; > adjust palette
+		PLA								; |
+		STA !VRAMtable+$06,x						; |
+		STA !VRAMtable+$14,x						; |
+		STA !VRAMtable+$22,x						; | adjust upload destination
+		STA !VRAMtable+$30,x						; |
+		INC A								; |
+		STA !VRAMtable+$0D,x						; |
+		STA !VRAMtable+$1B,x						; |
+		STA !VRAMtable+$29,x						; |
+		STA !VRAMtable+$37,x						;/
+
 		PLB
 		RTL
 
@@ -1140,9 +1487,10 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 		dw $55B1,$6253,$5D4A,$7DAA,$7E69,$0523,$05E5,$0B0F
 
 
-macro CharDyn(base, tiles, source, dest)
+macro CharDyn(file, tiles, source, dest)
 	dw <tiles>*$20
-	dl <source>*$20+<base>
+	db <file>
+	dw <source>*$20
 	dw <dest>*$10+$6000
 endmacro
 
@@ -1166,10 +1514,10 @@ endmacro
 		.MarioDyn
 		dw ..End-..Start
 		..Start
-		%CharDyn($7E2000, 2, $0E0, $10C)
-		%CharDyn($7E2000, 2, $0F0, $11C)
-		%CharDyn($7E2000, 2, $004, $10E)
-		%CharDyn($7E2000, 2, $014, $11E)
+		%CharDyn(!File_Mario, 2, $0E0, $10C)
+		%CharDyn(!File_Mario, 2, $0F0, $11C)
+		%CharDyn(!File_Mario, 2, $004, $10E)
+		%CharDyn(!File_Mario, 2, $014, $11E)
 		..End
 
 
@@ -1182,10 +1530,10 @@ endmacro
 		.LuigiDyn
 		dw ..End-..Start
 		..Start
-		%CharDyn($3A8008, 2, $000, $10C)
-		%CharDyn($3A8008, 2, $010, $11C)
-		%CharDyn($3A8008, 2, $020, $10E)
-		%CharDyn($3A8008, 2, $030, $11E)
+		%CharDyn(!File_Luigi, 2, $000, $10C)
+		%CharDyn(!File_Luigi, 2, $010, $11C)
+		%CharDyn(!File_Luigi, 2, $020, $10E)
+		%CharDyn(!File_Luigi, 2, $030, $11E)
 		..End
 
 
@@ -1197,10 +1545,10 @@ endmacro
 		.KadaalDyn
 		dw ..End-..Start
 		..Start
-		%CharDyn($328008, 2, $000, $10C)
-		%CharDyn($328008, 2, $010, $11C)
-		%CharDyn($328008, 2, $020, $10E)
-		%CharDyn($328008, 2, $030, $11E)
+		%CharDyn(!File_Kadaal, 2, $000, $10C)
+		%CharDyn(!File_Kadaal, 2, $010, $11C)
+		%CharDyn(!File_Kadaal, 2, $020, $10E)
+		%CharDyn(!File_Kadaal, 2, $030, $11E)
 		..End
 
 
@@ -1215,12 +1563,12 @@ endmacro
 		.LeewayDyn
 		dw ..End-..Start
 		..Start
-		%CharDyn($358000, 2, $000, $10C)
-		%CharDyn($358000, 2, $010, $11C)
-		%CharDyn($358000, 3, $020, $12C)
-		%CharDyn($358000, 3, $030, $13C)
-		%CharDyn($348008, 3, $008, $14C)
-		%CharDyn($348008, 3, $018, $15C)
+		%CharDyn(!File_Leeway, 2, $000, $10C)
+		%CharDyn(!File_Leeway, 2, $010, $11C)
+		%CharDyn(!File_Leeway, 3, $020, $12C)
+		%CharDyn(!File_Leeway, 3, $030, $13C)
+		%CharDyn(!File_Leeway_Sword, 3, $008, $14C)
+		%CharDyn(!File_Leeway_Sword, 3, $018, $15C)
 		..End
 
 

@@ -37,7 +37,7 @@ DancerKoopa:
 	MAIN:
 		PHB : PHK : PLB				; > Start of bank wrapper
 
-		JSL SPRITE_OFF_SCREEN_Long
+		JSL SPRITE_OFF_SCREEN
 		LDA $3230,x
 		CMP #$08 : BEQ .Main
 		JMP Graphics
@@ -98,7 +98,7 @@ DancerKoopa:
 		STZ $3260,x				;\ Clear fraction bits
 		STZ $3270,x				;/
 		STZ $3330,x				; Clear blocked status
-		LDA #$E0 : STA $9E,x			;\ Set Y speed
+		LDA #$E0 : STA !SpriteYSpeed,x			;\ Set Y speed
 		BRA ++					;/
 	+	LDA $3330,x				;\ See if landed
 		AND #$04 : BEQ ++			;/
@@ -141,13 +141,13 @@ DancerKoopa:
 
 
 	.Shared
-		LDA .XSpeed,y : STA $AE,x		; X speed
+		LDA .XSpeed,y : STA !SpriteXSpeed,x	; X speed
 
 	Physics:
 		LDA $3330,x
 		AND #$04
 		BEQ +
-		LDA #$10 : STA $9E,x
+		LDA #$10 : STA !SpriteYSpeed,x
 		+
 
 		LDA !SpriteAnimIndex			;\
@@ -155,8 +155,8 @@ DancerKoopa:
 	+	CMP #$07 : BCC .Normal			;/
 
 		.Clear
-		STZ $9E,x
-		STZ $AE,x
+		STZ !SpriteYSpeed,x
+		STZ !SpriteXSpeed,x
 
 		.Normal
 		JSL !SpriteApplySpeed
@@ -167,21 +167,25 @@ DancerKoopa:
 		BCC .NoContact				; |
 		LSR A : BCC .P2				; |
 	.P1	LDY #$00				; |
-		PHA					; | Check for player contact
+		PHA					; | check for player contact
+		LDA !P2Character-$80,y			; |
+		CMP #$02 : BNE +			; |
 		LDA #$01 : STA !P2SenkuSmash-$80,y	; |
-		LDA $32E0,x : BNE $03			; |
+	+	LDA !SpriteDisP1,x : BNE $03		; |
 		JSR Interact				; |
 		PLA					; |
 	.P2	LSR A : BCC .NoContact			; |
+		LDA !P2Character-$80,y			; |
+		CMP #$02 : BNE +			; |
 		LDA #$01 : STA !P2SenkuSmash-$80,y	; |
-		LDA $35F0,x : BNE .NoContact		; |
+	+	LDA !SpriteDisP2,x : BNE .NoContact	; |
 		LDY #$80				; |
 		JSR Interact				; |
 		.NoContact				;/
 
-		JSL P2Attack_Long			;\
+		JSL P2Attack				;\
 		BCC .NoHit				; |
-		LSR A : BCC .NoHit			; | Check for hitbox contact
+	;	LSR A : BCC .NoHit			; | Check for hitbox contact
 		JSR Interact_TakeDamage			; |
 		.NoHit					;/
 
@@ -234,7 +238,25 @@ DancerKoopa:
 		LDA.w ANIM+0,y : STA $04
 		SEP #$20
 
-		JSL LOAD_PSUEDO_DYNAMIC_Long		; Draw GFX
+
+		LDA !SpriteAnimIndex
+		CMP #$05 : BEQ .Shell
+		CMP #$09 : BNE .NotShell
+
+		.Shell
+		LDA !GFX_Shell : STA $00
+		ASL A
+		ROL A
+		AND #$01
+		STA !SpriteProp,x
+		LDA $00
+		AND #$F0 : TRB $00
+		ASL A
+		ORA $00
+		STA !SpriteTile,x
+		.NotShell
+
+		JSL LOAD_PSUEDO_DYNAMIC			; Draw GFX
 
 
 		PLB					; > End of bank wrapper
@@ -244,52 +266,30 @@ DancerKoopa:
 
 
 	Interact:
-		PHY
-		LDA $9E,x
-		CMP !P2YSpeed-$80,y
-		BMI .HurtSprite
+		LDA #$10 : JSL DontInteract		; set don't interact
+		LDA !SpriteYSpeed,x
+		CMP !P2YSpeed-$80,y : BMI .HurtSprite
 
 		.HurtPlayer
-		LDA #$10
-		JSL DontInteract_Long
 		TYA
 		CLC : ROL #2
 		INC A
 		JSL !HurtPlayers
-		PLY
 		RTS
 
 		.HurtSprite
-		LDA !P2Character-$80,y : BNE +
-		LDA !MarioKillCount
-		INC A
-		CMP #$08
-		BEQ $03 : STA !MarioKillCount
-		BRA ++
-
-	+	LDA !P2KillCount-$80,y			;\
-		INC A					; |
-		CMP #$08				; | Stomp SFX
-		BEQ $03 : STA !P2KillCount-$80,y	; |
-	++	CLC : ADC #$12				; |
-		STA !SPC1				;/
+		JSL StompSound
 		JSR .TakeDamage
-		PLY					;\
-		JSL CheckCrush_Long			; | See if crush or stomp
-		BCC .Stomp				;/
-
+		LDA !P2Crush-$80,y : BEQ .Stomp
 		.Crush
-		JSL SPRITE_SPINKILL_Long
-
+		JSL SPRITE_SPINKILL
 		.Stomp
-		LDA #$10 : JSL DontInteract_Long	; set don't interact
-		JSL P2Bounce_Long			; bounce
-
+		JSL P2Bounce				; bounce
 		.Return
 		RTS
 
-
 		.TakeDamage
+		PHY
 		LDY #$07				;\
 		LDA !NewSpriteNum,x			; |
 		CMP #$13				; |
@@ -304,8 +304,10 @@ DancerKoopa:
 		TYA : STA $3200,x			; |
 		LDA #$09 : STA $3230,x			; |
 		STZ !NewSpriteNum,x			;/
-		JSL $07F7D2				;\ Reset stuff
+		JSL !ResetSprite			;\ Reset stuff
 		LDA #$02 : STA $32D0,x			;/
+		PLY
+		LDA #$10 : JSL DontInteract
 		RTS					; > Return
 
 
@@ -335,33 +337,33 @@ DancerKoopa:
 
 	.ShuffleTM0
 		dw $0008
-		db $30,$00,$F0,$20
-		db $30,$00,$00,$40
+		db $32,$00,$F0,$00
+		db $32,$00,$00,$08
 	.ShuffleTM1
 		dw $0008
-		db $30,$00,$F1,$22
-		db $30,$00,$01,$42
+		db $32,$00,$F1,$02
+		db $32,$00,$01,$0A
 	.ShuffleTM2
 		dw $0008
-		db $30,$00,$F1,$24
-		db $30,$00,$01,$44
+		db $32,$00,$F1,$04
+		db $32,$00,$01,$0C
 
 	.JumpTM
 		dw $0004
-		db $30,$00,$01,$04
+		db $32,$00,$01,$00
 
 	.PoseTM0
 		dw $0008
-		db $30,$00,$F0,$26
-		db $30,$00,$00,$46
+		db $32,$00,$F0,$06
+		db $32,$00,$00,$0E
 	.PoseTM1
 		dw $0008
-		db $70,$00,$F0,$26
-		db $70,$00,$00,$46
+		db $72,$00,$F0,$06
+		db $72,$00,$00,$0E
 
 	.DeadTM
 		dw $0004
-		db $B0,$00,$01,$04
+		db $B2,$00,$01,$00
 
 
 	namespace off

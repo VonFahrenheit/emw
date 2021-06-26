@@ -1,21 +1,66 @@
 
 
 	-- ROM map --
-		Bank $00-$11	SMW data, LM code, music data
+		-- MB 1 --
+		Bank $00-$0F	SMW code/data, LM code, music data
+		Bank $10-$11	unknown, but definitely used
 	*	Bank $12	SP_Menu, VR3
-		Bank $13	SP_Patch (last 512 bytes used by FusionCore)
-		Bank $14	--------
+		Bank $13	SP_Patch
+		Bank $14	FusionCore (includes particle engine)
 		Bank $15	PCE
 		Bank $16	Fe26
 		Bank $17	Fe26
 	*	Bank $18	SP_Level
 		Bank $19	SP_Level
 		Bank $1A	Fe26
-		Bank $1B-$1F	--------
+		Bank $1B-$1E	--------
+		Bank $1F	PCE
+		-- MB 2 --
 		Bank $20-$2F	--------
 		Bank $30-$3F	SP_Files
+		-- MB 3 --
+		Bank $80-$9F	LM data
+		-- MB 4 --
+		Bank $A0-$BF	LM data
 
-		Bank $80-$BF	Compressed LM data, LM code
+
+	-- VRAM map --
+		map 0:
+		(mode 1)
+		$0000-$5FFF	24 KiB	($0000-$2FFF)	4bpp GFX for BG1/BG2
+		$6000-$6FFF	4 KiB	($3000-$37FF)	BG1 tilemap (64x32)
+		$7000-$7FFF:	4 KiB	($3800-$3FFF)	BG2 tilemap (64x32)
+		$8000-$9FFF:	8 KiB	($4000-$4FFF)	2bpp GFX for BG3
+		$A000-$BFFF:	8 KiB	($5000-$5FFF)	BG3 tilemap (64x64)
+		$C000-$FFFF:	16 KiB	($6000-$7FFF)	4bpp GFX for sprites
+
+		map 1:
+		(mode 1)
+		$0000-$7FFF	32 KiB	($0000-$3FFF)	4bpp GFX for BG1/BG2
+		$8000-$8FFF	4 KiB	($4000-$47FF)	BG1 tilemap (64x32)
+		$9000-$9FFF:	4 KiB	($4800-$4FFF)	BG2 tilemap (64x32)
+		$A000-$AFFF:	4 KiB	($5000-$57FF)	2bpp GFX for BG3
+		$B000-$BFFF:	4 KiB	($5800-$5FFF)	BG3 tilemap (64x32 or 32x64)
+		$C000-$FFFF:	16 KiB	($6000-$7FFF)	4bpp GFX for sprites
+
+		map 2:
+		(mode 2)
+		$0000-$7FFF	32 KiB	($0000-$3FFF)	4bpp GFX for BG1/BG2
+		$8000-$8FFF	4 KiB	($4000-$47FF)	BG1 tilemap (64x32)
+		$9000-$9FFF:	4 KiB	($4800-$4FFF)	BG2 tilemap (64x32)
+		$A000-$AFFF:	4 KiB	($5000-$57FF)	BG3 data, used by status bar
+		$B000-$BFFF:	4 KiB	($5800-$5FFF)	Displacement map for BG1/BG2 (64x32)
+		$C000-$FFFF:	16 KiB	($6000-$7FFF)	4bpp GFX for sprites
+
+		map 3:
+		(mode 0)
+		$0000-$3FFF:	16 KiB	($0000-$1FFF)	2bpp GFX for BG1/BG2
+		$4000-$7FFF:	16 KiB	($2000-$3FFF)	2bpp GFX for BG3/BG4
+		$8000-$8FFF:	4 KiB	($4000-$47FF)	BG1 tilemap (64x32)
+		$9000-$9FFF:	4 KiB	($4800-$4FFF)	BG2 tilemap (64x32)
+		$A000-$AFFF:	4 KiB	($5000-$57FF)	BG3 tilemap (64x32)
+		$B000-$BFFF:	4 KiB	($5800-$5FFF)	BG4 tilemap (64x32)
+		$C000-$FFFF:	16 KiB	($6000-$7FFF)	4bpp GFX for sprites
 
 
 
@@ -28,59 +73,67 @@
 		$00B6-$00CB:	22 B	Status bar palette for dynamic BG3.
 		$00CC-$00CD:	2 B	Used by VR3.
 		$00CE-$00FF:	20 B	----
-		$0100-$01FF:	256 B	----
+		$0100-$01FF:	256 B	SNES DP for MPU operation
 		$0200-$03FF:	512 B	Table for HDMA channel 2 (message box).
 		$0400-$05FF:	512 B	Table for HDMA channel 3.
 		$0600-$07FF:	512 B	Table for HDMA channel 4.
 		$0800-$09FF:	512 B	Table for HDMA channel 5.
 		$0A00-$0BFF:	512 B	Table for HDMA channel 6.
 		$0C00-$0DFF:	512 B	Table for HDMA channel 7.
-		$0E00-$0FFF:	512 B	Used for instant full message uploads.
+		$0E00-$0FFF:	512 B	RAM code for SNES to apply lighting in background mode
 		$1000-$1DFF:	3.4 KB	backup for layer 3 GFX during text box (normal = $900 bytes, cinematic = $D90 bytes)
 		$1E00-$1E7F:	128 B	----
-		$1E80-$1EA5:	38 B	Vitor's RAM codes.
-		$1EA6-$1EFF:	90 B	----
+		$1E80-$1EA5:	38 B	Vitor's RAM codes
+		$1EA6-$1EFF:	90 B	custom RAM codes (see SP_Menu.asm)
 		$1F00-$1F0B:	12 B	$43X2 mirrors for HDMA channels 2-7, 2 bytes each
 		$1F0C:		1 B	HDMA enable double mirror (set at the end of each frame, used to minimize errors caused by lag)
 		$1F0D-$1FFF:	243 B	SNES stack.
 
 		Bank $7E:
-		$2000-$7CFF:	24 KB	GFX32, decompressed.
-		$7D00-$ACFF:	12 KB	GFX33, decompressed.
-		$AD00-$B0FF:	1 KB	AddmusicK data. (?)
-		$B100-$B37F:	640 B	Decompressed GFX for overworld.
-		$B380-$B67F:	768 B	Decompressed Game Over graphics.
+		$0000-$1FFF:	8 KB	LoRAM
+		$2000-$ACFF:	35 KB	super-dynamic GFX area 1
+		$AD00-$B0FF:	1 KB	start of AN2 file, extends all the way to $C7FF
+		$B100-$B37F:	640 B	decompressed GFX for overworld.
+		$B380-$B67F:	768 B	decompressed Game Over graphics.
 		$B680-$B8FF:	640 B	---- this area is used as an intermediate for compression
 		$B900-$BCFF:	1 KB	---- (it likely holds the GFX while SA-1 keeps decompressing to $410000)
 		$BD00-$BFFF:	1 KB	---- (lots of stuff is written here during loading)
-		$C000-$C7FF:	2 KB	Used for Lunar Magic exanimation
-		$C800-$FFFF:	14 KB	Decompressed GFX
+		$C000-$C7FF:	2 KB	used for Lunar Magic exanimation
+		$C800-$FBFF:	13 KB	super-dynamic GFX area 6
+		$FC00-$FFFF:	1 KB	lighting data
 		Bank $7F:
-		$0000-$3FFF:	16 KB	BG2 event tilemap for overworld
-		$4000-$7FFF:	16 KB	BG2 tilemap for overworld
+		$0000-$7FFF:	32 KB	super-dynamic GFX area 3
 		$8000-$8182:	387 B	----
 		$8183-$837A:	504 B	Lunar Magic animation stuff (details unknown)
 		$837B-$977A:	4.9 KB	Stripe Image table
-		$977B-$9A7A:	768 B	Sprite text GFX, decompressed (Start, Game Over, etc.)
+		$977B-$9A7A:	768 B	sprite text GFX, decompressed (Start, Game Over, etc.)
 		$9A7B-$9C7A:	512 B	----
-		$9C7B-$BBFF:	7.9 KB	Misc. (mostly unused, details unknown)
-		$BC00-$BFFF:	1 KB	Layer 2 background map16 numbers (lo bytes)
+		$9C7B-$AFFF:	4.9 KB	misc. (mostly unused, details unknown)
+		$B000-$B3FF:	1 KB	AddmusicK data
+		$B400-$BBFF:	2 KB	misc. (mostly unused, details unknown)
+		$BC00-$BFFF:	1 KB	----
 		$C000-$C0FF:	256 B	used by Lunar Magic for animation functions, see comments in VR3.asm for more details
 		$C100-$C2FF:	512 B	---- (seemingly unused)
-		$C300-$C6FF:	1 KB	Layer 2 background map16 numbers (hi bytes, add 0x80)
-		$C700-$C7FF:	256 B	Unknown, mostly unused
-		$C800-$FFFF:	14 KB	Decompressed GFX
+		$C300-$C6FF:	1 KB	----
+		$C700-$C7FF:	256 B	unknown, mostly unused
+		$C800-$FFFF:	14 KB	super-dynamic GFX area 4
 
 
 	-- I-RAM map --
 
 		$3000-$30FF:	256 B	SNES/SA-1 DP
-		$3100-$313F:	64 B	Used as shared scratch RAM for MPU communication
+		$3100-$313F:	64 B	SA-1 DP for MPU operation
 		$3140-$3147:	8 B	VRAM remap registers, see Defines
-		$3148-$314F:	8 B	Camera backup (4 bytes), camera movement (2 slots, 2 bytes each)
-		$3150-$315F:	16 B	Dynamic tile sprite usage
-		$3160-$3169:	10 B	Camera box registers
-		$316A-$317E:	21 B	----
+		$3148-$314F:	8 B	camera backup (4 bytes), camera movement (2 slots, 2 bytes each)
+		$3150-$315F:	16 B	----
+		$3160-$316F:	16 B	light list, 1 byte for each palette row, determines color handling
+		$3170:		1 B	----
+		$3171:		1 B	which buffer is currently being written to by shader
+		$3172-$3175:	4 B	start/end index for dynamic lighting
+		$3176-$317B:	6 B	lighting RGB values
+		$317C:		1 B	dynamic lighting process flag (0 = start new, 1 = processing, 2 = done, highest bit signals that an upload is ready)
+		$317D:		1 B	SNES status in dual thread operation
+		$317E:		1 B	SA-1 status in dual thread operation
 		$317F:		1 B	CCDMA slots in use
 		$3180-$3182:	3 B	code pointer for SNES -> SA-1 call
 		$3183-$3185:	3 B	code pointer for SA-1 -> SNES call
@@ -97,20 +150,20 @@
 		$3200-$35FF:	1024 B	Sprite data, expanded by physics+
 		$3600-$367F:	128 B	Player 1 data
 		$3680-$36FF:	128 B	Player 2 data
-		$3700-$377F:	128 B	CCDMA buffer
+		$3700-$377F:	128 B	CCDMA buffer (also used to pass tilemap data from SNES to SA-1)
 		$3780-$37FF:	128 B	SA-1 stack
 
 	-- BW-RAM --
 		Image:
-		$6000-$601F:	32 B	Scratch
+		$6000-$601F:	32 B	scratch
 		$6020-$6021:	2 B	RAMcode flag (0x1234 = go, anything else = disable)
 		$6022-$6023:	2 B	RAMcode offset
 		$6024-$6027:	4 B	----
 		$6028-$602F:	8 B	sprite palset options (highest bit = loaded, rest is index to palset data)
 		$6030-$604F:	32 B	sprite tables used for dynamic file loading
-		$6050-$606A:	27 B	palset information for FusionCore sprites
-		$606B-$607F:	21 B	----
-		$6080-$60FF:	128 B	Tilemap assembly area ("Big RAM", basically extended scratch RAM)
+		$6050-$6074:	37 B	palset information for FusionCore sprites
+		$6075-$607F:	11 B	----
+		$6080-$60FF:	128 B	!BigRAM (extended scratch)
 		$6100-$610F:	16 B	SMW's $0100-$010F
 		$6110-$6113:	4 B	Assume that level code uses this
 		$6114-$611F:	12 B	----
@@ -122,20 +175,26 @@
 		$6420-$649F:	128 B	OAM, hi table buffer
 		$64A0-$667F:	480 B	---- (used as an HDMA table on title screen, otherwise free)
 		$6680-$7FFF:	6.4 KB	SMW's $0680-$1FFF
-
+		-- some info --
+		$6703-$6902:	512 B	entire palette (SNES RGB format), fed into shader
+		$6903-$6904:	2 B	mirror of color 0, updated each v-blank (usually black)
 		$6905-$6AF4:	496 B	SMW's work area for overworld palette animations, unused
 					Instead, I use it like this:
 					$6905-$6906: 2 B, layer 2 map16 offset when layer 2 is set to level
-					$6907-$960F: 9 B, ----
+					$6907:	     1 B, ----
+					$6908-$960F: 8 B, update flags for tilemap zips
 					$6910-$694F: 64 B, tilemap data for layer 1 column
 					$6950-$699F: 80 B, tilemap data for layer 1 row
 					$69A0-$69DF: 64 B, tilemap data for layer 2 column (used for layer 2 level)
 					$69E0-$6A5F: 128/80 B, tilemap data for layer 2 row (size varies, always used)
 					$6A60-$6ABF: 96 B, checkpoint level, lo byte (level data byte 2)
-					$6AC0-$6AF4: ----
+					$6AC0-$6AC9: 10 B, camera box registers
+					$6ACA-$6AF4: 43 B, ----
 
 		$6DDF-$6EF4:	278 B	SMW's overworld sprite data
 					I use it as 3D tilemap cache
+
+		$6FBE-$73BD:	1024 B	----
 
 		$7938-$79B7:	128 B	SMW's sprite load status table, moved to $418A00
 					I use it like this:
@@ -147,38 +206,78 @@
 		$7F49-$7FD5:	141 B	SMW's buffer for $7EA2-$7F2E, no real purpose in EMW
 					I use it like this:
 					$7F49-$7FA8: 96 B, best time per level, minutes (level data byte 5)
-					$7FA9-$7FD5: ----
+					$7FA9-$7FAF: ----
+					$7FB0-$7FBF: priority data for OAM
+					$7FC0-$7FD5: ----
+
+
+		areas free due to moving sprites to I-RAM:
+		$74C8-$75E8:	289 B	last byte unused in vanilla, next byte is !SpriteIndex
+		$75EA-$7691:	167 B	next byte is sprite memory setting (from header)
+		$786C-$7877:	12 B	sprite off screen flag, vertical
+		$787B-$7886:	12 B	sprite stomp immunity flag
+		$790F-$791B:	13 B	tweaker 6, last byte is unused in vanilla
+		$7FD6-$7FED:	24 B	unused sprite table and misc (water/cape etc) timer
+
+		used like this:
+		$74C8-$74DC:	21 B	tile numbers for some sprite types
+		$74DD-$74F1:	21 B	t bits for some sprite types
+		$74F2-$74FF:	14 B	----
+		$7500-$75CF:	208 B	PhysicsPlus sprite tables
+		$75D0-$75E8:	25 B	----
+		$75E9:		1 B	sprite index (unchanged)
+		$75EA-$75FF:	22 B	----
+		$7600-$761F:	32 B	each sprite's claim to dynamic tiles
+		$7620-$7621:	2 B	dynamic tile status (1 bit per tile)
+		$7622-$7691:	112 B	----
+		$7692:		1 B	sprite memory setting from header (unchanged)
+		$786C-$7877:	12 B	----
+		$787B-$7886:	12 B	----
+		$790F-$791B:	13 B	----
+		$7FD6-$7FED:	24 B	----
 
 
 		Bank $40:
 		$0000-$1FFF:	8 KB	BW-RAM image
-		$2000-$3FFF:	8 KB	Reserved for CCDMA uploads
+		$2000-$3FFF:	8 KB	reserved for CCDMA uploads
 		$4000-$43FF:	1024 B	last KB of image cache, usually only used as a backup for layer 3 tilemap
-		$4400-$44FF:	256 B	Message box data
+		$4400-$447F:	128 B	message box data
+		$4480-$44BF:	64 B	----
+		$44C0-$44FF:	64 B	square dynamo table (4 bytes per dynamic tile)
 		$4500-$48FF:	1024 B	VR3 RAM
 		$4900-$49FF:	256 B	DEBUG: CPU performance data
 		$4A00-$4DFF:	1024 B	RAM code area for fast upload
-		$4E00-$4E7F:	128 B	Player backup data
-		$4E80-$4E80:	1 B	Multiplayer flag
-		$4E81-$4E81:	1 B	Current player during PCE/menu processing
+		$4E00-$4E7F:	128 B	player backup data
+		$4E80-$4E80:	1 B	multiplayer flag
+		$4E81-$4E81:	1 B	current player during PCE/menu processing
 		$4E82-$4E83:	2 B	----
 		$4E84-$6FFF:	8.3 KB	misc, check !Defines ($404EB8 holds rendering backup regs, $404EF8 is 1KB area for HSL colors)
-		$7000-$AFFF:	16 KB	decompression buffer
-		$B000-$C7FF:	6 KB	----
+		$7000-$AFFF:	16 KB	decompression buffer (during levels, $9000-$AFFF holds the layer 2 background tilemap)
+		$B000-$C7FF:	6 KB	super-dynamic GFX area 5 ($A000-$C7FF)
 		$C800-$FFFF:	14 KB	Map16 lo byte table
 
 		Bank $41:
-		$0000-$7FFF:	32 KB	Decompressed GFX
+		$0000-$7FFF:	32 KB	super-dynamic GFX area 2
 		$8000-$80FF:	256 B	Map16 remap table (see !Defines for details)
 		$8100-$82FF:	512 B	GFX load status table (256 pseudo-dynamic files, 128 super-dynamic files, 128 sprite palsets)
 		$8300-$87FF:	1.25 KB	----
-		$8800-$89FF:	512 B	Wiggler data
-		$8A00-$8AFE:	255 B	Sprite load status (00: reload, EE: never reload)
-		$8AFF-$AFFF:	9.4 KB	----
-		$B000-$B2FF:	768 B	Save file 1
-		$B300-$B5FF:	768 B	Save file 2
-		$B600-$B8FF:	768 B	Save file 3
-		$B900-$BBFF:	768 B	Permanent SRAM
+		$8800-$89FF:	512 B	wiggler data
+		$8A00-$8AFE:	255 B	sprite/shooter load status (00: reload, EE: never reload)
+		$8AFF-$8EFF:	1 KB	----
+		$8F00-$8FBF:	192 B	platform data
+		$8FC0-$8FC0:	1 B	platform exists flag (0 = no, 1 = yes)
+		$8FC1-$8FF7:	55 B	----
+		$8FF8-$8FFF:	8 B	index to OAM mirrors, 16-bit index to each table
+		$9000-$99FF:	2.5 KB	OAM mirrors (p0-p3, 4 lo tables followed by 4 hi tables, decompressed)
+		$9A00-$A0A3:	1.7 KB	particle data (17 bytes / particle, total 100 particles)
+		$A0A4-$A0AF:	12 B	reserved for shared particle settings
+		$A0B0: BG object data
+
+		$A0B0-$AFFF:	3.8 KB	----
+		$B000-$B2FF:	768 B	save file 1
+		$B300-$B5FF:	768 B	save file 2
+		$B600-$B8FF:	768 B	save file 3
+		$B900-$BBFF:	768 B	permanent SRAM
 		$BC00-$BFFF	1 KB	SRAM buffer
 				$BC00 - misc SRAM buffer data (see defines)
 				$BC10 - database buffer
@@ -187,29 +286,6 @@
 				$BD1A - ----
 		$C000-$C7FF:	2 KB	2D/3D Cluster Joint data
 		$C800-$FFFF:	14 KB	Map16 hi byte table
-
-
-
-vitor's notes:
-
-$40:2000-$40:3FFF -> Best area for using Character Conversion DMA. 4/2bpp: $60:4000-$60:7FFF/$60:8000-$60:FFFF.
-$40:4000-$40:C7FF -> Free to use.
-$40:C800-$40:FFFF -> SMW's $7E:C800-$7E:FFFF. Contains Map16 data, lower byte.
-
-$41:0000-$41:7FFF -> Used as decompression buffer (32 KB), or RPG Hacker's VWF dialogues.
-$41:8000-$41:87FF -> Old Dynamic Sprites buffer. If you don't use Dynamic Sprites, this should be free.
-$41:8800-$41:89FF -> SMW's $7F9A7B. Used to make Wigglers SA-1 compatible.
-$41:8A00-$41:8AFE -> SMW's $7E1938: "Sprite load status within the level.", extended to 255 entries.
-$41:8AFF-$41:9FFF -> Free. It's 5377 bytes (~5.25 KB) free in total.
-$41:A000-$41:BFFF -> SRAM Expansion Area. If you isn't using SA-1 SRAM Expand, this should be free.
-$41:C000-$41:C7FF -> SMW's SRAM Area. Originally $70:0000-$70:07FF.
-$41:C800-$41:FFFF -> SMW's $7F:C800-$7F:FFFF. Contains Map16 data, high byte.
-
-
-
-
-
-
 
 
 

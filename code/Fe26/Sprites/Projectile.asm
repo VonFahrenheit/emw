@@ -39,7 +39,7 @@ Projectile:
 		PHB : PHK : PLB
 		LDA !Immortal : BEQ +
 		LDA #$20 : STA $32D0,x
-	+	JSR SPRITE_OFF_SCREEN		; Handle sprite while offscreen
+	+	JSL SPRITE_OFF_SCREEN		; Handle sprite while offscreen
 		LDA $3230,x
 		SEC : SBC #$08
 		ORA $9D
@@ -69,7 +69,15 @@ ReturnAction:	LDA $32D0,x			; Check life timer
 		PLB
 		RTL
 
-Graphics:	LDA !AnimType
+Graphics:
+
+
+
+JSR SpawnParticle
+
+
+
+		LDA !AnimType
 		CMP #$02 : BNE .NormalType
 
 		.BigType
@@ -106,7 +114,7 @@ Graphics:	LDA !AnimType
 		AND #$04
 		BEQ $02 : LDA #$80
 		EOR $01
-		ORA #$30
+		ORA #$32
 		STA !BigRAM+$02
 		STA !BigRAM+$06
 		STA !BigRAM+$0A
@@ -121,8 +129,7 @@ Graphics:	LDA !AnimType
 		STZ !BigRAM+$03			; > No Xdisp
 		STZ !BigRAM+$04			; > No Ydisp
 		LDA !HardProp : BEQ +
-		LDA $33C0,x
-		BRA ++
+		LDA $33C0,x : BRA ++
 	+	LDY $3320,x			;\
 		LDA Property,y			; | YXPPCCCT byte (basic)
 	++	;ORA !SpriteProp,x		; |
@@ -172,17 +179,17 @@ FinishGFX:	LDA.b #!BigRAM : STA $04
 		LDA.b #!BigRAM>>8 : STA $05
 
 		LDA !BigRAM+2
-		AND #$10 : BEQ .LoPrio
-	.HiPrio	JSR LOAD_TILEMAP_HiPrio
+		AND #$20 : BEQ .LoPrio
+	.HiPrio	JSL LOAD_TILEMAP_p2
 		PLB
 		RTL
 
-	.LoPrio	JSR LOAD_TILEMAP
+	.LoPrio	JSL LOAD_TILEMAP_p1
 ReturnMAIN:	PLB
 		RTL
 
-Property:	db $75				; Y0 X1 PP11 CCC010 T1
-		db $35				; Y0 X0 PP11 CCC010 T1
+Property:	db $72				; Y0 X1 PP11 CCC010 T1
+		db $32				; Y0 X0 PP11 CCC010 T1
 
 BigTiles:	db $00,$20,$1E,$DE
 
@@ -351,6 +358,75 @@ BigShot:	PLX
 .Return		JMP ReturnAction
 
 
+
+
+	SpawnParticle:
+
+LDA $32D0,x
+CMP #$08 : BCC .Spawn
+RTS
+
+		.Spawn
+		PHB
+		JSL !GetParticleIndex
+		PLB
+		LDY !SpriteIndex
+		SEP #$20
+		LDA $3220,y : STA !41_Particle_XLo,x
+		LDA $3250,y : STA !41_Particle_XHi,x
+		LDA $3210,y : STA !41_Particle_YLo,x
+		LDA $3240,y : STA !41_Particle_YHi,x
+		LDA #!prt_basic : STA !41_Particle_Type,x
+		LDA #$FF : STA !41_Particle_Timer,x
+		LDA !GFX_NoviceShaman : STA $00
+		AND #$F0 : TRB $00
+		ASL A
+		ORA $00
+		CLC : ADC #$4D
+		STA !41_Particle_Tile,x
+		LDA $33C0,y : STA !41_Particle_Prop,x
+		LDA #$02 : STA !41_Particle_Layer,x
+
+		REP #$20
+		LDA.w !SpriteXSpeed,y
+		AND #$00FF
+		ASL #3
+		CMP #$0400
+		BCC $03 : ORA #$F800
+		STA $00
+		LDA !RNG
+		AND #$00F0
+		SEC : SBC #$0080
+		CLC : ADC $00
+		STA !41_Particle_XSpeed,x
+		SEP #$20
+		LDA !RNG
+		AND #$07
+		SEC : SBC #$05
+		STA !41_Particle_YAcc,x
+
+
+
+
+		SEP #$10
+		TYX
+
+
+		RTS
+
+
+
 	namespace off
+
+
+
+
+
+
+
+
+
+
+
 
 

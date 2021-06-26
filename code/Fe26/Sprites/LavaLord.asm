@@ -304,7 +304,7 @@ endmacro
 		PLY
 		RTS
 
-	.Spawn	JSL SPRITE_A_SPRITE_B_COORDS_Long
+	.Spawn	JSL SPRITE_A_SPRITE_B_COORDS
 		LDA $3320,x : PHA			; push dir
 		LDA #$07				;\  > Custom sprite number
 		TYX					; | > X = new sprite index
@@ -478,7 +478,7 @@ endmacro
 		LDA #$18 : STA $05			; falling Y speed
 		LDA #$86				; type 6, pattern X+16, Y+0 (we'll double Xpos later)
 		LDY #$06				; spawn 6 ExSprites
-		JSL SpawnExSprite_Long
+		JSL SpawnExSprite
 
 		LDY #!Ex_Amount-1
 	-	LDA !Ex_Num,y
@@ -1011,12 +1011,12 @@ endmacro
 		LDA ANIM_FireballTile,y : STA !BigRAM+$09
 
 	.Draw	LDA !BGFraction : BNE +
-		JSL LOAD_TILEMAP_HiPrio_Long
+		JSL LOAD_TILEMAP_p2
 
 		LDA.b #ANIM_AuraTM : STA $04
 		LDA.b #ANIM_AuraTM>>8 : STA $05
 
-	+	JSL LOAD_TILEMAP_Long
+	+	JSL LOAD_TILEMAP
 
 
 
@@ -1484,7 +1484,7 @@ endmacro
 		SEC : SBC #$0A
 		AND.b #$03^$FF
 		STA $AE,x
-		JSL SUB_HORZ_POS_Long
+		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
 
 	..Y	LDA $3240,x
@@ -1514,7 +1514,7 @@ endmacro
 		STZ $9E,x
 		.Air
 
-		JSL SUB_HORZ_POS_Long
+		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
 
 		STZ $AE,x

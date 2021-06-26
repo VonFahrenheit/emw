@@ -49,7 +49,7 @@ YoshiCoin:
 		LDA .Index,y : STA $3280,x		;/
 		PHX					;\
 		LDX !Translevel				; | if coin is already collected, become a normal coin
-		AND $40400B,x : BNE .GoCoin		;/
+		AND !LevelTable1,x : BNE .GoCoin	;/
 		TXA					;\
 		PLX					; |
 		STA $BE,x				; | otherwise store translevel index and return
@@ -64,7 +64,7 @@ YoshiCoin:
 		LDX !Translevel				; | if this level only has 5 yoshi coins, become a normal coin
 		LDA $188000,x : BEQ .GoCoin		;/
 		TAX					;\
-		LDA $40400B,x				; | if coin is already collected, become a normal coin
+		LDA !LevelTable1,x			; | if coin is already collected, become a normal coin
 		AND $00 : BNE .GoCoin			;/
 		TXA					;\
 		PLX					; |
@@ -81,7 +81,7 @@ YoshiCoin:
 		LDA !ExtraBits,x
 		AND.b #$08^$FF
 		STA !ExtraBits,x
-		JSL $07F7D2				; | > Reset sprite tables
+		JSL !ResetSprite			; | > Reset sprite tables
 		PLB
 		RTL
 
@@ -190,8 +190,8 @@ YoshiCoin:
 		PHX
 		LDA $BE,x : TAX
 		TYA
-		ORA $40400B,x
-		STA $40400B,x
+		ORA !LevelTable1,x
+		STA !LevelTable1,x
 		PLX
 		PLA
 		LSR A : BCC .P2
@@ -208,7 +208,7 @@ YoshiCoin:
 		REP #$20
 		LDA.w #ANIM : STA $04
 		SEP #$20
-		JSL LOAD_PSUEDO_DYNAMIC_Long
+		JSL LOAD_PSUEDO_DYNAMIC
 		PLB
 		RTL
 
@@ -216,8 +216,8 @@ YoshiCoin:
 
 	ANIM:
 		dw $0008
-		db $70,$00,$F3,$00
-		db $70,$00,$03,$02
+		db $72,$00,$F3,$00
+		db $72,$00,$03,$02
 
 
 	Glitter:

@@ -26,56 +26,37 @@ TarCreeper:
 		PHB : PHK : PLB
 		LDA #$FF : STA !TarCreeperLedgeMemHi
 
-		LDA #$FF
-		STA $00
-		STA $01
-		LDY #$00
-		LDX #$0F
-	-	CPX !SpriteIndex : BEQ ++
-		LDA $3230,x
-		CMP #$02 : BEQ +
-		CMP #$08 : BNE ++
-	+	LDA !NewSpriteNum,x
-		CMP #$09 : BNE ++
-		LDA !ClaimedGFX
-		STA $3000,y
-		INY
-
-	++	DEX : BPL -
-		CPY #$02 : BCC +
-	--	LDX !SpriteIndex
+		LDA #$05 : JSL GET_SQUARE
+		BCS +
 		STZ $3230,x
 		PLB
 		RTL
 
-	+	LDA #$00
-	-	CMP $00 : BEQ +
-		CMP $01 : BNE ++
-	+	CLC : ADC #$06
-		CMP #$0C
-		BNE -
-		BRA --
+		+
 
-	++	LDX !SpriteIndex
-		STA !ClaimedGFX
-		CMP #$00 : BNE +
-		JSL !GetVRAM
-		REP #$30
 
-	;	LDY.w #!File_TarCreeper_Hands
-	;	JSL !GetFileAddress
-	;	LDA #$1000 : STA.l !VRAMbase+!VRAMtable+$00,x
-	;	LDA !FileAddress : STA.l !VRAMbase+!VRAMtable+$02,x
-	;	LDA !FileAddress+1 : STA.l !VRAMbase+!VRAMtable+$03,x
-	;	LDA #$7800 : STA.l !VRAMbase+!VRAMtable+$05,x
-		SEP #$30
-		LDX !SpriteIndex
-	+	PLB
+;		LDA #$05 : JSL !GetDynamicTile
+;		BCS +
+;		STZ $3230,x
+;		PLB
+;		RTL
+;
+;	+	TYA
+;		ORA #$60
+;		STA !ClaimedGFX
+;		TXA
+;		STA !DynamicTile+0,y
+;		STA !DynamicTile+1,y
+;		STA !DynamicTile+2,y
+;		STA !DynamicTile+3,y
+;		STA !DynamicTile+4,y
+;		STA !DynamicTile+5,y
+		PLB
 
 
 	MAIN:
 		PHB : PHK : PLB
-		JSL SPRITE_OFF_SCREEN_Long
+		JSL SPRITE_OFF_SCREEN
 		LDA $3230,x
 		SEC : SBC #$08
 		ORA $9D
@@ -120,82 +101,81 @@ TarCreeper:
 		dw .BendBack
 
 		.OpenHand
+	.OpenHandRotate
 		dw $0004
-		db $FD,$00,$00,$80
-		.OpenHandRotate
-		dw $0004
-		db $7D,$00,$00,$82
+		db $32,$04,$00,$0B
+	;	.OpenHandRotate
+	;	dw $0004
+	;	db $7D,$00,$00,$82
 		.Fist
 		dw $0004
-		db $7D,$00,$00,$A0
+		db $72,$00,$00,$A0
 		.FistRotate
 		dw $0004
-		db $7D,$00,$00,$A2
+		db $72,$00,$00,$A2
 		.LittlePalm
 		dw $0008
-		db $7D,$04,$F4,$DE
-		db $7D,$04,$FC,$EE
+		db $72,$04,$F4,$02
+		db $72,$04,$FC,$12
 		.LittlePalmRotate
 		dw $0008
-		db $7D,$F8,$02,$86
-		db $7D,$00,$02,$87
+		db $72,$F2,$02,$08
+		db $72,$FA,$02,$09
 		.BigPalm
-		dw $000C
-		db $7D,$E8,$00,$89
-		db $7D,$F8,$00,$8B
-		db $7D,$00,$00,$8C
+		dw $0008
+		db $72,$E8,$00,$04
+		db $72,$F8,$00,$06
 		.BigPalmRotate
-		dw $000C
-		db $7D,$00,$E8,$8E
-		db $7D,$00,$F8,$AE
-		db $7D,$00,$00,$BE
+		dw $0008
+		db $72,$00,$EC,$00
+		db $72,$00,$FC,$20
 
 		; Arm tilemaps end with X/Y displacements for hand tiles
 		.BendDown
 		dw $0004
-		db $BD,$00,$00,$C4
+		db $B2,$00,$00,$28
 		db $0C,$0B
 		.BendForward
 		dw $0008
-		db $BD,$00,$FE,$C0
-		db $BD,$08,$FE,$C1
+		db $B2,$00,$FE,$0D
+		db $B2,$08,$FE,$0E
 		db $16,$F9
 		.BendUpForward
 		dw $0004
-		db $3D,$00,$F3,$C4
+		db $32,$00,$F3,$28
 		db $0C,$EA
 		.BendUp
 		dw $0004
-		db $3D,$00,$EF,$C4
+		db $32,$00,$EF,$28
 		db $0C,$E6
 		.StraightUpForward
 		dw $0004
-		db $3D,$01,$ED,$A4
+		db $32,$09,$ED,$24
 		db $01,$E4
 		.StraightUp
 		dw $0004
-		db $3D,$01,$E9,$A4
+		db $32,$01,$E9,$24
 		db $01,$E0
 		.BendUpBack
 		dw $0004
-		db $7D,$10,$EF,$C4
+		db $72,$10,$EF,$28
 		db $F0,$E6
 		.BendBack
 		dw $0008
-		db $7D,$10,$F6,$C0
-		db $7D,$18,$F6,$C1
+		db $72,$10,$F6,$0D
+		db $72,$18,$F6,$0E
 		db $DA,$FA
 
 		; X disp, Y disp, Width, Height, 2 empty bytes (0xFFFF)
 		.PalmBox
-		dw $FFE8,$0000 : db $28,$0C : dw $FFFF		; ---  horz
-		dw $0004,$0000 : db $0C,$28 : dw $FFFF		; --r  vert
-		dw $0000,$0000 : db $28,$0C : dw $FFFF		; -x-  horz
-		dw $0000,$0000 : db $0C,$28 : dw $FFFF		; -xr  vert
-		dw $FFE8,$0004 : db $28,$0C : dw $FFFF		; y--  horz
-		dw $0004,$FFE8 : db $0C,$28 : dw $FFFF		; y-r  vert
-		dw $0000,$0004 : db $28,$0C : dw $FFFF		; yx-  horz
-		dw $0000,$FFE8 : db $0C,$28 : dw $FFFF		; yxr  vert
+		dw $FFE8,$FFFC : db $28,$10 : dw $FFFF		; ---  horz
+		dw $0004,$FFFC : db $0C,$2C : dw $FFFF		; --r  vert
+		dw $0000,$FFFC : db $28,$10 : dw $FFFF		; -x-  horz
+		dw $0000,$FFFC : db $0C,$2C : dw $FFFF		; -xr  vert
+		dw $FFE8,$0000 : db $28,$10 : dw $FFFF		; y--  horz
+		dw $0004,$FFE4 : db $0C,$2C : dw $FFFF		; y-r  vert
+		dw $0000,$0000 : db $28,$10 : dw $FFFF		; yx-  horz
+		dw $0000,$FFE4 : db $0C,$2C : dw $FFFF		; yxr  vert
 
 
 		.VectorX
@@ -249,9 +229,9 @@ TarCreeper:
 		CMP $02						; |
 		SEP #$20					; |
 		BCS .TargetP2					; |
-.TargetP1	JSL SUB_HORZ_POS_Long1				; |
+.TargetP1	JSL SUB_HORZ_POS_P1				; |
 		BRA +						; |
-.TargetP2	JSL SUB_HORZ_POS_Long2				; |
+.TargetP2	JSL SUB_HORZ_POS_P2				; |
 	+	TYA : STA $3320,x				;/
 	++	STZ $03						;\
 		LDA $3320,x					; |
@@ -270,17 +250,23 @@ TarCreeper:
 		LDA !TarCreeperGrabStatus			;\
 		AND.b #$20^$FF					; | Clear this bit (notes big palm range)
 		STA !TarCreeperGrabStatus			;/
+
+	; DISABLE ATTACKS
+	JMP .NoAttack
+
+
+
 		LDA !TarCreeperHandL				;\
 		AND #$38					; |
 		CMP #$18 : BEQ .NoAttack			; | No attack while hands are up
 		LDA !TarCreeperHandR				; |
 		AND #$38					; |
 		CMP #$18 : BEQ .NoAttack			;/
-		JSL SUB_HORZ_POS_Long				;\
+		JSL SUB_HORZ_POS				;\
 		TYA						; |
 		CMP $3320,x					; |
 		BEQ .Attack					; | Only attack if facing at least one player
-		JSL SUB_HORZ_POS_Long2				; |
+		JSL SUB_HORZ_POS_P2				; |
 		TYA						; |
 		CMP $3320,x					; |
 		BNE .NoAttack					;/
@@ -305,9 +291,9 @@ TarCreeper:
 
 		STZ !TarCreeperHandL				;\ Start at 0
 		STZ !TarCreeperHandR				;/
-		LDA !TarCreeperAttack				;\ Only move hands when attack is not taking place
-		BEQ .ProcessHands				;/
-		JMP .NoHands					; >
+	;	LDA !TarCreeperAttack				;\ Only move hands when attack is not taking place
+	;	BEQ .ProcessHands				;/
+	;	JMP .NoHands					; >
 
 		.ProcessHands
 		LDA !TarCreeperGrabStatus
@@ -329,19 +315,7 @@ TarCreeper:
 		STA $08						; > $08 = dY
 		LDA !P2Status-$80,y				;\ Don't care about dead players
 		AND #$00FF : BEQ $03 : JMP .End			;/
-		TYA						;\
-		CLC						; |
-		XBA : ROL #2					; |
-		INC A						; |
-		STA $0E						; |
-		LDA !CurrentMario				; | Account for Mario's natural displacement
-		AND #$00FF					; |
-		CMP $0E						; |
-		BNE +						; |
-		LDA $08						; |
-		SEC : SBC #$0010				; |
-		STA $08						;/
-	+	LDA $00
+		LDA $00
 		SEC : SBC !P2XPosLo-$80,y
 		PHP
 		STY $05						;\ Switch Y
@@ -486,7 +460,7 @@ TarCreeper:
 		LDA !SpriteAnimIndex
 		CMP #$25 : BCS .NoFireball
 		JSR HITBOX_BODY
-		JSL FireballContact_Long
+		JSL FireballContact_Destroy
 		BCC .NoFireball
 
 		LDA #$0F : STA $776F+$08,y		;\ Destroy fireball
@@ -534,9 +508,7 @@ TarCreeper:
 		LDA #$00
 
 		.OnePlayer
-		TAY
-		JSL CheckMario_Long
-		BNE ..NotMario
+		LDA !P2Character-$80,y : BNE ..NotMario
 		STZ !MarioXSpeed
 		STZ !MarioYSpeed
 		..NotMario
@@ -683,9 +655,7 @@ TarCreeper:
 		LSR A : BCC .P2Grab
 
 	-	LDA #$02 : STA !P2Stasis-$80,y
-		TYA
-		JSL CheckMario_Long
-		BNE +
+		LDA !P2Character-$80,y : BNE +
 		LDA $04
 		CLC : ADC #$10
 		STA !MarioXPosLo
@@ -732,7 +702,6 @@ TarCreeper:
 
 
 	GRAPHICS:
-
 		LDA $32D0,x				;\
 		BEQ .NotDead				; |
 		CMP #$60 : BCS .ProcessAnim		; |
@@ -793,11 +762,19 @@ TarCreeper:
 		STA $0C					; |
 		PHY					; |
 		LDY.w #!File_TarCreeper_Body		; |
-		JSL !UpdateFromFile			; |
+		JSL LOAD_SQUARE_DYNAMO
+	;	JSL !UpdateFromFile			; |
 		PLY					;/
 		.NoDynamo
 
+		PHY
 		LDA.w ANIM+0,y : STA $04		; > Body tilemap
+		JSL SETUP_SQUARE
+		SEP #$30
+		JSL LOAD_DYNAMIC
+		REP #$30
+		PLY
+
 		LDA $3320,x
 		AND #$00FF
 		BEQ .ArmsRight				; > Check sprite direction
@@ -807,7 +784,7 @@ TarCreeper:
 		LDA #$40FF : STA $0A			; > Extra X flip for arms (left)
 		LDA.w ANIM+6,y				;\
 		EOR #$00FF				; |
-		STA $0E					; | Shoulder coords (left)
+		STA $0E					; | shoulder coords (facing left)
 		LDA.w ANIM+8,y				; |
 		EOR #$00FF				; |
 		STA $0C					;/
@@ -816,150 +793,162 @@ TarCreeper:
 		.ArmsRight
 		STZ $08					; > Base X flip (right)
 		STZ $0A					; > Extra X flip for arms (right)
-		LDA.w ANIM+6,y : STA $0C		;\ Shoulder coords (right)
+		LDA.w ANIM+6,y : STA $0C		;\ shoulder coords (facing right)
 		LDA.w ANIM+8,y : STA $0E		;/
 
 
 		.AllArms
-		LDA ($04) : STA !BigRAM+0
-		INC $04
-		INC $04
+;		LDA ($04) : STA !BigRAM+0
+;		INC $04
+;		INC $04
 		SEP #$30				; > All regs 8 bit
-		LDA !ClaimedGFX : STA $00		; > $00 = claim offset
+;		LDA !GFX_Dynamic			;\
+;		AND #$70				; |
+;		ASL A					; |
+;		STA $00					; | $00 = claim offset
+;		LDA !ClaimedGFX				; |
+;		AND #$0F				; |
+;		ASL A					; |
+;		TSB $00					;/
 		PLA : STA !TarCreeperPrevDyn		; > Store dynamo for next frame
-		LDX #$00
-		LDY #$00
+;		LDX #$00
+;		LDY #$00
 
 
-	-	LDA ($04),y				;\
-		STA !BigRAM+2,x				; |
-		LSR A : PHP				; > Save lowest bit
-		INY					; |
-		LDA ($04),y				; |
-		STA !BigRAM+3,x				; |
-		INY					; |
-		LDA ($04),y				; | Copy body tilemap to !BigRAM
-		STA !BigRAM+4,x				; |
-		INY					; |
-		LDA ($04),y				; |
-		PLP : BCS .Static			; |
-		ADC $00					; > Add claim offset
-	.Static	STA !BigRAM+5,x				; |
-		INX #4					; |
-		INY					; |
-		CPX !BigRAM+0				; |
-		BCC -					;/
+;	-	LDA ($04),y				;\
+;		STA !BigRAM+2,x				; |
+;		LSR A : PHP				; > Save lowest bit
+;		INY					; |
+;		LDA ($04),y				; |
+;		STA !BigRAM+3,x				; |
+;		INY					; |
+;		LDA ($04),y				; | Copy body tilemap to !BigRAM
+;		STA !BigRAM+4,x				; |
+;		INY					; |
+;		LDA ($04),y				; |
+;		PLP : BCS .Static			; |
+;		ADC $00					; > Add claim offset
+;	.Static	STA !BigRAM+5,x				; |
+;		INX #4					; |
+;		INY					; |
+;		CPX !BigRAM+0				; |
+;		BCC -					;/
 
-		PHX		
+
+
+
+
+
+
+;		PHX		
 		LDX !SpriteIndex
 		LDA !SpriteAnimIndex			;\
-		CMP #$13 : BCS $03 : JMP .Arms		; | Don't draw normal arms during attack
-		CMP #$19 : BEQ .Stretch			; | Stretch arm during frames 0x19 and 0x23-0x24
-		CMP #$23 : BEQ .Stretch			; |
-		CMP #$24 : BEQ .Stretch			;/
-		CMP #$25 : BCC +			;\
-		CMP #$2B : BCS +			; | Show arms during initial death animation
-		JMP .Arms				; |
-	+	JMP .NoStretch				;/
-
-		.Stretch
-		LDA !TarCreeperAttack			;\
-		AND #$0F				; | Take attack counter times 8
-		ASL #3					;/
-		BIT !TarCreeperAttack			;\
-		BVS +					; |
-		ASL A					; | Times 16 when going out
-		CMP #$80				; |
-		BCC $02 : LDA #$70			;/
-	+	STA $00
-
-		LDY #$00				; > Grab
-		LDA !TarCreeperAttack
-		AND #$C0 : CMP #$C0
-		BEQ .GrabSuccess
-
-		LDY #$10				; > No grab
-		LDA !BigRAM+$03
-		SEC : SBC $00
-		STA !BigRAM+$03
-		LDA !BigRAM+$07
-		SEC : SBC $00
-		STA !BigRAM+$07
-		LDA !BigRAM+$0B
-		SEC : SBC $00
-		STA !BigRAM+$0B
-		LDA !BigRAM+$0F
-		SEC : SBC $00
-		STA !BigRAM+$0F
-
-		.GrabSuccess
-		LDX #$00				; > Tiles to add to tilemap
-		LDA $00					; > Amount of pixels that hand has moved
-		CMP #$10 : BCC .2back			;
-		CMP #$18 : BCC .1back			;
-		CMP #$28 : BCC .0arm
-		CMP #$48 : BCC .1forward
-		CMP #$58 : BCC .2forward
-		CMP #$68 : BCC .3forward
-		CMP #$78 : BCC .4forward
-		BRA .5forward
-.2back		LDA #$16 : STA !BigRAM+$17,y : INX
-.1back		LDA #$06 : STA !BigRAM+$13,y : INX
-		BRA .0arm
-.5forward	LDA #$B6 : STA !BigRAM+$13,y : INX
-.4forward	LDA #$C6 : STA !BigRAM+$1F,y : INX
-.3forward	LDA #$D6 : STA !BigRAM+$1B,y : INX
-.2forward	LDA #$E6 : STA !BigRAM+$17,y : INX
-.1forward	LDA #$F6 : STA !BigRAM+$13,y : INX
-.0arm		TXA : BEQ .NoStretch
-		ASL #2
-		TAX
-		CLC : ADC !BigRAM
-		STA !BigRAM
-
-		CPY #$10
-		BEQ +
-	-	LDA #$2D : STA !BigRAM+$12-4,x
-		LDA #$FC : STA !BigRAM+$14-4,x
-		LDA #$84 : STA !BigRAM+$15-4,x
-		DEX #4
-		BNE -
-		BRA .NoStretch
-		+
-	-	LDA #$2D : STA !BigRAM+$22-4,x
-		LDA #$FC : STA !BigRAM+$24-4,x
-		LDA #$84 : STA !BigRAM+$25-4,x
-		DEX #4
-		BNE -
+		CMP #$2B : BCC .Arms
+		JMP INTERACTION_2
 
 
-		.NoStretch
-		PLA					;\ Draw body without caring for arms
-		JMP .ArmsDone				;/
+
+;		CMP #$13 : BCS $03 : JMP .Arms		; | Don't draw normal arms during attack
+;		CMP #$19 : BEQ .Stretch			; | Stretch arm during frames 0x19 and 0x23-0x24
+;		CMP #$23 : BEQ .Stretch			; |
+;		CMP #$24 : BEQ .Stretch			;/
+;		CMP #$25 : BCC +			;\
+;		CMP #$2B : BCS +			; | Show arms during initial death animation
+;		JMP .Arms				; |
+;	+	JMP .NoStretch				;/
+;		.Stretch
+;		LDA !TarCreeperAttack			;\
+;		AND #$0F				; | Take attack counter times 8
+;		ASL #3					;/
+;		BIT !TarCreeperAttack			;\
+;		BVS +					; |
+;		ASL A					; | Times 16 when going out
+;		CMP #$80				; |
+;		BCC $02 : LDA #$70			;/
+;	+	STA $00
+;		LDY #$00				; > Grab
+;		LDA !TarCreeperAttack
+;		AND #$C0 : CMP #$C0
+;		BEQ .GrabSuccess
+;		LDY #$10				; > No grab
+;		LDA !BigRAM+$03
+;		SEC : SBC $00
+;		STA !BigRAM+$03
+;		LDA !BigRAM+$07
+;		SEC : SBC $00
+;		STA !BigRAM+$07
+;		LDA !BigRAM+$0B
+;		SEC : SBC $00
+;		STA !BigRAM+$0B
+;		LDA !BigRAM+$0F
+;		SEC : SBC $00
+;		STA !BigRAM+$0F
+;		.GrabSuccess
+;		LDX #$00				; > Tiles to add to tilemap
+;		LDA $00					; > Amount of pixels that hand has moved
+;		CMP #$10 : BCC .2back			;
+;		CMP #$18 : BCC .1back			;
+;		CMP #$28 : BCC .0arm
+;		CMP #$48 : BCC .1forward
+;		CMP #$58 : BCC .2forward
+;		CMP #$68 : BCC .3forward
+;		CMP #$78 : BCC .4forward
+;		BRA .5forward
+;.2back		LDA #$16 : STA !BigRAM+$17,y : INX
+;.1back		LDA #$06 : STA !BigRAM+$13,y : INX
+;		BRA .0arm
+;.5forward	LDA #$B6 : STA !BigRAM+$13,y : INX
+;.4forward	LDA #$C6 : STA !BigRAM+$1F,y : INX
+;.3forward	LDA #$D6 : STA !BigRAM+$1B,y : INX
+;.2forward	LDA #$E6 : STA !BigRAM+$17,y : INX
+;.1forward	LDA #$F6 : STA !BigRAM+$13,y : INX
+;.0arm		TXA : BEQ .NoStretch
+;		ASL #2
+;		TAX
+;		CLC : ADC !BigRAM
+;		STA !BigRAM
+;		CPY #$10
+;		BEQ +
+;	-	LDA #$2D : STA !BigRAM+$12-4,x
+;		LDA #$FC : STA !BigRAM+$14-4,x
+;		LDA #$84 : STA !BigRAM+$15-4,x
+;		DEX #4
+;		BNE -
+;		BRA .NoStretch
+;		+
+;	-	LDA #$2D : STA !BigRAM+$22-4,x
+;		LDA #$FC : STA !BigRAM+$24-4,x
+;		LDA #$84 : STA !BigRAM+$25-4,x
+;		DEX #4
+;		BNE -
+;		.NoStretch
+;		PLA					;\ Draw body without caring for arms
+;		JMP .ArmsDone				;/
 
 		.Arms
 		LDA !TarCreeperHandL
+		STZ !BigRAM+0
+		STZ !BigRAM+1
+		LDX #$00
+
 
 		.SecondArmLoop
-		PLX
+;		PLX
 
 
 		STA $00					; > Full data at $00
 		AND #$C0				;\ Hand XY bits at $01
 		STA $01					;/
-
-
 		LDA $00					;\
 		AND #$07				; | Use aaa bits to index arm data
 		ASL A					; |
 		TAY					;/
 
 		REP #$20
-		LDA.w DATA_Arms,y
-		STA $04
+		LDA.w DATA_Arms,y : STA $04
 		LDA ($04)
-		CLC : ADC !BigRAM+0			;\ Increase header at !BigRAM
-		STA !BigRAM+0				;/
+		CLC : ADC !BigRAM+0			; header at !BigRAM
+		STA !BigRAM+0
 		INC $04
 		INC $04
 		SEP #$20
@@ -970,28 +959,24 @@ TarCreeper:
 		STA !BigRAM+2,x				; |
 		INY					; |
 		LDA ($04),y				; |
-		BIT !BigRAM+2,x
-		BVC $02 : EOR #$FF
-		CLC : ADC $0C				;  > Add shoulder X disp
 		BIT !BigRAM+2,x				; |
 		BVC $02 : EOR #$FF			; |
-		STA !BigRAM+3,x				; | Add arm tilemap to !BigRAM
-
-	LDA !BigRAM+2,x
-	EOR $0B
-	STA !BigRAM+2,x
-
+		CLC : ADC $0C				; > add shoulder X disp
+		BIT !BigRAM+2,x				; |
+		BVC $02 : EOR #$FF			; |
+		STA !BigRAM+3,x				; | add arm tilemap to !BigRAM
+		LDA !BigRAM+2,x				; |
+		EOR $0B					; |
+		STA !BigRAM+2,x				; |
 		INY					; |
 		LDA ($04),y				; |
-		CLC : ADC $0D				;  > Add shoulder Y disp
+		CLC : ADC $0D				; > add shoulder Y disp
 		STA !BigRAM+4,x				; |
 		INY					; |
-		LDA ($04),y				; |
-		STA !BigRAM+5,x				; |
+		LDA ($04),y : STA !BigRAM+5,x		; |
 		INY					; |
 		INX #4					; |
-		CPX !BigRAM+0				; |
-		BCC -					;/
+		CPX !BigRAM+0 : BCC -			;/
 
 		LDA ($04),y				;\
 		BIT $08					; |
@@ -1003,39 +988,36 @@ TarCreeper:
 		CLC : ADC $0D				; |
 		STA $0D					;/
 
-
 		LDA $00					;\
 		AND #$38				; | Use rss bits to index hand data
 		LSR #2					; |
 		TAY					;/
 
 		REP #$20
-		LDA.w DATA_Hands,y
-		STA $04
+		LDA.w DATA_Hands,y : STA $04
 		LDA ($04)
 		CLC : ADC !BigRAM+0			;\ Increase header at !BigRAM
 		STA !BigRAM+0				;/
 		INC $04
 		INC $04
 		SEP #$20
+		LDY $09					;\ store index to hand data
+		TXA : STA !BigRAM+$60,y			;/
 		LDY #$00
-		PHX
+
 
 	-	LDA ($04),y				;\
-		EOR $01					; | Add flip bits and store prop
-		EOR $08					; |
-	EOR $0B
+		EOR $01					; |
+		EOR $08					; | add flip bits and store prop
+		EOR $0B					; |
 		STA !BigRAM+2,x				;/
 		INY
 		LDA ($04),y
 
-		BIT $08					;\
-		BVC +					; |
-		BIT $01					; |
-		BVS ++					; |
-		BRA +++
-	+	BIT $01					; | Special hand X flip
-		BVS +++					; |
+		BIT $08 : BVC +				;\
+		BIT $01 : BVS ++			; |
+		BRA +++					; | special hand X flip
+	+	BIT $01 : BVS +++			; |
 	++	EOR #$FF				;/
 		+++
 
@@ -1044,7 +1026,7 @@ TarCreeper:
 		CLC : ADC $0C				; > Add arm X disp
 		BIT !BigRAM+2,x				;\ Handle X flip
 		BVC $02 : EOR #$FF			;/
-	EOR $0A
+		EOR $0A
 		STA !BigRAM+3,x				; > Store to tilemap
 		INY
 		LDA ($04),y
@@ -1053,145 +1035,136 @@ TarCreeper:
 		CLC : ADC $0D				; > Add arm Y disp
 		STA !BigRAM+4,x
 		INY
-		LDA ($04),y
-		STA !BigRAM+5,x
+		LDA ($04),y : STA !BigRAM+5,x
 		INY
 		INX #4
-		CPX !BigRAM+0
-		BCC -
+		CPX !BigRAM+0 : BCC -
+
+
+
 
 		LDA $09 : BNE .ArmsDone
 
 		LDA $08					;\
-		EOR #$40				; | Base X flip for second arm
+		EOR #$40				; | base X flip for second arm
 		STA $08					;/
-		INC $09					; > Increment arm counter
-		LDA $0E : STA $0C			;\ Get next set of shoulder coords
+		INC $09					; > increment arm counter
+		LDA $0E : STA $0C			;\ get next set of shoulder coords
 		LDA $0F : STA $0D			;/
-		PHX					;\ (X is pulled after the jump)
-		LDX !SpriteIndex			; | Get data for second arm and repeat
-		LDA !TarCreeperHandR			; |
+		PHX
+		LDX !SpriteIndex			;\
+		LDA !TarCreeperHandR			; | get data for second arm and repeat
+		PLX
 		JMP .SecondArmLoop			;/
 
 
 		.ArmsDone
-		LDA.b #!BigRAM : STA $04		;\ Tilemap is at !BigRAM
+		LDA.b #!BigRAM : STA $04		;\ tilemap is at !BigRAM
 		LDA.b #!BigRAM>>8 : STA $05		;/
 		LDX !SpriteIndex
-		JSL LOAD_TILEMAP_Long
+		JSL LOAD_PSUEDO_DYNAMIC
 
 
 
-		LDA !TarCreeperAttack			;\
-		AND #$C0 : CMP #$C0			; | Check for hi prio hand
-		BEQ .HiPrioHand				; |
-		JMP INTERACTION_2			;/
-
-		.HiPrioHand
-		LDA !TarCreeperAttack			;\
-		AND #$0F				; |
-		ASL #3					; |
-		STA $0A					; |
-		STZ $0B					; |
-		REP #$20				; |
-		LDA $00					; | Get x position of hand based on attack counter
-		LDY $3320,x : BEQ +			; |
-		SEC : SBC $0A				; |
-		BRA ++					; |
-	+	CLC : ADC $0A				; |
-	++	STA $00					;/
-		TSC : STA $0A				; > Stack pointer backup in case enough slots aren't found
-		SEP #$20
-
-		LDX #$00				; > OAM index
-		LDY #$03				; > Loop counter
-		LDA #$F0				; > Y pos to search for
-	-	CMP.w !OAM+$001,x			;\
-		BNE +					; |
-		PHX					; |
-		DEY					; | Look for 4 empty slots in the lo half of OAM
-		BMI ++					; |
-	+	INX #4					; |
-		BNE -					; |
-		JMP .PrioHandEnd			; |
-		++					;/
-		PLX
-		LDA #$10 : STA $08
-
-
-		LDY #$00
-	-	LDA.w ANIM_HiPrioHandTM,y
-		EOR $0C
-		STA !OAM+$003,x
-		REP #$20
-		STZ $0E
-		AND #$0040
-		BEQ +
-		LDA #$FFFF
-		STA $0E
-	+	INY
-
-		LDA.w ANIM_HiPrioHandTM,y
-		AND #$00FF
-		CMP #$0080
-		BMI $03 : ORA #$FF00
-		EOR $0E
-		CLC : ADC $00
-		CMP #$0100
-		BCC .GoodX
-		CMP #$FFF0
-		BCS .GoodX
-		PLX
-		INY #3
-		SEP #$20
-		CPY $08
-		BNE -
-		BRA .PrioHandEnd
-
-.GoodX		STA $06
-		INY
-		LDA.w ANIM_HiPrioHandTM,y
-		AND #$00FF
-		CMP #$0080
-		BMI $03 : ORA #$FF00
-		CLC : ADC $02
-		CMP #$00E8
-		BCC .GoodY
-		CMP #$FFF0
-		BCS .GoodY
-		PLX
-		INY #2
-		SEP #$20
-		CPY $08
-		BNE -
-		BRA .PrioHandEnd
-
-.GoodY		SEP #$20
-		STA !OAM+$001,x
-		LDA $06
-		STA !OAM+$000,x
-		INY
-		LDA.w ANIM_HiPrioHandTM,y
-		STA !OAM+$002,x
-		INY
-		TXA
-		LSR #2
-		TAX
-		LDA $07
-		AND #$01
-		ORA #$02
-		STA !OAMhi+$00,x
-		CPY $08
-		BEQ .PrioHandEnd
-		PLX
-		JMP -
-
-.PrioHandEnd	LDX !SpriteIndex			; > Restore sprite index
-		LDA $0B : XBA				;\ Restore stack pointer
-		LDA $0A : TCS				;/
+;		LDA !TarCreeperAttack			;\
+;		AND #$C0 : CMP #$C0			; | Check for hi prio hand
+;		BEQ .HiPrioHand				; |
+;		JMP INTERACTION_2			;/
+;		.HiPrioHand
+;		LDA !TarCreeperAttack			;\
+;		AND #$0F				; |
+;		ASL #3					; |
+;		STA $0A					; |
+;		STZ $0B					; |
+;		REP #$20				; |
+;		LDA $00					; | Get x position of hand based on attack counter
+;		LDY $3320,x : BEQ +			; |
+;		SEC : SBC $0A				; |
+;		BRA ++					; |
+;	+	CLC : ADC $0A				; |
+;	++	STA $00					;/
+;		TSC : STA $0A				; > Stack pointer backup in case enough slots aren't found
+;		SEP #$20
+;		LDX #$00				; > OAM index
+;		LDY #$03				; > Loop counter
+;		LDA #$F0				; > Y pos to search for
+;	-	CMP.w !OAM+$001,x			;\
+;		BNE +					; |
+;		PHX					; |
+;		DEY					; | Look for 4 empty slots in the lo half of OAM
+;		BMI ++					; |
+;	+	INX #4					; |
+;		BNE -					; |
+;		JMP .PrioHandEnd			; |
+;		++					;/
+;		PLX
+;		LDA #$10 : STA $08
+;		LDY #$00
+;	-	LDA.w ANIM_HiPrioHandTM,y
+;		EOR $0C
+;		STA !OAM+$003,x
+;		REP #$20
+;		STZ $0E
+;		AND #$0040
+;		BEQ +
+;		LDA #$FFFF
+;		STA $0E
+;	+	INY
+;		LDA.w ANIM_HiPrioHandTM,y
+;		AND #$00FF
+;		CMP #$0080
+;		BMI $03 : ORA #$FF00
+;		EOR $0E
+;		CLC : ADC $00
+;		CMP #$0100
+;		BCC .GoodX
+;		CMP #$FFF0
+;		BCS .GoodX
+;		PLX
+;		INY #3
+;		SEP #$20
+;		CPY $08 : BNE -
+;		BRA .PrioHandEnd
+;.GoodX		STA $06
+;		INY
+;		LDA.w ANIM_HiPrioHandTM,y
+;		AND #$00FF
+;		CMP #$0080
+;		BMI $03 : ORA #$FF00
+;		CLC : ADC $02
+;		CMP #$00E8 : BCC .GoodY
+;		CMP #$FFF0 : BCS .GoodY
+;		PLX
+;		INY #2
+;		SEP #$20
+;		CPY $08 : BNE -
+;		BRA .PrioHandEnd
+;.GoodY		SEP #$20
+;		STA !OAM+$001,x
+;		LDA $06
+;		STA !OAM+$000,x
+;		INY
+;		LDA.w ANIM_HiPrioHandTM,y : STA !OAM+$002,x
+;		INY
+;		TXA
+;		LSR #2
+;		TAX
+;		LDA $07
+;		AND #$01
+;		ORA #$02
+;		STA !OAMhi+$00,x
+;		CPY $08 : BEQ .PrioHandEnd
+;		PLX
+;		JMP -
+;.PrioHandEnd	LDX !SpriteIndex			; > Restore sprite index
+;		LDA $0B : XBA				;\ Restore stack pointer
+;		LDA $0A : TCS				;/
 
 
 
+
+; !BigRAM+$60	index to right hand
+; !BigRAM+$61	index to left hand
 
 
 	INTERACTION_2:
@@ -1204,25 +1177,21 @@ TarCreeper:
 		.Arms
 		LDA !TarCreeperHandR
 		AND #$18
-		CMP #$18
-		BEQ .R
-		PLA					; > Pop index to avoid stack overflow
+		CMP #$18 : BEQ .R
 		BRA .NoR
 
 		.R
+		LDY !BigRAM+$61
 		LDA !TarCreeperHandR			;\
 		JSR HITBOX_BIGPALM			; | See if right hand is touching a player
-		SEC : JSL !PlayerClipping		;/
-		PLY					; > Pop index to avoid stack overflow
-		BCC .NoR				; > No interaction if no one touches the hand
+		SEC : JSL !PlayerClipping : BCC .NoR	;/
 		TAY
 		LDA !TarCreeperHandR
 		AND #$20 : BNE .BumpRight
 
 		.PlatformRight
-		PEA.w .NoR-1
-		JMP .Platform
-
+		JSR .Platform
+		BRA .NoR
 		.BumpRight
 		JSR .Bump
 		.NoR
@@ -1230,116 +1199,109 @@ TarCreeper:
 
 		LDA !TarCreeperHandL
 		AND #$18
-		CMP #$18
-		BEQ .L
-		PLA					; > Pop index to avoid stack overflow
+		CMP #$18 : BEQ .L
 		BRA .NoArms
 
 		.L
+		LDY !BigRAM+$60
 		LDA !TarCreeperHandL			;\
 		JSR HITBOX_BIGPALM			; | See if right hand is touching a player
-		SEC : JSL !PlayerClipping		;/
-		PLY					; > Pop index to avoid stack overflow
-		BCC .NoArms				; > No interaction if no one touches the hand
+		SEC : JSL !PlayerClipping : BCC .NoArms	;/
 		TAY
 		LDA !TarCreeperHandL
 		AND #$20 : BNE .BumpLeft
 
 		.PlatformLeft
-		PEA.w .NoArms-1
-		JMP .Platform
-
+		JSR .Platform
+		BRA .NoArms
 		.BumpLeft
 		JSR .Bump
-
 		.NoArms
+
+
 		PLB
 		RTL
 
 
-
 		.Platform
 		TYA
-		LSR A : BCC ..P2
-	..P1	PHA
-		LDY #$00 : JSR ..Main
+		LSR A : BCC ..p2
+	..p1	PHA
+		LDY #$00 : JSR ..main
 		PLA
-	..P2	LSR A : BCC ..Return
-		LDY #$80 : JSR ..Main
+	..p2	LSR A : BCC ..return
+		LDY #$80 : JSR ..main
 		RTS
 
-		..Main
-		TYA
-		JSL CheckMario_Long
-		BNE ..PCE
-		..Mario
-		BIT !MarioYSpeed : BMI ..Return
-		STZ !MarioYSpeed
-		LDA #$03 : STA $7471
+		..main
+		LDA !P2YSpeed-$80,y : BMI ..return
+		LDA !P2Character-$80,y : BNE ..PCE
+		..mario
 		LDA $05
-		SEC : SBC #$1E
-		STA $96
+		SEC : SBC #$1A
+		STA !MarioYPosLo
 		LDA $0B
 		SBC #$00
-		STA $97
-		BRA +
+		STA !MarioYPosHi
+		BRA ..shared
 		..PCE
-		LDA !P2YSpeed-$80,y : BMI ..Return
-		LDA #$00 : STA !P2YSpeed-$80,y
-		TXA : STA !P2SpritePlatform-$80,y
 		LDA $05
-		SEC : SBC #$0E
+		SEC : SBC #$0A
 		STA !P2YPosLo-$80,y
 		LDA $0B
 		SBC #$00
 		STA !P2YPosHi-$80,y
-	+	LDA $AE,x : STA !P2VectorX-$80,y
-		..Return
+		..shared
+		LDA !SpriteXSpeed,x : STA !P2VectorX-$80,y
+		LDA #$00
+		STA !P2VectorAccX-$80,y
+		STA !P2VectorTimeX-$80,y
+		LDA !P2ExtraBlock-$80,y
+		ORA #$04
+		STA !P2ExtraBlock-$80,y
+		..return
 		RTS
 
 
 		.Bump
 		TYA
-		LSR A : BCC ..P2
-	..P1	PHA
-		LDY #$00 : JSR ..Main
+		LSR A : BCC ..p2
+	..p1	PHA
+		LDY #$00 : JSR ..main
 		PLA
-	..P2	LSR A : BCC ..Return
-		LDY #$80 : JSR ..Main
+	..p2	LSR A : BCC ..return
+		LDY #$80 : JSR ..main
+		..return
 		RTS
-
-		..Main
-		TYA
-		JSL CheckMario_Long
-		BNE ..PCE
-		..Mario
-		STZ !MarioXSpeed
-		BRA +
-		..PCE
-		LDA #$00 : STA !P2XSpeed-$80,y
-	+	PHY
-		TYA : BMI ..Bump2
-	..Bump1	PEA.w ..End-1 : JSL SUB_HORZ_POS_Long1 : RTS
-	..Bump2	JSL SUB_HORZ_POS_Long2
-	..End	LDA DATA_VectorX+2,y
+		..main
+		PHY
+		CPY #$80 : BEQ +
+		JSL SUB_HORZ_POS_P1 : BRA ++
+	+	JSL SUB_HORZ_POS_P2
+	++	LDA .Push,y
 		PLY
 		STA !P2VectorX-$80,y
-		..Return
+		LDA #$00
+		STA !P2VectorTimeX-$80,y
+		STA !P2VectorAccX-$80,y
+		STA !P2XSpeed-$80,y
+		LDA !P2Character-$80,y : BNE ..return
+		STZ !MarioXSpeed
 		RTS
+
+
+		.Push
+		db $40,$C0
 
 
 	ANIM:
 	.AnimIdle
-
-		; 4 5 1 2
-		; 3 2 1 5
-
 		dw .IdleTM00 : db $08,$01		; 00
 		dw .IdleDyn00
-		db $08,$F8,$F4,$F6
+		db $06,$F8,$F4,$F6
 		dw .IdleTM01 : db $08,$02		; 01
 		dw .IdleDyn01
-		db $0B,$F4,$F5,$F4
+		db $06,$F4,$F5,$F4
 		dw .IdleTM02 : db $08,$03		; 02
 		dw .IdleDyn02
 		db $0A,$F0,$F4,$F2
@@ -1357,13 +1319,9 @@ TarCreeper:
 		db $0A,$F0,$F4,$F2
 		dw .IdleTM01 : db $08,$00		; 07
 		dw .IdleDyn01
-		db $0B,$F4,$F5,$F4
-
+		db $06,$F4,$F5,$F4
 
 	.AnimAdvance
-
-		; 1 2 3 4 5
-
 		dw .IdleTM02 : db $06,$09		; 08
 		dw .IdleDyn02
 		db $0A,$F0,$F4,$F2
@@ -1375,31 +1333,23 @@ TarCreeper:
 		db $0B,$F4,$F5,$F4
 		dw .IdleTM00 : db $04,$0C		; 0B
 		dw .IdleDyn00
-		db $08,$F6,$F4,$F6
+		db $06,$F6,$F4,$F6
 		dw .IdleTM01 : db $04,$08		; 0C
 		dw .IdleDyn01
-		db $0B,$F4,$F5,$F4
-
+		db $06,$F4,$F5,$F4
 
 	.AnimBlockUp
-
-		; 6 7 8
-
 		dw .BlockUpTM00 : db $08,$0E		; 0D
 		dw .BlockUpDyn00
-		db $0C,$F8,$00,$F6
+		db $0C,$F8,$03,$F6
 		dw .BlockUpTM01 : db $08,$0F		; 0E
 		dw .BlockUpDyn01
-		db $0C,$FA,$00,$F8
+		db $0C,$FA,$03,$F8
 		dw .BlockUpTM02 : db $08,$0D		; 0F
 		dw .BlockUpDyn02
-		db $0C,$F9,$00,$F7
-
+		db $0C,$F9,$03,$F7
 
 	.AnimBlockSide
-
-		; 13 14 15
-
 		dw .BlockSideTM00 : db $08,$11		; 10
 		dw .BlockSideDyn00
 		db $0A,$F8,$F4,$F2
@@ -1410,11 +1360,7 @@ TarCreeper:
 		dw .BlockSideDyn02
 		db $0A,$F9,$F4,$F3
 
-
 	.AnimAttack
-
-		; 9 10 11 12
-
 		dw .AttackTM00 : db $04,$14		; 13	Have the arm spin around to the back over these
 		dw .AttackDyn00
 		db $FF,$FF,$FF,$FF
@@ -1422,23 +1368,22 @@ TarCreeper:
 		dw .AttackDyn01
 		db $FF,$FF,$FF,$FF
 		dw .AttackTM02 : db $04,$16		; 15
-		dw .AttackDyn01
-		db $FF,$FF,$FF,$FF
-		dw .AttackTM03 : db $04,$17		; 16
-		dw .AttackDyn01
-		db $FF,$FF,$FF,$FF
-		dw .AttackTM04 : db $06,$18		; 17
-		dw .AttackDyn01
-		db $FF,$FF,$FF,$FF
-		dw .AttackTM05 : db $08,$19		; 18
 		dw .AttackDyn02
 		db $FF,$FF,$FF,$FF
-		dw .AttackTM06 : db $FF,$00		; 19
+		dw .AttackTM03 : db $04,$17		; 16
 		dw .AttackDyn03
+		db $FF,$FF,$FF,$FF
+		dw .AttackTM04 : db $06,$18		; 17
+		dw .AttackDyn04
+		db $FF,$FF,$FF,$FF
+		dw .AttackTM05 : db $08,$19		; 18
+		dw .AttackDyn05
+		db $FF,$FF,$FF,$FF
+		dw .AttackTM06 : db $FF,$00		; 19
+		dw .AttackDyn06
 		db $FF,$FF,$FF,$FF
 
 	.AnimUppercut
-
 		dw .UppercutTM00 : db $08,$1B		; 1A
 		dw .AttackDyn01
 		db $FF,$FF,$FF,$FF
@@ -1450,7 +1395,6 @@ TarCreeper:
 		db $FF,$FF,$FF,$FF
 
 	.AnimGrabby
-
 		dw .GrabbyTM00 : db $06,$1E		; 1D
 		dw .AttackDyn00
 		db $FF,$FF,$FF,$FF
@@ -1477,351 +1421,286 @@ TarCreeper:
 		db $FF,$FF,$FF,$FF
 
 	.AnimDeath
-
-		dw .IdleTM02 : db $08,$26		; 25
+		dw .DeathTM00 : db $08,$26		; 25
 		dw .DeathDyn00
 		db $0A,$F0,$F6,$F0
-		dw .IdleTM02 : db $08,$27		; 26
+		dw .DeathTM01 : db $08,$27		; 26
 		dw .DeathDyn01
 		db $0A,$EF,$F6,$EF
-
-		dw .DeathTM00 : db $03,$28		; 27
+		dw .DeathTM02 : db $03,$28		; 27
 		dw .DeathDyn02
 		db $0A,$F1,$F6,$F0
-		dw .DeathTM00 : db $03,$29		; 28
+		dw .DeathTM03 : db $03,$29		; 28
 		dw .DeathDyn03
 		db $0B,$F1,$F5,$F0
-		dw .DeathTM00 : db $03,$2A		; 29
+		dw .DeathTM04 : db $03,$2A		; 29
 		dw .DeathDyn04
 		db $0C,$F0,$F4,$F1
-		dw .DeathTM00 : db $03,$27		; 2A
+		dw .DeathTM05 : db $03,$27		; 2A
 		dw .DeathDyn05
 		db $0B,$F0,$F5,$F1
-
-		dw .DeathTM00 : db $06,$2C		; 2B
+		dw .DeathTM06 : db $06,$2C		; 2B
 		dw .DeathDyn06
 		db $FF,$FF,$FF,$FF
-		dw .DeathTM01 : db $06,$2D		; 2C
+		dw .DeathTM07 : db $06,$2D		; 2C
 		dw .DeathDyn07
 		db $FF,$FF,$FF,$FF
-		dw .DeathTM02 : db $06,$2E		; 2D (needs a 16x8 chunk from the hands file)
+		dw .DeathTM08 : db $06,$2E		; 2D
 		dw .DeathDyn08
 		db $FF,$FF,$FF,$FF
-		dw .DeathTM03 : db $06,$2F		; 2E (non-dynamic)
-		dw $0000
+		dw .DeathTM09 : db $06,$2F		; 2E
+		dw .DeathDyn09
 		db $FF,$FF,$FF,$FF
-		dw .DeathTM04 : db $06,$30		; 2F (non-dynamic)
-		dw $0000
+		dw .DeathTM10 : db $06,$30		; 2F
+		dw .DeathDyn10
 		db $FF,$FF,$FF,$FF
-		dw .DeathTM05 : db $FF,$30		; 30 (non-dynamic)
-		dw $0000
+		dw .DeathTM11 : db $FF,$30		; 30
+		dw .DeathDyn11
 		db $FF,$FF,$FF,$FF
 
 
 	.IdleTM00
-		dw $0018
-		db $3C,$FC,$E0,$C0
-		db $3C,$04,$E0,$C1
-		db $3C,$FC,$F0,$E0
-		db $3C,$04,$F0,$E1
-		db $3C,$FC,$00,$C3
-		db $3C,$04,$00,$C4
-
+		dw $0010
+		db $32,$F8,$E8,$00
+		db $32,$00,$E8,$01
+		db $32,$F8,$F8,$02
+		db $32,$00,$00,$03
 	.IdleTM01
 		dw $0018
-		db $3C,$FC,$E0,$C0
-		db $3C,$04,$E0,$C1
-		db $3C,$FC,$F0,$E0
-		db $3C,$04,$F0,$E1
-		db $3C,$FC,$00,$C3
-		db $3C,$04,$00,$C4
-
+		db $32,$F8,$E0,$00
+		db $32,$00,$E0,$01
+		db $32,$F8,$F0,$02
+		db $32,$00,$F0,$03
+		db $32,$F8,$00,$04
+		db $32,$00,$00,$05
 	.IdleTM02
-		dw $000C
-		db $3C,$00,$E0,$C0
-		db $3C,$00,$F0,$E0
-		db $3C,$00,$00,$C2
-
 	.IdleTM03
-		dw $000C
-		db $3C,$00,$E0,$C0
-		db $3C,$00,$F0,$E0
-		db $3C,$00,$00,$C2
-
 	.IdleTM04
 		dw $000C
-		db $3C,$00,$E0,$C0
-		db $3C,$00,$F0,$E0
-		db $3C,$00,$00,$C2
+		db $32,$00,$E0,$00
+		db $32,$00,$F0,$01
+		db $32,$00,$00,$02
 
 
 	.BlockUpTM00
-		dw $0010
-		db $3C,$00,$E8,$C0
-		db $3C,$08,$E8,$C1
-		db $3C,$08,$F8,$E0
-		db $3C,$00,$00,$E2
-
 	.BlockUpTM01
-		dw $0010
-		db $3C,$00,$E8,$C0
-		db $3C,$08,$E8,$C1
-		db $3C,$08,$F8,$E0
-		db $3C,$00,$00,$E2
-
 	.BlockUpTM02
 		dw $0010
-		db $3C,$00,$E8,$C0
-		db $3C,$08,$E8,$C1
-		db $3C,$08,$F8,$E0
-		db $3C,$00,$00,$E2
+		db $32,$00,$E8,$00
+		db $32,$08,$E8,$01
+		db $32,$08,$F8,$02
+		db $32,$00,$00,$03
+
 
 	.BlockSideTM00
-		dw $0014
-		db $3C,$F0,$E8,$C0
-		db $3C,$00,$E8,$C2
-		db $3C,$00,$F8,$E0
-		db $3C,$F8,$00,$E2
-		db $3C,$00,$00,$E3
-
 	.BlockSideTM01
-		dw $0014
-		db $3C,$F0,$E8,$C0
-		db $3C,$00,$E8,$C2
-		db $3C,$00,$F8,$E0
-		db $3C,$F8,$00,$E2
-		db $3C,$00,$00,$E3
-
 	.BlockSideTM02
 		dw $0014
-		db $3C,$F0,$E8,$C0
-		db $3C,$00,$E8,$C2
-		db $3C,$00,$F8,$E0
-		db $3C,$F8,$00,$E2
-		db $3C,$00,$00,$E3
+		db $32,$F1,$E8,$00
+		db $32,$01,$E8,$01
+		db $32,$01,$F8,$02
+		db $32,$F9,$00,$03
+		db $32,$01,$00,$04
 
 
 	.AttackTM00
 		dw $0020
-		db $3C,$00,$E8,$C0
-		db $3C,$08,$E8,$C1
-		db $3C,$08,$F8,$E0
-		db $3C,$00,$00,$E2
-		db $3C,$08,$00,$E3
-		db $3D,$E9,$E9,$80
-		db $BD,$F8,$EE,$C0
-		db $BD,$00,$EE,$C1
-
-
+		db $32,$00,$E8,$C0
+		db $32,$08,$E8,$C1
+		db $32,$08,$F8,$E0
+		db $32,$00,$00,$E2
+		db $32,$08,$00,$E3
+		db $32,$E9,$E9,$80
+		db $B2,$F8,$EE,$C0
+		db $B2,$00,$EE,$C1
 	.AttackTM01
 		dw $0018
-		db $3C,$00,$F0,$C0
-		db $3C,$08,$F0,$C1
-		db $3C,$00,$00,$E0
-		db $3C,$08,$00,$E1
-		db $3D,$F3,$E2,$A0
-		db $BD,$00,$E6,$C4
-
-
+		db $32,$00,$F0,$C0
+		db $32,$08,$F0,$C1
+		db $32,$00,$00,$E0
+		db $32,$08,$00,$E1
+		db $32,$F3,$E2,$A0
+		db $B2,$00,$E6,$C4
 	.AttackTM02
 		dw $0018
-		db $3C,$00,$F0,$C0
-		db $3C,$08,$F0,$C1
-		db $3C,$00,$00,$E0
-		db $3C,$08,$00,$E1
-		db $3D,$05,$E0,$A0
-		db $BD,$0A,$E4,$A4
-
-
+		db $32,$00,$F0,$C0
+		db $32,$08,$F0,$C1
+		db $32,$00,$00,$E0
+		db $32,$08,$00,$E1
+		db $32,$05,$E0,$A0
+		db $B2,$0A,$E4,$A4
 	.AttackTM03
 		dw $0018
-		db $3C,$00,$F0,$C0
-		db $3C,$08,$F0,$C1
-		db $3C,$00,$00,$E0
-		db $3C,$08,$00,$E1
-		db $3D,$15,$E2,$A0
-		db $3D,$12,$EE,$C4
-
-
+		db $32,$00,$F0,$C0
+		db $32,$08,$F0,$C1
+		db $32,$00,$00,$E0
+		db $32,$08,$00,$E1
+		db $32,$15,$E2,$A0
+		db $32,$12,$EE,$C4
 	.AttackTM04
 		dw $001C
-		db $3C,$00,$F0,$C0
-		db $3C,$08,$F0,$C1
-		db $3C,$00,$00,$E0
-		db $3C,$08,$00,$E1
-		db $3D,$25,$EE,$A0
-		db $3D,$18,$EE,$C0
-		db $3D,$20,$EE,$C1
-
-
+		db $32,$00,$F0,$C0
+		db $32,$08,$F0,$C1
+		db $32,$00,$00,$E0
+		db $32,$08,$00,$E1
+		db $32,$25,$EE,$A0
+		db $32,$18,$EE,$C0
+		db $32,$20,$EE,$C1
 	.AttackTM05
 		dw $0028
-		db $3C,$00,$F0,$C0
-		db $3C,$08,$F0,$C1
-		db $3C,$00,$00,$E0
-		db $3C,$08,$00,$E1
-		db $BD,$1E,$01,$AA
-		db $BD,$2E,$01,$AC
-		db $BD,$1E,$F1,$CA
-		db $BD,$2E,$F1,$CC
-		db $3D,$18,$EE,$C0
-		db $3D,$20,$EE,$C1
-
-
+		db $32,$00,$F0,$C0
+		db $32,$08,$F0,$C1
+		db $32,$00,$00,$E0
+		db $32,$08,$00,$E1
+		db $B2,$1E,$01,$AA
+		db $B2,$2E,$01,$AC
+		db $B2,$1E,$F1,$CA
+		db $B2,$2E,$F1,$CC
+		db $32,$18,$EE,$C0
+		db $32,$20,$EE,$C1
 	.AttackTM06
 		dw $0020
-		db $BD,$1E,$01,$AA		; Hand goes first on this frame
-		db $BD,$2E,$01,$AC
-		db $BD,$1E,$F1,$CA
-		db $BD,$2E,$F1,$CC
-		db $3C,$E8,$F0,$C0		; < body
-		db $3C,$F8,$F0,$C2
-		db $3C,$00,$F8,$E0
-		db $3C,$00,$00,$E2
+		db $B2,$1E,$01,$AA		; Hand goes first on this frame
+		db $B2,$2E,$01,$AC
+		db $B2,$1E,$F1,$CA
+		db $B2,$2E,$F1,$CC
+		db $32,$E8,$F0,$C0		; < body
+		db $32,$F8,$F0,$C2
+		db $32,$00,$F8,$E0
+		db $32,$00,$00,$E2
 
 	.GrabbyTM00
 		dw $0020
-		db $3C,$00,$E8,$C0
-		db $3C,$08,$E8,$C1
-		db $3C,$08,$F8,$E0
-		db $3C,$00,$00,$E2
-		db $3C,$08,$00,$E3
-		db $3D,$EA,$EF,$82
-		db $BD,$F8,$EE,$C0
-		db $BD,$00,$EE,$C1
-
+		db $32,$00,$E8,$C0
+		db $32,$08,$E8,$C1
+		db $32,$08,$F8,$E0
+		db $32,$00,$00,$E2
+		db $32,$08,$00,$E3
+		db $32,$EA,$EF,$82
+		db $B2,$F8,$EE,$C0
+		db $B2,$00,$EE,$C1
 	.GrabbyTM01
 		dw $0018
-		db $3C,$00,$F0,$C0
-		db $3C,$08,$F0,$C1
-		db $3C,$00,$00,$E0
-		db $3C,$08,$00,$E1
-		db $3D,$F3,$E4,$82
-		db $BD,$00,$E6,$C4
-
+		db $32,$00,$F0,$C0
+		db $32,$08,$F0,$C1
+		db $32,$00,$00,$E0
+		db $32,$08,$00,$E1
+		db $32,$F3,$E4,$82
+		db $B2,$00,$E6,$C4
 	.GrabbyTM02
 		dw $0018
-		db $3C,$00,$F0,$C0
-		db $3C,$08,$F0,$C1
-		db $3C,$00,$00,$E0
-		db $3C,$08,$00,$E1
-		db $3D,$00,$DC,$80
-		db $BD,$0A,$E4,$A4
-
+		db $32,$00,$F0,$C0
+		db $32,$08,$F0,$C1
+		db $32,$00,$00,$E0
+		db $32,$08,$00,$E1
+		db $32,$00,$DC,$80
+		db $B2,$0A,$E4,$A4
 	.GrabbyTM03
 		dw $0018
-		db $3C,$00,$F0,$C0
-		db $3C,$08,$F0,$C1
-		db $3C,$00,$00,$E0
-		db $3C,$08,$00,$E1
-		db $3D,$15,$E2,$80
-		db $3D,$12,$EE,$C4
-
+		db $32,$00,$F0,$C0
+		db $32,$08,$F0,$C1
+		db $32,$00,$00,$E0
+		db $32,$08,$00,$E1
+		db $32,$15,$E2,$80
+		db $32,$12,$EE,$C4
 	.GrabbyTM04
 		dw $001C
-		db $3C,$00,$F0,$C0
-		db $3C,$08,$F0,$C1
-		db $3C,$00,$00,$E0
-		db $3C,$08,$00,$E1
-		db $3D,$23,$F3,$80
-		db $3D,$18,$EE,$C0
-		db $3D,$20,$EE,$C1
-
+		db $32,$00,$F0,$C0
+		db $32,$08,$F0,$C1
+		db $32,$00,$00,$E0
+		db $32,$08,$00,$E1
+		db $32,$23,$F3,$80
+		db $32,$18,$EE,$C0
+		db $32,$20,$EE,$C1
 	.GrabbyTM05
 		dw $0028
-		db $3C,$00,$F0,$C0	; < body
-		db $3C,$08,$F0,$C1
-		db $3C,$00,$00,$E0
-		db $3C,$08,$00,$E1
-		db $3D,$1E,$E9,$A6	; < hand
-		db $3D,$2E,$E9,$A8
-		db $3D,$1E,$F9,$C6
-		db $3D,$2E,$F9,$C8
-		db $3D,$18,$EE,$C0	; < arm
-		db $3D,$20,$EE,$C1
-
+		db $32,$00,$F0,$C0	; < body
+		db $32,$08,$F0,$C1
+		db $32,$00,$00,$E0
+		db $32,$08,$00,$E1
+		db $32,$1E,$E9,$A6	; < hand
+		db $32,$2E,$E9,$A8
+		db $32,$1E,$F9,$C6
+		db $32,$2E,$F9,$C8
+		db $32,$18,$EE,$C0	; < arm
+		db $32,$20,$EE,$C1
 	.GrabbyTM06
 		dw $0020
-		db $3D,$1E,$E9,$A6		; Hand goes first on this frame
-		db $3D,$2E,$E9,$A8
-		db $3D,$1E,$F9,$C6
-		db $3D,$2E,$F9,$C8
-		db $3C,$E8,$F0,$C0		; < body
-		db $3C,$F8,$F0,$C2
-		db $3C,$00,$F8,$E0
-		db $3C,$00,$00,$E2
-
+		db $32,$1E,$E9,$A6		; Hand goes first on this frame
+		db $32,$2E,$E9,$A8
+		db $32,$1E,$F9,$C6
+		db $32,$2E,$F9,$C8
+		db $32,$E8,$F0,$C0		; < body
+		db $32,$F8,$F0,$C2
+		db $32,$00,$F8,$E0
+		db $32,$00,$00,$E2
 	.GrabbyGrabTM
 		dw $0010			; < Hand is uploaded to lo OAM block for this frame
-		db $3C,$E8,$F0,$C0		; < body
-		db $3C,$F8,$F0,$C2
-		db $3C,$00,$F8,$E0
-		db $3C,$00,$00,$E2
-
+		db $32,$E8,$F0,$C0		; < body
+		db $32,$F8,$F0,$C2
+		db $32,$00,$F8,$E0
+		db $32,$00,$00,$E2
 	.HiPrioHandTM
-		db $3D,$1E,$E9,$AA
-		db $3D,$2E,$E9,$AC
-		db $3D,$1E,$F9,$CA
-		db $3D,$2E,$F9,$CC
-
-
+		db $32,$1E,$E9,$AA
+		db $32,$2E,$E9,$AC
+		db $32,$1E,$F9,$CA
+		db $32,$2E,$F9,$CC
 	.UppercutTM00
 		dw $0018
-		db $3C,$00,$F0,$C0
-		db $3C,$08,$F0,$C1
-		db $3C,$00,$00,$E0
-		db $3C,$08,$00,$E1
-		db $FD,$0C,$FA,$A2
-		db $3D,$00,$F2,$C4
-
+		db $32,$00,$F0,$C0
+		db $32,$08,$F0,$C1
+		db $32,$00,$00,$E0
+		db $32,$08,$00,$E1
+		db $F2,$0C,$FA,$A2
+		db $32,$00,$F2,$C4
 	.UppercutTM01
 		dw $0018
-		db $3C,$00,$F0,$C0
-		db $3C,$08,$F0,$C1
-		db $3C,$00,$00,$E0
-		db $3C,$08,$00,$E1
-		db $FD,$0A,$FC,$A2
-		db $3D,$02,$F4,$C4
-
+		db $32,$00,$F0,$C0
+		db $32,$08,$F0,$C1
+		db $32,$00,$00,$E0
+		db $32,$08,$00,$E1
+		db $F2,$0A,$FC,$A2
+		db $32,$02,$F4,$C4
 	.UppercutTM02
 		dw $0020
-		db $3C,$FC,$E0,$C0
-		db $3C,$04,$E0,$C1
-		db $3C,$FC,$F0,$E0
-		db $3C,$04,$F0,$E1
-		db $3C,$FC,$00,$C3
-		db $3C,$04,$00,$C4
-		db $FD,$04,$D0,$A2
-		db $3D,$02,$DC,$A4
+		db $32,$FC,$E0,$C0
+		db $32,$04,$E0,$C1
+		db $32,$FC,$F0,$E0
+		db $32,$04,$F0,$E1
+		db $32,$FC,$00,$C3
+		db $32,$04,$00,$C4
+		db $F2,$04,$D0,$A2
+		db $32,$02,$DC,$A4
+
 
 	.DeathTM00
-		dw $0010
-		db $3C,$00,$D0,$C0
-		db $3C,$00,$E0,$E0
-		db $3C,$00,$F0,$C2
-		db $3C,$00,$00,$E2
 	.DeathTM01
-		dw $0010
-		db $3C,$00,$D8,$C0
-		db $3C,$00,$E8,$E0
-		db $3C,$00,$F8,$C2
-		db $3C,$00,$08,$E2
+		dw $000C
+		db $32,$00,$E0,$00
+		db $32,$00,$F0,$01
+		db $32,$00,$00,$02
 	.DeathTM02
-		dw $000C
-		db $3C,$00,$F8,$C2
-		db $3C,$00,$E8,$C0
-		db $3D,$00,$00,$E0
 	.DeathTM03
-		dw $000C
-		db $3D,$00,$08,$E8
-		db $3D,$00,$F8,$E6
-		db $3D,$00,$E8,$E4
 	.DeathTM04
-		dw $0004
-		db $3D,$00,$00,$EA
 	.DeathTM05
+	.DeathTM06
+	.DeathTM07
+		dw $0010
+		db $32,$00,$D0,$00
+		db $32,$00,$E0,$01
+		db $32,$00,$F0,$02
+		db $32,$00,$00,$03
+	.DeathTM08
+	.DeathTM09
+		dw $000C
+		db $32,$00,$E8,$00
+		db $32,$00,$F8,$01
+		db $32,$00,$00,$02
+	.DeathTM10
+	.DeathTM11
 		dw $0004
-		db $3D,$00,$00,$EC
+		db $32,$00,$00,$00
+
 
 
 macro TarCreeperDyn(TileCount, SourceTile, DestVRAM)
@@ -1833,229 +1712,222 @@ endmacro
 		.IdleDyn00
 		dw ..End-..Start
 		..Start
-		%TarCreeperDyn(3, $006, $0C0)
-		%TarCreeperDyn(3, $016, $0D0)
-		%TarCreeperDyn(3, $026, $0E0)
-		%TarCreeperDyn(3, $036, $0F0)
-		%TarCreeperDyn(3, $046, $0C3)
-		%TarCreeperDyn(3, $056, $0D3)
+		%SquareDyn($016)
+		%SquareDyn($017)
+		%SquareDyn($036)
+		%SquareDyn($047)
 		..End
 		.IdleDyn01
 		dw ..End-..Start
 		..Start
-		%TarCreeperDyn(3, $009, $0C0)
-		%TarCreeperDyn(3, $019, $0D0)
-		%TarCreeperDyn(3, $029, $0E0)
-		%TarCreeperDyn(3, $039, $0F0)
-		%TarCreeperDyn(3, $049, $0C3)
-		%TarCreeperDyn(3, $059, $0D3)
+		%SquareDyn($009)
+		%SquareDyn($00A)
+		%SquareDyn($029)
+		%SquareDyn($02A)
+		%SquareDyn($049)
+		%SquareDyn($04A)
 		..End
 		.IdleDyn02
 		dw ..End-..Start
 		..Start
-		%TarCreeperDyn(2, $000, $0C0)
-		%TarCreeperDyn(2, $010, $0D0)
-		%TarCreeperDyn(2, $020, $0E0)
-		%TarCreeperDyn(2, $030, $0F0)
-		%TarCreeperDyn(2, $040, $0C2)
-		%TarCreeperDyn(2, $050, $0D2)
+		%SquareDyn($000)
+		%SquareDyn($020)
+		%SquareDyn($040)
 		..End
 		.IdleDyn03
 		dw ..End-..Start
 		..Start
-		%TarCreeperDyn(2, $002, $0C0)
-		%TarCreeperDyn(2, $012, $0D0)
-		%TarCreeperDyn(2, $022, $0E0)
-		%TarCreeperDyn(2, $032, $0F0)
-		%TarCreeperDyn(2, $042, $0C2)
-		%TarCreeperDyn(2, $052, $0D2)
+		%SquareDyn($002)
+		%SquareDyn($022)
+		%SquareDyn($042)
 		..End
 		.IdleDyn04
 		dw ..End-..Start
 		..Start
-		%TarCreeperDyn(2, $004, $0C0)
-		%TarCreeperDyn(2, $014, $0D0)
-		%TarCreeperDyn(2, $024, $0E0)
-		%TarCreeperDyn(2, $034, $0F0)
-		%TarCreeperDyn(2, $044, $0C2)
-		%TarCreeperDyn(2, $054, $0D2)
+		%SquareDyn($004)
+		%SquareDyn($024)
+		%SquareDyn($044)
 		..End
 
 
 		.BlockUpDyn00
 		dw ..End-..Start
 		..Start
-		%TarCreeperDyn(3, $060, $0C0)
-		%TarCreeperDyn(3, $070, $0D0)
-		%TarCreeperDyn(2, $081, $0E0)
-		%TarCreeperDyn(2, $091, $0F0)
-		%TarCreeperDyn(2, $090, $0E2)
-		%TarCreeperDyn(2, $0A0, $0F2)
+		%SquareDyn($060)
+		%SquareDyn($061)
+		%SquareDyn($081)
+		%SquareDyn($090)
 		..End
 		.BlockUpDyn01
 		dw ..End-..Start
 		..Start
-		%TarCreeperDyn(3, $063, $0C0)
-		%TarCreeperDyn(3, $073, $0D0)
-		%TarCreeperDyn(2, $084, $0E0)
-		%TarCreeperDyn(2, $094, $0F0)
-		%TarCreeperDyn(2, $093, $0E2)
-		%TarCreeperDyn(2, $0A3, $0F2)
+		%SquareDyn($063)
+		%SquareDyn($064)
+		%SquareDyn($084)
+		%SquareDyn($093)
 		..End
 		.BlockUpDyn02
 		dw ..End-..Start
 		..Start
-		%TarCreeperDyn(3, $066, $0C0)
-		%TarCreeperDyn(3, $076, $0D0)
-		%TarCreeperDyn(2, $087, $0E0)
-		%TarCreeperDyn(2, $097, $0F0)
-		%TarCreeperDyn(2, $096, $0E2)
-		%TarCreeperDyn(2, $0A6, $0F2)
+		%SquareDyn($066)
+		%SquareDyn($067)
+		%SquareDyn($087)
+		%SquareDyn($096)
 		..End
 
 
 		.BlockSideDyn00
 		dw ..End-..Start
 		..Start
-		%TarCreeperDyn(4, $00C, $0C0)
-		%TarCreeperDyn(4, $01C, $0D0)
-		%TarCreeperDyn(2, $02E, $0E0)
-		%TarCreeperDyn(2, $03E, $0F0)
-		%TarCreeperDyn(3, $03D, $0E2)
-		%TarCreeperDyn(3, $04D, $0F2)
+		%SquareDyn($00C)
+		%SquareDyn($00E)
+		%SquareDyn($02E)
+		%SquareDyn($03D)
+		%SquareDyn($03E)
 		..End
 		.BlockSideDyn01
 		dw ..End-..Start
 		..Start
-		%TarCreeperDyn(4, $05C, $0C0)
-		%TarCreeperDyn(4, $06C, $0D0)
-		%TarCreeperDyn(2, $07E, $0E0)
-		%TarCreeperDyn(2, $08E, $0F0)
-		%TarCreeperDyn(3, $08D, $0E2)
-		%TarCreeperDyn(3, $09D, $0F2)
+		%SquareDyn($05C)
+		%SquareDyn($05E)
+		%SquareDyn($07E)
+		%SquareDyn($08D)
+		%SquareDyn($08E)
 		..End
 		.BlockSideDyn02
 		dw ..End-..Start
 		..Start
-		%TarCreeperDyn(4, $0AC, $0C0)
-		%TarCreeperDyn(4, $0BC, $0D0)
-		%TarCreeperDyn(2, $0CE, $0E0)
-		%TarCreeperDyn(2, $0DE, $0F0)
-		%TarCreeperDyn(3, $0DD, $0E2)
-		%TarCreeperDyn(3, $0ED, $0F2)
+		%SquareDyn($0AC)
+		%SquareDyn($0AE)
+		%SquareDyn($0CE)
+		%SquareDyn($0DD)
+		%SquareDyn($0DE)
 		..End
 
 
 		.AttackDyn00
 		dw ..End-..Start
 		..Start
-		%TarCreeperDyn(3, $069, $0C0)
-		%TarCreeperDyn(3, $079, $0D0)
-		%TarCreeperDyn(2, $08A, $0E0)
-		%TarCreeperDyn(2, $09A, $0F0)
-		%TarCreeperDyn(3, $099, $0E2)
-		%TarCreeperDyn(3, $0A9, $0F2)
+		%SquareDyn($069)
+		%SquareDyn($06A)
+		%SquareDyn($08A)
+		%SquareDyn($099)
+		%SquareDyn($09A)
 		..End
 		.AttackDyn01
-		dw ..End-..Start
-		..Start
-		%TarCreeperDyn(3, $0B0, $0C0)
-		%TarCreeperDyn(3, $0C0, $0D0)
-		%TarCreeperDyn(3, $0D0, $0E0)
-		%TarCreeperDyn(3, $0E0, $0F0)
-		..End
 		.AttackDyn02
-		dw ..End-..Start
-		..Start
-		%TarCreeperDyn(3, $0B3, $0C0)
-		%TarCreeperDyn(3, $0C3, $0D0)
-		%TarCreeperDyn(3, $0D3, $0E0)
-		%TarCreeperDyn(3, $0E3, $0F0)
-		..End
 		.AttackDyn03
+		.AttackDyn04
 		dw ..End-..Start
 		..Start
-		%TarCreeperDyn(4, $0B6, $0C0)
-		%TarCreeperDyn(4, $0C6, $0D0)
-		%TarCreeperDyn(2, $0C9, $0E0)
-		%TarCreeperDyn(2, $0D9, $0F0)
-		%TarCreeperDyn(2, $0D9, $0E2)
-		%TarCreeperDyn(2, $0E9, $0F2)
+		%SquareDyn($0B0)
+		%SquareDyn($0B1)
+		%SquareDyn($0D0)
+		%SquareDyn($0D1)
+		..End
+		.AttackDyn05
+		dw ..End-..Start
+		..Start
+		%SquareDyn($0B3)
+		%SquareDyn($0B4)
+		%SquareDyn($0D3)
+		%SquareDyn($0D4)
+		..End
+		.AttackDyn06
+		dw ..End-..Start
+		..Start
+		%SquareDyn($0B6)
+		%SquareDyn($0B8)
+		%SquareDyn($0C9)
+		%SquareDyn($0D9)
 		..End
 
-	.DeathDyn00
+
+		.DeathDyn00
 		dw ..End-..Start
 		..Start
-		%TarCreeperDyn(2, $0F0, $0C0)
-		%TarCreeperDyn(2, $100, $0D0)
-		%TarCreeperDyn(2, $110, $0E0)
-		%TarCreeperDyn(2, $120, $0F0)
-		%TarCreeperDyn(2, $130, $0C2)
-		%TarCreeperDyn(2, $140, $0D2)
+		%SquareDyn($178)
+		%SquareDyn($0F0)
+		%SquareDyn($110)
 		..End
-	.DeathDyn01
+		.DeathDyn01
 		dw ..End-..Start
 		..Start
-		%TarCreeperDyn(2, $0F2, $0C0)
-		%TarCreeperDyn(2, $102, $0D0)
-		%TarCreeperDyn(2, $112, $0E0)
-		%TarCreeperDyn(2, $122, $0F0)
-		%TarCreeperDyn(2, $132, $0C2)
-		%TarCreeperDyn(2, $142, $0D2)
+		%SquareDyn($17A)
+		%SquareDyn($0F2)
+		%SquareDyn($112)
 		..End
-	.DeathDyn02
+		.DeathDyn02
 		dw ..End-..Start
 		..Start
-		%TarCreeperDyn(4, $0F4, $0C0)
-		%TarCreeperDyn(4, $104, $0D0)
-		%TarCreeperDyn(4, $114, $0E0)
-		%TarCreeperDyn(4, $124, $0F0)
+		%SquareDyn($0F4)
+		%SquareDyn($114)
+		%SquareDyn($134)
+		%SquareDyn($154)
 		..End
-	.DeathDyn03
+		.DeathDyn03
 		dw ..End-..Start
 		..Start
-		%TarCreeperDyn(4, $0F8, $0C0)
-		%TarCreeperDyn(4, $108, $0D0)
-		%TarCreeperDyn(4, $118, $0E0)
-		%TarCreeperDyn(4, $128, $0F0)
+		%SquareDyn($0F6)
+		%SquareDyn($116)
+		%SquareDyn($136)
+		%SquareDyn($156)
 		..End
-	.DeathDyn04
+		.DeathDyn04
 		dw ..End-..Start
 		..Start
-		%TarCreeperDyn(4, $134, $0C0)
-		%TarCreeperDyn(4, $144, $0D0)
-		%TarCreeperDyn(4, $154, $0E0)
-		%TarCreeperDyn(4, $164, $0F0)
+		%SquareDyn($0F8)
+		%SquareDyn($118)
+		%SquareDyn($138)
+		%SquareDyn($158)
 		..End
-	.DeathDyn05
+		.DeathDyn05
 		dw ..End-..Start
 		..Start
-		%TarCreeperDyn(4, $138, $0C0)
-		%TarCreeperDyn(4, $148, $0D0)
-		%TarCreeperDyn(4, $158, $0E0)
-		%TarCreeperDyn(4, $168, $0F0)
+		%SquareDyn($0FA)
+		%SquareDyn($11A)
+		%SquareDyn($13A)
+		%SquareDyn($15A)
 		..End
-	.DeathDyn06
+		.DeathDyn06
 		dw ..End-..Start
 		..Start
-		%TarCreeperDyn(4, $0FC, $0C0)
-		%TarCreeperDyn(4, $10C, $0D0)
-		%TarCreeperDyn(4, $11C, $0E0)
-		%TarCreeperDyn(4, $12C, $0F0)
+		%SquareDyn($0FC)
+		%SquareDyn($11C)
+		%SquareDyn($13C)
+		%SquareDyn($15C)
 		..End
-	.DeathDyn07
+		.DeathDyn07
 		dw ..End-..Start
 		..Start
-		%TarCreeperDyn(4, $13C, $0C0)
-		%TarCreeperDyn(4, $14C, $0D0)
-		%TarCreeperDyn(4, $15C, $0E0)
-		%TarCreeperDyn(4, $16C, $0F0)
+		%SquareDyn($0FE)
+		%SquareDyn($11E)
+		%SquareDyn($13E)
+		%SquareDyn($15E)
 		..End
-	.DeathDyn08
+		.DeathDyn08
 		dw ..End-..Start
 		..Start
-		%TarCreeperDyn(4, $150, $0C0)
-		%TarCreeperDyn(4, $160, $0D0)
+		%SquareDyn($130)
+		%SquareDyn($150)
+		%SquareDyn($160)
+		..End
+		.DeathDyn09
+		dw ..End-..Start
+		..Start
+		%SquareDyn($132)
+		%SquareDyn($152)
+		%SquareDyn($162)
+		..End
+		.DeathDyn10
+		dw ..End-..Start
+		..Start
+		%SquareDyn($174)
+		..End
+		.DeathDyn11
+		dw ..End-..Start
+		..Start
+		%SquareDyn($176)
 		..End
 
 
@@ -2100,11 +1972,11 @@ endmacro
 
 
 		.BIGPALM
+		PHY
 		STA $01
 		AND #$E0
 		LSR #2
 		STA $00
-		LDA $03,s : TAY
 		LDA !BigRAM+2,y
 		AND #$40
 		LDY $3320,x
@@ -2120,7 +1992,7 @@ endmacro
 		LDA DATA_PalmBox+4,y : STA $06		; > Hitbox size
 		SEP #$20				; > A 8 bit
 
-		LDA $03,s : TAY				; > Restore index to hand tilemap
+		PLY
 		LDA $3220,x				;\
 		CLC : ADC $00				; |
 		STA $00					; |

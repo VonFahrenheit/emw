@@ -4,11 +4,12 @@
 
 
 	SCREEN_BORDER:
-		LDA !GameMode
-		CMP #$14 : BEQ $01 : RTS
+		LDA !P2Pipe				;\ skip this during pipe animation
+		BEQ $01 : RTL				;/
+		LDA !GameMode				;\ skip if not in game mode 14
+		CMP #$14 : BEQ $01 : RTL		;/
 
-		LDA !SideExit
-		BNE .NoLevelBorders
+		LDA !SideExit : BNE .NoLevelBorders
 
 		.CheckLeft
 		REP #$20
@@ -54,19 +55,19 @@
 	+	SEP #$20			;/
 
 		.NoLimit
-		LDA !RAM_ScreenMode
-		LSR A
+	;	LDA !RAM_ScreenMode
+	;	LSR A
 		LDA !P2YPosHi : BPL +		;\
 		CMP #$FF : BEQ .EndVert		; | Can move a max of -1 screen above the level
 		STZ !P2YPosLo			; |
 		LDA #$FF : STA !P2YPosHi	;/
-	+	BCC .Horizontal
+	+	;BCC .Horizontal
 
-		.Vertical
-		CMP $5F
-		BRA .Shared
+	;	.Vertical
+	;	CMP $5F
+	;	BRA .Shared
 
-		.Horizontal
+	;	.Horizontal
 		XBA
 		LDA !P2YPosLo
 		REP #$20
@@ -75,24 +76,24 @@
 		BMI .EndVert
 		BCS .OffVert
 	;	CMP #$01
-	BRA +
 
-		.Shared
-		BNE .EndVert
+	;	.Shared
+	;	BNE .EndVert
 	+	LDA !P2YPosLo
 		CMP #$B0
 		BCC .EndVert
 
 		.OffVert
 		LDA #$02 : STA !P2Status
+		LDA !CurrentPlayer
+		INC A
+		TSB !P1Dead
 		LDA !P1Dead
-		BEQ .EndVert
+		AND #$03
+		CMP #$03 : BNE .EndVert
 		LDA #$01 : STA !SPC3
 
 		.EndVert
-		LDA !RAM_ScreenMode
-		LSR A
-		BCS .WithinScreen
 		LDA !P2XPosHi
 		BMI .OffHorz
 		REP #$20
@@ -109,7 +110,7 @@
 
 		.LeaveLevel
 		LDA #$0B : STA !GameMode
-		RTS
+		RTL
 
 		.WithinScreen
 		REP #$20
@@ -124,7 +125,7 @@
 		CLC : ADC #$00F0
 		STA !P2XPosLo
 		SEP #$20
-		RTS
+		RTL
 
 		.OutLeft
 		LDA $1A
@@ -132,4 +133,10 @@
 
 		.Return
 		SEP #$20
-		RTS
+		RTL
+
+
+
+
+
+

@@ -162,13 +162,13 @@ org $308008
 
 
 	FileList:
-	dl Mario_Expand
-	dl Mario_Supplement
+	dl Mario
 	dl Luigi
 	dl Kadaal
 	dl Leeway
 	dl Leeway_Sword
 
+	dl DynamicVanilla
 	dl HappySlime
 	dl AggroRex
 	dl Wizrex
@@ -195,6 +195,10 @@ org $308008
 
 
 
+	%InsertFile(DynamicVanilla)
+	incbin ../RawGraphics/DynamicSprites/DynamicVanilla.bin
+	.End
+
 	%InsertFile(HappySlime)
 	incbin ../RawGraphics/DynamicSprites/HappySlime.bin
 	.End
@@ -207,14 +211,6 @@ org $318000
 
 	%InsertFile(Kingking)
 	incbin ../RawGraphics/DynamicSprites/KingKing.bin
-	.End
-
-	%InsertFile(Mario_Expand)
-	incbin ../RawGraphics/PlayerGFX/MarioExpand.bin
-	.End
-
-	%InsertFile(Mario_Supplement)
-	incbin ../RawGraphics/PlayerGFX/MarioSupplement.bin
 	.End
 
 	%InsertFile(Sprite_BG_1)
@@ -326,27 +322,27 @@ org $378000
 	dw .KingKingPal		; 0B
 
 	.MarioPal
-		incbin ../PaletteData/raw/MarioPortrait.mw3
+		incbin ../PaletteData/portraits/MarioPortrait.mw3
 	.LuigiPal
-		incbin ../PaletteData/raw/LuigiPortrait.mw3
+		incbin ../PaletteData/portraits/LuigiPortrait.mw3
 	.KadaalPal
-		incbin ../PaletteData/raw/KadaalPortrait.mw3
+		incbin ../PaletteData/portraits/KadaalPortrait.mw3
 	.LeewayPal
-		incbin ../PaletteData/raw/LeewayPortrait.mw3
+		incbin ../PaletteData/portraits/LeewayPortrait.mw3
 	.AlterPal
 	.PeachPal
 	.SurvivorPal
-		incbin ../PaletteData/raw/SurvivorPortrait.mw3
+		incbin ../PaletteData/portraits/SurvivorPortrait.mw3
 	.TinkererPal
-		incbin ../PaletteData/raw/TinkererPortrait.mw3
+		incbin ../PaletteData/portraits/TinkererPortrait.mw3
 	.RallyoshiPal
-		incbin ../PaletteData/raw/RallyoshiPortrait.mw3
+		incbin ../PaletteData/portraits/RallyoshiPortrait.mw3
 	.RexPal
-		incbin ../PaletteData/raw/RexPortrait.mw3
+		incbin ../PaletteData/portraits/RexPortrait.mw3
 	.CaptainWarriorPal
-		incbin ../PaletteData/raw/CaptainWarriorPortrait.mw3
+		incbin ../PaletteData/portraits/CaptainWarriorPortrait.mw3
 	.KingKingPal
-		incbin ../PaletteData/raw/KingKingPortrait.mw3
+		incbin ../PaletteData/portraits/KingKingPortrait.mw3
 
 	%InsertFile(MarioPortrait)
 	incbin ../RawGraphics/Portraits/MarioPortrait.bin
@@ -447,7 +443,8 @@ warnpc $3C8000
 org $3C8008
 %BankStart(3C)
 
-	Temp3C:
+	%InsertFile(Mario)
+	incbin ../RawGraphics/PlayerGFX/Mario.bin
 	.End
 
 
@@ -487,9 +484,6 @@ endmacro
 
 
 PalsetData:
-	dl .Alt
-	dw .Alt_End-.Alt
-
 	%storepal(player_mario)			; 00, mario palette
 	%storepal(player_luigi)			; 01, luigi palette
 	%storepal(player_kadaal)		; 02, kadaal palette
@@ -517,80 +511,13 @@ PalsetData:
 	%storepal(special_flash_red)		; 14
 	%storepal(special_flash_green)		; 15
 	%storepal(special_flash_blue)		; 16
+	%storepal(special_flash_yellow)		; 17
+	%storepal(special_flash_caster)		; 18
 
 
+.End	; don't remove this label!
 
-.Alt
-	; player alts
-	%altpal(player_mario, dawn, 1)
-	%altpal(player_luigi, dawn, 1)
-	%altpal(player_kadaal, dawn, 1)
-	%altpal(player_leeway, dawn, 1)
-	%altpal(player_mario, dusk, 2)
-	%altpal(player_luigi, dusk, 2)
-	%altpal(player_kadaal, dusk, 2)
-	%altpal(player_leeway, dusk, 2)
-	%altpal(player_mario, night, 3)
-	%altpal(player_luigi, night, 3)
-	%altpal(player_kadaal, night, 3)
-	%altpal(player_leeway, night, 3)
-	%altpal(player_mario, lava, 4)
-	%altpal(player_luigi, lava, 4)
-	%altpal(player_kadaal, lava, 4)
-	%altpal(player_leeway, lava, 4)
-	%altpal(player_mario, water, 5)
-	%altpal(player_luigi, water, 5)
-	%altpal(player_kadaal, water, 5)
-	%altpal(player_leeway, water, 5)
-
-	; pal A alts
-	%altpal(default_A_yellow, dawn, 1)
-	%altpal(default_A_yellow, dusk, 2)
-	%altpal(default_A_yellow, night, 3)
-	%altpal(default_A_yellow, water, 5)
-
-	; pal B alts
-	%altpal(default_B_blue, dawn, 1)
-	%altpal(default_B_blue, dusk, 2)
-	%altpal(default_B_blue, night, 3)
-	%altpal(default_B_blue, lava, 4)
-	%altpal(default_B_blue, water, 5)
-
-	; pal C alts
-	%altpal(default_C_red, dawn, 1)
-	%altpal(default_C_red, dusk, 2)
-	%altpal(default_C_red, night, 3)
-	%altpal(default_C_red, water, 5)
-
-	; pal D alts
-	%altpal(default_D_green, dawn, 1)
-	%altpal(default_D_green, dusk, 2)
-	%altpal(default_D_green, night, 3)
-	%altpal(default_D_green, lava, 4)
-	%altpal(default_D_green, water, 5)
-
-	; grey alts
-	%altpal(generic_grey, dawn, 1)
-	%altpal(generic_grey, dusk, 2)
-	%altpal(generic_grey, night, 3)
-	%altpal(generic_grey, lava, 4)
-	%altpal(generic_grey, water, 5)
-
-	; ghost blue alts
-	%altpal(generic_ghost_blue, night, 3)
-	%altpal(generic_ghost_blue, lava, 4)
-	%altpal(generic_ghost_blue, water, 5)
-
-	; lightblue alts
-	%altpal(generic_lightblue, dawn, 1)
-	%altpal(generic_lightblue, dusk, 2)
-	%altpal(generic_lightblue, night, 3)
-	%altpal(generic_lightblue, lava, 4)
-	%altpal(generic_lightblue, water, 5)
-
-..End	; don't remove this label!
-
-	print "Sprite palset data (", dec(..End-PalsetData), " bytes) stored at $", hex(PalsetData), "."
+	print "Sprite palset data (", dec(.End-PalsetData), " bytes) stored at $", hex(PalsetData), "."
 
 
 	Temp3F:

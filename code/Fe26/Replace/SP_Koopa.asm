@@ -34,6 +34,17 @@ org $01A082			; Mario carrying stuff routine
 org $01AA9F			; Kick shell routine
 	JSL MariosShell		;\ Source: LDA #$0A : STA $3230,x
 	NOP			;/
+org $019B83+$09			;\
+	db $00,$02,$02		; | shelless koopa tiles
+org $019B83+$0D			; |
+	db $00,$04,$06		;/
+org $019B83+$10			;\
+	db $00,$02,$02		; | kicker koopa tiles
+org $019B83+$14			; |
+	db $06,$00,$00		;/
+org $0189EC
+	LDA #$04		; kicker koopa sliding tile
+
 pullpc
 
 
@@ -145,7 +156,7 @@ pullpc
 		BRA .Kick			;/
 
 		.KickHoming
-		JSR SUB_HORZ_POS		;\ Go towards a player
+		JSL SUB_HORZ_POS		;\ Go towards a player
 		TYA : BEQ .KickRight		;/
 
 		.KickLeft
@@ -185,7 +196,7 @@ pullpc
 		LDA $3240,x
 		SBC $01
 		BCS +
-		JSR SUB_HORZ_POS
+		JSL SUB_HORZ_POS
 		TYA
 		CMP $3320,x : BEQ .018957
 
@@ -201,7 +212,7 @@ pullpc
 		LDA $3240,x
 		SBC $01
 		BCS +
-		JSR SUB_HORZ_POS_2
+		JSL SUB_HORZ_POS_P2
 		TYA
 		CMP $3320,x : BEQ .018957
 	+	INC $3420,x			; > Pause timer
@@ -256,7 +267,7 @@ pullpc
 		CMP $35B0,x : BNE ..WalkBack
 
 		LDA #$02 : STA !SpriteStasis,x
-		JSL SUB_HORZ_POS_Long
+		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
 		STZ $3420,x			; clear kick timer
 		STZ $33D0,x			; stand still
@@ -281,6 +292,17 @@ pullpc
 		LDA $3220,x : STA $35A0,x
 		LDA $3250,x : STA $35B0,x
 		RTL
+
+
+
+; 20 -> 00
+; 22 -> 02
+; 24 -> 04
+; 26 -> 06
+; 40 -> 08
+; 42 -> 0A
+; 44 -> 0C
+; 46 -> 0E
 
 
 
@@ -313,30 +335,30 @@ pullpc
 		CMP #$01 : BEQ .walk_f
 
 		.turn_f
-		LDA #$26
+		LDA #$06
 		CLC : ADC !SpriteTile,x
 		STA !OAM+$102,y
-		LDA #$46
+		LDA #$0E
 		CLC : ADC !SpriteTile,x
 		STA !OAM+$106,y
 		LDA !KoopaFrame			;\
 		AND #$0F			; |
-		CMP #$02 : BNE $03 : JMP +	; |
-		ASL #4				; | Store frame
+		CMP #$02 : BNE $03 : JMP +	; | store frame
+		ASL #4				; |
 		ORA #$02			; |
 		STA !KoopaFrame			;/
 		JMP +
 
 		.stand_f
-		LDA #$20
+		LDA #$00
 		CLC : ADC !SpriteTile,x
 		STA !OAM+$102,y
-		LDA #$40
+		LDA #$08
 		CLC : ADC !SpriteTile,x
 		STA !OAM+$106,y
 		LDA !KoopaFrame			;\
-		AND #$0F : BEQ +		; |
-		ASL #4				; | store frame
+		AND #$0F : BEQ +		; | store frame
+		ASL #4				; |
 		STA !KoopaFrame			;/
 		LDA #$FF
 		BRA +
@@ -346,39 +368,39 @@ pullpc
 		AND #$F2
 		CMP #$10 : BEQ .walk_alt
 		CMP #$02 : BEQ .walk_alt
-		LDA #$22
+		LDA #$02
 		CLC : ADC !SpriteTile,x
 		STA !OAM+$102,y
-		LDA #$42
+		LDA #$0A
 		CLC : ADC !SpriteTile,x
 		STA !OAM+$106,y
 		LDA !KoopaFrame			;\
 		AND #$0F			; |
-		CMP #$01 : BEQ +		; |
-		ASL #4				; | Store frame
+		CMP #$01 : BEQ +		; | store frame
+		ASL #4				; |
 		ORA #$01			; |
 		STA !KoopaFrame			;/
 		LDA #$FF
 		BRA +
 
 		.walk_alt
-		LDA #$24
+		LDA #$04
 		CLC : ADC !SpriteTile,x
 		STA !OAM+$102,y
-		LDA #$44
+		LDA #$0C
 		CLC : ADC !SpriteTile,x
 		STA !OAM+$106,y
 		LDA !KoopaFrame			;\
 		AND #$0F			; |
-		CMP #$03 : BEQ +		; |
-		ASL #4				; | Store frame
+		CMP #$03 : BEQ +		; | store frame
+		ASL #4				; |
 		ORA #$03			; |
 		STA !KoopaFrame			;/
 		LDA #$FF
 
 	+	BPL +				;\
 		LDA !KoopaWing			; |
-		INC A				; | Cycle between wing frames
+		INC A				; | cycle between wing frames
 		CMP #$04			; |
 		BNE $02 : LDA #$00		; |
 		STA !KoopaWing			;/

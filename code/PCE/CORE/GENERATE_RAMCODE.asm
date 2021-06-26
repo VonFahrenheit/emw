@@ -65,7 +65,7 @@ GENERATE_RAMCODE:
 		STX !RAMcode_offset			;/
 		LDA #$1234 : STA !RAMcode_flag		; Enable RAM code execution
 		SEP #$30
-		RTS
+		RTL
 
 
 ; Generated code for each entry is:

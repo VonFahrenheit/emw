@@ -36,7 +36,7 @@ MiniMole:
 		AND #$0E				; | use RAM palette
 		ORA !SpriteProp,x			; |
 		STA !SpriteProp,x			;/
-		JSL SPRITE_OFF_SCREEN_Long
+		JSL SPRITE_OFF_SCREEN
 		LDA $3230,x
 		SEC : SBC #$08
 		ORA $9D
@@ -363,7 +363,7 @@ MiniMole:
 		SEP #$20				; |
 		LDA !SpriteAnimIndex			; |
 		TSB !BigRAM+$05				;/
-		JSL LOAD_PSUEDO_DYNAMIC_Long		; > Load tilemap into $6300 block
+		JSL LOAD_PSUEDO_DYNAMIC			; > Load tilemap
 		LDA $33B0,x				;\
 		LSR #2					; |
 		TAY					; | Set tile size to 8x8

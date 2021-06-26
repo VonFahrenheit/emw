@@ -13,17 +13,9 @@ Sign:
 		PHB : PHK : PLB
 
 		REP #$20			;\
-		LDA #$0004 : STA !BigRAM+0	; |
-		LDA #$0074			; |
-		ORA !SpriteProp,x		; |
-		AND #$00FF			; | Graphics
-		STA !BigRAM+2			; |
-		LDA !SpriteTile-1,x		; |
-		AND #$FF00			; |
-		STA !BigRAM+4			; |
-		LDA #!BigRAM : STA $04		; |
+		LDA.w #.Tilemap : STA $04	; | tilemap
 		SEP #$20			; |
-		JSL LOAD_TILEMAP_Long		;/
+		JSL LOAD_PSUEDO_DYNAMIC		;/
 
 		LDA $3220,x
 		SEC : SBC #$08
@@ -69,6 +61,9 @@ Sign:
 		PLB
 		RTL
 
+	.Tilemap
+		dw $0004
+		db $72,$00,$FF,$00
 
 
 	namespace off

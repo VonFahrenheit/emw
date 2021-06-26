@@ -4,22 +4,23 @@
 
 
 	PIPE:
-		LDA !P2Pipe
-		BEQ .NoPipe
-		DEC A
-		STA !P2Pipe
-
-	LDY #$04 : STY !SPC1		; pipe SFX
-
-		AND #$3F
-		BNE .NoExit
+		LDX !P2Pipe : BEQ .NoPipe
+		LDA $14
+	;	AND #$0F : BNE +
+		LDY #$04 : STY !SPC1		; pipe SFX
+	+	LSR A : BCC +
+		DEX
+		STX !P2Pipe
+	+	TXA
+		AND #$3F : BNE .NoExit
 		STZ !P2Pipe
-		BRA .NoPipe
+		.NoPipe
+		CLC
+		RTL
 
 		.NoExit
-		CMP #$20
-		BEQ .Load
-		BIT !P2Pipe			; Get highest two bits
+		CMP #$20 : BEQ .Load
+		BIT !P2Pipe			; get highest two bits
 		REP #$20			; A 16 bit
 		BMI .VertPipe
 
@@ -40,7 +41,13 @@
 		BRA .Return16
 
 		.VertPipe
-		BVC .UpPipe
+		LDA !P2XPosLo
+		AND #$000F
+		CMP #$0008 : BEQ +
+		BCC ..inc
+	..dec	DEC !P2XPosLo : BRA +
+	..inc	INC !P2XPosLo
+	+	BVC .UpPipe
 
 		.DownPipe
 		INC !P2YPosLo
@@ -67,8 +74,5 @@
 		.Return16
 		SEP #$20
 		SEC
-		RTS
+		RTL
 
-		.NoPipe
-		CLC
-		RTS

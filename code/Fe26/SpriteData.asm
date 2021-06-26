@@ -47,7 +47,7 @@ SpriteData:
 
 ; -- Sprite 00 --
 db $36
-db $00,$00,$4B,$A1,$08,$00
+db $00,$00,$4A,$A1,$08,$00
 %AddToList0toF(HappySlime, $00)
 
 ; -- Sprite 01 --
@@ -73,7 +73,7 @@ db $00,$27,$59,$A1,$11,$04
 ; -- Sprite 05 --
 db $36
 db $00,$2A,$4A,$A1,$10,$00
-%AddToList0toF(NoviceShaman, $00)
+%AddToList0toF(Conjurex, $00)
 
 ; -- Sprite 06 --
 db $36
@@ -182,7 +182,7 @@ db $00,$00,$47,$A1,$00,$00
 
 ; -- Sprite 1B --
 db $36
-db $00,$00,$38,$A6,$39,$46
+db $00,$00,$3A,$A6,$39,$46
 %AddToList(Bumper, $40)
 
 ; -- Sprite 1C --
@@ -252,7 +252,7 @@ db $00,$00,$30,$A6,$39,$46
 
 ; -- Sprite 29 --
 db $36
-db $00,$00,$30,$A2,$39,$46
+db $00,$00,$34,$A2,$39,$46
 %AddToList(FlamePillar, $00)
 
 ; -- Sprite 2A --

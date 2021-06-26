@@ -134,7 +134,7 @@ endmacro
 		LDA.w .Anim+1,y : STA $05
 		LDA #$00
 	+	STA !SpriteAnimTimer
-		JSL LOAD_TILEMAP_Long
+		JSL LOAD_TILEMAP
 		PLB
 		RTL
 
@@ -432,7 +432,7 @@ endmacro
 		STA !HP				;/
 		LDA #$01 : STA !Phase		; > Initialize boss
 
-		JSL SUB_HORZ_POS_Long
+		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
 
 		STZ !BossData+2			;\
@@ -1201,7 +1201,7 @@ endmacro
 		PEI ($00)
 
 		.Process
-		JSL SPRITE_A_SPRITE_B_COORDS_Long	; Y pos is overwritten later anyway
+		JSL SPRITE_A_SPRITE_B_COORDS	; Y pos is overwritten later anyway
 		LDA $3210,x			;\
 		SEC : SBC #$18			; |
 		STA $3210,y			; | Spawn 0x2 tiles above
@@ -1626,7 +1626,7 @@ endmacro
 		PEI ($04)				;\ Preserve hitbox coords
 		PEI ($0A)				;/
 
-		JSL FireballContact_Destroy_Long	; Fireballs break upon touching Kingking
+		JSL FireballContact_Destroy		; Fireballs break upon touching Kingking
 
 
 		SEC : JSL !PlayerClipping		;\
@@ -1659,7 +1659,7 @@ endmacro
 		STA $06					; | Head dimensions
 		STA $07					;/
 
-		JSL FireballContact_Destroy_Long	; Fireballs break upon touching Kingking
+		JSL FireballContact_Destroy		; Fireballs break upon touching Kingking
 
 		SEC : JSL !PlayerClipping
 		BCC .CheckAttack
@@ -1678,15 +1678,15 @@ endmacro
 		LDY #$00
 	-	LDA !P2Status-$80,y : BNE +
 		REP #$20
-		LDA !P2Hitbox-$80+4,y
+		LDA !P2Hitbox1-$80+4,y
 		SEP #$20
 		BEQ +
-		LDA !P2Hitbox-$80+0,y : STA $00
-		LDA !P2Hitbox-$80+1,y : STA $08
-		LDA !P2Hitbox-$80+2,y : STA $01
-		LDA !P2Hitbox-$80+3,y : STA $09
-		LDA !P2Hitbox-$80+4,y : STA $02
-		LDA !P2Hitbox-$80+5,y : STA $03
+		LDA !P2Hitbox1-$80+0,y : STA $00
+		LDA !P2Hitbox1-$80+1,y : STA $08
+		LDA !P2Hitbox1-$80+2,y : STA $01
+		LDA !P2Hitbox1-$80+3,y : STA $09
+		LDA !P2Hitbox1-$80+4,y : STA $02
+		LDA !P2Hitbox1-$80+5,y : STA $03
 		PHY
 		JSL !CheckContact
 		PLY
@@ -1709,7 +1709,7 @@ endmacro
 		LDA #$08 : STA !HeadTimer
 
 		.PlayerBounce
-		JSL P2Bounce_Long
+		JSL P2Bounce
 	+	RTS
 
 
@@ -1886,7 +1886,7 @@ Graphics:	LDX !SpriteIndex
 		LDX !SpriteIndex
 		LDA !InvincTimer
 		AND #$02 : BNE .Return
-		JSL LOAD_TILEMAP_Long			; > Load tilemap
+		JSL LOAD_TILEMAP			; > Load tilemap
 
 		LDA !Phase				;\
 		AND #$7F				; | Shake during transformation

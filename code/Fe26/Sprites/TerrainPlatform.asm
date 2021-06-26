@@ -46,7 +46,7 @@ TerrainPlatform:
 	MAIN:
 		PHB : PHK : PLB
 		LDA !MovementType : BNE .moving
-		JSL SPRITE_OFF_SCREEN_Long
+		JSL SPRITE_OFF_SCREEN
 		BRA Physics
 
 		.moving
@@ -223,7 +223,7 @@ TerrainPlatform:
 		SEP #$20
 		LDA ($04) : STA !PlatformTiles
 
-		JSL LOAD_TILEMAP_Long
+		JSL LOAD_TILEMAP
 		PLB
 		RTL
 

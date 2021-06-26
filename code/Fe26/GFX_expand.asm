@@ -33,11 +33,11 @@
 	SlideFix:		; fix initial frame when koopa slides out of shell
 	pushpc
 	org $0189F2
-		JSL .Fix	; source: BEQ $02 : LDA #$28 (0x86 in vanilla, sliding koopa tile)
+		JSL .Fix	; source: BEQ $02 : LDA #$06 (0x86 in vanilla, sliding koopa tile)
 		LDY $33B0,x
 	pullpc
 	.Fix
-		BEQ $02 : LDA #$28
+		BEQ $02 : LDA #$06
 		CLC : ADC !SpriteTile,x
 		RTL
 
@@ -123,16 +123,15 @@
 		LDA $3200,x
 		CMP #$0F : BNE ..Normal
 
-	;	CMP #$0F : BEQ ..GoombaState
-	;	BRA ..Normal
-
 		..GoombaState
 		LDA $3230,x
 		CMP #$08 : BEQ ..Goomba
 		CMP #$02 : BEQ ..RollingGoomba
 		CMP #$0B : BEQ ..Normal
+		LDA !SpriteSlope,x : BNE ..RollingGoomba
 		LDA $3330,x
-		AND #$04 : BNE ..Normal
+		AND #$04 : BEQ ..RollingGoomba
+		LDA !SpriteSpeedX,x : BEQ ..Normal
 
 		..RollingGoomba
 		LDA #$00
@@ -1215,7 +1214,7 @@
 
 
 	.StatueFix
-		JSR SUB_HORZ_POS
+		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
 		PEA.w .ReturnStatue-1
 		JML $0183A4
@@ -2053,22 +2052,22 @@
 
 		..panic
 		LDA #$01 : STA $35D0,x
-		JSR SUB_HORZ_POS
+		JSL SUB_HORZ_POS
 		TYA
 		EOR #$01
 		STA $3320,x
 		TAY
 		LDA.w .BirdFlyX,y : BPL ..pos
-	..neg	BIT $AE,x : BPL ..dec
-		CMP $AE,x : BEQ ..good
+	..neg	BIT !SpriteXSpeed,x : BPL ..dec
+		CMP !SpriteXSpeed,x : BEQ ..good
 		BCC ..dec
 		BRA ..inc
-	..pos	BIT $AE,x : BMI ..inc
-		CMP $AE,x : BEQ ..good
+	..pos	BIT !SpriteXSpeed,x : BMI ..inc
+		CMP !SpriteXSpeed,x : BEQ ..good
 		BCS ..inc
-	..dec	DEC $AE,x : DEC $AE,x
-	..inc	INC $AE,x
-	..good	LDA #$F0 : STA $9E,x
+	..dec	DEC !SpriteXSpeed,x : DEC !SpriteXSpeed,x
+	..inc	INC !SpriteXSpeed,x
+	..good	LDA #$F0 : STA !SpriteYSpeed,x
 		TXA
 		CLC : ADC $14
 		AND #$04
@@ -2097,7 +2096,7 @@
 		STA $07
 		SEC : JSL !PlayerClipping
 		BCS ..seen
-		JSR FireballContact
+		JSL FireballContact
 		BCS ..seen
 		LDA $3200,x : STA !BigRAM
 		PHX
@@ -2142,18 +2141,12 @@
 		CLC : ADC !SpriteTile,x
 		STA !BigRAM+$05
 		LDA $02
-		AND #$3E
+		AND #$2E
 		ORA !SpriteProp,x
+		AND.b #$20^$FF			; clear size bit
 		STA !BigRAM+$02
-		JSR LOAD_TILEMAP_HiPrio
-		LDA !OAMindex
-		LSR #2
-		DEC A
-		TAY
-		LDA !OAMhi,y
-		AND #$01
-		STA !OAMhi,y
-		JSR SPRITE_OFF_SCREEN		; despawn if necessary
+		JSL LOAD_TILEMAP_p2
+		JSL SPRITE_OFF_SCREEN		; despawn if necessary
 		JML $02F42B			; go to RTS
 
 	.Blurp
@@ -2528,10 +2521,30 @@
 	Smushed:
 	pushpc
 	org $01E728
-		LDA #$12
-		CPX #$BD
+		LDA #$10		; smushed koopa tile num
+	org $01E73D
+		JML .Fix		; org: STA !OAM+$106,y : PLX
+		.Return
 	pullpc
-
+	.Fix
+		STA !OAM+$106,y
+		PLX
+		CMP #$10 : BNE ..R
+		LDA !GFX_SmushedKoopa : STA $00
+		ASL A
+		ROL A
+		AND #$01
+		STA $01
+		LDA !SpriteProp,x
+		AND #$FE
+		ORA $01
+		STA !SpriteProp,x
+		LDA $00
+		AND #$F0 : TRB $00
+		ASL A
+		ORA $00
+		STA !SpriteTile,x
+	..R	JML .Return
 
 
 
@@ -2641,13 +2654,16 @@
 
 
 	; -- bounce --
-	org $029258
-		JSL .Remap2				; source : TYA : LSR #2 : TAY (bounce)
+	;org $029258
+	;	JSL .Remap2				; source : TYA : LSR #2 : TAY (bounce)
+	; now handled by FusionCore
 
 
 	; -- coin --
-	org $029A5A
-		JSL .Remap				; source: TYA : LSR #2 : TAY (coin)
+	;org $029A5A
+	;	JSL .Remap				; source: TYA : LSR #2 : TAY (coin)
+	; now handled by FusionCore
+
 
 
 	pullpc
@@ -2741,7 +2757,56 @@
 		JML .Return
 
 
+	BlockWings:
+	pushpc
+	org $019E95
+		JSL .Main		; org: LDA ($DA) : PHA : CLC : ADC #$02
+		RTS
+		NOP
+	pullpc
+	.Main
+		PHB : PHK : PLB
+		LDA !SpriteTile,x : PHA
+		LDA !SpriteProp,x : PHA
+		LDA $33C0,x : PHA
+		LDA !GFX_AngelWings
+		AND #$0F
+		STA $04
+		LDA !GFX_AngelWings
+		AND #$70
+		ASL A
+		ORA $04
+		STA !SpriteTile,x
+		LDA !GFX_AngelWings
+		ASL A
+		ROL A
+		AND #$01
+		STA !SpriteProp,x
+		REP #$20
+		LDA $14
+		AND #$0008 : BEQ +
+		LDA.w #.Tilemap2 : BRA ++
+	+	LDA.w #.Tilemap1
+	++	STA $04
+		SEP #$20
+		LDA #$06 : STA $33C0,x
+		JSL LOAD_PSUEDO_DYNAMIC
+		PLA : STA $33C0,x
+		PLA : STA !SpriteProp,x
+		PLA : STA !SpriteTile,x
+		PLB
+		RTL
 
+
+		.Tilemap1
+		dw $0008
+		db $30,$0F,$F8,$00
+		db $70,$0E,$F8,$00
+
+		.Tilemap2
+		dw $0008
+		db $10,$0F,$00,$02
+		db $50,$0E,$00,$02
 
 
 

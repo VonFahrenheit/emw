@@ -266,7 +266,7 @@ endmacro
 		SEP #$20
 		LDA !InvincTimer
 		AND #$02 : BNE .Invis
-		JSL LOAD_TILEMAP_Long
+		JSL LOAD_TILEMAP
 
 		.Invis
 		PLB
@@ -367,7 +367,7 @@ endmacro
 
 		.Interact
 		JSR ..Main
-		JSL P2Attack_Long
+		JSL P2Attack
 		BCS +
 		RTS
 
@@ -419,7 +419,7 @@ endmacro
 
 
 		LDA #$02 : STA !SPC1
-		JSL P2Bounce_Long
+		JSL P2Bounce
 		LDA !P2VectorX-$80,y : BNE +
 		LDA !RNG
 		AND #$40
@@ -1109,7 +1109,7 @@ endmacro
 		.Spiny
 		JSL !GetSpriteSlot
 		BMI .Return
-		JSL SPRITE_A_SPRITE_B_COORDS_Long		; Same position
+		JSL SPRITE_A_SPRITE_B_COORDS			; Same position
 		LDA #$15 : STA !NewSpriteNum,y			;\
 		LDA #$14 : STA $3200,y				; | Sprite numbers and status
 		LDA #$01 : STA $3230,y				;/
@@ -1437,7 +1437,7 @@ endmacro
 		LSR A : BCS +					; |
 		LDA #$06					; |
 		LDY #$01					; |
-		JSL SpawnExSprite_NoSpeed_Long			; |
+		JSL SpawnExSprite_NoSpeed			; |
 		LDA !LightningTimer				; |
 		AND #$0F					; |
 		LSR A						; |
@@ -1586,7 +1586,7 @@ endmacro
 		SEP #$20
 		LDY #$01
 		LDA #$00
-		JSL SpawnExSprite_Long
+		JSL SpawnExSprite
 		.NoSmoke
 
 		LDY #!Ex_Amount-1
@@ -2515,7 +2515,7 @@ endmacro
 		LDA $3230,x : BEQ .NoGFX
 		LDA.b #.Tilemap : STA $04			; GFX
 		LDA.b #.Tilemap>>8 : STA $05
-		JSL LOAD_TILEMAP_Long
+		JSL LOAD_TILEMAP
 
 		.NoGFX
 		PLB
@@ -2659,7 +2659,7 @@ endmacro
 		SEP #$20				; |
 		LDY #$03				; |
 		LDA #$20				; |
-		JSL SpawnExSprite_NoSpeed_Long		;/
+		JSL SpawnExSprite_NoSpeed		;/
 
 		.FailDelete
 		STZ $3230,x
@@ -2756,7 +2756,7 @@ endmacro
 		SEP #$20
 		LDY #$03
 		LDA #$80
-		JSL SpawnExSprite_NoSpeed_Long
+		JSL SpawnExSprite_NoSpeed
 
 		RTS
 

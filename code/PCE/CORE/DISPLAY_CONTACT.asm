@@ -6,13 +6,15 @@ DISPLAY_CONTACT:
 
 	DISPLAYCONTACT:
 		PHX
-		LDX.b #!Ex_Amount-1
-	-	LDA !Ex_Num,x : BEQ +
-		DEX : BPL -
-		PLX
-		RTS
-
-	+	LDA $00 : STA $0C
+		PHP
+		PHB
+		JSL !GetParticleIndex
+		LDA #$0007 : STA !Particle_Timer,x
+		LDA.w #!prt_contact : STA !Particle_Type,x
+		LDA #$00C0 : STA !Particle_Prop,x
+		PLB
+		SEP #$20
+		LDA $00 : STA $0C
 		LDA $08 : STA $0D
 		LDA $01 : STA $0E
 		LDA $09 : STA $0F
@@ -29,12 +31,8 @@ DISPLAY_CONTACT:
 		CLC : ADC $0E
 		LSR A
 		STA $0E
-		SEP #$20
-		STA !Ex_YLo,x
-		XBA : STA !Ex_YHi,x
-		LDA $0C : STA !Ex_XLo,x
-		LDA $0D : STA !Ex_XHi,x
-		LDA #$02+!SmokeOffset : STA !Ex_Num,x
-		LDA #$07 : STA !Ex_Data1,x
+		STA $410000+!Particle_YLo,x
+		LDA $0C : STA $410000+!Particle_XLo,x
+		PLP
 		PLX
-		RTS
+		RTL

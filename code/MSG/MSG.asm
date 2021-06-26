@@ -54,6 +54,9 @@ sa1rom
 	print "Lunar Magic's message data is located at $", hex(read3($03BC0B)), "."
 	print "Custom code inserted at $", pc, "."
 
+
+	; this code is only run if MSG was called with a normal JSL
+	; if it was called with the %CallMSG() macro, this part is skipped
 	TrueReturn:
 		%TrackCPU(!TrackMSG)
 
@@ -68,22 +71,26 @@ sa1rom
 		CMP #$02 : BEQ .Mode2
 
 		.Mode0					; full pause mode
-		JSL !BuildOAM
-		JML $00A1E3
+		JML !BuildOAM
 
 		.Mode1					; run animations but don't let players move
 		LDA #$02
 		STA !P2Stasis-$80
 		STA !P2Stasis
 
-		.Mode2					; Everything moves during message
+		.Mode2					; everything moves during message
 		LDX #$25				;\
 		LDA #$02				; |
 	-	STA !OAMhi,x				; | Set proper OAM size
 		DEX					; |
 		CPX #$03 : BNE -			;/
 		LDA #$98 : STA !OAMindex		; > Set OAM index to after message tiles
-		JML $00A1E4				; > Execute game mode
+		REP #$20
+		LDA $01,s
+		INC #2
+		STA $01,s
+		SEP #$20
+		RTL
 
 
 	MESSAGE_ENGINE:
@@ -104,7 +111,21 @@ sa1rom
 		PLP
 		JSR MAKE_BACKUP				; will also call CLEAR_BOX at the end
 		JSR ApplyHeader
+		REP #$20				;\
+		STZ $6DA2				; |
+		STZ $6DA4				; |
+		STZ $6DA6				; | don't buffer inputs on frame 1
+		STZ $6DA8				; |
+		SEP #$20				; |
+		BRA .NoBuffer				;/
 		.NoInit
+
+		LDX #$07				;\
+	-	LDA $6DA2,x				; |
+		ORA $400000+!MsgInputBuffer,x		; | buffer input every frame
+		STA $400000+!MsgInputBuffer,x		; |
+		DEX : BPL -				; |
+		.NoBuffer				;/
 
 		PHB : LDA #$40
 		PHA : PLB
@@ -142,13 +163,21 @@ sa1rom
 	+	LDA !WindowSize				; A = Window size
 		CMP.w WindowSize,x
 	++	BEQ .WindowOpen				; check window size
+		LDA #$04 : STA $400000+!MsgStartupTimer	; timer = 4
+		REP #$20				;\
+		LDA #$0000				; |
+		STA $400000+!MsgInputBuffer+0		; | clear hold buffer
+		STA $400000+!MsgInputBuffer+2		; |
+		SEP #$20				;/
 		JMP HANDLE_WINDOWING			; handle windowing
 
 		.WindowOpen
 		TXA : BNE .LastFrame			; if dir = 0, start loading message data
 		LDA $400000+!MsgImportant
 		CMP #$FF : BNE .NoSkipBuffer
-		JMP LOAD_MESSAGE_Close
+		LDA.l !MsgMode : BNE +
+		JSL !KillOAM
+	+	JMP LOAD_MESSAGE_Close
 		.NoSkipBuffer
 		JMP LOAD_MESSAGE
 
@@ -194,7 +223,7 @@ sa1rom
 		LDA #$1F						;\
 		STA !MainScreen						; | everything on main screen, nothing on subscreen
 		STZ !SubScreen						;/
-		LDA #$09 : STA $3E					; > mode 1 with absolute priority for layer 3
+		LDA #$09 : STA !2105					; > mode 1 with absolute priority for layer 3
 		LDA.l !MsgMode : BEQ .NoClear				;\
 		JSL !KillOAM						; | manually clear OAM during message modes 1 and 2
 		.NoClear						;/
@@ -209,15 +238,16 @@ sa1rom
 		LDA !MsgPortrait : BEQ .PortraitDone			;\
 		JSR DRAW_PORTRAIT					; | draw portrait
 		.PortraitDone						;/
+		LDA !MsgStartupTimer : BEQ .TimerDone			;\
+		DEC !MsgStartupTimer					; | decrement startup timer
+		.TimerDone						;/
 
-
-		.SameMessage
 		LDA !MsgEnd : BEQ .Text					;\
 		LDX !MsgCounter : BEQ .SkipText				; |
 		DEX							; | if message is over, see if another one should be loaded
 		STX !MsgCounter						; |
 		LDA !MsgSequence,x					; |
-		STA.l $000000+!MsgTrigger				;/
+		STA.l !MsgTrigger					;/
 		JSR CLEAR_BOX						; clear previous text
 		STZ !MsgEnd						; reset message
 		JSR ApplyHeader						;\
@@ -235,7 +265,6 @@ sa1rom
 		JSR UPLOAD_TEXT						; upload text
 		.SkipText
 		JSR UPDATE_COORDS					; update coordinates
-
 
 		JSR CHECK_INPUT_Press
 		AND #$F0 : BNE .HandleAction				; if an action button (A/B/X/Y) is pressed, handle that
@@ -385,31 +414,57 @@ sa1rom
 
 
 CHECK_INPUT:
-	.Press
+		.Press
+		LDA !MsgStartupTimer : BNE .Buffer			; check for startup timer
 		LDA !MultiPlayer : BEQ ..1P				;\
-	..2P	LDA.l $6DA7						; |
-		ORA.l $6DA9						; | check press input
-	..1P	ORA.l $6DA6						; |
-		ORA.l $6DA8						; |
-		STA $00							;/
-		RTS
+	..2P	LDA !MsgInputBuffer+5					; |
+		ORA !MsgInputBuffer+7					; | check press input
+	..1P	ORA !MsgInputBuffer+4					; |
+		ORA !MsgInputBuffer+6					; |
+		AND #$C0						;/
+		TRB !MsgInputBuffer+5					;\
+		TRB !MsgInputBuffer+7					; | clear all read inputs
+		TRB !MsgInputBuffer+4					; |
+		TRB !MsgInputBuffer+6					;/
+		BRA .Return						; go to shared
 
-	.Hold
+		.Hold
+		LDA !MsgStartupTimer : BNE .Buffer			; check for startup timer
 		LDA !MultiPlayer : BEQ ..1P				;\
-	..2P	LDA.l $6DA3						; |
-		ORA.l $6DA5						; | check hold input
-	..1P	ORA.l $6DA2						; |
-		ORA.l $6DA4						; |
-		STA $00							;/
-		RTS
+	..2P	LDA !MsgInputBuffer+1					; |
+		ORA !MsgInputBuffer+3					; | check hold input
+	..1P	ORA !MsgInputBuffer+0					; |
+		ORA !MsgInputBuffer+2					; |
+		AND #$C0						;/
+		TRB !MsgInputBuffer+1					;\
+		TRB !MsgInputBuffer+3					; | clear all read inputs
+		TRB !MsgInputBuffer+0					; |
+		TRB !MsgInputBuffer+2					;/
+		BRA .Return						; go to shared
 
-	.Start
+		.Start
+		LDA !MsgStartupTimer : BNE .Buffer			; check for startup timer
 		LDA !MultiPlayer : BEQ ..1P				;\
-	..2P	LDA.l $6DA7						; |
-	..1P	ORA.l $6DA6						; | check start input
-		AND #$10						; |
-		STA $00							;/
-		RTS
+	..2P	LDA !MsgInputBuffer+5					; | check start press input
+	..1P	ORA !MsgInputBuffer+4					; |
+		AND #$10						;/
+		TRB !MsgInputBuffer+5					;\ clear all read inputs
+		TRB !MsgInputBuffer+4					;/
+
+		.Return
+		STA $00							; set input
+		RTS							; return
+
+		.Buffer							;\
+		STZ !MsgInputBuffer+2					; |
+		STZ !MsgInputBuffer+3					; | during startup timer: input = 00
+		STZ !MsgInputBuffer+4					; | press buffer is not cleared
+		STZ !MsgInputBuffer+5					; | hold buffer is cleared
+		LDA #$00 : STA $00					; |
+		RTS							;/
+
+
+
 
 UPDATE_COORDS:
 		PHP
@@ -598,13 +653,22 @@ MAKE_BACKUP:
 		LDA #$004F
 		JSR READ_FONT_CHAR
 		LDA $0E
-		AND #$000F
-		ASL A
-		STA $00
-		LDA $0E
-		AND #$00F0
-		ASL #4
-		TSB $00
+		AND #$000F						; |
+		ASL #3							; |
+		STA $00							; | $00 = index to character in cached font
+		LDA $0E							; |
+		AND #$00F0						; |
+		XBA							; |
+		LSR #2							; |
+		TSB $00							;/
+
+	;	AND #$000F
+	;	ASL A
+	;	STA $00
+	;	LDA $0E
+	;	AND #$00F0
+	;	ASL #4
+	;	TSB $00
 
 		REP #$10						; |
 		LDX $00							;/

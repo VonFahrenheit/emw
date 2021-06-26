@@ -7,6 +7,138 @@ NPC:
 		!TalkTimer	=	$32E0,x
 
 
+; NPC list:
+;	00 - mario NPC
+;	01 - luigi NPC
+;	02 - kadaal NPC
+;	03 - leeway NPC
+;	04 - alter NPC
+;	05 - peach NPC
+;	06 - survivor
+;	07 - tinker
+;	08 - rally yoshi
+;	09 - big yoshi
+;	0A - painter yoshi
+;	0B - old yoshi
+;	0C - reserved for yoshi NPC
+;	0D - reserved for yoshi NPC
+;	0E - reserved for yoshi NPC
+;	0F - reserved for yoshi NPC
+;	10 - toad
+;	11 - reserved for captain toad
+;
+;
+
+
+
+	INIT:
+		PHB : PHK : PLB
+		LDA !ExtraProp1,x
+		ASL A
+		CMP.b #.InitPtr_End-.InitPtr : BCS .Return
+		TAX
+		JSR (.InitPtr,x)
+		.Return
+		PLB
+		RTL
+
+
+		.InitPtr
+		dw .Mario		; 00
+		dw .Luigi		; 01
+		dw .Kadaal		; 02
+		dw .Leeway		; 03
+		dw .Alter		; 04
+		dw .Peach		; 05
+		dw .Survivor		; 06
+		dw .Tinker		; 07
+		dw .RallyYoshi		; 08
+		dw .BigYoshi		; 09
+		dw .PainterYoshi	; 0A
+		dw .OldYoshi		; 0B
+		dw .Unused		; 0C
+		dw .Unused		; 0D
+		dw .Unused		; 0E
+		dw .Unused		; 0F
+		dw .Toad		; 10
+		dw .Unused		; 11
+		..End
+
+
+		.Mario
+		LDX !SpriteIndex
+		RTS
+
+		.Luigi
+		LDX !SpriteIndex
+		LDA #$01 : JSL GET_SQUARE
+		LDA.b #!palset_luigi : JSL LoadPalset
+		LDX $0F
+		LDA !GFX_status+$180,x
+		ASL A
+		LDX !SpriteIndex
+		STA $33C0,x
+		RTS
+
+
+		.Kadaal
+		LDX !SpriteIndex
+		LDA #$01 : JSL GET_SQUARE
+		LDA.b #!palset_kadaal : JSL LoadPalset
+		LDX $0F
+		LDA !GFX_status+$180,x
+		ASL A
+		LDX !SpriteIndex
+		STA $33C0,x
+		RTS
+
+
+
+		.Leeway
+		LDX !SpriteIndex
+		RTS
+
+		.Alter
+		LDX !SpriteIndex
+		RTS
+
+		.Peach
+		LDX !SpriteIndex
+		RTS
+
+		.Survivor
+		LDX !SpriteIndex
+		RTS
+
+		.Tinker
+		LDX !SpriteIndex
+		RTS
+
+		.RallyYoshi
+		LDX !SpriteIndex
+		RTS
+
+		.BigYoshi
+		LDX !SpriteIndex
+		RTS
+
+		.PainterYoshi
+		LDX !SpriteIndex
+		RTS
+
+		.OldYoshi
+		LDX !SpriteIndex
+		RTS
+
+		.Toad
+		LDX !SpriteIndex
+		RTS
+
+		.Unused
+		LDX !SpriteIndex
+		RTS
+
+
 
 	MAIN:
 		LDA !GameMode
@@ -15,6 +147,189 @@ NPC:
 
 		.Process
 		PHB : PHK : PLB
+		LDA !ExtraProp1,x
+		ASL A
+		CMP.b #.MainPtr_End-.MainPtr : BCS .Return
+		TAX
+		JSR (.MainPtr,x)
+		.Return
+		PLB
+		RTL
+
+
+		.MainPtr
+		dw Mario		; 00
+		dw Luigi		; 01
+		dw Kadaal		; 02
+		dw Leeway		; 03
+		dw Alter		; 04
+		dw Peach		; 05
+		dw Survivor		; 06
+		dw Tinker		; 07
+		dw RallyYoshi		; 08
+		dw BigYoshi		; 09
+		dw PainterYoshi		; 0A
+		dw OldYoshi		; 0B
+		dw Unused		; 0C
+		dw Unused		; 0D
+		dw Unused		; 0E
+		dw Unused		; 0F
+		dw Toad			; 10
+		dw Unused		; 11
+		..End
+
+
+	Mario:
+		LDX !SpriteIndex
+		RTS
+
+	Luigi:
+		LDX !SpriteIndex				; X = sprite index
+		JSR CheckPlayer					;\ check for matching player
+		BNE $01 : RTS					;/
+		JSR CheckSwap					; check for swap
+		REP #$30					;\
+		LDY.w #!File_Luigi				; |
+		LDA.w #.KnockedOutDyn : STA $0C			; |
+		JSL LOAD_SQUARE_DYNAMO				; | draw
+		LDA.w #Tilemap_32x16 : STA $04			; |
+		SEP #$30					; |
+		JSL SETUP_SQUARE				; |
+		JSL LOAD_DYNAMIC				;/
+		RTS
+
+
+		.KnockedOutDyn
+		dw ..End-..Start
+		..Start
+		%SquareDyn($22A)
+		%SquareDyn($22C)
+		..End
+
+
+
+	Kadaal:
+		LDX !SpriteIndex				; X = sprite index
+		JSR CheckPlayer					;\ check for matching player
+		BNE $01 : RTS					;/
+		JSR CheckSwap					; check for swap
+		LDA !SpriteAnimIndex				;\
+		ASL #2						; |
+		TAY						; | process anim timer
+		LDA !SpriteAnimTimer				; |
+		INC A						; |
+		CMP .AnimTable+2,y : BNE +			;/
+		LDA .AnimTable+3,y : STA !SpriteAnimIndex	;\
+		REP #$30					; |
+		LDA .AnimTable+0,y : STA $0C			; |
+		LDY.w #!File_Kadaal				; | process dynamic tiles
+		JSL LOAD_SQUARE_DYNAMO				; |
+		SEP #$30					; |
+		LDA #$00					;/
+	+	STA !SpriteAnimTimer				; update anim timer
+		REP #$20					;\
+		LDA.w #Tilemap_16x32 : STA $04			; |	
+		SEP #$20					; | draw to OAM
+		JSL SETUP_SQUARE				; |
+		JSL LOAD_DYNAMIC				;/
+		RTS
+
+		.AnimTable
+		dw .Idle00 : db $04,$01
+		dw .Idle01 : db $04,$02
+		dw .Idle00 : db $04,$03
+		dw .Idle02 : db $04,$00
+
+
+		.Idle00
+		dw ..End-..Start
+		..Start
+		%SquareDyn($000)
+		%SquareDyn($020)
+		..End
+
+		.Idle01
+		dw ..End-..Start
+		..Start
+		%SquareDyn($002)
+		%SquareDyn($022)
+		..End
+
+		.Idle02
+		dw ..End-..Start
+		..Start
+		%SquareDyn($004)
+		%SquareDyn($024)
+		..End
+
+
+
+
+
+	Leeway:
+		LDX !SpriteIndex
+		RTS
+
+	Alter:
+		LDX !SpriteIndex
+		RTS
+
+	Peach:
+		LDX !SpriteIndex
+		RTS
+
+	Survivor:
+		LDX !SpriteIndex
+		RTS
+
+	Tinker:
+		LDX !SpriteIndex
+		RTS
+
+	RallyYoshi:
+		LDX !SpriteIndex
+		RTS
+
+	BigYoshi:
+		LDX !SpriteIndex
+		RTS
+
+	PainterYoshi:
+		LDX !SpriteIndex
+		RTS
+
+	OldYoshi:
+		LDX !SpriteIndex
+		RTS
+
+	Toad:
+		LDX !SpriteIndex
+		RTS
+
+	Unused:
+		LDX !SpriteIndex
+		RTS
+
+
+
+	Tilemap:
+
+	.16x32
+	dw $0008
+	db $3E,$00,$F0,$00
+	db $3E,$00,$00,$01
+
+	.32x16
+	dw $0008
+	db $3E,$F8,$00,$00
+	db $3E,$08,$00,$01
+
+
+
+
+
+
+
 		LDA !ExtraBits,x : BMI .Main
 
 		.Init
@@ -46,8 +361,92 @@ NPC:
 
 		.Main
 		LDA $9D
-		BEQ PHYSICS
+		BNE $03 : JMP PHYSICS
 		JMP GRAPHICS
+
+
+
+; if return with z = 0, this NPC should run
+; if return with z = 1, this NPC should be disabled
+	CheckPlayer:
+		LDA !MultiPlayer : BEQ .P1
+	.P2	LDA !P2Character
+		CMP !ExtraProp1,x : BEQ .Return
+	.P1	LDA !P2Character-$80
+		CMP !ExtraProp1,x
+	.Return	RTS
+
+
+	CheckSwap:
+		LDA !ExtraProp2,x
+		CMP #$01 : BEQ SwapP1
+		CMP #$02 : BEQ SwapP2
+		RTS
+
+	SwapP1:
+		LDA !ExtraProp1,x				;\
+		ASL #4						; |
+		STA $00						; |
+		LDA !Characters					; | write to main reg
+		AND #$0F					; |
+		ORA $00						; |
+		STA !Characters					;/
+		LDA !ExtraProp1,x : STA !Palset8		; reload palset
+		LDY #$00
+		BRA Unload
+
+	SwapP2:
+		LDA !ExtraProp1,x				;\
+		AND #$0F					; |
+		STA $00						; |
+		LDA !Characters					; | write to main reg
+		AND #$F0					; |
+		ORA $00						; |
+		STA !Characters					;/
+		LDA !ExtraProp1,x : STA !Palset9		; reload palset
+		LDY #$80
+
+	Unload:
+		STZ $3230,x					; despawn this sprite
+
+		LDA !ExtraProp1,x : STA !P2Character-$80,y	; write to PCE reg
+		LDA #$00 : STA !P2Init-$80,y			; init flag
+		LDA #$02 : STA !P2HP-$80,y			; HP
+		LDA $3220,x : STA !P2XPosLo-$80,y		;\
+		LDA $3250,x : STA !P2XPosHi-$80,y		; | set coords
+		LDA $3210,x : STA !P2YPosLo-$80,y		; |
+		LDA $3240,x : STA !P2YPosHi-$80,y		;/
+		LDA #$00					;\
+		STA !P2XSpeed-$80,y				; | clear speeds
+		STA !P2YSpeed-$80,y				;/
+		LDA $3230,x : STA !P2Direction-$80,y		; dir
+
+		LDA !P2Character-$80 : STA $00
+		LDA #$FF : STA $01
+		LDA !MultiPlayer : BEQ +
+		LDA !P2Character : STA $01
+		+
+
+		LDA $00 : BEQ .MarioDone
+		LDA $01 : BEQ .MarioDone
+		.UnloadMario
+		LDA #$00 : STA !GFX_ReznorFireball
+		LDA #$01 : STA !P1Dead
+		LDA #$09 : STA !MarioAnim
+		LDA #$00 : STA !CurrentMario
+		.MarioDone
+		LDA #$01
+		CMP $00 : BEQ .LuigiDone
+		CMP $01 : BEQ .LuigiDone
+		.UnloadLuigi
+		LDA #$00 : STA !GFX_LuigiFireball
+		.LuigiDone
+
+		RTS
+
+
+
+
 
 	DATA:
 		.XSpeed
@@ -81,7 +480,7 @@ NPC:
 		LDX !SpriteIndex
 		+
 
-		JSL SUB_HORZ_POS_Long
+		JSL SUB_HORZ_POS
 		TYA
 		STA $3320,x
 
@@ -187,7 +586,7 @@ NPC:
 		REP #$20
 		LDA.w #ANIM_32x32TM : STA $04
 		SEP #$20
-		JSL LOAD_PSUEDO_DYNAMIC_Long
+		JSL LOAD_PSUEDO_DYNAMIC
 		PLA : STA $3240,x
 		PLA : STA $3210,x
 		PLB
@@ -202,10 +601,9 @@ NPC:
 
 	; not tinker code
 		.Tilemap
-		JSL LOAD_PSUEDO_DYNAMIC_Long
+		JSL LOAD_PSUEDO_DYNAMIC
 
 		PLB
-	INIT:
 		RTL
 
 

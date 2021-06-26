@@ -51,6 +51,11 @@ sa1rom
 ;CODE;
 ;====;
 
+	org $1E8000				; claim banks $1E and $1F
+	db $53,$54,$41,$52
+	dw $FFF7
+	dw $0008
+
 	org $158000
 	db $53,$54,$41,$52
 	dw $FFF7
@@ -72,34 +77,39 @@ sa1rom
 		STA.l !VRAMbase+!VRAMsize+$01		;/
 		LDA !GameMode
 
-	if !TrackCPU == 0
+;	if !TrackCPU == 0
 		CMP #$14 : BNE .Return
-	else
-		CMP #$14 : BEQ $03 : JMP .Return
-	endif
+;	else
+;		CMP #$14 : BEQ $03 : JMP .Return
+;	endif
 		PHB : PHK : PLB
 
-		%TrackSetup(!TrackPCE)
+		JSL .GetCharacter
 
-		LDA.b #.GetCharacter : STA $3180
-		LDA.b #.GetCharacter>>8 : STA $3181
-		LDA.b #.GetCharacter>>16 : STA $3182
-		JSR $1E80
 
-		%TrackCPU(!TrackPCE)
+	; should now be called by SA-1
+	;	%TrackSetup(!TrackPCE)
+
+	;	LDA.b #.GetCharacter : STA $3180
+	;	LDA.b #.GetCharacter>>8 : STA $3181
+	;	LDA.b #.GetCharacter>>16 : STA $3182
+	;	JSR $1E80
+
+	;	%TrackCPU(!TrackPCE)
 
 		PLB
 
 		.Return
 
 		LDA #$01 : STA !ProcessingSprites
-	;JML $1081E0		; Fahrenheit's constant (hehe)
-		JML $1081A6	; new constant (how did i come up with this?????)
+	;	JML $1081A6			; new constant (how did i come up with this?????)
+	; note: the "constant" is just the pointer to the SNES -> SA-1 wrapper for the sprite engine
+		RTL				; now called by GameMode14.asm
 
 
 		.Pipe
 		STX $71				;\ Store P1 animation trigger and pipe timer
-		STY $88				;/
+	;	STY $88				;/
 		CPX #$07 : BNE ..NoShoot	;\
 		LDA #$18 : STA !P2SlantPipe	; | Slant pipe
 		STA !P2SlantPipe-$80		;/
@@ -108,9 +118,11 @@ sa1rom
 		LDA $89				;\
 		AND #$03			; |
 		CLC : ROR #3			; | Get P2 pipe timer
-		ORA $88				; |
+	;	ORA $88				; |
+		ORA #$0F
 		STA !P2Pipe			; |
 		STA !P2Pipe-$80			;/
+		STZ !MarioAnim			; clear mario anim
 		REP #$20			;\
 		LDA $96				; | Fix Ypos
 		CLC : ADC #$000E		; |
@@ -235,10 +247,10 @@ sa1rom
 		PHX
 		PHP
 		REP #$20
-		LDA $94
+		LDA !MarioXPosLo
 		STA !P2XPosLo-$80
 		STA !P2XPosLo
-		LDA $96
+		LDA !MarioYPosLo
 		CLC : ADC #$0010
 		LDX !P2Pipe-$80
 		BNE $03 : STA !P2YPosLo-$80
@@ -253,113 +265,118 @@ sa1rom
 
 
 		.GetCharacter
-		REP #$30			; > All regs 16-bit
-		LDA.w #$007F			;\
-		LDX.w #!P2Base			; | Backup player 2 data
-		LDY.w #!PlayerBackupData	; |
-		MVN $40,$00			;/
-		LDA.w #$007F			;\
-		LDX.w #!P1Base			; | Copy player 1 data to player 2 regs
-		LDY.w #!P2Base			; |
-		MVN $00,$00			;/
-		SEP #$30			; > All regs 8-bit
+		SEP #$30				; all regs 8-bit
+		LDA !P1Dead : BNE +			; run this code if mario is dead
+		LDA !CurrentMario : BEQ +		;\
+		DEC A					; |
+		TAX					; |
+		LDA $6DA2,x : STA $15			; | mario input
+		LDA $6DA4,x : STA $17			; |
+		LDA $6DA6,x : STA $16			; |
+		LDA $6DA8,x : STA $18			; |
+		BRA ..NoMario				;/
+	+	LDA #$09 : STA !MarioAnim		; mario anim = 09 (dead) if he's not in play
+		JSR RunMario				; if no one plays mario, run his anim code right away
+		..NoMario
 
-		PHK : PLB			; > Switch banks
-		LDA !Characters			;\
-		LSR #4				; |
-		ASL A				; | Check for player 1 character ID
-		CMP.b #..End-..List		; |
-		BCC ..P1 : JMP ..P2		;/
+
+		REP #$30				; > All regs 16-bit
+
+
+		LDA.w #$007F				;\
+		LDX.w #!P2Base				; | Backup player 2 data
+		LDY.w #!PlayerBackupData		; |
+		MVN $40,$00				;/
+		LDA.w #$007F				;\
+		LDX.w #!P1Base				; | Copy player 1 data to player 2 regs
+		LDY.w #!P2Base				; |
+		MVN $00,$00				;/
+		SEP #$30				; > All regs 8-bit
+
+		PHK : PLB				; > Switch banks
+		LDA !Characters				;\
+		LSR #4					; |
+		ASL A					; | Check for player 1 character ID
+		CMP.b #..End-..List			; |
+		BCC ..P1 : JMP ..P2			;/
 
 		..P1
-		TAX				; > X = index
-		LDA #$00 : STA !CurrentPlayer	; > Processing P1
-		TDC : STA $3000			;\ Backup DP
-		XBA : STA $3001			;/
-		LDA #$6D : XBA			;\ DP = $6DA0
-		LDA #$A0 : TCD			;/
-		LDA $03 : PHA			;\
-		LDA $05 : PHA			; |
-		LDA $07 : PHA			; |
-		LDA $09 : PHA			; | Copy P1 input to P2
-		LDA $02 : STA $03		; |
-		LDA $04 : STA $05		; |
-		LDA $06 : STA $07		; |
-		LDA $08 : STA $09		;/
-		LDA $3001 : XBA			;\ Restore DP
-		LDA $3000 : TCD			;/
+		TAX					; > X = index
+		LDA #$00 : STA !CurrentPlayer		; > Processing P1
+		LDA $6DA3 : PHA				;\
+		LDA $6DA5 : PHA				; |
+		LDA $6DA7 : PHA				; |
+		LDA $6DA9 : PHA				; | Copy P1 input to P2
+		LDA $6DA2 : STA $6DA3			; |
+		LDA $6DA4 : STA $6DA5			; |
+		LDA $6DA6 : STA $6DA7			; |
+		LDA $6DA8 : STA $6DA9			;/
 		LDA !P2Status
 		CMP #$02 : BNE +
 		REP #$20
-		LDA !PlayerBackupData+$02 : STA !P2XPosLo
-		LDA !PlayerBackupData+$06 : STA !P2YPosLo
+		LDA !PlayerBackupData+$21 : STA !P2XPosLo
+		LDA !PlayerBackupData+$24 : STA !P2YPosLo
 		BRA +++
 		+
 
-		REP #$20			;\
-		STZ !P2Hurtbox+4		; | Reset hitboxes
-		STZ !P2Hitbox+4			; |
-		SEP #$20			;/
-
-		LDA !P2Platform : BNE ++	;\
-		LDA !P2SpritePlatform		; | Sprite platform setup
-		STA !P2Platform			; |
-		BEQ ++				; |
-		LDA #$04 : TSB !P2Blocked	; |
-		++				;/
-		LDA !P2ExtraInput1		;\
-		BEQ $03 : STA $6DA3		; |
-		LDA !P2ExtraInput2		; |
-		BEQ $03 : STA $6DA7		; | Input overwrite
-		LDA !P2ExtraInput3		; |
-		BEQ $03 : STA $6DA5		; |
-		LDA !P2ExtraInput4		; |
-		BEQ $03 : STA $6DA9		;/
-		JSR ClearBox
+		LDA !P2Platform : BNE ++		;\
+		LDA !P2SpritePlatform			; | Sprite platform setup
+		STA !P2Platform				; |
+		BEQ ++					; |
+		LDA #$04 : TSB !P2Blocked		; |
+		++					;/
+		LDA !P2ExtraInput1			;\
+		BEQ $03 : STA $6DA3			; |
+		LDA !P2ExtraInput2			; |
+		BEQ $03 : STA $6DA7			; | Input overwrite
+		LDA !P2ExtraInput3			; |
+		BEQ $03 : STA $6DA5			; |
+		LDA !P2ExtraInput4			; |
+		BEQ $03 : STA $6DA9			;/
+		REP #$20				;\
+		STZ !P2Hitbox1+4			; | clear hitbox by setting size to 0
+		STZ !P2Hitbox2+4			; |
+		SEP #$20				;/
 		JSR Stasis
-		JSR (..List,x)			; > Run code for player 1
+		JSR (..List,x)				; > run code for player 1
 		LDA !Characters
 		AND #$F0
 		BEQ +
-		REP #$20			;\
-		STZ !P2ExtraInput1		; | Clear input overwrite
-		STZ !P2ExtraInput3		; |
-		SEP #$20			;/
-	+	LDA !P2SpritePlatform : BEQ +	;\
-		STA !P2PrevPlatform		; | Sprite platform clear
-		STZ !P2SpritePlatform		; |
-		+				;/
+		REP #$20				;\
+		STZ !P2ExtraInput1			; | Clear input overwrite
+		STZ !P2ExtraInput3			; |
+		SEP #$20				;/
+	+	STZ !P2SpritePlatform			; clear sprite platform
 
-		LDA !CurrentMario : BNE +	; > Mario check
-		LDA !Characters			;\
-		AND #$0F			; |
-		BEQ +				; |
-		REP #$20			; | Make sure "Mario" tags along even if no one plays him
-		LDA !P2XPosLo : STA $94		; |
-		LDA !P2YPosLo : STA $96		; |
-	+++	SEP #$20			;/
-	+	PLA : STA $6DA9			;\
-		PLA : STA $6DA7			; | Restore P2 input
-		PLA : STA $6DA5			; |
-		PLA : STA $6DA3			;/
+		LDA !CurrentMario : BNE +		; > Mario check
+		LDA !Characters				;\
+		AND #$0F : BEQ +			; |
+		REP #$20				; | Make sure "Mario" tags along even if no one plays him
+		LDA !P2XPosLo : STA $94			; |
+		LDA !P2YPosLo : STA $96			; |
+	+++	SEP #$20				;/
+	+	PLA : STA $6DA9				;\
+		PLA : STA $6DA7				; | Restore P2 input
+		PLA : STA $6DA5				; |
+		PLA : STA $6DA3				;/
 
 
 		..P2
-		LDA #$01 : STA !CurrentPlayer	; > Processing P2
-		REP #$30			; > All regs 16-bit
-		LDA.w #$007F			;\
-		LDX.w #!P2Base			; | Put player 1 data in proper location
-		LDY.w #!P1Base			; |
-		MVN $00,$00			;/
-		LDA.w #$007F			;\
-		LDX.w #!PlayerBackupData	; | Restore player 2 data
-		LDY.w #!P2Base			; |
-		MVN $00,$40			;/
-		SEP #$30			; > All regs 8-bit
+		LDA #$01 : STA !CurrentPlayer		; > Processing P2
+		REP #$30				; > All regs 16-bit
+		LDA.w #$007F				;\
+		LDX.w #!P2Base				; | Put player 1 data in proper location
+		LDY.w #!P1Base				; |
+		MVN $00,$00				;/
+		LDA.w #$007F				;\
+		LDX.w #!PlayerBackupData		; | Restore player 2 data
+		LDY.w #!P2Base				; |
+		MVN $00,$40				;/
+		SEP #$30				; > All regs 8-bit
 
-		PHK : PLB			; > Switch banks
-		LDA !MultiPlayer : BNE ++	;\ P2 is always dead if multiplayer is disabled
-		LDA #$02 : STA !P2Status	;/
+		PHK : PLB				; > Switch banks
+		LDA !MultiPlayer : BNE ++		;\ P2 is always dead if multiplayer is disabled
+		LDA #$02 : STA !P2Status		;/
 	-	REP #$20
 		LDA !P2XPosLo-$80 : STA !P2XPosLo
 		LDA !P2YPosLo-$80 : STA !P2YPosLo
@@ -367,57 +384,76 @@ sa1rom
 		RTL
 
 	++	LDA !P2Status : CMP #$02 : BEQ -
-		LDA !Characters			;\
-		AND #$0F			; | Check for player 2 character ID
-		ASL A				; |
-		CMP.b #..End-..List		;/
-		BCS +				; > Return if character ID is illegal
-		TAX				;
-		REP #$20			;\
-		STZ !P2Hurtbox+4		; | Reset hitboxes
-		STZ !P2Hitbox+4			; |
-		SEP #$20			;/
+		LDA !Characters				;\
+		AND #$0F				; | Check for player 2 character ID
+		ASL A					; |
+		CMP.b #..End-..List			;/
+		BCS +					; > Return if character ID is illegal
+		TAX					;
 
-
-		LDA !P2Platform : BNE +++	;\
-		LDA !P2SpritePlatform		; | Sprite platform setup
-		STA !P2Platform			; |
-		BEQ +++				; |
-		LDA #$04 : TSB !P2Platform	; |
-		+++				;/
-		LDA !P2ExtraInput1		;\
-		BEQ $03 : STA $6DA3		; |
-		LDA !P2ExtraInput2		; |
-		BEQ $03 : STA $6DA7		; | Input overwrite
-		LDA !P2ExtraInput3		; |
-		BEQ $03 : STA $6DA5		; |
-		LDA !P2ExtraInput4		; |
-		BEQ $03 : STA $6DA9		;/
-		JSR ClearBox
+		LDA !P2Platform : BNE +++		;\
+		LDA !P2SpritePlatform			; | Sprite platform setup
+		STA !P2Platform				; |
+		BEQ +++					; |
+		LDA #$04 : TSB !P2Platform		; |
+		+++					;/
+		LDA !P2ExtraInput1			;\
+		BEQ $03 : STA $6DA3			; |
+		LDA !P2ExtraInput2			; |
+		BEQ $03 : STA $6DA7			; | Input overwrite
+		LDA !P2ExtraInput3			; |
+		BEQ $03 : STA $6DA5			; |
+		LDA !P2ExtraInput4			; |
+		BEQ $03 : STA $6DA9			;/
+		REP #$20				;\
+		STZ !P2Hitbox1+4			; | clear hitbox by setting size to 0
+		STZ !P2Hitbox2+4			; |
+		SEP #$20				;/
 		JSR Stasis
-		JSR (..List,x)			; > Run code for player 2
+		JSR (..List,x)				; > run code for player 2
 		LDA !Characters
 		AND #$0F
 		BEQ +
-		REP #$20			;\
-		STZ !P2ExtraInput1		; | Clear input overwrite
-		STZ !P2ExtraInput3		; |
-		SEP #$20			;/
-	+	LDA !P2SpritePlatform : BEQ +	;\
-		STA !P2PrevPlatform		; | Sprite platform clear
-		STZ !P2SpritePlatform		; |
-		+				;/
-		SEP #$30			; > All regs 8-bit
-	+	RTL				; > Return
+		REP #$20				;\
+		STZ !P2ExtraInput1			; | Clear input overwrite
+		STZ !P2ExtraInput3			; |
+		SEP #$20				;/
+	+	STZ !P2SpritePlatform			; clear sprite platform
+		SEP #$30				; > All regs 8-bit
+		RTL					; > Return
 
 
 		..List
-		dw Mario			; 0
-		dw Luigi			; 1
-		dw Kadaal			; 2
-		dw Leeway			; 3
-		dw Alter			; 4
+		dw Mario				; 0
+		dw Luigi				; 1
+		dw Kadaal				; 2
+		dw Leeway_Redirect			; 3
+		dw Alter				; 4
 		..End
+
+
+	Leeway_Redirect:
+		JSL Leeway
+		RTS
+
+
+	RunMario:
+		LDA !MarioAnim : BEQ .Return		;\
+		CMP #$09 : BNE +			; |
+		LDA !CurrentMario : BEQ +		; | if mario status = 9 and mario is in play, set PCE kill reg
+		LDA !P2Status : BNE +			; |
+		INC !P2Status				;/
+	+	LDA !MarioAnim				;\
+		PHB					; |
+		LDX #$00 : PHX : PLB			; |
+		PHK : PEA.w .MarioReturn-1		; |
+		PEA $84CF-1				; | if mario animation/status != 0, execute special code
+		JML $00C595				; |
+		.MarioReturn				; |
+		PLB					; |
+		.Return					; |
+		RTS					;/
+
 
 
 print "PCE CORE inserted at ", pc, ". ($", hex(Mario-CORE), " bytes)"
@@ -431,35 +467,27 @@ BITS:	db $01,$02,$04,$08,$10,$20,$40,$80
 	incsrc "CORE/SPRITE_INTERACTION.asm"
 	incsrc "CORE/EXSPRITE_INTERACTION.asm"
 	incsrc "CORE/UPDATE_SPEED.asm"
-	incsrc "CORE/LAYER_INTERACTION.asm"
+	incsrc "CORE/PLUMBER_SWIM.asm"
+	incsrc "CORE/PLUMBER_CARRY.asm"
+	incsrc "CORE/COLLISION.asm"
 	incsrc "CORE/LOAD_TILEMAP.asm"
 	incsrc "CORE/GENERATE_RAMCODE.asm"
 	incsrc "CORE/PIPE.asm"
 	incsrc "CORE/SCREEN_BORDER.asm"
-	incsrc "CORE/CLIMB_GROUND.asm"
+	incsrc "CORE/OUTPUT_HURTBOX.asm"
 	incsrc "CORE/HURT.asm"
 	incsrc "CORE/ATTACK.asm"
 	incsrc "CORE/SET_XSPEED.asm"
 	incsrc "CORE/COYOTE_TIME.asm"
 	incsrc "CORE/SET_GLITTER.asm"
+	incsrc "CORE/SET_SPLASH.asm"
+	incsrc "CORE/SMOKE_AT_FEET.asm"
 	incsrc "CORE/PLAYER_CLIPPING.asm"
 	incsrc "CORE/PLATFORM.asm"
 	incsrc "CORE/KNOCKED_OUT.asm"
 	incsrc "CORE/DISPLAY_CONTACT.asm"
+	incsrc "CORE/CHECK_ABOVE.asm"
 	namespace off
-
-
-
-	ClearBox:
-		REP #$20			;\
-		STZ !P2Hurtbox+0		; |
-		STZ !P2Hurtbox+2		; |
-		STZ !P2Hurtbox+4		; | Clear hurt/hitbox
-		STZ !P2Hitbox+0			; |
-		STZ !P2Hitbox+2			; |
-		STZ !P2Hitbox+4			; |
-		SEP #$20			;/
-		RTS
 
 
 	Stasis:
@@ -469,7 +497,6 @@ BITS:	db $01,$02,$04,$08,$10,$20,$40,$80
 		STZ $6DA5
 		STZ $6DA9
 		DEC !P2AnimTimer
-
 		LDA !CurrentPlayer
 		INC A
 		CMP !CurrentMario : BNE .Return
@@ -477,7 +504,6 @@ BITS:	db $01,$02,$04,$08,$10,$20,$40,$80
 		STZ $16
 		STZ $17
 		STZ $18
-
 	.Return	RTS
 
 
@@ -492,27 +518,42 @@ BITS:	db $01,$02,$04,$08,$10,$20,$40,$80
 	Mario:
 	print " "
 	print "Mario modification code inserted at $", pc, " ($", hex(Luigi-Mario), " bytes)"
-	incsrc "Mario.asm"
+	incsrc "characters/Mario.asm"
 	Luigi:
 	print " "
 	print "Luigi code inserted at $", pc, " ($", hex(Kadaal-Luigi), " bytes)"
-	incsrc "Luigi.asm"
+	incsrc "characters/Luigi.asm"
 	Kadaal:
 	print " "
-	print "Kadaal code inserted at $", pc, " ($", hex(Leeway-Kadaal), " bytes)"
-	incsrc "Kadaal.asm"
+	print "Kadaal code inserted at $", pc, " ($", hex(End15-Kadaal), " bytes)"
+	incsrc "characters/Kadaal.asm"
+
+End15:
+print " "
+print "$", hex($160000-End15), " bytes left in bank."
+print " "
+
+	org $1F8000
 	Leeway:
 	print " "
 	print "Leeway code inserted at $", pc, " ($", hex(Alter-Leeway), " bytes)"
-	incsrc "Leeway.asm"
+	incsrc "characters/Leeway.asm"
 	Alter:
 	print " "
-	print "Alter code inserted at $", pc, " ($", hex(End-Alter), " bytes)"
-	incsrc "Alter.asm"
+	print "Alter code inserted at $", pc, " ($", hex(End1F-Alter), " bytes)"
+	incsrc "characters/Alter.asm"
 
 
-End:
+End1F:
 print " "
-print "$", hex(End-PLAYER2+8), " bytes used by this patch."
-print "$", hex($160000-End), " bytes left in bank."
+print "$", hex($200000-End1F), " bytes left in bank."
 print " "
+
+
+	; store this pointer at the end to prevent breaking
+	org $00E3D6				; property
+		dl CORE_PlayerClipping		; $00E3D6 is a psuedo-vector!
+
+
+
+

@@ -59,7 +59,7 @@ Birdo:
 		INC $9E,X
 	++	JSL !SpriteApplySpeed-$10
 		JSL !SpriteApplySpeed-$08
-		JSL SPRITE_OFF_SCREEN_Long
+		JSL SPRITE_OFF_SCREEN
 
 		INC !BirdoHurtTimer
 		STZ !BirdoInvincTimer
@@ -96,7 +96,7 @@ Birdo:
 
 
 	PHYSICS:
-		JSL SUB_HORZ_POS_Long
+		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
 
 		LDA $3330,x				;\ Can't gain Xspeed in midair
@@ -145,7 +145,7 @@ Birdo:
 
 		JSL !GetSpriteSlot
 		BMI .NoShoot
-		JSL SPRITE_A_SPRITE_B_COORDS_Long
+		JSL SPRITE_A_SPRITE_B_COORDS
 		LDA $3210,x
 		SEC : SBC #$10
 		STA $3210,y
@@ -195,7 +195,7 @@ Birdo:
 		ORA !BirdoInvincTimer
 		BNE .NoDamage
 
-		JSL P2Attack_Long
+		JSL P2Attack
 		BCC .NoAttack
 		JSR Hurt
 		.NoAttack
@@ -300,7 +300,7 @@ Birdo:
 		LDA #$08 : STA !BigRAM+$00		; |
 		+					;/
 
-		JSL LOAD_PSUEDO_DYNAMIC_Long
+		JSL LOAD_PSUEDO_DYNAMIC
 
 
 		.Return
@@ -330,7 +330,7 @@ Birdo:
 		CMP #$10 : BCC .Side
 
 		.Top
-		JSL P2Bounce_Long
+		JSL P2Bounce
 		LDA #$02 : STA !SPC1
 		RTS
 
@@ -388,7 +388,7 @@ Birdo:
 
 
 	.Inter	JSL !GetSpriteClipping04
-		JSL P2Attack_KnockBack_Long
+		JSL P2Attack
 		BCC +
 		LDA #$02 : STA !SPC1
 		LDA #$09 : STA $3230,x
@@ -410,7 +410,7 @@ Birdo:
 		REP #$20
 		LDA.w #.EggTM : STA $04
 		SEP #$20
-		JSL LOAD_TILEMAP_Long
+		JSL LOAD_TILEMAP
 
 	.Return	PLB
 	.INIT	RTL
@@ -433,7 +433,7 @@ Birdo:
 		BMI ..Side
 		CMP #$10 : BCC ..Side
 
-	..Top	JSL P2Bounce_Long
+	..Top	JSL P2Bounce
 		LDA #$13 : STA !SPC1
 		LDA $AE,x
 		JSR LakituLovers_Idle_Halve

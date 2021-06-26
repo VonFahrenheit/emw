@@ -43,55 +43,6 @@ sa1rom
 
 	incsrc "../Defines.asm"
 
-;======;
-;MACROS;
-;======;
-
-macro loadOAMindex()
-	LDA !OAMindex
-	TAY
-	CLC : ADC #$04
-	STA !OAMindex
-	BCC ?NoOverflow
-	INC !OAMindexhi
-	?NoOverflow:
-endmacro
-
-macro loadOAMindex2()
-	LDA !OAMindex
-	TAY
-	CLC : ADC #$08
-	STA !OAMindex
-	BCC ?NoOverflow
-	INC !OAMindexhi
-	?NoOverflow:
-endmacro
-
-macro loadOAMindex4()
-	LDA !OAMindex
-	TAY
-	CLC : ADC #$10
-	STA !OAMindex
-	BCC ?NoOverflow
-	INC !OAMindexhi
-	?NoOverflow:
-endmacro
-
-
-macro minorOAMremap1(address)
-	org <address>
-	JSL OAM_handler_minor1
-	NOP #2
-endmacro
-
-
-macro minorOAMremap2(address)
-	org <address>
-	JSL OAM_handler_minor2
-	NOP #2
-endmacro
-
-
 
 ;=============;
 ;OAM REMAPPING;
@@ -100,15 +51,20 @@ endmacro
 ; --Remap sprites--
 
 	org $0180D2
-		JML OAM_handler				;\ Source: PHX : TXA : LDX $1692
-		NOP					;/
+	;	JML OAM_handler				;\ Source: PHX : TXA : LDX $1692
+	;	NOP					;/
+		PHX
+		TXA
+		LDX $7692
+
+
 
 ; --Remap minor extended sprites--
 
 	;%minorOAMremap1($028CFF)			;\
 	;%minorOAMremap1($028D8B)			; |
 	;%minorOAMremap1($028E20)			; |
-	%minorOAMremap2($028E94)			; | Remap minor extended sprite indexes
+	;%minorOAMremap2($028E94)			; | Remap minor extended sprite indexes
 	;%minorOAMremap1($028EE1)			; |
 	;%minorOAMremap1($028F4D)			; |
 	;%minorOAMremap1($028FDD)			;/
@@ -219,17 +175,23 @@ endmacro
 ; --Remap bounce sprites--
 
 	org $02922D
-		JML OAM_handler_bounce			;\ Source: LDY $91ED,x : LDA $16A1,x
-		NOP #2					;/
+	;	JML OAM_handler_bounce			;\ Source: LDY $91ED,x : LDA $16A1,x
+	;	NOP #2					;/
 		.bounce
 
 ; -- Remap coin sprites --
 
 	org $029A3D
-		JML OAM_handler_coin			;\ org: LDY $99E9,x : STY $0F
-		NOP
+	;	JML OAM_handler_coin			;\ org: LDY $99E9,x : STY $0F
+	;	NOP
 		.coin
 
+
+; -- Remap $7474 to $7475 --
+	org $03C53F
+		STA $7475
+	org $03C595
+		LDA $7475
 
 ;==============;
 ;LAYER PRIORITY;
@@ -378,7 +340,9 @@ org $058526
 
 
 	org $00AACD
-		JML LoadGFX
+	;	JML LoadGFX
+		LDX #$07
+		LDA [$00]
 	ReturnGFX:
 		RTS
 
@@ -425,7 +389,8 @@ org $058526
 
 	; this is Lunar Magic's layer 3 GFX uploader (it can actually load anything, so we'll abuse that)
 	org $0FFA39
-		JML BG3Fix_GFX				; source: REP #$20 : PHX : TXA
+;		JML BG3Fix_GFX				; source: REP #$20 : PHX : TXA
+		REP #$20 : PHX : TXA
 	Return_BG3_GFX:
 	org $0FFA6A
 	.Next
@@ -435,15 +400,15 @@ org $058526
 
 	; this is Lunar Magic's layer 3 tilemap uploader
 	org $0FFE7B					; source:
-		JSL BG3Fix_Tilemap			; STA $4325
+;		JSL BG3Fix_Tilemap			; STA $4325
 		RTS : NOP				; STX $2116
 		NOP #6					; LDA #$1801 : STA $4320
-		NOP #3					; STY $4322
-		NOP #2					; SEP #$20
-		NOP #5					; LDA #$7E : STA $4324
-		NOP #5					; LDA #$80 : STA $2115
-		NOP #5					; LDA #$04 : STA $420B
-		RTS					; RTS
+;		NOP #3					; STY $4322
+;		NOP #2					; SEP #$20
+;		NOP #5					; LDA #$7E : STA $4324
+;		NOP #5					; LDA #$80 : STA $2115
+;		NOP #5					; LDA #$04 : STA $420B
+;		RTS					; RTS
 	warnpc $0FFE9C
 
 
@@ -453,19 +418,19 @@ org $058526
 org $12A000
 print "-- VR3 --"
 print "VR3 inserted at $", pc, "."
-LoadGFX:	LDA #$1801 : STA $4300			;\
-		LDA $00 : STA $4302			; |
-		LDX $02 : STX $4304			; | load GFX using DMA instead of CPU loop
-		TYA					; | this should load a level ~5 frames faster than the old method
-		INC A					; | (saves almost exactly 80 scanlines per 4KB chunk)
-		XBA					; |
-		LSR #3					; |
-		STA $4305				; |
-		LDX #$01 : STX $420B			; |
-		SEP #$20				; |
-		JML ReturnGFX				;/
-
-
+;LoadGFX:	LDA #$1801 : STA $4300			;\
+;		LDA $00 : STA $4302			; |
+;		LDX $02 : STX $4304			; | load GFX using DMA instead of CPU loop
+;		TYA					; | this should load a level ~5 frames faster than the old method
+;		INC A					; | (saves almost exactly 80 scanlines per 4KB chunk)
+;		XBA					; |
+;		LSR #3					; |
+;		STA $4305				; |
+;		LDX #$01 : STX $420B			; |
+;		SEP #$20				; |
+;		JML ReturnGFX				;/
+;
+;
 ; this is a hijack of Lunar Magic's BG3 tilemap uploader
 ; when we get here:
 ; A = size of file
@@ -474,102 +439,114 @@ LoadGFX:	LDA #$1801 : STA $4300			;\
 ; source bank is always $7E
 ; DMA parameters are always 0x1801 (video port control = 0x80)
 ; A should return 8-bit and index should return unchanged
-	BG3Fix:
-
-	.Tilemap
-		STA $4325
-		LDA #$1801 : STA $4320
-		CPX #$50A0				;\ remap source $50A0 to $5000
-		BNE $03 : LDX #$5000			;/ (fixes LM's "below status bar" option)
-		STX $2116				; VRAM address
-
-		CPY #$AE40				;\ remap source $AE40 to $AD00
-		BNE $03 : LDY #$AD00			;/ (fixes LM's "below status bar" option)
-		STY $4322				; source address
-
-		SEP #$20
-		LDA #$7E : STA $4324
-		LDA #$80 : STA $2115
-		LDX !Level
-		LDA.l $188250,x
-		CMP #$01 : BNE ..M00
-
-	..M01	LDA #$58 : STA $2117			; remap VRAM page to 0x5800 area
-		LDA #$10				;\
-		CMP $4326 : BCS ..M00			; | cap upload size at 4KB
-		STA $4326				; |
-		STZ $4325				;/
-
-	..M00	LDA #$04 : STA $420B
-		RTL
-
+;	BG3Fix:
+;
+;	.Tilemap
+;		STA $4325
+;		LDA #$1801 : STA $4320
+;		CPX #$50A0				;\ remap source $50A0 to $5000
+;		BNE $03 : LDX #$5000			;/ (fixes LM's "below status bar" option)
+;		STX $2116				; VRAM address
+;
+;		CPY #$AE40				;\ remap source $AE40 to $AD00
+;		BNE $03 : LDY #$AD00			;/ (fixes LM's "below status bar" option)
+;		STY $4322				; source address
+;
+;		SEP #$20
+;		LDA #$7E : STA $4324
+;		LDA #$80 : STA $2115
+;		LDX !Level
+;		LDA.l !VRAM_map_table,x
+;		CMP #$01 : BEQ ..M01
+;		CMP #$02 : BNE ..M00
+;
+;	..M02
+;	..M01	LDA #$58 : STA $2117			; remap VRAM page to 0x5800 area
+;		LDA #$10				;\
+;		CMP $4326 : BCS ..M00			; | cap upload size at 4KB (you can actually read these)
+;		STA $4326				; |
+;		STZ $4325				;/
+;
+;	..M00	LDA #$04 : STA $420B
+;		RTL
+;
 ; here is Lunar Magic's BG3 GFX uploader!
 ; it can actually upload anything... even 4bpp files >:D
 ; it uses hardcoded VRAM addresses, so we can easily repoint those
+; VRAM map mode
+;	.GFX
+;		PHX
+;		REP #$10
+;		LDX !Level
+;		LDA.l !VRAM_map_table,x
+;		SEP #$10
+;		CMP #$01 : BEQ ..map01
+;		CMP #$02 : BEQ ..map02
+;
+;	..map00
+;		REP #$20
+;		PLX : PHX
+;		TXA
+;		JML Return_BG3_GFX
+;
+;	..map02					; these use the same setup, except...
+;		LDA $01,s			;\
+;		CMP #$03 : BNE ..map01		; |
+;		LDA #$80 : STA $2115		; |
+;		REP #$20			; |
+;		LDA #$1809 : STA $4310		; | clear displacement map when uploading the first BG3 file
+;		LDA.w #..some00 : STA $4312	; |
+;		LDX.b #..some00>>16 : STX $4314	; |
+;		LDA #$1000 : STA $4315		; |
+;		LDA #$5800 : STA $2116		; |
+;		LDX #$02 : STX $420B		;/
+;		LDX #$7E : STX $4314		; > restore source bank
+;
+;	..map01
+;		REP #$20			; A 16-bit
+;		LDX #$80 : STX $2115		; word writes
+;		PLX : PHX			; get index from stack without removing it
+;		CPX #$02 : BCC ...4bpp		; GFX28 and GFX29 are still 2bpp
+;
+;	...2bpp	TXA				;\
+;		ASL A				; |
+;		TAX				; | move LM VRAM address from 0x4000 to 0x5000
+;		LDA.l $0FFA7F,x			; |
+;		ORA #$1000			; |
+;		STA $2116			;/
+;		LDA #$1801 : STA $4310		; DMA parameters
+;		LDA #$AD00 : STA $4312		;\ source: $7EAD00
+;		LDX #$7E : STX $4314		;/
+;		LDA #$0800 : STA $4315		; 2KB
+;		LDX #$02 : STX $420B		; start DMA
+;		JML Return_BG3_GFX_Next
+;
+;	...4bpp	LDA.l ...addr-1,x		;\
+;		AND #$FF00			; | VRAM address
+;		STA $2116			;/
+;		LDA #$AD00 : STA $4312		;\
+;		LDX #$7E : STX $4314		; |
+;		LDA #$1000 : STA $4315		; | upload 4bpp GFX
+;		LDX #$02 : STX $420B		; |
+;		JML Return_BG3_GFX_Next		;/
+;
+;	...addr	db $38,$30			; hi byte of VRAM address for GFX2A and GFX2B with map 01 (reverse order)
+;	..some00
+;		db $00
 
-	.GFX
-		PHX
-		REP #$10
-		LDX !Level
-		LDA.l $188250,x
-		SEP #$10
-		CMP #$01 : BEQ ..map01
-
-	..map00
-		REP #$20
-		PLX : PHX
-		TXA
-		JML Return_BG3_GFX
 
 
-	..map01
-		REP #$20
-		LDX #$80 : STX $2115		; word writes
-		PLX : PHX			; get index from stack without removing it
-		CPX #$02 : BCS ...2bpp		; GFX28 and GFX29 are still 2bpp
-
-	...4bpp	LDA.l ...addr-1,x		;\
-		AND #$FF00			; | preserve VRAM address
-		PHA				;/
-
-		LDA #$3981 : STA $4310		; DMA parameters: VRAM download
-		LDA #$0200 : STA $4312		;\ download into $7E0200 (currently empty SNES WRAM)
-		LDX #$00 : STX $4314		;/
-		LDA #$1000 : STA $4315		; 4KB
-		PLA : PHA			;\ VRAM address
-		STA $2116			;/
-		LDA $2139			; dummy read
-		LDX #$02 : STX $420B		; start download
-		LDA #$1801 : STA $4310		;\
-		LDA #$0200 : STA $4312		; |
-		LDX #$00 : STX $4314		; |
-		LDA #$1000 : STA $4315		; | upload downloaded data to 0x4000 area
-		PLA : PHA			; |
-		CLC : ADC #$1000		; |
-		STA $2116			; |
-		LDX #$02 : STX $420B		;/
-		LDA #$AD00 : STA $4312		;\
-		LDX #$7E : STX $4314		; | and finally, upload decompressed 4KB of GFX
-		PLA : STA $2116			; |
-		LDA #$1000			; |
-		BRA ...go			;/
-
-	...2bpp	TXA				;\
-		ASL A				; |
-		TAX				; | move LM VRAM address from 0x4000 to 0x5000
-		LDA.l $0FFA7F,x			; |
-		ORA #$1000			; |
-		STA $2116			;/
-		LDA #$1801 : STA $4310		; DMA parameters
-		LDA #$AD00 : STA $4312		;\ source: $7EAD00
-		LDX #$7E : STX $4314		;/
-		LDA #$0800			; 2KB
-	...go	STA $4315
-		LDX #$02 : STX $420B		; start DMA
-		JML Return_BG3_GFX_Next
-
-	...addr	db $38,$30			; hi byte of VRAM address for GFX2A and GFX2B with map 01 (reverse order)
-
+macro MoveCode()
+		PHB
+		PHY
+		TXY
+		LDX.w #..code
+		LDA.w #..end-..code
+		MVN $40,..code>>16
+		TYX
+		PLY
+		PLB
+endmacro
 
 
 
@@ -580,9 +557,22 @@ Build_RAM_Code:
 		LDA.b #.SA1 : STA $3180
 		LDA.b #.SA1>>8 : STA $3181
 		LDA.b #.SA1>>16 : STA $3182
+
+		LDA !GameMode
+		CMP #$14 : BEQ .Light
 		JSR $1E80
+		BRA +
+
+	.Light	LDA #$80 : STA $2200				;\ SNES will run light shader while SA-1 is generating NMI code
+		JSR !MPU_light					;/
+		+
 
 		LDA !HDMA : STA $1F0C				; double mirror HDMA enable to minimize errors caused by lag
+
+	if !TrackOAM == 1
+	endif
+
+
 
 	if !TrackCPU == 1
 	; 00 - call count
@@ -675,8 +665,14 @@ Build_RAM_Code:
 		RTL
 
 	.Main
-		STZ !OAMindex					;\ clear these at the end of every game loop
-		STZ !OAMindexhi					;/
+		REP #$20
+		LDA #$0000
+		STA !OAMindex					; clear OAM index regs
+		STA.l !OAMindex_p0
+		STA.l !OAMindex_p1
+		STA.l !OAMindex_p2
+		STA.l !OAMindex_p3
+		SEP #$20
 		LDA !AnimToggle					;\ check for disabled tilemap update
 		AND #$02 : BNE .NoScrollData			;/
 		LDA !GameMode
@@ -810,6 +806,7 @@ Build_RAM_Code:
 ;		priority then goes as follow:
 ;		- VR2 palettes
 ;		- up to 1KB of large CCDMA (selected by index)
+;		- dynamic tiles
 ;		- VR2 GFX
 ;		- small CCDMA
 ;		- remaining large CCDMA
@@ -818,6 +815,7 @@ Build_RAM_Code:
 ;		VR2 paletets are so small that they hardly make a difference.
 ;		the reason to prioritize some large CCMDA per frame is that otherwise it will likely never be done
 ;		the limit was chosen so that the text box CCDMA will always be prioritized here with its 2 * 512 byte size
+;		dynamic tiles are effectively "high priority VR2 uploads", which is why they go right before VR2 GFX
 ;		VR2 GFX have the most flexible limiter, which is why they are placed in the middle
 ;		you might expect this to mean they should be placed last, but this is not the case as they are often the most important transfers
 ;		this way they are likely to be worked on every frame
@@ -845,7 +843,7 @@ Build_RAM_Code:
 ;		VR2 GFX: advanced limiter					(arbitrary size, already limited)
 ;		
 ;
-; seemingly, DMA transfers ~178 bytes per scanline
+; seemingly, DMA transfers ~178 bytes per scanline (roughly 5.6 4bpp 8x8 tiles)
 ;
 
 ; CCDMA table:
@@ -887,8 +885,10 @@ Build_RAM_Code:
 	.Level
 		LDA !AnimToggle
 		AND #$0002 : BNE .NoScroll			; if bit 1 is set, disable tilemap update
-		JSR .AppendColumn1
-		JSR .AppendRow1
+		LDA.l !UpdateBG1Column				;\ update column
+		BEQ $03 : JSR .AppendColumn1			;/
+		LDA.l !UpdateBG1Row				;\ update row
+		BEQ $03 : JSR .AppendRow1			;/
 		LDA.l $7925					;\
 		AND #$00FF : BEQ .Layer2BG			; |
 		CMP #$0003 : BCC .Layer2Level			; |
@@ -897,11 +897,14 @@ Build_RAM_Code:
 		CMP #$000F : BEQ .Layer2Level			; |
 		CMP #$001F : BEQ .Layer2Level			;/
 	.Layer2BG
-		PEA .NoScroll-1
-		JMP .AppendBackground
+		LDA.l !UpdateBG2Row : BEQ .NoScroll		;\
+		PEA .NoScroll-1					; | update background
+		JMP .AppendBackground				;/
 	.Layer2Level
-		JSR .AppendColumn2
-		JSR .AppendRow2
+		LDA.l !UpdateBG2Column				;\ update column
+		BEQ $03 : JSR .AppendColumn2			;/
+		LDA.l !UpdateBG2Row				;\ update row
+		BEQ $03 : JSR .AppendRow2			;/
 		.NoScroll
 
 
@@ -930,6 +933,10 @@ Build_RAM_Code:
 		REP #$20
 		LDA !AnimToggle					;\ bit 0 disables vanilla animations
 		AND #$0001 : BNE .SkipSMW			;/
+		PHY						;\
+		LDY.w #!File_DynamicVanilla			; | get address of "GFX33"
+		JSL !GetFileAddress				; |
+		PLY						;/
 		LDA.l $6D7C					;\ update slot 1
 		BEQ $03 : JSR .AppendSMW0D7C			;/
 		LDA.l $6D7E					;\ update slot 2
@@ -960,9 +967,20 @@ Build_RAM_Code:
 
 
 	;
+	; light shader
+	;
+		LDA.l !LightBuffer-1 : BPL .NoLight		;\
+		AND #$7FFF : STA.l !LightBuffer-1		; | if a new shade operation is complete, clear the flag and append it
+		JSR .AppendLight				; |
+		.NoLight					;/
+
+
+
+
+
+	;
 	; high priority big CCDMA block
 	;
-
 		PHX						; preserve RAMcode index
 		LDA $0E
 		PHD
@@ -1057,6 +1075,32 @@ Build_RAM_Code:
 		STA $0E						;/
 		PLX						; restore RAMcode index
 
+
+	;
+	; square dynamo block
+	;
+		LDA !GFX_Dynamic
+		AND #$00FF
+		STA $00
+		AND #$0080
+		TRB $00
+		BEQ $02 : INC $01
+		LDA $00
+		AND #$0070 : TRB $00
+		ASL A
+		ORA $00
+		ASL #4
+		ORA #$6000
+		STA $00
+		LDY #$0000
+	-	LDA.w !SquareTable+$00,y : BEQ +
+		JSR .AppendSquare
+		BRA ++
+	+	INY #4
+	++	CPY #$0040 : BCC -
+
+
+
 	;
 	; VR2 VRAM block
 	;
@@ -1078,7 +1122,6 @@ Build_RAM_Code:
 		CPY.w !VRAMslot : BNE -				; > keep going until starting index is encountered again
 		STZ.w !VRAMslot					; clear slot when getting to the end of the table
 		.NoVRAM
-
 
 	;
 	; small CCDMA block
@@ -1197,18 +1240,16 @@ Build_RAM_Code:
 
 	;
 	; ExAnimation block
-	;
+	; NOTE: when reading this code, note that .l $0180 is bank 0, but .w $0180 is bank $40 (same as $6180)
 		LDA !AnimToggle
 		AND #$0004 : BNE .NoExAnimation
-		PHB : PHK : PLB
-		LDA.w #FetchExAnim : STA $0183			;\
-		LDA.w #FetchExAnim>>8 : STA $0184		; |
+		LDA.w #FetchExAnim : STA.l $0183		;\
+		LDA.w #FetchExAnim>>8 : STA.l $0184		; |
 		SEP #$20					; |
-		LDA #$D0 : STA $2209				; | request data from SNES WRAM
-	-	LDA $018A : BEQ -				; | (dumped in $6180 since that can be accessed as $400180 by SA-1)
-		STZ $018A					; | (mirroring is OP)
+		LDA #$D0 : STA.l $2209				; | request data from SNES WRAM
+	-	LDA.l $018A : BEQ -				; | (dumped in $6180 since that can be accessed as $400180 by SA-1)
+		LDA #$00 : STA.l $018A				; | (mirroring is OP)
 		REP #$20					;/
-		PLB
 		LDY #$0000
 	.LoopExAnimation
 		CPY #$0031 : BCS .NoExAnimation
@@ -1418,12 +1459,72 @@ Build_RAM_Code:
 		RTS
 
 		..code
-		LDA.w #$0000 : STA $05			;
-		LDA.w #$1604 : STA $00			; yes, i actually found a use for DMA mode 4
-		LDA.w #!TileUpdateTable+2 : STA $02	;
-		LDX.b #!VRAMbank : STX $04		;
-		STY.w $420B				;
+		LDA.w #$0000 : STA $05				;
+		LDA.w #$1604 : STA $00				; yes, i actually found a use for DMA mode 4
+		LDA.w #!TileUpdateTable+2 : STA $02		;
+		LDX.b #!VRAMbank : STX $04			;
+		STY.w $420B					;
 		..end
+
+
+
+	; $00 = starting VRAM address for dynamic tiles
+	.AppendSquare
+		PHX						; push RAM code index
+		PHY						; push square table index
+		TXY						; Y = RAM code index
+		LDX #$0000					;\
+	-	LDA.l ..code,x : STA.w !RAMcode+$00,y		; |
+		INY #2						; | transfer code to RAM
+		INX #2						; |
+		CPX.w #..end-..code : BCC -			;/
+		PLY						; restore square table index
+		PLX						; restore RAM code index
+
+		LDA $0E						;\
+		SEC : SBC #$0080				; | update transfer size
+		STA $0E						;/
+
+		LDA.w !SquareTable+0,y : STA.w !RAMcode+$06,x	; source address 1 lo + hi
+		CLC : ADC #$0200				;\ source address 2 lo + hi
+		STA.w !RAMcode+$1D,x				;/
+		SEP #$20					;\
+		LDA.w !SquareTable+2,y				; |
+		STA.w !RAMcode+$0B,x				; | source bank 1 and 2
+		STA.w !RAMcode+$22,x				; |
+		REP #$20					;/
+		TYA						;\
+		CMP #$0020					; |
+		BCC $03 : ADC #$001F				; |
+		ASL #3						; | VRAM address 1 and 2
+		ORA $00						; |
+		STA.w !RAMcode+$14,x				; |
+		CLC : ADC #$0100				; |
+		STA.w !RAMcode+$2B,x				;/
+
+		LDA #$0000 : STA.w !SquareTable+0,y		; clear this square
+
+		TXA						;\
+		CLC : ADC.w #..end-..code			; | increase RAM code index
+		TAX						;/
+		RTS
+
+
+		..code
+		LDA.w #$1801 : STA $00				; DMA settings
+		LDA.w #$0000 : STA $02				; source address
+		LDX.b #$00 : STX $04				; source bank
+		LDA.w #$0040 : STA $05				; upload size (always 0x0040)
+		LDA.w #$0000 : STA $2116			; VRAM address
+		STY.w $420B					; DMA toggle
+		LDA.w #$0000 : STA $02				; source address
+		LDX.b #$00 : STX $04				; source bank
+		LDA.w #$0040 : STA $05				; upload size (always 0x0040)
+		LDA.w #$0000 : STA $2116			; VRAM address
+		STY.w $420B					; DMA toggle
+		..end
+
+
 
 
 	.AppendRow1
@@ -1469,13 +1570,13 @@ Build_RAM_Code:
 
 
 ; three:
-; row 1: 6150+0, w bytes
-; row 2: 6150+w, 64 bytes
-; row 3: 6150+w+64, 16-w bytes
+; row 1: 6950+0, w bytes
+; row 2: 6950+w, 64 bytes
+; row 3: 6950+w+64, 16-w bytes
 
 ; two:
-; row 1: 6150+0, w bytes
-; row 2: 6150+w, 80-w bytes
+; row 1: 6950+0, w bytes
+; row 2: 6950+w, 80-w bytes
 
 		..three
 		SEC : SBC #$0040
@@ -1832,13 +1933,21 @@ Build_RAM_Code:
 		SEC : SBC #$0080				; | update transfer size
 		STA $0E						;/
 
-		LDA.l !BG2ZipRowY
-		AND #$00F8
-		ASL #2
-		ORA.l !BG2Address
-		STA.w !RAMcode+$0A,x
-		EOR #$0400
-		STA.w !RAMcode+$1D,x
+		LDA.l !BG2ZipRowY				;\
+		AND #$01F8					; |
+		ASL #3						; |
+		CLC : ADC.w #!BG2Tilemap			; | read directly from the raw copy of the BG2 tilemap
+		STA.w !RAMcode+$10,x				; | (note that the raw is twice as large as the VRAM space)
+		CLC : ADC #$1000				; |
+		STA.w !RAMcode+$23,x				;/
+
+		LDA.l !BG2ZipRowY				;\
+		AND #$00F8					; |
+		ASL #2						; |
+		ORA.l !BG2Address				; | VRAM address
+		STA.w !RAMcode+$0A,x				; |
+		EOR #$0400					; |
+		STA.w !RAMcode+$1D,x				;/
 
 		TXA
 		CLC : ADC.w #..end-..code
@@ -1846,16 +1955,15 @@ Build_RAM_Code:
 		RTS
 
 
-
 		..code
 		LDA #$1801 : STA $00
-		LDX #$00 : STX $04
+		LDX.b #!BG2Tilemap>>16 : STX $04
 		LDA #$0000 : STA $2116		; modify 0A-0B
-		LDA #$69E0 : STA $02
+		LDA #$0000 : STA $02		; modify 10-11
 		LDA #$0040 : STA $05
 		STY $420B
-		LDA #$0000 : STA $2116		; modify 1D-1F
-		LDA #$69E0+$40 : STA $02
+		LDA #$0000 : STA $2116		; modify 1D-1E
+		LDA #$0000 : STA $02		; modify 23-24
 		LDA #$0040 : STA $05
 		STY $420B
 		..end
@@ -1931,6 +2039,88 @@ Build_RAM_Code:
 
 
 
+	.AppendLight
+		PHD						; push DP
+		LDA #$0100 : TCD				; access !LightList on DP
+		TXY						; Y = RAM code index
+		LDA.b !LightIndexStart				;\
+		ASL #3						; |
+		XBA						; | X = !LightList index
+		AND #$000F					; |
+		TAX						;/
+	-	LDA.b !LightList,x				;\ see if this row is included or not
+		AND #$00FF : BEQ ..includethis			;/
+		..exclude					;\
+		INX						; | loop through list
+		CPX #$0010 : BCC -				; |
+		TYX						; > restore X
+		PLD						; |
+		RTS						;/
+
+		..includethis					; include code
+		LDA.w #$02A9 : STA.w !RAMcode+$00,y		; LDA #$XX02
+		LDA.w #$8522 : STA.w !RAMcode+$02,y		; 22 : STA.b $XX
+		LDA.w #$A900 : STA.w !RAMcode+$04,y		; 00 : LDA #$XXXX
+		LDA.b !LightBuffer-1				;\
+		AND #$0100					; |
+		EOR #$0100					; |
+		ASL A						; |
+		ADC.w #!LightData_SNES+2			; | source address (skip first transparent color)
+		STA.w !RAMcode+$06,y				; | (takes the place of previous XXXX)
+		TXA						; |
+		XBA						; |
+		LSR #3						; |
+		CLC : ADC.w !RAMcode+$06,y			; |
+		STA.w !RAMcode+$06,y				;/
+		LDA.w #$0285 : STA.w !RAMcode+$08,y		; STA $02
+		LDA.w #$7EA2 : STA.w !RAMcode+$0A,y		; LDX #$7E (source bank always 0x7E)
+		LDA.w #$0486 : STA.w !RAMcode+$0C,y		; STX $04
+		LDA.w #$1EA9 : STA.w !RAMcode+$0E,y		; LDA #$XX1E
+		LDA.w #$8500 : STA.w !RAMcode+$10,y		; 00 : STA.b $XX
+		LDA.w #$A205 : STA.w !RAMcode+$12,y		; 05 : LDX #$XX
+		TXA						;\
+		ASL #4						; | dest CGRAM (takes place of previous XX)
+		ORA #$8E01					; | > STX $XXXX
+		STA.w !RAMcode+$14,y				;/
+		LDA.w #$2121 : STA.w !RAMcode+$16,y		; 2121
+		LDA.w #$0B8C : STA.w !RAMcode+$18,y		; STY $XX0B
+		LDA.w #$6B42 : STA.w !RAMcode+$1A,y		; 42XX : RTL
+		LDA $00300E					;\
+		SEC : SBC #$001E				; | update size remaining
+		STA $00300E					;/
+
+	-	INX						;\
+		CPX #$0010 : BCS ..done				; |
+		LDA.b !LightList,x				; |
+		AND #$00FF : BNE ..next				; | increment upload size to minimize number of uploads
+		LDA.w !RAMcode+$0F,y				; |
+		CLC : ADC #$0020				; |
+		STA.w !RAMcode+$0F,y				; |
+		LDA $00300E					; |
+		SEC : SBC #$0020				; > update size remaining 
+		STA $00300E					; |
+		BRA -						;/
+
+		..next						;\
+		TYA						; |
+		CLC : ADC #$001B				; | add another upload
+		TAY						; |
+		JMP ..exclude					;/
+
+		..done
+		TYA						;\
+		CLC : ADC #$001B				; | increment RAM code index
+		TAX						;/
+		PLD						; restore DP
+		RTS						; return
+
+
+
+
+
+
+
+
 
 
 	.AppendSMW0D7C
@@ -1945,8 +2135,14 @@ Build_RAM_Code:
 		SEC : SBC #$0080				; | update transfer size
 		STA $0E						;/
 		PLX						; restore RAM code index
-		LDA.l $6D76					;\ source address
+		LDA.l $6D76					;\
+		CLC : ADC.l !FileAddress+0			; | source address
+		SEC : SBC #$7D00				; |
 		STA.w !RAMcode+..src1-..code+1,x		;/
+		SEP #$20					;\
+		LDA.l !FileAddress+2				; | source bank
+		STA.w !RAMcode+..bank-..code+1,x		; |
+		REP #$20					;/
 		LDA.l $6D7C					;\ VRAM address
 		STA.w !RAMcode+..VRAM1-..code+1,x		;/
 		CMP #$0800 : BEQ ..berry			; check for berry
@@ -1960,7 +2156,9 @@ Build_RAM_Code:
 		LDA #$0040					;\ berry size
 		STA.w !RAMcode+..size-..code+1,x		;/
 		LDA.l $6D76					;\
-		CLC : ADC #$0040				; | source address for lower half
+		CLC : ADC.l !FileAddress+0			; |
+		SEC : SBC #$7D00				; | source address for lower half
+		CLC : ADC #$0040				; |
 		STA.w !RAMcode+..src2-..code+1,x		;/
 		TXA						;\
 		CLC : ADC.w #..end-..code			; | increment RAM code index
@@ -1969,7 +2167,7 @@ Build_RAM_Code:
 
 		..code
 		LDA #$1801 : STA $00		; upload mode
-		LDX #$7E : STX $04		; bank $7E
+	..bank	LDX #$00 : STX $04		; bank
 	..VRAM1	LDA #$0000 : STA $2116		;\
 	..src1	LDA #$0000 : STA $02		; | 0x80 bytes from $6D76 -> $6D7C
 	..size	LDA #$0080 : STA $05		; |
@@ -1994,8 +2192,14 @@ Build_RAM_Code:
 		SEC : SBC #$0080				; | update transfer size
 		STA $0E						;/
 		PLX						; restore RAM code index
-		LDA.l $6D78					;\ source address
+		LDA.l $6D78					;\
+		CLC : ADC.l !FileAddress+0			; | source address
+		SEC : SBC #$7D00				; |
 		STA.w !RAMcode+..src-..code+1,x			;/
+		SEP #$20					;\
+		LDA.l !FileAddress+2				; | source bank
+		STA.w !RAMcode+..bank-..code+1,x		; |
+		REP #$20					;/
 		LDA.l $6D7E					;\ VRAM address
 		STA.w !RAMcode+..VRAM-..code+1,x		;/
 		TXA						;\
@@ -2005,7 +2209,7 @@ Build_RAM_Code:
 
 		..code
 		LDA #$1801 : STA $00		; upload mode
-		LDX #$7E : STX $04		; bank $7E
+	..bank	LDX #$00 : STX $04		; bank
 	..VRAM	LDA #$0000 : STA $2116		;\
 	..src	LDA #$0000 : STA $02		; | 0x80 bytes from $6D78 -> $6D7E
 		LDA #$0080 : STA $05		; |
@@ -2025,8 +2229,14 @@ Build_RAM_Code:
 		SEC : SBC #$0080				; | update transfer size
 		STA $0E						;/
 		PLX						; restore RAM code index
-		LDA.l $6D7A					;\ source address
+		LDA.l $6D7A					;\
+		CLC : ADC.l !FileAddress+0			; | source address
+		SEC : SBC #$7D00				; |
 		STA.w !RAMcode+..src-..code+1,x			;/
+		SEP #$20					;\
+		LDA.l !FileAddress+2				; | source bank
+		STA.w !RAMcode+..bank-..code+1,x		; |
+		REP #$20					;/
 		LDA.l $6D80					;\ VRAM address
 		STA.w !RAMcode+..VRAM-..code+1,x		;/
 		TXA						;\
@@ -2036,7 +2246,7 @@ Build_RAM_Code:
 
 		..code
 		LDA #$1801 : STA $00		; upload mode
-		LDX #$7E : STX $04		; bank $7E
+	..bank	LDX #$00 : STX $04		; bank
 	..VRAM	LDA #$0000 : STA $2116		;\
 	..src	LDA #$0000 : STA $02		; | 0x80 bytes from $6D7A -> $6D80
 		LDA #$0080 : STA $05		; |
@@ -2114,31 +2324,38 @@ Build_RAM_Code:
 		SEC : SBC #$0200				; | update transfer size
 		STA $0E						;/
 
-	; mario no longer needs a unique palette loader
-	;	SEP #$20					;\
-	;	LDA.l !MarioPropOffset				; |
-	;	AND #$0E					; |
-	;	ASL #3						; | set CGRAM address
-	;	CLC : ADC #$86					; |
-	;	STA.w !RAMcode+..CGRAM-..code+1,x		; |
-	;	REP #$20					;/
+		PHY
+		LDY.w #!File_Mario
+		JSL !GetFileAddress
+		PLY
 
 		LDA.l !MarioGFX1				;\ VRAM address for upper half
 		STA.w !RAMcode+..VRAM1-..code+1,x		;/
-		LDA.l $6D85					;\ source address 1
+		LDA.l $6D85					;\
+		CLC : ADC.l !FileAddress+0			; | source address 1
 		STA.w !RAMcode+..src1-..code+1,x		;/
-		LDA.l $6D87					;\ source address 2
+		LDA.l $6D87					;\
+		CLC : ADC.l !FileAddress+0			; | source address 2
 		STA.w !RAMcode+..src2-..code+1,x		;/
-		LDA.l $6D89					;\ source address 3
+		LDA.l $6D89					;\
+		CLC : ADC.l !FileAddress+0			; | source address 3
 		STA.w !RAMcode+..src3-..code+1,x		;/
 		LDA.l !MarioGFX2				;\ VRAM address for lower half
 		STA.w !RAMcode+..VRAM2-..code+1,x		;/
-		LDA.l $6D8F					;\ source address 5
+		LDA.l $6D8F					;\
+		CLC : ADC.l !FileAddress+0			; | source address 4
+		STA.w !RAMcode+..src4-..code+1,x		;/
+		LDA.l $6D91					;\
+		CLC : ADC.l !FileAddress+0			; | source address 5
 		STA.w !RAMcode+..src5-..code+1,x		;/
-		LDA.l $6D91					;\ source address 6
+		LDA.l $6D93					;\
+		CLC : ADC.l !FileAddress+0			; | source address 6
 		STA.w !RAMcode+..src6-..code+1,x		;/
-		LDA.l $6D93					;\ source address 7
-		STA.w !RAMcode+..src7-..code+1,x		;/
+
+		SEP #$20					;\
+		LDA.l !FileAddress+2				; | set source bank
+		STA.w !RAMcode+..bank-..code+1,x		; |
+		REP #$20					;/
 
 
 		TXA						;\
@@ -2148,17 +2365,8 @@ Build_RAM_Code:
 
 
 		..code
-
-; mario no longer needs a unique palette loader
-;		LDA #$2202 : STA $00
-;		LDA.w #!MarioPalData : STA $02	; source is always !MarioPalData (I-RAM)
-;		LDX #$00 : STX $04
-;		LDA #$0014 : STA $05
-;	..CGRAM	LDX #$00 : STX $2121		; adjust address
-;		STY $420B
-
 		LDA #$1801 : STA $00		;\ these apply for all following GFX transfers
-		LDX #$7E : STX $04		;/
+	..bank	LDX #$00 : STX $04		;/
 
 	..VRAM1	LDA #$0000 : STA $2116		; this applies for the next 4 transfers (!MarioGFX1)
 	..src1	LDA #$0000 : STA $02		;\
@@ -2171,14 +2379,14 @@ Build_RAM_Code:
 		LDA #$0040 : STA $05		; | $6D89 -> !MarioGFX1 + 0x80
 		STY $420B			;/
 
-	..VRAM2	LDA #$0000 : STA $2116		; this applies for the next 4 transfers (!MarioGFX2)
-	..src5	LDA #$0000 : STA $02		;\
+	..VRAM2	LDA #$0000 : STA $2116		; this applies for the next 3 transfers (!MarioGFX2)
+	..src4	LDA #$0000 : STA $02		;\
 		LDA #$0040 : STA $05		; | $6D8F -> !MarioGFX1
 		STY $420B			;/
-	..src6	LDA #$0000 : STA $02		;\
+	..src5	LDA #$0000 : STA $02		;\
 		LDA #$0040 : STA $05		; | $6D91 -> !MarioGFX1 + 0x40
 		STY $420B			;/
-	..src7	LDA #$0000 : STA $02		;\
+	..src6	LDA #$0000 : STA $02		;\
 		LDA #$0040 : STA $05		; | $6D93 -> !MarioGFX1 + 0x80
 		STY $420B			;/
 		..end
@@ -2326,34 +2534,62 @@ Build_RAM_Code:
 
 
 	.AppendExAnimationPalette
-		LDA.w $0180,y
-		ASL A
-		CMP #$0002 : BNE ..type1
 
-		..type2
-		PHX						; push RAM code index
-		PHY						; push ExAnimation table index
-		TXY						; Y = RAM code index
-		LDX #$0000					;\
-	-	LDA.l ..code2,x : STA.w !RAMcode+$00,y		; |
-		INY #2						; | transfer code to RAM
-		INX #2						; |
-		CPX.w #..end2-..code2 : BCC -			;/
-		PLY						; restore VRAM table index
-		PLX						; restore RAM code index
-	;	LDA.w $0184,y : STA.w !RAMcode+$06,x
-		SEP #$20
-		LDA.w $0182,y : STA.w !RAMcode+$01,x
-		LDA.w $0184,y : STA.w !RAMcode+$06,x
-		LDA.w $0185,y : STA.w !RAMcode+$0B,x
-		REP #$20
-		TYA
-		CLC : ADC #$0007
-		TAY
-		TXA
-		CLC : ADC.w #..end2-..code2
-		TAX
-		RTS
+
+; seems like lunar magic won't output this type anymore...?
+;		LDA.w $0180,y
+;		ASL A
+;		CMP #$0002 : BNE ..type1
+;		..type2
+;		PHX						; push RAM code index
+;		PHY						; push ExAnimation table index
+;		TXY						; Y = RAM code index
+;		LDX #$0000					;\
+;	-	LDA.l ..code2,x : STA.w !RAMcode+$00,y		; |
+;		INY #2						; | transfer code to RAM
+;		INX #2						; |
+;		CPX.w #..end2-..code2 : BCC -			;/
+;		PLY						; restore VRAM table index
+;		PLX						; restore RAM code index
+;		SEP #$20
+;		LDA.w $0182,y : STA.w !RAMcode+$01,x
+;		LDA.w $0184,y : STA.w !RAMcode+$06,x
+;		LDA.w $0185,y : STA.w !RAMcode+$0B,x
+;		REP #$20
+;		TYA
+;		CLC : ADC #$0007
+;		TAY
+;		TXA
+;		CLC : ADC.w #..end2-..code2
+;		TAX
+;		RTS
+
+
+		LDA.w $0180,y					;\
+		AND #$00FF					; | $00 = number of colors to transfer
+		STA $00						;/
+		PHX						;\ push X/Y
+		PHY						;/
+		PHB						; push bank
+		TYX						; X = exanim table index
+		LDY.w $0184,x					; Y = source address
+		LDA #$0000					; clear B
+		SEP #$20					;\
+		LDA.w $0186,x : PHA				; | push source bank
+		REP #$20					;/
+		LDA.w $0182,x					;\
+		ASL A						; | X = CGRAM index
+		TAX						;/
+		PLB						; bank = source bank
+	-	LDA.w $0000,y : STA.l !PaletteRGB,x		;\ transfer colors to RAM mirror so they can be included in next shade operation
+		DEC $00 : BNE -					;/
+		PLB						; restore bank
+		PLA						;\
+		CLC : ADC #$0007				; | pull Y and add 7
+		TAY						;/
+		PLX						; restore X
+		RTS						; return
+
 
 
 		..type1
@@ -2395,12 +2631,11 @@ Build_RAM_Code:
 		STY.w $420B					; DMA toggle
 		..end1
 
-		..code2
-		LDX.b #$00 : STX $2121				; CGRAM address
-	;	LDA.w #$0000 : STA $2122			; write color
-		LDX.b #$00 : STX $2122
-		LDX.b #$00 : STX $2122
-		..end2
+;		..code2
+;		LDX.b #$00 : STX $2121				; CGRAM address
+;		LDX.b #$00 : STX $2122
+;		LDX.b #$00 : STX $2122
+;		..end2
 
 
 ; LM has:
@@ -2493,34 +2728,55 @@ Build_RAM_Code:
 ; (repeat for each slot)
 
 
-
 GetTilemapData:
 
 		REP #$30
-
+		STZ !UpdateBG1Row			;\ clear update flags
+		STZ !UpdateBG1Column			;/
 
 		LDA $1A					;\
-		CMP !BG1ZipRowX : BCS .Right		; |
+		AND #$FFF8				; |
+		CMP !BG1ZipRowX : BCS .Right		; | (compare to row because the column jumps left/right)
 	.Left	SEC : SBC #$0010			; | x position of zip column
 		BRA +					; |
 	.Right	CLC : ADC #$0110			; |
 	+	BPL $03 : LDA #$0000			; > no negative numbers allowed
+		CMP !BG1ZipColumnX			; |
+		BEQ $03 : INC !UpdateBG1Column		; > if different, set update flag
 		STA !BG1ZipColumnX			;/
 		LDA $1C : STA !BG1ZipColumnY		; > y coordinate of zip column
 		LDA $1C					;\
-		CMP !BG1ZipRowY				; |
+		AND #$FFF8				; |
+		CMP !BG1ZipRowY				; | (somehow this comparison is fine)
 		BEQ .Up					; |
 		BCS .Down				; |
-	.Up	SEC : SBC #$0008			; | y position of zip row
+	.Up	SEC : SBC #$0004 ;#$0008		; | y position of zip row
 		BRA +					; |
-	.Down	CLC : ADC #$00F0			; |
-	+	BPL $03 : LDA #$0000			; > no negative numbers allowed
+	.Down	CLC : ADC #$00EC ;#$00F0		; |
+	+	AND #$FFF8				; |
+		BPL $03 : LDA #$0000			; > no negative numbers allowed
+		CMP !BG1ZipRowY				; |
+		BEQ $03 : INC !UpdateBG1Row		; > if different, set update flag
 		STA !BG1ZipRowY				;/
 		LDA $1A					;\
 		SEC : SBC #$0010			; | x coordinate of zip row
 		BPL $03 : LDA #$0000			; > no negative numbers allowed
 		STA !BG1ZipRowX				;/
 
+
+		; what are these for???
+		LDA $1A					;\
+		SEC : SBC #$0010			; | L = -16
+		BPL $03 : LDA #$0000			; |
+		STA !BG1ZipBoxL				;/
+		CLC : ADC #$0120			;\ R = +272
+		STA !BG1ZipBoxR				;/
+		LDA $1C					;\
+		SEC : SBC #$0008			; | U = -8
+		BPL $03 : LDA #$0000			; |
+		STA !BG1ZipBoxU				;/
+		CLC : ADC #$00F8			;\ D = +240
+		STA !BG1ZipBoxD				;/
 
 
 		LDA $7925				;\
@@ -2570,8 +2826,13 @@ GetTilemapData:
 		LDA $6CD6,y
 		ADC !BG1ZipRowY+1			; for horizontal levels, add Y screen and $6CD6 value to get hi byte
 	.GetRow	STA $06					; store hi byte (later code gets bank byte)
-		JSR .Row
 
+
+		LDA !UpdateBG1Row			;\ if camera has moved vertically, update row
+		BEQ $03 : JSR .Row			;/
+
+		LDA !UpdateBG1Column			;\ if camera hasn't moved horizontally, return without updating column
+		BNE $01 : RTS				;/
 
 
 
@@ -2618,6 +2879,15 @@ GetTilemapData:
 		DEC $07
 		LDA [$05]
 		REP #$30				; A = 16-bit map16 number
+	if !DebugZips == 1
+		PHA
+		LDA $15
+		AND #$0020 : BEQ +
+		PLA
+		LDA #$0000
+		BRA $01
+	+	PLA
+	endif
 		ASL A					; double to index 16-bit pointer
 		PHX
 		PHP
@@ -2667,6 +2937,15 @@ GetTilemapData:
 		DEC $07
 		LDA [$05]
 		REP #$30
+	if !DebugZips == 1
+		PHA
+		LDA $15
+		AND #$0020 : BEQ +
+		PLA
+		LDA #$0000
+		BRA $01
+	+	PLA
+	endif
 		ASL A
 		PHX
 		PHP
@@ -2716,16 +2995,29 @@ GetTilemapData:
 
 ; since the map16 tiles are laid out in two 16x32 chunks, and we're getting a 32-tile wide row, index calculation is simple
 ; it is just equal to Y, but with the lo nybble cleared
+; note that for this mode, !BG2ZipColumnY holds the previous BG2 Y coordinate and is used to determine whether update should be above or below
 
 	.BackgroundRow
+		STZ !UpdateBG2Row			; clear update flag
 		LDA $20
-		CMP !BG2ZipRowY
-		BEQ ..up
-		BCS ..down
-	..up	SEC : SBC #$0008
+		AND #$FFF8
+		CMP !BG2ZipColumnY
+		STA !BG2ZipColumnY
+		BEQ ..r
+		BPL ..down
+	..up	LDA $20
+		SEC : SBC #$0008 ;#$0004
 		BRA +
-	..down	CLC : ADC #$00F0
-	+	STA !BG2ZipRowY
+	..down	LDA $20
+		CLC : ADC #$00F0 ;#$00EC
+	+	AND #$01F8
+		CMP !BG2ZipRowY
+		BEQ $03 : INC !UpdateBG2Row		; set update flag if different
+		STA !BG2ZipRowY
+	;	LDA !UpdateBG2Row			;\
+	;	BNE $01					; | if no change, don't update
+	..r	RTS					;/
+
 
 		LDA !BG2ZipRowY
 		AND #$01F0
@@ -2747,9 +3039,9 @@ GetTilemapData:
 		STA $0E					;/
 
 		LDX !Level				;\
-		LDA.l $0EF310,x				; |
+		LDA.l !Layer2Type,x			; |
 		AND #$0004 : BEQ +			; | get map16 BG bank
-		LDA.l $0EF310-1,x			; |
+		LDA.l !Layer2Type-1,x			; |
 		AND #$F000				; |
 	+	STA $0C					;/
 
@@ -2803,22 +3095,32 @@ GetTilemapData:
 
 
 Layer2Level:
+		STZ !UpdateBG2Row			;\ clear update flags
+		STZ !UpdateBG2Column			;/
+
 		LDA $1E					;\
-		CMP !BG2ZipRowX : BCS .Right		; |
+		AND #$FFF8				; |
+		CMP !BG2ZipRowX : BCS .Right		; | (compare to row because column jumps left/right)
 	.Left	SEC : SBC #$0010			; | x position of zip column
 		BRA +					; |
 	.Right	CLC : ADC #$0110			; |
 	+	BPL $03 : LDA #$0000			; > no negative numbers allowed
+		CMP !BG2ZipColumnX			; |
+		BEQ $03 : INC !UpdateBG2Column		; > if different, set update flag
 		STA !BG2ZipColumnX			;/
 		LDA $20 : STA !BG2ZipColumnY		; > y coordinate of zip column
 		LDA $20					;\
+		AND #$FFF8				; |
 		CMP !BG2ZipRowY				; |
 		BEQ .Up					; |
 		BCS .Down				; |
-	.Up	SEC : SBC #$0008			; | y position of zip row
+	.Up	SEC : SBC #$0004 ;#$0008		; | y position of zip row
 		BRA +					; |
-	.Down	CLC : ADC #$00F0			; |
+	.Down	CLC : ADC #$00EC ;#$00F0		; |
 	+	BPL $03 : LDA #$0000			; > no negative numbers allowed
+		AND #$FFF8				; |
+		CMP !BG2ZipRowY				; |
+		BEQ $03 : INC !UpdateBG2Row		; > if different, set update flag
 		STA !BG2ZipRowY				;/
 		LDA $1E					;\
 		SEC : SBC #$0010			; | x coordinate of zip row
@@ -2854,9 +3156,14 @@ Layer2Level:
 		LDA $6CD6,y
 		ADC !BG2ZipRowY+1			; for horizontal levels, add Y screen and $6CD6 value to get hi byte
 	.GetRow	STA $06					; store hi byte (later code gets bank byte)
-		JSR .AddOffset
-		JSR .Row
 
+		LDA !UpdateBG2Row : BEQ .RowDone	;\
+		JSR .AddOffset				; | if camera has moved vertically, update row
+		JSR .Row				; |
+		.RowDone				;/
+
+		LDA !UpdateBG2Column			;\ if camera hasn't moved horizontally, return without updating column
+		BNE $01 : RTS				;/
 
 
 		LDA !BG2ZipColumnX			;\
@@ -2901,6 +3208,15 @@ Layer2Level:
 		DEC $07
 		LDA [$05]
 		REP #$30				; A = 16-bit map16 number
+	if !DebugZips == 1
+		PHA
+		LDA $15
+		AND #$0020 : BEQ +
+		PLA
+		LDA #$0000
+		BRA $01
+	+	PLA
+	endif
 		ASL A					; double to index 16-bit pointer
 		PHX
 		PHP
@@ -2950,6 +3266,15 @@ Layer2Level:
 		DEC $07
 		LDA [$05]
 		REP #$30
+	if !DebugZips == 1
+		PHA
+		LDA $15
+		AND #$0020 : BEQ +
+		PLA
+		LDA #$0000
+		BRA $01
+	+	PLA
+	endif
 		ASL A
 		PHX
 		PHP
@@ -3019,10 +3344,10 @@ Layer2Level:
 
 
 macro movedynamo(num)
-	LDA $C0C0+(<num>*7) : STA $00+(<num>*7)
-	LDA $C0C2+(<num>*7) : STA $02+(<num>*7)
-	LDA $C0C4+(<num>*7) : STA $04+(<num>*7)
-	LDA $C0C5+(<num>*7) : STA $05+(<num>*7)
+	LDA $C0C0+(<num>*7) : STA $80+(<num>*7)
+	LDA $C0C2+(<num>*7) : STA $82+(<num>*7)
+	LDA $C0C4+(<num>*7) : STA $84+(<num>*7)
+	LDA $C0C5+(<num>*7) : STA $85+(<num>*7)
 	LDA #$0000 : STA $C0C0+(<num>*7)
 endmacro
 
@@ -3032,7 +3357,7 @@ FetchExAnim:
 		PHP
 		PHD
 		REP #$20
-		LDA.w #$6180 : TCD		; we're dumping it in $6180 because that can be accessed at $0180 in bank $40 by SA-1
+		LDA.w #$6100 : TCD		; we're dumping it in $6180 because that can be accessed at $0180 in bank $40 by SA-1
 		%movedynamo(0)			; this will make RAM code generation much smoother
 		%movedynamo(1)
 		%movedynamo(2)
@@ -3090,7 +3415,8 @@ FetchExAnim:
 
 
 ; to do:
-;	- only update tilemaps when needed rather than every frame
+;	- make sure BG2 background works
+;	( sometimes misses a row )
 
 macro CCDMA(slot)
 	LDY $97+(<slot>*8) : STY.w $2231	; CCDMA mode
@@ -3208,8 +3534,13 @@ NMI:		PHP					;\
 		XBA
 		STA $2132
 
-		INC $10					; set processing frame flag (anywhere in .NoLag where DP = $3000 and A is 8-bit will do)
+	; color 0 update
+		STZ $2121
+		LDA !Color0 : STA $2122
+		LDA !Color0+1 : STA $2122
 
+
+		INC $10					; set processing frame flag (anywhere in .NoLag where DP = $3000 and A is 8-bit will do)
 
 	; misc registers
 		REP #$10				; 16-bit index
@@ -3318,13 +3649,46 @@ NMI:		PHP					;\
 	; controller stuff (can be done outside of v-blank but still has to be done every frame)
 		PHD					;\ DP optimization
 		PEA $6D00 : PLD				;/
+
+		LDA $309D : BEQ .LoadJoypad
+
+		.BufferJoypad
+		LDA $4218				;\
+		EOR $A4					; |
+		AND $4218				; |
+		AND #$F0				; |
+		TSB $A8					; |
+		LDA $4218				; |
+		AND #$F0				; | buffer controller 1
+		TSB $A4					; |
+		LDA $4219				; |
+		EOR $A2					; |
+		AND $4219				; |
+		TSB $A6					; |
+		LDA $4219 : TSB $A2			;/
+		LDA $421A				;\
+		EOR $A5					; |
+		AND $421A				; |
+		AND #$F0				; |
+		TSB $A9					; |
+		LDA $421B				; |
+		AND #$F0				; | buffer controller 2
+		TSB $A5					; |
+		LDA $421B				; |
+		EOR $A3					; |
+		AND $421B				; |
+		TSB $A7					; |
+		LDA $421B : TSB $A3			;/
+		BRA .BuildMarioJoypad			; go to mario joypad
+
+		.LoadJoypad
 		LDA $4218				;\
 		AND #$F0				; |
 		STA $A4					; |
 		TAY					; |
 		EOR $AC					; |
 		AND $A4					; |
-		STA $A8					; | controller 1
+		STA $A8					; | build controller 1
 		STY $AC					; |
 		LDA $4219 : STA $A2			; |
 		TAY					; |
@@ -3338,7 +3702,7 @@ NMI:		PHP					;\
 		TAY					; |
 		EOR $AD					; |
 		AND $A5					; |
-		STA $A9					; | controller 2
+		STA $A9					; | build controller 2
 		STY $AD					; |
 		LDA $421B : STA $A3			; |
 		TAY					; |
@@ -3346,36 +3710,25 @@ NMI:		PHP					;\
 		AND $A3					; |
 		STA $A7					; |
 		STY $AB					;/
-		PLD					; restore DP
 
-		LDA !CurrentMario			;\ see who plays Mario
-		CMP #$02 : BEQ .P2			;/
-	.P1	LDA $6DA4				;\
+
+		.BuildMarioJoypad
+		PLD					; restore DP here since indexing adds no cycles to addr read but adds 1 cycle to dp read
+		LDX #$00				;\
+		LDA !CurrentMario			; | index to joypad to use for mario
+		CMP #$02				; |
+		BNE $01 : INX				;/
+		LDA $6DA4,x				;\
 		AND #$C0				; |
-		ORA $6DA2				; |
+		ORA $6DA2,x				; |
 		STA $15					; |
-		LDA $6DA4				; |
-		STA $17					; | build P1 Mario controller input
-		LDA $6DA8				; |
+		LDA $6DA4,x : STA $17			; |
+		LDA $6DA8,x				; | build mario joypad
 		AND #$40				; |
-		ORA $6DA6				; |
+		ORA $6DA6,x				; |
 		STA $16					; |
-		LDA $6DA8				; |
-		STA $18					;/
-		BRA .ControlsDone			; done
-	.P2	LDA $6DA5				;\
-		AND #$C0				; |
-		ORA $6DA3				; |
-		STA $15					; |
-		LDA $6DA5				; |
-		STA $17					; | build P2 Mario controller input
-		LDA $6DA9				; |
-		AND #$40				; |
-		ORA $6DA7				; |
-		STA $16					; |
-		LDA $6DA9				; |
-		STA $18					;/
-		.ControlsDone
+		LDA $6DA8,x : STA $18			; |
+		.ControlsDone				;/
 
 
 	; some RAM stuff
@@ -3499,227 +3852,16 @@ IRQ:
 
 
 
+;==========;
+;GFX LOADER;
+;==========;
+incsrc "GFX_Loader.asm"
 
 
-
-
-;===========;
-;OAM HANDLER;
-;===========;
-OAM_handler:	PHX : TXY				; > Use Y as sprite index
-		CPY #$0F				;\ Check for highest sprite
-		BNE .NotHighest				;/
-		LDA !P2TilesUsed			;\ Highest sprite always gets index after P2
-		BRA .Write				;/
-.NotHighest	LDA $3230+1,x : BNE .Valid		;\
-		INX					; |
-		CPX #$0F : BNE .NotHighest		; |
-.Highest	LDA !P2TilesUsed			; |
-		BRA .Write				; | Cycle through sprites to find the lowest one above this one
-.Valid		STX $00					;/ (this becomes the highest one if there's no one higher)
-
-
-	; Y = sprite index
-	; X = index for lowest higher sprite -1
-	;	(sprite to read from)
-
-
-
-		LDA $3590+1,x				;\
-		AND #$08				; |
-		BEQ .Vanilla				; |
-		LDA $35C0+1,x				; | Handle custom sprite
-	CMP #$12 : BNE +
-	LDA $3590+1,x
-	AND #$04					; EXCEPTION FOR CUSTOM SPRITE 0x12!!
-	EOR #$04
-	BEQ +
-	LDA #$10
-	BRA .NotVillager
-	+	CMP #$02 : BNE .NotVillager		; special villager exceptions!
-		LDY #$0C
-		LDA $35A0+1,x : BEQ +
-		JSR .Add12
-	+	LDA $35B0+1,x
-		AND #$0F : BEQ .SetVillager
-		CMP #$06 : BNE .NoMustache
-		TYA
-		CLC : ADC #$08
-		BRA .Calc
-		.SetVillager
-		TYA
-		BRA .Calc
-		.NotVillager
-
-		TAX					; |
-		LDA.l TileCount_Custom,x		; |
-		ASL #2					; |
-.Calc		LDX $00					; |
-		CLC : ADC $33B0+1,x			; |
-		BRA .Write				;/
-.Vanilla	LDA $3200+1,x				;\
-		TAX					; |
-		LDA.l TileCount_Vanilla,x		; |
-		ASL #2					; | Handle vanilla sprite
-		LDX $00					; |
-		CLC : ADC $33B0+1,x			; |
-.Write		PLX					; |
-		STA $33B0,x				;/
-
-		JML $0180E5				; > Return
-
-
-	.NoMustache
-		INY #4
-		BRA .SetVillager
-
-	.Add12
-		TYA
-		CLC : ADC #$0C
-		TAY
-		RTS
-
-; --Minor extended sprite routines--
-
-.minor1		%loadOAMindex()
-		LDA !Ex_XLo,x
-		RTL
-.minor2		%loadOAMindex()
-		LDA !Ex_YLo,x
-		RTL
-
-; --Extended sprite routines--
-
-.extG		%loadOAMindex()
-		STY $0F
-		JML RETURN_extG
-.ext01special	%loadOAMindex()
-		CPY #$08
-		JML RETURN_ext01special
-.ext01		BCC +
-		%loadOAMindex()
-	+	JML RETURN_ext01
-.ext02		%loadOAMindex()
-		LDA $14
-		JML RETURN_ext02
-.ext03		%loadOAMindex()
-		LDA !Ex_Data1,x
-		JML RETURN_ext03
-.ext04		%loadOAMindex()
-		LDA !Ex_Data1,x
-		JML RETURN_ext04
-.ext05		%loadOAMindex()				;\
-		LDA !Ex_XSpeed,x			; | A lot of objects borrow this routine
-		JML RETURN_ext05			;/
-.ext07		%loadOAMindex()
-		LDA !Ex_XLo,x
-		JML RETURN_ext07
-.ext08		%loadOAMindex()
-		PLA
-		JML RETURN_ext08
-.ext0C		%loadOAMindex()
-		LDA !Ex_XLo,x
-		JML RETURN_ext0C
-.ext0D		%loadOAMindex()
-		LDA !Tile_Baseball : STA $0E
-		LDA !Prop_Baseball
-		ORA #$38
-		STA $0F
-		LDA $00
-		JML RETURN_ext0D
-.ext0F		%loadOAMindex()
-		LDA !Ex_Data2,x
-		JML RETURN_ext0F
-.ext10		%loadOAMindex()
-		LDA #$34
-		JML RETURN_ext10
-.ext11		%loadOAMindex()
-		LDA #$04
-		JML RETURN_ext11
-.ext12		%loadOAMindex()
-		LDA !OAM,y
-		JML RETURN_ext12
-
-; --Smoke sprite routines--
-
-.smokeG		%loadOAMindex()
-		LDA !Ex_XLo,x
-		JML RETURN_smokeG
-.smoke01special	%loadOAMindex()
-		LDA !Ex_XLo,x
-		JML RETURN_smoke01special
-.smoke01	%loadOAMindex()
-		LDA !Ex_XLo,x
-		JML RETURN_smoke01
-.smoke02	%loadOAMindex()
-		LDA !Ex_XLo,x
-		JML RETURN_smoke02
-.smoke03l	%loadOAMindex()
-		LDA #$F0
-		JML RETURN_smoke03l
-.smoke03h	%loadOAMindex()
-		LDA !Ex_XLo,x
-		SEC
-		JML RETURN_smoke03h
-
-; --Bounce sprite routine--
-
-.bounce		%loadOAMindex()
-		LDA !Ex_YLo,x
-		JML RETURN_bounce
-
-; --Coin sprite routine--
-
-.coin		%loadOAMindex2()
-		STY $0F
-		JML RETURN_coin
-
-
-TileCount:
-
-		;   X0  X1  X2  X3  X4  X5  X6  X7  X8  X9  XA  XB  XC  XD  XE  XF
-
-.Vanilla	db $02,$02,$02,$02,$03,$03,$03,$03,$03,$03,$03,$03,$03,$01,$01,$01	; 0X
-		db $03,$01,$00,$01,$01,$01,$01,$01,$01,$00,$02,$01,$01,$01,$0F,$03	; 1X
-		db $03,$02,$02,$02,$02,$02,$05,$04,$14,$12,$01,$0A,$01,$00,$01,$04	; 2X
-		db $03,$02,$02,$01,$01,$04,$00,$01,$01,$01,$05,$05,$05,$01,$02,$02	; 3X
-		db $02,$03,$03,$02,$03,$02,$05,$01,$01,$02,$01,$02,$01,$02,$02,$05	; 4X
-		db $05,$01,$03,$01,$09,$05,$05,$05,$05,$05,$05,$03,$05,$05,$09,$09	; 5X
-		db $02,$04,$03,$05,$05,$05,$05,$04,$01,$00,$02,$05,$05,$00,$04,$05	; 6X
-		db $05,$04,$04,$04,$01,$01,$01,$01,$01,$01,$00,$03,$08,$01,$03,$03	; 7X
-		db $01,$01,$12,$03,$03,$00,$07,$03,$00,$00,$04,$02,$00,$08,$00,$04	; 8X
-		db $10,$05,$05,$05,$05,$05,$05,$05,$05,$04,$04,$04,$04,$06,$06,$10	; 9X
-		db $00,$0C,$04,$06,$04,$01,$04,$01,$04,$06,$04,$02,$05,$05,$08,$01	; AX
-		db $06,$01,$01,$02,$04,$01,$01,$03,$03,$01,$03,$04,$03,$02,$01,$04	; BX
-		db $03,$05,$01,$04,$10,$01,$01,$01,$01,$00,$00,$00,$00,$00,$00,$00	; CX
-		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$03,$03,$03,$03,$00,$03	; DX
-		db $12,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; EX
-		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; FX
-
-; TODO: Figure out how bobomb (0x0D) explosions are handled
-
-		;   X0  X1  X2  X3  X4  X5  X6  X7  X8  X9  XA  XB  XC  XD  XE  XF
-
-.Custom		db $01,$06,$03,$05,$04,$05,$10,$01,$11,$10,$04,$03,$01,$04,$04,$02	; 0X
-		db $15,$01,$01,$02,$02,$01,$03,$03,$09,$03,$01,$04,$02,$02,$08,$03	; 1X
-		db $16,$0D,$02,$05,$05,$05,$05,$06,$06,$06,$16,$06,$04,$04,$02,$00	; 2X
-		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 3X
-		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 4X
-		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 5X
-		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 6X
-		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 7X
-		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 8X
-		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 9X
-		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; AX
-		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; BX
-		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; CX
-		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; DX
-		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; EX
-		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; FX
 
 
 End:
-print "VR3 is $", hex(End-LoadGFX), " bytes long."
+print "VR3 is $", hex(End-$12A000), " bytes long."
 print "VR3 ends at $", pc, "."
 print " "
 
@@ -3727,3 +3869,5 @@ print " "
 ;DMA REMAP;
 ;=========;
 incsrc "DMA_Remap.asm"
+
+

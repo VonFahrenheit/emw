@@ -46,7 +46,7 @@ pullpc
 		.Flash
 		PHY
 		PEI ($00)
-		JSR MakeGlitter
+		JSL MakeGlitter
 		PLA : STA $00
 		PLA : STA $01
 		PLY

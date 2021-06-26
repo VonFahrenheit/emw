@@ -559,6 +559,23 @@
 	db "The void calls us, my love...",$FC,$60,$FF
 
 
+
+
+
+
+	.FoundLuigi
+	%portrait(3, 0)
+	db "I will take it from here!"
+	%endmessage()
+
+
+
+
+
+
+
+
+
 	.Menu_EasyMode
 	%border(0)
 	%cinematic(2)

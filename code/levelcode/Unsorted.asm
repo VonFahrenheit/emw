@@ -1,45 +1,348 @@
 
 
-	!SnowBase	= !3D_Base+$480
 
-	!SnowXLo	= !SnowBase+$000	;
-	!SnowXHi	= !SnowBase+$001	;
-	!SnowX		= !SnowXLo
-	!SnowYLo	= !SnowBase+$060
-	!SnowYHi	= !SnowBase+$061
-	!SnowY		= !SnowYLo
-	!SnowXSpeed	= !SnowBase+$0C0	; amount to add to packed X coordinate every frame
-	!SnowYSpeed	= !SnowBase+$0C1	; amount to add to packed Y coordinate every frame
-	!SnowXAccel	= !SnowBase+$120	; amount to add to X speed every frame
-	!SnowYAccel	= !SnowBase+$121	; amount to add to Y speed every frame
+Halve:
+	.8	BPL ..pos
+	..neg	EOR #$FF
+		LSR A
+		EOR #$FF
+		RTL
+	..pos	LSR A
+		RTL
 
-	!SnowRNG	= !SnowBase+$180
-
-	!SnowSpawned	= !SnowBase+$280	; used to determine when to spawn the next particle
-
-	!SnowXFrac	= !SnowBase+$282
-	!SnowYFrac	= !SnowBase+$283
-
-	!WeatherType	= !SnowBase+$2E2	; 0 = calm snow
-						; 1 = raging snow
-						; 2 = spell particles
-						; 3 = special effect for Evernight Temple
-						; 4 = special effect for Lava Lord boss
-
-	!WeatherIndex	= !SnowBase+$2E3
-	!WeatherFreq	= !SnowBase+$2E4	; number of frames to wait until next particle is spawned
+	.16	BPL ..pos
+	..neg	EOR #$FFFF
+		LSR A
+		EOR #$FFFF
+		RTL
+	..pos	LSR A
+		RTL
 
 
 Weather:
-		LDA.b #.SA1 : STA $3180
-		LDA.b #.SA1>>8 : STA $3181
-		LDA.b #.SA1>>16 : STA $3182
-		JSR $1E80
+		PHP
+		SEP #$30
+		STA $00							; $00 = weather type
+		LDA !41_WeatherTimer : BEQ .Spawn
+		DEC A
+		STA !41_WeatherTimer
+		PLP
 		RTL
+
+		.Spawn
+		LDA $14							;\
+		AND #$1F						; | $02 = RN 1
+		TAX							; |
+		LDA !RNGtable,x : STA $02				;/
+		INX							;\
+		CPX #$20						; | $03 = RN 2
+		BCC $02 : LDX #$00					; |
+		LDA !RNGtable,x : STA $03				;/
+		INX							;\
+		CPX #$20						; | $04 = RN 3
+		BCC $02 : LDX #$00					; |
+		LDA !RNGtable,x : STA $04				;/
+
+		REP #$10
+		LDX !Particle_Index
+		PHB
+		LDA #$41
+		PHA : PLB
+
+		LDA !WeatherFreq : STA !WeatherTimer
+
+		REP #$20
+		LDY.w #!Particle_Count-1
+	-	LDA !Particle_Type,x
+		AND #$00FF : BEQ .ThisOne
+		TXA
+		CLC : ADC.w #!Particle_Size
+		TAX
+		CPX.w #!Particle_Count*!Particle_Size
+		BCC $03 : LDX #$0000
+		DEY : BPL -
+
+		.ThisOne
+		TXA : STA.l !Particle_Index
+		LDA $00
+		STX $00
+		AND #$00FF
+		ASL A
+		CMP.w #.SpawnPtr_End-.SpawnPtr
+		BCC $03 : LDA #$0000
+		TAX
+		JSR (.SpawnPtr,x)
+
+	.Done	PLB
+		PLP
+		RTL
+
+		.SpawnPtr
+		dw .CalmSnow
+		dw .RagingSnow
+		dw .SpellParticles		; this one can also be used for lava
+		dw .MaskSpecial
+		dw .LavaLord			; special one to be used for Lava Lord boss
+		..End
+
+
+	; --old--
+	; speed: px/16 f
+	; accel: px/128 f^2 (added to speed every 8 frames)
+
+	; --new--
+	; speed: px/256 f
+	; accel: px/16 f^2
+
+	; --convert--
+	; speed: *16
+	; accel: *8
+
+
+		.CalmSnow
+		LDX $00							; X = index
+		LDA $02							;\
+		AND #$00FF						; |
+		ASL A							; | RN 1 determines X pos
+		CLC : ADC $1A						; |
+		SEC : SBC #$0080					; |
+		STA !Particle_XLo,x					;/
+		LDA $1C							;\
+		SEC : SBC #$0008					; | Y pos = just above screen
+		STA !Particle_XHi,x					;/
+		LDA #$0100 : STA !Particle_YSpeed,x			; Y speed = 1px/frame
+		STZ !Particle_XSpeed,x					; clear X speed
+		STZ !Particle_XAcc,x					;\ no acceleration
+		STZ !Particle_YAcc,x					;/
+		SEP #$20						; A 8-bit
+		LDA #$FF : STA !Particle_Tile,x				; tile
+		LDA #$FF : STA !Particle_Prop,x				; prop
+		LDA #$02 : STA !Particle_Layer,x			; tile size
+		LDA.b #!prt_weather_BG1 : STA !Particle_Type,x		; type
+		RTS							; return
+
+
+		.RagingSnow
+		LDX $00							; X = index
+		LDA $02							;\
+		AND #$00FF						; |
+		LSR A							; | RN 1 determines X pos
+		ORA #$0100						; |
+		CLC : ADC $1A						; |
+		STA !Particle_XLo,x					;/
+		LDA $03							;\
+		AND #$00FF						; |
+		STA $00							; |
+		LSR #2							; |
+		SEC : SBC $00						; | RN 2 determines Y pos
+		EOR #$FFFF : INC A					; |
+		CLC : ADC $1C						; |
+		SEC : SBC #$0080					; |
+		STA !Particle_YLo,x					;/
+		LDA $04							;\
+		AND #$003F						; |
+		CMP #$0020						; | RN 3 determines X speed
+		BCC $03 : LDA #$0020					; | (50% chance 32, 50% chance 33-63)
+		ASL #4							; |
+		STA !Particle_XSpeed,x					;/
+		LDA $04							;\
+		AND #$0080						; | highest bit of RN 3 determines Y speed
+		ASL A							; | (50% 16, 50% chance 32)
+		ADC #$0100						; |
+		STA !Particle_YSpeed,x					;/
+		LDA !Particle_XSpeed,x					;\
+		CMP #$0200 : BEQ ..0					; |
+		LDA !Particle_YLo,x					; |
+		CMP $1C : BCC ..RN					; |
+	..0	SEP #$20						; |
+		LDA #$00						; | if X speed != 32 AND particle spawns to the side of the camera (rather than above)...
+		BRA ..W							; | ...Y acc has a 50% chance of being -2, otherwise it is 0
+	..RN	SEP #$20						; |
+		LDA $04							; |
+		AND #$40						; |
+		ASL #2							; |
+		ROL A							; |
+		ASL A							; |
+		DEC #2							; |
+	..W	STA !Particle_YAcc,x					;/
+		STZ !Particle_XAcc,x					; X acc = 0
+		LDA #$FF : STA !Particle_Tile,x				; tile
+		LDA #$FF : STA !Particle_Prop,x				; prop
+		LDA #$02 : STA !Particle_Layer,x			; tile size
+		LDA.b #!prt_weather_BG1 : STA !Particle_Type,x		; type
+		RTS							; return
+
+
+		.SpellParticles
+		LDX $00							; X = index
+		LDA $02							;\
+		AND #$00FF						; |
+		ASL #2							; | RN 1 determines X pos
+		CLC : ADC $1A						; |
+		SEC : SBC #$0180					; |
+		STA !Particle_XLo,x					;/
+		LDA $1C							;\
+		CLC : ADC #$00D8					; | always spawn at the bottom of the screen
+		STA !Particle_YLo,x					;/
+		LDA $03							;\
+		AND #$00F0						; | RN 2 determines X speed
+		SEC : SBC #$0080					; |
+		STA !Particle_XSpeed,x					;/
+		LDA $04							;\
+		AND #$00F0						; | RN 3 determines Y speed
+		SEC : SBC #$0180					; |
+		STA !Particle_YSpeed,x					;/
+		SEP #$20						; A 8-bit
+		LDA $03							;\
+		AND #$04						; | third lowest bit of RN 2 determines X acc
+		DEC #2							; |
+		STA !Particle_XAcc,x					;/
+		LDA $04							;\
+		AND #$04						; | third lowest bit of RN 3 determines Y acc
+		INC #2							; |
+		STA !Particle_YAcc,x					;/
+	..prop	LDA !GFX_NoviceShaman					;\
+		AND #$80						; |
+		ASL A							; | prop
+		ROL A							; |
+		ORA #$FA						; |
+		STA !Particle_Prop,x					;/
+		LDA !GFX_NoviceShaman					;\
+		AND #$70						; |
+		ASL A							; |
+		STA $00							; |
+		LDA !GFX_NoviceShaman					; | tile
+		AND #$0F						; |
+		ORA $00							; |
+		CLC : ADC #$4D						; |
+		STA !Particle_Tile,x					;/
+		LDA #$02 : STA !Particle_Layer,x			; tile size
+		LDA.b #!prt_weather_BG1 : STA !Particle_Type,x		; type
+	..R	RTS
+
+
+		.MaskSpecial
+		LDX $00							; X = index
+		STZ $00							; set up side
+		LDA $02							;\ RN 1 determines which side to spawn particle on
+		AND #$0001 : BEQ ..right				;/
+	..left	LDA.l !Level+4						;\ see if left caster is alive
+		AND #$0001 : BEQ ..R					;/
+		DEC $00							;\ spawn on left side
+		LDA #$0D60 : BRA ..W					;/
+
+	..right	LDA.l !Level+4						;\ see if right caster is alive
+		AND #$0002 : BEQ ..R					;/
+		LDA #$0D90
+	..W	STA !Particle_XLo,x
+		LDA #$0148 : STA !Particle_YLo,x
+
+		LDA $03							;\
+		AND #$0006						; |
+		PHX							; |
+		TAX							; |
+		LDA.l ..SpeedTable,x : STA $02				; |
+		LDA.l ..AccelTable,x					; |
+		PLX							; | get random speed and invert if spawning right side
+		SEP #$20						; |
+		BIT $00							; |
+		BPL $03 : EOR #$FF : INC A				; |
+		REP #$20						; |
+		STA !Particle_XAcc,x					;/ > write Y acc via hi byte
+
+		LDA $02							;\
+		AND #$00FF						; |
+		ASL #4							; |
+		CMP #$0800						; | X speed
+		BCC $03 : ORA #$F000					; |
+		BIT $00							; |
+		BPL $04 : EOR #$FFFF : INC A				; |
+		STA !Particle_XSpeed,x					;/
+		LDA $03							;\
+		AND #$00FF						; |
+		ASL #4							; | Y speed
+		CMP #$0800						; |
+		BCC $03 : ORA #$F000					; |
+		STA !Particle_YSpeed,x					;/
+
+		SEP #$20						;\ same prop/tile as spell particles
+		JMP .SpellParticles_prop				;/
+
+	..R	RTS
+
+
+
+	..SpeedTable
+	db $00,$F0
+	db $FA,$FC
+	db $F8,$F0
+	db $FB,$00
+
+	..AccelTable
+	db $FE,$02
+	db $FE,$F8
+	db $00,$00
+	db $00,$FA
+
+
+		.MaskBox
+		LDA !Particle_XLo,x
+		CMP #$0D72 : BCC ..R
+		CMP #$0D7E : BCS ..R
+		LDA !Particle_YLo,x
+		CMP #$0110 : BCC ..R
+		CMP #$0118 : BCS ..R
+		STZ !Particle_Type,x
+	..R	RTS
+
+
+
+		.LavaLord
+		SEP #$20
+		LDX #$0F
+	-	LDA.l $3230,x
+		CMP #$08 : BNE +
+		LDA.l $3590,x
+		AND #$08 : BEQ +
+		LDA.l $35C0,x
+		CMP #$20 : BEQ ++
+	+	DEX : BPL -
+		RTS
+
+	++	LDA.l $3220,x : STA $02
+		LDA.l $3250,x : STA $03
+		LDA.l $3240,x : XBA
+		LDA.l $3210,x
+
+
+		REP #$20
+		LDX $00
+		STA !Particle_XLo,x
+		LDA $02 : STA !Particle_XLo,x
+		LDA $04
+		AND #$0003
+		XBA
+		STA !Particle_XAcc,x						; X acc = 0, Y acc = 0-3 (Y written via hi byte)
+
+		LDA $04
+		AND #$00FC
+		ASL #2
+		SEC : SBC #$0200
+		STA !Particle_XSpeed,x
+		LDA #$FE00 : STA !Particle_YSpeed
+
+		SEP #$20
+		LDA #$FF : STA !Particle_Tile,x					; tile
+		LDA #$FF : STA !Particle_Prop,x					; prop
+		LDA #$02 : STA !Particle_Layer,x				; tile size
+		LDA.b #!prt_weather_BG1 : STA !Particle_Type,x			; type
+		RTS
+
+
 
 		.LoadSnow
 		PHB : PHK : PLB
-		STA $00					; store snow type
+		STA $00					; store weather type
 		JSL !GetVRAM
 		REP #$30
 		LDY.w #!File_Sprite_BG_1
@@ -55,383 +358,9 @@ Weather:
 		LDA #$7FF0 : STA.l !VRAMbase+!VRAMtable+$05,x
 		SEP #$20
 
-
-		.ResetTable
-		LDX #$5F				; reset data so it will work on screen 0/0
-		LDA.b #$55
-	-	STA.l !SnowX,x
-		STA.l !SnowY,x
-		STA.l !SnowXSpeed,x
-		STA.l !SnowXAccel,x
-		DEX : BPL -
-		PLB
-		RTL
-
 		.Data
 		dw $0FC0,$0FE0
 
-
-		.SA1
-		PHP
-		SEP #$30
-		LDA !Pause : BEQ .NoPause
-		PLP
-		RTL
-
-
-		.NoPause
-		PHB
-		LDA.b #!SnowBase>>16
-		PHA : PLB
-
-		STZ.w !SnowSpawned+1
-		LDA.w !SnowSpawned
-		BEQ $03 : DEC.w !SnowSpawned
-
-		LDY $14
-		LDA.l !RNG : STA.w !SnowRNG,y
-
-		REP #$20
-		LDX #$5E
-	.Loop	LDA.w !SnowX,x
-		SEC : SBC $1A
-		CMP #$0100 : BCC .GoodX
-		CMP #$FFF8 : BCS .GoodX
-		CMP #$0180 : BCS .Spawn
-	-	JML .Process
-
-	.Spawn	LDA.w !SnowSpawned : BNE -
-		LDA.w !WeatherFreq		;\
-		AND #$00FF			; | spawn timer for next particle
-		STA.w !SnowSpawned		;/
-		LDY $14
-		CPY #$FC
-		BCC $02 : LDY #$00
-		STX.w !WeatherIndex
-		LDA.w !WeatherType
-		AND #$00FF
-		ASL A
-		TAX
-		JSR (.SpawnPtr,x)
-		JMP .Next
-
-	.GoodX	CMP #$0100
-		BCC $03 : ORA #$0100
-		AND #$01FF
-		STA $00				; OAM X (includes hi bit)
-		LDA.w !SnowY,x
-		SEC : SBC $1C
-		CMP #$00D8 : BCC .GoodY
-		CMP #$FFF8 : BCS .GoodY
-		CMP #$FF80 : BCS .Process
-		JML .Spawn
-
-	.GoodY	PHX
-		SEP #$20
-		XBA
-		LDA.l !OAMindex : TAX
-		CLC : ADC #$04
-		STA.l !OAMindex
-		XBA
-		STA.l !OAM+1,x
-		LDA $00 : STA.l !OAM+0,x
-		LDA.w !WeatherType
-		CMP #$02 : BEQ ++
-		CMP #$03 : BNE +
-	++	LDA !GFX_status+$83
-		ASL A
-		ROL A
-		AND #$01
-		ORA #$0A
-		STA $0F
-		LDA !GFX_status+$83
-		AND #$70
-		ASL A
-		STA $00
-		LDA !GFX_status+$83
-		AND #$0F
-		ORA $00
-		CLC : ADC #$4D
-		BRA ++
-	+	LDA #$3D : STA $0F
-		LDA #$FF
-	++	STA.l !OAM+2,x
-		LDA #$30
-		ORA $0F
-		STA.l !OAM+3,x
-		TXA
-		LSR #2
-		TAX
-		LDA.w !WeatherType
-		CMP #$02 : BEQ ++
-		CMP #$03 : BNE +
-		LDA #$02
-	++	ORA $01
-		BRA ++
-	+	LDA $01
-	++	STA.l !OAMhi,x
-		PLX
-
-	.Process
-		SEP #$20
-		LDA.w !SnowXSpeed,x
-		ASL #4
-		CLC : ADC.w !SnowXFrac,x
-		STA.w !SnowXFrac,x
-		PHP
-		LDY #$00
-		LDA.w !SnowXSpeed,x
-		LSR #4
-		CMP #$08 : BCC +
-		ORA #$F0
-		DEY
-	+	PLP
-		ADC.w !SnowXLo,x : STA.w !SnowXLo,x
-		TYA
-		ADC.w !SnowXHi,x : STA.w !SnowXHi,x
-		LDA.w !SnowYSpeed,x
-		ASL #4
-		CLC : ADC.w !SnowYFrac,x
-		STA.w !SnowYFrac,x
-		PHP
-		LDY #$00
-		LDA.w !SnowYSpeed,x
-		LSR #4
-		CMP #$08 : BCC +
-		ORA #$F0
-		DEY
-	+	PLP
-		ADC.w !SnowYLo,x : STA.w !SnowYLo,x
-		TYA
-		ADC.w !SnowYHi,x : STA.w !SnowYHi,x
-
-		LDA $14
-		AND #$07 : BNE +
-		LDA.w !SnowXSpeed,x
-		CLC : ADC.w !SnowXAccel,x
-		STA.w !SnowXSpeed,x
-		LDA.w !SnowYSpeed,x
-		CLC : ADC.w !SnowYAccel,x
-		STA.w !SnowYSpeed,x
-
-	+	REP #$20
-
-		LDY.w !WeatherType
-		CPY #$03 : BNE $03 : JSR .MaskBox
-
-
-	.Next	DEX #2
-		BMI .Done
-		JML .Loop
-
-	.Done	PLB
-		PLP
-		RTL
-
-
-		.SpawnPtr
-		dw .CalmSnow
-		dw .RagingSnow
-		dw .SpellParticles		; this one can also be used for lava
-		dw .MaskSpecial
-		dw .LavaLord			; special one to be used for Lava Lord boss
-
-
-		.CalmSnow
-		LDX.w !WeatherIndex
-		LDA.w !SnowRNG+0,y
-		AND #$00FF
-		ASL A
-		CLC : ADC $1A
-		SEC : SBC #$0080
-		STA.w !SnowX,x
-		LDA $1C
-		SEC : SBC #$0008
-		STA.w !SnowY,x
-		LDA #$1000 : STA.w !SnowXSpeed,x
-		STZ.w !SnowXAccel,x
-		RTS
-
-
-		.RagingSnow
-		LDX.w !WeatherIndex
-		LDA.w !SnowRNG+0,y
-		AND #$00FF
-		LSR A
-		ORA #$0100
-		CLC : ADC $1A
-		STA.w !SnowX,x
-		LDA.w !SnowRNG+1,y
-		AND #$00FF
-		STA $00
-		LSR #2
-		SEC : SBC $00
-		EOR #$FFFF : INC A
-		CLC : ADC $1C
-		SEC : SBC #$0080
-		STA.w !SnowY,x
-		SEP #$20
-		LDA.w !SnowRNG+2,y
-		AND #$3F
-		CMP #$20
-		BCC $02 : LDA #$20
-		SEC : SBC #$40
-		STA.w !SnowXSpeed,x
-		LDA.w !SnowRNG+3,y
-		AND #$10
-		CLC : ADC #$10
-		STA.w !SnowYSpeed,x
-
-		LDA.w !SnowXSpeed,x
-		CMP #$E0 : BCS ++
-		LDA.w !SnowYLo,x
-		SEC : SBC $1C
-		BMI +
-	++	LDA #$00 : BRA ++
-	+	LDA.w !SnowRNG+3,y
-		AND #$01
-		DEC A
-	++	STA.w !SnowYAccel,x
-		STZ.w !SnowXAccel,x
-		REP #$20
-		RTS
-
-
-		.SpellParticles
-		LDX.w !WeatherIndex
-		LDA.w !SnowRNG+0,y
-		AND #$00FF
-		ASL #2
-		CLC : ADC $1A
-		SEC : SBC #$0180
-		CMP #$0300 : BCC ..R
-		STA.w !SnowX,x
-		LDA $1C
-		CLC : ADC #$00D8
-		STA.w !SnowY,x
-		SEP #$20
-		LDA.w !SnowRNG+1,y
-		AND #$0F
-		SEC : SBC #$08
-		STA.w !SnowXSpeed,x
-		LDA.w !SnowRNG+2,y
-		AND #$0F
-		ADC #$E8
-		STA.w !SnowYSpeed,x
-		LDA.w !SnowRNG+3,y
-		AND #$01
-		ASL A
-		DEC A
-		STA.w !SnowXAccel,x
-		LDA.w !SnowRNG+3,y
-		AND #$02
-		DEC A
-		STA.w !SnowYAccel,x
-		REP #$20
-	..R	RTS
-
-
-		.MaskSpecial
-		LDX.w !WeatherIndex
-		STZ $00
-		LDA.w !SnowRNG+0,y
-		AND #$0001 : BEQ ..R
-	..L	LDA.l !Level+4			; shows whether caster still lives...
-		AND #$0001 : BEQ ..Return
-		LDA #$0D60 : STA.w !SnowX,x
-		DEC $00
-		BRA +
-	..R	LDA.l !Level+4
-		AND #$0002 : BEQ ..Return
-		LDA #$0D90 : STA.w !SnowX,x
-	+	LDA #$0148 : STA.w !SnowY,x
-
-		LDA.w !SnowRNG+1,y
-		AND #$0006
-		PHX
-		TAX
-		LDA.l ..SpeedTable,x : STA $02
-		LDA.l ..AccelTable,x
-		PLX
-		SEP #$20
-		BIT $00
-		BPL $03 : EOR #$FF : INC A
-		REP #$20
-		STA.w !SnowXAccel,x
-		LDA $02
-		SEP #$20
-		BIT $00
-		BPL $03 : EOR #$FF : INC A
-		REP #$20
-		STA.w !SnowXSpeed,x
-	..Return
-		RTS
-
-
-
-	..SpeedTable
-	db $00,$F0
-	db $FA,$FC
-	db $F8,$F0
-	db $FB,$00
-
-	..AccelTable
-	db $FF,$01
-	db $FF,$FC
-	db $00,$00
-	db $00,$FD
-
-
-		.MaskBox
-		LDA.w !SnowX,x
-		CMP #$0D72 : BCC ..R
-		CMP #$0D7E : BCS ..R
-		LDA.w !SnowY,x
-		CMP #$0110 : BCC ..R
-		CMP #$0118 : BCS ..R
-		STZ.w !SnowX,x
-		STZ.w !SnowY,x
-	..R	RTS
-
-
-
-		.LavaLord
-		PHP
-		SEP #$20
-		LDX #$0F
-	-	LDA.l $3230,x
-		CMP #$08 : BNE +
-		LDA.l $3590,x
-		AND #$08 : BEQ +
-		LDA.l $35C0,x
-		CMP #$20 : BEQ ++
-	+	DEX : BPL -
-		PLP
-		RTS
-
-	++	LDA.l $3220,x : STA $00
-		LDA.l $3250,x : STA $01
-		LDA.l $3240,x : XBA
-		LDA.l $3210,x
-
-
-		PLP
-		LDX.w !WeatherIndex
-		STA.w !SnowY,x
-		LDA $00 : STA.w !SnowX,x
-		LDA.w !SnowRNG+0,y
-		AND #$0003
-		XBA
-		STA.w !SnowXAccel,x			; X acc = 0, Y acc = 0-3
-
-		LDA.w !SnowRNG+0,y
-		AND #$00FC
-		LSR #2
-		SEC : SBC #$0020
-		AND #$00FF
-		ORA #$E000
-		STA.w !SnowXSpeed,x			; X speed = -20-20, Y speed = -20
-		RTS
 
 
 
@@ -859,12 +788,17 @@ InitCameraBox:
 		DEY : BNE -
 		+
 
-		CLC : ADC $00
-		STA $00
-		SEP #$20
-		LDX $00
-		LDY $01
-		JSL LoadScreen
+	;	CLC : ADC $00
+	;	STA $00
+	;	SEP #$20
+	;	LDX $00
+	;	LDY $01
+	;	JSL LoadScreen
+
+		PLB
+		PLP
+		RTL
+
 
 		LDA.b #!VRAMbank
 		PHA : PLB
@@ -875,9 +809,8 @@ InitCameraBox:
 		AND #$00FF
 		ASL #2
 		CLC : ADC !VRAMtable+$05,x
-		SEC : SBC #$0400
 		STA !VRAMtable+$05,x
-		SEC : SBC #$3000
+		SEC : SBC.l !BG1Address
 		BEQ .Done
 
 		ASL A
@@ -888,13 +821,601 @@ InitCameraBox:
 		CLC : ADC !VRAMtable+$02,x
 		STA !VRAMtable+$09,x
 		LDA !VRAMtable+$04,x : STA !VRAMtable+$0B,x
-		LDA #$3000 : STA !VRAMtable+$0C,x
+		LDA.l !BG1Address
+		CLC : ADC #$0400
+		STA !VRAMtable+$0C,x
 
 
 
 	.Done	PLB
 
 		INC !SmoothCamera
+		PLP
+		RTL
+
+
+
+	DisplayHitbox1:
+	.OutsideJump
+		JML .Outside
+
+	.Main
+		PHP
+		SEP #$20
+		STZ $41
+		STZ $42
+		STZ $43
+		REP #$20
+		LDA !P2Hitbox1+4-$80 : BEQ .OutsideJump
+		AND #$00FF
+		CLC : ADC !P2Hitbox1+0-$80
+		STA $00					; $00 = x + w
+		LDA !P2Hitbox1+5-$80
+		AND #$00FF
+		CLC : ADC !P2Hitbox1+2-$80
+		STA $02					; $02 = y + h
+
+		LDA $1A
+		CLC : ADC #$0100
+		STA $04					; $04 = screen right
+		LDA $1C
+		CLC : ADC #$00D8
+		STA $06					; $06 = screen bottom
+
+
+		LDA !P2Hitbox1+2-$80 : BMI .OverTop
+		CMP $1C : BCC .OverTop
+
+	.UnderTop
+		CMP $06 : BCS .OutsideJump
+
+	; case 5: outside
+
+		LDA !P2Hitbox1+2-$80
+		SEC : SBC $1C
+		TAY
+		LDA $02
+		CMP $06 : BCC .YInside
+		LDA $06
+		SEC : SBC !P2Hitbox1+2-$80
+		BRA .Height
+
+	; case 4: visible $1C+0xD8-y
+
+
+	.YInside
+		LDA !P2Hitbox1+5-$80
+		AND #$00FF
+		BRA .Height
+
+	; case 3: completely inside
+
+
+	.OverTop
+		LDA $02
+		SEC : SBC $1C
+		BCC .OutsideJump
+		LDY #$00				; start at scanline 0
+
+	; case 1: outside
+	; case 2: visible y+h-$1C
+
+
+	.Height
+		STY $0F					; $0F = starting scanline
+		TAY					; y = number of scanlines visible
+
+
+		LDA !P2Hitbox1+0-$80 : BMI .LeftLeft
+		CMP $1A : BCC .LeftLeft
+
+	.RightLeft
+		CMP $04 : BCS .OutsideJump
+
+	; case E: outside
+
+		LDA !P2Hitbox1+0-$80
+		SEC : SBC $1A
+		TAX
+		LDA $00
+		CMP $04 : BCC .XInside
+		LDA $04
+		SEC : SBC !P2Hitbox1+0-$80
+		BRA .Width
+
+	; case D: visible $1A+0x100-x
+
+
+	.XInside
+		LDA !P2Hitbox1+4-$80
+		AND #$00FF
+		BRA .Width
+
+	; case C: completely inside
+
+
+	.LeftLeft
+		LDA $00
+		SEC : SBC $1A
+		BCS $03 : JMP .Outside
+		LDX #$00				; x coord 0
+
+	; case A: outside
+	; case B: visible x+w-$1A
+
+
+	.Width
+		STX $0D
+		SEP #$20
+		CLC : ADC $0D
+		BCC $02 : LDA #$FF			; cap at 0xFF
+		STA $0E
+
+	; $0D:	left border
+	; $0E:	right border
+	; $0F:	starting y coord
+	; y:	number of scanlines visible
+
+
+		LDA #$04 : STA !HDMA			; enable HDMA on channel 2
+		LDA #$22
+		STA $41
+		STA $42
+		STZ $43
+
+
+		LDX #$00				; table index: 0
+		LDA $0F : BEQ .InstantStart
+		CMP #$40 : BCC +
+
+		LSR A
+		STA $0400
+		BCC $01 : INC A
+		STA $0403
+		INX
+		LDA #$FF : STA $0400,x
+		STZ $0401,x
+		INX #3
+		BRA ++
+
+	+	STA $0400
+		INX
+		LDA #$FF
+	++	STA $0400,x				;\
+		STZ $0401,x				; | set up skip lines
+		INX #2					;/
+
+	.InstantStart
+		TYA : STA $0400,x			;\
+		LDA $0D : STA $0401,x			; | write box
+		LDA $0E : STA $0402,x			;/
+		LDA #$01 : STA $0403,x			;\
+		LDA #$FF : STA $0404,x			; | set up a final skip line
+		STZ $0405,x				;/
+		STZ $0406,x				; end table
+
+		REP #$20
+		LDA #$2601 : STA $4320
+		STZ $4323
+		LDA #$0400 : STA !HDMA2source
+		STA $4322
+
+		SEP #$20
+		LDA $14
+		AND #$01
+		ASL #4
+		TAX
+		CLC : ADC #$10
+		STA !HDMA2source
+		STA $4322
+		LDA $0400 : STA $0410,x
+		LDA $0401 : STA $0411,x
+		LDA $0402 : STA $0412,x
+		LDA $0403 : STA $0413,x
+		LDA $0404 : STA $0414,x
+		LDA $0405 : STA $0415,x
+		LDA $0406 : STA $0416,x
+		LDA $0407 : STA $0417,x
+		LDA $0408 : STA $0418,x
+		LDA $0409 : STA $0419,x
+		LDA $040A : STA $041A,x
+		LDA $040B : STA $041B,x
+		LDA $040C : STA $041C,x
+		LDA $040D : STA $041D,x
+		LDA $040E : STA $041E,x
+		LDA $040F : STA $041F,x
+
+	.Outside
+
+		PLP
+		RTL
+
+
+	DisplayHitbox2:
+	.OutsideJump
+		JML .Outside
+
+	.Main
+		PHP
+		REP #$20
+		LDA !P2Hitbox2+4-$80 : BEQ .OutsideJump
+		AND #$00FF
+		CLC : ADC !P2Hitbox2+0-$80
+		STA $00					; $00 = x + w
+		LDA !P2Hitbox2+5-$80
+		AND #$00FF
+		CLC : ADC !P2Hitbox2+2-$80
+		STA $02					; $02 = y + h
+
+		LDA $1A
+		CLC : ADC #$0100
+		STA $04					; $04 = screen right
+		LDA $1C
+		CLC : ADC #$00D8
+		STA $06					; $06 = screen bottom
+
+
+		LDA !P2Hitbox2+2-$80 : BMI .OverTop
+		CMP $1C : BCC .OverTop
+
+	.UnderTop
+		CMP $06 : BCS .OutsideJump
+
+	; case 5: outside
+
+		LDA !P2Hitbox2+2-$80
+		SEC : SBC $1C
+		TAY
+		LDA $02
+		CMP $06 : BCC .YInside
+		LDA $06
+		SEC : SBC !P2Hitbox2+2-$80
+		BRA .Height
+
+	; case 4: visible $1C+0xD8-y
+
+
+	.YInside
+		LDA !P2Hitbox2+5-$80
+		AND #$00FF
+		BRA .Height
+
+	; case 3: completely inside
+
+
+	.OverTop
+		LDA $02
+		SEC : SBC $1C
+		BCC .OutsideJump
+		LDY #$00				; start at scanline 0
+
+	; case 1: outside
+	; case 2: visible y+h-$1C
+
+
+	.Height
+		STY $0F					; $0F = starting scanline
+		TAY					; y = number of scanlines visible
+
+
+		LDA !P2Hitbox2+0-$80 : BMI .LeftLeft
+		CMP $1A : BCC .LeftLeft
+
+	.RightLeft
+		CMP $04 : BCS .OutsideJump
+
+	; case E: outside
+
+		LDA !P2Hitbox2+0-$80
+		SEC : SBC $1A
+		TAX
+		LDA $00
+		CMP $04 : BCC .XInside
+		LDA $04
+		SEC : SBC !P2Hitbox2+0-$80
+		BRA .Width
+
+	; case D: visible $1A+0x100-x
+
+
+	.XInside
+		LDA !P2Hitbox2+4-$80
+		AND #$00FF
+		BRA .Width
+
+	; case C: completely inside
+
+
+	.LeftLeft
+		LDA $00
+		SEC : SBC $1A
+		BCS $03 : JMP .Outside
+		LDX #$00				; x coord 0
+
+	; case A: outside
+	; case B: visible x+w-$1A
+
+
+	.Width
+		STX $0D
+		SEP #$20
+		CLC : ADC $0D
+		BCC $02 : LDA #$FF			; cap at 0xFF
+		STA $0E
+
+	; $0D:	left border
+	; $0E:	right border
+	; $0F:	starting y coord
+	; y:	number of scanlines visible
+
+
+		LDA #$08 : TSB !HDMA			; enable HDMA on channel 2
+		LDA #$88
+		TSB $41
+		TSB $42
+
+
+		LDX #$00				; table index: 0
+		LDA $0F : BEQ .InstantStart
+		CMP #$40 : BCC +
+
+		LSR A
+		STA $0600
+		BCC $01 : INC A
+		STA $0603
+		INX
+		LDA #$FF : STA $0600,x
+		STZ $0601,x
+		INX #3
+		BRA ++
+
+	+	STA $0600
+		INX
+		LDA #$FF
+	++	STA $0600,x				;\
+		STZ $0601,x				; | set up skip lines
+		INX #2					;/
+
+	.InstantStart
+		TYA : STA $0600,x			;\
+		LDA $0D : STA $0601,x			; | write box
+		LDA $0E : STA $0602,x			;/
+		LDA #$01 : STA $0603,x			;\
+		LDA #$FF : STA $0604,x			; | set up a final skip line
+		STZ $0605,x				;/
+		STZ $0606,x				; end table
+
+		REP #$20
+		LDA #$2801 : STA $4330
+		STZ $4333
+		LDA #$0600 : STA !HDMA3source
+		STA $4332
+
+		SEP #$20
+		LDA $14
+		AND #$01
+		ASL #4
+		TAX
+		CLC : ADC #$10
+		STA !HDMA3source
+		STA $4332
+		LDA $0600 : STA $0610,x
+		LDA $0601 : STA $0611,x
+		LDA $0602 : STA $0612,x
+		LDA $0603 : STA $0613,x
+		LDA $0604 : STA $0614,x
+		LDA $0605 : STA $0615,x
+		LDA $0606 : STA $0616,x
+		LDA $0607 : STA $0617,x
+		LDA $0608 : STA $0618,x
+		LDA $0609 : STA $0619,x
+		LDA $060A : STA $061A,x
+		LDA $060B : STA $061B,x
+		LDA $060C : STA $061C,x
+		LDA $060D : STA $061D,x
+		LDA $060E : STA $061E,x
+		LDA $060F : STA $061F,x
+
+	.Outside
+
+		PLP
+		RTL
+
+
+
+
+	DisplayHurtbox:
+	.OutsideJump
+		JML .Outside
+
+	.Main
+		PHP
+		SEP #$20
+		STZ $41
+		STZ $42
+		STZ $43
+		REP #$20
+		LDA !P2Hurtbox+4-$80 : BEQ .OutsideJump
+		AND #$00FF
+		CLC : ADC !P2Hurtbox+0-$80
+		STA $00					; $00 = x + w
+		LDA !P2Hurtbox+5-$80
+		AND #$00FF
+		CLC : ADC !P2Hurtbox+2-$80
+		STA $02					; $02 = y + h
+
+		LDA $1A
+		CLC : ADC #$0100
+		STA $04					; $04 = screen right
+		LDA $1C
+		CLC : ADC #$00D8
+		STA $06					; $06 = screen bottom
+
+
+		LDA !P2Hurtbox+2-$80 : BMI .OverTop
+		CMP $1C : BCC .OverTop
+
+	.UnderTop
+		CMP $06 : BCS .OutsideJump
+
+	; case 5: outside
+
+		LDA !P2Hurtbox+2-$80
+		SEC : SBC $1C
+		TAY
+		LDA $02
+		CMP $06 : BCC .YInside
+		LDA $06
+		SEC : SBC !P2Hurtbox+2-$80
+		BRA .Height
+
+	; case 4: visible $1C+0xD8-y
+
+
+	.YInside
+		LDA !P2Hurtbox+5-$80
+		AND #$00FF
+		BRA .Height
+
+	; case 3: completely inside
+
+
+	.OverTop
+		LDA $02
+		SEC : SBC $1C
+		BCC .OutsideJump
+		LDY #$00				; start at scanline 0
+
+	; case 1: outside
+	; case 2: visible y+h-$1C
+
+
+	.Height
+		STY $0F					; $0F = starting scanline
+		TAY					; y = number of scanlines visible
+
+
+		LDA !P2Hurtbox+0-$80 : BMI .LeftLeft
+		CMP $1A : BCC .LeftLeft
+
+	.RightLeft
+		CMP $04 : BCS .OutsideJump
+
+	; case E: outside
+
+		LDA !P2Hurtbox+0-$80
+		SEC : SBC $1A
+		TAX
+		LDA $00
+		CMP $04 : BCC .XInside
+		LDA $04
+		SEC : SBC !P2Hurtbox+0-$80
+		BRA .Width
+
+	; case D: visible $1A+0x100-x
+
+
+	.XInside
+		LDA !P2Hurtbox+4-$80
+		AND #$00FF
+		BRA .Width
+
+	; case C: completely inside
+
+
+	.LeftLeft
+		LDA $00
+		SEC : SBC $1A
+		BCS $03 : JMP .Outside
+		LDX #$00				; x coord 0
+
+	; case A: outside
+	; case B: visible x+w-$1A
+
+
+	.Width
+		STX $0D
+		SEP #$20
+		CLC : ADC $0D
+		BCC $02 : LDA #$FF			; cap at 0xFF
+		STA $0E
+
+	; $0D:	left border
+	; $0E:	right border
+	; $0F:	starting y coord
+	; y:	number of scanlines visible
+
+
+		LDA #$04 : STA !HDMA			; enable HDMA on channel 2
+		LDA #$22
+		STA $41
+		STA $42
+		STZ $43
+
+
+		LDX #$00				; table index: 0
+		LDA $0F : BEQ .InstantStart
+		CMP #$40 : BCC +
+
+		LSR A
+		STA $0400
+		BCC $01 : INC A
+		STA $0403
+		INX
+		LDA #$FF : STA $0400,x
+		STZ $0401,x
+		INX #3
+		BRA ++
+
+	+	STA $0400
+		INX
+		LDA #$FF
+	++	STA $0400,x				;\
+		STZ $0401,x				; | set up skip lines
+		INX #2					;/
+
+	.InstantStart
+		TYA : STA $0400,x			;\
+		LDA $0D : STA $0401,x			; | write box
+		LDA $0E : STA $0402,x			;/
+		LDA #$01 : STA $0403,x			;\
+		LDA #$FF : STA $0404,x			; | set up a final skip line
+		STZ $0405,x				;/
+		STZ $0406,x				; end table
+
+		REP #$20
+		LDA #$2601 : STA $4320
+		STZ $4323
+		LDA #$0400 : STA !HDMA2source
+		STA $4322
+
+		SEP #$20
+		LDA $14
+		AND #$01
+		ASL #4
+		TAX
+		CLC : ADC #$10
+		STA !HDMA2source
+		STA $4322
+		LDA $0400 : STA $0410,x
+		LDA $0401 : STA $0411,x
+		LDA $0402 : STA $0412,x
+		LDA $0403 : STA $0413,x
+		LDA $0404 : STA $0414,x
+		LDA $0405 : STA $0415,x
+		LDA $0406 : STA $0416,x
+		LDA $0407 : STA $0417,x
+		LDA $0408 : STA $0418,x
+		LDA $0409 : STA $0419,x
+		LDA $040A : STA $041A,x
+		LDA $040B : STA $041B,x
+		LDA $040C : STA $041C,x
+		LDA $040D : STA $041D,x
+		LDA $040E : STA $041E,x
+		LDA $040F : STA $041F,x
+
+	.Outside
+
 		PLP
 		RTL
 
@@ -914,12 +1435,22 @@ levelinit0:
 
 		INC !SideExit
 		PHP
-		REP #$30
-		LDY.w #!File_NPC_Survivor
-		LDA #$6C00
-		JSL !LoadFile
+;		REP #$30
+;		LDY.w #!File_NPC_Survivor
+;		LDA #$6C00
+;		JSL !LoadFile
+
+
+		SEP #$20
+		LDA #$01 : STA $410000+!BG_object_Type
+		LDA #$04 : STA $410000+!BG_object_W
+		LDA #$02 : STA $410000+!BG_object_H
+		REP #$20
+		LDA #$00D0 : STA $410000+!BG_object_X
+		LDA #$0170 : STA $410000+!BG_object_Y
 
 		PLP
+
 		RTL
 
 
@@ -1300,6 +1831,16 @@ levelinitC5:
 		RTL				; > Return
 
 levelinitC6:
+		STZ !P1Dead
+		STZ !MarioAnim
+		STZ !P2Status-$80
+		STZ !P2Status
+
+		STZ $24
+		STZ $25
+
+		LDA #$B0 : STA !GFX_Dynamic	; base dynamic tile: 0x160
+
 		RTL
 
 
@@ -1318,6 +1859,7 @@ levelinitC7:
 	pullpc
 
 levelinitC8:
+
 		STZ $0A80			; clear chunk status
 		STZ $0A87
 		PHP
@@ -1964,6 +2506,9 @@ level0:
 		STZ $01
 		JSL DisplayYC
 
+		JSL DisplayHitbox1_Main
+		JSL DisplayHitbox2_Main
+
 	;JSL TriangleProjection
 
 		RTL
@@ -2179,7 +2724,7 @@ level25:
 
 		LDA !Level+2 : BNE .NoUpload
 		INC !Level+2
-		JSL LoadScreen_Char
+		LDA #$0400 : JSL LoadScreen_Char
 		RTL
 		.NoUpload
 
@@ -2499,6 +3044,12 @@ level25:
 
 
 ; this code uses $0400-$0BFF as a buffer, so be careful when using HDMA!
+; input:
+; .Char
+;	A = added to !BG1Address
+; normal
+;	X = map16 index, lo byte
+;	Y = map16 index, hi byte
 LoadScreen:	PHP
 		STX $00
 		STY $01
@@ -2558,7 +3109,7 @@ LoadScreen:	PHP
 		REP #$20
 		LDA #$0400 : STA !VRAMbase+!VRAMtable+$02,x
 		LDA #$0000 : STA !VRAMbase+!VRAMtable+$04,x
-		LDA #$3400 : STA !VRAMbase+!VRAMtable+$05,x
+		LDA !BG1Address : STA !VRAMbase+!VRAMtable+$05,x
 		LDA #$0800 : STA !VRAMbase+!VRAMtable+$00,x
 		PLP
 		RTL
@@ -2869,16 +3420,195 @@ levelC5:
 		RTL
 
 
+
+
+
+;
+; !Level+2	timer for jump tooltip
+; !Level+3	timer for run tooltip
+; !Level+4	timer for attack tooltip and senku jump tooltip
+; !Level+5	bit check for kadaal's lessons:
+;		0 - run right
+;		1 - run left
+;		2 - attack 1
+;		3 - attack 2
+;		4 - senku
+;		5 - senku jump
+;
+
 levelC6:
 
-	REP #$20
-	LDA #$1300 : JSL END_Right
-	LDA !GameMode
-	CMP #$0B : BNE +
-	STZ $6109
-	+
+		LDA !P2Character
+		CMP #$02 : BEQ +
+	;	LDA !Level+4 : BNE +
+		LDA $1B
+		CMP #$0E : BNE +
+		LDX #$0F
+	-	LDA $3230,x : BEQ ++
+		LDA !NewSpriteNum,x
+		CMP #$0E : BNE ++
+		LDA #$01 : STA $3320,x
+		LDA #$01 : STA !ExtraProp2,x
+
+		LDA !Level+1				;\
+		BEQ $02 : LDA #$20			; |
+		ORA #$40				; |
+		STA !LevelTable1+$5E			; |
+		LDA !Level : STA !LevelTable2+$5E	;/
+
+	;	LDA #$01 : STA !MsgTrigger
+	++	DEX : BPL -
+	;	LDA #$01 : STA !Level+4
+		+
 
 
+	; end level
+		REP #$20				;\ end level at coordinate 0x1FF0
+		LDA #$1FF0 : JSL END_Right		;/
+		LDA !GameMode				;\
+		CMP #$0B : BNE .NotEnded		; |
+		STZ $6109				; | beat intro level when reaching the end
+		LDA #$80 : TSB !LevelTable1		; |
+		.NotEnded				;/
+
+	; set HDMA
+		LDA.b #.HDMA : STA !HDMAptr+0
+		LDA.b #.HDMA>>8 : STA !HDMAptr+1
+		LDA.b #.HDMA>>16 : STA !HDMAptr+2
+
+	; screen regs
+		LDA #$44 : STA !2131
+		LDA #$13 : STA !SubScreen
+		LDA #$17 : STA !MainScreen
+		LDA #$09 : STA !2105
+
+	; background color
+		REP #$20
+		LDA #$7BDE : STA !PaletteBuffer+0
+		LDA $1B
+		AND #$00FF
+		CMP #$001F
+		BCC $03 : LDA #$001F
+		EOR #$001F
+		LDX #$00
+		LDY #$01
+		JSL !MixRGB
+		LDA !PaletteBuffer+0 : STA !Color0
+		SEP #$20
+
+
+
+	; -- TUTOTIRAL GUI CHECK --
+
+
+	; character check
+		LDA !P2Character-$80
+		CMP #$02 : BEQ .Kadaal
+		JMP .Mario
+		.Kadaal
+
+	; attack 1 check
+		LDA !Level+5
+		AND #$04 : BNE .NoAttack1
+		REP #$20
+		LDA !P2XPos-$80
+		CMP #$0F80 : BCC .NoAttack1
+		CMP #$1200 : BCS .NoAttack1
+		SEP #$20
+		LDX #$0F
+	-	LDA $3230,x
+		CMP #$02 : BEQ +
+		DEX : BPL -
+		LDY #$08
+		JMP .LoadTilemap
+	+	LDA #$04 : TSB !Level+5
+		.NoAttack1
+		SEP #$20
+
+	; attack 2 check
+		LDA !Level+5
+		AND #$08 : BNE .NoAttack2
+		LDA !P2XPosHi-$80
+		CMP #$12 : BEQ +
+		STZ !Level+4
+		JMP .NoSenkuJump
+	+	LDX.b #!Ex_Amount-1
+	-	LDA !Ex_Num,x
+		CMP #$01+!MinorOffset : BEQ +
+		DEX : BPL -
+		BRA ++
+	+	LDA #$08 : TSB !Level+5
+	++	LDA !Level+4
+		CMP #$FF : BEQ +
+		INC !Level+4
+		JMP .NoSenkuJump
+	+	LDY #$08
+		JMP .LoadTilemap
+		.NoAttack2
+
+	; slide check
+		LDA !P2XPosHi-$80
+		CMP #$15 : BNE .NoSlide
+		LDY #$03
+		JMP .LoadTilemap
+		.NoSlide
+
+	; senku check
+		LDA !Level+5
+		AND #$10 : BNE .NoSenku
+		LDA !P2XPosHi-$80
+		CMP #$1A : BNE .NoSenku
+		BIT !P2XPosLo-$80 : BPL +
+		LDA #$10 : TSB !Level+5
+	+	LDY #$09
+		JMP .LoadTilemap
+		.NoSenku
+
+	; senku jump check
+		LDA !Level+5
+		AND #$20 : BNE .NoSenkuJump
+		LDA !P2XPosHi-$80
+		CMP #$1B : BEQ +
+		CMP #$1C : BEQ +
+		STZ !Level+4
+		BRA .NoSenkuJump
+	+	LDA !P2YPosHi-$80 : BNE +
+		LDA !P2YPosLo-$80
+		CMP #$D0 : BCS +
+		LDA !P2InAir-$80 : BNE +
+		LDA #$20 : TSB !Level+5
+	+	LDA !Level+4
+		CMP #$FF : BEQ +
+		INC !Level+4
+		BRA .NoSenkuJump
+	+	LDY #$0A
+		JMP .LoadTilemap
+		.NoSenkuJump
+
+	; tap run check
+		LDA !P2Dashing-$80 : BEQ +
+		LDA !P2Direction-$80
+		EOR #$01
+		INC A
+		TSB !Level+5
+	+	LDA $14
+		AND #$10
+		BEQ $02 : LDA #$01
+		ORA #$04
+		TAY
+		LDA !Level+5
+		AND #$03 : BEQ +
+		CMP #$02 : BEQ +
+		CMP #$03 : BEQ .NoTapRun
+		LDX !P2XPosHi-$80
+		CPX #$11 : BCS .NoTapRun
+		INY #2
+	+	JMP .LoadTilemap
+		.NoTapRun
+
+
+	; jump check
+		.Mario
 		LDA $1B
 		CMP #$02 : BEQ .TextRun
 		CMP #$03 : BEQ .TextRun
@@ -2891,7 +3621,6 @@ levelC6:
 		CMP #$FF : BNE .CountJump
 		LDY #$00
 		BRA .LoadTilemap
-
 		.CountJump
 		INC A
 		STA !Level+2
@@ -2899,56 +3628,88 @@ levelC6:
 		.NoJump
 		STZ !Level+2
 
+	; fire check
 		.CheckFire
 		LDA !CurrentMario : BEQ .Return
-		LDA !MarioFireCharge : BEQ .Return
+		DEC A
+		LSR A
+		ROR A
+		AND #$80
+		TAX
+		LDA !P2FireCharge-$80,x : BEQ .Return
 		LDY #$02
 		BRA .LoadTilemap
 
+	; run check
 		.TextRun
 		LDA $95
 		CMP #$02 : BNE +
 		LDA $94
-		CMP #$90 : BCC .Return
-
-	+	CMP #$04 : BCS .Return
+		CMP #$90 : BCC .NoRun
+	+	CMP #$04 : BCS .NoRun
 		LDA $94
-		CMP #$F5 : BCS .Return
+		CMP #$F5 : BCS .NoRun
+		LDA !Level+3
+		CMP #$FF : BEQ .DisplayRunText
+		.CountRun
+		INC A
+		STA !Level+3
+		BRA .Return
+		.NoRun
+		STZ !Level+3
+		BRA .Return
+		.DisplayRunText
 		LDY #$01
 
-		.LoadTilemap
-		LDA .TilemapSize,y : STA $0F
-		TYA
-		ASL A
-		TAY
-		LDA #$02 : STA $0E
-		REP #$20
-		STZ $00
-		LDA .TilemapPtr,y : STA $02
+
 
 	; $00 - Xpos
 	; $01 - Ypos
 	; $02 - pointer
-	; $0E - tile size
-	; $0F - byte count
-
-		.DisplayTilemap
+	; $0D - tile size
+	; $0E - byte count
+		.LoadTilemap
+		LDA .TilemapSize,y : STA $0E
+		TYA
+		ASL A
+		TAY
+		LDA #$02 : STA $0D
+		REP #$20
+		STZ $00
+		LDA .TilemapPtr,y : STA $02
 		JSL !SpriteHUD
+		SEP #$20
 
 		.Return
 		RTL
 
 
 		.TilemapPtr
-		dw .Jump
-		dw .Run
-		dw .Fire
+		dw .Jump		; 00
+		dw .Run			; 01
+		dw .Fire		; 02
+		dw .Slide		; 03
+		dw .TapRun1		; 04
+		dw .TapRun2		; 05
+		dw .TapRun3		; 06
+		dw .TapRun4		; 07
+		dw .Attack		; 08
+		dw .Senku		; 09
+		dw .SenkuJump		; 0A
 
 
 		.TilemapSize
 		db .Jump_End-.Jump
 		db .Run_End-.Run
 		db .Fire_End-.Fire
+		db .Slide_End-.Slide
+		db .TapRun1_End-.TapRun1
+		db .TapRun2_End-.TapRun2
+		db .TapRun3_End-.TapRun3
+		db .TapRun4_End-.TapRun4
+		db .Attack_End-.Attack
+		db .Senku_End-.Senku
+		db .SenkuJump_End-.SenkuJump
 
 ; -- inputs --
 ; A		0x80 (16x16)
@@ -2975,22 +3736,156 @@ levelC6:
 
 
 		.Jump
-		db $65,$C2,$87,$3F
-		db $75,$C2,$89,$3F
-		db $8B,$C0,$82,$3F		; B
+		db $65,$C2,$87,$3D		; jump
+		db $75,$C2,$89,$3D
+		db $8B,$C0,$82,$3D		; B
 		..End
 
 		.Run
-		db $65,$C2,$8B,$3F
-		db $6D,$C2,$8C,$3F
-		db $83,$C0,$A2,$3F		; Y
+		db $65,$C2,$AC,$3D		; run
+		db $6D,$C2,$AD,$3D
+		db $83,$C0,$A2,$3D		; Y
 		..End
 
 		.Fire
-		db $65,$C2,$A7,$3F
-		db $75,$C2,$A9,$3F
-		db $8B,$C0,$A2,$3F		; Y
+		db $65,$C2,$EC,$3D		; fire
+		db $75,$C2,$EE,$3D
+		db $8B,$C0,$A2,$3D		; Y
 		..End
+
+		.Slide
+		db $60,$C2,$CC,$3D		; slide
+		db $70,$C2,$CE,$3D
+		db $8C,$C8,$E8,$3D		; dpad
+		db $84,$B8,$C4,$3D
+		db $94,$B8,$C6,$3D
+		db $84,$C8,$E4,$3D
+		db $94,$C8,$E6,$3D
+		..End
+
+		.TapRun1
+		db $5D,$C2,$AC,$3D		; run
+		db $65,$C2,$AD,$3D
+		db $88,$C0,$C8,$3D		; dpad 1
+		db $78,$B8,$C4,$3D
+		db $88,$B8,$C6,$3D
+		db $78,$C8,$E4,$3D
+		db $88,$C8,$E6,$3D
+		db $9C,$C0,$C8,$3D		; dpad 2
+		db $8C,$B8,$C4,$3D
+		db $9C,$B8,$C6,$3D
+		db $8C,$C8,$E4,$3D
+		db $9C,$C8,$E6,$3D
+		..End
+		.TapRun2
+		db $5D,$C2,$AC,$3D		; run
+		db $65,$C2,$AD,$3D
+		db $78,$B8,$C4,$3D		; dpad 1
+		db $88,$B8,$C6,$3D
+		db $78,$C8,$E4,$3D
+		db $88,$C8,$E6,$3D
+		db $8C,$B8,$C4,$3D		; dpad 2
+		db $9C,$B8,$C6,$3D
+		db $8C,$C8,$E4,$3D
+		db $9C,$C8,$E6,$3D
+		..End
+		.TapRun3
+		db $5D,$C2,$AC,$3D		; run
+		db $65,$C2,$AD,$3D
+		db $8C,$C0,$CA,$3D		; dpad 1
+		db $8C,$B8,$C4,$3D
+		db $9C,$B8,$C6,$3D
+		db $8C,$C8,$E4,$3D
+		db $9C,$C8,$E6,$3D
+		db $78,$C0,$CA,$3D		; dpad 2
+		db $78,$B8,$C4,$3D
+		db $88,$B8,$C6,$3D
+		db $78,$C8,$E4,$3D
+		db $88,$C8,$E6,$3D
+		..End
+		.TapRun4
+		db $5D,$C2,$AC,$3D		; run
+		db $65,$C2,$AD,$3D
+		db $8C,$B8,$C4,$3D		; dpad 1
+		db $9C,$B8,$C6,$3D
+		db $8C,$C8,$E4,$3D
+		db $9C,$C8,$E6,$3D
+		db $78,$B8,$C4,$3D		; dpad 2
+		db $88,$B8,$C6,$3D
+		db $78,$C8,$E4,$3D
+		db $88,$C8,$E6,$3D
+		..End
+
+		.Attack
+		db $5D,$C2,$A7,$3D		; attack
+		db $6D,$C2,$A9,$3D
+		db $75,$C2,$AA,$3D
+		db $8B,$C0,$A2,$3D		; Y
+		..End
+
+		.Senku
+		db $61,$C2,$8B,$3D		; senku
+		db $71,$C2,$8D,$3D
+		db $79,$C2,$8E,$3D
+		db $91,$C0,$80,$3D		; A
+		..End
+
+		.SenkuJump
+		db $4C,$C2,$8B,$3D		; senku
+		db $5C,$C2,$8D,$3D
+		db $64,$C2,$8E,$3D
+		db $74,$C0,$80,$3D		; A
+		db $88,$C2,$87,$3D		; jump
+		db $98,$C2,$89,$3D
+		db $AE,$C0,$82,$3D		; B
+		..End
+
+
+
+
+		.HDMA
+		PHP
+		SEP #$10
+		REP #$20
+		LDA $14
+		AND #$0001
+		BEQ $03 : LDA #$0010
+		TAX
+		LDA $1A
+		CMP #$0600 : BCC +
+		LDA $14
+		AND #$0007 : BNE +
+		INC $22
+		LDA $24
+		CMP #$01B0
+		BEQ $01 : INC A
+		STA $24
+	+	LDA #$0001 : STA $0A00,x
+		STZ $0A05,x
+		LDA $1A
+		CLC : ADC $22
+		STA $0A01,x
+		LDA $1C
+		CLC : ADC $24
+		CMP #$0100
+		BCS $03 : LDA #$0100
+		STA $0A03,x
+		LDA #$1103 : STA $4320
+		LDA $14
+		AND #$0001
+		BEQ $03 : LDA #$0010
+		ORA #$0A00
+		STA !HDMA2source
+		SEP #$20
+		STZ $4324
+		LDA #$04 : TSB !HDMA		; use channel 2 so it gets overwritten by message box
+		PLP
+		RTL
+
+
+
+
+
 
 
 levelC7:
@@ -3009,6 +3904,15 @@ levelC7:
 
 
 levelC8:
+
+		LDA !P2Blocked-$80
+		AND #$04 : BEQ +
+		LDA #$10 : STA !Characters
+		LDA #$01 : STA !P2Character-$80
+		LDA #$00 : STA !CurrentMario
+		+
+
+
 		LDX #$0F
 	-	LDA $3200,x
 		CMP #$13 : BNE +
@@ -3727,7 +4631,7 @@ level1F4:
 		LDA #$B3 : STA $79B8+0			;\
 		LDA #$97 : STA $79D8+0			; |
 		JSL WARP_BOX				; | elevator exit
-		db $02 : dw $0000,$0150 : db $10,$40	; |
+		db $02 : dw $0000,$0170 : db $10,$40	; |
 		BCC $01 : RTL				;/
 
 		RTL

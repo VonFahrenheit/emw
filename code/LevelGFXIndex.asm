@@ -17,16 +17,20 @@
 ;	with this enabled, layer 3 is 512x256 instead of 512,512, and can only use the GFX28/GFX29 slots
 ;	GFX2A/GFX2B are instead used for layer1/2, meaning you have 8 4bpp files to use for level objects and backgrounds
 ;	note that the level must use map16 remapping in levelcode to be able to make use of these extra graphics
-; values 02 and above are currently unused and will default to 00
+; 02 - mode 2 map:
+;	mode 2 is enabled
+;	map works the same as map 1, except all layer 3 data is replaced with a 64x64 displacement map
+
+; values 03 and above are currently unused and will default to 00
 
 ; $188250
 	print "VRAM map mode data stored at $", pc, "."
 
 	;  xx0 xx1 xx2 xx3 xx4 xx5 xx6 xx7 xx8 xx9 xxA xxB xxC xxD xxE xxF
-	db $00,$00,$00,$00,$01,$00,$00,$01,$00,$00,$00,$00,$00,$00,$00,$00	; 00x
+	db $01,$00,$00,$00,$02,$00,$00,$01,$00,$00,$00,$00,$00,$00,$00,$00	; 00x
 	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 01x
 	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 02x
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 03x
+	db $00,$00,$02,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 03x
 	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 04x
 	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 05x
 	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 06x
@@ -71,39 +75,40 @@ LoadTable:
 ; a value of 0xFE means the sprite is included in SP1 and should have its offsets set to 0
 ; a value of 0xFF means the sprite is dynamic and does not load anything at level init
 ; note that if value is 0xFF, the super dynamic table will be searched so see if there's a match
-;  --0 --1 --2 --3 --4 --5 --6 --7 --8 --9 --A --B --C --D --E --F
-db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$01,$02,$03 ; 00-
-db $0A,$1D,$FF,$0D,$0D,$45,$45,$45,$45,$FF,$04,$1E,$05,$0E,$10,$13 ; 01-
-db $13,$FE,$14,$14,$14,$14,$15,$16,$3C,$FF,$04,$33,$FF,$FF,$1F,$07 ; 02-
-db $46,$55,$54,$17,$50,$FF,$FF,$3D,$56,$56,$2D,$2D,$2D,$2E,$08,$8F ; 03-
-db $90,$2F,$2F,$2F,$30,$06,$47,$45,$23,$0F,$FF,$10,$FD,$34,$34,$04 ; 04-
-db $04,$39,$91,$FE,$3E,$25,$26,$25,$26,$FE,$FE,$24,$25,$27,$27,$24 ; 05-
-db $FF,$20,$24,$25,$28,$29,$29,$40,$2A,$FF,$FF,$FE,$FE,$09,$4E,$4F ; 06-
-db $35,$36,$36,$92,$FE,$FE,$06,$FF,$FE,$04,$FF,$FF,$FF,$11,$6B,$6B ; 07-
-db $02,$FF,$FF,$09,$09,$FF,$12,$5C,$FF,$FF,$3B,$FF,$FF,$FF,$FF,$2B ; 08-
-db $93,$47,$47,$47,$47,$47,$FF,$47,$47,$37,$38,$48,$5A,$57,$18,$49 ; 09-
-db $FF,$51,$52,$24,$2C,$59,$41,$FF,$21,$FF,$19,$4A,$42,$42,$58,$0C ; 0A-
-db $3D,$09,$1A,$43,$40,$FF,$1B,$4B,$4B,$FF,$4C,$1C,$44,$00,$22,$4D ; 0B-
-db $26,$09,$31,$32,$24,$3C,$3A,$FF,$FE,$05,$30,$56,$8F,$90,$FC,$2F ; 0C-
-db $2F,$45,$FF,$36,$57,$05,$05,$05,$43,$FF,$5B,$5B,$5B,$5B,$56,$5B ; 0D-
-db $24,$3D,$3D,$3D,$22,$3D,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 0E-
-db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 0F-
-db $FF,$80,$4A,$82,$FF,$83,$FF,$FF,$FF,$FF,$FF,$84,$84,$FF,$FF,$09 ; 10-
-db $FF,$0B,$FF,$00,$00,$FF,$85,$85,$86,$87,$87,$88,$89,$89,$8A,$8A ; 11-
-db $FF,$8C,$8B,$FF,$FF,$FF,$FF,$8D,$FF,$8E,$FF,$57,$A1,$A2,$A3,$24 ; 12-
-db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 13-
-db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 14-
-db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 15-
-db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 16-
-db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 17-
-db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 18-
-db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 19-
-db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 1A-
-db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 1B-
-db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 1C-
-db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 1D-
-db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 1E-
-db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 1F-
+
+	;  --0 --1 --2 --3 --4 --5 --6 --7 --8 --9 --A --B --C --D --E --F
+	db $70,$70,$71,$70,$00,$00,$81,$00,$A5,$A5,$A5,$A5,$A5,$01,$02,$03 ; 00-
+	db $0A,$1D,$FF,$0D,$0D,$45,$45,$45,$45,$FF,$04,$1E,$05,$0E,$10,$13 ; 01-
+	db $13,$FE,$14,$14,$14,$14,$15,$16,$3C,$FF,$04,$33,$FF,$FF,$1F,$07 ; 02-
+	db $46,$55,$54,$17,$50,$FF,$FF,$3D,$56,$56,$2D,$2D,$2D,$2E,$08,$8F ; 03-
+	db $90,$2F,$2F,$2F,$30,$06,$47,$45,$23,$0F,$FF,$10,$FD,$34,$34,$04 ; 04-
+	db $04,$39,$91,$FE,$3E,$25,$26,$25,$26,$FE,$FE,$24,$25,$27,$27,$24 ; 05-
+	db $FF,$20,$24,$25,$28,$29,$29,$40,$2A,$FF,$FF,$FE,$FE,$09,$4E,$4F ; 06-
+	db $35,$36,$36,$92,$FE,$FE,$06,$FF,$FE,$04,$FF,$FF,$FF,$11,$6B,$6B ; 07-
+	db $02,$FF,$FF,$09,$09,$FF,$12,$5C,$FF,$FF,$3B,$FF,$FF,$FF,$FF,$2B ; 08-
+	db $93,$47,$47,$47,$47,$47,$FF,$47,$47,$37,$38,$48,$5A,$57,$18,$49 ; 09-
+	db $FF,$51,$52,$24,$2C,$59,$41,$FF,$21,$FF,$19,$4A,$42,$42,$58,$0C ; 0A-
+	db $3D,$09,$1A,$43,$40,$FF,$1B,$4B,$4B,$FF,$4C,$1C,$44,$00,$22,$4D ; 0B-
+	db $26,$09,$31,$32,$24,$3C,$3A,$FF,$FE,$05,$30,$56,$8F,$90,$FC,$2F ; 0C-
+	db $2F,$45,$FF,$36,$57,$05,$05,$05,$43,$FF,$5B,$5B,$5B,$5B,$56,$5B ; 0D-
+	db $24,$3D,$3D,$3D,$22,$3D,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 0E-
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 0F-
+	db $FF,$80,$4A,$82,$FF,$83,$FF,$FF,$FF,$A4,$FF,$84,$84,$FF,$FF,$09 ; 10-
+	db $FF,$0B,$FF,$00,$00,$FF,$85,$85,$86,$87,$87,$88,$89,$89,$8A,$8A ; 11-
+	db $FF,$8C,$8B,$FF,$FF,$FF,$FF,$8D,$FF,$8E,$FF,$05,$A1,$A2,$A3,$24 ; 12-
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 13-
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 14-
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 15-
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 16-
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 17-
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 18-
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 19-
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 1A-
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 1B-
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 1C-
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 1D-
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 1E-
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 1F-
 
 ; $188650
 
@@ -140,24 +145,16 @@ PalsetDefaults:
 		JSR GetFiles					; upload files
 		PHP						;\
 		SEP #$20					; |
-;		LDA !GFX_SmallFireball : BNE .NoMarioFire	; |
-
-	LDA !GFX_ReznorFireball : BNE .NoMarioFire
-
+		LDA !GFX_ReznorFireball : BNE .NoMarioFire	; |
 		LDA !MultiPlayer : BEQ +			; |
 		LDA !Characters					; |
-		AND #$0F : BEQ ++				; | small fireball can be included in mario's file
+		AND #$0F : BNE +				; | mario fireball can be included in mario's file
+		LDA #$16 : BRA ++				; |
 	+	LDA !Characters					; |
 		AND #$F0 : BNE .NoMarioFire			; |
-;	++	LDA #$08 : STA !GFX_SmallFireball		; |
-
-++	LDA #$06 : STA !GFX_ReznorFireball
-
-
-;		LDA #$01 : STA !SuperDynamicMark+$03		; |
-
-	LDA #$01 : STA !SuperDynamicMark+$04
-
+		LDA #$06					; |
+	++	STA !GFX_ReznorFireball				; |
+		LDA #$01 : STA !SuperDynamicMark+$04		; |
 		.NoMarioFire					;/
 
 		LDA !MultiPlayer : BEQ +			;\
@@ -172,6 +169,22 @@ PalsetDefaults:
 	++	STA !GFX_LuigiFireball				; |
 		LDA #$01 : STA !SuperDynamicMark+$06		; |
 		.NoLuigiFire					;/
+
+
+		LDA !MultiPlayer : BEQ +			;\
+		AND #$0F					; |
+		CMP #$20 : BNE .NoKadaalSwim			; |
+		BRA ++						; |
+	+	LDA !Characters					; | super-dynamic kadaal swim frames
+		AND #$F0					; |
+		CMP #$20 : BNE .NoKadaalSwim			; |
+	++	LDA #$01 : STA !SuperDynamicMark+$08		; |
+		.NoKadaalSwim					;/
+
+
+
+
+
 
 		PLP						;
 		JSR SuperDynamicFiles				; upload super-dynamic files
@@ -212,6 +225,7 @@ PalsetDefaults:
 		RTS
 
 
+
 ; file format:
 ; - header	2 b	size of DMA data (highest 2 bits determine priority)
 ; - GFX file	2 b	which LM GFX file to use
@@ -224,10 +238,10 @@ PalsetDefaults:
 ; super-dynamic file format:
 ; - width	2 b	width encoding of file
 ; - size	2 b	RAM required (including command-generated images)
-; - GFX address	3 b	source address of GFX file (should not be compressed due to size limitations)
-; - GFX status	1 b	index to GFX status table (should probably have a different table...)
+; - GFX address	2 b	ExGFX file to load from
+; - GFX status	1 b	index to super-dynamic load table
 ; - chunk count	1 b	how many chunks the file has
-; - chunk w	1 b	horizontal size of chunks
+; - chunk w	1 b	horizontal size of chunks (/2)
 ; - chunk h	1 b	vertical size of chunks
 ; - commands	var	used to scale and rotate chunks
 ; - FF		1 b	signals the end of the file
@@ -262,191 +276,6 @@ PalsetDefaults:
 ; so i need a RAM table with 256 entries that start off but are toggled on during the scan
 ; after than, files are loaded until they are all done or sprite VRAM is full
 ;
-
-; -- GFX 000-001 --
-; 00-0C: koopas
-; 0E: keyhole
-; 0F: goomba
-; 10: winged goomba
-; 1A: classic piranha plant
-; 1C: bullet bill
-; 21: moving coin
-; 2D: baby yoshi
-; 2F: spring board
-; 35: yoshi
-; 3E: P-switch
-; 45: directional coin
-; 4F-50: jumping piranha plant (+fire for 50)
-; 59-5A: brick bridges
-; 6B-6C: green wall bouncer
-; 6D: invisible solid block
-; 74-78: powerups
-; 79: growing vine
-; 80: key
-; 81: powerup
-; 83-84: flying blocks
-; B1: creating/eating block
-; B9: sign
-; BD: koopa
-; C1: flyin brick platform
-; C7: powerup
-; C8: light switch block
-; DA-DD: koopa shells
-; DF: koopa shell
-;
-; -- GFX 002 --
-; 0D: bob-omb
-; 13: spiny
-; 14: spiny, falling
-; 1D: hopping flame
-; 3F: para-goomba
-; 40: para-bomb
-; 49: growing/shrinking pike end
-; 4B: pipe lakitu
-; 7D: balloon
-; 86: wiggler
-;
-; -- GFX 003 --
-; 1F: magikoopa
-; 20: magikoopa's magic
-; 22-25: net koopas
-; 26: thwomp
-; 27: thwimp
-; 33: fireball
-; 9E: ball and chain
-; AA: fishbone
-; B2: falling spike
-; B6: reflecting diagonal fireball
-; BB: moving castle block
-;
-; -- GFX 004 --
-; 11: buzzy beetle
-; 1B: football
-; 2A: piranha plant
-; 2E: spike top
-; 61: floating skulls
-; A8: blargg
-; BE: swooper bat
-;
-; -- GFX 005 --
-; 48: diggin chuck's rock
-; 4A: goal sphere
-; 55: checkerboard platform
-; 56: flying rock platform
-; 57: checkerboard platform
-; 58: flying rock platform
-; 5C: checkerboard platform
-; 5D-5E: orange platform
-; 63: checkerboard platform
-; 64: rope mechanism
-; 65-66: chainsaw
-; 68: fuzz ball
-; 8F: scale platforms
-; A3: grey platform on chain
-; A4: floating spike ball
-; C0: grey platform
-;
-
-; -- GFX 006 --
-; 3A-3C: urchin
-; 3D: rip van fish
-; 41-43: dolphin
-; 44: torpedo ted
-; C2: blurp fish
-; C3: porcu-puffer
-;
-; -- GFX 009 --
-; 2B: lightning
-; 4D-4E: monty mole
-; 70: pokey
-; 71-73: super koopa
-; 99: volcano lotus
-; 9A: sumo brother
-;
-; -- GFX 00D --
-; 60: flat green switch
-;
-; -- GFX 00E --
-; 51: ninji
-; C6: dark room spotlight
-;
-; -- GFX 00F --
-; 8A: small bird
-; 8B: smoke from yoshi's chimney
-; 8D: ghost house sign and door
-;
-; -- GFX 011 --
-; 28: big boo
-; 37: boo
-; 52: moving ledge
-; 90: large green gas bubble
-; AF: boo block
-; B0: boo stream
-; C5: big boo
-; E2-E3: boo circle (same as normal boo?)
-;
-; -- GFX 012 --
-; 54: climbing net door
-; 5B: brown platform
-; 62: brown platform
-; 67: grinder
-; A6: hothead
-; AC-AD: wooden spike
-; B3: bowser statue fireball
-; B4: grinder
-; BC: bowser statue
-; C4: falling grey platform
-;
-; -- GFX 013 --
-; 15: fish
-; 16: fish
-; 18: fish
-; 2C: yoshi egg
-; 47: air fish
-; 4C: exploding block
-; 6A: coin game cloud
-; 87: lakitu's cloud
-; 91-93: chucks
-; 95: chuck
-; 9B: hammer bro
-;
-; -- GFX 020 --
-; 9F: banzai bill
-; AB: rex (use custom sprite)
-; B7-B8: carrot top lift
-; BA: timed lift
-; BF: mega mole
-;
-; -- GFX 023 --
-; 6E: dino rhino
-; 6F: dino torch
-;
-; -- GFX 024 --
-; 34: boss fireball
-; A1: bowser's ball
-; A2: mechakoopa
-;
-; -- GFX 025 --
-; A9: reznor
-;
-; SPECIAL CASE
-; 1E: lakitu (013 + 002)
-; 30: dry bones (012 + 003)
-; 31: bony beetle (012 + 003)
-; 32: dry bones (again)
-; 38-39: eerie (006 + 011)
-; 46: diggin chuck (013 + 005)
-; 5F: brown platform on chain (012 + 005)
-; 7A: firework (024 + 022)
-; 94: whistle chuck (013 + 006)
-; 97: punt chuck (013 + 004)
-; 98: baseball chuck (013 + 009)
-; 9D: bubble carrier (013 + 002)
-; A5: sparky/fuzzball (header = 2 for fuzzball (005), otherwise sparky (012))
-; AE: fishin boo (006 + 011)
-; DE: group of eeries (006 + 011)
-; E0: 3 chained platforms (012 + 005)
-
 
 ; format:
 ; - header (16-bit, byte count of file information) highest bit is priority, if that is set then this should be uploaded in pass 1
@@ -759,7 +588,7 @@ GetFiles:
 		LDA $08					;\
 	-	CMP #$0010 : BCC +			; |
 		SBC #$0010				; | loop through full rows
-		STZ !BigRAM+0,x				; |
+		STZ !BigRAM,x				; |
 		INX #2					; |
 		DEY : BNE -				;/
 	+	SEC : SBC !BigRAM,x			;\
@@ -807,7 +636,7 @@ GetFiles:
 		PLX					;/
 
 		.LoadFlags
-	-	LDA ($00),y : BEQ .Include		;\
+		LDA ($00),y : BEQ .Include		;\
 		CMP #$01 : BEQ .Mark			; | determine command code
 		CMP #$02 : BEQ .SuperDynamic		; |
 		CMP #$03 : BEQ .DefaultPal		; |
@@ -819,12 +648,12 @@ GetFiles:
 		INY					; |
 		LDA ($00),y				; |
 		CMP #$07				; |
-		BCC $02 : LDA #$00			; | mark selected palette as used
+		BCC $02 : LDA #$00			; | mark selected palset as used
 		TAX					; |
 		LDA #$01 : STA !Palset8,x		; |
 		INY					; |
 		PLX					; |
-		BRA -					;/
+		BRA .LoadFlags				;/
 
 		.Mark					;\
 		PHX					; |
@@ -833,7 +662,7 @@ GetFiles:
 		LDA #$01 : STA !FileMark,x		; |
 		INY					; |
 		PLX					; |
-		BRA -					;/
+		BRA .LoadFlags				;/
 
 		.Include				;\
 		PHX					; |
@@ -846,7 +675,7 @@ GetFiles:
 		LDA #$00 : STA !FileMark,x		; > don't reload this
 		INY					; |
 		PLX					;/
-		BRA -					; loop until 0xFF is found
+		BRA .LoadFlags				; loop until 0xFF is found
 
 		.SuperDynamic				;\
 		PHX					; |
@@ -855,7 +684,7 @@ GetFiles:
 		LDA #$01 : STA !SuperDynamicMark,x	; |
 		INY					; |
 		PLX					; |
-		BRA -					;/
+		BRA .LoadFlags				;/
 
 	.Done
 		REP #$30
@@ -882,7 +711,7 @@ GetFiles:
 ; note that these correspond to GFX status offsets
 File:
 .List
-	dw .Koopa		; 00
+	dw .KoopaGreenRedYellow	; 00
 	dw .BobOmb		; 01
 	dw .Key			; 02
 	dw .Goomba		; 03
@@ -996,6 +825,11 @@ File:
 	dw .RexLegs1		; 6C (no file)
 	dw .RexLegs2		; 6D (no file)
 	dw .RexSmall		; 6E (no file)
+	dw .LuigiFireball	; 6F (no file)
+	dw .ShellessKoopa	; 70 (no file)
+	dw .KickerKoopa		; 71 (no file)
+	dw .SmushedKoopa	; 72 (no file)
+
 
 
 ; the following have been excluded because they should always be loaded:
@@ -1009,7 +843,7 @@ File:
 	.List2
 	; custom sprites start at 0x80
 	dw .GoombaSlave		; 80
-	dw .VillagerRex		; 81 ACTUALLY UNUSED!!!
+	dw .KoopaBlue		; 81
 	dw .HammerRex		; 82
 	dw .NoviceShaman	; 83
 	dw .MagicMole		; 84
@@ -1044,24 +878,53 @@ File:
 	dw .FlyingRex		; A1
 	dw .UltraFuzzy		; A2
 	dw .Shield		; A3
+	dw .TarCreeperHands	; A4
+	dw .ParaKoopa		; A5
 
 
 ;=============================;
 ; -- vanillla sprite files -- ;
 ;=============================;
 
-.Koopa
+.KoopaGreenRedYellow
 dw ..end-..start|$8000	; hi prio file
 dw $F00
-db $00			; GFX status offset
-db $2E			; 2 full rows + 7 tiles
+db $00
+db $10			; 1 full row
 ..start
-db $00,$00,$4E		; 78 tiles 0x00-0x4D
-db $50,$50,$0E		; 14 tiles 0x50-0x5D
+db $00,$00,$20
 ..end
-%include($5B, $04)	; includes shell at offset 0x04
-%include($5A, $0A)	; includes wings at offset 0x0A
+%mark($5B)		; load shell
+%mark($70)		; load shelless koopa
 db $FF
+
+.KoopaBlue
+dw ..end-..start|$8000	; hi prio file
+dw $F00
+db $00
+db $10			; 1 full row
+..start
+db $00,$00,$20
+..end
+%mark($5B)		; load shell
+%mark($71)		; load kicker koopa
+db $FF
+
+.ParaKoopa
+dw ..end-..start|$8000	; hi prio file
+dw $F00
+db $00
+db $10			; 1 full row
+..start
+db $00,$00,$20
+..end
+%mark($5A)		; load wings
+%mark($5B)		; load shell
+%mark($70)		; load shelless koopa
+db $FF
+
+
+
 
 
 ; 00-0F
@@ -1488,15 +1351,17 @@ db $FF
 .Sparky		%src($F59, $00, $02, $59)
 
 
+
+
 ;===================;
 ; -- extra files -- ;
 ;===================;
 
-.Wings		%cmd($F00, $0A, $06, $5A)
+.Wings		%cmd($F00, $48, $06, $5A)
 		%defaultpal(D)
 		db $FF
 
-.Shell		%src($F00, $04, $06, $5B)
+.Shell		%src($F00, $42, $06, $5B)
 .LakituCloud	%src($F10, $08, $01, $5C)
 
 .Hammer		%cmd($F5D, $00, $02, $5D)
@@ -1561,6 +1426,19 @@ db $FF
 .RexSmall	%src($F4A, $20, $0B, $6E)	; small form
 
 
+.LuigiFireball	; no file
+
+.ShellessKoopa	%cmd($F00, $20, $08, $70)
+		%mark($72)			; load smushed koopa
+		db $FF
+.KickerKoopa	%cmd($F00, $28, $08, $71)
+		%mark($72)			; load smushed koopa
+		%defaultpal(B)
+		db $FF
+.SmushedKoopa	%src($F00, $40, $02, $72)
+
+
+
 ;===========================;
 ; -- custom sprite files -- ;
 ;===========================;
@@ -1577,15 +1455,7 @@ db $30,$30,$04
 db $FF
 
 .VillagerRex
-dw ..end-..start|$8000	; hi prio file
-dw $F81
-db $81
-db $1E
-..start
-db $00,$00,$2E		; 46 tiles 0x00-0x2D
-db $30,$30,$0E		; 14 tiles 0x30-0x3D
-..end
-db $FF
+
 
 .HammerRex
 dw ..end-..start|$8000	; hi prio file
@@ -1693,7 +1563,7 @@ db $00,$00,$0A
 db $10,$10,$0A
 ..end
 %include($36, $00)	; this is the same as the super koopa file
-%mark($00)		; load normal koopa
+%mark($71)		; load kicker koopa
 db $FF
 
 .GasBubble
@@ -1743,6 +1613,17 @@ db $FF
 
 .UltraFuzzy	%src($FA2, $00, $08, $A2)
 .Shield		%src($FA3, $00, $04, $A3)
+
+
+.TarCreeperHands
+dw ..end-..start|$8000	; hi prio file
+dw $FA4
+db $A4
+db $1A
+..start
+db $00,$00,$2A
+db $30,$30,$0A
+..end
 
 
 
@@ -1852,10 +1733,7 @@ ReadLevelData:
 		CMP #$22 : BEQ ..starman
 		CMP #$25 : BNE ..nomulti2
 		TXA
-		AND #$0F
-	-	CMP #$04 : BCC +
-		SBC #$04 : BRA -
-	+	CMP #$00 : BEQ ..key
+		AND #$03 : BEQ ..key
 		CMP #$01 : BEQ ..wings
 		CMP #$02 : BEQ ..balloon
 	..shell	LDA #$01 : STA.w !FileMark+$5B		; > shell
@@ -1863,7 +1741,7 @@ ReadLevelData:
 	..balloon
 		LDA #$01 : STA.w !FileMark+$11		; > balloon
 		BRA .NextTile
-	..wings	LDA #$01 : STA.w !FileMark+$5A		; > wings
+	..wings	LDA #$01 : STA.w !FileMark+$09		; > blocks (including angel wings)
 		BRA .NextTile
 	..key	LDA #$01 : STA.w !FileMark+$02		; > key
 		BRA .NextTile
@@ -1902,6 +1780,12 @@ ReadLevelData:
 		LDA [$CE],y				;/
 		TAX					; X = index to sprite file correspondance table
 		STX $0E					; (save this for later)
+
+		CPX #$0123 : BCC ..notelitekoopa	;\
+		CPX #$0127 : BCS ..notelitekoopa	; | elite koopas also load normal koopas
+		LDA #$01 : STA !FileMark+$00		; |
+		..notelitekoopa				;/
+
 		LDA #$00 : XBA				; clear B
 		JSR MarkPalette				; remember which palette sprite uses
 		LDA LoadTable,x				;\
@@ -1992,6 +1876,7 @@ ReadLevelData:
 	..fish	LDA #$01 : STA !FileMark+$45		;\ 0 = fish
 		BRA .Command				;/
 		..notexplodingblock
+
 		CPX #$0059 : BNE .Command		;\
 		LDA $792B				; |
 		CMP #$02 : BNE .Command			; | on sprite tileset 0x02, sparky should be replaced by fuzzy
@@ -2034,18 +1919,19 @@ ReadLevelData:
 
 
 ; !BigRAM:
-; 00: bytes used in $40A000-$40C7FF (10KB)
-; 02: bytes used in $7EC800-$7EFFFF (14KB)
-; 04: bytes used in $7FC800-$7FFFFF (14KB)
-; 06: bytes used in $7F0000-$7F7FFF (32KB)
-; 08: bytes used in $410000-$417FFF (32KB)
+; 00: bytes used in $40A000-$40C7FF (10 KB)
+; 02: bytes used in $7EC800-$7EFFFF (14 KB)
+; 04: bytes used in $7FC800-$7FFFFF (14 KB)
+; 06: bytes used in $7F0000-$7F7FFF (32 KB)
+; 08: bytes used in $410000-$417FFF (32 KB)
+; 0A: bytes used in $7E2000-$7EACFF (35 KB)
 
 	SuperDynamicFiles:
 		PHB : PHK : PLB
 		PHP
 		SEP #$30
-		LDX #$09				;\
-	-	STZ !BigRAM,x				; | mark RAM areas as free
+		LDX.b #.RAMaddress-.RAMsize-1		;\
+	-	STZ !BigRAM,x				; | mark all RAM areas as free
 		DEX : BPL -				;/
 
 		LDX #$00
@@ -2062,7 +1948,7 @@ ReadLevelData:
 		PLB
 		RTS
 
-	.Load
+	.Load	
 		REP #$20
 		TXA
 		ASL A
@@ -2070,22 +1956,22 @@ ReadLevelData:
 		LDA .List,y : STA $00
 		LDY #$02
 		PHX
-		LDX #$08
-	-	LDA .RAMsize,x				;\
-		SEC : SBC !BigRAM,x			; |
-		BEQ .nextM				; |
-		BCS .thisM				; | look for a good spot in memory
-	.nextM	DEX #2 : BMI .Return			; |
-		BRA -					; |
-	.thisM	CMP ($00),y : BCC .nextM		;/
-		LDA !BigRAM,x				;\
-		CLC : ADC .RAMaddress,x			; | address to start uploading to
-		STA !BigRAM+$10				;/
-		STA !BigRAM+$74				; > remember this!
+		LDX.b #.RAMaddress-.RAMsize-2
+	-	LDA .RAMsize,x					;\
+		SEC : SBC !BigRAM,x				; |
+		BEQ .nextM					; |
+		BCS .thisM					; | look for a good spot in memory
+	.nextM	DEX #2 : BMI .Return				; |
+		BRA -						; |
+	.thisM	CMP ($00),y : BCC .nextM			;/
+		LDA !BigRAM,x					;\
+		CLC : ADC .RAMaddress,x				; | address to start uploading to
+		STA !BigRAM+$10					;/
+		STA !BigRAM+$74					; > remember this!
 
-		LDA ($00),y				;\
-		CLC : ADC !BigRAM,x			; | mark memory as used
-		STA !BigRAM,x				;/
+		LDA ($00),y					;\
+		CLC : ADC !BigRAM,x				; | mark memory as used
+		STA !BigRAM,x					;/
 
 		LDA !BigRAM+$11					;\
 		AND #$00FF					; |
@@ -2112,6 +1998,7 @@ ReadLevelData:
 		LDA !BigRAM+$04 : PHA
 		LDA !BigRAM+$06 : PHA
 		LDA !BigRAM+$08 : PHA
+		LDA !BigRAM+$0A : PHA
 
 		REP #$30					;\
 		PEI ($00)					; |
@@ -2130,7 +2017,9 @@ ReadLevelData:
 		LDY #$06					;\
 		LDA ($00),y : TAX				; | store bbpppppp
 		LDA !BigRAM+$7E : STA !GFX_status+$100,x	;/
+
 		REP #$20
+		PLA : STA !BigRAM+$0A
 		PLA : STA !BigRAM+$08
 		PLA : STA !BigRAM+$06
 		PLA : STA !BigRAM+$04
@@ -2142,6 +2031,7 @@ ReadLevelData:
 		JMP .Next
 
 
+; solved??? i don't know
 ; error:
 ; - file 1 is processed properly
 ; - file 2 then has its first chunk uploaded properly
@@ -2176,6 +2066,10 @@ ReadLevelData:
 ; !BigRAM+$10	- upload address
 ; !BigRAM+$12	- source GFX index
 ; !BigRAM+$14	- number of chunks
+; !BigRAM+$6C	- copy of $0D from start of operation
+; !BigRAM+$6E	- total number of iterations
+; !BigRAM+$70	- total copies for current iteration
+; !BigRAM+$72	- base number of chunks in file
 ; !BigRAM+$74	- original upload address
 ; !BigRAM+$76	- current chunk for transformations
 ; !BigRAM+$78	- iterations left (used with transformations)
@@ -2290,7 +2184,7 @@ ReadLevelData:
 		LDA ($00),y
 		AND #$00FF
 		STA $2253
-		NOP
+		STA !BigRAM+$72
 		LDA !BigRAM+$74
 		CLC : ADC $2306
 		STA $0D
@@ -2299,7 +2193,9 @@ ReadLevelData:
 		LDY #$000A
 
 
-	..Loop	SEP #$20
+	..Loop	REP #$20
+		LDA $0D : STA !BigRAM+$6C
+		SEP #$20
 		LDA ($00),y : BEQ ..Rotate		; 00 = rotate
 		CMP #$01 : BEQ ..SJump			; 01 = scale
 							; all other values just end
@@ -2323,13 +2219,14 @@ ReadLevelData:
 		STA !BigRAM+$76				;/
 
 		INY					;\
-		LDA ($00),y				; | iterations
-		AND #$00FF				; |
-		STA !BigRAM+$78				;/
+		LDA ($00),y				; |
+		AND #$00FF				; | iterations
+		STA !BigRAM+$78				; |
+		STA !BigRAM+$6E				;/
 
 	--	LDA !BigRAM+$7A				;\
-		CLC : ADC $2306				; | update chunk address
-		PEI ($0D)				; |
+		CLC : ADC $2306				; |
+		PEI ($0D)				; | update chunk address
 		STA $0D					; |
 		JSR ChunkToCache			; |
 		PLA : STA $0D				;/
@@ -2343,11 +2240,12 @@ ReadLevelData:
 		LDA ($00),y				; | copies
 		AND #$00FF				; |
 		STA $06					;/
+		STA !BigRAM+$70				; > total copies
 		CLC : ADC !BigRAM+$7C			;\ add to number of chunks
 		STA !BigRAM+$7C				;/
 		INY					; adjust index
 
-		LDA !BigRAM+$78 : BEQ ..Loop		; check iterations
+		LDA !BigRAM+$78 : BEQ ..RotateDone	; check iterations
 		DEC !BigRAM+$78				; start a new iteration
 	-	LDA $06 : BNE +				; check copies
 		DEY #3					;\
@@ -2362,6 +2260,22 @@ ReadLevelData:
 		ASL A					; | width
 		STA !BigRAM+$02				;/
 		LDA #$0020 : JSL !TransformGFX		; rotate with fixed size
+
+
+		LDA !BigRAM+$70
+		SEC : SBC $06
+		STA $2251				; copy (current)
+		LDA !BigRAM+$72 : STA $2253		; x base number of chunks (in file)
+		LDA !BigRAM+$76				; + chunk (current)
+		CLC : ADC $2306
+		STA $2251
+		LDA $04 : STA $2253			; () x chunk size
+		NOP : BRA $00
+		LDA $2306
+		CLC : ADC !BigRAM+$74			; + base upload address
+		STA $0D
+
+
 		JSR DownloadChunk			; get chunk from output buffer
 		LDA $0D					;\
 		CLC : ADC $04				; | adjust address
@@ -2371,6 +2285,18 @@ ReadLevelData:
 		STA !BigRAM+$0E				;/
 		BRA -					; next copy
 
+
+	..RotateDone
+		LDA !BigRAM+$70 : STA $2251
+		LDA !BigRAM+$6E : STA $2253
+		NOP : BRA $00
+		LDA $2306 : STA $2251
+		LDA $04 : STA $2253
+		LDA !BigRAM+$6C
+		NOP
+		CLC : ADC $2306
+		STA $0D
+		JMP ..Loop
 
 
 	..Scale
@@ -2463,23 +2389,26 @@ ReadLevelData:
 
 
 	.RAMsize
+		dw $3400
 		dw $2800
 		dw $3800
-		dw $3800
 		dw $8000
 		dw $8000
+		dw $8D00	; 8D00 should be the size... unknown why setting this to something larger than FFF causes issues
 	.RAMaddress
+		dw $C800
 		dw $A000
 		dw $C800
-		dw $C800
 		dw $0000
 		dw $0000
+		dw $2000
 	.RAMprop	; lo byte = bank, hi byte = DMA allowed (0 = no, 1 = yes)
-		dw $0040
 		dw $017E
+		dw $0040
 		dw $017F
 		dw $017F
 		dw $0041
+		dw $017E
 
 
 
@@ -2492,6 +2421,7 @@ ReadLevelData:
 		dw $00F : db $05	; goomba
 	;	dw $FFFF : db $06	; luigi fireball
 	;	dw $FFFF : db $07	; baseball
+	;	dw $FFFF : db $08	; kadaal swim tiles
 		..End
 
 
@@ -2504,6 +2434,7 @@ ReadLevelData:
 		dw .Goomba		; 05
 		dw .LuigiFireball	; 06
 		dw .Baseball		; 07
+		dw .KadaalSwim		; 08
 		..End
 
 ; big fat note:
@@ -2600,6 +2531,16 @@ db $04,$08			; 08: chunk dimensions (8x8)
 db $00,$00,$01,$20,$0F		; 0A: rotate: chunk 0, iterations 1, angle 20, copies 15
 db $FF				; end file
 
+.KadaalSwim
+dw $0040			; 00: width encoding
+%size($80*20)			; 02: size: 20 16x16 chunks
+dw $E08				; 04: source ExGFX
+db $08				; 06: SD GFX status index
+db $04				; 07: source file has 3 chunks
+db $08,$10			; 08: chunk dimensions (16x16)
+db $00,$00,$04,$10,$04		; 0A: rotate: chunk 0, iterations 4, angle 10, copies 4
+db $FF				; end file
+
 
 	.Search
 		PHP
@@ -2656,8 +2597,8 @@ db $FF				; end file
 		LDA $0D : STA $2181			; |
 		LDX $0F : STX $2183			; |
 		LDA #$8080 : STA $4300			; | DMA chunk
-		LDA.w #!GFX_buffer : STA $4302		; |
-		LDX.b #!GFX_buffer>>16 : STX $4304	; |
+		LDA.w #!ImageCache : STA $4302		; |
+		LDX.b #!ImageCache>>16 : STX $4304	; |
 		LDA $04 : STA $4305			; |
 		LDX #$01 : STX $420B			; |
 		PLP					; |

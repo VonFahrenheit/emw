@@ -4,7 +4,7 @@ UltraFuzzy:
 
 	INIT:
 		PHB : PHK : PLB
-		JSL SUB_HORZ_POS_Long
+		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
 		PLB
 		RTL
@@ -21,7 +21,7 @@ UltraFuzzy:
 		REP #$20
 		LDA.w #.Tilemap : STA $04
 		SEP #$20
-		JSL LOAD_PSUEDO_DYNAMIC_Long
+		JSL LOAD_PSUEDO_DYNAMIC
 
 
 	.Return
@@ -30,7 +30,7 @@ UltraFuzzy:
 
 
 		.Process
-		JSL SPRITE_OFF_SCREEN_Long
+		JSL SPRITE_OFF_SCREEN
 
 		LDA #$0F : JSL LoadPalset
 		LDA !GFX_status+$18F
@@ -96,10 +96,10 @@ UltraFuzzy:
 
 	.Tilemap
 		dw $0010
-		db $30,$F8,$F8,$00
-		db $30,$08,$F8,$02
-		db $30,$F8,$08,$04
-		db $30,$08,$08,$06
+		db $32,$F8,$F8,$00
+		db $32,$08,$F8,$02
+		db $32,$F8,$08,$04
+		db $32,$08,$08,$06
 
 
 

@@ -27,128 +27,86 @@
 ;	;[code]
 ;	.NoContact
 ;
+; player clipping gets stored like so:
+; $00 - XLo
+; $01 - YLo
+; $02 - width
+; $03 - height
+; $08 - XHi
+; $09 - YHi
+
+
 
 	PlayerClipping:
-		PHX				;\ Backup stuff
-		PHB : PHK : PLB			;/
-		BCS .Compare			;\ Split to different parts of routine based on input
-		CMP #$00 : BNE +		;/
-		PEA .End-1 : JMP .P1		; > Load P1 hitbox, then end
-	+	PEA .End-1 : JMP .P2		; > Load P2 hitbox, then end
+		PHX					;  push X
+		BCS .Compare				; if carry set, compare
+
+		PHY					;\
+		LSR A					; |
+		ROR A					; |
+		AND #$80				; |
+		REP #$20				; |
+		LDA !P2Hurtbox-$80+2,y			; |
+		STA $01					; |
+		STA $08					; | otherwise just load hurtbox and return
+		LDA !P2Hurtbox-$80+4,y : STA $02	; |
+		LDA !P2Hurtbox-$80+0,y			; |
+		SEP #$20				; |
+		STA $00					; |
+		XBA : STA $08				; |
+		PLY					; |
+		PLX					; |
+		RTL					;/
 
 		.Compare
-		LDX #$00			; < X = contact bits
-		LDA !MultiPlayer : BEQ +
-		LDA !Characters
-		AND #$0F
-		BNE ++
-		LDA !P1Dead
-		ORA $71
-		BNE +
-		BRA .P2Yes
-	++	LDA !P2Status : BNE +
-		LDA !P2Pipe : BNE +
-	.P2Yes	PHX				; > Backup X
-		JSR .P2				;\ Check for P2 contact
-		JSL !Contact16			;/
-		PLA				;\
-		BCC $02 : LDA #$02		; | Mark P2 contact
-		TAX				;/
+		LDX #$00				; X = contact bits
+		LDA !MultiPlayer : BEQ .Player1		; skip P2 if multiplayer is off
 
-	+	LDA !Characters
-		AND #$F0
-		BNE +
-		LDA !P1Dead
-		ORA $71
-		BNE .Result
-		BRA .P1Yes
-	+	LDA !P2Status-$80 : BNE .Result
-		LDA !P2Pipe-$80 : BNE .Result
-	.P1Yes	PHX				; > Backup X
-		JSR .P1				;\ Check for P1 contact
-		JSL !Contact16			;/
-		PLA				;\
-		BCC $02 : ORA #$01		; | Mark P1 contact
-		TAX				;/
+		.Player2
+		LDA !P2Status : BNE .Player1		;\ player must exist and not be in pipe
+		LDA !P2Pipe : BNE .Player1		;/
+	.P2Yes	REP #$20				;\
+		LDA !P2Hurtbox+2			; |
+		STA $01					; |
+		STA $08					; |
+		LDA !P2Hurtbox+4 : STA $02		; | check for P2 contact
+		LDA !P2Hurtbox+0			; |
+		SEP #$20				; |
+		STA $00					; |
+		XBA : STA $08				; |
+		JSL !Contact16				;/
+		BCC ..nocontact				; branch
+		INX #2					; mark P2 contact
+		LDA !P2Character			;\
+		CMP #$02 : BNE ..nocontact		; | mark senku smash for kadaal
+		LDA #$01 : STA !P2SenkuSmash		; |
+		..nocontact				;/
+
+		.Player1
+		LDA !P2Status-$80 : BNE .Result		;\ player must exist and not be in pipe
+		LDA !P2Pipe-$80 : BNE .Result		;/
+	.P1Yes	REP #$20				;\
+		LDA !P2Hurtbox-$80+2			; |
+		STA $01					; |
+		STA $08					; |
+		LDA !P2Hurtbox-$80+4 : STA $02		; | check for P1 contact
+		LDA !P2Hurtbox-$80+0			; |
+		SEP #$20				; |
+		STA $00					; |
+		XBA : STA $08				; |
+		JSL !Contact16				;/
+		BCC ..nocontact				; branch
+		INX					; mark P1 contact
+		LDA !P2Character-$80			;\
+		CMP #$02 : BNE ..nocontact		; | mark senku smash for kadaal
+		LDA #$01 : STA !P2SenkuSmash		; |
+		..nocontact				;/
 
 		.Result
-		CLC				; > Clear carry
-		TXA				; > A = contact bits
-		BEQ $01 : SEC			; > C = contact flag
-
-		.End
-		PLB
-		PLX
-		RTL
+		CLC					; clear carry
+		TXA					; > A = contact bits
+		BEQ $01 : SEC				; > C = contact flag
+		PLX					; restore X
+		RTL					; return
 
 
-		.CharPointer
-		dw $FFFF
-		dw Luigi_ANIM
-		dw Kadaal_ANIM
-		dw Leeway_ANIM
-
-
-		.P1
-		LDA !Characters			;\
-		LSR #4				; | P1 index
-		ASL A				; |
-		TAY				;/
-		REP #$30			;\
-		LDA !P2Anim-$80 : STA $F0	; | P1 setup
-		LDA !P2XPosLo-$80 : STA $08	; |
-		LDA !P2YPosLo-$80 : STA $02	;/
-		BRA .ReadData			; > Write hitbox
-
-		.P2
-		LDA !Characters			;\
-		AND #$0F			; | P2 index
-		ASL A				; |
-		TAY				;/
-		REP #$30			;\
-		LDA !P2Anim : STA $F0		; | P2 setup
-		LDA !P2XPosLo : STA $08		; |
-		LDA !P2YPosLo : STA $02		;/
-
-		.ReadData
-		LDA.w .CharPointer,y		;\
-		CMP #$FFFF : BNE .PCE		; |
-		SEP #$30			; | Get Mario clipping
-		JSL !GetP1Clipping		; |
-		RTS				;/
-
-	.PCE	STA $00				;\
-		LDA $F0				; |
-		AND #$00FF			; | Get PCE clipping value
-		ASL #3				; |
-		CLC : ADC #$0006		; |
-		TAY				;/
-		LDA ($00),y			;\
-		INC A				; < Get left X coordinate
-		STA $F0				; | (Set up pointers to player clipping)
-		CLC : ADC #$0006		; < Get upper Y coordinate
-		STA $F2				; |
-		CLC : ADC #$0002		; < Get pointer to second width
-		STA $F4				;/
-		LDA ($F0)			;\
-		AND #$00FF			; |
-		CMP #$0080			; |
-		BCC $03 : ORA #$FF00		; | Player X coordinates
-		CLC : ADC $08			; |
-		STA $00				; |
-		XBA : STA $08			;/
-		LDA ($F2)			;\
-		AND #$00FF			; |
-		CMP #$0080			; |
-		BCC $03 : ORA #$FF00		; | Player Y coordinates
-		CLC : ADC $02			; |
-		STA $01				; |
-		SEP #$30			; |
-		XBA : STA $09			;/
-		LDA #$10			;\
-		SEC : SBC $01			; | This arcane magic is player height
-		CLC : ADC !P2YPosLo		; | (NEVER CHANGE THIS EVER)
-		STA $03				;/
-		LDY #$01			;\ Player width
-		LDA #$10 : STA $02		;/
-		RTS

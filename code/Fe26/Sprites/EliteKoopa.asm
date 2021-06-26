@@ -80,7 +80,7 @@ EliteKoopa:
 		LDA #$80 : STA !TurnTimer		;/
 		.NoPatrol
 
-		JSL SUB_HORZ_POS_Long			;\ face a player
+		JSL SUB_HORZ_POS			;\ face a player
 		TYA : STA $3320,x			;/
 		LDA #$3C : STA !SuperArmor		; > start with one charge of super armor
 
@@ -140,7 +140,7 @@ EliteKoopa:
 	MAIN:
 		PHB : PHK : PLB
 		LDA !SpriteAnimIndex : STA !PrevAnim
-		JSL SPRITE_OFF_SCREEN_Long
+		JSL SPRITE_OFF_SCREEN
 		LDA $3230,x
 		SEC : SBC #$08
 		ORA $9D : BEQ .Process
@@ -217,7 +217,7 @@ EliteKoopa:
 		DEC !JumpTimer
 		DEC $9E,x
 		DEC $9E,x
-		JSL SUB_HORZ_POS_Long
+		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
 		+
 
@@ -233,7 +233,7 @@ EliteKoopa:
 		STZ $3330,x
 		LDA #$05 : STA !SpriteAnimIndex
 		STZ !SpriteAnimTimer
-		JSL SUB_HORZ_POS_Long
+		JSL SUB_HORZ_POS
 		LDA DATA_XSpeed+2,y : STA $AE,x
 		.NoSpecialJump
 
@@ -259,7 +259,7 @@ EliteKoopa:
 		LDA $3330,x					;\
 		AND #$04 : BEQ +				; |
 	.Face	STZ !DrillState					; |
-		JSL SUB_HORZ_POS_Long				; |
+		JSL SUB_HORZ_POS				; |
 		TYA : STA $3320,x				; |
 		BRA .NoDrill					; |
 	+	DEC $9E,x					; > lower gravity
@@ -278,7 +278,7 @@ EliteKoopa:
 		BCC .NoDrill					; |
 		LDA #$C0 : STA $9E,x				; | start jump if a player is found
 		LDA #$01 : STA !DrillState			; |
-		JSL SUB_HORZ_POS_Long				; |
+		JSL SUB_HORZ_POS				; |
 		TYA : STA $3320,x				;/
 		.NoDrill
 
@@ -358,7 +358,7 @@ EliteKoopa:
 		STA $3240,y
 		LDY #$18 : JSR CounterSight
 		BCC .NoItems
-		JSL SUB_HORZ_POS_Long
+		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
 		JSR SetAim
 		LDA #$40
@@ -408,7 +408,7 @@ EliteKoopa:
 		BCC .NoSight
 		LDA !TackleTimer : BNE .SightDone
 
-		JSL SUB_HORZ_POS_Long
+		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
 
 		LDA !TackleReady : BEQ +
@@ -510,7 +510,7 @@ EliteKoopa:
 		LDA $3330,x				;\ can't turn in midair when chasing
 		AND #$04 : BEQ +			;/
 		LDA !TurnTimer : BNE .Frctn		; > friction while turning
-		JSL SUB_HORZ_POS_Long			;\
+		JSL SUB_HORZ_POS			;\
 		TYA					; |
 		CMP $3320,x :  BEQ +			; |
 		LDA #$80 : STA !ShellTimer		; |
@@ -532,7 +532,7 @@ EliteKoopa:
 	.NoShll	LDA DATA_XSpeed+4,y			; |
 		BRA .X					;/
 
-	.Camp	JSL SUB_HORZ_POS_Long			;\
+	.Camp	JSL SUB_HORZ_POS			;\
 		TYA : STA $3320,x			; | face player if no movement is enabled
 		BRA .Frctn				;/
 
@@ -570,7 +570,7 @@ EliteKoopa:
 		JSL !GetSpriteClipping04
 
 		.Attack
-		JSL P2Attack_Long
+		JSL P2Attack
 		BCC .NoAttack
 		LSR A : BCC ..P2
 	..P1	PHA
@@ -670,7 +670,10 @@ EliteKoopa:
 		PLY
 		STA $00
 		LDA.w ANIM+4,y : JSR GetDynamo
-		JSL !UpdateClaimedGFX
+		PHY
+		LDY.b #!File_EliteKoopa
+		JSL !UpdateFromFile
+		PLY
 
 		.NoUpdate
 		STZ $06						; initialize RAM transfer
@@ -691,7 +694,14 @@ EliteKoopa:
 		LDA.w ANIM+0,y : JSR LakituLovers_TilemapToRAM
 		LDA.w #!BigRAM : STA $04
 		SEP #$20
-		JSL LOAD_TILEMAP_Long
+
+		LDA !SpriteAnimIndex
+		CMP #$11 : BCC ..p1
+	..p2	JSL LOAD_TILEMAP_p2
+		PLB
+		RTL
+
+	..p1	JSL LOAD_TILEMAP_p1
 		PLB
 		RTL
 
@@ -723,12 +733,13 @@ EliteKoopa:
 		LDA.w #!BigRAM : STA $04			; |
 		SEP #$20					;/
 
-		JSL LOAD_CLAIMED_Long				; load tilemap
 		LDA !SpriteAnimIndex
-		CMP #$11 : BCC .Return
-		LDA #$10 : JSL HI_PRIO_OAM_Long
+		CMP #$11 : BCC ..p1
+	..p2	JSL LOAD_DYNAMIC_p2
+		PLB
+		RTL
 
-
+	..p1	JSL LOAD_DYNAMIC_p1				; load tilemap
 		.Return
 		PLB
 		RTL
@@ -776,7 +787,7 @@ EliteKoopa:
 		STZ $03
 		LDA #$01
 		LDY #$01
-		JSL SpawnExSprite_Long
+		JSL SpawnExSprite
 		RTS
 
 	CounterSight:
@@ -852,8 +863,7 @@ EliteKoopa:
 	Interact:
 		LDA #$06 : STA $00
 		STZ $01
-		LDA !P2Character-$80,y
-		BNE +
+		LDA !P2Character-$80,y : BNE +
 		LDA #$0A : STA $00
 	+	LDA $3240,x : XBA
 		LDA $3210,x
@@ -883,8 +893,8 @@ EliteKoopa:
 		CMP #$F0 : BCC .Return
 
 	.HurtSprite
-		JSL P2Bounce_Long
-	..Main	LDA #$10 : JSL DontInteract_Long
+		JSL P2Bounce
+	..Main	LDA #$10 : JSL DontInteract
 		LDA !FireTimer : BEQ +
 		LDA #$40 : STA !FireTimer			; reset fire timer
 		+
@@ -911,7 +921,7 @@ EliteKoopa:
 		LDA !ExtraBits,x
 		AND.b #$08^$FF
 		STA !ExtraBits,x
-		JSL $07F7D2				; | > Reset sprite tables
+		JSL !ResetSprite			; | > Reset sprite tables
 		LDA #$02 : STA $32D0,x			; spawn shelless koopa
 		RTS
 
@@ -921,16 +931,9 @@ EliteKoopa:
 	; load Y with plume tile
 	; then call this
 	GetDynamo:
-		PHA
-		PHY
-		LDY.b #!File_EliteKoopa
-		JSL !GetFileAddress
-		PLY
-		PLA
 		REP #$20
 		AND #$00FF
 		ASL #5
-		CLC : ADC.w !FileAddress
 		STA !BigRAM+$04
 		CLC : ADC #$0200
 		STA !BigRAM+$0B
@@ -938,7 +941,6 @@ EliteKoopa:
 		LDA $00
 		AND #$00FF
 		ASL #5
-		CLC : ADC.w !FileAddress
 		STA !BigRAM+$12
 		CLC : ADC #$0200
 		STA !BigRAM+$19
@@ -959,11 +961,10 @@ EliteKoopa:
 		LDA #$6160 : STA !BigRAM+$1C
 
 		SEP #$20
-		LDA !FileAddress+2
-		STA !BigRAM+$06
-		STA !BigRAM+$0D
-		STA !BigRAM+$14
-		STA !BigRAM+$1B
+		STZ !BigRAM+$06
+		STZ !BigRAM+$0D
+		STZ !BigRAM+$14
+		STZ !BigRAM+$1B
 
 		RTS
 

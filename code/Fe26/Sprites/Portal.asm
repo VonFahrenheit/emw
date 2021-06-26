@@ -70,7 +70,7 @@ Portal:
 	MAIN:
 		PHB : PHK : PLB
 
-		JSL SPRITE_OFF_SCREEN_Long				; off screen check
+		JSL SPRITE_OFF_SCREEN					; off screen check
 		LDA $3230,x : BNE .StillActive				; see if portal despawned
 		PHX							;\
 		LDA !PortalLoadIndex : TAX				; | mark eaten sprite for respawn
@@ -99,7 +99,7 @@ Portal:
 		REP #$20
 		LDA.w #.Tilemap : STA $04
 		SEP #$20
-		JSL LOAD_PSUEDO_DYNAMIC_Long
+		JSL LOAD_PSUEDO_DYNAMIC_p0
 
 		PLA : STA $3210,x
 		PLA : STA $3220,x
@@ -126,7 +126,7 @@ Portal:
 		LDA !PortalTimer : BNE .Return
 		JSL !GetSpriteSlot
 		BMI .Return
-		JSL SPRITE_A_SPRITE_B_COORDS_Long			;\
+		JSL SPRITE_A_SPRITE_B_COORDS				;\
 		LDA !PortalSpriteNum : STA $3200,y			; |
 		LDA !PortalCustomSpriteNum : STA !NewSpriteNum,y	; |
 		LDA !PortalExtraBits : STA !ExtraBits,y			; |
@@ -156,10 +156,10 @@ Portal:
 
 	.Tilemap
 		dw $0010
-		db $30,$00,$F0,$00
-		db $70,$F0,$F0,$00
-		db $B0,$00,$00,$00
-		db $F0,$F0,$00,$00
+		db $32,$00,$F0,$00
+		db $72,$F0,$F0,$00
+		db $B2,$00,$00,$00
+		db $F2,$F0,$00,$00
 
 	.Offset
 		db $F0,$10

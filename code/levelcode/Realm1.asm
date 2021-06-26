@@ -35,7 +35,19 @@ levelinit2:
 		JSL CLEAR_DYNAMIC_BG3
 		RTL				; > Return
 
+
+
 levelinit3:
+		LDA #$02 : STA !BG2ModeH
+		LDA #$04 : STA !BG2ModeV
+		%GradientRGB(HDMA_BlueSky)
+		LDA #$BA : STA !Level+4			; > negative 0x3F
+		LDA #$07 : STA !Level+5			; > Size of chunks
+		JML levelinit5_HDMA
+
+
+
+; legacy version
 		LDA #$03 : STA !Translevel
 		INC !SideExit
 		LDA #$C1 : STA !MsgPal		; > Portrait CGRAM location
@@ -78,7 +90,6 @@ levelinit3:
 
 levelinit4:
 		INC !SideExit
-		LDA #$02 : STA $3E		; mode 2
 		LDA #$03 : STA !Map16Remap+$0C	; remap page 0x0C to expanded GFX
 
 		REP #$20
@@ -86,13 +97,13 @@ levelinit4:
 		AND #$01FF
 		ORA #$2000
 		LDX #$3E
-	-	STA $40A000,x
+	-	STA !DecompBuffer+$1000,x
 		DEX #2 : BPL -
 		LDA $1C
 		AND #$01FF
 		ORA #$2000
 		LDX #$3E
-	-	STA $40A040,x
+	-	STA !DecompBuffer+$1040,x
 		DEX #2 : BPL -
 		SEP #$20
 
@@ -200,23 +211,26 @@ levelinit5:
 levelinit6:
 		INC !SideExit
 
-		STZ $97
-		STZ !P2YPosHi-$80
-		STZ !P2YPosHi
-		LDA $96
-		SEC : SBC #$90
-		STA $96
-		LDA !P2YPosLo-$80
-		SEC : SBC #$90
-		STA !P2YPosLo-$80
-		LDA !P2YPosLo
-		SEC : SBC #$90
-		STA !P2YPosLo
+	;	STZ $97
+	;	STZ !P2YPosHi-$80
+	;	STZ !P2YPosHi
+	;	LDA $96
+	;	SEC : SBC #$90
+	;	STA $96
+	;	LDA !P2YPosLo-$80
+	;	SEC : SBC #$90
+	;	STA !P2YPosLo-$80
+	;	LDA !P2YPosLo
+	;	SEC : SBC #$90
+	;	STA !P2YPosLo
 
 		LDA #$FF : STA !PalsetF					; lock palsetF for the sun BG
-
-	LDA #$02 : STA !GlobalPalset1
-	LDA #$03 : STA !GlobalPalset2
+		LDA #$02 : STA !GlobalLight1				;\
+		LDA #$03 : STA !GlobalLight2				; |
+		LDA #$40 : STA !LightIndexStart				; | initial shader settings
+		LDA #$01 : STA !LightIndexStart+1			; |
+		LDA #$E0 : STA !LightIndexEnd				; |
+		LDA #$01 : STA !LightIndexEnd+1				;/
 
 		STZ $0AFE
 		STZ $0AFF
@@ -323,9 +337,16 @@ levelinit6:
 		LDA #$0A00			; | Set up BG2 Hscroll on channel 6
 		STA !HDMA6source		; |
 		STY $4364			;/
+
+
+		LDA #$3100 : STA $4370
+		LDA.w #.ColorMathHDMA : STA !HDMA7source
+		LDY.b #.ColorMathHDMA>>16 : STY $4374
+
+
 		SEP #$20			; > A 8 bit
-		LDA #$78			;\ Enable HDMA on channels 3 through 6
-		TSB $6D9F			;/
+		LDA #$F8 : TSB !HDMA		; > enable HDMA on channels 3 through 7
+
 
 		JSL !GetVRAM				;\
 		PHB : LDA #!VRAMbank			; |
@@ -345,6 +366,13 @@ levelinit6:
 		PLB					;/
 
 		JML level6
+
+
+		.ColorMathHDMA
+		db $4A,$22				;\ color math on backdrop + BG2
+		db $4A,$22				;/
+		db $01,$20				; color math on backdrop only
+		db $00					; end table
 
 
 levelinitC:
@@ -492,8 +520,7 @@ levelinit32:
 		SEP #$20
 
 		STZ !Level+3
-		LDA #$02 : STA.l !WeatherType
-		LDA #$04 : STA.l !WeatherFreq
+		LDA #$04 : STA !41_WeatherFreq
 
 		STZ $0A80				; clear chunk status
 		STZ $0A87				; reset chunk size, baby!
@@ -502,12 +529,11 @@ levelinit32:
 		LDA.w level6_BGColoursEnd		;\ set color 0x02
 		STA $00A2				;/
 		SEP #$20				; A 8-bit
-		LDA #$F4				;\ Enable HDMA on channels 2 and 4 through 7
-		TSB $6D9F				;/
+		LDA #$F4 : TSB !HDMA			; Enable HDMA on channels 2 and 4 through 7
 		STZ !SideExit
 		INC $14 : JSL level32_HDMA
 		DEC $14 : JSL level32_HDMA
-		JMP level32
+		JML level32
 
 
 macro AdeptDyn(TileCount, SourceTile, DestVRAM)
@@ -547,16 +573,11 @@ levelinit39:
 
 level1:
 
-		REP #$20
-		LDA $1C
-		LSR #3
-		STA $24
-		LDA $745E
-		AND #$00F8
-		ASL A
-		CLC : ADC $24
-		STA $24
-		SEP #$20
+;	JSL DisplayHurtbox_Main
+
+	JSL DisplayHitbox1_Main
+	JSL DisplayHitbox2_Main
+
 
 		STZ !SideExit
 		LDA $1B
@@ -573,181 +594,6 @@ level1:
 .Return		RTL
 
 
-
-
-
-	DisplayHitbox:
-
-
-	.OutsideJump
-		JML .Outside
-
-	.Main
-		PHP
-		SEP #$20
-		STZ $6D9F				; disable HDMA at first
-		STZ $41
-		STZ $42
-		STZ $43
-		REP #$20
-		LDA !P2Hitbox+4-$80 : BEQ .OutsideJump
-		AND #$00FF
-		CLC : ADC !P2Hitbox+0-$80
-		STA $00					; $00 = x + w
-		LDA !P2Hitbox+5-$80
-		AND #$00FF
-		CLC : ADC !P2Hitbox+2-$80
-		STA $02					; $02 = y + h
-
-		LDA $1A
-		CLC : ADC #$0100
-		STA $04					; $04 = screen right
-		LDA $1C
-		CLC : ADC #$00D8
-		STA $06					; $06 = screen bottom
-
-
-		LDA !P2Hitbox+2-$80 : BMI .OverTop
-		CMP $1C : BCC .OverTop
-
-	.UnderTop
-		CMP $06 : BCS .OutsideJump
-
-	; case 5: outside
-
-		LDA !P2Hitbox+2-$80
-		SEC : SBC $1C
-		TAY
-		LDA $02
-		CMP $06 : BCC .YInside
-		LDA $06
-		SEC : SBC !P2Hitbox+2-$80
-		BRA .Height
-
-	; case 4: visible $1C+0xD8-y
-
-
-	.YInside
-		LDA !P2Hitbox+5-$80
-		AND #$00FF
-		BRA .Height
-
-	; case 3: completely inside
-
-
-	.OverTop
-		LDA $02
-		SEC : SBC $1C
-		BCC .OutsideJump
-		LDY #$00				; start at scanline 0
-
-	; case 1: outside
-	; case 2: visible y+h-$1C
-
-
-	.Height
-		STY $0F					; $0F = starting scanline
-		TAY					; y = number of scanlines visible
-
-
-		LDA !P2Hitbox+0-$80 : BMI .LeftLeft
-		CMP $1A : BCC .LeftLeft
-
-	.RightLeft
-		CMP $04 : BCS .OutsideJump
-
-	; case E: outside
-
-		LDA !P2Hitbox+0-$80
-		SEC : SBC $1A
-		TAX
-		LDA $00
-		CMP $04 : BCC .XInside
-		LDA $04
-		SEC : SBC !P2Hitbox+0-$80
-		BRA .Width
-
-	; case D: visible $1A+0x100-x
-
-
-	.XInside
-		LDA !P2Hitbox+4-$80
-		AND #$00FF
-		BRA .Width
-
-	; case C: completely inside
-
-
-	.LeftLeft
-		LDA $00
-		SEC : SBC $1A
-		BCC .Outside
-		LDX #$00				; x coord 0
-
-	; case A: outside
-	; case B: visible x+w-$1A
-
-
-	.Width
-		STX $0D
-		SEP #$20
-		CLC : ADC $0D
-		BCC $02 : LDA #$FF			; cap at 0xFF
-		STA $0E
-
-	; $0D:	left border
-	; $0E:	right border
-	; $0F:	starting y coord
-	; y:	number of scanlines visible
-
-
-		LDA #$04 : STA $6D9F			; enable HDMA on channel 2
-		LDA #$22
-		STA $41
-		STA $42
-		STA $43
-
-
-		LDX #$00				; table index: 0
-		LDA $0F : BEQ .InstantStart
-		CMP #$40 : BCC +
-
-		LSR A
-		STA $0400
-		BCC $01 : INC A
-		STA $0403
-		INX
-		LDA #$FF : STA $0400,x
-		STZ $0401,x
-		INX #3
-		BRA ++
-
-	+	STA $0400
-		INX
-		LDA #$FF
-	++	STA $0400,x				;\
-		STZ $0401,x				; | set up skip lines
-		INX #2					;/
-
-	.InstantStart
-		TYA : STA $0400,x			;\
-		LDA $0D : STA $0401,x			; | write box
-		LDA $0E : STA $0402,x			;/
-		LDA #$01 : STA $0403,x			;\
-		LDA #$FF : STA $0404,x			; | set up a final skip line
-		STZ $0405,x				;/
-		STZ $0406,x				; end table
-
-		REP #$20
-		LDA #$2601 : STA $4320
-		STZ $4323
-		LDA #$0400 : STA !HDMA2source
-
-
-	.Outside
-
-		PLP
-		RTL
 
 
 
@@ -771,12 +617,17 @@ level3:
 		LDY #$01				; | Regular exit (screen 0x15)
 		JSL END_Right				;/
 		LDA #$1F				;\ Put everything on mainscreen
-		STA $6D9D				;/
-		STZ $6D9E				; > Disable subscreen
+		STA !MainScreen				;/
+		STZ !SubScreen				; > Disable subscreen
 
-		LDA.b #.HDMA : STA !HDMAptr		;\
-		LDA.b #.HDMA>>8 : STA !HDMAptr+1	; | Set up pointer
-		LDA.b #.HDMA>>16 : STA !HDMAptr+2	;/
+	;	LDA.b #.HDMA : STA !HDMAptr		;\
+	;	LDA.b #.HDMA>>8 : STA !HDMAptr+1	; | Set up pointer
+	;	LDA.b #.HDMA>>16 : STA !HDMAptr+2	;/
+
+		LDA.b #level5_HDMA : STA !HDMAptr		;\
+		LDA.b #level5_HDMA>>8 : STA !HDMAptr+1		; | Set up pointer
+		LDA.b #level5_HDMA>>16 : STA !HDMAptr+2		;/
+
 		RTL					; > Return
 
 		.HDMA
@@ -898,28 +749,35 @@ level3:
 		.Castle
 		LDA $1E
 		LSR #3
-		SEP #$30				; > Regs 8 bit
+		STA $00
+		LDA !OAMindex_p0 : TAX
+		CLC : ADC #$0008
+		STA !OAMindex_p0
+		SEP #$20				; > A 8 bit
+		LDA $00
 		EOR #$FF				;\
-		STA !OAM+$1F8				; | Xpos of castle
-		STA !OAM+$1FC				;/
-		LDA #$30				;\
-		STA !OAM+$1F9				; | Ypos of castle
-		LDA #$40				; |
-		STA !OAM+$1FD				;/
-		LDA #$A2				;\
-		STA !OAM+$1FA				; | Tile numbers of castle
-		LDA #$A4				; |
-		STA !OAM+$1FE				;/
+		STA !OAM_p0+$000,x			; | Xpos of castle
+		STA !OAM_p0+$004,x			;/
+		LDA #$30 : STA !OAM_p0+$001,x		;\ Ypos of castle
+		LDA #$40 : STA !OAM_p0+$005,x		;/
+		LDA #$A2 : STA !OAM_p0+$002,x		;\ tile numbers of castle
+		LDA #$A4 : STA !OAM_p0+$006,x		;/
 		LDA #$0E				;\
-		STA !OAM+$1FB				; | YXPPCCCT of castle
-		STA !OAM+$1FF				;/
-		XBA					;\
-		BEQ +					; |
-		LDA #$01				; | Hi table of castle
+		STA !OAM_p0+$003,x			; | YXPPCCCT of castle
+		STA !OAM_p0+$007,x			;/
+		XBA : BEQ +				;\
+		LDA #$01				; | hi byte of castle
 	+	ORA #$02				; |
-		STA !OAMhi+$7E				; |
-		STA !OAMhi+$7F				;/
-	..R	SEP #$20
+		STA $00
+		REP #$20
+		TXA
+		LSR #2
+		TAX
+		SEP #$20
+		LDA $00
+		STA !OAMhi_p0+$00,x			; |
+		STA !OAMhi_p0+$01,x			;/
+	..R	SEP #$30
 		LDA $14					;\
 		AND #$01				; | use the table we just made
 		ORA #$04				; |
@@ -929,13 +787,12 @@ level3:
 
 
 level4:
-
 		LDA #$20 : STA $64
 		LDA $71
 		CMP #$05 : BEQ ++
 		CMP #$06 : BNE +
 	++	STZ $64
-		LDA #$40 : STA !SPC4			; dizzy OFF!!
+		LDA #$40 : STA !SPC4			; dizzy OFF!! SFX
 		+
 
 		LDA !P2Status-$80 : BNE .P2
@@ -996,33 +853,16 @@ level4:
 		LDA .SpawnRate,x
 		AND $14 : BNE .NoSpawn
 		LDX #$0F
-	-	LDA $3230,x : BEQ .Spawn
+	-	LDA $3230,x : BEQ .TriggerSpawn
 		DEX : BPL -
 		BRA .NoSpawn
 
-		.Spawn
-		LDA !RNG
-		AND #$F0
-		CLC : ADC $1C
-		STA $3210,x
-		LDA $1D
-		ADC #$00
-		STA $3240,x
-		LDA !RNG
-		AND #$02
-		TAY
-		REP #$20
-		LDA $1A
-		CLC : ADC .SpawnX,y
-		SEP #$20
-		STA $3220,x
-		XBA : STA $3250,x
-		LDA #$01 : STA $3230,x
-		LDA #$36 : STA $3200,x
-		LDA #$2D : STA $35C0,x
-		LDA #$08 : STA $3590,x
-		JSL !ResetSprite
-		JSL !ResetSpriteExtra
+		.TriggerSpawn
+		STX $00
+		LDA.b #.Spawn : STA $3180
+		LDA.b #.Spawn>>8 : STA $3181
+		LDA.b #.Spawn>>16 : STA $3182
+		JSR $1E80
 		.NoSpawn
 
 
@@ -1046,6 +886,36 @@ level4:
 	.SpawnX
 	dw $0120
 	dw $FFE0
+
+		.Spawn
+		PHB : PHK : PLB
+		PHP
+		SEP #$30
+		LDX $00
+		LDA !RNG
+		AND #$F0
+		CLC : ADC $1C
+		STA $3210,x
+		LDA $1D
+		ADC #$00
+		STA $3240,x
+		LDA !RNG
+		AND #$02
+		TAY
+		REP #$20
+		LDA $1A
+		CLC : ADC .SpawnX,y
+		SEP #$20
+		STA $3220,x
+		XBA : STA $3250,x
+		LDA #$01 : STA $3230,x
+		LDA #$36 : STA $3200,x
+		LDA #$2D : STA $35C0,x
+		LDA #$08 : STA $3590,x
+		JSL !ResetSprite
+		PLP
+		PLB
+		RTL
 
 
 		.HDMA
@@ -1080,35 +950,35 @@ level4:
 		LDA !Level+3 : BNE +
 		LDA !Level+2
 		CMP #$01 : BNE +
-		LDA #$40 : STA !SPC4			; turn off dizzy
+		LDA #$40 : STA !SPC4			; dizzy OFF!! SFX
 		+
 
 
-		LDA #$01 : STA $40A0F0 : STA $40A0F4
-		LDA #$00 : STA $40A0F3 : STA $40A0F7
+		LDA #$01 : STA !DecompBuffer+$10F0 : STA !DecompBuffer+$10F4
+		LDA #$00 : STA !DecompBuffer+$10F3 : STA !DecompBuffer+$10F7
 
 
 		REP #$20
-		LDA #$0E02 : STA $4320			;\
-		LDA $14					; |
-		AND #$0001				; | layer 1 HDMA
-		BEQ $03 : LDA #$0004			; |
-		ORA #$A0F0 : STA !HDMA2source		;/
+		LDA #$0E02 : STA $4320					;\
+		LDA $14							; |
+		AND #$0001						; | layer 1 HDMA
+		BEQ $03 : LDA #$0004					; |
+		ORA.w #!DecompBuffer+$10F0 : STA !HDMA2source		;/
 
-		LDA #$0F02 : STA $4330			;\
-		LDA $14					; |
-		AND #$0001				; | layer 2 horizontal HDMA
-		BEQ $03 : LDA #$0040			; |
-		ORA #$A100 : STA !HDMA3source		;/
+		LDA #$0F02 : STA $4330					;\
+		LDA $14							; |
+		AND #$0001						; | layer 2 horizontal HDMA
+		BEQ $03 : LDA #$0040					; |
+		ORA.w #!DecompBuffer+$1100 : STA !HDMA3source		;/
 
-		LDA #$1002 : STA $4340			;\
-		LDA $14					; |
-		AND #$0001				; | layer 2 stretch HDMA
-		BEQ $03 : LDA #$0400			; |
-		ORA #$A200 : STA !HDMA4source		;/
+		LDA #$1002 : STA $4340					;\
+		LDA $14							; |
+		AND #$0001						; | layer 2 stretch HDMA
+		BEQ $03 : LDA #$0400					; |
+		ORA.w #!DecompBuffer+$1200 : STA !HDMA4source		;/
 
-		LDA #$3101 : STA $4350			;\ color math HDMA
-		LDA #$0A00 : STA !HDMA5source		;/
+		LDA #$3101 : STA $4350					;\ color math HDMA
+		LDA #$0A00 : STA !HDMA5source				;/
 
 		SEP #$20
 		LDA #$40
@@ -1142,7 +1012,7 @@ level4:
 		LSR #3
 		ASL A
 		TAX
-		LDA $40A040,x
+		LDA !DecompBuffer+$1040,x
 		SEC : SBC $1C
 		SEP #$20
 		STA !P2VectorX-$80,y
@@ -1172,12 +1042,12 @@ level4:
 
 
 
-; $40A000 - X table
-; $40A040 - Y table
-; $40A0F0 - layer 1 HDMA table
-; $40A0FA - intensity factor
-; $40A0FC - added during flip
-; $40A0FE - EOR'd during flip
+; !DecompBuffer+$1000 - X table
+; !DecompBuffer+$1040 - Y table
+; !DecompBuffer+$10F0 - layer 1 HDMA table
+; !DecompBuffer+$10FA - intensity factor
+; !DecompBuffer+$10FC - added during flip
+; !DecompBuffer+$10FE - EOR'd during flip
 
 		..SA1
 		PHB : PHK : PLB
@@ -1193,7 +1063,7 @@ level4:
 		BCC $03 : LDA #$0000
 		STA !Level+6
 
-		PHB : LDX #$40
+		PHB : LDX.b #!DecompBuffer>>16
 		PHX : PLB
 
 
@@ -1205,8 +1075,8 @@ level4:
 
 		REP #$10
 		LDY #$003E
-		STZ $A0FE
-		STZ $A0FC
+		STZ.w !DecompBuffer+$10FE
+		STZ.w !DecompBuffer+$10FC
 		LDA $1A
 		LSR A
 		EOR #$FFFF
@@ -1214,8 +1084,8 @@ level4:
 		ASL #3
 		AND #$03FF
 		CMP #$0200 : BCC +
-		DEC $A0FE
-		INC $A0FC
+		DEC.w !DecompBuffer+$10FE
+		INC.w !DecompBuffer+$10FC
 	+	AND #$01FF
 		TAX
 
@@ -1227,52 +1097,52 @@ level4:
 	+	CMP #$0100
 		BCC $03 : LDA #$0100
 		LSR #3
-	++	STA $A0FA
+	++	STA.w !DecompBuffer+$10FA
 
 	-	LDA.l !TrigTable,x
 		LSR #5
 		STA.l $2251
-		LDA $A0FA : STA.l $2253
+		LDA.w !DecompBuffer+$10FA : STA.l $2253
 		BRA $00 : NOP
 		LDA.l $2306
 		LSR #4
-		EOR $A0FE
+		EOR.w !DecompBuffer+$10FE
 		CLC : ADC $1C
-		CLC : ADC $A0FC
+		CLC : ADC.w !DecompBuffer+$10FC
 		AND #$01FF
 		ORA #$2000
-		STA $A040,y
+		STA.w !DecompBuffer+$1040,y
 		LDA $1A
 		ORA #$2000
-		STA $A000,y
+		STA.w !DecompBuffer+$1000,y
 		TXA
 		CLC : ADC #$0020
 		AND #$01FF
 		TAX
 		CMP #$0020 : BCS +
-		LDA $A0FE
+		LDA.w !DecompBuffer+$10FE
 		EOR #$FFFF
-		STA $A0FE
-		LDA $A0FC
+		STA.w !DecompBuffer+$10FE
+		LDA.w !DecompBuffer+$10FC
 		EOR #$0001
-		STA $A0FC
+		STA.w !DecompBuffer+$10FC
 	+	DEY #2 : BPL -
 
 		LDA.l !TrigTable,x
 		LSR #5
 		STA.l $2251
-		LDA $A0FA : STA.l $2253
+		LDA.w !DecompBuffer+$10FA : STA.l $2253
 		LDA $14
 		AND #$0001
 		BEQ $03 : LDA #$0004
 		TAX
 		LDA.l $2306
 		LSR #4
-		EOR $A0FE
+		EOR.w !DecompBuffer+$10FE
 		CLC : ADC $1C
-		CLC : ADC $A0FC
+		CLC : ADC.w !DecompBuffer+$10FC
 		AND #$01FF
-		STA $A0F1,x			; layer 1 HDMA value
+		STA.w !DecompBuffer+$10F1,x			; layer 1 HDMA value
 
 		STZ $22
 		STZ $24
@@ -1295,21 +1165,21 @@ level4:
 		INC A
 		AND #$001F
 		TAY
-		LDA #$0010 : STA $40A100,x
+		LDA #$0010 : STA !DecompBuffer+$1100,x
 		LDA ..HTable,y
 		AND #$00FF
 		STA $2251
-		LDA $40A0FA : STA $2253
+		LDA !DecompBuffer+$10FA : STA $2253
 		BRA $00 : NOP
 		LDA $2306
 		LSR #5
 		CLC : ADC $1E
-		STA $40A101,x
+		STA !DecompBuffer+$1101,x
 		INX #3
 		TXA
 		AND #$003F
 		CMP #$0030 : BCC -
-		LDA #$0000 : STA $40A100,x
+		LDA #$0000 : STA !DecompBuffer+$1100,x
 
 
 		; Z stretch code
@@ -1327,34 +1197,34 @@ level4:
 	-	INY
 		CPY.w #..ZTable_End-..ZTable
 		BCC $03 : LDY #$0000
-		LDA #$0001 : STA $40A200,x
+		LDA #$0001 : STA !DecompBuffer+$1200,x
 		LDA ..ZTable,y
 		AND #$00FF
 		SEC : SBC #$001B
 		STA $2251
-		LDA $40A0FA : STA $2253
+		LDA !DecompBuffer+$10FA : STA $2253
 		BRA $00 : NOP
 		LDA $2306
 		LSR #5
 		CLC : ADC $20
-		STA $40A201,x
+		STA !DecompBuffer+$1201,x
 		INX #3
 		INY
 		TXA
 		AND #$03FF
 		CMP #$0300 : BCC -
-		LDA #$0000 : STA $40A200,x
+		LDA #$0000 : STA !DecompBuffer+$1200,x
 
 		SEP #$10
 
-
-
-
 		JSL !GetVRAM
 		LDA #$0080 : STA !VRAMbase+!VRAMtable+$00,x
-		LDA #$A000 : STA !VRAMbase+!VRAMtable+$02,x
-		LDA #$0040 : STA !VRAMbase+!VRAMtable+$04,x
-		LDA #$5800 : STA !VRAMbase+!VRAMtable+$05,x
+		LDA.w #!DecompBuffer+$1000 : STA !VRAMbase+!VRAMtable+$02,x
+		LDA.w #!DecompBuffer>>16 : STA !VRAMbase+!VRAMtable+$04,x
+		LDA.l !2109						;\
+		AND #$00FC						; | layer 3 address
+		XBA							; |
+		STA !VRAMbase+!VRAMtable+$05,x				;/
 		PLP
 		PLB
 		RTL
@@ -1402,40 +1272,37 @@ level5:
 
 
 		.NoExit
-		LDA #$60				;\
-		STA !OAM+$1F0				; |
-		STA !OAM+$1F8				; | Xpos of sun
-		LDA #$68				; |
-		STA !OAM+$1F4				; |
-		STA !OAM+$1FC				;/
-		LDA #$30				;\
-		STA !OAM+$1F1				; |
-		STA !OAM+$1F5				; | Ypos of sun
-		LDA #$40				; |
-		STA !OAM+$1F9				; |
-		STA !OAM+$1FD				;/
-		LDA #$88				;\
-		STA !OAM+$1F2				; |
-		STA !OAM+$1F6				; | Tile numbers of sun
-		STA !OAM+$1FA				; |
-		STA !OAM+$1FE				;/
-		LDA #$0E				;\
-		STA !OAM+$1F3				; |
-		LDA #$4E				; |
-		STA !OAM+$1F7				; | Properties of sun
-		LDA #$8E				; |
-		STA !OAM+$1FB				; |
-		LDA #$CE				; |
-		STA !OAM+$1FF				;/
-		LDA #$02				;\
-		STA !OAMhi+$7C				; |
-		STA !OAMhi+$7D				; | Tile size of sun
-		STA !OAMhi+$7E				; |
-		STA !OAMhi+$7F				;/
+		PHB : PHK : PLB
+		REP #$30
+		LDA !OAMindex_p0 : TAX
+		CLC : ADC #$0010
+		STA !OAMindex_p0
+		LDY #$0000
+	-	LDA .SunTilemap,y : STA !OAM_p0,x
+		INY #2
+		INX #2
+		CPY #$0010 : BCC -
+		TXA
+		SEC : SBC #$0010
+		LSR #2
+		TAX
+		LDA #$0202
+		STA !OAMhi_p0+$00,x
+		STA !OAMhi_p0+$02,x
+		SEP #$30
+		PLB
+
 		LDA.b #.HDMA : STA !HDMAptr		;\
 		LDA.b #.HDMA>>8 : STA !HDMAptr+1	; | Set up pointer
 		LDA.b #.HDMA>>16 : STA !HDMAptr+2	;/
 		RTL					; > Return
+
+		.SunTilemap
+		db $60,$30,$88,$0E
+		db $68,$30,$88,$4E
+		db $60,$40,$88,$8E
+		db $68,$40,$88,$CE
+
 
 		.HDMA
 		PHP
@@ -1521,8 +1388,11 @@ level5:
 		BPL -					;/
 		PLB					; > Restore bank
 
+		LDA !Level
+		CMP #$0003 : BEQ +
+
 		LDA !BG3BaseSettings			;\ > Include LM initial offset
-		AND #$00FC				; |
+		AND #$00F8				; |
 		ASL A					; |
 		STA $02					; |
 		LDA $1A					; |
@@ -1531,7 +1401,7 @@ level5:
 		LSR #3					; |
 		STA $22					; | BG3 scroll = 112.5%
 		LDA $1C					; | (this only applies if BG3 scroll is turned off in LM)
-		SEC : SBC #$00C0			; |
+		SEC : SBC #$00C0			; | (used for ramparts in castle rex)
 		STA $00					; |
 		ASL #3					; |
 		CLC : ADC $00				; |
@@ -1539,7 +1409,7 @@ level5:
 		CLC : ADC #$00C4			; |
 		CLC : ADC $02				; |
 		STA $24					;/
-		PLP
+	+	PLP
 		RTL
 
 
@@ -1557,8 +1427,11 @@ level6:
 
 
 		.HDMA
+		PHB
 		PHP
 		SEP #$30
+		LDA.b #MAIN_Level>>16
+		PHA : PLB
 		LDA $14
 		AND #$01
 		ASL #4
@@ -1570,9 +1443,8 @@ level6:
 		ROR A					; |
 		STA $0A07,x				;/
 		STX !HDMA6source			; update table pointer
-		LDA #$17				;\
-		STA $6D9D				; | Main/sub screen settings
-		STZ $6D9E				;/
+		LDA #$17 : STA !MainScreen		;\ Main/sub screen settings
+		STZ !SubScreen				;/
 		LDA !Level+3				;\
 		CMP #$04				; |
 		BEQ .Return				; |
@@ -1581,6 +1453,7 @@ level6:
 		BEQ .Process				; |
 		JMP .CGRAM				; |
 .Return		PLP					; |
+		PLB					; |
 		RTL					;/
 
 .Process	REP #$20				;\
@@ -1612,38 +1485,54 @@ level6:
 		BCC $03 : LDA #$0100
 		LSR #3
 		SEP #$20
-		STA !GlobalPalsetMix
+		STA !GlobalLightMix
 
 
-		LDA $14
-		LSR A
-		STA $00
-		AND #$07 : BEQ .NoHSL
-		ASL #4
-		ORA #$02
-		TAX
-		LDY #$0E
-		LDA $14
-		LSR A : BCS .UploadColor
+		REP #$20			;\
+		LDA !Level+2			; |
+		SEC : SBC #$0108		; |
+		BPL $03 : LDA #$0000		; |
+		LSR #4				; |
+		CMP #$001F			; |
+		BCC $03 : LDA #$001F		; |
+		STA $00				; | fade in star palette
+		ASL #5				; |
+		ORA $00				; |
+		ASL #5				; |
+		ORA $00				; |
+		LDX #$14			; |
+	-	STA $00A0,x			; |
+		DEX #2 : BPL -			; |
+		SEP #$20			;/
 
-		.MixColor
-		LDA !Level+3 : BEQ +
-		LDA #$00 : BRA ++
-	+	LDA !Level+2
-		BNE $01 : INC A
-		EOR #$FF : INC A
-	++	JSL !MixHSL
-		BRA .NoHSL
 
-		.UploadColor
-		REP #$30
-		TXA
-		ORA #$0200
-		TAX
-		LDY #$000E
-		JSL !HSLtoRGB
-		SEP #$30
-		.NoHSL
+
+		LDA $14				;\
+		LSR A				; |
+		AND #$07 : BEQ .NoHSL		; |
+		ASL #4				; |
+		ORA #$02			; |
+		TAX				; |
+		LDY #$0E			; |
+		LDA $14				; |
+		LSR A : BCS .UploadColor	; |
+		.MixColor			; |
+		LDA !Level+3 : BEQ +		; |
+		LDA #$00 : BRA ++		; | alternate between converting and uploading
+	+	LDA !Level+2			; |
+		BNE $01 : INC A			; |
+		EOR #$FF : INC A		; |
+	++	JSL !MixHSL			; |
+		BRA .NoHSL			; |
+		.UploadColor			; |
+		REP #$30			; |
+		TXA				; |
+		ORA #$0200			; |
+		TAX				; |
+		LDY #$000E			; |
+		JSL !HSLtoRGB			; |
+		SEP #$30			; |
+		.NoHSL				;/
 
 
 		LDX #$00
@@ -1775,11 +1664,10 @@ level6:
 		LSR #2					; |
 		ASL A					; |
 		CMP.w #.BGColoursEnd-.BGColours		; |
-		BCC +					; | Update colour 0x02
+		BCC +					; | Update color 0x02
 		LDA.w #.BGColoursEnd-.BGColours		; |
 	+	TAX					; |
-		LDA.w .BGColours,x			; |
-		STA $00A2				; |
+		LDA.l .BGColours,x : STA $00A2		; |
 		SEP #$20				;/
 
 		LDA !Level+3				;\
@@ -1788,6 +1676,7 @@ level6:
 		CMP #$A0				; |
 		BCC .DrawSun				;/
 .OffScreen	PLP
+		PLB					; |
 		RTL
 
 .DrawSun	LDA !Level+3
@@ -1795,41 +1684,46 @@ level6:
 		LDA !Level+2
 		ROR A
 		STA $00
-		LDA #$60				;\
-		SEC : SBC $00				; |
-		STA !OAM+$1F0				; |
-		STA !OAM+$1F8				; | Xpos of sun
-		LDA #$68				; |
-		SEC : SBC $00				; |
-		STA !OAM+$1F4				; |
-		STA !OAM+$1FC				;/
-		LDA #$60				;\
-		CLC : ADC $00				; |
-		STA !OAM+$1F1				; |
-		STA !OAM+$1F5				; | Ypos of sun
-		LDA #$70				; |
-		CLC : ADC $00				; |
-		STA !OAM+$1F9				; |
-		STA !OAM+$1FD				;/
-		LDA #$EE				;\
-		STA !OAM+$1F2				; |
-		STA !OAM+$1F6				; | Tile numbers of sun
-		STA !OAM+$1FA				; |
-		STA !OAM+$1FE				;/
-		LDA #$0D				;\
-		STA !OAM+$1F3				; |
-		LDA #$4D				; |
-		STA !OAM+$1F7				; | Properties of sun
-		LDA #$8D				; |
-		STA !OAM+$1FB				; |
-		LDA #$CD				; |
-		STA !OAM+$1FF				;/
-		LDA #$02				;\
-		STA !OAMhi+$7C				; |
-		STA !OAMhi+$7D				; | Tile size of sun
-		STA !OAMhi+$7E				; |
-		STA !OAMhi+$7F				;/
+
+		REP #$30
+		LDA !OAMindex_p0 : TAX
+		CLC : ADC #$0010
+		STA !OAMindex_p0
+		SEP #$20
+		LDA #$60					;\
+		SEC : SBC $00					; |
+		STA !OAM_p0+$000,x				; |
+		STA !OAM_p0+$008,x				; | Xpos of sun
+		LDA #$68					; |
+		SEC : SBC $00					; |
+		STA !OAM_p0+$004,x				; |
+		STA !OAM_p0+$00C,x				;/
+		LDA #$60					;\
+		CLC : ADC $00					; |
+		STA !OAM_p0+$001,x				; |
+		STA !OAM_p0+$005,x				; | Ypos of sun
+		LDA #$70					; |
+		CLC : ADC $00					; |
+		STA !OAM_p0+$009,x				; |
+		STA !OAM_p0+$00D,x				;/
+		LDA #$EE					;\
+		STA !OAM_p0+$002,x				; |
+		STA !OAM_p0+$006,x				; | tile numbers of sun
+		STA !OAM_p0+$00A,x				; |
+		STA !OAM_p0+$00E,x				;/
+		LDA #$0F : STA !OAM_p0+$003,x			;\
+		LDA #$4F : STA !OAM_p0+$007,x			; | YXPPCCCT of sun
+		LDA #$8F : STA !OAM_p0+$00B,x			; |
+		LDA #$CF : STA !OAM_p0+$00F,x			;/
+		REP #$20					;\
+		TXA						; |
+		LSR #2						; |
+		TAX						; | tile size of sun
+		LDA #$0202					; |
+		STA !OAMhi_p0+$00,x				; |
+		STA !OAMhi_p0+$02,x				;/
 		PLP
+		PLB					; |
 		RTL
 
 .BGColours	dw $006F,$006F
@@ -2433,6 +2327,15 @@ level32:
 		LDA.b #.HDMA>>8 : STA.l !HDMAptr+1
 		LDA.b #.HDMA>>16 : STA.l !HDMAptr+2
 
+
+		REP #$20
+		LDA #$0080 : STA !LightR
+		LDA #$0100 : STA !LightG
+		LDA #$00E0 : STA !LightB
+		SEP #$20
+
+
+
 		LDA #$7F : TRB !Level+4
 		LDX #$0F
 	-	LDA $3230,x
@@ -2453,9 +2356,6 @@ level32:
 		LDA #$0F : STA $32D0,x
 	+	DEX : BPL -
 
-
-		LDA #$02 : STA !WeatherType
-		LDA #$04 : STA !WeatherFreq
 		REP #$20
 		LDA !Level+3
 		ASL A
@@ -2536,13 +2436,12 @@ level32:
 		ORA #$02
 		STA !OAMhi+1,y
 		STA !OAMhi+3,y
-
-		LDA #$03 : STA !WeatherType
-		LDA #$04 : STA !WeatherFreq
+		LDA #$03 : JSL Weather
+		BRA .WeatherDone
 
 	.Nope	SEP #$20
-
-		JSL Weather
+		LDA #$02 : JSL Weather
+		.WeatherDone
 
 
 		LDA $1B
@@ -2686,6 +2585,8 @@ level32:
 		SEP #$20
 		STA !Ex_XLo,x
 		XBA : STA !Ex_XHi,x
+		STZ !Ex_XSpeed,x
+		STZ !Ex_YSpeed,x
 	..fail	REP #$30
 		BRA .CheckTimer
 
@@ -2776,8 +2677,6 @@ level32:
 		..done
 
 		SEP #$30
-		LDA #$02 : STA $3E
-
 		LDA $14
 		AND #$01
 		ASL #4
@@ -2786,7 +2685,7 @@ level32:
 		LSR A						; |
 		STA $0A08,x					; | Update BG2 Hscroll
 		LDA $1E						; |
-		ROR A							; |
+		ROR A						; |
 		STA $0A07,x					;/
 		STX !HDMA6source				; update source for BG2
 		STX !HDMA2source				; update source for BG1
@@ -2832,8 +2731,8 @@ level32:
 		ORA #$2000					; |
 		STA $02						; |
 		LDX #$3E					; |
-	-	LDA $00 : STA $40A000,x				; |
-		LDA $02 : STA $40A040,x				; |
+	-	LDA $00 : STA !DecompBuffer+$1000,x		; |
+		LDA $02 : STA !DecompBuffer+$1040,x		; |
 		DEX #2 : BPL -					;/
 
 
@@ -2873,12 +2772,12 @@ level32:
 		LDA $0E
 		AND #$0007
 		BNE $02 : DEX #2
-	+	LDA $40A040,x
+	+	LDA !DecompBuffer+$1040,x
 		AND #$01FF
 		SEC : SBC $0406,y
 		AND #$01FF
 		ORA #$2000
-		STA $40A040,x
+		STA !DecompBuffer+$1040,x
 		BRA ..next
 
 		..full
@@ -2888,13 +2787,13 @@ level32:
 		LDA $0E
 		AND #$0007
 		BNE $02 : DEX #2
-		LDA $40A040,x
+		LDA !DecompBuffer+$1040,x
 		AND #$01FF
 		SEC : SBC $0406,y
 		AND #$01FF
 		ORA #$2000
-		STA $40A040,x
-		STA $40A042,x
+		STA !DecompBuffer+$1040,x
+		STA !DecompBuffer+$1042,x
 
 		..next
 		LDA $0E
@@ -3001,10 +2900,12 @@ level32:
 
 		JSL !GetVRAM
 		LDA #$0080 : STA !VRAMbase+!VRAMtable+$00,x
-		LDA #$A000 : STA !VRAMbase+!VRAMtable+$02,x
-		LDA #$0040 : STA !VRAMbase+!VRAMtable+$04,x
-		LDA #$5000 : STA !VRAMbase+!VRAMtable+$05,x
-
+		LDA.w #!DecompBuffer+$1000 : STA !VRAMbase+!VRAMtable+$02,x
+		LDA.w #!DecompBuffer>>16 : STA !VRAMbase+!VRAMtable+$04,x
+		LDA !2109
+		AND #$00FC
+		XBA
+		STA !VRAMbase+!VRAMtable+$05,x
 		PLP
 		PLB
 		RTL

@@ -47,7 +47,7 @@ SpinySpecial:
 
 	Special:
 		PHK : PLB
-		JSL SPRITE_OFF_SCREEN_Long
+		JSL SPRITE_OFF_SCREEN
 		JSL !GetSpriteClipping04
 		SEC : JSL !PlayerClipping
 		BCC .NoContact
@@ -62,9 +62,9 @@ SpinySpecial:
 
 		.Interact
 		LDA #$01 : STA !P2SenkuSmash-$80,y
-		JSL CheckCrush_Long : BCC ..Hurt
+	;	JSL CheckCrush_Long : BCC ..Hurt
 		LDA #$02 : STA !SPC1
-		JSL P2Bounce_Long
+		JSL P2Bounce
 		RTS
 
 	..Hurt	TYA
@@ -91,7 +91,7 @@ SpinySpecial:
 		SEP #$20
 		LDA #$0D
 		LDY #$01
-		JSL SpawnExSprite_Long
+		JSL SpawnExSprite
 		LDA #$10 : STA !SPC1			; VROOM sound
 		BRA .GFX
 
@@ -100,7 +100,7 @@ SpinySpecial:
 		LDA $3330,x
 		AND #$04 : BEQ .NoBounce
 		LDA $AE,x : BNE .Roll
-		JSL SUB_HORZ_POS_Long
+		JSL SUB_HORZ_POS
 		LDA .XSpeed,y : STA $AE,x
 	.Roll	LDA $9E,x
 		LSR A
@@ -128,7 +128,7 @@ SpinySpecial:
 		CLC : ADC.w #.TM0
 		STA $04
 		SEP #$20
-		JSL LOAD_TILEMAP_Long
+		JSL LOAD_TILEMAP
 
 		PLB
 		RTL

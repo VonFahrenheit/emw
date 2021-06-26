@@ -25,7 +25,7 @@ FlamePillar:
 
 	MAIN:
 		PHB : PHK : PLB
-		JSL SPRITE_OFF_SCREEN_Long
+		JSL SPRITE_OFF_SCREEN
 
 		LDA !FlamePillarLife
 		CMP #$01 : BNE .Live
@@ -109,14 +109,14 @@ FlamePillar:
 
 
 		LDA !FlamePillarHeight
-		LSR #3
+		LSR #4
 		INC #2
 		ASL #2
 		STA !BigRAM+0
 		STZ !BigRAM+1
 
 		LDA !FlamePillarHeight
-		LSR #3
+		LSR #4
 		INC A
 		ASL #2
 		TAY
@@ -124,7 +124,7 @@ FlamePillar:
 		LDA !FlamePillarHeight
 		EOR #$FF : INC A
 		STA $00
-		LDA !SpriteTile,x : STA $01
+		STZ $01
 		LDA $14
 		CLC : ADC !SpriteIndex
 		AND #$04
@@ -132,7 +132,7 @@ FlamePillar:
 		STA $02
 		LDA #$10 : STA $03
 
-	-	LDA #$34
+	-	LDA #$12
 		EOR $02
 		ORA !SpriteProp,x
 		STA !BigRAM+2,y
@@ -141,15 +141,19 @@ FlamePillar:
 		CLC : ADC $03
 		STA $00
 		LDA $01 : STA !BigRAM+5,y
-		LDA !SpriteTile,x
-		INC #2
-		STA $01
-		LDA #$08 : STA $03
+		LDA #$02 : STA $01
+		LDA #$10 : STA $03
 		DEY #4 : BPL -
+
+
+		LDA $64 : PHA
+		STZ $64
 
 		LDA.b #!BigRAM : STA $04
 		LDA.b #!BigRAM>>8 : STA $05
-		JSL LOAD_TILEMAP_HiPrio_Long
+		JSL LOAD_PSUEDO_DYNAMIC_p2
+
+		PLA : STA $64
 
 		PLB
 		RTL

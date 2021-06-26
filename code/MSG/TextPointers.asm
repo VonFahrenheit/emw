@@ -165,7 +165,7 @@
 ;	- the given value replaces transparency during text rendering
 ;	- this command is usually used with border(0)
 ;
-;	important(0)
+;	important(X)
 ;	- takes a value 0-1
 ;	- 0 = player can skip this message with start, 1 = player can not skip this message with start
 ;	- this is useful for making some text boxes unskippable, which should only be done if it's necessary
@@ -433,7 +433,7 @@ dw .L13B
 ;LEVEL TEXT POINTERS;
 ;===================;
 
-.L000	dw .DebugMessage;	dw .Survivor_Talk_1			; 01
+.L000	dw .Survivor_Talk_1			; 01
 	dw .Tinker_Talk_1			; 02
 	dw .Mario_Upgrade_1			; 03
 	dw .Mario_Upgrade_2			; 04
@@ -620,7 +620,12 @@ dw .L13B
 .L137
 .L138
 .L139
-.L13A
+
+
+.L13A	dw .FoundLuigi			; 01
+
+
+
 .L13B	dw .Menu_EasyMode		; 01
 	dw .Menu_NormalMode		; 02
 	dw .Menu_InsaneMode		; 03

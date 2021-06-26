@@ -349,14 +349,22 @@ print "-- SP_MENU --"
 	warnpc $008DFE
 
 
+	org $00A5D5
+		JSR STATUS_BAR_Main
+
 	org $008E1A					; Code that handles the status bar
 	STATUS_BAR:
-		LDA !Difficulty				;\
-		AND #$10				; | Only use timer during Time Mode
-		BEQ .Coins				;/
-		LDA $7493				;\
-		ORA $9D					; | Don't decrement timer if level is ending or sprites are locked
-		BNE .NoTimer				;/
+		PHB : PHK : PLB
+		JSR .Main
+		PLB
+		RTL
+
+	.Main
+		LDA !Difficulty				;\ only use timer during Time Mode
+		AND #$10 : BEQ .Coins			;/
+		LDA !LevelEnd				;\
+		ORA $309D				; | don't decrement timer if level is ending or sprites are locked
+		BNE .NoTimer				;/ (MPU-safe addr access)
 		LDA $6D9B
 		CMP #$C1
 		BEQ .NoTimer
@@ -371,7 +379,7 @@ print "-- SP_MENU --"
 		LDX #$02				;\
 	-	DEC $6F31,x				; |
 		BPL +					; |
-		LDA #$09				; | Decrement timer
+		LDA #$09				; | decrement timer
 		STA $6F31,x				; |
 		DEX					; |
 		BPL -					;/
@@ -379,17 +387,17 @@ print "-- SP_MENU --"
 		BNE +
 		LDA $6F32				;\
 		AND $6F33				; |
-		CMP #$09				; | Speed up music when time is 99
+		CMP #$09				; | speed up music when time is 99
 		BNE +					; |
 		LDA #$1D				; |
 		STA !SPC1				;/
 	+	LDA $6F31				;\
 		ORA $6F32				; |
-		ORA $6F33				; | Kill Mario when time is zero
+		ORA $6F33				; | kill Mario when time is zero
 		BNE .NoTimer				; |
 		JSL $00F606				;/
 		LDA #$01				;\
-		STA !P2Status-$80			; | Kill PCE characters
+		STA !P2Status-$80			; | kill PCE characters
 		STA !P2Status				;/
 
 .NoTimer	; TIMER WRITE TO OAM GOES HERE
@@ -461,7 +469,6 @@ print "-- SP_MENU --"
 		BCC $01 : INX				;/
 		LDA.w .YoshiCoinGFX,x			; Load tile to use
 		STA !StatusBar+$0B,y			; Base address of Yoshi Coins on status bar
-
 		INY
 		CPY $01 : BNE -				; Loop
 		CPY #$0A : BNE +
@@ -523,7 +530,7 @@ print "-- SP_MENU --"
 
 ;.1UpLimit	db $09,$04,$02
 
-		Thousands:
+	Thousands:
 		LDX #$00
 		LDY #$00
 	.1000	CMP #$03E8 : BCC .100
@@ -537,7 +544,7 @@ print "-- SP_MENU --"
 	.10	SEP #$20
 		RTL
 
-		HexToDec:
+	HexToDec:
 		LDX #$00
 	.10	CMP #$0A : BCC .1
 		INX
@@ -545,11 +552,10 @@ print "-- SP_MENU --"
 		BRA .10
 	.1	RTL
 
-		CoinSound:
+	CoinSound:
 		LDX !CoinSound : BNE .ManyCoins
 		LDX #$01 : STX !SPC4
 		LDX #$04 : STX !CoinSound
-
 		.ManyCoins
 		RTS
 warnpc $009045
@@ -558,6 +564,10 @@ warnpc $009045
 ;=================================;
 ;OLD MENU CODE, KEEP FOR REFERENCE;
 ;=================================;
+
+	org $00B888
+		RTS					;\ kill this routine
+		NOP					;/ (all it does is decompress GFX32/33 and store them to RAM)
 
 	org $00905B
 		SBC.w STATUS_BAR_ScoreData+$02,y	; Fix this offset
@@ -636,8 +646,9 @@ warnpc $009045
 	org $01C563
 		INC $19					; remove grow animation
 
-	org $01C56A
-		STZ $9D					; prevent game from pausing when Mario gets a mushroom
+	org $01C565
+		JSL MarioMushAnim
+		NOP
 
 	org $01C5A3
 		BRA $02 : NOP #2			; prevent some infinite score exploit
@@ -655,24 +666,25 @@ warnpc $009045
 		STZ $7407				; remove get fire animation
 		NOP
 
+	; run from mario's PCE code
 	org $028008
 	ItemBox:
-		PHX					; preserve X
 		LDX $6DC2				;\
 		LDA.w .Status,x				; |
 		LDY !MarioPowerUp			; | swap powerups
 		STA !MarioPowerUp			; |
 		LDA.w .Box,y : STA $6DC2		;/
 		BNE .NoSFX				;\
-		LDA !MarioPowerUp : BEQ .NoSFX		; | powerup sound when going small -> big
+		LDA !MarioPowerUp : BEQ .NoSFX		; | powerup SFX when going small -> big
 		LDA #$0A : STA !SPC1			;/
+		LDA #$14 : STA !P2FireFlash		; flash white
 		.NoSFX
 
-		LDA !MarioClimb : BEQ .Return		;\
-		LDA !MarioPowerUp			; |
+		LDA !P2HangFromLedge : BEQ .Return	; check if mario is hanging from ledge
+		LDA !MarioPowerUp			;\
 		BEQ $02 : LDA #$01			; |
-		STA $00					; | return if no climb or if size is unchanged
-		TYA					; |
+		STA $00					; |
+		TYA					; | see if mario's position has to be shifted
 		BEQ $02 : LDA #$01			; |
 		TAY					; |
 		EOR $00 : BEQ .Return			;/
@@ -680,8 +692,7 @@ warnpc $009045
 		CLC : ADC .YCoord,y			; | adjust Mario Ycoord
 		STA !MarioYPosLo			;/
 
-	.Return	PLX					; restore X
-		RTL					; return
+	.Return	RTL					; return
 
 		.Status
 		db $00,$01,$03,$01,$01,$01
@@ -1017,8 +1028,33 @@ Mode7Presents:
 		LDA #$0000
 	-	STA $400000+!MsgRAM,x
 		DEX #2 : BPL -
+		STA !OAMindex_p0
+		STA !OAMindex_p1
+		STA !OAMindex_p2
+		STA !OAMindex_p3
+		STA !HDMAptr+0
+		STA !HDMAptr+1
+		%ReloadOAMData()
+
+
+		SEP #$20
+		REP #$10
+
+		LDX #$8000 : STX $4300					;\
+		LDX.w #.MPU_wait : STX $4302				; |
+		LDA.b #.MPU_wait>>16 : STA $4304			; |
+		LDX.w #.MPU_wait_end-.MPU_wait : STX $4305		; | DMA !MPU_wait routine into place
+		LDX.w #!MPU_wait : STX $2181				; |
+		STZ $2183						; |
+		LDA #$01 : STA $420B					;/
+		LDX.w #.MPU_light : STX $4302				;\
+		LDX.w #.MPU_light_end-.MPU_light : STX $4305		; |
+		LDX.w #!MPU_light : STX $2181				; | DMA !MPU_light routine into place
+		STZ $2183						; |
+		STA $420B						;/
 
 		SEP #$30
+
 
 	-	BIT $4212 : BPL -			; wait for v-blank to avoid tearing
 		LDA #$80 : STA $2100			; f-blank baybeee
@@ -1075,6 +1111,191 @@ Mode7Presents:
 
 		PLP
 		RTL
+
+		.PriorityData
+		dw $0000,$0002,$0004,$0006		; holds the index to the current OAM index reg
+		dw $0000,$0200,$0400,$0600		; holds the offset to the current OAM index
+
+
+	.MPU_wait							;\
+		STA !MPU_SNES						; |
+		STA !MPU_phase						; |
+		LDA !MPU_phase						; | RAM code that waits for SA-1 handshake
+	-	CMP !MPU_SA1 : BNE -					; |
+		RTS							; |
+	..end								;/
+
+
+
+
+
+; buffer = 0: work on buffer 0
+; buffer = 1: work on buffer 1
+
+	.MPU_light
+		PHB							;\
+		PHP							; |
+		PHD							; |
+		REP #$30						; |
+		LDX !LightIndex_SNES					; |
+		LDA !LightBuffer-1					; |
+		AND #$0100						; |
+		ASL A							; |
+		STA $0122						; > start wrap value
+		ADC #$0200						; |
+		STA $0120						; > end wrap value
+		SEP #$20						; |
+	..wait	LDA $3189 : BEQ $03 : BRL ..break			; > detect SA-1 being done with its thread
+		LDA !ProcessLight					; |
+		AND #$03 : BEQ ..init					; | (0 = start new, 1 = continue, 2 = wait for signal)
+		CMP #$02 : BCS ..wait					; |
+		REP #$20						; |
+		BRA ..main						;/
+
+	..init	BIT !ProcessLight : BMI ..wait				; > if SA-1 is currently writing to !PaletteRGB, wait
+		INC !ProcessLight					;\
+		REP #$10						; | this code runs once at the start of a new process
+		LDX #$8000 : STX $4300					; |
+		LDX.w #!PaletteRGB : STX $4302				; | use DMA to copy the data (fuck version 1.1.1)
+		STZ $4304						; |
+		LDX #$0200 : STX $4305					; |
+		STZ $2183						; |
+		LDX.w #!LightData_SNES					; |
+		LDA !LightBuffer					; |
+		AND #$01						; |
+		BEQ $03 : LDX.w #!LightData_SNES+$200			; |
+		STX $2181						; |
+		LDA #$01 : STA $420B					; |
+		REP #$30						; > all regs 16-bit
+		LDA !LightIndexStart : STA !LightIndexStart_SNES	; |
+		LDA !LightIndexEnd : STA !LightIndexEnd_SNES		; |
+		LDA !LightBuffer-1					; |
+		AND #$0100						; > add 512 to access second buffer
+		ASL A							; |
+		TSB !LightIndexStart_SNES				; |
+		TSB !LightIndexEnd_SNES					; |
+		ADC #$0200						; |
+		LDA !LightR : STA !LightR_SNES				; |
+		LDA !LightG : STA !LightG_SNES				; |
+		LDA !LightB : STA !LightB_SNES				; |
+		LDX #$000E						; |
+	-	LDA !LightList,x : STA !LightList_SNES,x		; |
+		DEX #2 : BPL -						; |
+		LDX !LightIndexStart_SNES				;/
+
+	..main	LDA #$0100 : TCD					;\
+	..loop	LDA $3189						; > check for SA-1 being done with its thread
+		AND #$00FF : BNE ..break				; | this is the main loop controller
+		CPX !LightIndexEnd_SNES : BNE ..shade			;/
+
+		..done
+		LDA !LightBuffer					;\
+		EOR #$0001						; | flip buffer
+		ORA #$0080						; > mark as finished
+		STA !LightBuffer					;/
+		INC !ProcessLight					; mark as finished
+		PLD							;\
+		PLP							; | pull stuff
+		PLB							;/
+		JMP $1E85						; > go wait for SA-1
+
+		..break							;\
+		SEP #$20						; |
+		STZ $3189						; |
+		STX !LightIndex_SNES					; > save current index in WRAM
+		PLD							; | if SA-1 finishes its thread, this routine must end
+		PLP							; |
+		PLB							; |
+		RTS							;/
+
+		..shade
+		TXA							;\
+		ASL #3							; |
+		XBA							; |
+		AND #$000F						; |
+		TAY							; | check exclude list
+		LDA !LightList_SNES,y					; |
+		AND #$00FF : BEQ ..include				; |
+		BRL ..next						; |
+		..include						;/
+
+		LDA.l !LightData_SNES,x : STA $0E			;\
+		AND #$001F						; |
+		STA $00							; |
+		LDA $0E							; |
+		LSR #5							; |
+		STA $0E							; | unpack color
+		AND #$001F						; |
+		STA $02							; |
+		LDA $0E							; |
+		LSR #5							; |
+		AND #$001F						; |
+		STA $04							;/
+		SEP #$20						;\
+		LDA $00 : STA $4202					; |
+		LDA !LightR_SNES : STA $4203				; |
+		NOP #3							; |
+		REP #$20						; |
+		LDA $4216 : STA $10					; |
+		LDA !LightR_SNES+1 : STA $4203				; | calculate red
+		LDA $10							; |
+		CMP #$0F80						; |
+		XBA							; |
+		AND #$00FF						; |
+		ADC $4216						; |
+		CMP #$001F						; |
+		BCC $03 : LDA #$001F					; |
+		STA $00							;/
+		SEP #$20						;\
+		LDA $02 : STA $4202					; |
+		LDA !LightG_SNES : STA $4203				; |
+		NOP #3							; |
+		REP #$20						; |
+		LDA $4216 : STA $10					; |
+		LDA !LightG_SNES+1 : STA $4203				; | calculate green
+		LDA $10							; |
+		CMP #$0F80						; |
+		XBA							; |
+		AND #$00FF						; |
+		ADC $4216						; |
+		CMP #$001F						; |
+		BCC $03 : LDA #$001F					; |
+		STA $02							;/
+		SEP #$20						;\
+		LDA $04 : STA $4202					; |
+		LDA !LightB_SNES : STA $4203				; |
+		NOP #3							; |
+		REP #$20						; |
+		LDA $4216 : STA $10					; |
+		LDA !LightB_SNES+1 : STA $4203				; | calculate blue
+		LDA $10							; |
+		CMP #$0F80						; |
+		XBA							; |
+		AND #$00FF						; |
+		ADC $4216						; |
+		CMP #$001F						; |
+		BCC $03 : LDA #$001F					;/
+		ASL #5							;\
+		ORA $02							; |
+		ASL #5							; | assemble color
+		ORA $00							; |
+		STA.l !LightData_SNES,x					;/
+		CPX #$0002 : BCC ..next					;\
+		CPX #$0018 : BCC ..BG3					; |
+		CPX #$0202 : BCC ..next					; | BG3 palette mirrors
+		CPX #$0218 : BCS ..next					; |
+		STA $FEA0-2,x						; > does this work???
+		BRA ..next						; | it does! it just wraps to the next bank, which is fine with this mirroring (that's probably why STA addr,x and STA long,x both use the same amount of cycles)
+	..BG3	STA $00A0-2,x						;/
+	..next	INX #2							;\
+		CPX $20							; | loop
+		BCC $02 : LDX $22					; |
+		BRL ..loop						;/
+	..end
+
+print "Shader RAM code is $", hex(..end-.MPU_light), " bytes long"
+warnpc .MPU_light+$200
+
 .SourcePal
 incbin "PresentsScreenPalette.mw3"
 
@@ -1158,6 +1379,7 @@ endmacro
 ; $400-$BFF:	buffer for loading layer 1 tilemap from map16
 ; $C00-$C1F:	2 tables for layer 1 HDMA (mode 3)
 ; $D00-$D1F:	2 tables for layer 3 HDMA (mode 3)
+; $D80-$D9F:	2 tables for window HDMA (mode 1)
 ;
 ;
 
@@ -1198,13 +1420,15 @@ MAIN_MENU:
 		LDA $13
 		AND #$01
 		BEQ $02 : LDA #$10
+		ORA #$80
 		STA !HDMA5source
+		AND #$7F
 		CLC : ADC .WindowIndex,y
 		TAX
 		LDA !MenuEraseTimer
 		CLC : ADC .WindowOffset,y
-		STA $0E02,x
-		LDA .WindowOffset,y : STA $0E01,x
+		STA $0D82,x
+		LDA .WindowOffset,y : STA $0D81,x
 		BRA .NoWindow
 
 		.RestoreWindow
@@ -1213,15 +1437,17 @@ MAIN_MENU:
 		BEQ $02 : LDA #$10
 		TAX
 		LDA #$FF
-		STA $0E01,x
-		STZ $0E02,x
-		STA $0E04,x
-		STZ $0E05,x
-		STA $0E07,x
-		STZ $0E08,x
-		STA $0E0A,x
-		STZ $0E0B,x
-		STX !HDMA5source
+		STA $0D81,x
+		STZ $0D82,x
+		STA $0D84,x
+		STZ $0D85,x
+		STA $0D87,x
+		STZ $0D88,x
+		STA $0D8A,x
+		STZ $0D8B,x
+		TXA
+		ORA #$80
+		STA !HDMA5source
 		.NoWindow
 
 
@@ -1231,6 +1457,9 @@ MAIN_MENU:
 		BCC $02 : LDA #$00
 		TAX
 		JSR (.Ptr,x)
+
+		JSL !BuildOAM
+
 
 		PLP
 		PLB
@@ -1341,24 +1570,24 @@ MAIN_MENU:
 
 
 		LDA #$2601 : STA $4350						;\
-		LDA #$0E00 : STA !HDMA5source					; |
-		LDA #$0030 : STA $0E00 : STA $0E10				; |
-		LDA #$0030 : STA $0E03 : STA $0E13				; |
-		LDA #$0030 : STA $0E06 : STA $0E16				; |
-		LDA #$0001 : STA $0E09 : STA $0E19				; | window 1 HDMA table
-		STZ $0E0C : STZ $0E1C						; |
+		LDA #$0D80 : STA !HDMA5source					; |
+		LDA #$0030 : STA $0D80 : STA $0D90				; |
+		LDA #$0030 : STA $0D83 : STA $0D93				; |
+		LDA #$0030 : STA $0D86 : STA $0D96				; |
+		LDA #$0001 : STA $0D89 : STA $0D99				; | window 1 HDMA table
+		STZ $0D8C : STZ $0D9C						; |
 		LDA #$00FF							; |
-		STA $0E01 : STA $0E11						; |
-		STA $0E04 : STA $0E14						; |
-		STA $0E07 : STA $0E17						; |
-		STA $0E0A : STA $0E1A						;/
+		STA $0D81 : STA $0D91						; |
+		STA $0D84 : STA $0D94						; |
+		STA $0D87 : STA $0D97						; |
+		STA $0D8A : STA $0D9A						;/
 
 
 		LDA.w #!DecompBuffer : STA $00					;\
 		LDA.w #!DecompBuffer>>8 : STA $01				; |
 		LDA.w #$B01							; |
 		JSL !DecompressFile						; |
-		JSL !GetVRAM							; | decompress file $C00 and upload it to VRAM
+		JSL !GetVRAM							; | decompress file $B01 and upload it to VRAM
 		LDA #$2000 : STA !VRAMbase+!VRAMtable+$00,x			; |
 		LDA.w #!DecompBuffer : STA !VRAMbase+!VRAMtable+$02,x		; |
 		LDA.w #!DecompBuffer>>8 : STA !VRAMbase+!VRAMtable+$03,x	; |
@@ -1456,8 +1685,8 @@ MAIN_MENU:
 		REP #$20
 		LDA.w #.SmallStarTilemap : STA $02
 		SEP #$20
-		STZ $0E
-		LDA #$04 : STA $0F
+		STZ $0D
+		LDA #$04 : STA $0E
 		LDA !SRAM_block
 		CMP #$FF : BEQ ..nostar1
 		LDA #$20 : STA $00
@@ -1479,7 +1708,7 @@ MAIN_MENU:
 
 		REP #$20
 		LDA.w #.HackMarkTilemap : STA $02
-		LDA #$0402 : STA $0E
+		LDA #$0402 : STA $0D
 		SEP #$20
 		LDA !MenuIntegrity_1 : BEQ ..nohack1
 		LDA #$30 : STA $00
@@ -1502,8 +1731,8 @@ MAIN_MENU:
 		STZ $00
 		LDA.w #.TooltipTilemap : STA $02
 		SEP #$20
-		LDA #$02 : STA $0E
-		LDA #$14 : STA $0F
+		LDA #$02 : STA $0D
+		LDA #$14 : STA $0E
 		JSL !SpriteHUD
 
 
@@ -1517,8 +1746,8 @@ MAIN_MENU:
 		REP #$20
 		LDA.w #.OutlineTilemap : STA $02
 		SEP #$20
-		LDA #$02 : STA $0E
-		LDA #$50 : STA $0F
+		LDA #$02 : STA $0D
+		LDA #$50 : STA $0E
 		JSL !SpriteHUD
 
 		..blink
@@ -1538,7 +1767,7 @@ MAIN_MENU:
 		STZ !MenuBG1_X
 		STZ !MenuBG1_X+1
 		REP #$10
-		LDX #$01C0 : JSR LoadScreen
+		LDX !LevelHeight : JSR LoadScreen
 
 
 		..main
@@ -1624,11 +1853,11 @@ MAIN_MENU:
 		ASL #4
 		CLC : ADC #$4C
 		STA $01
-		LDA #$02 : STA $0E
+		LDA #$02 : STA $0D
 		REP #$20
 		LDA.w #.HandTilemap : STA $02
 		SEP #$20
-		LDA #$14 : STA $0F
+		LDA #$14 : STA $0E
 		JSL !SpriteHUD
 		RTS
 
@@ -1717,11 +1946,11 @@ MAIN_MENU:
 		ASL #4
 		CLC : ADC #$4C
 		STA $01
-		LDA #$02 : STA $0E
+		LDA #$02 : STA $0D
 		REP #$20
 		LDA.w #.HandTilemap : STA $02
 		SEP #$20
-		LDA #$14 : STA $0F
+		LDA #$14 : STA $0E
 		JSL !SpriteHUD
 
 		; challenge markers
@@ -1734,8 +1963,8 @@ MAIN_MENU:
 		REP #$20
 		LDA.w #.MarkTilemap : STA $02
 		SEP #$20
-		LDA #$02 : STA $0E
-		LDA #$04 : STA $0F
+		LDA #$02 : STA $0D
+		LDA #$04 : STA $0E
 	-	LDA $01
 		CLC : ADC #$10
 		STA $01
@@ -1755,8 +1984,8 @@ MAIN_MENU:
 		REP #$20
 		LDA.w #.UnderscoreTilemap : STA $02
 		SEP #$20
-		STZ $0E
-		LDA #$10 : STA $0F
+		STZ $0D
+		LDA #$10 : STA $0E
 		JSL !SpriteHUD
 
 		; start
@@ -1764,8 +1993,8 @@ MAIN_MENU:
 		STZ $00
 		LDA.w #.StartTilemap : STA $02
 		SEP #$20
-		LDA #$02 : STA $0E
-		LDA #$08 : STA $0F
+		LDA #$02 : STA $0D
+		LDA #$08 : STA $0E
 		JSL !SpriteHUD
 
 		RTS
@@ -1783,8 +2012,12 @@ MAIN_MENU:
 		..init
 		ORA #$80
 		STA !MenuState
-		REP #$10
-		LDX #$0380 : JSR LoadScreen
+		REP #$30
+		LDA !LevelHeight
+		ASL A
+		TAX
+		SEP #$20
+		JSR LoadScreen
 
 		..main
 		REP #$20
@@ -1932,7 +2165,7 @@ MAIN_MENU:
 		PHX
 		PHY
 		PHP
-		JSL $06F540			; how the fuck did i find this?
+		JSL $06F540			; how in the world did i find this?
 		PLP
 		PLX				; get "Y" in X
 		STA $0A
@@ -2167,22 +2400,23 @@ endmacro
 		PHB
 		PHP
 		REP #$30
-		LDA !SaveINIT+0
-		CMP #$4E49 : BNE .Invalid
-		LDA !SaveINIT+2
-		CMP #$5449 : BEQ .Valid
 
-		.Invalid
 		LDA #$0000					;\
 		STA $6000					; |
 		STA $410000					; |
-		LDA #$FFFF					; |
+		LDA #$FFFF					; | always clear $400000-$40FFFF
 		LDX #$0000					; |
 		LDY #$0001					; |
-		MVN $40,$40					; |
-		LDA #$FFFF					; |
-		LDX #$0000					; | have SA-1 clear all BWRAM and initialize SRAM
-		LDY #$0001					; |
+		MVN $40,$40					;/
+		LDA !SaveINIT+0					;\
+		CMP #$4E49 : BNE .Invalid			; | check if SRAM was initialized
+		LDA !SaveINIT+2					; |
+		CMP #$5449 : BEQ .Valid				;/
+
+		.Invalid
+		LDA #$FFFF					;\
+		LDX #$0000					; |
+		LDY #$0001					; | if SRAM was not initialized, fully clear bank $41
 		MVN $41,$41					; |
 		LDA #$4E49 : STA !SaveINIT+0			; |
 		LDA #$5449 : STA !SaveINIT+2			; |
@@ -2206,11 +2440,20 @@ endmacro
 		RTL						;/
 
 		.Valid
+		LDA #$AFFF					;\
+		LDX #$0000					; | clear $410000-$41AFFF
+		LDY #$0001					; |
+		MVN $41,$41					;/
+		LDA #$0000 : STA $41C000			;\
+		LDA #$3FFF					; |
+		LDX #$C000					; | clear $41C000-$41FFFF
+		LDY #$C001					; |
+		MVN $41,$41					;/
 		LDA #$0000					;\
 		STA !SRAM_buffer				; |
 		LDA.w #!SaveFileSize-1				; |
 		LDX.w #!SRAM_buffer				; |
-		LDY.w #!SRAM_buffer				; | have SA-1 clear SRAM buffer
+		LDY.w #!SRAM_buffer+1				; | clear SRAM buffer
 		MVN $41,$41					; |
 		PLP						; |
 		PLB						; |
@@ -2736,6 +2979,22 @@ endmacro
 		PLX
 		INC $7420 : CLC			; Overwritten code
 		RTL
+
+;=========;
+;MISC ANIM;
+;=========;
+MarioMushAnim:
+		LDA !CurrentMario : BEQ .Return
+		DEC A
+		LSR A
+		ROR A
+		PHX
+		TAX
+		LDA #$14 : STA !P2FireFlash-$80,x
+		PLX
+	.Return	RTL
+
+
 ;=============;
 ;DISABLE SCORE;
 ;=============;

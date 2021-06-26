@@ -3,11 +3,30 @@ HappySlime:
 	namespace HappySlime
 
 
+	!Temp = 0
+	%def_anim(HappySlime_Ground, 3)
+	%def_anim(HappySlime_Ceiling, 3)
+	%def_anim(HappySlime_WallUp, 3)
+	%def_anim(HappySlime_WallDown, 3)
+	%def_anim(HappySlime_Midair, 1)
+	%def_anim(HappySlime_CornerUG, 1)
+	%def_anim(HappySlime_CornerUC, 1)
+	%def_anim(HappySlime_CornerDC, 1)
+	%def_anim(HappySlime_CornerDG, 1)
+	%def_anim(HappySlime_GroundSquat, 1)
+	%def_anim(HappySlime_CeilingSquat, 1)
+	%def_anim(HappySlime_WallSquat, 1)
+	%def_anim(HappySlime_Bounce, 4)
+	%def_anim(HappySlime_Stunned, 1)
+	%def_anim(HappySlime_Dead, 1)
+
+
+
 ; Plan:
 ;
-; $BE   - F-----H
+; $BE   - Fhhhhhhh
 ;	  F is falling down after hit flag
-;	  H is number of hits taken
+;	  h is number of hits taken
 ; $3280 - Ceiling data
 ;	  C-------
 ;	  C is climbing ceiling flag
@@ -18,7 +37,7 @@ HappySlime:
 ; $32A0 - Ceiling Ypos
 ; $32B0 - Wall Xpos
 ; $32D0 - Invinc timer
-; $3340 - Used to determine if slime is red or not (different from $BE because of hurt animation still being green)
+; $33C0 - green if A, red if 8
 ;
 ; $3390 - Happiness value:
 ;	  00 - prioritize reaching goal
@@ -64,13 +83,12 @@ HappySlime:
 
 	INIT:
 		PHB : PHK : PLB
-		JSR SUB_HORZ_POS
+		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
 		PLB
 		RTL
 
 	MAIN:
-		STZ $33C0,x
 		LDA !GameMode
 		CMP #$14 : BEQ +
 		RTL
@@ -81,20 +99,15 @@ HappySlime:
 		.Init
 		ORA #$80
 		STA !ExtraBits,x
-		LDA #$00 : JSL !GetDynamicTile
+		LDA #$00 : JSL GET_SQUARE
 		BCS +
 		STZ $3230,x
 		PLB
 		RTL
 
-	+	TYA
-		ORA #$10
-		STA !ClaimedGFX			; which slot this sprite has
-		TXA : STA !DynamicTile,y	; which sprite has the slot
-
-		JSR SUB_HORZ_POS
+	+	JSL SUB_HORZ_POS
 		TYA : STA $3320,x
-		PEA RETURN-2
+		PEA.w RETURN-2			; yes, an extra byte here
 		LDA !ExtraBits,x
 		AND #$04 : BEQ .Follow
 
@@ -106,7 +119,7 @@ HappySlime:
 
 
 		.Main
-		JSR SPRITE_OFF_SCREEN
+		JSL SPRITE_OFF_SCREEN
 		LDA $3230,x
 		SEC : SBC #$08
 		ORA $9D
@@ -133,7 +146,12 @@ HappySlime:
 
 	; Figure out quadrant of target and set proper happiness value
 	AI:
-		PEA PHYSICS-1
+		LDA !SpriteAnimIndex
+		CMP #!HappySlime_Dead : BNE .NotDead
+		JMP GRAPHICS
+		.NotDead
+
+		PEA.w PHYSICS-1
 		LDA !Goal1
 		ROL #3
 		AND #$03
@@ -204,7 +222,8 @@ HappySlime:
 		BNE ..Return				;/
 		LDA $3330,x				;\ Must be on ground
 		AND #$04 : BEQ ..Return			;/
-		LDA $3340,x : BEQ ..Happy
+		LDA $33C0,x
+		CMP #$08 : BNE ..Happy
 
 		JMP PHYSICS_GroundJump			; angry jump
 
@@ -228,10 +247,10 @@ HappySlime:
 		.Play
 		LDX !SpriteIndex
 		LDA !SpriteAnimIndex
-		CMP #$32 : BNE $03 : JMP ..search
+		CMP #!HappySlime_Bounce : BNE $03 : JMP ..search
 		LDY !Goal2
 		DEY
-		CMP #$35 : BEQ ..bounce
+		CMP #!HappySlime_Bounce+3 : BEQ ..bounce
 
 ..bind		LDA !SpriteAnimTimer
 		LSR A
@@ -247,6 +266,9 @@ HappySlime:
 		SEP #$20
 		STA $3210,y
 		XBA : STA $3240,y
+
+		LDA #$02 : STA !SpritePhaseTimer,y	; prevent object clipping for held sprite while it's held
+
 		LDA $3200,y				;\
 		CMP #$0F : BNE ++			; |
 		LDA #$08 : STA $3230,y			; > goomba state
@@ -263,7 +285,7 @@ HappySlime:
 		LDA #$FF : STA $3570,y			;/
 		BRA ..anim
 
-..bounce	LDA !SpriteAnimTimer : BNE ..ok		; only bounce once
+..bounce	LDA !SpriteAnimTimer : BEQ $01 : RTS	; only bounce once
 		LDA #$A0 : STA $309E,y			; bounce yspeed
 		LDA $3200,y				;\
 		CMP #$0F : BNE +			; | goomba is knocked out lmao
@@ -282,8 +304,9 @@ HappySlime:
 		DEC A					; |
 		CMP !SpriteIndex : BEQ ..next		;/
 
-	+	LDA $3230,x : BEQ ..next
-		LDA $9E,x : BMI ..next
+	+	LDA $3230,x
+		CMP #$08 : BCC ..next
+		LDA !SpriteYSpeed,x : BMI ..next
 		JSL !GetSpriteClipping00
 		JSL !CheckContact
 		BCC ..next
@@ -298,7 +321,7 @@ HappySlime:
 		SEC : SBC $3210,y
 		STA !BounceOffset
 
-		LDA #$33 : STA !SpriteAnimIndex
+		LDA #!HappySlime_Bounce+1 : STA !SpriteAnimIndex
 		STZ !SpriteAnimTimer
 		BRA ..ok
 
@@ -307,9 +330,11 @@ HappySlime:
 
 
 
-	..anim	LDA #$32
-		CMP !SpriteAnimIndex : BCC ..ok
-		STA !SpriteAnimIndex
+	..anim	LDA !SpriteAnimIndex
+		CMP #!HappySlime_Bounce : BCC +
+		CMP #!HappySlime_Bounce_over : BCC ..ok
+	+	LDA #!HappySlime_Bounce : STA !SpriteAnimIndex
+		STZ !SpriteAnimTimer
 		..ok
 
 
@@ -331,10 +356,13 @@ HappySlime:
 
 
 	PHYSICS:
-		STZ $3340,x				;\
-		LDA $BE,x : BEQ +			; |
-		LDA #$19 : STA $3340,x			; | Handle angry animation and mood
-		LDA #$00 : STA !Happiness		; |
+		LDA $BE,x				;\
+		AND #$7F : BEQ +			; |
+		STZ !Happiness				; |
+		LDA !SpriteAnimIndex			; | mood + color
+		CMP #!HappySlime_Stunned : BEQ +	; |
+		CMP #!HappySlime_Midair : BEQ +		; > don't change color until after the stun animation is over
+		LDA #$08 : STA $33C0,x			; |
 		+					;/
 
 		BIT !Happiness : BMI .Go
@@ -346,7 +374,8 @@ HappySlime:
 
 
 
-		LDA $14
+		TXA
+		CLC : ADC $14
 		AND #$07 : BNE .NoTurn
 		LDA $3330,x
 		AND #$04
@@ -366,45 +395,35 @@ HappySlime:
 		.Follow
 		LSR A
 		BCC ..1
-		PEA ..1-1+3
-		JMP SUB_HORZ_POS_2
-..1		JSR SUB_HORZ_POS
-		TYA : STA $3320,x
+		JSL SUB_HORZ_POS_P2 : BRA +
+..1		JSL SUB_HORZ_POS
+	+	TYA : STA $3320,x
 		.NoTurn
 
 
 		BIT $BE,x : BPL +
-		JSL $01802A				; > Apply speed
+		JSL !SpriteApplySpeed			; > Apply speed
 		LDA $3330,x
-		AND #$04 : BEQ +
-		STZ $9E,x				; > Kill Yspeed
-		LDA #$01 : STA $BE,x
-		LDA #$18
-		LDY !SpriteAnimIndex
-		CPY #$07 : BEQ $04
-		CLC : ADC $3340,x
-		STA !SpriteAnimIndex
+		AND #$04 : BEQ ++
+		STZ !SpriteYSpeed,x			; > Kill Yspeed
+		LDA $BE,x
+		AND #$7F
+		STA $BE,x
+		LDA #!HappySlime_Stunned : STA !SpriteAnimIndex
 		STZ !SpriteAnimTimer
-		JMP .End
+	++	JMP GRAPHICS
 		+
 
 		LDA !SpriteAnimIndex
-		SEC : SBC $3340,x
-		CMP #$06 : BEQ .Return
-		CMP #$08 : BEQ .Return
-		CMP #$10 : BEQ .Return
-		CMP #$12 : BEQ .Return
-		CMP #$14 : BCC .Process
+		CMP #!HappySlime_CornerUG : BCC .Process
 
 		.Return
 		JMP .End
 
 		.Process
-		PEA .End-1
-		TXA
-		CLC : ADC !RNG
-		AND #$7F
-		BEQ +
+		PEA.w .End-1
+		LDA !RNGtable,x
+		AND #$7F : BEQ +
 	-	JMP .NoJump
 	+	LDA $3330,x
 		AND #$0F : BEQ -
@@ -422,17 +441,14 @@ HappySlime:
 		STZ $3330,x
 		BIT $3280,x
 		BPL +
-		LDA #$08
-		CLC : ADC $3340,x
-		STA !SpriteAnimIndex			;\
-		STZ !SpriteAnimTimer			; |
-		LDA #$20 : STA $9E,x			; |
-		LDY $3320,x				; | Jump from ceiling
-		LDA DATA_Speed,y			; |
-		STA $AE,x				; |
-		STZ $3280,x				; |
-		STZ $3290,x				; |
-		RTS					;/
+		LDA #!HappySlime_CeilingSquat : STA !SpriteAnimIndex		;\
+		STZ !SpriteAnimTimer						; |
+		LDA #$20 : STA !SpriteYSpeed,x					; |
+		LDY $3320,x							; | Jump from ceiling
+		LDA DATA_Speed,y : STA !SpriteXSpeed,x				; |
+		STZ $3280,x							; |
+		STZ $3290,x							; |
+		RTS								;/
 
 	+	BIT $3290,x
 		BPL .GroundJump
@@ -440,42 +456,33 @@ HappySlime:
 		EOR #$01
 		STA $3320,x
 		BVC +
-		LDA #$10
-		CLC : ADC $3340,x
-		STA !SpriteAnimIndex			;\
-		STZ !SpriteAnimTimer			; |
-		LDA #$E0 : STA $9E,x			; |
-		LDY $3320,x				; | Jump up from wall
-		LDA DATA_Speed+4,y			; |
-		STA $AE,x				; |
-		STZ $3290,x				; |
-		RTS					;/
+		LDA #!HappySlime_WallSquat : STA !SpriteAnimIndex		;\
+		STZ !SpriteAnimTimer						; |
+		LDA #$E0 : STA !SpriteYSpeed,x					; |
+		LDY $3320,x							; | Jump up from wall
+		LDA DATA_Speed+4,y : STA !SpriteXSpeed,x			; |
+		STZ $3290,x							; |
+		RTS								;/
 
-	+	LDA #$12
-		CLC : ADC $3340,x
-		STA !SpriteAnimIndex			;\
-		STZ !SpriteAnimTimer			; |
-		STZ $9E,x				; |
-		LDY $3320,x				; | Jump down from wall
-		LDA DATA_Speed+4,y			; |
-		STA $AE,x				; |
-		STZ $3290,x				; |
-		RTS					;/
+	+	LDA #!HappySlime_WallSquat : STA !SpriteAnimIndex		;\
+		STZ !SpriteAnimTimer						; |
+		STZ !SpriteYSpeed,x						; |
+		LDY $3320,x							; | Jump down from wall
+		LDA DATA_Speed+4,y : STA !SpriteXSpeed,x			; |
+		STZ $3290,x							; |
+		RTS								;/
 
 		.GroundJump
 		LDA !SpriteAnimIndex
-		CMP #$18 : BEQ ..r
-		CMP #$31 : BEQ ..r
-		LDA #$06
-		CLC : ADC $3340,x
-		STA !SpriteAnimIndex			;\
-		STZ !SpriteAnimTimer			; |
-		LDA #$D0 : STA $9E,x			; |
-		LDY $3320,x				; | Jump from ground
-		LDA DATA_Speed+2,y			; |
-		STA $AE,x				; |
-		STZ $3330,x				; |
-	..r	RTS					;/
+		CMP #!HappySlime_Stunned : BEQ ..r
+		CMP #!HappySlime_Dead : BEQ ..r
+		LDA #!HappySlime_GroundSquat : STA !SpriteAnimIndex		;\
+		STZ !SpriteAnimTimer						; |
+		LDA #$D0 : STA !SpriteYSpeed,x					; |
+		LDY $3320,x							; | Jump from ground
+		LDA DATA_Speed+2,y : STA !SpriteXSpeed,x			; |
+		STZ $3330,x							; |
+	..r	RTS								;/
 
 
 		.NoJump
@@ -485,58 +492,47 @@ HappySlime:
 		CMP #$03 : BEQ ..PlaceHop
 		CMP #$04 : BNE ..Normal
 
-..BigHop	LDA $3330,x				;\
-		AND #$04 : BEQ ..Return			; |
-		STZ $3330,x				; |
-		LDA #$06				; |
-		CLC : ADC $3340,x			; |
-		STA !SpriteAnimIndex			; | Handle big hop
-		STZ !SpriteAnimTimer			; |
-		LDA #$C0 : STA $9E,x			; |
-		LDY $3320,x				; |
-		LDA DATA_Speed,y			; |
-		STA $AE,x				; |
-		STZ $3330,x				; |
-		RTS					;/
+..BigHop	LDA $3330,x							;\
+		AND #$04 : BEQ ..Return						; |
+		STZ $3330,x							; |
+		LDA #!HappySlime_GroundSquat : STA !SpriteAnimIndex		; | Handle big hop
+		STZ !SpriteAnimTimer						; |
+		LDA #$C0 : STA !SpriteYSpeed,x					; |
+		LDY $3320,x							; |
+		LDA DATA_Speed,y : STA !SpriteXSpeed,x				; |
+		STZ $3330,x							; |
+		RTS								;/
 
-..PlaceHop	LDA $3330,x				;\
-		AND #$04 : BEQ ..Return			; |
-		STZ $3330,x				; |
-		INC !Happiness				; | Handle place hop
-		LDA #$06				; |
-		CLC : ADC $3340,x			; |
-		STA !SpriteAnimIndex			; |
-		LDA #$02 : STA !SpriteAnimTimer		; |
-		LDA #$E0 : STA $9E,x			; |
-		STZ $AE,x				; |
-		LDA !Goal1				; |
-		LSR A					; |
-		BCC ..P1				; |
-		PEA ..P1-1+3				; |
-		JMP SUB_HORZ_POS_2			; |
-..P1		JSR SUB_HORZ_POS			; |
-		TYA : STA $3320,x			; |
-		STZ $3330,x				; |
-		RTS					;/
+..PlaceHop	LDA $3330,x							;\
+		AND #$04 : BEQ ..Return						; |
+		STZ $3330,x							; |
+		INC !Happiness							; | Handle place hop
+		LDA #!HappySlime_GroundSquat : STA !SpriteAnimIndex		; |
+		LDA #$02 : STA !SpriteAnimTimer					; |
+		LDA #$E0 : STA !SpriteYSpeed,x					; |
+		STZ !SpriteXSpeed,x						; |
+		LDA !Goal1							; |
+		LSR A								; |
+		BCC ..P1							; |
+		JSL SUB_HORZ_POS_P2 : BRA +					; |
+..P1		JSL SUB_HORZ_POS						; |
+	+	TYA : STA $3320,x						; |
+		STZ $3330,x							; |
+		RTS								;/
 
-..Return	JSL $01802A				;\ Apply speed
-		RTS					;/
+..Return	JSL !SpriteApplySpeed						;\ Apply speed
+		RTS								;/
 
 
-..Normal
-
-
-		LDA $3330,x
+..Normal	LDA $3330,x
 		AND #$04 : BEQ ..write
 		LDY $3320,x
 		LDA !SpriteAnimIndex : BEQ ..getspeed
-		CMP #$03 : BEQ ..getspeed
-		CMP #$19 : BEQ ..getspeed
-		CMP #$1C : BEQ ..getspeed
-		LDA $AE,x : BPL +
-		INC $AE,x : BRA ..write
-	+	DEC $AE,x : BRA ..write
-..getspeed	LDA DATA_Speed,y : STA $AE,x
+		CMP #!HappySlime_Ceiling : BEQ ..getspeed
+		LDA !SpriteXSpeed,x : BPL +
+		INC !SpriteXSpeed,x : BRA ..write
+	+	DEC !SpriteXSpeed,x : BRA ..write
+..getspeed	LDA DATA_Speed,y : STA !SpriteXSpeed,x
 ..write
 
 
@@ -546,8 +542,8 @@ HappySlime:
 		BIT $3280,x : BPL .NoCeiling
 
 		.Ceiling
-		LDA #$F0 : STA $9E,x			; > Stick up
-		JSL $01802A				; > Apply speed
+		LDA #$F0 : STA !SpriteYSpeed,x		; > Stick up
+		JSL !SpriteApplySpeed			; > Apply speed
 		LDA $32A0,x				;\ Ypos
 		STA $3210,x				;/
 		LDA $3330,x				;\
@@ -558,11 +554,9 @@ HappySlime:
 		RTS					;/
 
 		.Fall
-		LDA #$08
-		CLC : ADC $3340,x
-		STA !SpriteAnimIndex
+		LDA #!HappySlime_CeilingSquat : STA !SpriteAnimIndex
 		STZ !SpriteAnimTimer
-		LDA #$10 : STA $9E,x			;\
+		LDA #$10 : STA !SpriteYSpeed,x		;\
 		STZ $3280,x				; | Fall
 		STZ $3290,x				; |
 		RTS					;/
@@ -576,21 +570,19 @@ HappySlime:
 		BVC $01 : INY				; | Yspeed
 
 		LDA !SpriteAnimIndex
-		CMP #$0A : BEQ ..getspeed
-		CMP #$0D : BEQ ..getspeed
-		CMP #$23 : BEQ ..getspeed
-		CMP #$26 : BEQ ..getspeed
-		LDA $9E,x : BPL +
-		INC $9E,x : BRA ..write
-	+	DEC $9E,x : BRA ..write
+		CMP #!HappySlime_WallUp : BEQ ..getspeed
+		CMP #!HappySlime_WallDown : BEQ ..getspeed
+		LDA !SpriteYSpeed,x : BPL +
+		INC !SpriteYSpeed,x : BRA ..write
+	+	DEC !SpriteYSpeed,x : BRA ..write
 
-..getspeed	LDA DATA_Speed,y : STA $9E,x
+..getspeed	LDA DATA_Speed,y : STA !SpriteYSpeed,x
 ..write		LDY $3320,x
-		LDA DATA_Speed,y : STA $AE,x
+		LDA DATA_Speed,y : STA !SpriteXSpeed,x
 
-		LDA $9E,x : PHA
-		JSL $01802A				; > Apply speed
-		PLA : STA $9E,x
+		LDA !SpriteYSpeed,x : PHA
+		JSL !SpriteApplySpeed			; > Apply speed
+		PLA : STA !SpriteYSpeed,x
 
 		LDA $32B0,x				;\ Xpos
 		STA $3220,x				;/
@@ -606,37 +598,28 @@ HappySlime:
 		RTS					;/
 
 		.WallEnd
-		LDA #$07
-		CLC : ADC $3340,x
-		STA !SpriteAnimIndex			; > Animation
-		LDA #$F8 : STA $9E,x			;\
-		STZ $3280,x				; | Just keep walking
-		STZ $3290,x				; |
-		RTS					;/
+		LDA #!HappySlime_Midair : STA !SpriteAnimIndex		; > Animation
+		LDA #$F8 : STA !SpriteYSpeed,x				;\
+		STZ $3280,x						; | Just keep walking
+		STZ $3290,x						; |
+		RTS							;/
 
 		.Walk
-		JSL $01802A				; > Apply speed
+		JSL !SpriteApplySpeed					; > Apply speed
 		LDA $3330,x
-		AND #$04
-		BEQ +
-	;	LDA #$10 : STA $9E,x
+		AND #$04 : BEQ +
 		LDA !SpriteAnimIndex
-		SEC : SBC $3340,x
-		CMP #$04
-		BCC ++
-		LDA $3340,x
-		STA !SpriteAnimIndex
+		CMP #!HappySlime_Ceiling+1 : BCC ++
+		STZ !SpriteAnimIndex
 		STZ !SpriteAnimTimer
 		BRA ++
 	+	LDA !SpriteAnimIndex
-		SEC : SBC $3340,x
-		CMP #$04
-		BCS ++ : JMP .GroundJump
+		CMP #!HappySlime_Ceiling+1 : BCS ++
+		JMP .GroundJump
 	++	LDA $3330,x
 		AND #$03 : BNE .Up
 		LDA $3330,x
-		AND #$08
-		BNE .CeilingStick
+		AND #$08 : BNE .CeilingStick
 		RTS
 
 		.GroundDir
@@ -645,16 +628,12 @@ HappySlime:
 		STA $3320,x
 		STZ $3280,x
 		STZ $3290,x
-		LDA #$17
-		CLC : ADC $3340,x
-		STA !SpriteAnimIndex
+		LDA #!HappySlime_CornerDG : STA !SpriteAnimIndex
 		STZ !SpriteAnimTimer
 		RTS
 
 		.CeilingStick
-		LDA #$03
-		CLC : ADC $3340,x
-		STA !SpriteAnimIndex
+		LDA #!HappySlime_Ceiling : STA !SpriteAnimIndex
 		STZ !SpriteAnimTimer
 		LDA $3320,x				;\
 		BEQ .Right				; | Jumping into ceiling
@@ -669,9 +648,7 @@ HappySlime:
 		LDA #$C0
 		STA $3290,x
 		STZ $3280,x
-		LDA #$14
-		CLC : ADC $3340,x
-		STA !SpriteAnimIndex
+		LDA #!HappySlime_CornerUG : STA !SpriteAnimIndex
 		STZ !SpriteAnimTimer
 		RTS
 
@@ -684,16 +661,12 @@ HappySlime:
 		LDA #$80
 		STA $3290,x
 		STZ $3280,x
-		LDA #$16
-		CLC : ADC $3340,x
-		STA !SpriteAnimIndex
+		LDA #!HappySlime_CornerDC : STA !SpriteAnimIndex
 		STZ !SpriteAnimTimer
 		RTS
 
 		.CeilingDir
-		LDA #$15
-		CLC : ADC $3340,x
-		STA !SpriteAnimIndex
+		LDA #!HappySlime_CornerDC : STA !SpriteAnimIndex
 		STZ !SpriteAnimTimer
 		LDA $3320,x				;\ Climbing into ceiling
 		BNE .Right				;/
@@ -718,46 +691,57 @@ HappySlime:
 
 
 	INTERACTION:
+		LDA !SlimeInvincTimer
+		CMP #$20 : BCS .NoAttack
+
+		LDA !SpriteAnimIndex
+		CMP #!HappySlime_Dead : BEQ .NoAttack
+		CMP #!HappySlime_Stunned : BEQ .CheckAttack
+
 		JSR HITBOX_BODY
-		SEC : JSL !PlayerClipping
-		BCC .NoContact
-		LDY $7490 : BEQ .NoStar
-		PEA GRAPHICS-1
-		JMP SPRITE_STAR
-
-		.NoStar
-		LDY #$00
-		LSR A : BCC .P2
-		PHA
-		JSR PlayerContact
-		PLA
-
-		.P2
-		LDY #$80
-		LSR A : BCC .NoContact
-		JSR PlayerContact
-
-		.NoContact
-		JSR P2Attack
-		BCC .NoAttack
+		JSL P2Standard
+		BCC .CheckAttack
+		BNE .Hurt
+		LDA $3330,x				;\
+		AND #$04 : BNE .CheckAttack		; | Slime bounces on player
+		LDA #$E0 : STA !SpriteYSpeed,x		; |
+		LDA #$08 : STA !SPC4			;/ > bounce SFX
+		BRA .CheckAttack
+		.Hurt
+		LDA !BigRAM+$7F
+		AND #$02
+		LSR A
+		ORA #$10
+		STA !Goal1
 		JSR HURT
-		LDA #$10 : STA !Goal1
+
+		.CheckAttack
+		JSL P2Attack : BCC .NoAttack
+		LDA !P2Hitbox1XSpeed-$80,y : STA !SpriteXSpeed,x
+		LDA !P2Hitbox1YSpeed-$80,y : STA !SpriteYSpeed,x
+		TYA
+		ROL #2
+		AND #$01
+		ORA #$10
+		STA !Goal1
+		JSR HURT
 		.NoAttack
 
 
 
 	GRAPHICS:
+
 		.ProcessAnim
 		LDA !SpriteAnimIndex
 		ASL #2
 		TAY
+		LDA.w ANIM+2,y
+		AND #$3F : STA $00
 		LDA !SpriteAnimTimer
 		INC A
-		CMP.w Anim+2,y
-		BNE .SameAnim
-
+		CMP $00 : BNE .SameAnim
 		.NewAnim
-		LDA Anim+3,y
+		LDA.w ANIM+3,y
 		CMP #$FF : BNE +
 		STZ $3230,x
 		PLB
@@ -766,8 +750,12 @@ HappySlime:
 	+	STA !SpriteAnimIndex
 		ASL #2
 		TAY
-		LDA #$00
-
+		CMP.b #!HappySlime_Dead*4 : BNE +		; special check for dead: can only die after taking at least 2 hits
+		LDA $BE,x
+		AND #$7F
+		CMP #$02 : BCS +
+		STZ !SpriteAnimIndex
+	+	LDA #$00
 		.SameAnim
 		STA !SpriteAnimTimer
 		LDA !SlimeInvincTimer			;\ Flicker during i-frames
@@ -776,56 +764,44 @@ HappySlime:
 		RTL
 
 
+; standard for a 16x16 dynamic sprite:
+;	- 4-byte animation table: 2 bytes for %SquareDyn(), 1 byte for timer, 1 byte for sequence
+;	- square dynamo is copied to !BigRAM+2, !BigRAM+0 is set to 2, $0C is set to #!BigRAM
+;
+; exception for happy slime is that highest 2 bits of timer is an index to the tilemap table (because the slime has 4 tilemaps depending on which YX bits are set)
+; also if $33C0,x is 08 (red), 0x26*$20 is added to the square dynamo, unless it is already 0x2C*$20 or greater
+
 		.Draw
-		LDA.w Anim+0,y : STA $04
-		LDA.w Anim+1,y : STA $05
+		REP #$20
+		LDA.w ANIM+0,y : STA !BigRAM+2
+		LDA #$0002 : STA !BigRAM+0
+		LDA $33C0,x
+		AND #$000E
+		CMP #$0008 : BNE ..notred
+		LDA !BigRAM+2
+		CMP.w #$2C*$20 : BCS ..notred
+		CMP.w #$0A*$20 : BCC ..add		;\ account for new line
+		CMP.w #$10*$20 : BCS ..add		;/
+		CLC : ADC.w #$10*$20			; add a new line
+	..add	CLC : ADC.w #$26*$20			; add red offset
+		STA !BigRAM+2
+		..notred
+		LDA.w #!BigRAM : STA $0C
+		LDA.w ANIM+2-1,y
+		AND #$C000
+		CLC : ROL #3
+		ASL A
+		TAY
+		LDA ANIM_TilemapPtr+0,y : STA $04
+		SEP #$20
 
-		LDA ($04) : STA !BigRAM+$02
-		STZ !BigRAM+$05
-
-
-		REP #$30
-		PHY
-		LDY.w #!File_HappySlime
-		JSL !GetFileAddress
-		PLY
-		SEP #$10
-		LDA #$0004
-		STA !BigRAM+$00
-		STZ !BigRAM+$03
-		LDA #$000E : STA !BigRAM+$06
-		LDA #$0040
-		STA !BigRAM+$08
-		STA !BigRAM+$0F
-		LDY #$01
-		LDA ($04),y
-		AND #$00FF
-		ASL #5
-		CLC : ADC !FileAddress
-		STA !BigRAM+$0A
-		CLC : ADC #$0200
-		STA !BigRAM+$11
-		LDA #$6000
-		STA !BigRAM+$0D
-		ORA #$0100
-		STA !BigRAM+$14
-
-		LDA.w #!BigRAM+0 : STA $04
-		LDA.w #!BigRAM+6 : STA $0C
-
-		SEP #$30
-		LDA !FileAddress+2
-		STA !BigRAM+$0C
-		STA !BigRAM+$13
-
-		JSL !UpdateClaimedGFX
-		JSR LOAD_CLAIMED
-
-
-		LDA !ExtraBits,x			; move slime to hi prio OAM if it's bouncy
-		AND #$04 : BEQ .Invis
-		JSR HI_PRIO_OAM				; note that A is always 4 here
-
+		LDY.b #!File_HappySlime
+		JSL LOAD_SQUARE_DYNAMO
+		JSL SETUP_SQUARE
+		LDA !ExtraBits,x
+		AND #$04 : BEQ .p2
+	.p1	JSL LOAD_DYNAMIC_p1 : BRA .Invis
+	.p2	JSL LOAD_DYNAMIC_p2
 
 		.Invis
 		PLB
@@ -833,244 +809,70 @@ HappySlime:
 		RTL
 
 
-	Anim:
-	.Anim_Horz00
-		dw .TM_Horz00 : db $07,$01		; 00
-		dw .TM_Horz01 : db $07,$02		; 01
-		dw .TM_Horz02 : db $14,$00		; 02
-	.Anim_Horz80
-		dw .TM_Horz80 : db $07,$04		; 03
-		dw .TM_Horz81 : db $07,$05		; 04
-		dw .TM_Horz82 : db $14,$03		; 05
-	.Anim_HorzJump00
-		dw .TM_HorzJump00 : db $10,$07		; 06
-		dw .TM_HorzJump01 : db $FF,$07		; 07
-	.Anim_HorzJump80
-		dw .TM_HorzJump80 : db $10,$09		; 08
-		dw .TM_HorzJump81 : db $FF,$09		; 09
+	ANIM:
+	; ground
+		%SquareDyn($000) : db $07|$00,!HappySlime_Ground+1
+		%SquareDyn($002) : db $07|$00,!HappySlime_Ground+2
+		%SquareDyn($004) : db $14|$00,!HappySlime_Ground+0
+	; ceiling
+		%SquareDyn($000) : db $07|$80,!HappySlime_Ceiling+1
+		%SquareDyn($002) : db $07|$80,!HappySlime_Ceiling+2
+		%SquareDyn($004) : db $14|$80,!HappySlime_Ceiling+0
+	; wall up
+		%SquareDyn($00A) : db $07|$00,!HappySlime_WallUp+1
+		%SquareDyn($00C) : db $07|$00,!HappySlime_WallUp+2
+		%SquareDyn($00E) : db $14|$00,!HappySlime_WallUp+0
+	; wall down
+		%SquareDyn($00A) : db $07|$80,!HappySlime_WallDown+1
+		%SquareDyn($00C) : db $07|$80,!HappySlime_WallDown+2
+		%SquareDyn($00E) : db $14|$80,!HappySlime_WallDown+0
+	; midair
+		%SquareDyn($008) : db $3F|$00,!HappySlime_Midair
 
-	.Anim_Vert00
-		dw .TM_Vert00 : db $07,$0B		; 0A
-		dw .TM_Vert01 : db $07,$0C		; 0B
-		dw .TM_Vert02 : db $14,$0A		; 0C
-	.Anim_Vert80
-		dw .TM_Vert80 : db $07,$0E		; 0D
-		dw .TM_Vert81 : db $07,$0F		; 0E
-		dw .TM_Vert82 : db $14,$0D		; 0F
-	.Anim_VertJump00
-		dw .TM_VertJump00 : db $10,$11		; 10
-		dw .TM_HorzJump01 : db $FF,$11		; 11
-	.Anim_VertJump80
-		dw .TM_VertJump80 : db $10,$13		; 12
-		dw .TM_HorzJump81 : db $FF,$13		; 13
-
-	.Anim_CornerGU
-		dw .TM_Corner00 : db $0C,$0A		; 14
-	.Anim_CornerUC
-		dw .TM_Corner81 : db $0C,$03		; 15
-	.Anim_CornerCD
-		dw .TM_Corner80 : db $0C,$0D		; 16
-	.Anim_CornerDG
-		dw .TM_Corner01 : db $0C,$00		; 17
-
-	.Anim_Stunned
-		dw .TM_Stunned : db $20,$19		; 18
-
-	.Angry_Horz00
-		dw Angry_TM_Horz00 : db $07,$1A		; 19
-		dw Angry_TM_Horz01 : db $07,$1B		; 1A
-		dw Angry_TM_Horz02 : db $14,$19		; 1B
-	.Angry_Horz80
-		dw Angry_TM_Horz80 : db $07,$1D		; 1C
-		dw Angry_TM_Horz81 : db $07,$1E		; 1D
-		dw Angry_TM_Horz82 : db $14,$1C		; 1E
-	.Angry_HorzJump00
-		dw Angry_TM_HorzJump00 : db $10,$20	; 1F
-		dw Angry_TM_HorzJump01 : db $FF,$20	; 20
-	.Angry_HorzJump80
-		dw Angry_TM_HorzJump80 : db $10,$22	; 21
-		dw Angry_TM_HorzJump81 : db $FF,$22	; 22
-
-	.Angry_Vert00
-		dw Angry_TM_Vert00 : db $07,$24		; 23
-		dw Angry_TM_Vert01 : db $07,$25		; 24
-		dw Angry_TM_Vert02 : db $14,$23		; 25
-	.Angry_Vert80
-		dw Angry_TM_Vert80 : db $07,$27		; 26
-		dw Angry_TM_Vert81 : db $07,$28		; 27
-		dw Angry_TM_Vert82 : db $14,$26		; 28
-	.Angry_VertJump00
-		dw Angry_TM_VertJump00 : db $10,$2A	; 29
-		dw Angry_TM_HorzJump01 : db $FF,$2A	; 2A
-	.Angry_VertJump80
-		dw Angry_TM_VertJump80 : db $10,$2C	; 2B
-		dw Angry_TM_HorzJump81 : db $FF,$2C	; 2C
-
-	.Angry_CornerGU
-		dw Angry_TM_Corner00 : db $0C,$23	; 2D
-	.Angry_CornerUC
-		dw Angry_TM_Corner81 : db $0C,$1C	; 2E
-	.Angry_CornerCD
-		dw Angry_TM_Corner80 : db $0C,$26	; 2F
-	.Angry_CornerDG
-		dw Angry_TM_Corner01 : db $0C,$19	; 30
-
-	.Angry_Stunned
-		dw Angry_TM_Stunned : db $20,$FF	; 31
-
-	.Await_Bounce
-		dw .TM_Horz00 : db $FF,$32		; 32
-	.Bounce_1
-		dw .TM_HorzJump00 : db $06,$34		; 33
-	.Bounce_2
-		dw .TM_Stunned : db $0A,$35		; 34
-	.Bounce_3
-		dw .TM_HorzJump01 : db $20,$32		; 35
+	; the following animations have no innate speed
+	; corner up from ground
+		%SquareDyn($022) : db $0C|$00,!HappySlime_WallUp
+	; corner up to ceiling
+		%SquareDyn($022) : db $0C|$C0,!HappySlime_Ceiling
+	; corner down from ceiling
+		%SquareDyn($022) : db $0C|$80,!HappySlime_WallDown
+	; corner down to ground
+		%SquareDyn($022) : db $0C|$40,!HappySlime_Ground
+	; ground squat
+		%SquareDyn($006) : db $10|$00,!HappySlime_Midair
+	; ceiling squat
+		%SquareDyn($006) : db $10|$80,!HappySlime_Midair
+	; wall squat
+		%SquareDyn($020) : db $10|$00,!HappySlime_Midair
+	; bounce
+		%SquareDyn($000) : db $3F|$00,!HappySlime_Bounce+0
+		%SquareDyn($006) : db $06|$00,!HappySlime_Bounce+2
+		%SquareDyn($024) : db $0A|$00,!HappySlime_Bounce+3
+		%SquareDyn($008) : db $20|$00,!HappySlime_Bounce+0
+	; stunned
+		%SquareDyn($024) : db $20|$00,!HappySlime_Dead
+	; dead
+		%SquareDyn($04C) : db $3F|$00,$FF	; < kill in this animation
 
 
+	.TilemapPtr
+		dw .TM00
+		dw .TM40
+		dw .TM80
+		dw .TMC0
 
-
-
-
-	.TM_Horz00
-		db $3A,$00
-	.TM_Horz01
-		db $3A,$02
-	.TM_Horz02
-		db $3A,$04
-	.TM_Horz80
-		db $BA,$00
-	.TM_Horz81
-		db $BA,$02
-	.TM_Horz82
-		db $BA,$04
-
-	.TM_HorzJump00
-		db $3A,$06
-	.TM_HorzJump01
-		db $3A,$08
-	.TM_HorzJump80
-		db $BA,$06
-	.TM_HorzJump81
-		db $BA,$08
-
-	.TM_Vert00
-		db $3A,$0A
-	.TM_Vert01
-		db $3A,$0C
-	.TM_Vert02
-		db $3A,$0E
-	.TM_Vert80
-		db $BA,$0A
-	.TM_Vert81
-		db $BA,$0C
-	.TM_Vert82
-		db $BA,$0E
-
-	.TM_VertJump00
-		db $7A,$20
-	.TM_VertJump80
-		db $FA,$20
-
-	.TM_Corner00
-		db $3A,$22
-	.TM_Corner01
-		db $7A,$22
-	.TM_Corner80
-		db $BA,$22
-	.TM_Corner81
-		db $FA,$22
-
-	.TM_Stunned
-		db $3A,$24
-
-
-	Angry:
-	.TM_Horz00
-		db $38,$26
-	.TM_Horz01
-		db $38,$28
-	.TM_Horz02
-		db $38,$2A
-	.TM_Horz80
-		db $B8,$26
-	.TM_Horz81
-		db $B8,$28
-	.TM_Horz82
-		db $B8,$2A
-
-	.TM_HorzJump00
-		db $38,$2C
-	.TM_HorzJump01
-		db $38,$2E
-	.TM_HorzJump80
-		db $B8,$2C
-	.TM_HorzJump81
-		db $B8,$2E
-
-	.TM_Vert00
-		db $38,$40
-	.TM_Vert01
-		db $38,$42
-	.TM_Vert02
-		db $38,$44
-	.TM_Vert80
-		db $B8,$40
-	.TM_Vert81
-		db $B8,$42
-	.TM_Vert82
-		db $B8,$44
-
-	.TM_VertJump00
-		db $78,$46
-	.TM_VertJump80
-		db $F8,$46
-
-	.TM_Corner00
-		db $38,$48
-	.TM_Corner01
-		db $78,$48
-	.TM_Corner80
-		db $B8,$48
-	.TM_Corner81
-		db $F8,$48
-
-	.TM_Stunned
-		db $38,$4A
-
-
-	PlayerContact:
-		LDA #$01 : STA !P2SenkuSmash-$80,y
-		LDA $3240,x : XBA
-		LDA $3210,x
-		REP #$20
-		SEC : SBC !P2YPosLo-$80,y
-		SEP #$20
-		BCC .HurtPlayer
-		CMP #$04 : BCC .HurtPlayer
-
-		.HurtSlime
-		LDA #$10
-		CPY #$80
-		BNE $01 : INC A
-		STA !Goal1
-		JSR HURT
-		JSR P2Bounce
-		JMP P2ContactGFX
-
-		.HurtPlayer
-		LDA !SlimeInvincTimer			;\ Don't deal damage for 32 frames after taking damage
-		CMP #$20 : BCS .Return			;/
-		TYA
-		CLC : ROL #2
-		INC A
-		JSL !HurtPlayers
-		LDA $3330,x				;\
-		AND #$04 : BNE .Return			; | Slime bounces on player
-		LDA #$E0 : STA $9E,x			; |
-		LDA #$08 : STA !SPC4			;/
-	.Return	RTS
-
+	.TM00
+		dw $0004
+		db $32,$00,$00,$00
+	.TM40
+		dw $0004
+		db $72,$00,$00,$00
+	.TM80
+		dw $0004
+		db $B2,$00,$00,$00
+	.TMC0
+		dw $0004
+		db $F2,$00,$00,$00
 
 
 	HITBOX:
@@ -1098,9 +900,6 @@ HappySlime:
 		AND #$01				; | Randomly choose player to follow
 		ORA #$10				; |
 		STA !Goal1				;/
-		JSR SUB_HORZ_POS
-		TYA
-		STA $3320,x
 		RTS
 
 	PLAY:
@@ -1114,27 +913,33 @@ HappySlime:
 
 	HURT:
 		LDA !SlimeInvincTimer : BNE .SFX
-		LDA !ExtraBits,x		; clear extra bit
+		LDA !ExtraBits,x				; clear extra bit
 		AND.b #$04^$FF
 		STA !ExtraBits,x
 		LDA #$40 : STA !SlimeInvincTimer
-		LDA #$08 : STA $32E0,x
-		STZ $AE,x
-		LDA #$10 : STA $9E,x
+		LDA #$08 : JSL DontInteract
+		STZ !SpriteXSpeed,x
+		LDA #$10 : STA !SpriteYSpeed,x
 		STZ !SpriteAnimTimer
-		LDA $3330,x
-		AND #$04 : BNE +
-		LDA #$07
-		CLC : ADC $3340,x
-		STA !SpriteAnimIndex
-		LDA #$81			; Hit + fall
-		BRA ++
-	+	LDA #$18
-		CLC : ADC $3340,x
-		STA !SpriteAnimIndex
-		LDA #$01			; Hit
-	++	STA $BE,x
-	.SFX	LDA #$02 : STA !SPC1		; > Contact sound
+
+		LDA !SpriteAnimIndex
+		CMP #!HappySlime_Midair : BEQ .Air
+		CMP #!HappySlime_WallUp : BCC .Ground
+		CMP #!HappySlime_WallUp_over : BCC .Air
+		CMP #!HappySlime_WallDown : BCC .Ground
+		CMP #!HappySlime_WallDown_over : BCC .Air
+	.Ground	LDA #!HappySlime_Stunned : STA !SpriteAnimIndex	;\
+		LDA $BE,x					; |
+		INC A						; | hit
+		AND #$7F					; |
+		BRA .Set					;/
+	.Air	LDA #!HappySlime_Midair : STA !SpriteAnimIndex	;\
+		LDA $BE,x					; |
+		INC A						; | hit + fall
+		AND #$7F					; |
+		ORA #$80					; |
+	.Set	STA $BE,x					;/
+	.SFX	LDA #$02 : STA !SPC1				; > contact SFX
 		RTS
 
 

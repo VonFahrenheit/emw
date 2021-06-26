@@ -48,140 +48,127 @@
 
 
 SPRITE_INTERACTION:
+		PHB : PHK : PLB
 
 		LDA !P2Character
 		CMP #$02 : BNE +
-		STZ !P2SenkuSmash		; > Clear senku smash flag
+		STZ !P2SenkuSmash			; > Clear senku smash flag
 		+
 
-		STZ !P2Platform			; > Cancel platform
-		LDA !CurrentPlayer : BNE +	; > Get current player
-		LDA !P2Anim : STA $F0
-		REP #$20
-		LDA !P2XPosLo : STA $08
-		LDA !P2YPosLo : STA $02
-		PHK : PEA .Start-1		; > JSL return
-		PHX				; > X
-		PHB				; > Bank
-		PEA PlayerClipping_End-1	; > JSR return
-		REP #$10			; > Index 16-bit
-		LDA !Characters			;\
-		AND #$00F0			; | Y = char index
-		LSR #3				; |
-		TAY				;/
-		JML PlayerClipping_ReadData	; > Get clipping
-	+	CLC : JSL PlayerClipping	; > Simply this for P2
+	;	LDA !P2Platform : STA $7693		; platform previous frame
+	;	STZ !P2Platform				; cancel platform
 
+		REP #$20				;\
+		LDA !P2Hurtbox+2			; |
+		STA $01					; |
+		STA $08					; |
+		LDA !P2Hurtbox+4 : STA $02		; | read player hurtbox
+		LDA !P2Hurtbox+0			; |
+		SEP #$20				; |
+		STA $00					; |
+		XBA : STA $08				;/
 
-		.Start
-		LDA $00 : STA !P2Hurtbox+0	;\
-		LDA $01 : STA !P2Hurtbox+2	; |
-		LDA $02 : STA !P2Hurtbox+4	; | Back up player hurtbox
-		LDA $03 : STA !P2Hurtbox+5	; |
-		LDA $08 : STA !P2Hurtbox+1	; |
-		LDA $09 : STA !P2Hurtbox+3	;/
-
-		LDX #$0F			; > Highest sprite index
-		LDA !CurrentPlayer		;\
-		BEQ +				; |
-		LDA !Characters			; |
-		AND #$0F			; | $F6 = character ID
-		BRA ++				; |
-	+	LDA !Characters			; |
-		LSR #4				; |
-	++	STA $F6				;/
+		LDX #$0F				; > Highest sprite index
 
 		.Loop
-		STZ $0F				; clear carry item flag
-		LDA $3230,x			;\
-		CMP #$02 : BEQ .Valid		; | Loop if sprite is in an invalid state
-		CMP #$08 : BCC .End		;/
-	.Valid	LDA !CurrentPlayer		;\
-		BNE +				; |
-		LDA $32E0,x : BNE .End		; | Loop if sprite has player interaction disabled
-		BRA ++				; |
-	+	LDA $35F0,x : BNE .End		;/
-	++	CPX #$08			;\
-		BCS +				; |
-		LDA !P2IndexMem1		; |
-		BRA ++				; | Check index memory
-	+	LDA !P2IndexMem2		; |
-	++	AND BITS,x			; |
-		BNE .End			;/
+		STZ $0F					; clear carry item flag
+		LDA !P2Character : BNE +		;\
+		LDA $3230,x				; | mario only interacts with state 09
+		CMP #$09 : BEQ .Valid			; |
+	-	JMP .End				;/
 
-		JSL $03B69F			; Get sprite A clipping values
-		JSL !CheckContact		; Check for contact
+	+	LDA $3230,x				;\
+		CMP #$02 : BEQ .Valid			; | Loop if sprite is in an invalid state
+		CMP #$08 : BCC -			;/
+	.Valid	LDA !CurrentPlayer : BNE +		;\
+		LDA $32E0,x : BNE -			; | Loop if sprite has player interaction disabled
+		BRA ++					; |
+	+	LDA $35F0,x : BNE .End			;/
+	++	CPX #$08				;\
+		BCS +					; |
+		LDA !P2Hitbox1IndexMem1			; |
+		ORA !P2Hitbox2IndexMem1			; |
+		BRA ++					; | Check index memory
+	+	LDA !P2Hitbox1IndexMem2			; |
+		ORA !P2Hitbox2IndexMem2			; |
+	++	AND BITS,x				; |
+		BNE .End				;/
+
+		JSL !GetSpriteClipping04		; get sprite clipping values
+		JSL !CheckContact			; check for contact
 		BCC .End
 
 		LDA !P2Character
-		CMP #$01 : BNE .NoCarry
+		CMP #$02 : BCS .NoCarry
 		LDA $3230,x
 		CMP #$09 : BNE .NoCarry
 		LDA !P2Carry : BNE .NoCarry
 		BIT $6DA3 : BVC .NoCarry
-		JSR LuigiCarry
+		JSR ItemPickup
 		BRA .Return
 		.NoCarry
 
-
-		LDA $3590,x			;\
-		AND #$08			; | Determine if it's a custom sprite
-		BEQ .FirstBlock			;/
-		LDA $35C0,x : TAY		;\
-		LDA.w INTERACTION_TABLE+$100,y	; | Get custom sprite interaction
-		BRA .Shared			;/
+		LDA !ExtraBits,x			;\
+		AND #$08				; | Determine if it's a custom sprite
+		BEQ .FirstBlock				;/
+		LDA !NewSpriteNum,x : TAY		;\
+		LDA.w INTERACTION_TABLE_Custom,y	; | Get custom sprite interaction
+		BRA .Shared				;/
 
 		.FirstBlock
-		LDY $3200,x			;\ Get vanilla sprite interaction
-		LDA.w INTERACTION_TABLE,y	;/
+		LDY $3200,x				;\ Get vanilla sprite interaction
+		LDA.w INTERACTION_TABLE,y		;/
 
 		.Shared
-		STX $7695			; > $7695 = sprite index
-		CMP #$0A : BEQ .Process		; > Block ignores senku
-
-		LDX $F6				;\ Special checks for Kadaal
-		CPX #$02 : BEQ .Kadaal		;/
+		STX !SpriteIndex			; > !SpriteIndex = sprite index (yes)
+		XBA					;\
+		LDA !P2Character			;\ special checks for Kadaal
+		CMP #$02 : BEQ .Kadaal			;/
+		LDA $3230,x				; | Don't actually run this routine in state 2
+		CMP #$02 : BEQ .Return			;/ (but still let Kadaal senku smash)
+		XBA					;
 
 		.Process
-		XBA				;\
-		LDA $3230,x			; | Don't actually run this routine in state 2
-		CMP #$02 : BEQ .Return		; | (but still let Kadaal senku smash)
-		XBA				;/
-		ASL A				;\
-		TAX				; | Execute routine
-		JSR (INTERACTION_POINTER,x)	;/
+		ASL A					;\
+		TAX					; | execute routine
+		JSR (INTERACTION_POINTER,x)		;/
 
 		.Return
-		LDX $7695			; > Reload sprite index
+		LDX !SpriteIndex			; > Reload sprite index
 
 		.End
 		DEX : BMI ..R
-		JMP .Loop			; > Loop
-	..R	RTS				; > Return
+		JMP .Loop				; > Loop
+
+	..R	PLB
+	.RTL	RTL					; > Return
 
 
 	.Kadaal
-		LDY !P2Kick			;\
-		BMI +				; | 
-		BEQ +				; | Invulnerable during spin attack
-		LDY !P2Invinc : BNE +		; |
-		LDY #$01 : STY !P2Invinc	;/
+		LDY !P2ShellSpin			;\
+		BMI +					; | 
+		BEQ +					; | Invulnerable during spin attack
+		LDY !P2Invinc : BNE +			; |
+		LDY #$01 : STY !P2Invinc		;/
 
-	+	LDY !P2Senku : BEQ .Process	; > Check for senku
-		CPY #$20 : BCS .Process		; > 20+ are valid
-		CMP #$0B : BEQ .Process		;\
-		CMP #$0F : BEQ .Process		; | 0B, 0F, 11 are valid
-		CMP #$11 : BEQ .Process		;/
-		CMP #$16 : BCC .SenkuSmash	;\ 16-1A are valid
-		CMP #$1B : BCS .SenkuSmash	;/
+	+	LDA $3230,x				;\ can't get hurt by sprites in state 02
+		CMP #$02 : BEQ .SenkuSmash		;/
+		XBA
+		LDY !P2Senku : BEQ .Process		; > Check for senku
+		CPY #$20 : BCS .Process			; > 20+ are valid
+		CMP #$0B : BEQ .Process			;\
+		CMP #$0F : BEQ .Process			; | 0B, 0F, 11 are valid
+		CMP #$11 : BEQ .Process			;/
+		CMP #$16 : BCC .SenkuSmash		;\ 16-1A are valid
+		CMP #$1B : BCS .SenkuSmash		;/
 		BRA .Process
 
 		.SenkuSmash
-		INC !P2SenkuSmash		;\ Set senku smash flag
-		BRA .End			;/
+		INC !P2SenkuSmash			;\ Set senku smash flag
+		BRA .End				;/
 
 
-INTERACTION_POINTER:	dw SPRITE_INTERACTION_Return	; No interaction
+INTERACTION_POINTER:	dw EMPTY_POINTER		; No interaction
 			dw INT_01			; Shelless Koopas
 			dw INT_02			; Koopas and Buzzy Beetle
 			dw INT_03			; Parakoopas
@@ -214,13 +201,16 @@ INTERACTION_POINTER:	dw SPRITE_INTERACTION_Return	; No interaction
 STOMPSOUND_TABLE:	db $13,$14,$15,$16		; Indexed with consecutive kills
 			db $17,$18,$19,$00
 
+EMPTY_POINTER:	RTS
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
 ; --Interaction subroutine manual--
 ;
 ; All interaction routines should start with:
 ;
-; LDX $7695
+; LDX !SpriteIndex
 ;
 ; This loads the sprite index.
 ; Most interaction routines should follow this up with:
@@ -300,7 +290,8 @@ GenJump:
 GenSide:
 	LDA !P2Invinc : BNE CompareY_Return
 	LDA #$08 : JSR DontInteract
-	BRA Hurt
+	JSL HURT
+	RTS
 
 CompareY:
 	STA $00
@@ -346,21 +337,24 @@ DontInteract:
 	RTS				;/
 
 
-Hurt:
-	JMP HURT
-
-
 Bounce:
-	LDY !P2Character		;\
-	LDA .BounceSpeed,y		; |
-	BIT !P2YSpeed : BPL +		; | set Y speed
-	CMP !P2YSpeed : BCS ++		; |
+	LDY !P2Character : BNE +	;\
+	LDA !P2FireCharge : BNE +	; | mario code
+	INC !P2FireCharge		; |
+	LDA #$14 : STA !P2FireFlash	;/
+
++	LDA .BounceSpeed,y		;\
+	BIT $6DA3 : BPL +		; | which table to read from
+	LDA .BounceSpeedB,y		;/
+
++	BIT !P2YSpeed : BPL +		;\
+	CMP !P2YSpeed : BCS ++		; | set Y speed
 +	STA !P2YSpeed			;/
-++	STZ !P2SenkuUsed		; > reset air Senku
+++	STZ !P2SpecialUsed		; > reset air Senku
 	RTS
 
-.BounceSpeed	db $FF,$C0,$A8,$A8,$00,$00	; Mario, Luigi, Kadaal, Leeway, Alter, Peach
-
+.BounceSpeed	db $D0,$E0,$C8,$C8,$00,$00	; Mario, Luigi, Kadaal, Leeway, Alter, Peach
+.BounceSpeedB	db $A8,$C0,$A8,$A8,$00,$00	; Mario, Luigi, Kadaal, Leeway, Alter, Peach (when holding B)
 
 
 StompSFX:
@@ -382,13 +376,8 @@ ContactGFX:
 	BPL $02 : DEC $01
 	LDA $02
 	BPL $02 : DEC $03
-	LDA !P2Offscreen
-	BNE .Return
-	LDY #!Ex_Amount-1
--	LDA !Ex_Num,y : BEQ +
-	DEY : BPL -
-	RTS
-+	LDA #$02+!SmokeOffset : STA !Ex_Num,y	; > Smoke type
+	%Ex_Index_Y()
+	LDA #$02+!SmokeOffset : STA !Ex_Num,y	; > Smoke type
 	LDA !P2XPosLo				;\
 	CLC : ADC $00				; | Smoke Xpos lo
 	STA !Ex_XLo,y				;/
@@ -402,19 +391,10 @@ ContactGFX:
 	ADC $03					; | Smoke Ypos hi
 	STA !Ex_YHi,y				;/
 	LDA #$08 : STA !Ex_Data1,y		; > Smoke timer
-
-	.Return
 	RTS
 
-
-BashKill:
-	LDA #$02 : STA $3230,x
-	LDA #$08
-	STA $00
-	STA $01
-	LDA #$03 : STA !SPC1
-	BRA ContactGFX
-
+.Long	JSR ContactGFX
+	RTL
 
 Crush:
 	LDA #$04 : STA $3230,x		;\ Crush sprite
@@ -424,34 +404,54 @@ Crush:
 
 
 StarKill:
+	JSR SUB_HORZ_POS_Rev
+	LDA ItemKick_Xdisp,y
+	LDY #$00
+	JSR ContactGFX
+	LDA #$04 : STA $9D
 	LDA #$02 : STA $3230,x
+	LDA #$E8 : STA !SpriteYSpeed,x
+	LDA !P2XSpeed : STA !SpriteXSpeed,x
 	LDA $78D2
 	CMP #$07
 	BEQ $03 : INC $78D2
 	TAY
 	DEY
-	LDA STOMPSOUND_TABLE,y
-	STA !SPC1
+	LDA STOMPSOUND_TABLE,y : STA !SPC1
 	RTS
 
 
-LuigiKick:
+ItemKick:
 	LDA !P2Character
-	CMP #$01 : BNE .Return
-	LDA #$08 : STA !P2Kick
+	CMP #$02 : BCS .Return
+	JSR SUB_HORZ_POS_Rev			;\
+	TYA : STA $3320,x			; |
+	LDA .Xdisp,y				; | contact GFX for kick
+	LDY #$00				; |
+	JSR ContactGFX				;/
+	LDA #$08 : STA !P2KickTimer
 	STZ !P2AnimTimer
 .Return	RTS
 
+	.Xdisp
+	db $0A,$F6
 
-LuigiCarry:
+ItemPickup:
 	TXA
 	INC A
 	STA !P2Carry
-	LDA #08 : STA !P2PickUp
-
+	LDA #$08 : STA !P2PickUp
+	LDA #$0B : STA $3230,x		; sprite status = carried ($0B)¨
 .Return	RTS
 
 
+CheckSlide:
+	LDA !P2Character
+	CMP #$01 : BNE .Return
+	LDA !P2Sliding : BEQ .Return
+	PLA : PLA			; kill RTS
+	BRA StarKill
+.Return	RTS
 
 
 
@@ -459,21 +459,22 @@ LuigiCarry:
 ; while sprite B is lying face down.
 
 	INT_01:
-		LDX $7695
+		LDX !SpriteIndex
 		LDA $3230,x
 		CMP #$08			; Only process interaction if sprite B status = 08
-		BEQ .Process
-.Return		RTS
+		BNE .Return
 
-.Process	LDA $7490			;\ Close enough to branch
-		BNE StarKill			;/
+.Process	LDA !StarTimer			;\
+		BEQ .NoStar			; | check for star
+		JMP StarKill			;/
 
-.NoStar		LDA $3420,x			;\ Check if sprite is stunned
+.NoStar		JSR CheckSlide
+		LDA $3420,x			;\ Check if sprite is stunned
 		BEQ .NoKick			;/
 		LDA #$03 : STA !SPC1		; > Kick sound
 		LDA #$02 : STA $3230,x		; > Status = knocked out
 		LDA #$E8 : STA $9E,x		; > Knock it up a bit
-		JMP LuigiKick			; kick if Luigi
+		JMP ItemKick			; kick if Luigi
 
 .NoKick		LDA #$04 : JSR CompareY
 		BCS .Top
@@ -483,7 +484,8 @@ LuigiCarry:
 		ORA $3420,x			; |
 		BNE .Return			;/
 		LDA #$08 : JSR DontInteract	; > Set don't interact timer
-		JMP Hurt			; > Hurt player
+		JSL HURT			; > Hurt player
+.Return		RTS
 
 .Top		LDA #$30 : STA $32D0,x		; > Set sprite smushed timer to #$30 frames
 		LDA #$03 : STA $3230,x		; > Set sprite status to smushed
@@ -524,16 +526,17 @@ KICK_DISP:	db $10,$F0
 ;	$3420,x			; A timer that starts at 255 when the koopa stops sliding, set to 0 when the koopa gets up from the ground and never finishes
 
 	INT_02:
-		LDX $7695
+		LDX !SpriteIndex
 		LDA $3230,x
 		CMP #$08 : BCC .Return
 		CMP #$0B : BCC .Process
 .Return		RTS					; Return if sprite B status is greater than 0x0A
 
-.Process	LDA $7490 : BEQ .NoStar
+.Process	LDA !StarTimer : BEQ .NoStar
 		JMP StarKill
 
-.NoStar		LDA $3230,x
+.NoStar		JSR CheckSlide
+		LDA $3230,x
 		CMP #$08 : BEQ .Normal
 		CMP #$09 : BEQ .Stunned
 
@@ -549,23 +552,25 @@ KICK_DISP:	db $10,$F0
 		STA $32D0,x				; |
 		RTS					;/
 
-.Kick		LDA !CurrentPlayer			;\
+.Kick		LDA !SpriteYSpeed,x : BPL .JustKick	;\
+		LDA #$06 : JSR CompareY			; |
+		BCC .JustKick				; | if sprite is moving up, it can be jumped on
+		JMP .TopKicked				; |
+		.JustKick				;/
+
+		LDA !CurrentPlayer			;\
 		INC A					; | Specify owner
 		STA $34F0,x				;/
 		LDA #$03 : STA !SPC1			; > Kick sound
 		LDA #$18 : JSR DontInteract		; > Set don't interact timer
 		LDA #$0A : STA $3230,x			; > Status: kicked
 
-		JSR SUB_HORZ_POS_Rev			;\
-		TYA : STA $3320,x			; |
-		LDA KOOPA_XSPEED+2,y : STA $AE,x	; | Send sprite to the side
-		LDA KICK_DISP,y				; |
-		LDY #$00				; |
-		JSR ContactGFX				;/
-		JMP LuigiKick				; Luigi kick
+		JSR SUB_HORZ_POS_Rev			;\ send sprite to the side
+		LDA KOOPA_XSPEED+2,y : STA $AE,x	;/
+		JMP ItemKick				; item kick
 
 .Side		LDA !P2Invinc : BNE .Return
-		JSR Hurt
+		JSL HURT
 		LDA #$08 : JMP DontInteract
 
 .Normal		LDA #$06 : JSR CompareY
@@ -600,7 +605,7 @@ KICK_DISP:	db $10,$F0
 
 		TYX				;\
 		LDA #$10 : JSR DontInteract	; | Temporarily disable player interaction for new sprite
-		LDX $7695			;/
+		LDX !SpriteIndex		;/
 		LDA $3430,x			;\ Copy "is in water" flag from sprite
 		STA $3430,y			;/
 		LDA #$02 : STA $32D0,y		;\ Some sprite tables
@@ -644,15 +649,16 @@ KICK_DISP:	db $10,$F0
 PARAKOOPACOLOR:	db $04,$04,$05,$05,$07		; This table determines what sprite the parakoopa will turn into
 
 	INT_03:
-		LDX $7695
+		LDX !SpriteIndex
 		LDA $3230,x
 		CMP #$08 : BEQ .Process
 .Return		RTS
 
-.Process	LDA $7490 : BEQ .NoStar
+.Process	LDA !StarTimer : BEQ .NoStar
 		JMP StarKill
 
-.NoStar		LDA #$06 : JSR CompareY
+.NoStar		JSR CheckSlide
+		LDA #$06 : JSR CompareY
 		BCS .Top
 
 .Side		JMP GenSide
@@ -672,11 +678,12 @@ PARAKOOPACOLOR:	db $04,$04,$05,$05,$07		; This table determines what sprite the 
 BOBOMBXSPEED:	db $2C,$D4
 
 	INT_04:
-		LDX $7695
-		LDA $7490 : BEQ .NoStar
+		LDX !SpriteIndex
+		LDA !StarTimer : BEQ .NoStar
 		JMP StarKill
 
-.NoStar		LDA $3440,x : BEQ .Side		; Branch if sprite b is exploding
+.NoStar		JSR CheckSlide
+		LDA $3440,x : BEQ .Side		; Branch if sprite b is exploding
 		LDA $3230,x
 		CMP #$09 : BEQ .Stunned
 		CMP #$08 : BEQ .Normal
@@ -685,7 +692,7 @@ BOBOMBXSPEED:	db $2C,$D4
 .Stunned	LDA #$03 : STA !SPC1		; > Kick shell sound
 		LDA #$40 : STA $32D0,x		; > Set stun timer
 
-		JSR LuigiKick			; Luigi kick
+		JSR ItemKick			; item kick
 
 		JSR SUB_HORZ_POS_Rev
 		LDA BOBOMBXSPEED,y
@@ -717,17 +724,18 @@ BOBOMBXSPEED:	db $2C,$D4
 GOOMBAXSPEED:	db $2C,$D4
 
 	INT_05:
-		LDX $7695
+		LDX !SpriteIndex
+		JSR CheckSlide
 		LDA $3230,x
 		CMP #$08 : BEQ .Normal
 		CMP #$09 : BEQ .Stunned
 .Return		RTS
 
-.Stunned	LDA $7490 : BEQ .NoStar
+.Stunned	LDA !StarTimer : BEQ .NoStar
 .Star		JMP StarKill
 
 .NoStar		LDA #$03 : STA !SPC1		; > Kick enemy sound
-		JSR LuigiKick			; Luigi kick
+		JSR ItemKick			; item kick
 		JSR SUB_HORZ_POS_Rev
 		LDA GOOMBAXSPEED,y
 		STA $AE,x
@@ -735,7 +743,7 @@ GOOMBAXSPEED:	db $2C,$D4
 		LDA #$FF : STA $32D0,x		; > Stun sprite
 		LDA #$10 : JMP DontInteract	; > Prevent some interaction
 
-.Normal		LDA $7490 : BNE .Star
+.Normal		LDA !StarTimer : BNE .Star
 
 		LDA #$06 : JSR CompareY
 		BCS .Top
@@ -753,12 +761,13 @@ GOOMBAXSPEED:	db $2C,$D4
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	INT_06:
-		LDX $7695
+		LDX !SpriteIndex
 		LDA $3230,x
 		CMP #$08 : BEQ .Process
 .Return		RTS
 
-.Process	LDA $7490 : BEQ .NoStar
+.Process	JSR CheckSlide
+		LDA !StarTimer : BEQ .NoStar
 		JMP StarKill
 
 .NoStar		LDA #$08 : JSR DontInteract	; > Prevent interaction
@@ -767,7 +776,8 @@ GOOMBAXSPEED:	db $2C,$D4
 		BCS .Top
 
 .Side		LDA !P2Invinc : BNE .Return
-		JMP Hurt
+		JSL HURT
+		RTS
 
 .Top		LDA #$0F : STA $3200,x		; Set new sprite number
 		LDA #$01 : STA $3230,x		; Initialize sprite
@@ -777,8 +787,8 @@ GOOMBAXSPEED:	db $2C,$D4
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	INT_07:
-		LDX $7695			;\
-		LDA $35C0,x			; | Check for custom projectile
+		LDX !SpriteIndex		;\
+		LDA !NewSpriteNum,x		; | Check for custom projectile
 		CMP #$05			; |
 		BNE .NoCustomShot		;/
 		LDA $BE,x			;\ Don't destroy unless fireball
@@ -790,41 +800,43 @@ GOOMBAXSPEED:	db $2C,$D4
 		JSR DontInteract		;/
 .NoCustomShot	LDA !P2Invinc			;\ Don't hurt player 2 while invulnerable
 		BNE .Return			;/
-		JMP Hurt			; > Hurt player
+		JSL HURT			; > Hurt player
 .Return		RTS
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	INT_08:
-		LDX $7695
+		LDX !SpriteIndex
 		LDA $3230,x
 		CMP #$08 : BEQ .Process
 .Return		RTS
 
-.Process	LDA $7490 : BEQ .NoStar
+.Process	LDA !StarTimer : BEQ .NoStar
 		JMP StarKill
 
-.NoStar		LDA $3200,x
+.NoStar		JSR CheckSlide
+		LDA $3200,x
 		CMP #$18 : BEQ .Water
 		LDA $3430,x : BNE .Water
 		LDA #$03 : STA !SPC1		; > Kick enemy sound
 		LDA #$02 : STA $3230,x		; > Sprite status: knocked out
-		JMP LuigiKick			; Luigi kick
+		JMP ItemKick			; item kick
 
 .Water		JMP GenSide
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	INT_09:
-		LDX $7695
+		LDX !SpriteIndex
 		LDA $3230,x
 		CMP #$08 : BEQ .Process
 .Return		RTS
 
-.Process	LDA $7490 : BEQ .NoStar
+.Process	LDA !StarTimer : BEQ .NoStar
 		JMP StarKill
 
-.NoStar		LDA #$06 : JSR CompareY
+.NoStar		JSR CheckSlide
+		LDA #$06 : JSR CompareY
 		BCS .Top
 
 .Side		JMP GenSide
@@ -838,23 +850,24 @@ GOOMBAXSPEED:	db $2C,$D4
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	INT_0A:
-		LDX $7695
-		LDA #$08 : JSR CompareY
-		BCS $03 : JMP INT_0D_Side	; > Solid on the side
-		JMP INT_0F_Main			; > Platform if touching on top
+		RTS
+	;	LDX !SpriteIndex
+	;	LDA #$08 : JSR CompareY
+	;	BCS $03 : JMP INT_0D_Side	; > Solid on the side
+	;	JMP INT_0F_Main			; > Platform if touching on top
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	INT_0B:
-		LDX $7695
+		LDX !SpriteIndex
 		STZ $3230,x
-		JSR SET_GLITTER
+		JSL SET_GLITTER
 		LDA $3210,x : STA !Ex_YLo,y
 		LDA $3220,x : STA !Ex_XLo,y
 		LDA #$01 : STA !SPC4		; Play "collect coin"-sound
 		LDA $3200,x
 		CMP #$7E : BEQ .5		; check for flying red coin
-		LDA $3590,x
+		LDA !ExtraBits,x
 		AND #$04 : BEQ .1
 
 	.100	LDA !CurrentPlayer
@@ -879,16 +892,17 @@ GOOMBAXSPEED:	db $2C,$D4
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	INT_0C:
-		LDX $7695
+		LDX !SpriteIndex
 		LDA $3410,x : BNE .Return	; Don't process interaction while sprite B is behind scenery
 		LDA $3230,x
 		CMP #$08 : BEQ .Process
 .Return		RTS
 
-.Process	LDA $7490 : BEQ .NoStar
+.Process	LDA !StarTimer : BEQ .NoStar
 		JMP StarKill
 
-.NoStar		LDA #$05 : JSR CompareY
+.NoStar		JSR CheckSlide
+		LDA #$05 : JSR CompareY
 		BCS .Top
 
 .Side		JMP GenSide
@@ -901,7 +915,7 @@ GOOMBAXSPEED:	db $2C,$D4
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	INT_0D:
-		LDX $7695
+		LDX !SpriteIndex
 		LDA $3230,x
 		CMP #$0B : BEQ .Return
 		LDA #$06 : JSR CompareY
@@ -954,7 +968,7 @@ GOOMBAXSPEED:	db $2C,$D4
 SKELETON_HITBOX:	db $06,$04,$06
 
 	INT_0E:
-		LDX $7695
+		LDX !SpriteIndex
 		LDA $32C0,x : BNE INT_0D_Return
 		LDA $3230,x
 		CMP #$08 : BNE INT_0D_Return
@@ -963,10 +977,11 @@ SKELETON_HITBOX:	db $06,$04,$06
 		LDA $32D0,x : BEQ .Process	; |
 		CMP #$6E : BCC .Side		;/
 
-.Process	LDA $7490 : BEQ .NoStar
+.Process	LDA !StarTimer : BEQ .NoStar
 		JMP StarKill
 
-.NoStar		LDA $3200,x
+.NoStar		JSR CheckSlide
+		LDA $3200,x
 		SEC : SBC #$30
 		TAY
 		LDA SKELETON_HITBOX,y
@@ -983,7 +998,9 @@ SKELETON_HITBOX:	db $06,$04,$06
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	INT_0F:
-		LDX $7695
+		RTS
+
+		LDX !SpriteIndex
 		LDA #$08 : JSR CompareY
 		BCC .Return			; Don't interact if touching from side
 
@@ -1033,14 +1050,13 @@ SKELETON_HITBOX:	db $06,$04,$06
 .Return		STZ !P2Platform			; Reset pd--iiii
 		RTS
 
-.Floating	LDA !P2PrevPlatform
-		BNE .RetRet
-		LDA !P2YSpeed
-		CMP #$20 : BCC .RetRet
-		LSR A
-		STA $9E,x
-		INC $32A0,x
-		RTS
+.Floating	LDA $7693 : BNE .RetRet		; if on platform last frame, return
+		LDA !P2YSpeed			;\
+		CMP #$20 : BCC .RetRet		; |
+		LSR A				; | transfer player speed to platform if moving down at least 2px/frame
+		STA $9E,x			; |
+		INC $32A0,x			; |
+		RTS				;/
 
 .Falling	LDA $9E,x : BNE .RetRet
 		LDA #$03 : STA $9E,x
@@ -1054,15 +1070,16 @@ SKELETON_HITBOX:	db $06,$04,$06
 CHUCK_PUSH:	db $20,$E0
 
 	INT_10:
-		LDX $7695
+		LDX !SpriteIndex
 		LDA $3230,x
 		CMP #$08 : BEQ .Process		; Only interact if status is normal
 .Return		RTS
 
-.Process	LDA $7490 : BEQ .NoStar
+.Process	LDA !StarTimer : BEQ .NoStar
 		JMP StarKill
 
-.NoStar		LDA #$0C : JSR CompareY
+.NoStar		JSR CheckSlide
+		LDA #$0C : JSR CompareY
 		BCS .Top
 
 .Side		JSR GenSide
@@ -1091,16 +1108,16 @@ CHUCK_PUSH:	db $20,$E0
 		STZ $AE,x			; Reset sprite X speed
 		LDA #$02 : STA $3230,x		; Status: knocked out
 		LDA #$03 : STA !SPC1		; Kicked shell sound
-		JMP LuigiKick			; Luigi kick
+		JMP ItemKick			; item kick
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	INT_11:
-		LDX $7695			; > X = goal sprite index
+		LDX !SpriteIndex		; > X = goal sprite index
 		JSL $00FA80			; > Run goal sprite code
 		STZ $3230,x			; > Erase goal sprite
 		STZ $71				; > Clear Mario animation
-		STZ $7490			; > Clear star timer
+		STZ !StarTimer			; > Clear star timer
 		LDA $3200,x			;\
 		CMP #$4E			; | I don't know if this is necessary, might be
 		BNE .NoSphere			;/
@@ -1117,17 +1134,18 @@ CHUCK_PUSH:	db $20,$E0
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	INT_12:
-		LDX $7695			; X = sprite index
+		LDX !SpriteIndex		; X = sprite index
 		LDA $3230,x
 		CMP #$08 : BNE .Return		; Only interact if sprite status is normal
 		LDA $BE,x : BEQ .Return		;\ Only interact if sprite has emerged from the ground
 		LDA $32D0,x : BEQ .Process	;/
 .Return		RTS
 
-.Process	LDA $7490 : BEQ .NoStar
+.Process	LDA !StarTimer : BEQ .NoStar
 		JMP StarKill
 
-.NoStar		LDA #$06 : JSR CompareY
+.NoStar		JSR CheckSlide
+		LDA #$06 : JSR CompareY
 		BCS .Top
 
 .Side		JMP GenSide
@@ -1142,15 +1160,16 @@ CHUCK_PUSH:	db $20,$E0
 	DINO_HITBOX:	db $14,$06
 
 	INT_13:
-		LDX $7695
+		LDX !SpriteIndex
 		LDA $3230,x
 		CMP #$08 : BEQ .Process
 .Return		RTS
 
-.Process	LDA $7490 : BEQ .NoStar
+.Process	LDA !StarTimer : BEQ .NoStar
 		JMP StarKill
 
-.NoStar		LDA $3200,x
+.NoStar		JSR CheckSlide
+		LDA $3200,x
 		SEC : SBC #$6E
 		TAY
 		LDA DINO_HITBOX,y
@@ -1178,15 +1197,16 @@ CHUCK_PUSH:	db $20,$E0
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	INT_14:
-		LDX $7695
+		LDX !SpriteIndex
 		LDA $3230,x
 		CMP #$08 : BEQ .Process
 .Return		RTS
 
-.Process	LDA $7490 : BEQ .NoStar
+.Process	LDA !StarTimer : BEQ .NoStar
 		JMP StarKill
 
-.NoStar		TDC : JSR CompareY		; A = 0x00
+.NoStar		JSR CheckSlide
+		TDC : JSR CompareY		; A = 0x00
 		BCS .Top
 
 .Side		JMP GenSide
@@ -1201,13 +1221,13 @@ CHUCK_PUSH:	db $20,$E0
 	REX_HITBOX:	db $06,$06
 
 	INT_15:
-		LDX $7695
+		LDX !SpriteIndex
 		LDA $3230,x
 		CMP #$08 : BNE .Return
 		LDA $32F0,x : BEQ .Process	; Return if smush timer is set
 .Return		RTS
 
-.Process	LDA $7490 : BEQ .NoStar
+.Process	LDA !StarTimer : BEQ .NoStar
 		JMP StarKill
 
 .NoStar		LDA #$06 : JSR CompareY
@@ -1240,7 +1260,8 @@ CHUCK_PUSH:	db $20,$E0
 .Invinc		LDA #$02 : STA !SPC1		; Just use contact SFX if invinc
 		BRA .End
 
-.NotAggro	LDA $BE,x
+.NotAggro	JSR CheckSlide
+		LDA $BE,x
 		BNE .Small
 
 .Large		LDA #$01 : STA $BE,x		; Number of hits taken
@@ -1266,7 +1287,7 @@ CHUCK_PUSH:	db $20,$E0
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	INT_16:
-		LDX $7695
+		LDX !SpriteIndex
 		LDA $33D0,x : BEQ .Hurt
 
 		LDA #$08 : JSR CompareY
@@ -1286,7 +1307,8 @@ CHUCK_PUSH:	db $20,$E0
 		LDA #$04 : TSB !P2Blocked	; > Set player 2 blocked from beneath
 		RTS
 
-.Hurt		JMP Hurt
+.Hurt		JSL HURT
+		RTS
 
 .ReturnPlat	STZ !P2Platform			; Reset pd--iiii
 .Return		RTS
@@ -1298,7 +1320,7 @@ CHUCK_PUSH:	db $20,$E0
 				db $00,$00,$00,$00,$00,$00,$00,$00
 
 	INT_17:
-		LDX $7695
+		LDX !SpriteIndex
 		LDA #$08 : JSR CompareY
 		BCC .Return
 		BIT !P2YSpeed
@@ -1334,18 +1356,19 @@ CHUCK_PUSH:	db $20,$E0
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	INT_18:
-		LDX $7695
+		LDX !SpriteIndex
 		LDA $3230,x
 		CMP #$08 : BEQ .Process
 .Return		RTS
 
-.Process	LDA $7490 : BEQ .NoStar
+.Process	LDA !StarTimer : BEQ .NoStar
 		JMP StarKill
 
 .NoStar		LDA #$14 : JSR CompareY
 		BCS .Top
 
-.Side		JMP Hurt
+.Side		JSL HURT
+		RTS
 
 .Top		BIT !P2YSpeed
 		BMI .Return
@@ -1367,7 +1390,7 @@ CHUCK_PUSH:	db $20,$E0
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	INT_1A:
-		LDX $7695
+		LDX !SpriteIndex
 		LDA $32D0,x : BEQ .Process
 		RTS
 
@@ -1378,7 +1401,7 @@ CHUCK_PUSH:	db $20,$E0
 		CMP #$78 : BEQ .1UP		; > Branch if 1-up
 		CMP #$7F : BEQ .1UP
 		CMP #$76 : BNE .Powerup		; > Branch unless star
-		LDA #$FF : STA $7490		; > Set star timer
+		LDA #$FF : STA !StarTimer	; > Set star timer
 		BRA .Shared
 
 .Powerup	LDA !P2HP			;\
@@ -1406,7 +1429,7 @@ CHUCK_PUSH:	db $20,$E0
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	INT_1C:
-		LDX $7695
+		LDX !SpriteIndex
 		LDA $3280,x
 		AND #$03
 		CMP #$01 : BEQ .Process
@@ -1414,7 +1437,8 @@ CHUCK_PUSH:	db $20,$E0
 
 .Process	LDA #$08 : JSR CompareY
 		BCS .Top
-		JMP Hurt
+		JSL HURT
+		RTS
 
 .Top		LDA $BE,x
 		AND #$0F
@@ -1464,12 +1488,9 @@ INTERACTION_TABLE:	db $01,$01,$01,$01,$02,$02,$02,$02,$03,$03,$03,$03,$03,$04,$0
 			db $00,$10,$10,$10,$10,$10,$00,$10,$10,$07,$07,$09,$0F,$00,$07,$14	;| 09X
 			db $00,$07,$02,$00,$07,$07,$07,$00,$07,$07,$07,$15,$00,$00,$07,$16	;| 0AX
 			db $07,$00,$07,$07,$07,$00,$07,$17,$17,$00,$0F,$0F,$00,$01,$09,$18	;| 0BX
-			db $0F,$00,$07,$07,$0F,$07,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 0CX
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$02,$02,$02,$02,$07,$02	;| 0DX
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 0EX
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 0FX
+			db $0F,$00,$07,$07,$0F,$07,$00,$00,$00					;| 0CX
 
-			db $00,$00,$15,$15,$15,$15,$1C,$07,$1B,$00,$00,$00,$00,$00,$00,$0A	;| 10X
+.Custom			db $00,$00,$00,$00,$00,$00,$1C,$07,$1B,$00,$00,$00,$00,$00,$00,$0A	;| 10X
 			db $00,$00,$00,$00,$00,$07,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 11X
 			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 12X
 			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 13X

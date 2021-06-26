@@ -131,7 +131,7 @@ PlantHead:
 
 	MAIN:
 		PHB : PHK : PLB
-		JSL SPRITE_OFF_SCREEN_Long
+		JSL SPRITE_OFF_SCREEN
 		LDA $3230,x
 		SEC : SBC #$08
 		ORA $9D
@@ -298,12 +298,12 @@ PlantHead:
 
 		LDY #$00				;\
 		REP #$20				; |
-	-	LDA !P2Hitbox+4-$80,y : BEQ .Next	; |
+	-	LDA !P2Hitbox1+4-$80,y : BEQ .Next	; |
 		STA $02					; |
-		LDA !P2Hitbox+0-$80,y			; |
+		LDA !P2Hitbox1+0-$80,y			; |
 		STA $00					; |
 		XBA : STA $08				; |
-		LDA !P2Hitbox+2-$80,y			; | Any attack kills the plant head
+		LDA !P2Hitbox1+2-$80,y			; | Any attack kills the plant head
 		SEP #$20				; |
 		STA $01					; |
 		XBA : STA $09				; |
@@ -312,7 +312,7 @@ PlantHead:
 		LDY #$80 : BRA -			; |
 	+	SEP #$20				;/
 
-		JSL FireballContact_Long
+		JSL FireballContact
 		BCC .NoFireball
 		LDA #$0F : STA !Ex_Data2,y			;\ Destroy fireball
 		LDA #$01+!ExtendedOffset : STA !Ex_Num,y	;/
@@ -506,7 +506,7 @@ PlantHead:
 		JSL LakituLovers_TilemapToRAM_Long
 		LDA.w #!BigRAM : STA $04
 		SEP #$20
-		JSL LOAD_CLAIMED_Long
+		JSL LOAD_DYNAMIC
 
 
 

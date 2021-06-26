@@ -6,19 +6,19 @@ SET_XSPEED:
 		AND #$04 : BNE .Ground
 
 	.Write	LDA $00 : STA !P2XSpeed
-		RTS
+		RTL
 
 
 	.Ground	LDA !IceLevel : BEQ .Write
-		LDA $00
+	.Ice	LDA $00
 		CMP !P2XSpeed
 		BEQ .Ret
 		BMI .Dec
 	.Inc	INC !P2XSpeed
-		RTS
+		RTL
 
 	.Dec	DEC !P2XSpeed
-	.Ret	RTS
+	.Ret	RTL
 
 
 

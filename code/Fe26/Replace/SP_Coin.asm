@@ -26,7 +26,7 @@ pullpc
 		CMP #$21 : BNE .Nope
 		LDA #$64 : STA $35D0,x		; special coin is worth 100 coins
 
-	.Nope	JSR SUB_HORZ_POS
+	.Nope	JSL SUB_HORZ_POS
 		TYA
 
 		.Return

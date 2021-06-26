@@ -27,14 +27,14 @@ Block:
 	MAIN:
 		PHB : PHK : PLB
 
-		JSL $03B69F
+		JSL !GetSpriteClipping04
 		LDA !ExtraProp1,x
 		AND #$01 : BNE .SkipSprites
 		LDX #$0F
 	-	LDA $3230,x
 		CMP #$08 : BCC +
 		CMP #$0B : BCS +
-		JSL $03B6E5
+		JSL !GetSpriteClipping00
 		JSL !CheckContact
 		BCC +
 
@@ -45,16 +45,16 @@ Block:
 		SBC $3240,x
 		BCS .Down
 
-	.Up	BIT $9E,x : BPL .Side
+	.Up	BIT !SpriteYSpeed,x : BPL .Side
 		LDA $3330,x
 		ORA #$08
 		STA $3330,x
-		STZ $9E,x
-	.Down	BIT $9E,x : BMI .Side
+		STZ !SpriteYSpeed,x
+	.Down	BIT !SpriteYSpeed,x : BMI .Side
 		LDA $3330,x
 		ORA #$04
 		STA $3330,x
-		STZ $9E,x
+		STZ !SpriteYSpeed,x
 
 	.Side	LDA $3220,y
 		CMP $3220,x
@@ -62,16 +62,16 @@ Block:
 		SBC $3250,x
 		BCS .Right
 
-	.Left	BIT $AE,x : BPL +
+	.Left	BIT !SpriteYSpeed,x : BPL +
 		LDA $3330,x
 		ORA #$02
 		STA $3330,x
-		STZ $AE,x
-	.Right	BIT $AE,x : BMI +
+		STZ !SpriteYSpeed,x
+	.Right	BIT !SpriteYSpeed,x : BMI +
 		LDA $3330,x
 		ORA #$01
 		STA $3330,x
-		STZ $AE,x
+		STZ !SpriteYSpeed,x
 	+	DEX : BPL -
 
 	.SkipSprites
@@ -81,35 +81,33 @@ Block:
 		LDA #$FF
 		STA $32E0,x
 		STA $35F0,x
-		BRA .OneTile
+		BRA .OneTile_draw
 
 	.PlayerInteraction
-		JSL $01B44F			; Run invisible block code
 		LDA !ExtraBits,x
-		AND #$04
-		BEQ .OneTile
-		LDA $3220,x
-		CLC : ADC #$10
-		STA $3220,x
-		LDA $3250,x
-		ADC #$00
-		STA $3250,x
-		JSL $01B44F
-		LDA $3220,x
+		AND #$04 : BEQ .OneTile
+		LDA $04
 		SEC : SBC #$10
-		STA $3220,x
-		LDA $3250,x
+		STA $04
+		LDA $0A
 		SBC #$00
-		STA $3250,x
+		STA $0A
+		LDA $06
+		CLC : ADC #$10
+		STA $06
+		LDA #$0F : JSL OutputPlatformBox
+		..draw
 		REP #$20
 		LDA.w #.TM2 : BRA +
 
 		.OneTile
+		LDA #$0F : JSL OutputPlatformBox
+		..draw
 		REP #$20
 		LDA.w #.TM1
 	+	STA $04
 		SEP #$20
-		JSL LOAD_PSUEDO_DYNAMIC_Long
+		JSL LOAD_PSUEDO_DYNAMIC
 
 		PLB
 		RTL
@@ -117,12 +115,12 @@ Block:
 
 	.TM1
 	dw $0004
-	db $30,$00,$00,$00
+	db $32,$00,$00,$00
 
 	.TM2
 	dw $0008
-	db $30,$00,$00,$00
-	db $30,$10,$00,$00
+	db $32,$F0,$00,$00
+	db $32,$00,$00,$00
 
 	namespace off
 

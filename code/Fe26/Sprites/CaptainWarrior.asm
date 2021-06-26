@@ -111,7 +111,7 @@
 		PLB
 		RTL
 
-	+	JSR SUB_HORZ_POS
+	+	JSL SUB_HORZ_POS
 		TYA : STA $3320,x
 		STZ !SpriteAnimTimer
 		JMP Battle_Graphics
@@ -301,7 +301,7 @@
 		RTL
 
 		.Draw
-		JSR LOAD_TILEMAP
+		JSL LOAD_TILEMAP
 		PLB
 		RTL
 
@@ -336,7 +336,7 @@
 		LDA !Attack
 		BMI .Main
 		ORA #$80 : STA !Attack
-		JSR SUB_HORZ_POS
+		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
 		LDA #$04 : STA !SpriteAnimIndex
 		STZ !SpriteAnimTimer
@@ -372,13 +372,7 @@
 		.P1Detection
 		LDA #$00
 		JSR HITBOX
-		JSL $03B664
-		JSL $03B72B
-		BCS .StartChop
-
-		.P2Detection
-		JSR P2Clipping
-		JSL $03B72B
+		SEC : JSL !PlayerClipping
 		BCS .StartChop
 		RTS
 
@@ -464,7 +458,7 @@
 		STZ !SpriteAnimTimer
 		DEC $3280,x
 		LDA #$B0 : STA $9E,x
-		JSR SUB_HORZ_POS
+		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
 		LDA .Speed,y
 		STA $AE,x
@@ -763,7 +757,7 @@
 		SEP #$20
 		BCC .HurtPlayer
 		LDA !P2YSpeed-$80,y : BMI -
-		JSR P2Bounce
+		JSL P2Bounce
 		LDA !InvincTimer : BEQ .HurtBoss
 		LDA #$02 : STA !SPC1		; > Spin jump on spiky enemy sound
 		RTS
