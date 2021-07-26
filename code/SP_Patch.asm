@@ -28,8 +28,8 @@ dl SCROLL_OPTIONS_Main	; JSL read3($048334) will instantly scroll layer 2 and ex
 ; 048440	;/
 
 org $048443
-dl GET_DYNAMIC_TILE
-dl UPDATE_CLAIMED_GFX
+dl $000000	;GET_DYNAMIC_TILE
+dl $000000	;UPDATE_CLAIMED_GFX
 dl TRANSFORM_GFX
 dl RealmSelect_Portrait_Long
 dl GET_ROOT
@@ -724,95 +724,6 @@ GET_CGRAM:
 
 
 
-;========================;
-;GET DYNAMIC TILE ROUTINE;
-;========================;
-; load A with number of extra slots to request, then call this (A=0 means you request 1 tile)
-; if carry returns clear, no slot was found
-; if carry returns set, then Y = index to table
-;
-; $00: number of extra tiles requested
-; $01: number of tiles not yet checked for availability
-; $02: used as a loop counter when checking several tiles for requests larger than 1
-; $03: used as scratch
-GET_DYNAMIC_TILE:
-		PHX
-		PHB : PHK : PLB
-		STA $00
-
-		LDY #$00
-.Loop		STY $01
-		LDA $00 : STA $02
-
-.Process	LDX !DynamicTile,y
-		CPX #$10 : BCS .CheckSpace
-		LDA $3230,x : BEQ .CheckSpace
-		LDA !ClaimedGFX
-		CMP #$10 : BCC .CheckSpace
-		AND #$0F
-		STA $03
-		CPY $03 : BNE .CheckSpace
-
-.Next		LDA !ClaimedGFX
-		LSR #4
-		STA $03
-		TYA
-	-	CLC : ADC $03
-		CMP #$10 : BCC +
-		CLC
-
-.Return		PLB
-		PLX
-		RTL
-
-	+	TAY
-		BRA .Loop
-
-.CheckSpace	TYA
-		EOR #$0F
-		CMP $02 : BCC .Return
-		DEC $02 : BMI .ThisOne
-		INY
-		CPY #$08 : BEQ .Loop
-		BRA .Process
-
-.ThisOne	TYA
-		SEC : SBC $00
-		TAY
-		SEC
-		BRA .Return
-
-
-
-
-
-; Store dynamo pointer in $0C-$0D, as usual.
-;==========================;
-;UPDATE CLAIMED GFX ROUTINE;
-;==========================;
-UPDATE_CLAIMED_GFX:
-		PHY
-		LDA !ClaimedGFX
-		AND #$0F
-		ASL A
-		CMP #$10
-		BCC $03 : CLC : ADC #$10
-		STA $02
-		LDA !GFX_Dynamic
-		AND #$70
-		ASL A
-		ADC $02
-		STA $02
-		LDA !GFX_Dynamic
-		AND #$0F
-		CLC : ADC $02
-		STA $02
-		STZ $03
-		LDA !GFX_Dynamic
-		BPL $02 : INC $03
-		JSR UPDATE_GFX_Dynamic
-		PLY
-		RTL
 
 ; Store dynamo pointer in $0C-$0D.
 ; Set carry to add $02-$03 to destination, clear carry to not include $02-$03
@@ -1238,13 +1149,11 @@ HurtPlayers:	LDY #$00				; > index 0
 		BRA +++
 	++	JSR HurtP1
 	+++	PLA
-	+	LSR A : BCC .Nope
+	+	LSR A : BCC HurtP1_Return
 		LDA !CurrentMario
 		CMP #$02 : BNE HurtP2
-		LDA $7497 : BNE .Nope
-		LDY #$80 : JSR HurtP1_Mario		; > hurt Mario (P2)
-.Nope		RTS
-
+		LDA $7497 : BNE HurtP1_Return
+		LDY #$80 : JMP HurtP1_Mario		; > hurt Mario (P2)
 
 
 HurtP2:		LDY #$80				; > P2 index
@@ -1256,9 +1165,17 @@ HurtP1:		LDA !P2Invinc-$80,y			;\
 		ASL A					; |
 		CMP.b #.Ptr_End-.Ptr			; |
 		BCC $02 : LDA #$00			; | execute pointer
+		PHX					; |
 		TAX					; |
 		LDA #$00				; > A = 0x00 so we can "STZ"
-		JSR (.Ptr,x)				;/
+		JSR (.Ptr,x)				; |
+		PLX					;/
+
+
+		LDA #$0F : STA !P2HurtTimer-$80,y	; set hurt animation timer
+
+		LDA !Difficulty				;\ critical mode
+		AND #$10 : BNE .Kill			;/
 
 		LDA #$F8 : STA !P2YSpeed-$80,y		; give player some Y speed
 		LDA #$20 : STA !SPC1			; play Yoshi "OW" SFX
@@ -1269,21 +1186,11 @@ HurtP1:		LDA !P2Invinc-$80,y			;\
 		STA !P2HP-$80,y				; | decrement HP and kill player 2 if zero
 		BEQ .Kill				; |
 		BMI .Kill				;/
-		LDA #$0F : STA !P2HurtTimer-$80,y	;\ if player didn't die: set hurt animation timer and return
-		RTS					;/
+.Return		RTS					; return
 
 .Kill		LDA #$01 : STA !P2Status-$80,y		; > This player dies
 		LDA #$C0 : STA !P2YSpeed-$80,y
-		LDA !P2Status-$80 : BEQ .Return		;\ (this is actually correct! note the absent ",y")
-		LDA !MultiPlayer : BEQ .Music		; | (ignore p2 on singleplayer)
-		LDA !P2Status : BEQ .Return		; | If both players are dead, play death music
-.Music		LDA #$01 : STA !SPC3			; |
-		LDA #$FF : STA !MusicBackup		;/
-		REP #$20				;\
-		STZ !P1Coins				; | players lose all coins upon death
-		STZ !P2Coins				; |
-		SEP #$20				;/
-.Return		RTS
+		RTS
 
 
 		.Ptr
@@ -1313,19 +1220,20 @@ HurtP1:		LDA !P2Invinc-$80,y			;\
 		STA !P2SpinAttack-$80,y			; end spin attack
 		STA !P2KickTimer-$80,y			; end kick animation
 		STA !P2TurnTimer-$80,y			; end turn animation
+		STA !P2Dashing-$80,y			; end dash state
 		RTS
 
 		.Kadaal
-		STA !P2Punch1-$80,y			;\ punch timers
-		STA !P2Punch2-$80,y			;/
+		STA !P2Punch-$80,y			; punch timer
+		STA !P2Headbutt-$80,y			; headbutt timer
 		STA !P2ShellSlide-$80,y			; end shell slide
 		STA !P2ShellSpin-$80,y			; end shell spin attack
 		STA !P2ShellSpeed-$80,y			; end fast shell slide status
 		STA !P2Senku-$80,y			; end senku
 		STA !P2AllRangeSenku-$80,y		; reset all range senku
-		STA !P2SenkuSmash-$80,y			; end senku smash
 		STA !P2ShellDrill-$80,y			; end shell drill
 		STA !P2BackDash-$80,y			; end back dash
+		STA !P2Dashing-$80,y			; end dash state
 		RTS
 
 		.Leeway
@@ -1340,6 +1248,7 @@ HurtP1:		LDA !P2Invinc-$80,y			;\
 		STA !P2WallClimb-$80,y			; fall off if climbing
 		STA !P2WallClimbFirst-$80,y		; end climb start
 		STA !P2WallClimbTop-$80,y		; end getup
+		STA !P2Dashing-$80,y			; end dash state
 		RTS
 
 		.Alter
@@ -1347,7 +1256,6 @@ HurtP1:		LDA !P2Invinc-$80,y			;\
 
 		.Peach
 		RTS
-
 
 
 
@@ -1368,32 +1276,47 @@ HurtP1:		LDA !P2Invinc-$80,y			;\
 ;IMPROVED CONTACT DETECTION ROUTINE;
 ;==================================;
 CONTACT16:
-		PHX
-		LDX #$01
-	-	LDA $00,x : STA $0C	;\ Pos1 in $0C
-		LDA $08,x : STA $0D	;/
-		LDA $0A,x : XBA
-		LDA $04,x
+		LDA $00 : STA $0C	;\ Pos1 in $0C
+		LDA $08 : STA $0D	;/
+		LDA $0A : XBA
+		LDA $04
 		REP #$20
 		STA $0E			; > Pos2 in $0E
-		LDA $02,x		;\
+		LDA $02			;\
 		AND #$00FF		; | Pos1 + Dim1 - Pos2
 		CLC : ADC $0C		; |
 		CMP $0E			;/
-		BCC .Return		; > Return if smaller
-		LDA $06,x		;\
+		BMI .Return		; > Return if smaller
+		LDA $06			;\
 		AND #$00FF		; | Pos2 + Dim2 - Pos1
 		CLC : ADC $0E		; |
 		CMP $0C			;/
-		BCC .Return		; > Return if smaller
+		BMI .Return		; > Return if smaller
 		SEP #$20
-		DEX : BPL -		; > Check Y coordinates/height too
-		PLX
+
+		LDA $01 : STA $0C	;\ Pos1 in $0C
+		LDA $09 : STA $0D	;/
+		LDA $0B : XBA
+		LDA $05
+		REP #$20
+		STA $0E			; > Pos2 in $0E
+		LDA $03			;\
+		AND #$00FF		; | Pos1 + Dim1 - Pos2
+		CLC : ADC $0C		; |
+		CMP $0E			;/
+		BMI .Return		; > Return if smaller
+		LDA $07			;\
+		AND #$00FF		; | Pos2 + Dim2 - Pos1
+		CLC : ADC $0E		; |
+		CMP $0C			;/
+		BMI .Return		; > Return if smaller
+		SEC
+		SEP #$20
 		RTS
 
 		.Return
+		CLC
 		SEP #$20
-		PLX
 		RTS
 
 
@@ -1408,9 +1331,9 @@ CONTACT16:
 ; the last 256 bytes is scratch RAM / cache for processing HSL colors without overwriting stuff
 ;
 ; input:
-;	A = color balance (00-1F between palette and buffer, used in mixers only)
-;	X = color index (00-FF for colors 00-FF, 100-2FF to index HSL cache and buffer)
-;	Y = number of colors to convert (00 or 100+ will convert entire palette)
+;	A = color balance (00-1F between palette and cache, used in mixers only)
+;	X = color index (00-FF for colors 00-FF, 100-2FF to index HSL cache and HSL buffer)
+;	Y = number of colors to convert (00 or 100+ will convert entire 256 color palette)
 ;	8-bit and 16-bit modes are both accepted
 ;
 ; output:
@@ -1692,8 +1615,8 @@ HSLtoRGB:
 		ASL A
 		DEY
 		STY !colorloop
-		STA !colormix				; save this for CGRAM upload
-		STX !colormix+2				; save this for CGRAM upload
+		STA !colormix					; save this for CGRAM upload
+		STX !colormix+2					; save this for CGRAM upload
 
 ; during the process, Y will index the RGB palette and X will index the HSL palette
 
@@ -1734,20 +1657,22 @@ HSLtoRGB:
 		RTL
 
 	.Go
-	-	CPY #$01FE			;\
-		BCC $03 : LDY #$01FE		; | cap overflow
-		CPX #$08FD			; |
-		BCC $03 : LDX #$08FD		;/
+		LDA #$0080 : TSB !ProcessLight			; SA-1 writing to !ShaderInput
 
-		LDA !PaletteHSL,x		;\
-		AND #$00FF			; | H
-		STA $0A				;/
-		LDA !PaletteHSL+1,x		;\
-		AND #$00FF			; | S
-		STA $0C				;/
-		LDA !PaletteHSL+2,x		;\
-		AND #$00FF			; | L
-		STA $0E				;/
+	-	CPY #$01FE					;\
+		BCC $03 : LDY #$01FE				; | cap overflow
+		CPX #$08FD					; |
+		BCC $03 : LDX #$08FD				;/
+
+		LDA !PaletteHSL,x				;\
+		AND #$00FF					; | H
+		STA $0A						;/
+		LDA !PaletteHSL+1,x				;\
+		AND #$00FF					; | S
+		STA $0C						;/
+		LDA !PaletteHSL+2,x				;\
+		AND #$00FF					; | L
+		STA $0E						;/
 
 		JSR .Convert
 		PHY
@@ -1766,17 +1691,20 @@ HSLtoRGB:
 
 		PHX
 		TYX
-		LDA $04				;\
-		ASL #5				; |
-		ORA $02				; | assemble RGB
-		ASL #5				; |
-		ORA $00				; |
-		STA !PaletteHSL+$900,x		;/
+		LDA $04						;\
+		ASL #5						; |
+		ORA $02						; | assemble RGB
+		ASL #5						; |
+		ORA $00						; |
+		STA !PaletteBuffer,x				;/
+		STA !ShaderInput,x
 		PLX
 
 		INY #2
 		INX #3
 		DEC !colorloop : BPL -
+
+		LDA #$0080 : TRB !ProcessLight			; SA-1 no longer writing to !ShaderInput
 
 
 		SEP #$30
@@ -1787,12 +1715,25 @@ HSLtoRGB:
 		LDA.l !colormix+2 : STA !CGRAMtable+$05,y	; dest CGRAM
 		REP #$20
 		AND #$00FF
+	PHA
 		ASL A
-		ADC.w #!PaletteHSL+$900
+		ADC.w #!PaletteBuffer
 		STA !CGRAMtable+$02,y				; source address
 		LDA.l !colormix : STA !CGRAMtable+$00,y		; upload size
+	PLA
+	LSR #4
+	TAX
+	LDA.l !colormix
+	LSR #5
+	STA $00
+	SEP #$20
+	LDA #$01
+-	STA.w !ShaderRowDisable,x
+	INX
+	DEC $00 : BPL -
 
-	; leave bank because the end of the wrapper is after the RTS anyway
+
+	; leave bank as is because the end of the wrapper is after the RTS anyway
 
 		PLP
 		RTS
@@ -1950,74 +1891,76 @@ MixRGB:
 
 	.Go
 
-		SEP #$20			;\
-		STZ $2250			; | prepare multiplication
-		REP #$20			;/
+		SEP #$20					;\ prepare multiplication
+		STZ $2250					;/
+		LDA #$80 : TSB !ProcessLight			; SA-1 writing to !ShaderInput
+		REP #$20					; A 16-bit
 
-	-	CPX #$01FE			;\ cap overflow
-		BCC $03 : LDX #$01FE		;/
+	-	CPX #$01FE					;\ cap overflow
+		BCC $03 : LDX #$01FE				;/
 
-		LDA $6703,x			;\
-		AND #$001F			; |
-		STA $2251			; | R
-		LDA !colormix : STA $2253	; |
-		BRA $00 : NOP			; |
-		LDA $2306 : STA $00		;/
-		LDA $6703,x			;\
-		LSR #5				; |
-		AND #$001F			; |
-		STA $2251			; | G
-		LDA !colormix : STA $2253	; |
-		BRA $00 : NOP			; |
-		LDA $2306 : STA $02		;/
-		LDA $6703,x			;\
-		XBA				; |
-		LSR #2				; |
-		AND #$001F			; | B
-		STA $2251			; |
-		LDA !colormix : STA $2253	; |
-		BRA $00 : NOP			; |
-		LDA $2306 : STA $04		;/
+		LDA $6703,x					;\
+		AND #$001F					; |
+		STA $2251					; | B
+		LDA !colormix : STA $2253			; |
+		BRA $00 : NOP					; |
+		LDA $2306 : STA $00				;/
+		LDA $6703,x					;\
+		LSR #5						; |
+		AND #$001F					; |
+		STA $2251					; | G
+		LDA !colormix : STA $2253			; |
+		BRA $00 : NOP					; |
+		LDA $2306 : STA $02				;/
+		LDA $6703,x					;\
+		XBA						; |
+		LSR #2						; |
+		AND #$001F					; | R
+		STA $2251					; |
+		LDA !colormix : STA $2253			; |
+		BRA $00 : NOP					; |
+		LDA $2306 : STA $04				;/
 
-		LDA !PaletteHSL+$900,x		;\
-		AND #$001F			; |
-		STA $2251			; |
-		LDA !colormix+2 : STA $2253	; |
-		BRA $00 : NOP			; | mix R
-		LDA $2306			; |
-		CLC : ADC $00			; |
-		LSR #5				; |
-		STA $00				;/
-		LDA !PaletteHSL+$900,x		;\
-		LSR #5				; |
-		AND #$001F			; |
-		STA $2251			; |
-		LDA !colormix+2 : STA $2253	; | mix G
-		BRA $00 : NOP			; |
-		LDA $2306			; |
-		CLC : ADC $02			; |
-		LSR #5				; |
-		STA $02				;/
-		LDA !PaletteHSL+$900,x		;\
-		XBA				; |
-		LSR #2				; |
-		AND #$001F			; |
-		STA $2251			; | mix B
-		LDA !colormix+2 : STA $2253	; |
-		BRA $00 : NOP			; |
-		LDA $2306			; |
-		CLC : ADC $04			;/
+		LDA !PaletteCacheRGB,x				;\
+		AND #$001F					; |
+		STA $2251					; |
+		LDA !colormix+2 : STA $2253			; |
+		BRA $00 : NOP					; | mix B
+		LDA $2306					; |
+		CLC : ADC $00					; |
+		LSR #5						; |
+		STA $00						;/
+		LDA !PaletteCacheRGB,x				;\
+		LSR #5						; |
+		AND #$001F					; |
+		STA $2251					; |
+		LDA !colormix+2 : STA $2253			; | mix G
+		BRA $00 : NOP					; |
+		LDA $2306					; |
+		CLC : ADC $02					; |
+		LSR #5						; |
+		STA $02						;/
+		LDA !PaletteCacheRGB,x				;\
+		XBA						; |
+		LSR #2						; |
+		AND #$001F					; |
+		STA $2251					; | mix R
+		LDA !colormix+2 : STA $2253			; |
+		BRA $00 : NOP					; |
+		LDA $2306					; |
+		CLC : ADC $04					;/
 
-		AND #$03E0			;\
-		ORA $02				; |
-		ASL #5				; | assemble and store mixed color
-		ORA $00				; |
-		STA !PaletteHSL+$900,x		;/
-
+		AND #$03E0					;\
+		ORA $02						; |
+		ASL #5						; | assemble and store mixed color
+		ORA $00						; |
+		STA !PaletteBuffer,x				;/
+		STA !ShaderInput,x
 
 		INX #2
 		DEC !colorloop : BMI $03 : JMP -
 
+		LDA #$0080 : TRB !ProcessLight			; SA-1 no longer writing to !ShaderInput
 
 		PLP
 		RTS
@@ -2046,10 +1989,23 @@ MixRGB:
 		LDA.l !colormix+2 : STA !CGRAMtable+$05,y	; dest CGRAM
 		REP #$20
 		AND #$00FF
+	PHA
 		ASL A
-		ADC.w #!PaletteHSL+$900
+		ADC.w #!PaletteBuffer
 		STA !CGRAMtable+$02,y				; source address
 		LDA.l !colormix : STA !CGRAMtable+$00,y		; upload size
+	PLA
+	LSR #4
+	TAX
+	LDA.l !colormix
+	LSR #5
+	STA $00
+	SEP #$20
+	LDA #$01
+-	STA.w !ShaderRowDisable,x
+	INX
+	DEC $00 : BPL -
+
 
 
 		PLP
@@ -2104,9 +2060,9 @@ MixHSL:
 		RTL
 
 	.Go
-		SEP #$20			;\
-		STZ $2250			; | prepare multiplication
-		REP #$20			;/
+		SEP #$20					;\
+		STZ $2250					; | prepare multiplication
+		REP #$20					;/
 
 ; 00 -> 20	+20 / m
 ; 00 -> 68	-10 / m
@@ -2120,8 +2076,8 @@ MixHSL:
 ; $0A	hue 2 - hue 1
 ; $0E	|hue 2 - hue 1|
 
-	.Loop	CPX #$02FD			;\ cap overflow
-		BCC $03 : LDX #$02FD		;/
+	.Loop	CPX #$02FD					;\ cap overflow
+		BCC $03 : LDX #$02FD				;/
 		LDA !PaletteHSL,x
 		AND #$00FF
 		STA $0A
@@ -2137,7 +2093,7 @@ MixHSL:
 		EOR #$FFFF : INC A
 
 	.Calc	STA $2251
-		LDA !colormix+2 : STA $2253		; amount to add is based on 32-m
+		LDA !colormix+2 : STA $2253			; amount to add is based on 32-m
 		NOP : BRA $00
 		LDA $2306 : BPL +
 		EOR #$FFFF : INC A
@@ -2152,42 +2108,42 @@ MixHSL:
 	+	STA $0A
 
 
-		LDA !PaletteHSL+1,x			;\
-		AND #$00FF				; |
-		STA $2251				; |
-		LDA !colormix : STA $2253		; |
-		BRA $00 : NOP				; |
-		LDA $2306 : STA $0C			; |
-		LDA !PaletteHSL+$301,x			; |
-		AND #$00FF				; | calculate S as m*S1 + (32-m)*S2
-		STA $2251				; |
-		LDA !colormix+2 : STA $2253		; |
-		BRA $00 : NOP				; |
-		LDA $2306				; |
-		CLC : ADC $0C				; |
-		XBA : AND #$00FF			; |
-		STA $0C					;/
-		LDA !PaletteHSL+2,x			;\
-		AND #$00FF				; |
-		STA $2251				; |
-		LDA !colormix : STA $2253		; |
-		BRA $00 : NOP				; |
-		LDA $2306 : STA $0E			; |
-		LDA !PaletteHSL+$302,x			; |
-		AND #$00FF				; | calculate L as m*L1 + (32-m)*L2
-		STA $2251				; |
-		LDA !colormix+2 : STA $2253		; |
-		BRA $00 : NOP				; |
-		LDA $2306				; |
-		CLC : ADC $0E				; |
-		XBA : AND #$00FF			; |
-		STA $0E					;/
+		LDA !PaletteHSL+1,x				;\
+		AND #$00FF					; |
+		STA $2251					; |
+		LDA !colormix : STA $2253			; |
+		BRA $00 : NOP					; |
+		LDA $2306 : STA $0C				; |
+		LDA !PaletteHSL+$301,x				; |
+		AND #$00FF					; | calculate S as m*S1 + (32-m)*S2
+		STA $2251					; |
+		LDA !colormix+2 : STA $2253			; |
+		BRA $00 : NOP					; |
+		LDA $2306					; |
+		CLC : ADC $0C					; |
+		XBA : AND #$00FF				; |
+		STA $0C						;/
+		LDA !PaletteHSL+2,x				;\
+		AND #$00FF					; |
+		STA $2251					; |
+		LDA !colormix : STA $2253			; |
+		BRA $00 : NOP					; |
+		LDA $2306 : STA $0E				; |
+		LDA !PaletteHSL+$302,x				; |
+		AND #$00FF					; | calculate L as m*L1 + (32-m)*L2
+		STA $2251					; |
+		LDA !colormix+2 : STA $2253			; |
+		BRA $00 : NOP					; |
+		LDA $2306					; |
+		CLC : ADC $0E					; |
+		XBA : AND #$00FF				; |
+		STA $0E						;/
 
-		SEP #$20				;\
-		LDA $0A : STA !PaletteHSL+$600,x	; |
-		LDA $0C : STA !PaletteHSL+$601,x	; | assemble HSL
-		LDA $0E : STA !PaletteHSL+$602,x	; |
-		REP #$20				;/
+		SEP #$20					;\
+		LDA $0A : STA !PaletteHSL+$600,x		; |
+		LDA $0C : STA !PaletteHSL+$601,x		; | assemble HSL
+		LDA $0E : STA !PaletteHSL+$602,x		; |
+		REP #$20					;/
 
 		INX #3
 		DEC !colorloop : BMI $03 : JMP .Loop
@@ -2207,7 +2163,7 @@ MixHSL:
 		REP #$30
 		TXA
 		AND #$00FF
-		ORA #$0200				; HSL mix output buffer
+		ORA #$0200					; HSL mix output buffer
 		TAX
 		JSR HSLtoRGB
 		PLP
@@ -2976,33 +2932,18 @@ GET_FILE_ADDRESS:
 ;===============;
 ;UPATE FROM FILE;
 ;===============;
-
+; same as UPDATE_GFX, but source address is relative to file Y
+;
 UPDATE_FROM_FILE:
-		PHB : PHK : PLB
+		BCS .Dynamic
+.Static		STZ $02
+		STZ $03
+.Dynamic	PHB : PHK : PLB
 		JSR GET_FILE_ADDRESS
 		PLB
 
 		PHP
 		SEP #$30
-
-		LDA !ClaimedGFX
-		AND #$0F
-		ASL A
-		CMP #$10
-		BCC $03 : CLC : ADC #$10
-		STA $02
-		LDA !GFX_Dynamic
-		AND #$70
-		ASL A
-		ADC $02
-		STA $02
-		LDA !GFX_Dynamic
-		AND #$0F
-		CLC : ADC $02
-		STA $02
-		STZ $03
-		LDA !GFX_Dynamic
-		BPL $02 : INC $03
 
 		PHX
 		PHB
@@ -3058,7 +2999,7 @@ DECOMP_FROM_FILE:
 		PHP
 		SEP #$30
 
-		LDA !ClaimedGFX
+;		LDA !ClaimedGFX
 		AND #$0F
 		ASL A
 		CMP #$10
@@ -3384,114 +3325,6 @@ FIX_MIDWAY:
 	.Return	JML $00CA30				; > Return to RTS
 
 
-;===============;
-;DEATH GAME MODE;
-;===============;
-DEATH_GAMEMODE:
-
-		LDA #$0F : STA !GameMode
-		JML $009C8E
-
-.Init		STZ !P2Status				; > Reload player 2
-		LDX #$14				;\ Death message = GAME OVER
-		STX $743B				;/
-		LDY #$15				;\ Game mode = fade to GAME OVER
-		STY $6100				;/
-		LDA #$C0				;\ GAME OVER animation = 0xC0
-		STA $743C				;/
-		LDA #$FF				;\ GAME OVER timer = 0xFF
-		STA $743D				;/
-		JML $00D107
-
-;.MidwayBits	db $04,$0C				; Attribute bits for exits
-
-;===========;
-;DELAY DEATH;
-;===========;
-DELAY_DEATH:
-
-		LDA !MultiPlayer : BNE .HandleMario	;\
-		LDA !Characters				; > !P2Character is not yet filled out
-		AND #$F0 : BEQ .HandleMario		; | special case: single player without mario
-		LDA !P2Status-$80			; |
-		CMP #$02 : BCS $03 : JMP .NoDeath	; |
-		.HandleMario				;/
-
-		LDA !P2Status-$80 : BEQ .NoMusic
-		LDA !P2Status : BEQ .NoMusic
-		LDA #$01 : STA !SPC3			; set music
-		.NoMusic
-
-		LDA !P1Dead : BNE .Die
-		LDA !CurrentMario : BEQ .Die
-		DEC A					;\
-		LSR A					; |
-		ROR A					; | mark mario as dying in PCE reg
-		AND #$80				; |
-		TAY					; |
-		LDA #$01 : STA !P2Status-$80,y		;/
-		REP #$20				;\
-		LDA $96					; |
-		SEC : SBC $1C				; | see if mario has fallen off the level yet
-		CMP #$0180				; |
-		SEP #$20				;/
-		BMI .Fall
-		BCC .Fall
-
-		.Die
-		LDA #$01 : STA !P1Dead			;\ mario has died
-		STZ $7496				;/
-		LDA !MultiPlayer : BEQ .ReallyDeath	; if single player, return and end level
-		LDA !CurrentMario : BEQ .2PCE		; see if mario is in play
-		DEC A					;\
-		LSR A					; |
-		ROR A					; |
-		AND #$80				; |
-		EOR #$80				; | special case: mario + PCE
-		TAY					; |
-		LDA !P2Status-$80,y			; |
-		CMP #$02 : BCC .NoDeath			; |
-		BRA .ReallyDeath			;/
-
-	.2PCE	LDA !P2Status-$80			;\
-		CMP #$02 : BCC .NoDeath			; |
-		REP #$20				; |
-		LDA !P2XPosLo : STA !P2XPosLo-$80	; | special case: two PCE characters
-		LDA !P2YPosLo : STA !P2YPosLo-$80	; |
-		SEP #$20				; |
-		LDA !P2Status				; |
-		CMP #$02 : BCC .NoDeath			;/
-
-.ReallyDeath	REP #$20				;\
-		STZ !P1Coins				; | players lose all coins upon death
-		STZ !P2Coins				; |
-		SEP #$20				;/
-
-		.Return
-		STZ $19					;\ Overwritten code
-		LDA #$3E				;/
-		JML $00D0BA				; > execute rest of routine
-
-		.Fall
-		LDA #$25 : STA $7496
-		BRA .Return
-
-.NoDeath	LDA #$7F : STA !MarioMaskBits		; hide mario
-		LDA !CurrentMario : BEQ .Snap1
-		DEC A
-		LSR A
-		ROR A
-		AND #$80
-		TAY
-		LDA #$02 : STA !P2Status-$80,y		; mark mario as dead in PCE reg
-		TYA
-		EOR #$80
-	.Snap1	TAY
-		REP #$20
-		LDA !P2XPosLo-$80,y : STA $94
-		LDA !P2YPosLo-$80,y : STA $96
-		SEP #$20
-		BRA .Fall
 
 
 ;======================;
@@ -5282,20 +5115,10 @@ org $009F66
 org $00CA2B
 	JML FIX_MIDWAY			;\ Source: LDA #$01 : STA $13CE
 	NOP				;/
-
-org $00D0D5
-	BRA +				; skip game over check
-org $00D0E6
 	+
-org $00D0B6
-	JML DELAY_DEATH			; Source : STZ $19 : LDA #$3E
 
-org $00D0D8
-	NOP #3				;\ Skip game over code (source: DEC $6DBE : BPL $09)
-	BRA $09				;/
 org $00E98F
 	BEQ $10				; Disable side exit for Mario (Source: BEQ $10)
-
 
 org $00F545
 	JML MAP16_EXPAND		;\ org: TAY : BNE $2F ($00F577) : LDY $7693

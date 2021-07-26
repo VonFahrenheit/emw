@@ -411,7 +411,6 @@ endmacro
 
 	;	LDA !P2YSpeed-$80,y : BMI ..Return2
 
-	LDA #$01 : STA !P2SenkuSmash-$80,y
 	LDA !P2YSpeed-$80,y
 	SEC : SBC $9E,x
 	BMI ..Hurt
@@ -974,7 +973,7 @@ endmacro
 	+	LDA $14
 		AND #$0F : BNE .Return
 		LDA #$03
-		JSL QUICK_CAST_Long
+	;	JSL QUICK_CAST_Long
 		LDA #$08			;\ Graphic tile
 		STA $33D0,y			;/
 		LDA #$01 : STA $35D0,y		; > Spin type
@@ -1239,7 +1238,7 @@ endmacro
 
 		SEP #$20
 		LDA #$3F
-		JSL AIM_SHOT_Long
+		JSL AIM_SHOT
 
 
 	-	LDA $04						;\
@@ -1794,7 +1793,7 @@ endmacro
 		CMP #$03 : BNE +				; |
 	+++	LDA #$10 : BRA ++				; | > Move slower during idle and Crimson Thunder
 	+	LDA #$28					; |
-	++	JSL AIM_SHOT_Long				;/
+	++	JSL AIM_SHOT					;/
 		LDA $04 : STA $AE,x				;\ Set speed
 		LDA $06 : STA $9E,x				;/
 

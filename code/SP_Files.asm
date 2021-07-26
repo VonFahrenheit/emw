@@ -477,12 +477,6 @@ macro storepal(name)
 	incbin "../PaletteData/SpritePalset/<name>.mw3":0-20
 endmacro
 
-macro altpal(basename, altsuffix, type)
-	db ((.<basename>-PalsetData)/32),<type>
-	incbin "../PaletteData/SpritePalset/<basename>_<altsuffix>.mw3":2-20
-endmacro
-
-
 PalsetData:
 	%storepal(player_mario)			; 00, mario palette
 	%storepal(player_luigi)			; 01, luigi palette
@@ -513,6 +507,10 @@ PalsetData:
 	%storepal(special_flash_blue)		; 16
 	%storepal(special_flash_yellow)		; 17
 	%storepal(special_flash_caster)		; 18
+
+	%storepal(special_kingking_blue)
+	%storepal(special_kingking_red)
+
 
 
 .End	; don't remove this label!

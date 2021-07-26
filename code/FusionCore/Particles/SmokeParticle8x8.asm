@@ -19,7 +19,8 @@
 		STA !Particle_TileTemp					; |
 		PLX							;/
 		STZ !Particle_TileTemp+2				; oam size bit
-		JMP ParticleDrawSimple_BG1				; draw particle without ratio
+		JSR ParticleDrawSimple_BG1				; draw particle without ratio
+		JMP ParticleDespawn					; off-screen check
 
 
 		.NoTimer						;\

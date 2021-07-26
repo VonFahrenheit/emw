@@ -779,7 +779,114 @@ incsrc "FusionSprites/CustomShooter.asm"
 		BPL $02 : INC $0D			; |
 		++					;/
 
+		LDA $01,s : TAX
+		LDA !Ex_Num,x
+		CMP #$01 : BEQ DrawPrio2
+		JMP DrawPrio3
 
+
+	DrawPrio2:
+		REP #$30
+		LDA.l !OAMindex_p2
+		CMP #$0200 : BCC .Draw
+		SEP #$30
+		PLX
+		BRA .Return
+
+	.Draw	TAX					; X = OAM index
+		LDY #$0000				; Y = index to per-tile data
+		LDA $00
+		SEC : SBC $1A
+		STA $00
+		CMP #$0110 : BCC +
+		CMP #$FFE0 : BCC .Despawn
+	+	LDA $02
+		SEC : SBC $1C
+		STA $02
+		CMP #$00F0 : BCC .Loop
+		CMP #$FFE0 : BCS .Loop
+
+	.Despawn
+		SEP #$30
+		PLX
+		STZ !Ex_Num,x
+		STX !Ex_Index				; index = slot that was just freed up
+	.Return	STZ $00
+		RTL
+
+	.BadX	INY					;\
+	.BadY	INY #3					; | off-screen: go to next tile
+		SEP #$20				; |
+		JMP .Next				;/
+
+	.Loop	REP #$20				; A 16-bit (required, see end of loop)
+		LDA [$04],y				;\
+		AND #$00FF				; |
+		CMP #$0080				; |
+		BCC $03 : ORA #$FF00			; | check X
+		CLC : ADC $00				; |
+		CMP #$0100 : BCC .GoodX			; |
+		CMP #$FFF0 : BCC .BadX			;/
+
+	.GoodX	AND #$01FF				;\ store 9-bit X in scratch RAM
+		STA $0E					;/
+		INY					;\
+		LDA [$04],y				; |
+		AND #$00FF				; |
+		CMP #$0080				; | check Y
+		BCC $03 : ORA #$FF00			; |
+		CLC : ADC $02				; |
+		CMP #$00E0 : BCC .GoodY			; |
+		CMP #$FFF0 : BCC .BadY			;/
+	.GoodY	STA.l !OAM_p2+$001,x			; store Y
+		SEP #$20				; A 8-bit
+		LDA $0E : STA.l !OAM_p2+$000,x		; store X lo
+		INY					;\
+		LDA [$04],y				; | store tile number
+		CLC : ADC $0C				; |
+		STA.l !OAM_p2+$002,x			;/
+		INY					;\
+		LDA [$04],y				; |
+		BIT $08 : BPL .64			; |
+	.PP	AND #$F0 : BRA .Prop			; | store YXPPCCCT
+	.64	AND #$C0				; |
+		ORA $64					; |
+	.Prop	ORA $0D					; |
+		STA.l !OAM_p2+$003,x			;/
+		PHX					;\
+		REP #$20				; |
+		TXA					; |
+		LSR #2					; |
+		TAX					; |
+		SEP #$20				; | store hi byte
+		LDA [$04],y				; |
+		AND #$02				; |
+		ORA $0F					; |
+		STA.l !OAMhi_p2+$00,x			; |
+		PLX					; |
+		INY					;/
+		INX #4					; increment OAM index
+		CPX #$0200 : BCC .Next			;\
+		LDX #$0200				; | handle maximum index
+		BRA .Full				;/
+	.Next	CPY $0A : BCS $03 : JMP .Loop		; loop
+
+	.Full	REP #$20				;\
+		TXA					; |
+		SEC : SBC.l !OAMindex_p2		; | return $00 = number of tiles written
+		LSR #2					; |
+		STA $00					;/
+		LDA.l !OAMindex_p2			;\
+		CLC : ADC.w #!OAM_p3			; | $02 = pointer to start of OAM write
+		STA $02					;/
+		TXA : STA.l !OAMindex_p2		; update OAM index
+		SEP #$30
+		LDA.b #!OAM_p3>>16 : STA $04		; $04 = bank byte of pointer
+		PLX					; pull X
+		RTL					; return
+
+
+	DrawPrio3:
 		REP #$30
 		LDA.l !OAMindex_p3
 		CMP #$0200 : BCC .Draw
@@ -1246,6 +1353,23 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 	org $029FB3
 		BRA 13 : NOP #13
 	warnpc $029FC2
+	org $029FC5			; remove automatic fireball sprite interaction
+		JSR $A0AC		; org: JSR $A0AC
+	org $02A0AC
+		TXA			; org: TXA
+	org $02A0C4
+		LDA !SpriteTweaker4,x	; org:
+		AND #$02 : BNE +	;	LDA !SpriteTweaker4,x
+		LDA $3200,x		;	AND #$02
+		CMP #$36 : BEQ +	;	ORA ;yoshi eat reg
+		BRA ++			;	ORA ;sprite behind layers reg
+	warnpc $02A0D4			;	EOR !Ex_Data3,y : BNE $6F ($02A143)
+	org $02A0D4
+		++
+	org $02A143
+		+
+
+
 	org $02A03B
 		JMP MarioFireball
 	org $02A1A4

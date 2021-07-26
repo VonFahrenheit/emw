@@ -2,14 +2,14 @@
 
 pushpc
 org $018575
-	JSL AutoKick		; > Source: JSL $01ACF9
+	JSL AutoKick		; > org: JSL $01ACF9
 
 org $018952
-	JML BlueKicker		;\ Source: $3420,x : BEQ $5D ($018952)
+	JML BlueKicker		;\ org: $3420,x : BEQ $5D ($018952)
 	NOP			;/
 
 org $018BEC
-	JML KoopaGFX		; > Source: LDA $33D0,x : LSR A ($018BEC)
+	JML KoopaGFX		; > org: LDA $33D0,x : LSR A
 
 org $019A22
 	db $02,$00,$04,$00
@@ -18,21 +18,36 @@ org $019A2A
 warnpc $019A4D
 
 org $0196F2
-	JSL ExtraBitFix		; > Source: STA $3200,y : TYX
+	JSL ExtraBitFix		; > org: STA $3200,y : TYX
+
+org $01975D
+	LDA #$10 : STA !SpriteDisP1,y
+
+org $01893C
+	JML ShellessFix		;\ org: ASL !SpriteTweaker4,x : SEC : ROR !SpriteTweaker4,x
+	NOP #3			;/
+	ReturnShelless1:
+org $018951
+	ReturnShelless2:	; RTS
+
 
 org $019808
-	JML OAMfix		;\ Source: LDY $33B0,x : BNE $02 ($01980F) : LDA #$08
+	JML OAMfix		;\ org: LDY $33B0,x : BNE $02 ($01980F) : LDA #$08
 	NOP #3			;/
 
+org $01982D
+	JML ShellShakeFix	; org: CMP #$06 : BNE $75 ($0198A6 (points to RTS))
+
+
 org $0199C4
-	JSL CoinOwnerFix	;\ Source: LDY #$00 : LDA $78A7
+	JSL CoinOwnerFix	;\ org: LDY #$00 : LDA $78A7
 	NOP			;/
 
-org $01A082			; Mario carrying stuff routine
-	JSL MariosShell		;\ Source: LDA #$0A : STA $3230,x
+org $01A082			; mario carrying stuff routine
+	JSL MariosShell		;\ org: LDA #$0A : STA $3230,x
 	NOP			;/
-org $01AA9F			; Kick shell routine
-	JSL MariosShell		;\ Source: LDA #$0A : STA $3230,x
+org $01AA9F			; kick shell routine
+	JSL MariosShell		;\ org: LDA #$0A : STA $3230,x
 	NOP			;/
 org $019B83+$09			;\
 	db $00,$02,$02		; | shelless koopa tiles
@@ -54,6 +69,16 @@ pullpc
 		!KoopaWing	=	$35E0,x
 
 
+	ShellessFix:
+		ASL !SpriteTweaker4,x
+		SEC
+		ROR !SpriteTweaker4,x
+		LDA !SpriteDisP1,x : BNE .NoInteraction
+		JML ReturnShelless1
+		.NoInteraction
+		JML ReturnShelless2
+
+
 	OAMfix:
 		LDY $3230,x			;\ Only show different frame when carried
 		CPY #$0B : BNE .NoTilt		;/
@@ -62,6 +87,25 @@ pullpc
 		.NoTilt
 		LDY $33B0,x			; > Y = OAM index
 		JML $01980F			; > Return
+
+	ShellShakeFix:
+		CMP #$06 : BNE .0198A6
+		LDA $3230,x
+		CMP #$09 : BEQ .Shake
+	.019831	JML $019831
+		.Shake
+		LDA $32F0,x : BEQ .0198A6
+		LDY #$00
+		LDA $14
+		AND #$02
+		DEC A
+		BPL $01 : DEY
+		CLC : ADC !SpriteXLo,x
+		STA !SpriteXLo,x
+		TYA
+		ADC !SpriteXHi,x
+		STA !SpriteXHi,x
+	.0198A6	JML $0198A6
 
 
 	MariosShell:

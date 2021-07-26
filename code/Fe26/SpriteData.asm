@@ -47,42 +47,42 @@ SpriteData:
 
 ; -- Sprite 00 --
 db $36
-db $00,$00,$4A,$A1,$08,$00
+db $10,$00,$4A,$A1,$08,$00
 %AddToList0toF(HappySlime, $00)
 
 ; -- Sprite 01 --
 db $36
-db $00,$00,$48,$A1,$00,$00
+db $10,$00,$48,$A1,$00,$00
 %AddToList0toF(GoombaSlave, $00)
 
 ; -- Sprite 02 --
 db $36
-db $00,$2A,$46,$A1,$00,$00
+db $10,$2A,$46,$A1,$00,$00
 %AddToList0toF(Rex, $00)
 
 ; -- Sprite 03 --
 db $36
-db $00,$2A,$4A,$A1,$00,$00
+db $10,$2A,$4A,$A1,$00,$00
 %AddToList0toF(HammerRex, $00)
 
 ; -- Sprite 04 --
 db $36
-db $00,$27,$59,$A1,$11,$04
+db $10,$27,$59,$A1,$11,$04
 %AddToList0toF(AggroRex, $00)
 
 ; -- Sprite 05 --
 db $36
-db $00,$2A,$4A,$A1,$10,$00
+db $10,$2A,$4A,$A1,$10,$00
 %AddToList0toF(Conjurex, $00)
 
 ; -- Sprite 06 --
 db $36
 db $00,$27,$59,$A5,$11,$04
-%AddToList0toF(AdeptShaman, $00)
+%AddToList0toF(Wizrex, $00)
 
 ; -- Sprite 07 --
 db $36
-db $00,$00,$30,$A6,$31,$46
+db $00,$00,$30,$A2,$31,$46
 %AddToList0toF(Projectile, $00)
 
 ; -- Sprite 08 --
@@ -102,7 +102,7 @@ db $00,$00,$57,$A1,$00,$00
 
 ; -- Sprite 0B --
 db $36
-db $00,$00,$48,$A1,$00,$00
+db $10,$00,$48,$A1,$00,$00
 %AddToList0toF(MoleWizard, $00)
 
 ; -- Sprite 0C --
@@ -127,7 +127,7 @@ db $00,$22,$34,$BE,$B9,$46
 
 ; -- Sprite 10 --
 db $36
-db $00,$00,$59,$A3,$11,$04
+db $00,$00,$56,$A3,$11,$04
 %AddToList(KingKing, $00)
 
 ; -- Sprite 11 --
@@ -142,12 +142,12 @@ db $00,$00,$59,$A3,$11,$04
 
 ; -- Sprite 13 --
 db $36
-db $00,$00,$48,$A1,$00,$00
+db $10,$00,$48,$A1,$00,$00
 %AddToList(DancerKoopa, $40)
 
 ; -- Sprite 14 --
 db $36
-db $00,$00,$44,$A1,$00,$00			; these two have different palettes (see byte 3, $00)
+db $10,$00,$44,$A1,$00,$00			; these two have different palettes (see byte 3, $00)
 %AddToList(DancerKoopa, $40)
 
 ; -- Sprite 15 --
@@ -157,12 +157,12 @@ db $00,$00,$09,$29,$01,$00
 
 ; -- Sprite 16 --
 db $36
-db $00,$00,$48,$A1,$00,$00
+db $10,$00,$48,$A1,$00,$00
 %AddToList(Thif, $00)
 
 ; -- Sprite 17
 db $36
-db $00,$00,$48,$A1,$00,$00
+db $10,$00,$48,$A1,$00,$00
 %AddToList(Thif, $00)
 
 ; -- Sprite 18 --
@@ -187,12 +187,12 @@ db $00,$00,$3A,$A6,$39,$46
 
 ; -- Sprite 1C --
 db $36
-db $00,$00,$48,$A1,$00,$00
+db $10,$00,$48,$A1,$00,$00
 %AddToList(Monkey, $00)
 
 ; -- Sprite 1D --
 db $36
-db $00,$00,$48,$A1,$00,$00
+db $10,$00,$48,$A1,$00,$00
 %AddToList(Monkey, $00)
 
 ; -- Sprite 1E --
@@ -267,7 +267,7 @@ db $00,$00,$30,$A2,$39,$46
 
 ; -- Sprite 2C --
 db $36
-db $00,$2A,$4C,$A1,$18,$00
+db $10,$2A,$4C,$A1,$18,$00
 %AddToList(FlyingRex, $00)
 
 ; -- Sprite 2D --

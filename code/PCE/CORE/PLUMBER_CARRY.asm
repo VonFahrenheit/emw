@@ -55,6 +55,7 @@
 		RTL
 
 	.Carry	STZ $3400,x					; clear item's kill count
+		STZ $3330,x					; clear item's collision status
 		LDA $3230,x					;\
 		CMP #$0B : BEQ +				; |
 		STZ !P2Carry					; | drop item if its state changes

@@ -237,7 +237,7 @@ BigMax:
 		SEC : SBC !P2XPosLo-$80				; |
 		STA $00						; |
 		SEP #$20					; |
-		LDA #$40 : JSL AIM_SHOT_Long			; |
+		LDA #$40 : JSL AIM_SHOT				; |
 		LDA $04 : STA $AE,x				; |
 		LDA $06 : STA $9E,x				;/
 		JSL SUB_HORZ_POS				;\ face player
@@ -1358,7 +1358,7 @@ BigMax:
 		STZ $9B
 		LDA #$02 : STA $9C
 		JSL $00BEB0
-		LDA #$03 : JSL QUICK_CAST_Long
+	;	LDA #$03 : JSL QUICK_CAST_Long
 		LDA #$84 : STA $33D0,y				; > graphic tile
 		LDA #$01 : STA $3410,y				; > hard prop
 		LDA #$1C : STA $33C0,y				; > YXPPCCCT
@@ -1383,7 +1383,7 @@ BigMax:
 
 
 	Fireball:
-		LDA #$03 : JSL QUICK_CAST_Long
+	;	LDA #$03 : JSL QUICK_CAST_Long
 		LDA #$E0 : STA $33D0,y				; > graphic tile
 		LDA #$01 : STA $35D0,y				; > spin type
 		LDA #$01 : STA $3410,y				; > hard prop

@@ -14,7 +14,6 @@ Thif:
 
 
 	INIT:
-		PHB : PHK : PLB				; > Start of bank wrapper
 		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
 		INC $32A0,x
@@ -24,8 +23,7 @@ Thif:
 		ORA #$08				; | Move half a tile right if extra bit is set
 		STA $3220,x				;/
 		INC $35D0,x				; hide
-	.Return	PLB					; > End of bank wrapper
-		RTL					; > End INIT routine
+	.Return	RTL					; > End INIT routine
 
 
 	MAIN:
@@ -307,8 +305,7 @@ Thif:
 		RTL
 
 
-Interact:	LDA #$01 : STA !P2SenkuSmash-$80,y
-		LDA !P2YSpeed-$80,y
+Interact:	LDA !P2YSpeed-$80,y
 		SEC : SBC $9E,x
 		BMI .Side
 		CMP #$10 : BCC .Side

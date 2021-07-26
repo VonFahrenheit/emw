@@ -5,23 +5,20 @@
 	%def_anim(HammerRex_Throw, 3)
 
 
-
-	!RexAI			= $3280,x
-	!RexAIY			= $3280,y
-	!RexWallX		= $3290,x
-	!RexHammer		= $32A0,x
-	!RexMovementFlags	= $3340,x
-	!RexChase		= $33E0,x
-
-
-
 HammerRex:
 
 	namespace HammerRex
 
+	INIT:
+		JSL SUB_HORZ_POS
+		TYA : STA $3320,x
+		RTL
+
+
+
 	MAIN:
 		PHB : PHK : PLB
-
+		JSL SPRITE_OFF_SCREEN
 		LDA $9D : BEQ .Process
 		JMP GRAPHICS
 
@@ -45,7 +42,6 @@ HammerRex:
 
 		.Return
 		PLB
-	INIT:
 		RTL
 
 
@@ -103,8 +99,15 @@ HammerRex:
 
 
 	INTERACTION:
-
 		JSL !GetSpriteClipping04
+
+		.Attack
+		JSL P2Attack : BCC ..nocontact
+		LDA #$01 : STA $BE,x
+		LDA !P2Hitbox1XSpeed-$80,y : STA !SpriteXSpeed,x
+		LDA !P2Hitbox1YSpeed-$80,y : STA !SpriteYSpeed,x
+		STZ $3330,x
+		..nocontact
 
 		.Body
 		JSL P2Standard
@@ -113,12 +116,12 @@ HammerRex:
 		LDA #$01 : STA $BE,x
 		..nocontact
 
-		.Attack
-		JSL P2Attack : BCC ..nocontact
+		.Fireball
+		JSL FireballContact_Destroy : BCC ..nocontact
 		LDA #$01 : STA $BE,x
-		LDA #$08 : JSL DontInteract
-		LDA !P2Hitbox1XSpeed-$80,y : STA !SpriteXSpeed,x
-		LDA !P2Hitbox1YSpeed-$80,y : STA !SpriteYSpeed,x
+		LDA $00 : STA !SpriteXSpeed,x
+		LDA #$E8 : STA !SpriteYSpeed,x
+		STZ $3330,x
 		..nocontact
 
 
@@ -240,9 +243,9 @@ HammerRex:
 
 	.TM_SlashLine
 		dw $000C		; should be uploaded before rex during throw00 tilemap
-		db $30,$F8,$F8,$4B	; 16x16
-		db $20,$08,$F8,$4D	; 8x8
-		db $20,$10,$F8,$4E	; 8x8
+		db $3A,$F8,$F8,$4B	; 16x16
+		db $2A,$08,$F8,$4D	; 8x8
+		db $2A,$10,$F8,$4E	; 8x8
 
 
 
@@ -384,7 +387,7 @@ HammerRex:
 
 
 
-namespace off
+	namespace off
 
 
 

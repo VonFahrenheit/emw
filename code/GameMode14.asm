@@ -87,23 +87,39 @@ namespace GAMEMODE14
 ; phase 1: accelerator mode
 
 
+		.PlayersDead				;\
+		LDA !P2Status-$80 : BEQ ..alive		; |
+		LDA !MultiPlayer : BEQ ..music		; | (ignore p2 on singleplayer)
+		LDA !P2Status : BEQ ..alive		; | if both players are dead, play death music
+		..music					; |
+		LDA #$01 : STA !SPC3			; |
+		LDA #$FF : STA !MusicBackup		;/
+		REP #$20				;\
+		STZ !P1Coins				; | lose coins
+		STZ !P2Coins				; |
+		SEP #$20				;/
+		STZ !EnableHScroll			;\ lock camera
+		STZ !EnableVScroll			;/
+		LDA !DeathTimer : BNE ..noinit		;\
+		LDA #$E0 : STA !DeathTimer		; | timer to let music finish playing
+		..noinit				; |
+		DEC !DeathTimer : BNE ..alive		;/
+		LDA #$0B : STA !GameMode		;\ exit level when timer runs out
+		..alive					;/
+
+
 		LDA $9D : BEQ .NoFreeze
 		DEC $9D : BEQ .NoFreeze			; this has to be done to not drop the buffered input
 		JMP .RETURN
 		.NoFreeze
 
 
-
-
-
-
-
-
-
 		LDA !MsgTrigger : BEQ .NoMSG		;\
 		JSL read3($00A1DF+1)			; | MSG
 		BRA .RETURN				; |
 		.NoMSG					;/
+
+
 
 	; disable down and X/Y during animations and level end
 		LDA !MarioAnim
@@ -167,6 +183,8 @@ namespace GAMEMODE14
 	++	JSL !KillOAM				;/
 		+
 
+
+
 ; phase 2: MPU operation
 
 		STZ !MPU_SNES				;\ start new MPU operation
@@ -189,13 +207,16 @@ namespace GAMEMODE14
 		JSL read3($00A2A5+1)			; call routine
 		PLD					; restore DP
 		JSR !MPU_light				; SNES will process light shader while SA-1 is running the main game
-		BRA .RETURN
+		JMP .RETURN
 
 
 	.SA1
 		PHB					;\
 		PHP					; | start of SA-1 thread
 		SEP #$30				;/
+		LDA #$00				;\ bank = 00
+		PHA : PLB				;/
+
 
 	; SA-1 phase 1, executed on DP $0100
 		PHD					; push DP
@@ -245,16 +266,16 @@ namespace GAMEMODE14
 		PEI ($1C)				;\
 		REP #$20				; |
 		STZ $7888				; |
-		LDA $7887 : BEQ ..noshake		; > note that $7888 was JUST cleared so hi byte is fine
-		DEC $7887				; |
+		LDA !ShakeTimer : BEQ ..noshake		; > note that $7888 was JUST cleared so hi byte is fine
+		DEC !ShakeTimer				; |
 		AND #$0003				; |
 		ASL A					; |
 		TAY					; | camera shake routine
 		LDA $A1CE,y : STA $7888			; |
-		BIT $6BF4				; |
+		BIT $6BF5-1				; |
 		BVC $02 : DEC #2			; |
 		STA $7888				; |
-		CLC : ADC $1C				; |
+		CLC : ADC $1C				; > this only applies to sprites, actual camera offset is in camera routine
 		STA $1C					; |
 		..noshake				; |
 		SEP #$30				;/
@@ -832,13 +853,13 @@ Camera:
 		STA !BG1_X_Delta			; |
 		LDA $1C					; |
 		SEC : SBC $7464				; |
-		STA !BG1_X_Delta			; | delta, probably not needed but i'll keep it for now
+		STA !BG1_Y_Delta			; | delta, probably not needed but i'll keep it for now
 		LDA $1E					; |
 		SEC : SBC $7466				; |
-		STA !BG1_X_Delta			; |
+		STA !BG2_X_Delta			; |
 		LDA $20					; |
 		SEC : SBC $7468				; |
-		STA !BG1_X_Delta			; |
+		STA !BG2_Y_Delta			; |
 		REP #$20				;/
 		LDA !CameraBackupX : STA !BG1ZipRowX	;\
 		LDA !CameraBackupY : STA !BG1ZipRowY	; | coordinates from previous frame

@@ -120,7 +120,7 @@
 		PHX
 		LDX !SpriteIndex
 		XBA
-		LDA $3200,x
+		LDA !SpriteNum_cache
 		CMP #$0F : BNE ..Normal
 
 		..GoombaState
@@ -2143,7 +2143,7 @@
 		LDA $02
 		AND #$2E
 		ORA !SpriteProp,x
-		AND.b #$20^$FF			; clear size bit
+		AND.b #$10^$FF			; clear size bit
 		STA !BigRAM+$02
 		JSL LOAD_TILEMAP_p2
 		JSL SPRITE_OFF_SCREEN		; despawn if necessary

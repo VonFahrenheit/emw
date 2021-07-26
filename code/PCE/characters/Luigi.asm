@@ -22,7 +22,7 @@ namespace Luigi
 		JSL !GetFileAddress
 		JSL !GetVRAM
 		PLB
-		LDA #$00DA*$20
+		LDA #$0140*$20
 		CLC : ADC !FileAddress
 		STA !VRAMtable+$02,x
 		CLC : ADC #$0200
@@ -49,10 +49,9 @@ namespace Luigi
 
 
 		LDA !P2Status : BEQ .Process
-		CMP #$02 : BEQ .SnapToP1
-		CMP #$03 : BNE .KnockedOut
+		CMP #$01 : BEQ .KnockedOut
 
-		.Snapped
+		.Snap
 		REP #$20
 		LDA $94 : STA !P2XPosLo
 		LDA $96 : STA !P2YPosLo
@@ -75,28 +74,10 @@ namespace Luigi
 		AND #$01
 		STA !P2Direction
 	+	STZ !P2Carry
+		STZ !P2Invinc
 		LDA #!Lui_Dead : STA !P2Anim
 		STZ !P2AnimTimer
 		JMP ANIMATION_HandleUpdate
-
-		.SnapToP1
-		REP #$20
-		LDA !P2XPosLo
-		CMP $94 : BCS +
-		ADC #$0004
-		BRA ++
-	+	SBC #$0004
-	++	STA !P2XPosLo
-		SEC : SBC $94
-		BPL $03 : EOR #$FFFF
-		CMP #$0008
-		BCC $03 : INC !P2Status
-		SEP #$20
-
-		.Return
-		PLB
-		RTS
-
 
 
 		.Process
@@ -135,8 +116,8 @@ namespace Luigi
 
 
 	PIPE:
-		JSL CORE_PIPE
-		BCC $03 : JMP ANIMATION_HandleUpdate
+		JSL CORE_PIPE : BCC CONTROLS
+		JMP ANIMATION
 
 
 ; in SMB2:
@@ -156,6 +137,16 @@ namespace Luigi
 		JSL CORE_COYOTE_TIME				; coyote time
 
 		PEA.w PHYSICS-1					; RTS address
+
+		LDA !P2HurtTimer : BEQ .NoHurt			;\
+		LDA !P2XSpeed : BEQ +				; |
+		BPL ++						; |
+		INC !P2XSpeed : BRA +				; | hurt animation
+	++	DEC !P2XSpeed					; |
+	+	RTS						; |
+		.NoHurt						;/
+
+
 
 
 	BRA .NoFireStart
@@ -222,7 +213,6 @@ namespace Luigi
 		LDA.w #.SpinHitbox : JSL CORE_ATTACK_LoadHitbox	; |
 		JSL CORE_ATTACK_ActivateHitbox1			; |
 		JSR Kadaal_HITBOX_GetClipping			; |
-		STZ !P2ActiveHitbox				; merge hitboxes
 		JSL CORE_ATTACK_ActivateHitbox2			; |
 		JSR Kadaal_HITBOX_GetClipping			; |
 		.SpinEnd					; |
@@ -558,10 +548,16 @@ namespace Luigi
 
 
 		.SpinHitbox
-		dw $0008,$FFF4 : db $14,$24
-		db $10,$D8
-		dw $FFF4,$FFF4 : db $14,$24
-		db $F0,$D8
+		dw $0008,$FFF4 : db $14,$24	; X/Y + W/H
+		db $10,$D8			; speeds
+		db $10				; timer
+		db $04				; hitstun
+		db $02,$00			; SFX
+		dw $FFF4,$FFF4 : db $14,$24	; X/Y + W/H
+		db $F0,$D8			; speeds
+		db $10				; timer
+		db $04				; hitstun
+		db $02,$00			; SFX
 
 
 
@@ -1484,36 +1480,36 @@ namespace Luigi
 
 	.Reverse32x32TM
 	dw $0010			; big Luigi
-	db $6E,$F8,$F0,!P2Tile1
-	db $6E,$08,$F0,!P2Tile2
-	db $6E,$F8,$00,!P2Tile3
-	db $6E,$08,$00,!P2Tile4
+	db $6E,$08,$F0,!P2Tile1
+	db $6E,$F8,$F0,!P2Tile2
+	db $6E,$08,$00,!P2Tile3
+	db $6E,$F8,$00,!P2Tile4
 	dw $0010			; small Luigi
-	db $6E,$F8,$F8,!P2Tile1
-	db $6E,$08,$F8,!P2Tile2
-	db $6E,$F8,$00,!P2Tile3
-	db $6E,$08,$00,!P2Tile4
+	db $6E,$08,$F8,!P2Tile1
+	db $6E,$F8,$F8,!P2Tile2
+	db $6E,$08,$00,!P2Tile3
+	db $6E,$F8,$00,!P2Tile4
 
 	.SpinTM00
 	dw $0010			; big Luigi
 	db $2E,$0A,$FF,!P2Tile8
 	db $2E,$00,$F0,!P2Tile1
 	db $2E,$00,$00,!P2Tile3
-	db $EE,$0A,$F5,!P2Tile8
+	db $EE,$F6,$F5,!P2Tile8
 	dw $0010			; small Luigi
 	db $2E,$0A,$03,!P2Tile8
 	db $2E,$00,$F8,!P2Tile1
 	db $2E,$00,$00,!P2Tile3
-	db $EE,$0A,$F8,!P2Tile8
+	db $EE,$F6,$F8,!P2Tile8
 
 	.SpinTM01
 	dw $0010			; big Luigi
-	db $6E,$0A,$FF,!P2Tile8
+	db $6E,$F6,$FF,!P2Tile8
 	db $2E,$00,$F0,!P2Tile1
 	db $2E,$00,$00,!P2Tile3
 	db $AE,$0A,$F5,!P2Tile8
 	dw $0010			; small Luigi
-	db $6E,$0A,$03,!P2Tile8
+	db $6E,$F6,$03,!P2Tile8
 	db $2E,$00,$F8,!P2Tile1
 	db $2E,$00,$00,!P2Tile3
 	db $AE,$0A,$F8,!P2Tile8

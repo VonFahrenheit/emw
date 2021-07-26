@@ -18,7 +18,8 @@
 		STA !Particle_TileTemp					; | 16x16 size
 		PLX							;/
 		LDA #$0002 : STA !Particle_TileTemp+2			; oam size bit
-		JMP ParticleDrawSimple_BG1				; draw particle without ratio
+		JSR ParticleDrawSimple_BG1				; draw particle without ratio
+		JMP ParticleDespawn					; off-screen check
 
 		.NoTimer						;\
 		LDA.b #(ParticleMain_List_End-ParticleMain_List)/2	; |

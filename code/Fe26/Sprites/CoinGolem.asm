@@ -1020,7 +1020,40 @@ CoinGolem:
 		LDA $04 : STA $0E			; back this up
 		BPL $03 : EOR #$FFFF
 		STA $2253
-		JSL ADEPT_ROUTE_GetNode_Long
+		PEA .NodeDone-1
+		.GetNode
+		CMP #$0000 : BEQ .Node0		; > Don't divide by 0 (assume Y/0 equals infinity)
+		PHA				; > Preserve "X"
+		LDA $2306			;\
+		AND #$00FF			; | Get quotient
+		XBA				; |
+		STA $04				;/
+		LDA $2308			;\
+		XBA				; |
+		AND #$FF00			; | Calculate hexadecimals
+		STA $2251			; |
+		PLA : STA $2253			; |
+		BRA $00				;/
+		LSR A				;\
+		CMP $2308			; | Round up/down
+		LDA $2306			; |
+		BCS $01 : INC A			;/
+		AND #$00FF
+		ORA $04
+		CMP #$0812 : BCS .Node0		;\
+		CMP #$026A : BCS .Node1		; |
+		CMP #$0148 : BCS .Node2		; | Determine node based on Y/X
+		CMP #$00C8 : BCS .Node3		; |
+		CMP #$006A : BCS .Node4		; |
+		CMP #$0020 : BCS .Node5		;/
+.Node6		LDY #$06 : SEP #$20 : RTS	; Vastly dominant X
+.Node5		LDY #$05 : SEP #$20 : RTS	; Greatly dominant X
+.Node4		LDY #$04 : SEP #$20 : RTS	; Slightly dominant X
+.Node3		LDY #$03 : SEP #$20 : RTS	; Equal X and Y
+.Node2		LDY #$02 : SEP #$20 : RTS	; Slightly dominant Y
+.Node1		LDY #$01 : SEP #$20 : RTS	; Greatly dominant Y
+.Node0		LDY #$00 : SEP #$20 : RTS	; Vastly dominant Y
+		.NodeDone
 		LDA .Index,y
 		BIT $0F
 		BPL $02 : ORA #$04

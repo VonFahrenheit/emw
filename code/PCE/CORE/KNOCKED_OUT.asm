@@ -3,6 +3,15 @@
 ;===========;
 KNOCKED_OUT:
 
+		LDA !Difficulty
+		AND #$03 : BNE .NoRiposte
+		LDA !P2HurtTimer : BEQ .NoRiposte
+		STZ !P2HurtTimer
+		JSL CORE_RIPOSTE
+		.NoRiposte
+
+
+
 		STZ !P2XSpeed
 		STZ !P2VectorX
 		STZ !P2VectorY

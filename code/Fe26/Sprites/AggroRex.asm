@@ -18,6 +18,7 @@
 	!AggroRexStunTimer	= $32D0
 	!AggroRexIdleTimer	= $34F0
 	!AggroRexHasJump	= $34F0
+	!AggroRexTargetPlayer	= $3500
 
 
 
@@ -29,25 +30,22 @@ AggroRex:
 
 
 	INIT:
-		PHB : PHK : PLB
+		INC !AggroRexHasJump,x					; spawn without a jump
+		JSL SUB_HORZ_POS					;\ face player
+		TYA : STA $3320,x					;/
+		LDA #$FF : STA !AggroRexPrevFrame,x			; reload GFX
+		LDA #$03 : JSL GET_SQUARE : BCS .Return			;\ get 4 squares or despawn
+		STZ $3230,x						;/
 
-		LDA #$FF : STA !AggroRexPrevFrame,x
-
-
-		LDA #$03 : JSL GET_SQUARE
-		BCS +
-		STZ $3230,x
-
-		+
-
-		PLB
-		RTL
+		.Return
+		RTL							; return
 
 
 	MAIN:
 		PHB : PHK : PLB
+		JSL SPRITE_OFF_SCREEN
 		LDA $9D : BEQ .Process
-	-	JMP GRAPHICS
+		JMP GRAPHICS_HandleUpdate
 
 		.Process
 
@@ -55,32 +53,59 @@ AggroRex:
 
 		LDA $3230,x
 		CMP #$08 : BEQ PHYSICS
-		CMP #$02 : BEQ -
+		CMP #$02 : BNE .Return
 
+		.Dead
+		LDA #!AggroRex_Hurt : STA !SpriteAnimIndex
+		STZ !AggroRexIFrames,x
+		JMP GRAPHICS_HandleUpdate
+
+		.Return
 		PLB
 		RTL
 
 
 	PHYSICS:
+		LDA $BE,x						;\
+		CMP #$03 : BCC .NotDead					; |
+		LDA #$02 : STA $3230,x					; |
+		LDA !SpriteXSpeed,x					; |
+		ROL #2							; |
+		AND #$01						; |
+		TAY							; |
+		LDA DATA_XSpeed,y					; | death code
+		BPL $03 : EOR #$FF : INC A				; |
+		STA $00							; |
+		LDA !SpriteXSpeed,x					; |
+		BPL $03 : EOR #$FF : INC A				; |
+		CMP $00 : BCS MAIN_Dead					; |
+		LDA DATA_XSpeed,y : STA !SpriteXSpeed,x			; |
+		BRA MAIN_Dead						; |
+		.NotDead						;/
 
 
-		LDA !SpriteAnimIndex
-		CMP #!AggroRex_Climb : BNE +
-		LDA #$02 : STA !SpriteStasis,x
-		+
+		LDA !SpriteAnimIndex					;\
+		CMP #!AggroRex_Climb : BNE .NotHolding			; | stasis during this frame
+		LDA #$02 : STA !SpriteStasis,x				; |
+		.NotHolding						;/
+
+		STZ !AggroRexWall,x					; clear wall at start of physics
 
 
-		STZ !AggroRexWall,x
-
-		.Alert
-		LDA !AggroRexChase,x : BEQ $03 : JMP ..nochase
-		LDA !ExtraBits,x
-		AND #$04 : BEQ ..notwaiting
-		JSL SUB_HORZ_POS
-		TYA : STA $3320,x
-		..notwaiting
-		LDA #$80 : STA $06					; sight box width
-		LDA #$20 : STA $07					; sight box height
+		.Alert							;\
+		LDA !AggroRexChase,x : BEQ ..checkchase			; | use sight box if not chasing
+		JMP ..nochase						; |
+		..checkchase						;/
+		LDA !ExtraBits,x					;\
+		AND #$04 : BEQ ..notwaiting				; |
+		JSL SUB_HORZ_POS					; | face player while in ambush mode
+		TYA : STA $3320,x					; |
+		..notwaiting						;/
+		LDA #$80 : STA $06					;\
+		LDA !ExtraBits,x					; | sight box width
+		AND #$04 : BEQ +					; |
+		LDA #$40 : STA $06					;/
+	+	LDA #$28 : STA $07					; sight box height
 		LDA $3220,x						;\
 		STA $04							; |
 		LDA $3250,x						; |
@@ -94,160 +119,207 @@ AggroRex:
 		LDA $3320,x						;\
 		BEQ +							; |
 		LDA $04							; | move sight box 0x80 pixels left if facing left
-		SEC : SBC #$80						; |
+		SEC : SBC $06						; |
 		STA $04							; |
 		BCS $02 : DEC $0A					;/
 	+	SEC : JSL !PlayerClipping : BCC ..nochase		; check clipping
-
-		JSL SUB_HORZ_POS
-		TYA : STA $3320,x
-		LDA #$25 : STA !SPC1				; roar SFX
-		LDA #$01 : STA !AggroRexChase,x
-		LDA !ExtraBits,x
-		AND #$04 : BEQ ..nojump
-		..jump
-		LDA !ExtraBits,x
-		AND #$04^$FF
-		STA !ExtraBits,x
-		LDA !Difficulty
-		AND #$03
-		ASL A
-		ADC $3320,x
-		TAY
-		LDA DATA_XSpeed+2,y : STA !SpriteXSpeed,x
-		LDA #$D0 : STA !SpriteYSpeed,x
-		BRA ..nochase
-		..nojump
-		LDA #!AggroRex_Roar : STA !SpriteAnimIndex
-		STZ !SpriteAnimTimer
-		LDA #$20 : STA !AggroRexStunTimer,x
-		STZ !SpriteXSpeed,x
-		..nochase
-
-
-		.Speed
-		LDA $3330,x
-		AND #$04 : BEQ ..nospeed
-		STZ !SpriteYSpeed,x
-		STZ !AggroRexHasJump,x				; regain jump
-
-		LDA !AggroRexStunTimer,x : BNE ..nochase
-		LDA !SpriteAnimIndex
-		CMP #!AggroRex_Hurt : BEQ ..nochase
-		LDA !AggroRexChase,x : BEQ ..nochase
-		JSL SUB_HORZ_POS
-		TYA : STA $3320,x
-		LDA !Difficulty
-		AND #$03
-		ASL A
-		ADC $3320,x
-		TAY
-		LDA DATA_XSpeed+2,y : JSL AccelerateX
-		BRA ..nospeed
-		..nochase
-
-
-		LDA !SpriteAnimIndex
-		CMP #!AggroRex_Hurt : BNE ..noslide
-		LDA !SpriteXSpeed,x : BEQ ..nospeed
-		LDA $14
-		AND #$03 : BNE +
-		LDA #$04 : STA $00
-		LDA #$0C : STA $01
-		LDA #$03+!SmokeOffset : JSL SpawnExSprite_NoSpeed
-	+	JSL AccelerateX_Friction1
-		..noslide
-		LDA !AggroRexChase,x : BNE ..nospeed
-
-
-		LDA !AggroRexStunTimer,x : BNE ..nospeed
-		LDA !ExtraBits,x
-		AND #$04 : BNE ..nospeed
-		LDY $3320,x
-		LDA DATA_XSpeed,y : STA !SpriteXSpeed,x
-		..nospeed
-		LDA $3250,x : PHA
-		LDA $3220,x : PHA
-
-		JSL !SpriteApplySpeed
-
-		LDA !AggroRexHasJump,x : BNE ..nojump
-		LDA $3330,x
-		AND #$04 : BNE ..nojump
-		INC !AggroRexHasJump,x
-		LDA !AggroRexStunTimer,x : BNE ..nojump
-		JSL SUB_VERT_POS
-		CPY #$00 : BEQ ..nojump
-		LDA #$C0 : STA !SpriteYSpeed,x
-		..nojump
+		TAY							;\
+		LDA DATA_TargetPlayer,y : STA !AggroRexTargetPlayer,x	; | target player
+		TAY							;/
+		JSL SUB_HORZ_POS_Target					;\ face target
+		TYA : STA $3320,x					;/
+		LDA #$25 : STA !SPC1					; roar SFX
+		LDA #$01 : STA !AggroRexChase,x				; start chase
+		LDA !ExtraBits,x					;\
+		AND #$04 : BEQ ..nojump					; |
+		..jump							; |
+		LDA !ExtraBits,x					; |
+		AND #$04^$FF						; |
+		STA !ExtraBits,x					; |
+		STZ $3330,x						; |
+		LDA !Difficulty						; | ambush mode: jump upon detecting a player
+		AND #$03						; |
+		ASL A							; |
+		ADC $3320,x						; |
+		TAY							; |
+		LDA DATA_XSpeed+2,y : STA !SpriteXSpeed,x		; |
+		LDA #$D0 : STA !SpriteYSpeed,x				; |
+		BRA ..nochase						;/
+		..nojump						;\
+		LDA #!AggroRex_Roar : STA !SpriteAnimIndex		; |
+		STZ !SpriteAnimTimer					; | normal mode: roar animation upon detecting a player
+		LDA #$20 : STA !AggroRexStunTimer,x			; |
+		STZ !SpriteXSpeed,x					; |
+		..nochase						;/
 
 
 
-
-		LDA !AggroRexStunTimer,x : BEQ +
-		LDA $3330,x
-		AND #$03 : BNE ..turnback
-		BRA ..nowall
-		+
-
-
-		LDA !AggroRexChase,x : BNE ..checkclimb
-		LDA $3330,x
-		AND #$03 : BEQ ..nowall
-		LDA $3320,x
-		EOR #$01
-		STA $3320,x
-		BRA ..turnback
-
-		..checkclimb
-		LDA $3320,x
-		INC A
-		AND $3330,x : BNE ..startclimb
-		LDA $3330,x
-		AND #$03 : BNE ..turnback
-		BRA ..nowall
-
-		..startclimb
-		LDA #$01 : STA !AggroRexWall,x
-		LDY $3320,x
-		LDA DATA_WallXSpeed,y : STA !SpriteXSpeed,x
-		LDA #$E0 : STA !SpriteYSpeed,x
-		LDA $3330,x
-		AND #$04^$FF
-		STA $3330,x
-		..turnback
-		PLA : STA $3220,x
-		PLA : STA $3250,x
-		BRA ..walldone
-		..nowall
-		PLA : PLA
-		..walldone
+		.Speed							;\
+		LDA $3330,x						; |
+		AND #$04 : BNE ..ground					; | different speed codes depending on ground/air
+		..air							; |
+		JMP ..nospeed						; |
+		..ground						;/
+		JSL GroundSpeed						; Y speed on ground
+		STZ !AggroRexHasJump,x					; regain jump
+		LDA !AggroRexStunTimer,x : BNE ..nochase		;\
+		LDA !SpriteAnimIndex					; |
+		CMP #!AggroRex_Hurt : BEQ ..nochase			; |
+		LDA !AggroRexChase,x : BEQ ..nochase			; |
+		LDY !AggroRexTargetPlayer,x				; |
+		LDA #$C0 : JSL SUB_VERT_POS_Target			; |
+		CPY #$01 : BEQ ..forward				; > don't turn on ground if target is more than 64px above
+		LDY !AggroRexTargetPlayer,x				; |
+		JSL SUB_HORZ_POS_Target					; |
+		TYA : STA $3320,x					; |
+		..forward						; |
+		LDA !Difficulty						; | acceleration for chase
+		AND #$03						; |
+		ASL A							; |
+		ADC $3320,x						; |
+		TAY							; |
+		LDA DATA_XSpeed+2,y : JSL AccelerateX			; |
+		BRA ..nospeed						; |
+		..nochase						;/
+		LDA !SpriteAnimIndex					;\
+		CMP #!AggroRex_Hurt : BNE ..noslide			; |
+		LDA !SpriteXSpeed,x					; |
+		CLC : ADC #$08						; |
+		CMP #$10 : BCC ..friction				; |
+		LDA $14							; |
+		AND #$03 : BNE ..friction				; |
+		LDA !SpriteXSpeed,x					; |
+		ROL #2							; | friction + smoke while hurt on ground
+		AND #$01						; |
+		TAY							; |
+		LDA DATA_DustOffset,y : STA $00				; |
+		LDA #$0C : STA $01					; |
+		LDA #$03+!SmokeOffset : JSL SpawnExSprite_NoSpeed	; |
+		..friction						; |
+		JSL AccelerateX_Friction1				; |
+		..noslide						;/
+		LDA !AggroRexChase,x : BNE ..nospeed			; return if chasing
+		LDA !AggroRexStunTimer,x : BNE ..nospeed		; return if stunned
+		LDA !ExtraBits,x					;\ return if still in ambush mode
+		AND #$04 : BNE ..nospeed				;/
+		LDY $3320,x						;\
+		LDA DATA_XSpeed,y : STA !SpriteXSpeed,x			; | walk speed
+		..nospeed						;/
+		LDA $3250,x : PHA					;\ preserve previous X coords
+		LDA $3220,x : PHA					;/
+		JSL !SpriteApplySpeed					; apply speed
+		LDA !AggroRexHasJump,x : BNE ..nojump			; can only jump if actually has a jump
+		LDA $3330,x						;\ has to be in midair for 1 frame to jump
+		AND #$04 : BNE ..nojump					;/
+		INC !AggroRexHasJump,x					; spend jump on first airborne frame, even if it's not used
+		LDA !AggroRexChase,x : BEQ ..jump			; always jump at ledge when not chasing
+		LDA !AggroRexStunTimer,x : BNE ..nojump			; can't jump while stunned
+		LDY !AggroRexTargetPlayer,x				;\
+		LDA #$20 : JSL SUB_VERT_POS_Target			; | jump if target player is above or within 0x20 px
+		CPY #$00 : BEQ ..nojump					;/
+		LDY !AggroRexTargetPlayer,x				;\
+		JSL SUB_HORZ_POS_Target					; |
+		TYA : STA $3320,x					; |
+		LDA !Difficulty						; |
+		AND #$03						; | gain full X speed upon jumping
+		ASL A							; |
+		ADC $3320,x						; |
+		TAY							; |
+		LDA DATA_XSpeed+2,y : STA !SpriteXSpeed,x		;/
+		..jump							;\
+		LDA #$C0 : STA !SpriteYSpeed,x				; | jump Y speed
+		..nojump						;/
+		LDA !AggroRexStunTimer,x : BEQ ..nostun			;\
+		LDA $3330,x						; |
+		AND #$03 : BNE ..turnback				; | special wall code for when stunned
+		JMP ..nowall						; |
+		..nostun						;/
+		LDA !AggroRexChase,x : BNE ..checkclimb			;\
+		LDA $3330,x						; |
+		AND #$03 : BEQ ..nowall					; |
+		..turnaround						; | when walking, just turn around at walls
+		LDA $3320,x						; |
+		EOR #$01						; |
+		STA $3320,x						; |
+		BRA ..turnback						;/
+		..checkclimb						;\
+		LDA $3320,x						; |
+		INC A							; |
+		AND $3330,x : BNE ..climb				; | check for climb when chasing
+		LDA $3330,x						; |
+		AND #$03 : BNE ..turnback				; |
+		BRA ..nowall						;/
+		..climb							;\
+		LDA $3330,x						; |
+		AND #$08 : BEQ ..noceiling				; | special wall jump when hitting ceiling
+		STZ !SpriteYSpeed,x					; |
+		BRA ..walljump						; |
+		..noceiling						; |
+		LDY !AggroRexTargetPlayer,x				; |
+		JSL SUB_HORZ_POS_Target					; |
+		TYA : CMP $3320,x : BEQ ..nowalljump			; |
+		LDY !AggroRexTargetPlayer,x				; |
+		LDA #$F0 : JSL SUB_VERT_POS_Target			; | wall jump if target is 16px above or more
+		CPY #$01 : BEQ ..nowalljump				; | (and away from wall)
+		LDA #$D0 : STA !SpriteYSpeed,x				; |
+		..walljump						; |
+		LDY $3320,x						; |
+		LDA DATA_WallJumpSpeed,y : STA !SpriteXSpeed,x		; |
+		BRA ..turnaround					; |
+		..nowalljump						;/
+		LDA #$01 : STA !AggroRexWall,x				;\
+		STA !AggroRexHasJump,x					; > also lose normal jump
+		LDY $3320,x						; |
+		LDA DATA_WallXSpeed,y : STA !SpriteXSpeed,x		; |
+		LDA #$E0 : STA !SpriteYSpeed,x				; | set climb status and clear ground flag
+		LDA $3330,x						; |
+		AND #$04^$FF						; |
+		STA $3330,x						; |
+		..turnback						;/
+		PLA : STA $3220,x					;\
+		PLA : STA $3250,x					; | restore X coords on wall
+		BRA ..walldone						; |
+		..nowall						;/
+		PLA : PLA						;\ otherwise just pop these coords
+		..walldone						;/
 
 
 
 
 
 	INTERACTION:
-		LDA !SpriteAnimIndex
-		CMP #!Rex_Dead : BEQ GRAPHICS
-		JSL !GetSpriteClipping04
+		JSL !GetSpriteClipping04				; get sprite body hitbox
 
-		.Body
-		JSL P2Standard
-		BCC ..nocontact
-		BEQ ..nocontact
-		LDA !AggroRexIFrames,x : BNE ..nocontact
-		JSR Hurt
+		.Attack							;\ return if sprite is invulnerable
+		LDA !AggroRexIFrames,x : BNE ..nocontact		;/
+		JSL P2Attack : BCC ..nocontact				; player hitbox contact
+		LDA !P2Hitbox1XSpeed-$80,y : STA !SpriteXSpeed,x	;\ knockback
+		LDA !P2Hitbox1YSpeed-$80,y : STA !SpriteYSpeed,x	;/
+		STZ $3330,x						; clear collision
+		JSR Hurt						; hurt sprite
 		..nocontact
 
-		.Attack
-		JSL P2Attack : BCC ..nocontact
-		LDA !P2Hitbox1XSpeed-$80,y : STA !SpriteXSpeed,x
-		LDA !P2Hitbox1YSpeed-$80,y : STA !SpriteYSpeed,x
-		LDA !AggroRexIFrames,x : BNE ..nocontact
-		LDA #$08 : JSL DontInteract
-		STZ $3330,x
-		JSR Hurt
+		.Body							;\
+		JSL P2Standard						; | standard player interaction
+		BCC ..nocontact						; |
+		BEQ ..nocontact						;/
+		LDA !AggroRexIFrames,x : BNE ..nocontact		; return if sprite is invulnerable
+		LDA $3230,x						;\
+		CMP #$04 : BNE ..notcrushed				; |
+		PLB							; | return if sprite was crushed
+		RTL							; |
+		..notcrushed						;/
+		STZ !SpriteYSpeed,x					; clear Y speed
+		JSR Hurt						; hurt sprite
+		..nocontact
+
+		.Fireball						;\ return if sprite is invulnerable
+		LDA !AggroRexIFrames,x : BNE ..nocontact		;/
+		JSL FireballContact_Destroy : BCC ..nocontact		; fireball interaction
+		LDA $00 : STA !SpriteXSpeed,x				;\ knockback
+		LDA #$E8 : STA !SpriteYSpeed,x				;/
+		STZ $3330,x						; clear collision
+		JSR Hurt						; hurt sprite
 		..nocontact
 
 
@@ -356,7 +428,8 @@ AggroRex:
 		..smoke
 		LDA #$01 : STA !SPC1
 		PHY
-		LDA #$04 : STA $00
+		LDY $3320,x
+		LDA DATA_DustOffset,y : STA $00
 		LDA #$0C
 	++	STA $01
 		LDA #$03+!SmokeOffset : JSL SpawnExSprite_NoSpeed
@@ -403,9 +476,9 @@ AggroRex:
 		dw .TM32,.ScratchDyn01 : db $08,!AggroRex_Scratch+0
 	; walk
 		dw .TM32,.WalkDyn00 : db $10,!AggroRex_Walk+1
-		dw .TM32,.WalkDyn01 : db $10,!AggroRex_Walk+2
+		dw .TM32U1,.WalkDyn01 : db $10,!AggroRex_Walk+2
 		dw .TM32,.WalkDyn00 : db $10,!AggroRex_Walk+3
-		dw .TM32,.WalkDyn02 : db $10,!AggroRex_Walk+0
+		dw .TM32U1,.WalkDyn02 : db $10,!AggroRex_Walk+0
 	; roar
 		dw .TM32,.RoarDyn00 : db $08,!AggroRex_Roar+1
 		dw .TM32X2,.RoarDyn01 : db $10,!AggroRex_Roar+2
@@ -604,11 +677,20 @@ AggroRex:
 		.WallXSpeed
 		db $10,$F0
 
+		.WallJumpSpeed
+		db $E0,$20
+
 		.SmokeX
 		db $08,$00
 
 		.IFrames
 		db $40,$60,$80
+
+		.DustOffset
+		db $0A,$FE
+
+		.TargetPlayer
+		db $00,$00,$80,$00
 
 
 	Hurt:
@@ -624,6 +706,6 @@ AggroRex:
 		RTS
 
 
-namespace off
+	namespace off
 
 

@@ -327,7 +327,6 @@ MoleWizard:
 
 
 	Contact:
-		LDA #$01 : STA !P2SenkuSmash-$80,y
 		LDA !P2Blocked-$80,y
 		AND #$04
 		BNE .Nope

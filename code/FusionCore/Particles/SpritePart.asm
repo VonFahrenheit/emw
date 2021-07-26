@@ -13,6 +13,7 @@
 		AND #$0002						; | oam size bit
 		STA !Particle_TileTemp+2				;/
 		JSR ParticleDrawSimple_BG1				; draw particle without ratio
+		JSR ParticleDespawn					; off-screen check
 		PLA : STA !Particle_Tile,x				; restore prop
 		RTS							; return
 

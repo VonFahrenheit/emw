@@ -88,7 +88,7 @@ EliteKoopa:
 		BCC .Erase
 		TYA
 		ORA #$40
-		STA !ClaimedGFX
+;		STA !ClaimedGFX
 		TXA
 		STA !DynamicTile+0,y
 		STA !DynamicTile+1,y
@@ -193,7 +193,7 @@ EliteKoopa:
 		AND #$03
 		BNE $02 : INY #2
 		LDA DATA_FireSpeed,y
-		JSL AIM_SHOT_Long
+		JSL AIM_SHOT
 		LDA $06 : STA $05
 		JSR Fire
 		BRA .NoFire
@@ -362,7 +362,7 @@ EliteKoopa:
 		TYA : STA $3320,x
 		JSR SetAim
 		LDA #$40
-		JSL AIM_SHOT_Long
+		JSL AIM_SHOT
 		LDA $04 : STA !ItemSpeedX
 		LDA $06 : STA !ItemSpeedY
 		LDA !Item

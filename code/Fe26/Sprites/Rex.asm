@@ -15,23 +15,37 @@ Rex:
 
 	namespace Rex
 
+	INIT:
+		JSL SUB_HORZ_POS
+		TYA : STA $3320,x
+		RTL
+
+
 	MAIN:
 		PHB : PHK : PLB
+		JSL SPRITE_OFF_SCREEN
 		LDA $9D : BEQ .Process
-	-	JMP GRAPHICS
+		JMP GRAPHICS
 
 		.Process
 		LDA $3230,x
 		CMP #$08 : BEQ PHYSICS
-		CMP #$02 : BEQ -
+		CMP #$02 : BNE .Return
+		LDA $BE,x : BNE .Graphics
+		LDA #$02 : STA $BE,x
+		LDA #!Rex_Hurt : STA !SpriteAnimIndex
+		STZ !SpriteAnimTimer
 
+		.Graphics
+		JMP GRAPHICS
+
+
+		.Return
 		PLB
-	INIT:
 		RTL
 
 
 	PHYSICS:
-
 		LDA !ExtraProp1,x					;\ check golden bandit mode
 		CMP #$FF : BNE .NotGolden				;/
 
@@ -105,14 +119,22 @@ Rex:
 		TAY
 		LDA !SpriteXSpeed,x
 		EOR DATA_XSpeed+4,y : BPL ..nosmoke
+		LDA $3330,x
+		AND #$04 : BEQ ..nosmoke
 		LDA $14
 		AND #$03 : BNE ..nosmoke
 		PHY
 		LDA #$04 : STA $00
 		LDA #$0C : STA $01
-		LDA #$03+!SmokeOffset : JSL SpawnExSprite_NoSpeed
+		LDA DATA_SmokeXSpeed,y : STA $02
+		STZ $03
+		STZ $04
+		STZ $05
+		LDA #$30 : STA $07
+		LDA #!prt_smoke8x8 : JSL SpawnParticle
 		PLY
 		..nosmoke
+
 		LDA DATA_XSpeed+4,y : JSL AccelerateX
 		LDA !SpriteAnimIndex
 		CMP #!Rex_Walk_over : BCS ..nospeed
@@ -124,7 +146,10 @@ Rex:
 		BRA ..nospeed
 		..nochase
 
+		LDA $3330,x
+		AND #$04 : BEQ ..nospeed
 		STZ !SpriteXSpeed,x
+		JSL GroundSpeed
 		LDA !SpriteAnimIndex
 		CMP #!Rex_Hurt : BCS ..nospeed
 		LDA !ExtraBits,x
@@ -134,10 +159,10 @@ Rex:
 		BEQ $02 : INY #2
 		LDA DATA_XSpeed,y : STA !SpriteXSpeed,x
 		..nospeed
-		LDA $3220,x : PHA
-		LDA $3250,x : PHA
 		LDA $3210,x : PHA
 		LDA $3240,x : PHA
+		LDA $3220,x : PHA
+		LDA $3250,x : PHA
 		LDA $3330,x
 		AND #$04 : PHA
 		JSL !SpriteApplySpeed
@@ -149,11 +174,19 @@ Rex:
 		LDA $3330,x
 		AND #$03 : BEQ ..noturn
 		..turn
-		PLA : STA $3240,x
-		PLA : STA $3210,x
 		PLA : STA $3250,x
 		PLA : STA $3220,x
-		LDA !RexChase,x : BNE ..turndone
+		LDA $3330,x
+		AND #$03 : BEQ ..fullrestore		; don't restore Y coordinate when hitting wall
+		LDA !RexChase,x : BNE ..noturn+2	; when chasing, rex will not flip
+		PLA : PLA				;\
+		STZ !SpriteXSpeed,x			; | just flip here (touching wall)
+		BRA ..flip				;/
+		..fullrestore
+		PLA : STA $3240,x
+		PLA : STA $3210,x
+		LDA !RexChase,x : BNE ..turndone	; does not flip when chasing
+		..flip
 		LDA $3320,x
 		EOR #$01
 		STA $3320,x
@@ -168,6 +201,20 @@ Rex:
 		CMP #!Rex_Dead : BEQ GRAPHICS
 		JSL !GetSpriteClipping04
 
+		.Attack
+		JSL P2Attack : BCC ..nocontact
+		LDA !P2Hitbox1XSpeed-$80,y : STA !SpriteXSpeed,x
+		LDA !P2Hitbox1YSpeed-$80,y : STA !SpriteYSpeed,x
+		LDA $BE,x : BEQ ..hurt
+	..kill	LDA #$02 : STA $3230,x
+		BRA ..inc
+	..hurt	LDA #!Rex_Hurt : STA !SpriteAnimIndex
+		STZ !SpriteAnimTimer
+	..inc	INC $BE,x
+		STZ $3330,x
+		BRA .Done
+		..nocontact
+
 		.Body
 		JSL P2Standard
 		BCC ..nocontact
@@ -178,21 +225,23 @@ Rex:
 	..set	STA !SpriteAnimIndex
 		STZ !SpriteAnimTimer
 		INC $BE,x
+		BRA .Done
 		..nocontact
 
-		.Attack
-		JSL P2Attack : BCC ..nocontact
-		LDA #$08 : JSL DontInteract
-		LDA !P2Hitbox1XSpeed-$80,y : STA !SpriteXSpeed,x
-		LDA !P2Hitbox1YSpeed-$80,y : STA !SpriteYSpeed,x
+		.Fireball
+		JSL FireballContact_Destroy : BCC ..nocontact
 		LDA $BE,x : BEQ ..hurt
 	..kill	LDA #$02 : STA $3230,x
 		BRA ..inc
-	..hurt	LDA #!Rex_Hurt
-		STA !SpriteAnimIndex
+	..hurt	LDA #!Rex_Hurt : STA !SpriteAnimIndex
 		STZ !SpriteAnimTimer
 	..inc	INC $BE,x
+		LDA $00 : STA !SpriteXSpeed,x
+		LDA #$E8 : STA !SpriteYSpeed,x
+		STZ $3330,x
 		..nocontact
+
+		.Done
 
 
 	GRAPHICS:
@@ -530,17 +579,17 @@ Rex:
 
 		.Bag2		; mushroom bindle
 		dw $0004
-		db $29,$07,$FE,$00
+		db $30,$07,$FE,$00
 		dw $0004
 		db $39,$0E,$F7,$01
 		..tilt1
 		dw $0004
-		db $29,$07,$FD,$00
+		db $30,$07,$FD,$00
 		dw $0004
 		db $39,$0E,$F6,$01
 		..tilt2
 		dw $0004
-		db $29,$08,$FD,$00
+		db $30,$08,$FD,$00
 		dw $0004
 		db $39,$0F,$F6,$01
 
@@ -689,15 +738,19 @@ Rex:
 		.XSpeed
 		db $08,$F8	; walk big
 		db $10,$F0	; walk small
-		db $18,$E8	; knight EASY
-		db $20,$E0	; knight NORMAL
-		db $24,$DC	; knight INSANE
+		db $10,$F0	; knight EASY
+		db $18,$E8	; knight NORMAL
+		db $20,$E0	; knight INSANE
+
+		.SmokeXSpeed
+		db $F8,$08
+		db $F4,$0C
+		db $F0,$10
 
 		.HatXSpeed
 		db $F8,$08
 
 
-
-namespace off
+	namespace off
 
 

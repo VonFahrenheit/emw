@@ -84,6 +84,20 @@
 		BCC .EndVert
 
 		.OffVert
+		LDA !Difficulty
+		AND #$03 : BNE ..die
+		JSL CORE_HURT
+		LDA !P2Status : BNE ..die
+		LDA !P2Character : BNE +	;\
+		LDA !MarioAnim			; | check if mario just died
+		CMP #$09 : BEQ ..die		;/
+	+	LDA #$80
+		LDX !P2Character
+		CPX #$01
+		BNE $02 : LDA #$98
+		STA !P2YSpeed
+		BRA .EndVert
+		..die
 		LDA #$02 : STA !P2Status
 		LDA !CurrentPlayer
 		INC A

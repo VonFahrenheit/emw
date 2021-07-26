@@ -3,8 +3,8 @@
 	PhysicsPlus:
 	pushpc
 	org $019032
-		JML .Main					;\ Source: JSR $ABD8 : LDY #$00
-		PLY						;/ (PLY will act as LDY #$00 but takes only 1 byte)
+		JML .Main					;\ source: JSR $ABD8 : LDY #$00
+		NOP						;/
 
 	org $019140
 		JSL .ExtraCollision				;\ org: STZ $7694 : STZ $3330,x
@@ -52,57 +52,9 @@
 	warnpc $01B4B2
 
 
-
-	pullpc
-	.Main
-		LDA !SpriteStasis,x : BNE .NoVectors		; > Don't update gravity or vectors during stasis
-		LDA !SpriteGravityTimer,x : BEQ .NormalGravity	;\
-		DEC !SpriteGravityTimer,x			; |
-		LDA !SpriteGravityMod,x				; | Apply gravity modifier
-		CLC : ADC $9E,x					; |
-		STA $9E,x					; |
-		.NormalGravity					;/
-
-		LDA $9E,x : PHA					;\ Backup speed regs
-		LDA $AE,x : PHA					;/
-		LDA !SpriteVectorTimerY,x : BEQ .ClearVectorY	;\
-		DEC !SpriteVectorTimerY,x			; |
-		BRA .VectorY					; |
-.ClearVectorY	STZ !SpriteVectorY,x				; |
-		STZ !SpriteVectorAccY,x				; | Vector Y
-.VectorY	LDA !SpriteVectorY,x : STA $9E,x		; |
-		LDA !SpriteVectorAccY,x				; |
-		CLC : ADC !SpriteVectorY,x			; |
-		STA !SpriteVectorY,x				;/
-		LDA !SpriteVectorTimerX,x : BEQ .ClearVectorX	;\
-		DEC !SpriteVectorTimerX,x			; |
-		BRA .VectorX					; |
-.ClearVectorX	STZ !SpriteVectorX,x				; |
-		STZ !SpriteVectorAccX,x				; | Vector X
-.VectorX	LDA !SpriteVectorX,x : STA $AE,x		; |
-		LDA !SpriteVectorAccX,x				; |
-		CLC : ADC !SpriteVectorX,x			; |
-		STA !SpriteVectorX,x				;/
-		JSL $01801A					;\ Apply vectors
-		JSL $018022					;/
-		PLA : STA $AE,x					;\ Restore speed regs
-		PLA : STA $9E,x					;/
-		.NoVectors
-
-
-		LDA !SpriteStasis,x : BEQ .NoStasis		;\
-		JML $019084					; | just skip the rest of this routine during stasis
-		.NoStasis					;/
-
-		TDC : PHA					; Push 0x00 on the stack
-		PEA.w $9036-1					; Return to $019036 (which is PLY [0x00 in all.log])
-		JML $01ABD8					; Faux JSR to $01ABD8 from $019036
-
-
-
-		.UpdateX
+macro UpdateX()
 		LDA $3220,x : STA $00
-		LDA !SpriteXSpeed,x : BEQ ..R
+		LDA !SpriteXSpeed,x : BEQ ?Return
 		ASL #4
 		CLC : ADC !SpriteXFraction,x
 		STA !SpriteXFraction,x
@@ -120,12 +72,13 @@
 		STA $3250,x
 		LDA $3220,x
 		SEC : SBC $00
-	..R	STA !SpriteDeltaX,x
-		JML .ReturnX
+	?Return:
+		STA !SpriteDeltaX,x
+endmacro
 
-		.UpdateY
+macro UpdateY()
 		LDA $3210,x : STA $00
-		LDA !SpriteYSpeed,x : BEQ ..R
+		LDA !SpriteYSpeed,x : BEQ ?Return
 		ASL #4
 		CLC : ADC !SpriteYFraction,x
 		STA !SpriteYFraction,x
@@ -143,7 +96,63 @@
 		STA $3240,x
 		LDA $3210,x
 		SEC : SBC $00
-	..R	STA !SpriteDeltaY,x
+	?Return:
+		STA !SpriteDeltaY,x
+endmacro
+
+
+
+	pullpc
+	.Main
+		LDA !SpriteStasis,x : BNE .NoVectors		; > don't update gravity or vectors during stasis
+
+		LDA !SpriteYSpeed,x : PHA			;\ backup speed regs
+		LDA !SpriteXSpeed,x : PHA			;/
+		LDA !SpriteVectorTimerY,x : BEQ .ClearVectorY	;\
+		DEC !SpriteVectorTimerY,x			; |
+		BRA .VectorY					; |
+.ClearVectorY	STZ !SpriteVectorY,x				; |
+		STZ !SpriteVectorAccY,x				; | vector Y
+.VectorY	LDA !SpriteVectorY,x : STA !SpriteYSpeed,x	; |
+		LDA !SpriteVectorAccY,x				; |
+		CLC : ADC !SpriteVectorY,x			; |
+		STA !SpriteVectorY,x				;/
+		LDA !SpriteVectorTimerX,x : BEQ .ClearVectorX	;\
+		DEC !SpriteVectorTimerX,x			; |
+		BRA .VectorX					; |
+.ClearVectorX	STZ !SpriteVectorX,x				; |
+		STZ !SpriteVectorAccX,x				; | vector X
+.VectorX	LDA !SpriteVectorX,x : STA !SpriteXSpeed,x	; |
+		LDA !SpriteVectorAccX,x				; |
+		CLC : ADC !SpriteVectorX,x			; |
+		STA !SpriteVectorX,x				;/
+		JSL $01801A					;\ apply vectors
+		JSL $018022					;/
+		PLA : STA !SpriteXSpeed,x			;\ restore speed regs
+		PLA : STA !SpriteYSpeed,x			;/
+		.NoVectors
+
+		LDA !SpriteStasis,x : BEQ .NoStasis		;\
+		JML $019084					; | just skip the rest of this routine during stasis
+		.NoStasis					;/
+
+		%UpdateY()					; overwritten code
+		LDA !SpriteGravityTimer,x : BEQ .NormalGravity	;\
+		DEC !SpriteGravityTimer,x			; |
+		LDA !SpriteGravityMod,x				; | apply gravity modifier
+		CLC : ADC !SpriteYSpeed,x			; |
+		STA !SpriteYSpeed,x				; |
+		.NormalGravity					;/
+		LDY #$00					; overwritten code
+		JML $019037					; return
+
+
+		.UpdateX
+		%UpdateX()
+		JML .ReturnX
+
+		.UpdateY
+		%UpdateY()
 		JML .ReturnY
 
 

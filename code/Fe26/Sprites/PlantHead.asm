@@ -1,3 +1,4 @@
+
 PlantHead:
 
 	namespace PlantHead
@@ -15,7 +16,7 @@ PlantHead:
 
 	INIT:
 		PHB : PHK : PLB
-		LDA !GFX_status+$06 : STA !ClaimedGFX
+;		LDA !GFX_status+$06 : STA !ClaimedGFX
 
 		LDA !ExtraBits,x
 		AND #$04 : BEQ .NoAlt
@@ -112,7 +113,7 @@ PlantHead:
 		BCC .Erase
 		TYA
 		ORA #$40
-		STA !ClaimedGFX
+;		STA !ClaimedGFX
 		TXA
 		STA !DynamicTile+0,y
 		STA !DynamicTile+1,y
@@ -317,7 +318,7 @@ PlantHead:
 		LDA #$0F : STA !Ex_Data2,y			;\ Destroy fireball
 		LDA #$01+!ExtendedOffset : STA !Ex_Num,y	;/
 	.Kill	JSR DestroyPlant
-		BRA ++
+		BRA +
 		.NoFireball
 
 		PHX
@@ -332,18 +333,9 @@ PlantHead:
 		DEX : BPL -
 		PLX
 
-		SEC : JSL !PlayerClipping		; interact with players
-		BCC ++
-		PHA
+		SEC : JSL !PlayerClipping : BCC +	; interact with players
 		JSL !HurtPlayers
-		PLA
-		LSR A : BCC +
-		PHA
-		LDA #$01 : STA !P2SenkuSmash-$80
-		PLA
-		LSR A : BCC ++
-	+	LDA #$01 : STA !P2SenkuSmash
-	++
+		+
 
 
 ;

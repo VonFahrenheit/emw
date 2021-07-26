@@ -12,6 +12,7 @@
 	!ConjurexMask		= $3290
 	!ConjurexAmmo		= $32A0
 	!ConjurexMaxAmmo	= $32B0
+	!ConjurexIFrames	= $32C0
 
 
 Conjurex:
@@ -21,6 +22,9 @@ Conjurex:
 
 	INIT:
 		PHB : PHK : PLB
+
+		JSL SUB_HORZ_POS
+		TYA : STA $3320,x
 
 		LDA !RNG
 		AND #$1F
@@ -33,27 +37,33 @@ Conjurex:
 		STA !ConjurexMaxAmmo,x
 		STA !ConjurexAmmo,x
 
+		LDA #$60 : STA $32D0,x
+
+		LDA #!palset_special_flash_caster : JSL LoadPalset	; load this palset right away
+
 		PLB
 		RTL
 
 
 	MAIN:
 		PHB : PHK : PLB
-
+		JSL SPRITE_OFF_SCREEN
 		LDA $9D : BEQ .Process
-		JMP GRAPHICS
+		JMP GRAPHICS_HandleUpdate
 
 		.Process
 
 		%decreg(!ConjurexPushback)
+		%decreg(!ConjurexIFrames)
 
 		LDA $3230,x
 		CMP #$08 : BEQ PHYSICS
 		CMP #$02 : BNE .Return
 		LDA #!Conjurex_Hurt : STA !SpriteAnimIndex
+		STZ !SpriteAnimTimer
 		STZ $32D0,x
 		LDA #$02 : STA $BE,x
-		JMP GRAPHICS
+		JMP GRAPHICS_HandleUpdate
 
 		.Return
 		PLB
@@ -75,6 +85,7 @@ Conjurex:
 		ORA #$C0					; |
 		STA $32D0,x					;/
 
+		LDA #$10 : STA !SPC1				; cast SFX
 		LDY $3320,x
 		LDA DATA_CastX,y : STA $00
 		LDA #$FC : STA $01
@@ -83,21 +94,29 @@ Conjurex:
 		SEC : LDA #$07
 		JSL SpawnSprite
 		CPY #$FF : BEQ ..nocast
-		LDA #$10 : STA !SPC1				; cast SFX
-		LDA #$08 : STA $3230,y
-		LDA #$08 : STA $3300,y				; > don't interact with sprites for 8 frames
-		LDA #$3C : STA $32D0,y				; > life timer (1 sec)
-		LDA #$82 : STA.w $BE,y				; > behavior (line + anim)
-		LDA #$03 : STA $33E0,y				; > number of frames (3)
-		LDA #$05 : STA $3310,y				; > animation frequency
-		LDA #$45					;\
-		CLC : ADC !SpriteTile,x				; | base tile
-		STA $33D0,y					;/
-		LDA $33C0,x					;\
-		ORA !SpriteProp,x				; | prop
-		ORA #$30					; |
+		LDA #$08 : STA $3230,y				; state = 8
+		LDA !SpriteTile,x				;\
+		CLC : ADC #$45					; | tile options
+		STA !SpriteTile,y				; |
+		LDA !SpriteProp,x : STA !SpriteProp,y		;/
+		LDA.w !SpriteXSpeed,y				;\
+		LSR A						; |
+		AND #$40					; | prop options
+		ORA #$3A					; |
 		STA $33C0,y					;/
-		LDA #$01 : STA $3410,y				; ???
+		LDA #$00 : STA !ProjectileType,y		; type 0 with no collision
+		LDA #$32 : STA !ProjectileAnimType,y		; end particle pattern, OAM prio 3
+		LDA #$03*2 : STA !ProjectileAnimFrames,y	; 3 anim frames (16x16)
+		LDA #$06 : STA !ProjectileAnimTime,y		; 6 frames per anim frame
+		LDA #$00 : STA !ProjectileGravity,y		; no gravity
+		LDA #$40 : STA !ProjectileTimer,y		; timer = 64 frames
+		LDA #!prt_basic : STA !ProjectilePrtNum,y	; particle type = basic
+		LDA !SpriteProp,x				;\
+		ORA #$2A					; |
+		STA !ProjectilePrtProp,y			; | particle settings
+		LDA !SpriteTile,x				; |
+		CLC : ADC #$5F					; |
+		STA !ProjectilePrtTile,y			;/
 
 		LDY $3320,x
 		LDA DATA_Recoil,y : STA !SpriteXSpeed,x
@@ -113,7 +132,10 @@ Conjurex:
 
 
 		.Speed
+		LDA !SpriteAnimIndex
+		CMP #!Conjurex_Hurt : BEQ ..hurt
 		LDA !ConjurexPushback,x : BEQ ..nothurt
+		..hurt
 		LDA $3330,x
 		AND #$04 : BEQ ..nospeed
 		JSL AccelerateX_Friction1
@@ -122,7 +144,10 @@ Conjurex:
 		CMP #$10 : BCC ..nospeed
 		LDA $14
 		AND #$03 : BNE ..nospeed
-		LDY $3320,x
+		LDA !SpriteXSpeed,x
+		ROL #2
+		AND #$01
+		TAY
 		LDA DATA_DustOffset,y : STA $00
 		LDA #$0C : STA $01
 		REP #$20
@@ -174,19 +199,36 @@ Conjurex:
 
 		JSL !GetSpriteClipping04
 
+		.Attack
+		LDA !ConjurexIFrames,x : BNE ..nocontact
+		JSL P2Attack : BCC ..nocontact
+		PHY
+		JSR Hurt
+		PLY
+		LDA !P2Hitbox1XSpeed-$80,y : STA !SpriteXSpeed,x
+		LDA !P2Hitbox1YSpeed-$80,y : STA !SpriteYSpeed,x
+		STZ $3330,x
+		..nocontact
+
 		.Body
 		JSL P2Standard
 		BCC ..nocontact
 		BEQ ..nocontact
-		JSR Hurt
+		LDA !ConjurexIFrames,x : BNE ..nocontact
+		LDA $3230,x
+		CMP #$04 : BNE +
+		PLB
+		RTL
+	+	JSR Hurt
 		..nocontact
 
-		.Attack
-		JSL P2Attack : BCC ..nocontact
-		LDA #$08 : JSL DontInteract
-		LDA !P2Hitbox1XSpeed-$80,y : STA !SpriteXSpeed,x
-		LDA !P2Hitbox1YSpeed-$80,y : STA !SpriteYSpeed,x
+		.Fireball
+		LDA !ConjurexIFrames,x : BNE ..nocontact
+		JSL FireballContact_Destroy : BCC ..nocontact
 		JSR Hurt
+		LDA $00 : STA !SpriteXSpeed,x
+		LDA #$E8 : STA !SpriteYSpeed,x
+		STZ $3330,x
 		..nocontact
 
 
@@ -244,6 +286,14 @@ Conjurex:
 		LDA #$00
 		.SameAnim
 		STA !SpriteAnimTimer
+
+
+		CPY.b #(!Conjurex_Hurt)*4 : BEQ .Draw
+		LDA !ConjurexIFrames,x
+		AND #$02 : BEQ .Draw
+		PLB
+		RTL
+
 
 		.Draw
 		LDA #$0A : STA $33C0,x
@@ -318,7 +368,7 @@ Conjurex:
 		dw .PushbackTM01 : db $06,!Conjurex_Pushback+2
 		dw .PushbackTM02 : db $06,!Conjurex_Pushback+0
 	; hurt
-		dw .HurtTM00 : db $FF,!Conjurex_Hurt
+		dw .HurtTM00 : db $1F,!Conjurex_Walk+0
 
 
 	.WalkTM00
@@ -513,10 +563,23 @@ Conjurex:
 
 
 	Hurt:
+		LDA !Difficulty
+		AND #$03
+		TAY
+		LDA DATA_IFrames,y : STA !ConjurexIFrames,x
+
 		LDA $BE,x : BEQ +
 		LDA #$02 : STA $3230,x
+		LDY $3320,x
+		LDA DATA_MaskXSpeed,y : STA !SpriteXSpeed,x
+		LDA #$D0 : STA !SpriteYSpeed,x
 	+	INC $BE,x
+		LDA #!Conjurex_Hurt : STA !SpriteAnimIndex
+		STZ !SpriteAnimTimer
+		LDA #$50 : STA $32D0,x
+		LDA !ConjurexMaxAmmo,x : STA !ConjurexAmmo,x
 		RTS
+
 
 
 	DropMask:
@@ -556,13 +619,17 @@ Conjurex:
 		db $20,$E0
 
 		.Ammo
-		db $03,$03,$03
+		db $01,$02,$03
+
+		.IFrames
+		db $40,$60,$80
 
 		.Recoil
 		db $EC,$14
 
 		.DustOffset
-		db $FE,$0A
+		db $0A,$FE
+
 
 		.MaskTile
 		db $04,$04,$04,$04
@@ -578,7 +645,7 @@ Conjurex:
 
 
 
-namespace off
+	namespace off
 
 
 

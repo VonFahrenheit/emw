@@ -61,7 +61,6 @@ SpinySpecial:
 		PEA.w .NoContact-1
 
 		.Interact
-		LDA #$01 : STA !P2SenkuSmash-$80,y
 	;	JSL CheckCrush_Long : BCC ..Hurt
 		LDA #$02 : STA !SPC1
 		JSL P2Bounce

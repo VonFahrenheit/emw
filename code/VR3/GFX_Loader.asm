@@ -1,4 +1,8 @@
 
+; this file has codes for loading GFX and tilemaps for level INIT
+; codes are NOT part of INIT, but run before it
+
+
 
 	!SourceIndex	= $03
 	!OutputIndex	= $05
@@ -61,7 +65,6 @@
 		AND #$00FF					; | $06 = VRAM map mode
 		STA $06						;/
 
-
 		LDA [$03],y					;\
 		AND #$0FFF					; |
 		CMP #$007F : BEQ .NoAN2				; |
@@ -76,7 +79,6 @@
 		LDA #$02 : STA $420B				; |
 		REP #$20					; |
 		.NoAN2						;/
-
 
 		PHX						;\ push X/Y
 		PHY						;/
@@ -372,6 +374,14 @@
 		PHP						;\
 		SEP #$20					; | reg setup
 		REP #$10					;/
+
+		LDX !Level					;\
+		LDA.l !Layer2Type,x				; |
+		AND #$02 : BNE ..decomp				; | skip decompression (which would fail anyway) if layer 2 level
+		PHB						; |
+		BRA .End					;/
+
+		..decomp
 		LDY.w #!DecompBuffer : STY $0D			;\ pointer to output location
 		LDA.b #!DecompBuffer>>16 : STA $0F		;/
 		LDX #$0000					;\
@@ -432,6 +442,15 @@
 	pullpc
 	.GetTilemap
 		PEI ($08)					; preserve $08
+
+		REP #$20					;\
+		LDA.l !Level : TAX				; |
+		SEP #$20					; | skip upload if layer 2 level
+		LDA.l !Layer2Type,x				; |
+		AND #$02 : BNE ..getmap16			; |
+		JMP ..killmap16					;/
+
+		..getmap16
 		LDA.b #!BG2Tilemap>>16 : PHA			; push output bank
 		REP #$30					;\
 		LDA.l !Level : TAX				; |
@@ -478,17 +497,17 @@
 	+	STX !OutputIndex				;/
 		CPX #$2000 : BCC -				; loop until 8KB of data has been transcribed
 
-
-		LDA #$0025 : STA $40C800			;\
-		LDA #$0000 : STA $41C800			; |
+		..killmap16					;\
 		REP #$30					; |
+		LDA #$0025 : STA $40C800			; |
+		LDA #$0000 : STA $41C800			; |
 		LDX #$C800					; |
 		LDY #$C801					; | set all map16 tiles to 0x025 (air)
-		LDA #$3800					; |
+		LDA #$37FF					; |
 		MVN $40,$40					; |
 		LDX #$C800					; |
 		LDY #$C801					; |
-		LDA #$3800					; |
+		LDA #$37FF					; |
 		MVN $41,$41					;/
 
 		PLA : STA $08					; restore $08
@@ -513,11 +532,10 @@
 
 	.UploadGraphics
 		SEP #$30					; all regs 8-bit
-		LDA.b #..SA1 : STA $3180			;\
-		LDA.b #..SA1>>8 : STA $3181			; |wait for SA-1 to get data
-		LDA.b #..SA1>>16 : STA $3182			; |
+		LDA.b #.BG1_SA1 : STA $3180			;\
+		LDA.b #.BG1_SA1>>8 : STA $3181			; | wait for SA-1 to get data
+		LDA.b #.BG1_SA1>>16 : STA $3182			; |
 		JSR $1E80					;/
-
 
 	; setup
 		LDA.b #!DecompBuffer>>16 : STA $4314		; source bank
@@ -527,60 +545,28 @@
 		LDX #$02					; X = DMA bit
 
 	; BG1
-		LDA.w #!DecompBuffer : STA $4312		; source address for block 1
+		LDA.w #!DecompBuffer : STA $4312
+		LDA #$1000 : STA $4315
+		STX $420B
 
-		LDA $1A						;\
-		AND #$0100					; > which tilemap to use
-		ASL #2						; |
-		STA $00						; |
-		LDA $1C						; | VRAM address
-		AND #$00F8					; |
-		ASL #2						; > offset from vertical scroll
-		STA $02						; > store this to use for size calc
-		ADC $00						; |
-		ADC !BG1Address					; > offset from tilemap location
-		STA $2116					;/
-		STA $04						; $04 = VRAM address for BG1 block 1
-		LDA #$0400					;\
-		SEC : SBC $02					; |
-		ASL A						; | upload BG1 block 1
-		STA $4315					; |
-		STA $06						; > $06 = size for BG1 block 1
-		STX $420B					;/
-		LDA $02 : BEQ +					;\
-		ASL A						; |
-		STA $4315					; |
-		STA $08						; > $08 = size for BG1 block 2
-		LDA $1A						; |
-		AND #$0100					; | upload BG1 block 2
-		ASL #2						; |
-		ADC !BG1Address					; |
-		STA $2116					; |
-		STX $420B					;/
-	+	LDA.w #!DecompBuffer+$800 : STA $4312		; source address for second tilemap
-		LDA $04						;\
-		CLC : ADC #$0400				; |
-		STA $2116					; |
-		LDA $06 : STA $4315				; |
-		STX $420B					; |
-		LDA $02 : BEQ +					; |
-		LDA $08 : STA $4315				; | upload second tilemap
-		LDA $1A						; |
-		AND #$0100					; |
-		EOR #$0100					; |
-		ASL #2						; |
-		ADC !BG1Address					; |
-		STA $2116					; |
-		STX $420B					;/
-		+
+
 
 	; BG2
+		REP #$10					;\
+		LDX !Level					; |
+		LDA.l !Layer2Type,x				; | determine layer 2 type
+		SEP #$10					; > index 8-bit
+		LDX #$02					; > X = DMA bit
+		AND #$0002 : BNE .BG2background			;/
+		JMP .BG2level					; get level data
+
+		.BG2background
 		LDY.b #!BG2Tilemap>>16 : STY $4314		; bank
 		LDA !BG2Address : STA $2116			; start of BG2
 		LDA $20						;\
 		SEC : SBC #$0010				; | see if simple or multi upload is needed
-		AND #$00F8 : BNE ..Multi			;/
-		..Simple					;\
+		AND #$00F8 : BNE ..multi			;/
+		..simple					;\
 		LDA $20						; |
 		SEC : SBC #$0010				; |
 		AND #$0100					; |
@@ -600,7 +586,7 @@
 		SEP #$20					;\ return
 		JML .ReturnGraphics				;/
 
-		..Multi
+		..multi
 		LDA $20						;\
 		SEC : SBC #$0010				; |
 		AND #$01F8					; |
@@ -642,12 +628,13 @@
 		JML .ReturnGraphics				;/
 
 
-		..SA1
+	.BG1_SA1
 		PHB : PHK : PLB					;\ wrapper start
 		PHP						;/
+
 		REP #$30					;\
 		LDA $1C						; |
-		AND #$FFF0					; |
+		AND #$FF00					; |
 		STA $00						; |
 		SEP #$10					; |
 		LDA #$0000					; | starting map16 index
@@ -656,25 +643,81 @@
 		DEY : BNE -					; |
 	+	CLC : ADC $00					; |
 		STA $00						;/
-		PHA						;\
-		REP #$10					; | get data for first tilemap
-		LDY #$0000					; |
-		JSR ..Loop					;/
-		PLA						;\
-		CLC : ADC !LevelHeight				; | get data for second tilemap
+		PHA						; push (start of snap screen)
+		REP #$10					; index 16-bit
+		LDA $1C						;\
+		AND #$00F0					; | $00 = start of tilemap 1
+		CLC : ADC $00					; |
+		STA $00						;/
+
+		LDA $1A						;\
+		AND #$0100					; | swap tilemap locations on odd screens
+		BEQ $03 : LDA #$0800				; |
+		STA $02						;/
+		LDA $1C						;\
+		AND #$00F0					; |
+		ASL #3						; |
+		ADC $02						; |
+		TAY						; | get tilemap 1
+		LDA $02						; |
+		CLC : ADC #$0800				; |
+		STA !BigRAM+0					; |
+		JSR ..loop					;/
+		LDA $1C						;\
+		AND #$00F0 : BEQ ..tilemap1done			; |
+		ASL #3						; |
+		ADC $02						; |
+		STA !BigRAM+0					; |
+		LDY $02						; | complement tilemap 1
+		LDA $01,s					; |
+		CLC : ADC #$0100				; |
 		STA $00						; |
-		JSR ..Loop					;/
+		JSR ..loop					; |
+		..tilemap1done					;/
+
+		LDA $02						;\
+		EOR #$0800					; | swap tilemaps between 1 and 2
+		STA $02						;/
+		LDA $1C						;\
+		AND #$00F0					; |
+		CLC : ADC $01,s					; |
+		CLC : ADC !LevelHeight				; |
+		STA $00						; |
+		LDA $1C						; |
+		AND #$00F0					; | get tilemap 2
+		ASL #3						; |
+		ADC $02						; |
+		TAY						; |
+		LDA $02						; |
+		CLC : ADC #$0800				; |
+		STA !BigRAM+0					; |
+		JSR ..loop					;/
+		PLA						;\
+		CLC : ADC !LevelHeight				; | pull and prepare final loop
+		CLC : ADC #$0100				; |
+		STA $00						;/
+		LDA $1C						;\
+		AND #$00F0 : BEQ ..tilemap2done			; |
+		ASL #3						; |
+		ADC $02						; | complement tilemap 2
+		STA !BigRAM+0					; |
+		LDY $02						; |
+		JSR ..loop					; |
+		..tilemap2done					;/
+
+		..return
 		PLP						;\ wrapper end
 		PLB						;/
 		RTL						; return
 
-	..Loop	SEP #$20					;\
+		..loop						;\
+		SEP #$20					; |
 		LDX $00						; |
 		LDA $41C800,x : XBA				; |
 		LDA $40C800,x					; | get 16-bit map16 tile number
 		INX						; |
-		STX $00						; |
 		REP #$20					; |
+		STX $00						; |
 		ASL A						;/
 		PHY						;\
 		PHP						; |
@@ -693,14 +736,13 @@
 		TXY						;\
 		TYA						; |
 		CLC : ADC #$0004				; |
-		AND #$003F : BNE ..Same				; | increment !DecompBuffer index
-	..New	TYA						; |
+		AND #$003F : BNE ..same				; | increment !DecompBuffer index
+	..new	TYA						; |
 		CLC : ADC #$0040				; |
 		TAY						; |
-	..Same	INY #4						;/
-		CPY #$0800 : BEQ ..End				;\ loop
-		CPY #$1000 : BNE ..Loop				;/
-	..End	RTS						; return
+	..same	INY #4						;/
+		CPY !BigRAM+0 : BCC ..loop			;\ loop
+		RTS						; return
 
 
 
@@ -708,6 +750,151 @@
 
 
 
+	.BG2level
+		SEP #$30					; all regs 8-bit
+		LDA.b #.BG2_SA1 : STA $3180			;\
+		LDA.b #.BG2_SA1>>8 : STA $3181			; | wait for SA-1 to get data
+		LDA.b #.BG2_SA1>>16 : STA $3182			; |
+		JSR $1E80					;/
+
+		REP #$20					; A 16-bit
+		LDA !BG2Address : STA $2116			; VRAM address = start of BG2 tilemap
+		LDA.w #!DecompBuffer : STA $4312
+		LDA #$1000 : STA $4315
+		LDX #$02 : STX $420B
+
+		SEP #$30
+		JML .ReturnGraphics				; return
+
+
+
+	.BG2_SA1
+		PHB : PHK : PLB					;\ wrapper start
+		PHP						;/
+
+		REP #$30					;\
+		LDA $20						; |
+		AND #$FF00					; |
+		STA $00						; |
+		SEP #$10					; |
+		LDA #$0000					; | starting map16 index
+		LDY $1F : BEQ +					; |
+	-	CLC : ADC !LevelHeight				; |
+		DEY : BNE -					; |
+	+	CLC : ADC $00					; |
+		STA $00						;/
+		REP #$10					; index 16-bit
+		LDA $20						;\
+		AND #$00F0					; | $00 = start of tilemap 1
+		CLC : ADC $00					; |
+		STA $00						;/
+		STZ $2250					; set up multiplication
+		LDA !LevelHeight : STA $2251			;\
+		LDA $5D						; | width * height = size of layer 1 data
+		AND #$00FF					; | (height is in px, so no need for *16)
+		STA $2253					;/
+		LSR A : BCC +					;\
+		LDA !LevelHeight				; | on odd-screened levels, add height (already *16 since it's in px)
+		BRA ++						;/
+	+	LDA #$0000					; on even-screened levels, layer 2 starts at the end of layer 1
+	++	CLC : ADC $2306					;\
+		CLC : ADC $00					; | starting index for layer 2
+		STA $00						;/
+		PHA						; push (start of snap screen)
+
+		LDA $1E						;\
+		AND #$0100					; | swap tilemap locations on odd screens
+		BEQ $03 : LDA #$0800				; |
+		STA $02						;/
+		LDA $20						;\
+		AND #$00F0					; |
+		ASL #3						; |
+		ADC $02						; |
+		TAY						; | get tilemap 1
+		LDA $02						; |
+		CLC : ADC #$0800				; |
+		STA !BigRAM+0					; |
+		JSR ..loop					;/
+		LDA $20						;\
+		AND #$00F0 : BEQ ..tilemap1done			; |
+		ASL #3						; |
+		ADC $02						; |
+		STA !BigRAM+0					; |
+		LDY $02						; | complement tilemap 1
+		LDA $01,s					; |
+		CLC : ADC #$0100				; |
+		STA $00						; |
+		JSR ..loop					; |
+		..tilemap1done					;/
+
+		LDA $02						;\
+		EOR #$0800					; | swap tilemaps between 1 and 2
+		STA $02						;/
+		LDA $20						;\
+		AND #$00F0					; |
+		CLC : ADC $01,s					; |
+		CLC : ADC !LevelHeight				; |
+		STA $00						; |
+		LDA $20						; |
+		AND #$00F0					; | get tilemap 2
+		ASL #3						; |
+		ADC $02						; |
+		TAY						; |
+		LDA $02						; |
+		CLC : ADC #$0800				; |
+		STA !BigRAM+0					; |
+		JSR ..loop					;/
+		PLA						;\
+		CLC : ADC !LevelHeight				; | pull and prepare final loop
+		CLC : ADC #$0100				; |
+		STA $00						;/
+		LDA $20						;\
+		AND #$00F0 : BEQ ..tilemap2done			; |
+		ASL #3						; |
+		ADC $02						; | complement tilemap 2
+		STA !BigRAM+0					; |
+		LDY $02						; |
+		JSR ..loop					; |
+		..tilemap2done					;/
+
+		..return
+		PLP						;\ wrapper end
+		PLB						;/
+		RTL						; return
+
+		..loop						;\
+		SEP #$20					; |
+		LDX $00						; |
+		LDA $41C800,x : XBA				; |
+		LDA $40C800,x					; | get 16-bit map16 tile number
+		INX						; |
+		REP #$20					; |
+		STX $00						; |
+		ASL A						;/
+		PHY						;\
+		PHP						; |
+		JSL $06F540					; | get pointer to map16 tilemap data
+		PLP						; |
+		PLX						;/ > pull Y with X to index !DecompBuffer
+		STA $0A						;\ prepare to read pointer
+		LDY #$0000					;/
+		LDA [$0A],y : STA !DecompBuffer+$00,x		;\
+		LDY #$0002					; |
+		LDA [$0A],y : STA !DecompBuffer+$40,x		; |
+		LDY #$0004					; | get map16 tilemap data
+		LDA [$0A],y : STA !DecompBuffer+$02,x		; |
+		LDY #$0006					; |
+		LDA [$0A],y : STA !DecompBuffer+$42,x		;/
+		TXY						;\
+		TYA						; |
+		CLC : ADC #$0004				; |
+		AND #$003F : BNE ..same				; | increment !DecompBuffer index
+	..new	TYA						; |
+		CLC : ADC #$0040				; |
+		TAY						; |
+	..same	INY #4						;/
+		CPY !BigRAM+0 : BCC ..loop			;\ loop
+		RTS						; return
 
 
 

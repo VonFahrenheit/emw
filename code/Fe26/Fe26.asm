@@ -234,6 +234,13 @@ endmacro
 
 
 
+	; patch out fire flower (turns into mushroom)
+	org $01C349				; fire flower code:
+		LDA #$74 : STA !SpriteNum,x	; org: LDA $14 : AND #$04 : LSR A
+		LDA #$08 : STA $33C0,x		; org: LSR #2 : STA $3320,x
+	warnpc $01C353
+
+
 	; Walk-off fix
 	org $019466
 		JML WalkOff_VertY		; > Org: CMP $5D : BCS $4A ($0194B4)
@@ -336,10 +343,12 @@ MainSpriteLoop:
 
 
 		.Main
-		PHB : PHK : PLB
+		PHB
 
+		LDA.b #!PlatformData>>16		;\ addr access
+		PHA : PLB				;/
 
-		LDA #$00 : STA !PlatformExists		; clear platform flag
+		STZ.w !PlatformExists			; clear platform flag
 		%ClearPlatform($00)			;\
 		%ClearPlatform($01)			; |
 		%ClearPlatform($02)			; |
@@ -356,9 +365,36 @@ MainSpriteLoop:
 		%ClearPlatform($0D)			; |
 		%ClearPlatform($0E)			; |
 		%ClearPlatform($0F)			;/
+		STZ.w !ShieldExists			; clear shield flag
+		REP #$20				;\
+		%ClearShield($00)			; |
+		%ClearShield($00)			; |
+		%ClearShield($00)			; |
+		%ClearShield($00)			; |
+		%ClearShield($00)			; |
+		%ClearShield($00)			; |
+		%ClearShield($00)			; | clear shield boxes
+		%ClearShield($00)			; |
+		%ClearShield($00)			; |
+		%ClearShield($00)			; |
+		%ClearShield($00)			; |
+		%ClearShield($00)			; |
+		%ClearShield($00)			; |
+		%ClearShield($00)			; |
+		%ClearShield($00)			; |
+		%ClearShield($00)			; |
+		SEP #$20				;/
 
+		PHK : PLB				; get program bank
 
-		JSR LoadSpriteFromLevel			; spawn sprites on the edges of the screen
+		LDA !GameMode				;\
+		CMP #$14 : BNE .Load			; | > ignore camera in game modes other than 0x14
+		LDA !BG1_X_Delta			; |
+		ORA !BG1_Y_Delta			; | spawn sprites on the edges of the screen
+		BEQ .NoLoad				; | (but only if the camera has moved this frame)
+		.Load					; |
+		JSR LoadSpriteFromLevel			; |
+		.NoLoad					;/
 
 		LDA #$01 : STA !ProcessingSprites	; set processing sprites flag
 
@@ -381,15 +417,17 @@ MainSpriteLoop:
 		AND #$08						; | for vanilla sprites, OAM index has to be 0, but for custom sprites this is a free reg
 		BNE $03 : STZ $33B0,x					;/
 		LDA $3230,x : BNE .WantToProcess			; check if sprite exists
-		STZ $3200,x						;\
+		LDA $3200,x						;\
+		CMP #$FF : BEQ .Return					; |
+		JSL Erase						; |
+		LDA #$FF : STA $3200,x					; |
 		STZ !ExtraBits,x					; |
 		STZ !NewSpriteNum,x					; | if it doesn't, clear these regs
-		STZ !ExtraProp1,x					; | (ID will automatically be set to 0xFF later)
+		STZ !ExtraProp1,x					; |
 		STZ !ExtraProp2,x					; | there might be a bug if a sprite slot is cleared and reused on the same frame
-		BRA .NoDec						;/
+		BRA .Return						;/
 
 	.WantToProcess
-		LDA $9D : BNE .NoDec
 		%decreg($32D0)			; main timer
 		%decreg($32F0)			; sinking timer
 		%decreg($3300)			; sprite interaction disable timer
@@ -405,7 +443,27 @@ MainSpriteLoop:
 		PEA.w $80CA-1			; RTS address: $80CA ($0180CA points to RTL)
 		JMP HandleStatus
 
+
 		.Return
+		LDA $3230,x
+		CMP #$09 : BEQ ..item
+		CMP #$0B : BNE ..notitem
+		..item
+		JSL !GetSpriteClipping04
+		LDA $05
+		SEC : SBC #$02
+		STA $05
+		BCS $02 : DEC $0B
+		INC $07
+		INC $07
+		LDA $3330,x
+		AND #$04 : BNE +
+		LDA #$04 : BRA ++
+	+	LDA #$07
+	++	JSL OutputPlatformBox
+		..notitem
+
+
 		; sort OAM here, right after the sprite was processed
 		; legacy hi prio goes into prio 2
 		; legacy lo prio goes into prio 1
@@ -1181,11 +1239,11 @@ endmacro
 
 
 	Erase:
-	; I-RAM tables
+		.IRAM
 		STZ $9E,x				;\ speed
 		STZ $AE,x				;/
 		STZ $BE,x				; misc
-	;	STZ $3200,x				; sprite number
+	;	STZ $3200,x				; sprite num
 	;	STZ $3210,x				; Ypos lo
 	;	STZ $3220,x				; Xpos lo
 	;	STZ $3230,x				; sprite status
@@ -1250,7 +1308,7 @@ endmacro
 		STZ $35E0,x				; misc (unused by vanilla)
 		STZ $35F0,x				; P2 interaction disable timer
 
-	; BWRAM tables:
+		.BWRAM
 		STZ $74D0,x				; PhysicsPlus: stasis timer
 		STZ $74E0,x				; PhysicsPlus: phase timer
 		STZ $74F0,x				; PhysicsPlus: gravity modifier
@@ -1262,6 +1320,17 @@ endmacro
 		STZ $7550,x				; PhysicsPlus: vector timer Y
 		STZ $7560,x				; PhysicsPlus: vector timer X
 		STZ $7570,x				; PhysicsPlus: extra collision
+
+		.DynamicList
+		PHX
+		TXA
+		ASL A
+		TAX
+		REP #$20
+		LDA !DynamicList+0,x : TRB !DynamicTile+0
+		STZ !DynamicList+0,x
+		SEP #$20
+		PLX
 		RTL
 
 
@@ -1342,38 +1411,38 @@ endmacro
 
 
 	HandleStatus:
-		SEP #$20
-		LDA #$01 : PHA : PLB
-		LDA !GameMode
-		CMP #$14 : BNE +
-		LDA $3230,x : BEQ +
-		LDA !DizzyEffect : BEQ +
-		REP #$20
-		LDA !CameraBackupY : STA $1C
-		SEP #$20
-		LDA $3250,x : XBA
-		LDA $3220,x
-		REP #$20
-		SEC : SBC $1A
-		AND #$00FF
-		LSR #3
-		ASL A
-		PHX
-		TAX
-		LDA !DecompBuffer+$1040,x
-		AND #$01FF
-		CMP #$0100
-		BCC $03 : ORA #$FE00
-		STA $1C
-		PLX
-		SEP #$20
-		+
+		SEP #$20				; A 8-bit
+		LDA #$01 : PHA : PLB			; bank = 0x01
+		LDA !GameMode				;\
+		CMP #$14 : BNE .DizzyDone		; | check for dizzy effect
+		LDA $3230,x : BEQ .DizzyDone		; |
+		LDA !DizzyEffect : BEQ .DizzyDone	;/
+		REP #$20				;\
+		LDA !CameraBackupY : STA $1C		; |
+		SEP #$20				; |
+		LDA $3250,x : XBA			; |
+		LDA $3220,x				; |
+		REP #$20				; |
+		SEC : SBC $1A				; |
+		AND #$00FF				; |
+		LSR #3					; |
+		ASL A					; | apply dizzy offset
+		PHX					; |
+		TAX					; |
+		LDA !DecompBuffer+$1040,x		; |
+		AND #$01FF				; |
+		CMP #$0100				; |
+		BCC $03 : ORA #$FE00			; |
+		STA $1C					; |
+		PLX					; |
+		SEP #$20				; |
+		.DizzyDone				;/
 
-		JSR UpdateTile			; update VR3 tile claim
+		JSR UpdateTile				; update VR3 tile claim
 		LDA $3230,x
 		CMP #$02 : BCC .CallDefault
 		CMP #$08 : BNE .NoMainRoutine
-	;	JMP Main			; we need to take the roundabout way due to stack order
+	;	JMP Main				; we need to take the roundabout way due to stack order
 		JML $0185C3
 
 		.NoMainRoutine
@@ -1419,12 +1488,17 @@ endmacro
 		PHX					;\
 		LDA $3200,x : TAX			; |
 		STA $00					; > save sprite number here
-		LDA $188450,x : TAX			;/
-		LDA $00					;\
-		CMP #$7E : BEQ ++			; \
-		CMP #$7F : BNE +++			;  | flying rainbow shroom and flying red coin should use index 0xFE
-	++	LDX #$FE				;  |
-		BRA +					; /
+		LDA $188450,x				; |
+		CMP #$FF : BNE ..update			; > don't update if = 0xFF
+		PLX					; |
+		RTS					;/
+		..update				;\
+		TAX					; |
+		LDA $00					; |
+		CMP #$7E : BEQ ++			; |
+		CMP #$7F : BNE +++			; > flying rainbow shroom and flying red coin should use index 0xFE
+	++	LDX #$FE				; |
+		BRA +					; |
 	+++	CMP #$0D : BCS +			; |
 		CMP #$04 : BCC +			; | get sprite's load status
 		CPY #$02 : BEQ ++			; |
@@ -1449,15 +1523,20 @@ endmacro
 
 		.Custom
 		PHX					;\
-		LDA !NewSpriteNum,x : TAX		; | get sprite's load status
-		LDA $188550,x : TAX			;/
-		LDA !GFX_status,x			;\
+		LDA !NewSpriteNum,x : TAX		; |
+		LDA $188550,x				; | get sprite's load status
+		CMP #$FF : BNE ..update			; | (don't update if = 0xFF)
+		PLX					; |
+		RTS					;/
+		..update				;\
+		TAX					; |
+		LDA !GFX_status,x			; |
 		ASL A					; |
 		ROL A					; |
 		AND #$01				; |
 		STA !BigRAM				; |
-		LDA !GFX_status,x			; |
-		AND #$70				; | unpack PYYYXXXX format
+		LDA !GFX_status,x			; | unpack PYYYXXXX format
+		AND #$70				; |
 		ASL A					; |
 		STA !BigRAM+1				; |
 		LDA !GFX_status,x			; |
@@ -1633,92 +1712,7 @@ endmacro
 
 
 
-
-incsrc "PhysicsPlus.asm"
-
-Bank16:
-
-incsrc "SpriteSubRoutines.asm"
-incsrc "GFX_expand.asm"
-
-print "Fe26 Sprite Engine ends at $", pc, "."
-
-print "Sprite data inserted at $", pc, "."
-print " "
-print "-- SPRITE LIST --"
-
-incsrc "Replace/SP_spring_board.asm"
-incsrc "Replace/SP_Koopa.asm"
-incsrc "Replace/SP_Mole.asm"
-incsrc "Replace/SP_RainbowShroom.asm"
-incsrc "Replace/SP_SpikeTop.asm"
-incsrc "Replace/SP_Spiny.asm"
-incsrc "Replace/SP_Coin.asm"
-incsrc "Replace/SP_HammerPlat.asm"
-incsrc "Replace/SP_SumoLightning.asm"
-incsrc "Replace/SP_Swooper.asm"
-incsrc "Replace/SP_Rip.asm"
-incsrc "Replace/SP_BulletBill.asm"
-incsrc "Replace/SP_Goomba.asm"
-
-macro InsertSprite(name)
-	START_<name>:
-	incsrc "Sprites/<name>.asm"
-	END_<name>:
-	print "<name> inserted at $", hex(START_<name>), " ($", hex(END_<name>-START_<name>), " bytess)"
-endmacro
-
-
-print " "
-print "-- BANK $16 --"
-
-Bank16Start:
-
-%InsertSprite(HappySlime)
-%InsertSprite(GoombaSlave)
-%InsertSprite(RexCode)
-%InsertSprite(Rex)
-%InsertSprite(HammerRex)
-%InsertSprite(AggroRex)
-%InsertSprite(Conjurex)
-%InsertSprite(Projectile)
-
-Bank16End:
-
-print "Bank $16 ends at $", pc, ". ($", hex($170000-Bank16End), " bytes left)"
-
-
-org $178000
-db $53,$54,$41,$52
-dw $FFF7
-dw $0008
-
-Bank17:
-
-print " "
-print "-- BANK $17 --"
-%InsertSprite(NPC)
-%InsertSprite(Block)
-%InsertSprite(KingKing)
-%InsertSprite(LakituLovers)
-%InsertSprite(DancerKoopa)
-%InsertSprite(SpinySpecial)
-%InsertSprite(Thif)
-%InsertSprite(KompositeKoopa)
-%InsertSprite(Birdo)
-%InsertSprite(Bumper)
-%InsertSprite(Sign)
-%InsertSprite(Monkey)
-%InsertSprite(MiniMole)
-%InsertSprite(TerrainPlatform)
-%InsertSprite(CoinGolem)
-%InsertSprite(YoshiCoin)
-%InsertSprite(EliteKoopa)
-%InsertSprite(MoleWizard)
-%InsertSprite(BooHoo)
-%InsertSprite(GigaThwomp)
-%InsertSprite(MiniMech)
-
+; physics map16 fix
 	WalkOff:
 	.VertY	BMI ..LimitUp
 		CMP $5D : BCC ..Return
@@ -1804,6 +1798,92 @@ print "-- BANK $17 --"
 		..Return
 		JML $0194F2			; within bounds
 
+
+
+incsrc "PhysicsPlus.asm"
+
+Bank16:
+
+incsrc "SpriteSubRoutines.asm"
+incsrc "GFX_expand.asm"
+
+print "Fe26 Sprite Engine ends at $", pc, "."
+
+print "Sprite data inserted at $", pc, "."
+print " "
+print "-- SPRITE LIST --"
+
+incsrc "Replace/SP_spring_board.asm"
+incsrc "Replace/SP_Koopa.asm"
+incsrc "Replace/SP_Mole.asm"
+incsrc "Replace/SP_RainbowShroom.asm"
+incsrc "Replace/SP_SpikeTop.asm"
+incsrc "Replace/SP_Spiny.asm"
+incsrc "Replace/SP_Coin.asm"
+incsrc "Replace/SP_HammerPlat.asm"
+incsrc "Replace/SP_SumoLightning.asm"
+incsrc "Replace/SP_Swooper.asm"
+incsrc "Replace/SP_Rip.asm"
+incsrc "Replace/SP_BulletBill.asm"
+incsrc "Replace/SP_Goomba.asm"
+
+macro InsertSprite(name)
+	START_<name>:
+	incsrc "Sprites/<name>.asm"
+	END_<name>:
+	print "<name> inserted at $", hex(START_<name>), " ($", hex(END_<name>-START_<name>), " bytess)"
+endmacro
+
+
+print " "
+print "-- BANK $16 --"
+
+Bank16Start:
+%InsertSprite(HappySlime)
+%InsertSprite(GoombaSlave)
+%InsertSprite(Rex)
+%InsertSprite(HammerRex)
+%InsertSprite(AggroRex)
+%InsertSprite(FlyingRex)
+%InsertSprite(Conjurex)
+%InsertSprite(Wizrex)
+%InsertSprite(Projectile)
+
+Bank16End:
+
+print "Bank $16 ends at $", pc, ". ($", hex($170000-Bank16End), " bytes left)"
+
+
+org $178000
+db $53,$54,$41,$52
+dw $FFF7
+dw $0008
+
+Bank17:
+
+print " "
+print "-- BANK $17 --"
+%InsertSprite(NPC)
+%InsertSprite(Block)
+%InsertSprite(KingKing)
+%InsertSprite(LakituLovers)
+%InsertSprite(DancerKoopa)
+%InsertSprite(SpinySpecial)
+%InsertSprite(Thif)
+%InsertSprite(KompositeKoopa)
+%InsertSprite(Birdo)
+%InsertSprite(Bumper)
+%InsertSprite(Sign)
+%InsertSprite(Monkey)
+%InsertSprite(MiniMole)
+%InsertSprite(TerrainPlatform)
+%InsertSprite(CoinGolem)
+%InsertSprite(YoshiCoin)
+%InsertSprite(EliteKoopa)
+%InsertSprite(MoleWizard)
+%InsertSprite(BooHoo)
+%InsertSprite(GigaThwomp)
+%InsertSprite(MiniMech)
 
 
 

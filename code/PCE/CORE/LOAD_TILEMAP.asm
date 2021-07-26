@@ -10,7 +10,7 @@
 ;	$0A:		player-based tile offset
 ;	$0B:		player-based palette offset
 ;	$0C:		copy of xflip flag from player direction
-;	$0E:		0xFFFF if tile is x-flipped, otherwise 0x0000
+;	$0E:		0xFFFF if tilemap is x-flipped, otherwise 0x0000
 
 ; $0A/$0B are based on Player 2, so they are subtracted for Player 1
 
@@ -92,9 +92,11 @@ LOAD_TILEMAP:	STZ !BigRAM+$7E				; this reg ACTUALLY controls priority bits duri
 		INC $04
 		INC $04
 		STZ $0C
+		STZ $0E
 		LDA !P2Direction
 		LSR A : BCC +
 		LDA #$0040 : STA $0C
+		DEC $0E
 	+	LDA !OAMindex_p1 : TAX
 		LDY #$0000
 		SEP #$20
@@ -110,10 +112,7 @@ LOAD_TILEMAP:	STZ !BigRAM+$7E				; this reg ACTUALLY controls priority bits duri
 		SEC : SBC $0B				; subtract player palette offset
 		STA !OAM_p1+$003,x
 		REP #$20
-		STZ $0E
-		AND #$0040 : BEQ +
-		LDA #$FFFF : STA $0E
-	+	INY
+		INY
 
 		LDA ($04),y
 		AND #$00FF

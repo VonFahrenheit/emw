@@ -101,6 +101,7 @@
 		PHA : PLB						; |
 		REP #$30						;/
 
+
 ; DEBUG: display current number of particles
 ;		LDY #$0000
 ;	-	LDA !Particle_Type,x
@@ -113,26 +114,73 @@
 ;		BRA -
 ;	+	TYA : STA.l !P1Coins
 
-		LDX #$0000						;\
-	.Check	LDA !Particle_Type,x					; |
-		AND #$00FF : BNE .Call					; |
-	.Next	TXA							; | loop through table and process all particles
+
+		LDX #$0000						; starting index
+		LDA !DizzyEffect					;\ turbo paradigm: 1 copy of code with dizzy and 1 copy without it
+		AND #$00FF : BNE .IncludeDizzyEffect			;/
+
+	.NoDizzy
+		..check
+		LDA !Particle_Type,x					;\
+		AND #$00FF : BNE ..call					; |
+		..next							; |
+		TXA							; | loop through table and process all particles
 		CLC : ADC.w #!Particle_Size				; |
 		TAX							; |
-		CPX.w #!Particle_Size*!Particle_Count : BCC .Check	;/
+		CPX.w #!Particle_Size*!Particle_Count : BCC ..check	;/
 		PLP							;\
 		PLB							; | pull B/P and return
 		RTS							;/
-
-	.Call	STX $00							;\
+		..call							;\
+		STX $00							; |
 		ASL A							; |
-		CMP.w #.List_End-.List : BCC .Valid			; |
-		JSR .ClearParticle					; |
-		BRA .Next						; | call particle code (invalid becomes ClearParticle)
-	.Valid	TAX							; |
+		CMP.w #.List_End-.List : BCC ..valid			; |
+		JSR .ClearParticle					; | call particle code
+		BRA ..next						; | (invalid goes to .ClearParticle)
+		..valid							; |
+		TAX							; |
 		JSR (.List-2,x)						; |
 		REP #$20						; |
-		BRA .Next						;/
+		BRA ..next						;/
+
+
+	.IncludeDizzyEffect
+		..check
+		LDA !Particle_Type,x					;\
+		AND #$00FF : BNE ..call					; |
+		..next							; |
+		TXA							; | loop through table and process all particles
+		CLC : ADC.w #!Particle_Size				; |
+		TAX							; |
+		CPX.w #!Particle_Size*!Particle_Count : BCC ..check	;/
+		PLP							;\
+		PLB							; | pull B/P and return
+		RTS							;/
+		..call							;\
+		STX $00							; |
+		ASL A							; |
+		CMP.w #.List_End-.List : BCC ..valid			; | loop over all particles
+		JSR .ClearParticle					; | (invalid goes to .ClearParticle)
+		BRA ..next						; |
+		..valid							;/
+		TAY							;\
+		LDA !CameraBackupY : STA $1C				; |
+		LDA !Particle_XLo,x					; |
+		SEC : SBC $1A						; |
+		AND #$00FF						; |
+		LSR #3							; |
+		ASL A							; | apply dizzy offset
+		TAX							; |
+		LDA !DecompBuffer+$1040,x				; |
+		AND #$01FF						; |
+		CMP #$0100						; |
+		BCC $03 : ORA #$FE00					; |
+		STA $1C							; |
+		TYX							;/
+		JSR (.List-2,x)						;\
+		REP #$20						; | call particle code
+		BRA ..next						;/
+
 
 	.ClearParticle
 		LDX $00
@@ -156,18 +204,14 @@
 		dw RatioParticle_BG2		; 06
 		dw RatioParticle_BG3		; 07
 		dw RatioParticle_Cam		; 08
-		dw AddAnimParticle_BG1		; 09
-		dw AddAnimParticle_BG2		; 0A
-		dw AddAnimParticle_BG3		; 0B
-		dw AddAnimParticle_Cam		; 0C
-		dw SubAnimParticle_BG1		; 0D
-		dw SubAnimParticle_BG2		; 0E
-		dw SubAnimParticle_BG3		; 0F
-		dw SubAnimParticle_Cam		; 10
-		dw WeatherParticle_BG1		; 11
-		dw WeatherParticle_BG2		; 12
-		dw WeatherParticle_BG3		; 13
-		dw WeatherParticle_Cam		; 14
+		dw AnimAddParticle_BG1		; 09
+		dw AnimAddParticle_BG2		; 0A
+		dw AnimAddParticle_BG3		; 0B
+		dw AnimAddParticle_Cam		; 0C
+		dw AnimSubParticle_BG1		; 0D
+		dw AnimSubParticle_BG2		; 0E
+		dw AnimSubParticle_BG3		; 0F
+		dw AnimSubParticle_Cam		; 10
 		dw SmokeParticle8x8		; 15
 		dw SmokeParticle16x16		; 16
 		dw ContactParticle		; 17
@@ -180,13 +224,13 @@
 
 incsrc "Particles/BasicParticle.asm"
 incsrc "Particles/RatioParticle.asm"
-incsrc "Particles/AddAnimParticle.asm"
-incsrc "Particles/SubAnimParticle.asm"
-incsrc "Particles/WeatherParticle.asm"
+incsrc "Particles/AnimAddParticle.asm"
+incsrc "Particles/AnimSubParticle.asm"
 incsrc "Particles/SmokeParticle8x8.asm"
 incsrc "Particles/SmokeParticle16x16.asm"
 incsrc "Particles/ContactParticle.asm"
 incsrc "Particles/SpritePart.asm"
+
 
 
 ; returns:
@@ -499,11 +543,41 @@ incsrc "Particles/SpritePart.asm"
 
 
 
+; call this after draw routine, which saves screen cords in $00 + $02
+; this will despawn the particle if it's offscreen and moving away from the camera
 
 
+; X:
+;	100-17F: despawn right
+;	180-1F0: despawn left
+; Y:
+;	0E0-17F: despawn down
+;	180-1F0: despawn up
 
+	ParticleDespawn:
+		LDA !Particle_XTemp
+		CMP #$0100 : BCC .XDone
+		CMP #$0180 : BCS .Left
+		.Right
+		LDA !Particle_XSpeed,x : BPL .Despawn
+		.Left
+		CMP #$01F0 : BCS .XDone
+		LDA !Particle_XSpeed,x : BMI .Despawn
+		.XDone
 
-
+		LDA !Particle_YTemp
+		AND #$01FF
+		CMP #$00E0 : BCC .YDone
+		CMP #$0180 : BCS .Up
+		.Down
+		LDA !Particle_YSpeed,x : BPL .Despawn
+		.Up
+		CMP #$01F0 : BCS .YDone
+		LDA !Particle_YSpeed,x : BPL .YDone
+		.Despawn
+		LDA.w #(ParticleMain_List_End-ParticleMain_List)/2 : STA !Particle_Type,x
+		.YDone
+		RTS
 
 
 

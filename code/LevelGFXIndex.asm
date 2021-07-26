@@ -93,7 +93,7 @@ LoadTable:
 	db $2F,$45,$FF,$36,$57,$05,$05,$05,$43,$FF,$5B,$5B,$5B,$5B,$56,$5B ; 0D-
 	db $24,$3D,$3D,$3D,$22,$3D,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 0E-
 	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 0F-
-	db $FF,$80,$4A,$82,$FF,$83,$FF,$FF,$FF,$A4,$FF,$84,$84,$FF,$FF,$09 ; 10-
+	db $FF,$80,$4A,$82,$FF,$83,$83,$FF,$FF,$A4,$FF,$84,$84,$FF,$FF,$09 ; 10-
 	db $FF,$0B,$FF,$00,$00,$FF,$85,$85,$86,$87,$87,$88,$89,$89,$8A,$8A ; 11-
 	db $FF,$8C,$8B,$FF,$FF,$FF,$FF,$8D,$FF,$8E,$FF,$05,$A1,$A2,$A3,$24 ; 12-
 	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; 13-
@@ -143,6 +143,37 @@ PalsetDefaults:
 		JSR $1E80					; |
 		PLP						;/
 		JSR GetFiles					; upload files
+
+
+	; allocate dynamic tiles
+
+	.AllocateDynamic
+		PHP
+		REP #$20
+		SEP #$10
+		LDY #$00					; dynamic tile matrix index
+		LDX #$00					; index to row data
+		..loop						;\
+		LDA !BigRAM,x					; |
+		CMP #$0002 : BCC ..nextrow			; |
+		STA $00						; | if a row has at least 2 blocks left, place a dynamic tile there
+		LDA #$0010					; |
+		SEC : SBC $00					; |
+		CLC : ADC.l .DynamicNum,x			; |
+		STA !DynamicMatrix,y				;/
+		INY #2						; increment dynamic tile index
+		DEC !BigRAM,x					;\ decrement space left on row
+		DEC !BigRAM,x					;/
+		CPY #$20 : BCC ..loop				; loop until all tiles are placed
+		BRA ..end					; go to end
+		..nextrow					;\
+		INX #2						; | if row is full, go to next row
+		CPX #$18 : BCC ..loop				;/
+		..end						;\ done
+		PLP						;/
+
+
+	; stuff loaded with players
 		PHP						;\
 		SEP #$20					; |
 		LDA !GFX_ReznorFireball : BNE .NoMarioFire	; |
@@ -169,7 +200,6 @@ PalsetDefaults:
 	++	STA !GFX_LuigiFireball				; |
 		LDA #$01 : STA !SuperDynamicMark+$06		; |
 		.NoLuigiFire					;/
-
 
 		LDA !MultiPlayer : BEQ +			;\
 		AND #$0F					; |
@@ -224,6 +254,12 @@ PalsetDefaults:
 		PLP
 		RTS
 
+
+
+	.DynamicNum
+		dw $0080,$00A0,$00C0,$00E0	; SP2
+		dw $0100,$0120,$0140,$0160	; SP3
+		dw $0180,$01A0,$01C0,$01E0	; SP4
 
 
 ; file format:
@@ -2413,15 +2449,10 @@ ReadLevelData:
 
 
 		.Lookup
-	;	dw $FFFF : db $00	; hammer
 		dw $10D : db $01	; plant head
-	;	dw $FFFF : db $02	; bone
-	;	dw $FFFF : db $03	; fireball 8x8
-	;	dw $FFFF : db $04	; fireball 16x16
 		dw $00F : db $05	; goomba
-	;	dw $FFFF : db $06	; luigi fireball
-	;	dw $FFFF : db $07	; baseball
-	;	dw $FFFF : db $08	; kadaal swim tiles
+		dw $110 : db $09	; kingking, fireball 32x32
+		dw $110 : db $0A	; kingking, enemy fireball 16x16
 		..End
 
 
@@ -2435,6 +2466,8 @@ ReadLevelData:
 		dw .LuigiFireball	; 06
 		dw .Baseball		; 07
 		dw .KadaalSwim		; 08
+		dw .Fireball32x32	; 09
+		dw .EnemyFireball16x16	; 0A
 		..End
 
 ; big fat note:
@@ -2541,23 +2574,50 @@ db $08,$10			; 08: chunk dimensions (16x16)
 db $00,$00,$04,$10,$04		; 0A: rotate: chunk 0, iterations 4, angle 10, copies 4
 db $FF				; end file
 
+.Fireball32x32
+dw $0010			; 00: width encoding
+%size($200*16)			; 02: size: 16 32x32 chunks
+dw $E09				; 04: source ExGFX
+db $09				; 06: SD GFX status index
+db $01				; 07: 1 chunk
+db $10,$20			; 08: chunk dimensions (32x32)
+db $00,$00,$01,$20,$0F		; 0A: rotate: chunk 0, iterations 1, angle 20, copies 15
+db $FF				; end file
+
+.EnemyFireball16x16
+dw $0010			; 00: width encoding
+%size($80*16)			; 02: size: 16 16x16 chunks
+dw $E0A				; 04: source ExGFX
+db $0A				; 06: SD GFX status index
+db $01				; 07: 1 chunk at a time
+db $08,$10			; 08: chunk dimensions (16x16)
+db $00,$00,$01,$20,$0F		; 0A: rotate: chunk 0, iterations 1, angle 20, copies 15
+db $FF				; end file
+
 
 	.Search
 		PHP
 		REP #$20
 		TXA
 		LDX #$0000
-	-	CMP .Lookup+0,x : BEQ ..mark
-		INX #3
-		CPX.w #.Lookup_End-.Lookup : BCC -
-		BRA ..r
-
-	..mark	LDA .Lookup+2,x
+		..loop
+		CMP .Lookup+0,x : BNE ..next
+		..mark
+		PHA
+		PHX
+		LDA .Lookup+2,x
 		AND #$00FF
 		TAX
 		SEP #$20
 		LDA #$01 : STA !SuperDynamicMark,x
-	..r	PLP
+		REP #$20
+		PLX
+		PLA
+		..next
+		INX #3
+		CPX.w #.Lookup_End-.Lookup : BCC ..loop
+		..return
+		PLP
 		LDX $0E
 		RTS
 

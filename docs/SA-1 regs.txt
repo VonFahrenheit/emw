@@ -321,17 +321,6 @@
 		16-bit data resulting from barrel-shifting the values stored in $2258.
 
 
-Some ideas:
-
-	Use 2 of the message flags as indexes for IRQ behaviour.
-	Kill LM ExAnimation. It eats way too much memory.
-	Have SA-1 process sprites while SNES processes level_code from WRAM.
-	 SNES should still be able to access WRAM in FastROM speed.
-
-
-
-
-
 
 
 

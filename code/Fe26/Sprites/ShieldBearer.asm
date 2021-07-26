@@ -83,6 +83,15 @@ ShieldBearer:
 
 
 	.AttackContact
+		LDA !P2Hitbox1Shield-$80 : PHA			;\
+		LDA !P2Hitbox2Shield-$80 : PHA			; | preserve p2 shield status
+		LDA !P2Hitbox1Shield : PHA			; |
+		LDA !P2Hitbox2Shield : PHA			;/
+		STZ !P2Hitbox1Shield-$80			;\
+		STZ !P2Hitbox2Shield-$80			; | ignore shield status
+		STZ !P2Hitbox1Shield				; |
+		STZ !P2Hitbox2Shield				;/
+
 		JSL P2Attack : BCC ..nocontact			;\
 		JSL P2HitContactGFX				; |
 		LDA #$02 : STA !SPC1				; |
@@ -90,6 +99,12 @@ ShieldBearer:
 		LDA #!Shield_Stagger : STA !SpriteAnimIndex	; |
 		STZ !SpriteAnimTimer				; |
 		..nocontact					;/
+
+		PLA : STA !P2Hitbox2Shield			;\
+		PLA : STA !P2Hitbox1Shield			; | restore p2 shield status
+		PLA : STA !P2Hitbox2Shield-$80			; |
+		PLA : STA !P2Hitbox1Shield-$80			;/
+
 
 
 	.PlayerContact
@@ -323,6 +338,9 @@ ShieldBearer:
 		STA $0B
 		LDA #$10 : STA $06
 		LDA #$1C : STA $07
+
+		JSL OutputShieldBox
+
 		RTS
 
 

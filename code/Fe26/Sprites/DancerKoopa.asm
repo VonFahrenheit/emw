@@ -168,17 +168,11 @@ DancerKoopa:
 		LSR A : BCC .P2				; |
 	.P1	LDY #$00				; |
 		PHA					; | check for player contact
-		LDA !P2Character-$80,y			; |
-		CMP #$02 : BNE +			; |
-		LDA #$01 : STA !P2SenkuSmash-$80,y	; |
-	+	LDA !SpriteDisP1,x : BNE $03		; |
+		LDA !SpriteDisP1,x : BNE $03		; |
 		JSR Interact				; |
 		PLA					; |
 	.P2	LSR A : BCC .NoContact			; |
-		LDA !P2Character-$80,y			; |
-		CMP #$02 : BNE +			; |
-		LDA #$01 : STA !P2SenkuSmash-$80,y	; |
-	+	LDA !SpriteDisP2,x : BNE .NoContact	; |
+		LDA !SpriteDisP2,x : BNE .NoContact	; |
 		LDY #$80				; |
 		JSR Interact				; |
 		.NoContact				;/

@@ -162,9 +162,6 @@ UPDATE_SPEED:
 		STA !P2XPosHi
 		.ReturnX
 
-
-
-
 		.ReturnNormal
 		REP #$20				;\
 		LDA !P2XFraction			; |

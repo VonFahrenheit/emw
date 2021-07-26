@@ -14,6 +14,10 @@ COLLISION:
 		ORA #$0080				; |
 		STA $0A					;/
 
+		LDA #$FFFF				;\
+		STA !BigRAM+0				; | default slope push coords
+		STA !BigRAM+2				;/
+
 		SEP #$30				; all regs 8-bit
 		STZ !BigRAM+$20				; clear "can climb" flag
 		PHB : PLA				;\
@@ -299,32 +303,34 @@ COLLISION:
 
 
 	INTERACT_LAYER:
-		STZ $7694			; clear this for slope processing
-		LDA #$80 : STA $7693		; conveyor disable flag
+		STZ $7694				; clear this for slope processing
+		LDA #$80 : STA $7693			; conveyor disable flag
 
 		LDA !WaterLevel : BEQ .NoWaterLevel
 		LDA #$40 : TSB !P2Water
 		.NoWaterLevel
 
-		LDA !P2XPosLo			;\
-		CLC : ADC #$08			; | position within block
-		AND #$0F			; | (based on center of character)
-		STA $92				;/
+		LDA !P2XPosLo				;\
+		CLC : ADC #$08				; | position within block
+		AND #$0F				; | (based on center of character)
+		STA $92					;/
 
 
 		; down collision
 		LDA !P2Direction : BEQ +
-		LDY #$04 : JSR GET_TILE		;\ left/right down points
-		LDY #$05 : JSR GET_TILE		;/
+		LDY #$04 : JSR GET_TILE			;\ left/right down points
+		LDY #$05 : JSR GET_TILE			;/
 		BRA ++
-	+	LDY #$05 : JSR GET_TILE		;\ right/left down points
-		LDY #$04 : JSR GET_TILE		;/
+	+	LDY #$05 : JSR GET_TILE			;\ right/left down points
+		LDY #$04 : JSR GET_TILE			;/
 
 	++	LDA $0E
-		AND #$0F : BEQ .NoSlope
-		CMP #$03 : BEQ .NoSlope
-		CMP #$0C : BEQ .NoSlope
-		CMP #$0F : BEQ .NoSlope
+		AND #$0F : BEQ .NoSlope			;\
+		CMP #$03 : BEQ .NoSlope			; | check for invalids (3 is not a real type)
+		CMP #$0C : BEQ .NoSlope			; |
+		CMP #$0F : BEQ .NoSlope			;/
+		CMP #$02 : BEQ .ApplySlopePoint4	;\ special cases when touching a slope AND a solid block
+		CMP #$04 : BEQ .ApplySlopePoint5	;/
 		CMP #$06 : BEQ .CompareSlope
 		CMP #$09 : BEQ .CompareSlope
 		CMP #$0D : BCS .ApplySlopePoint5
@@ -338,12 +344,14 @@ COLLISION:
 		SEP #$20
 		BCS .ApplySlopePoint5
 		.ApplySlopePoint4
+		LDA !BigRAM+1 : BMI .ApplySlopePoint5	; never use a coord that hasn't been set
+		STA !P2YPosHi
 		LDA !BigRAM+0 : STA !P2YPosLo
-		LDA !BigRAM+1 : STA !P2YPosHi
 		BRA .SetSlope
 		.ApplySlopePoint5
+		LDA !BigRAM+3 : BMI .ApplySlopePoint4	; never use a coord that hasn't been set
+		STA !P2YPosHi
 		LDA !BigRAM+2 : STA !P2YPosLo
-		LDA !BigRAM+3 : STA !P2YPosHi
 		.SetSlope
 		LDA #$04 : TSB $0F
 
@@ -381,118 +389,120 @@ COLLISION:
 
 
 		.NoSlope
-		LDA $14				;\ conveyor only moves every 4 frames
-		AND #$03 : BNE .NoConveyor	;/
-		LDA $7693 : BMI .NoConveyor	;\
-		ASL A				; |
-		TAX				; |
-		REP #$20			; |
-		LDA !P2XPosLo			; | apply conveyor
-		CLC : ADC .ConveyorDisp,x	; |
-		STA !P2XPosLo			; |
-		SEP #$20			; |
-		.NoConveyor			;/
-		LDA $0F				;\ check for collision
-		AND #$04 : BEQ .DownDone	;/
-		LDA !P2Slope : BNE .DownDone	; slopes update coords on their own
-		.BlockDown			;\
-		LDY #$04			; |
-		REP #$20			; |
-		LDA [$F3],y			; |
-		AND #$00FF			; |
-		CMP #$0080			; |
-		BCC $03 : ORA #$FF00		; | update coords
-		STA $0C				; |
-		CLC : ADC !P2YPosLo		; |
-		AND #$FFF0			; |
-		SEC : SBC $0C			; |
-		STA !P2YPosLo			; |
-		SEP #$20			; |
-		.DownDone			;/
+		LDA $14					;\ conveyor only moves every 4 frames
+		AND #$03 : BNE .NoConveyor		;/
+		LDA $7693 : BMI .NoConveyor		;\
+		ASL A					; |
+		TAX					; |
+		REP #$20				; |
+		LDA !P2XPosLo				; | apply conveyor
+		CLC : ADC .ConveyorDisp,x		; |
+		STA !P2XPosLo				; |
+		SEP #$20				; |
+		.NoConveyor				;/
+		LDA $0F					;\ check for collision
+		AND #$04 : BEQ .DownDone		;/
+		LDA !P2Slope : BNE .DownDone		; slopes update coords on their own
+		.BlockDown				;\
+		LDY #$04				; |
+		REP #$20				; |
+		LDA [$F3],y				; |
+		AND #$00FF				; |
+		CMP #$0080				; |
+		BCC $03 : ORA #$FF00			; | update coords
+		STA $0C					; |
+		CLC : ADC !P2YPosLo			; |
+		AND #$FFF0				; |
+		SEC : SBC $0C				; |
+		STA !P2YPosLo				; |
+		SEP #$20				; |
+		.DownDone				;/
 
 
 
 		; up collision
-		LDY #$06 : JSR GET_TILE		; up point
-		LDA $0F				;\ check for collision
-		AND #$08 : BEQ .UpDone		;/
-		LDA $0E				;\ go to bonk if touching sloped ceiling
-		AND #$20 : BNE .Bonk		;/
-		.BlockUp			;\
-		LDY #$06			; |
-		REP #$20			; |
-		LDA [$F3],y			; |
-		AND #$00FF			; |
-		CMP #$0080			; |
-		BCC $03 : ORA #$FF00		; | update coords
-		STA $0C				; |
-		CLC : ADC !P2YPosLo		; |
-		AND #$FFF0			; |
-		CLC : ADC #$0010		; |
-		SEC : SBC $0C			; |
-		STA !P2YPosLo			; |
-		SEP #$20			;/
-		.Bonk				;\
-		STZ !P2YSpeed			; |
-		STZ !P2VectorTimeY		; | bonk code
-		LDA !SPC1 : BNE .UpDone		; |
-		LDA #$01 : STA !SPC1		; > bonk sfx
-		.UpDone				;/
+		LDY #$06 : JSR GET_TILE			; up point
+		LDA $0F					;\ check for collision
+		AND #$08 : BEQ .UpDone			;/
+		LDA $0F					;\ skip up collision if also on the ground
+		AND #$04 : BNE .UpDone			;/
+		LDA $0E					;\ go to bonk if touching sloped ceiling
+		AND #$20 : BNE .Bonk			;/
+		.BlockUp				;\
+		LDY #$06				; |
+		REP #$20				; |
+		LDA [$F3],y				; |
+		AND #$00FF				; |
+		CMP #$0080				; |
+		BCC $03 : ORA #$FF00			; | update coords
+		STA $0C					; |
+		CLC : ADC !P2YPosLo			; |
+		AND #$FFF0				; |
+		CLC : ADC #$0010			; |
+		SEC : SBC $0C				; |
+		STA !P2YPosLo				; |
+		SEP #$20				;/
+		.Bonk					;\
+		STZ !P2YSpeed				; |
+		STZ !P2VectorTimeY			; | bonk code
+		LDA !SPC1 : BNE .UpDone			; |
+		LDA #$01 : STA !SPC1			; > bonk sfx
+		.UpDone					;/
 
 		; side collision
-		LDA !PlatformExists : BEQ +	;\
-		LDY #$00 : JSR GET_TILE		; |
-		LDY #$01 : JSR GET_TILE		; | if there are platforms, check all points
-		LDY #$02 : JSR GET_TILE		; |
-		LDY #$03 : JSR GET_TILE		; |
-		BRA .BlockSide			;/
+		LDA !PlatformExists : BEQ +		;\
+		LDY #$00 : JSR GET_TILE			; |
+		LDY #$01 : JSR GET_TILE			; | if there are platforms, check all points
+		LDY #$02 : JSR GET_TILE			; |
+		LDY #$03 : JSR GET_TILE			; |
+		BRA .BlockSide				;/
 
-	+	LDY #$00			;\
-		LDA $92				; | check which side
-		CMP #$08			; |
-		BCS $01 : INY			;/
-		PHY				;\
-		JSR GET_TILE			; |
-		PLY				; | upper and lower side points
-		INY #2				; |
-		JSR GET_TILE			;/
-		.BlockSide			;\
-		LDA $0F				; | see if a side is blocked
-		LSR A : BCS .BlockRight		; |
-		LSR A : BCC .SideDone		;/
-		.BlockLeft			;\
-		LDY #$01			; |
-		REP #$20			; |
-		LDA [$F0],y			; |
-		AND #$00FF			; |
-		CMP #$0080			; |
-		BCC $03 : ORA #$FF00		; |
-		STA $0C				; |
-		CLC : ADC !P2XPosLo		; | update coords (left side)
-		AND #$FFF0			; |
-		CLC : ADC #$0010		; |
-		SEC : SBC $0C			; |
-		DEC A				; |
-		STA !P2XPosLo			; |
-		SEP #$20			; |
-		BRA .SideDone			;/
-		.BlockRight			;\
-		LDA #$0F : TRB !P2XPosLo	; |
-		LDA [$F0]			; |
-		DEC A				; | update coords (right side)
-		AND #$0F			; | (this one can be simpler because characters are always less than 16px wide)
-		EOR #$0F			; |
-		TSB !P2XPosLo			; |
-		.SideDone			;/
+	+	LDY #$00				;\
+		LDA $92					; | check which side
+		CMP #$08				; |
+		BCS $01 : INY				;/
+		PHY					;\
+		JSR GET_TILE				; |
+		PLY					; | upper and lower side points
+		INY #2					; |
+		JSR GET_TILE				;/
+		.BlockSide				;\
+		LDA $0F					; | see if a side is blocked
+		LSR A : BCS .BlockRight			; |
+		LSR A : BCC .SideDone			;/
+		.BlockLeft				;\
+		LDY #$01				; |
+		REP #$20				; |
+		LDA [$F0],y				; |
+		AND #$00FF				; |
+		CMP #$0080				; |
+		BCC $03 : ORA #$FF00			; |
+		STA $0C					; |
+		CLC : ADC !P2XPosLo			; | update coords (left side)
+		AND #$FFF0				; |
+		CLC : ADC #$0010			; |
+		SEC : SBC $0C				; |
+		DEC A					; |
+		STA !P2XPosLo				; |
+		SEP #$20				; |
+		BRA .SideDone				;/
+		.BlockRight				;\
+		LDA #$0F : TRB !P2XPosLo		; |
+		LDA [$F0]				; |
+		DEC A					; | update coords (right side)
+		AND #$0F				; | (this one can be simpler because characters are always less than 16px wide)
+		EOR #$0F				; |
+		TSB !P2XPosLo				; |
+		.SideDone				;/
 
 		; center collision
-		LDY #$07 : JSR GET_TILE		; center point
-		LDA $0F				;\ check for crush collision
-		AND #$10 : BEQ .CenterDone	;/
-		.BlockCenter			;\
-		LDA #$01 : STA !P2Status	; | player dies instantly if crushed
-		STZ !P2HP			; |
-		.CenterDone			;/
+		LDY #$07 : JSR GET_TILE			; center point
+		LDA $0F					;\ check for crush collision
+		AND #$10 : BEQ .CenterDone		;/
+		.BlockCenter				;\
+		LDA #$01 : STA !P2Status		; | player dies instantly if crushed
+		STZ !P2HP				; |
+		.CenterDone				;/
 
 		RTS
 
@@ -591,12 +601,14 @@ macro GetActsLike()
 		REP #$20				;\
 		CMP #$4000				; |
 		AND #$3FFF				; |
-		BCS ?40					; |
-	?00:	ASL A					; |
+		BCS ?block40				; |
+	?block00:					; |
+		ASL A					; |
 		TAY					; | get acts like setting
 		LDA [$06],y				; |
 		BRA ?W					; |
-	?40:	ASL A					; |
+	?block40:					; |
+		ASL A					; |
 		TAY					; |
 		LDA [$09],y				; |
 	?W:	STA $0C					; > write to $0C
@@ -633,7 +645,6 @@ endmacro
 		LDX TABLE_INDEX,y			;\ store to map16 table
 		STA !BigRAM+$10,x			;/
 		SEP #$20				; A 8-bit (now all regs)
-
 		BIT $0F : BMI +				; no platforms on layer 2
 		LDA !PlatformExists : BNE .CheckPlatforms
 	+	JMP .PlatformsDone
@@ -1178,18 +1189,23 @@ endmacro
 		..groundslope
 		SEP #$30
 		PLY
-		CPY #$06 : BEQ ..r				; no ceiling collision on ground slopes
+		CPY #$06 : BCS ..r				; no ceiling collision on ground slopes
 		CMP #$10 : BEQ ..r				; no interaction if set to 0x10
 		STA $0D						; supersteeps can have negative values here
 		AND #$0F
 		STA $0C
 
-		LDA $785F					;\
-		ORA $785F+1					; | only adjust if actually moving
-		BEQ ..noadjust					;/
-		LDA $785F+1					;\
-		EOR $05						; | compare direction of horizontal movement and slope
-		BPL ..checkadjust				;/
+
+		BIT $0E : BPL +					;\
+		LDA $785F					; |
+		ORA $785F+1					; | exception: return if moving perfectly straight up
+		BNE +						; |
+		RTS						; |
+		+						;/
+
+
+		LDA $785F+1					;\ compare direction of horizontal movement and slope
+		EOR $05 : BPL ..checkadjust			;/
 		BIT $0E : BPL +					; if moving down: don't angle snap, instead just normal snap
 		JMP ..checkangle				; > angle check (doesn't fit with branch)
 		..checkadjust					;\
@@ -1586,7 +1602,19 @@ endmacro
 		RTS
 
 		.Lava
+		LDA !Difficulty
+		AND #$03 : BNE ..die
+		JSL CORE_HURT
+		LDA !P2Status : BNE ..die
+		LDA #$80
+		LDX !P2Character
+		CPX #$01
+		BNE $02 : LDA #$98
+		STA !P2YSpeed
+		RTS
+		..die
 		LDA #$01 : STA !P2Status
+		..return
 		RTS
 
 		.Vine
@@ -2065,6 +2093,23 @@ endmacro
 		.Solid
 		.SetBlocked
 		LDA .CollisionTable,y : TSB $0F	; set collision status
+		CPY #$04 : BCC ..return
+		CPY #$06 : BCS ..return
+		REP #$20
+		LDA [$F3],y
+		AND #$00FF
+		SEC : SBC $98
+		EOR #$FFFF : INC A
+		AND #$FFF0
+		CPY #$05 : BEQ ..5
+		..4
+		STA !BigRAM+0
+		SEP #$20
+		RTS
+		..5
+		STA !BigRAM+2
+		SEP #$20
+		..return
 		RTS
 
 		.CollisionTable
@@ -2353,14 +2398,27 @@ endmacro
 
 
 ; input:
-; $04 - object
+; $04 - object (sprite num)
 ; $05 - loop counter
 	SPAWN_OBJECT:
 		PEI ($00)
 		LDA $02 : PHA
 		LDA $0F : PHA
 
-		LDA $04 : BEQ ++
+		LDA $04 : BEQ ++			; skip if no sprite
+		CMP #$08 : BCC .Powerup			; koopa shells
+		CMP #$80 : BEQ .Powerup			; key
+		CMP #$81 : BEQ .Powerup			; changing item from translucent block
+		CMP #$74 : BCC .NotPowerup		;\ 74-78 range (mushroom, flower, star, feather, 1-up)
+		CMP #$79 : BCS .NotPowerup		;/
+		.Powerup
+		LDX #$02 : STX !SPC4			; > powerup from block SFX
+		.NotPowerup
+		CMP #$79 : BNE .NotVine			; vine
+		LDX #$03 : STX !SPC4			; > vine from block SFX
+		.NotVine
+
+
 		LDX #$0F
 	-	LDA $3230,x : BEQ +
 		DEX : BPL -

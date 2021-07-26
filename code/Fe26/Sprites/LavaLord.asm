@@ -342,7 +342,7 @@ endmacro
 		STA $02					; |
 		SEP #$20				; |
 		LDA #$30				; |
-		JSL AIM_SHOT_Long			;/
+		JSL AIM_SHOT				;/
 
 		PLY					; Y = loop index
 		LDA !LavaLordRNG1,y			;\

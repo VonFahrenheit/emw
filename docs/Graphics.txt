@@ -71,6 +71,7 @@ slots: F00-FFF (256)
 This last category is for any GFX that must be accessed quickly in-game. These files can be in any format and are not compressed, meaning they can be loaded directly from ROM. There is no real order to the files here as they have only names and no GFX/ExGFX file number. As a rule of thumb, if a file has to be loaded during gameplay and doing so causes lag, it should be moved to this category to remove the lag. An example of this is the portraits displayed with text boxes. Many dynamic sprites, including bosses, also store graphics here.
 slots: N/A
 
-
+-- Linear Unripped --
+This isn't really a GFX folder but it's still included in the library. This folder holds the source files for the linear SuperDynamic files. Because there's no easy way to edit graphics after they have been converted to linear format, the sources are kept here. If you edit a source here, you should also rip it to linear format and replace the old linear file. Just make sure you save it with the exact same color order in the palette.
 
 

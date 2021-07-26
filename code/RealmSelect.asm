@@ -196,14 +196,14 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 
 		; check whether intro level should be loaded!
 		LDA !LevelTable1+$5E : BMI .LoadRealmSelect
-;		.LoadIntroLevel
-;		LDA #$F0 : STA $6DB0
-;		LDA #$10 : STA !GameMode
-;		LDA.b #!IntroLevel+$24 : STA $6109	; intro level (translevel num... but only kind of...)
-;		LDA.b #!IntroLevel>>8 : STA $7F11	; set hi bit of intro level num
-;		LDA #$5E : STA !Translevel		;
-;		LDA #$81 : STA $4200			; enable joypad but keep interrupts disabled
-;		JML ReturnLoad				; return
+		.LoadIntroLevel
+	;	LDA #$F0 : STA $6DB0
+	;	LDA #$10 : STA !GameMode
+	;	LDA.b #!IntroLevel+$24 : STA $6109	; intro level (translevel num... but only kind of...)
+	;	LDA.b #!IntroLevel>>8 : STA $7F11	; set hi bit of intro level num
+	;	LDA #$5E : STA !Translevel		;
+	;	LDA #$81 : STA $4200			; enable joypad but keep interrupts disabled
+	;	JML ReturnLoad				; return
 
 
 

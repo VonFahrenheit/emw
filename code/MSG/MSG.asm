@@ -989,12 +989,12 @@ ApplyHeader:	PHB : PHK : PLB
 		LDA.w #$1000 : STA $2238				; | use SA-1 DMA to cache font
 		LDA.w #!ImageCache : STA $2235				; |
 		SEP #$20						; |
+		LDA #$90 : STA $220A					; > disable DMA IRQ
 		LDA #$C4 : STA $2230					; > DMA settings
 		LDA !FileAddress+2 : STA $2234				; > bank
 		LDA.b #!ImageCache>>16 : STA $2237			; > dest bank (this write starts the DMA)
-	-	LDA $318C : BEQ -					; |
-		STZ $318C						; |
 		STZ $2230						; |
+		LDA #$B0 : STA $220A					; > enable DMA IRQ
 		LDA $400000+!MsgFont : STA $400000+!MsgCachedFont	; > remember which font was just cached
 	.Return	PLP							; |
 		PLB							; |

@@ -1,0 +1,3 @@
+MainLoopPos: $000434
+ReuploadPos: $0017BC
+SRCNTableCodePos: $001826

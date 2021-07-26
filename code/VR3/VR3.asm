@@ -536,16 +536,81 @@ print "VR3 inserted at $", pc, "."
 
 
 
-macro MoveCode()
-		PHB
-		PHY
-		TXY
-		LDX.w #..code
-		LDA.w #..end-..code
-		MVN $40,..code>>16
-		TYX
-		PLY
-		PLB
+macro DMAsettings(word)
+		LDA.w #<word>
+		CMP $0C : BEQ ?Same
+	?New:
+		STA $0C
+		LDA.w #$00A9 : STA.w !RAMcode+$00,y
+		LDA.w #<word> : STA.w !RAMcode+$01,y
+		LDA.w #$0085 : STA.w !RAMcode+$03,y
+		TYA
+		CLC : ADC #$0005
+		TAY
+	?Same:
+endmacro
+
+macro videoport(byte)
+		LDA.w #<byte>
+		CMP $0A : BEQ ?Same
+	?New:
+		STA $0A
+		LDA.w #<byte><<8+$A2 : STA.w !RAMcode+$00,y
+		LDA.w #$008E : STA.w !RAMcode+$02,y
+		LDA.w #$2115 : STA.w !RAMcode+$03,y
+		TYA
+		CLC : ADC #$0005
+		TAY
+	?Same:
+endmacro
+
+macro sourcebank(byte)
+		LDA.w #<byte>
+		CMP $08 : BEQ ?Same
+	?New:
+		STA $08
+	if <byte> = 0
+		LDA.w #$0464 : STA.w !RAMcode+$00,y
+		INY #2
+	else
+		LDA.w #<byte><<8+$A2 : STA.w !RAMcode+$00,y
+		LDA.w #$0486 : STA.w !RAMcode+$02,y
+		INY #4
+	endif
+	?Same:
+endmacro
+
+
+; must be used with 16-bit A
+macro sourcebankA()
+		AND #$00FF
+		CMP $08 : BEQ ?Same
+	?New:
+		STA $08
+		CMP #$0000 : BNE ?Non0
+		LDA.w #$0464 : STA.w !RAMcode+$00,y
+		INY #2
+		BRA ?End
+	?Non0:
+		XBA
+		ORA #$00A2
+		STA.w !RAMcode+$00,y
+		LDA.w #$0486 : STA.w !RAMcode+$02,y
+		INY #4
+	?End:
+	?Same:
+endmacro
+
+
+
+macro writecode(label)
+		STA.w !RAMcode+<label>-..code+1,y
+endmacro
+
+
+macro makecode(word)
+		LDA.w #<word> : STA.w !RAMcode+!Temp,y
+		!Temp := !Temp+2
 endmacro
 
 
@@ -869,12 +934,17 @@ Build_RAM_Code:
 		AND #$00F0					; |
 		CLC : ADC #$0010				; | transfer size = (uuuu bits +1) * 16 + 2048
 		ASL #4						; |
-		CLC : ADC #$0800				; |
+		ADC #$0800					; |
 		SEC : SBC.l !VRAMbase+!VRAMsize			; > subtract number of bytes uploaded by player GFX
 		STA $0E						;/
 
-		LDX !RAMcode_offset
+		LDY !RAMcode_offset
 		PLB
+
+
+		LDA #$0060 : STA $08				; reset source bank (0x60 will never be used by SNES)
+		STZ $0A						; reset video port
+		STZ $0C						; reset DMA settings
 
 		LDA.l !GameMode					;\
 		AND #$00FF					; | some of these only happen during levels
@@ -885,6 +955,8 @@ Build_RAM_Code:
 	.Level
 		LDA !AnimToggle
 		AND #$0002 : BNE .NoScroll			; if bit 1 is set, disable tilemap update
+
+
 		LDA.l !UpdateBG1Column				;\ update column
 		BEQ $03 : JSR .AppendColumn1			;/
 		LDA.l !UpdateBG1Row				;\ update row
@@ -943,7 +1015,16 @@ Build_RAM_Code:
 		BEQ $03 : JSR .AppendSMW0D7E			;/
 		LDA.l $6D80					;\ update slot 3
 		BEQ $03 : JSR .AppendSMW0D80			;/
-		JSR .AppendSMWPalette
+
+
+	; removed for shader compatibility
+	;	LDA #$0100					;\
+	;	CMP.l !LightR : BNE ..coinshine			; |
+	;	CMP.l !LightG : BNE ..coinshine			; |
+	;	CMP.l !LightB : BEQ ..nocoinshine		; | coin shine, unless there's a lighting effect
+	;	..coinshine					; |
+	;	JSR .AppendSMWPalette				; |
+	;	..nocoinshine					;/
 		.SkipSMW
 
 
@@ -953,17 +1034,8 @@ Build_RAM_Code:
 	;
 	; VR2 CGRAM block
 	;
-		LDY #$0000					;\
-	-	PEA.w .LoopCGRAM-1				; |
-		LDA.w !CGRAMtable+$00,y : BEQ .NextCGRAM	; |
-		JMP .AppendPalette				; |
-	.NextCGRAM						; |
-		TYA						; | add VR2 palette uploads to RAM code
-		CLC : ADC #$0006				; |
-		TAY						; |
-		RTS						; |
-		.LoopCGRAM					; |
-		CPY #$00FC : BCC -				;/
+		JSR .AppendPalette
+
 
 
 	;
@@ -971,7 +1043,15 @@ Build_RAM_Code:
 	;
 		LDA.l !LightBuffer-1 : BPL .NoLight		;\
 		AND #$7FFF : STA.l !LightBuffer-1		; | if a new shade operation is complete, clear the flag and append it
-		JSR .AppendLight				; |
+		JSR .AppendLight				;/
+		STZ.w !ShaderRowDisable+$0			;\
+		STZ.w !ShaderRowDisable+$2			; |
+		STZ.w !ShaderRowDisable+$4			; |
+		STZ.w !ShaderRowDisable+$6			; |
+		STZ.w !ShaderRowDisable+$8			; | clear temporary disable flags when the operation is complete
+		STZ.w !ShaderRowDisable+$A			; |
+		STZ.w !ShaderRowDisable+$C			; |
+		STZ.w !ShaderRowDisable+$E			; |
 		.NoLight					;/
 
 
@@ -981,7 +1061,7 @@ Build_RAM_Code:
 	;
 	; high priority big CCDMA block
 	;
-		PHX						; preserve RAMcode index
+		PHY						; preserve RAMcode index
 		LDA $0E
 		PHD
 		PEA $0100 : PLD					; DP = $0100 (to easily reach $3190)
@@ -1073,60 +1153,33 @@ Build_RAM_Code:
 		SEC : SBC $0E					;\
 		EOR #$FFFF : INC A				; | update remaining transfer size after CCDMA
 		STA $0E						;/
-		PLX						; restore RAMcode index
+		PLY						; restore RAMcode index
 
 
 	;
 	; square dynamo block
 	;
-		LDA !GFX_Dynamic
-		AND #$00FF
-		STA $00
-		AND #$0080
-		TRB $00
-		BEQ $02 : INC $01
-		LDA $00
-		AND #$0070 : TRB $00
-		ASL A
-		ORA $00
-		ASL #4
-		ORA #$6000
-		STA $00
-		LDY #$0000
-	-	LDA.w !SquareTable+$00,y : BEQ +
-		JSR .AppendSquare
-		BRA ++
-	+	INY #4
-	++	CPY #$0040 : BCC -
 
+
+	; DMA whole block of code at once
+	; modify code, each tile using the next "slot"
+
+		LDA.l !DynamicCount : BEQ .NoSquare
+		JSR .AppendSquare
+		.NoSquare
 
 
 	;
 	; VR2 VRAM block
 	;
-		LDY.w !VRAMslot					; continue on last transfer
-	-	PEA.w .LoopVRAM-1				;\
-		LDA.w !VRAMtable+$00,y : BEQ .NextVRAM		; |
-		LDA.w !VRAMtable+$05,y : BMI .Down		; |
-	.Up	JMP .AppendDynamo				; |
-	.Down	JMP .AppendDownload				; |
-	.NextVRAM						; | add VR2 dynamos to RAM code
-		TYA						; |
-		CLC : ADC #$0007				; |
-		CMP #$00FC					; | > wrap back to 0x00 upon hitting 0xFC or higher
-		BCC $03 : LDA #$0000				; |
-		TAY						; |
-		RTS						; |
-		.LoopVRAM					;/
-		LDA $0E : BEQ .NoVRAM				; > end code if transfer size is filled out
-		CPY.w !VRAMslot : BNE -				; > keep going until starting index is encountered again
-		STZ.w !VRAMslot					; clear slot when getting to the end of the table
-		.NoVRAM
+		JSR .AppendVR2
+
+
 
 	;
 	; small CCDMA block
 	;
-		PHX						; preserve RAMcode index
+		PHY						; preserve RAMcode index
 		LDA $0E
 		PHD
 		PEA $0100 : PLD
@@ -1235,12 +1288,12 @@ Build_RAM_Code:
 		SEC : SBC $0E					;\
 		EOR #$FFFF : INC A				; | update remaining transfer size after CCDMA
 		STA $0E						;/
-		PLX						; restore RAMcode index
+		PLY						; restore RAMcode index
 
 
 	;
 	; ExAnimation block
-	; NOTE: when reading this code, note that .l $0180 is bank 0, but .w $0180 is bank $40 (same as $6180)
+	; NOTE: when reading this code, note that .l $0180 is bank 0 (I-RAM), but .w $0180 is bank $40 (same as $6180, BW-RAM)
 		LDA !AnimToggle
 		AND #$0004 : BNE .NoExAnimation
 		LDA.w #FetchExAnim : STA.l $0183		;\
@@ -1250,18 +1303,18 @@ Build_RAM_Code:
 	-	LDA.l $018A : BEQ -				; | (dumped in $6180 since that can be accessed as $400180 by SA-1)
 		LDA #$00 : STA.l $018A				; | (mirroring is OP)
 		REP #$20					;/
-		LDY #$0000
+		LDX #$0000
 	.LoopExAnimation
-		CPY #$0031 : BCS .NoExAnimation
+		CPX #$0031 : BCS .NoExAnimation
 		PEA.w .LoopExAnimation-1
-		LDA.w $0180,y : BEQ .NextExAnimation
+		LDA.w $0180,x : BEQ .NextExAnimation
 		BMI +
 		JMP .AppendExAnimationGFX
 	+	JMP .AppendExAnimationPalette
 	.NextExAnimation
-		TYA
+		TXA
 		CLC : ADC #$0007
-		TAY
+		TAX
 		RTS
 		.NoExAnimation
 
@@ -1269,10 +1322,9 @@ Build_RAM_Code:
 
 
 		.EndCode
-
-		LDA #$6B6B : STA.w !RAMcode,x			; end RAM code routine with RTL
+		LDA #$6B6B : STA.w !RAMcode,y			; end RAM code routine with RTL
 		PLB						; restore bank
-		STX !RAMcode_offset				; store RAM code offset
+		STY !RAMcode_offset				; store RAM code offset
 		LDA #$1234 : STA !RAMcode_flag			; enable RAM code execution
 
 
@@ -1280,262 +1332,444 @@ Build_RAM_Code:
 		RTS
 
 
-; what follows is the pieces of DMA code that get added to RAM
 
-	.AppendDynamo
-		PHX						; push RAM code index
-		PHY						; push VRAM table index
-		TXY						; Y = RAM code index
-		LDX #$0000					;\
-	-	LDA.l ..code,x : STA.w !RAMcode+$00,y		; |
-		INY #2						; | transfer code to RAM
-		INX #2						; |
-		CPX.w #..end-..code : BCC -			;/
-		PLY						; restore VRAM table index
-		PLX						; restore RAM code index
 
-		LDA.w !VRAMtable+$00,y				;\
+
+
+; rough comparisons:
+;
+; cost of SA-1 DMA: 82 cycles + 1 cycle/byte
+; cost of MVN/MVP: 33 cycles + 7 cycles/byte
+; cost of %makecode(): 4.5 cycles/byte (9 cycles/word)
+;
+; MVN/MVP is faster than DMA if data is 8 bytes or less, but for data that small %makecode() outclasses both of them
+; so... MVN/MVP is definitely completely useless
+; %makecode() is faster than DMA if data is 23 bytes or less
+; so the conclusion:
+;	< 23 bytes, use %makecode()
+;	> 23 bytes, use DMA
+; (and never use MVN/MVP)
+
+; for curiosity's sake, the old LDA.l,x : STA.w,y method was 21 cycles/word (10.5 cycles/byte), making it by far the worst option
+
+
+
+
+; loop
+;	check slot
+;	branch: upload or download
+;	%DMAsettings(depends on type: $1801, $1809 or $3981)
+;	%videoport($80)
+;	%makecode() is faster than DMA for this, since chunks are so small (even download at 26 bytes, since %makecode() can skip some bytes)
+;	(insert data while making code)
+;	update RAM code index
+
+
+
+
+	.AppendVR2
+		LDX.w !VRAMslot					; continue on last transfer
+
+		..loop						;\ check slot
+		LDA.w !VRAMtable+$00,x : BNE ..processslot	;/
+		..next						;\ return if remaining transfer size = 0
+		LDA $0E : BEQ ..return				;/
+		TXA						;\
+		CLC : ADC #$0007				; |
+		CMP #$00FC					; | loop through entire table, regardless of entry point
+		BCC $03 : LDA #$0000				; |
+		TAX						; |
+		CPX.w !VRAMslot : BNE ..loop			;/
+		STZ.w !VRAMslot					; if entire table is processed, reset entry point to 0
+		..return					;\ return
+		RTS						;/
+
+		..processslot
+		AND #$8000 : STA $02				; background mode flag
+		LDA.w !VRAMtable+$04,x : %sourcebankA()		; source bank for this transfer
+		LDA.w !VRAMtable+$00,x				;\
 		AND #$3FFF					; | get size without background mode flag or fixed flag
 		STA $00						;/
-		LDA.w !VRAMtable+$00,y				;\
-		AND #$8000					; | get background mode flag
-		STA $02						;/
-		LDA.w !VRAMtable+$00,y				;\
-		AND #$4000					; |
-		STA $04						; > remember fixed mode flag
-		XBA						; | get fixed flag
-		LSR #3						; | (and set in RAM code right away)
-		ORA #$1801					; |
-		STA.w !RAMcode+$01,x				;/
+		LDA.w !VRAMtable+$05,x : BMI ..download		; check up/download
+		JMP ..upload
 
+		..download
+		STZ $04						; download doesn't have fixed mode
+		%DMAsettings($3981)				; $2139, mode 0x81 (word downloads)
+		%videoport($80)					; video port: word transfers
+		!Temp = 0					; make new RAM code
+		%makecode($00A9)				; LDA #$xxxx
+		!Temp := !Temp+1				; skip hi byte since it will be written by modification
+		%makecode($0285)				; STA $02
+		%makecode($00A9)				; LDA #$xxxx
+		!Temp := !Temp+1				; skip hi byte since it will be written by modification
+		%makecode($0585)				; STA $05
+		%makecode($00A9)				; LDA #$xxxx
+		!Temp := !Temp+1				; skip hi byte since it will be written by modification
+		%makecode($168D)				; STA $xx16
+		%makecode($AD21)				; $21 (previous opcode) : LDA $xxxx (note: addr, not #const)
+		%makecode($2139)				; $2139 (previous opcode)
+		%makecode($008C)				; STY $xxxx
+		!Temp := !Temp-1				; prevent overflow
+		%makecode($420B)				; $420B (previous opcode)
+		LDA.w #!Temp					; code size
+		JMP ..shared					; go to shared
+
+		..upload
+		LDA.w !VRAMtable+$00,x				;\
+		AND #$4000 : STA $04				; |
+		BNE ..fixed					; |
+		..normal					; |
+		%DMAsettings($1801)				; | fixed/normal mode
+		BRA ..handleupload				; |
+		..fixed						; |
+		%DMAsettings($1809)				; |
+		..handleupload					;/
+		%videoport($80)					; video port: word transfers
+		!Temp = 0					; make new RAM code
+		%makecode($00A9)				; LDA #$xxxx
+		!Temp := !Temp+1				; skip hi byte since it will be written by modification
+		%makecode($0285)				; STA $02
+		%makecode($00A9)				; LDA #$xxxx
+		!Temp := !Temp+1				; skip hi byte since it will be written by modification
+		%makecode($0585)				; STA $05
+		%makecode($00A9)				; LDA #$xxxx
+		!Temp := !Temp+1				; skip hi byte since it will be written by modification
+		%makecode($168D)				; STA $xx16
+		%makecode($8C21)				; $21 (previous opcode) : STY $xxxx
+		%makecode($420B)				; $420B (previous opcode)
+		LDA.w #!Temp					; code size
+
+		..shared
+		STA $06						; set code size
 		LDA $0E						;\
 		SEC : SBC $00					; | subtract transfer size from remaining bytes allowed
-		BCS ..ok					;/
+		BCC ..captransfer				;/
+
+		..fulltransfer
+		STA $0E						; store remaining transfer size allowed
+		LDA.w !VRAMtable+$02,x : %writecode(..src)	; source address
+		LDA $00 : %writecode(..size)			; upload size
+		LDA.w !VRAMtable+$05,x				;\ VRAM address
+		AND #$7FFF : %writecode(..vram)			;/
+		LDA #$0000 : STA.w !VRAMtable+$00,x		; clear this slot
+		TXA						;\
+		CLC : ADC #$0007				; | add 7 to VRAM table index
+		TAX						;/
+		TYA						;\
+		CLC : ADC $06					; | increase RAM code index
+		TAY						;/
+		JMP ..loop					; loop
+
+		..captransfer
 		EOR #$FFFF : INC A				;\
 		ORA $02						; > include background mode flag
 		ORA $04						; > include fixed mode flag
-		STA.w !VRAMtable+$00,y				; |
-		LDA $0E : STA.w !RAMcode+$0F,x			; |
-		LDA.w !VRAMtable+$02,y : STA.w !RAMcode+$06,x	; |
+		STA.w !VRAMtable+$00,x				; |
+		LDA $0E : %writecode(..size)			; |
+		LDA.w !VRAMtable+$02,x : %writecode(..src)	; |
 		BIT $04 : BVS +					; > don't update source for fixed mode
 		CLC : ADC $0E					; |
-		STA.w !VRAMtable+$02,y				; |
-	+	SEP #$20					; | if entire upload can't fit, upload as much as possible
-		LDA.w !VRAMtable+$04,y : STA.w !RAMcode+$0B,x	; | then adjust entry and store its index to keep going next frame
-		REP #$20					; |
-		LDA.w !VRAMtable+$05,y : STA.w !RAMcode+$14,x	; |
+		STA.w !VRAMtable+$02,x				; |
+	+	LDA.w !VRAMtable+$05,x				; | if entire transfer can't fit, transfer as much as possible
+		AND #$7FFF : %writecode(..vram)			; | (then update table to continue next frame)
 		LDA $0E						; |
 		LSR A						; |
-		CLC : ADC.w !VRAMtable+$05,y			; |
-		STA.w !VRAMtable+$05,y				; |
+		CLC : ADC.w !VRAMtable+$05,x			; |
+		STA.w !VRAMtable+$05,x				; |
 		STZ.w !VRAMslot					; |
 		BIT $02 : BMI +					; > background mode transfers don't store their index
-		STY.w !VRAMslot					;/
-	+	STZ $0E						;\ clear remaining bytes allowed and return
-		BRA ..done					;/
-
-		..ok
-		STA $0E						; store remaining transfer size allowed
-		LDA.w !VRAMtable+$02,y : STA.w !RAMcode+$06,x	; source address
-		SEP #$20					;\
-		LDA.w !VRAMtable+$04,y : STA.w !RAMcode+$0B,x	; | source bank
-		REP #$20					;/
-		LDA $00 : STA.w !RAMcode+$0F,x			; upload size
-		LDA.w !VRAMtable+$05,y : STA.w !RAMcode+$14,x	; VRAM address
-		LDA #$0000 : STA.w !VRAMtable+$00,y		; clear this slot
-
+		STX.w !VRAMslot					;/
+	+	STZ $0E						; clear remaining bytes allowed
 		TYA						;\
-		CLC : ADC #$0007				; | add 7 to VRAM table index
+		CLC : ADC $06					; | increase RAM code index
 		TAY						;/
-		..done
-		TXA						;\
-		CLC : ADC.w #..end-..code			; | increase RAM code index
-		TAX						;/
-
-		RTS
+		RTS						; return
 
 
+	; this is not read directly, it's just kept for reference
 		..code
-		LDA.w #$1801 : STA $00				; DMA settings
-		LDA.w #$0000 : STA $02				; source address
-		LDX.b #$00 : STX $04				; source bank
-		LDA.w #$0000 : STA $05				; upload size
-		LDA.w #$0000 : STA $2116			; VRAM address
-		STY.w $420B					; DMA toggle
-		..end
-
-
-	.AppendDownload
-		PHX						; push RAM code index
-		PHY						; push VRAM table index
-		TXY						; Y = RAM code index
-		LDX #$0000					;\
-	-	LDA.l ..code,x : STA.w !RAMcode+$00,y		; |
-		INY #2						; | transfer code to RAM
-		INX #2						; |
-		CPX.w #..end-..code : BCC -			;/
-		PLY						; restore VRAM table index
-		PLX						; restore RAM code index
-
-		LDA.w !VRAMtable+$00,y				;\
-		AND #$7FFF					; | get size without background mode flag
-		STA $00						;/
-		LDA.w !VRAMtable+$00,y				;\
-		AND #$8000					; | get background mode flag
-		STA $02						;/
-
-		LDA $0E						;\
-		SEC : SBC $00					; | subtract transfer size from remaining bytes allowed
-		BCS ..ok					;/
-		EOR #$FFFF : INC A				;\
-		ORA $02						; > include background mode flag
-		STA.w !VRAMtable+$00,y				; |
-		LDA $0E : STA.w !RAMcode+$0F,x			; |
-		LDA.w !VRAMtable+$02,y : STA.w !RAMcode+$06,x	; |
-		CLC : ADC $0E					; |
-		STA.w !VRAMtable+$02,y				; |
-		SEP #$20					; | if entire download can't fit, download as much as possible
-		LDA.w !VRAMtable+$04,y : STA.w !RAMcode+$0B,x	; | then adjust entry and store its index to keep going next frame
-		REP #$20					; |
-		LDA.w !VRAMtable+$05,y : STA.w !RAMcode+$14,x	; |
-		LDA $0E						; |
-		LSR A						; |
-		CLC : ADC.w !VRAMtable+$05,y			; |
-		STA.w !VRAMtable+$05,y				; |
-		STZ.w !VRAMslot					; |
-		BIT $02 : BMI +					; > background mode transfers don't store their index
-		STY.w !VRAMslot					;/
-	+	STZ $0E						;\ clear remaining bytes allowed and return
-		BRA ..done					;/
-
-		..ok
-		STA $0E						; store remaining transfer size allowed
-		LDA.w !VRAMtable+$02,y : STA.w !RAMcode+$06,x	; source address
-		SEP #$20					;\
-		LDA.w !VRAMtable+$04,y : STA.w !RAMcode+$0B,x	; | source bank
-		REP #$20					;/
-		LDA $00 : STA.w !RAMcode+$0F,x			; upload size
-		LDA.w !VRAMtable+$05,y : STA.w !RAMcode+$14,x	; VRAM address
-		LDA #$0000 : STA.w !VRAMtable+$00,y		; clear this slot
-
-		TYA						;\
-		CLC : ADC #$0007				; | add 7 to VRAM table index
-		TAY						;/
-		..done
-		TXA						;\
-		CLC : ADC.w #..end-..code			; | increase RAM code index
-		TAX						;/
-		RTS
-
-		..code
-		LDA.w #$3981 : STA $00				; DMA settings
-		LDA.w #$0000 : STA $02				; source address
-		LDX.b #$00 : STX $04				; source bank
-		LDA.w #$0000 : STA $05				; upload size
-		LDA.w #$0000 : STA $2116			; VRAM address
-		LDA.w $2139					; dummy read
+	..src	LDA.w #$0000 : STA $02				; source address
+	..size	LDA.w #$0000 : STA $05				; upload size
+	..vram	LDA.w #$0000 : STA $2116			; VRAM address
+		; LDA.w $2139	; download only
 		STY.w $420B					; DMA toggle
 		..end
 
 
 	.AppendTile
-		PHX						; push RAM code index
-		TXY						; Y = RAM code index
-		LDX #$0000					;\
-	-	LDA.l ..code,x : STA.w !RAMcode+$00,y		; |
-		INY #2						; | transfer code to RAM
-		INX #2						; |
-		CPX.w #..end-..code : BCC -			;/
-		PLX						; restore RAM code index
+		%DMAsettings($1604)
+		%videoport($80)
+		%sourcebank(!VRAMbank)
 
-		LDA.w !TileUpdateTable : STA.w !RAMcode+$01,x	; upload size
+		LDA #$00A9 : STA.w !RAMcode+$00,y		; LDA #$xxxx
+		LDA.w !TileUpdateTable : STA.w !RAMcode+$01,y	; byte count from header
+		!Temp = 3					; starting code make offset
+		%makecode($0585)				; STA $05
+		%makecode(!TileUpdateTable+2<<8+$A9)		; LDA #$xx[!TileUpdateTable+2]
+		%makecode(!TileUpdateTable>>8+$8500)		; hi byte of !TileUpdateTable (previous opcode) : STA $xx
+		%makecode($8C02)				; $02 (previous opcode) : STY $xxxx
+		%makecode($420B)				; $420B (previous opcode)
+
 		LDA $0E						;\
 		SEC : SBC.w !TileUpdateTable			; | update remaining transfer size
 		STA $0E						;/
 
-		TXA						;\
-		CLC : ADC.w #..end-..code			; | increase RAM code index
-		TAX						;/
-		RTS
-
-		..code
-		LDA.w #$0000 : STA $05				;
-		LDA.w #$1604 : STA $00				; yes, i actually found a use for DMA mode 4
-		LDA.w #!TileUpdateTable+2 : STA $02		;
-		LDX.b #!VRAMbank : STX $04			;
-		STY.w $420B					;
-		..end
-
-
-
-	; $00 = starting VRAM address for dynamic tiles
-	.AppendSquare
-		PHX						; push RAM code index
-		PHY						; push square table index
-		TXY						; Y = RAM code index
-		LDX #$0000					;\
-	-	LDA.l ..code,x : STA.w !RAMcode+$00,y		; |
-		INY #2						; | transfer code to RAM
-		INX #2						; |
-		CPX.w #..end-..code : BCC -			;/
-		PLY						; restore square table index
-		PLX						; restore RAM code index
-
-		LDA $0E						;\
-		SEC : SBC #$0080				; | update transfer size
-		STA $0E						;/
-
-		LDA.w !SquareTable+0,y : STA.w !RAMcode+$06,x	; source address 1 lo + hi
-		CLC : ADC #$0200				;\ source address 2 lo + hi
-		STA.w !RAMcode+$1D,x				;/
-		SEP #$20					;\
-		LDA.w !SquareTable+2,y				; |
-		STA.w !RAMcode+$0B,x				; | source bank 1 and 2
-		STA.w !RAMcode+$22,x				; |
-		REP #$20					;/
 		TYA						;\
-		CMP #$0020					; |
-		BCC $03 : ADC #$001F				; |
-		ASL #3						; | VRAM address 1 and 2
-		ORA $00						; |
-		STA.w !RAMcode+$14,x				; |
-		CLC : ADC #$0100				; |
-		STA.w !RAMcode+$2B,x				;/
-
-		LDA #$0000 : STA.w !SquareTable+0,y		; clear this square
-
-		TXA						;\
-		CLC : ADC.w #..end-..code			; | increase RAM code index
-		TAX						;/
+		CLC : ADC.w #!Temp				; | increase RAM code index
+		TAY						;/
 		RTS
 
 
+	.AppendSquare
+		%DMAsettings($1801)
+		%videoport($80)
+
+		PHB : PHK : PLB					; bank wrapper start
+		STZ $2250					;\
+		LDA.w #..nexttile-..code : STA $2251		; | calculate number of bytes to DMA
+		LDA !DynamicCount : STA $2253			;/
+		XBA						;\
+		LSR A						; |
+		SEC : SBC $0E					; | update remaining transfer size
+		EOR #$FFFF : INC A				; |
+		STA $0E						;/
+		STZ !DynamicCount				; > clear this for next frame
+		LDA.w #..code : STA $2232			;\
+		LDA $2306 : STA $2238				; |
+		TYA						; |
+		CLC : ADC.w #!RAMcode				; |
+		STA $2235					; | copy code to RAM with SA-1 DMA
+		SEP #$20					; |
+		LDA #$90 : STA $220A				; > disable DMA IRQ
+		LDA #$C4 : STA $2230				; > DMA settings
+		LDA.b #..code>>16 : STA $2234			; > bank
+		LDA.b #!RAMcode>>16 : STA $2237			; > dest bank (this write starts the DMA)
+		STZ $2230					;/
+		LDA #$F0 : STA $220B				; clear all IRQ flags
+		LDA #$B0 : STA $220A				; enable DMA IRQ
+		PLB						; bank wrapper end
+		REP #$30					; all regs 16-bit
+
+		LDX #$0000					; X = index to square data
+	-	LDA.w !SquareTable+0,x : BEQ +			; check status
+		%writecode(..src1)				; source address 1 lo + hi
+		CLC : ADC #$0200				;\ source address 2 lo + hi
+		%writecode(..src2)				;/
+		SEP #$20					;\
+		LDA.w !SquareTable+2,x : %writecode(..bnk)	; | source bank (always included because of clustered DMA)
+		STA $08						;/ > save source bank for later codes
+		REP #$20					;\
+		PHX						; |
+		TXA						; |
+		LSR A						; |
+		TAX						; | matrix address
+		LDA.w !DynamicMatrix&$1FFF,x			; |
+		ASL #4						; |
+		ORA #$6000					; |
+		PLX						;/
+		%writecode(..vram1)				;\
+		CLC : ADC #$0100				; | VRAM address 1 and 2
+		%writecode(..vram2)				;/
+		STZ.w !SquareTable+0,x				; clear this square
+		TYA						;\
+		CLC : ADC.w #..nexttile-..code			; | increase RAM code index
+		TAY						;/
+	+	INX #4						;\ loop through all 16 squares
+		CPX #$0040 : BCC -				;/
+
+		RTS
+
 		..code
-		LDA.w #$1801 : STA $00				; DMA settings
-		LDA.w #$0000 : STA $02				; source address
-		LDX.b #$00 : STX $04				; source bank
-		LDA.w #$0040 : STA $05				; upload size (always 0x0040)
-		LDA.w #$0000 : STA $2116			; VRAM address
+		; tile 0
+	..bnk	LDX.b #$00 : STX $04				; source bank
+	..src1	LDA.w #$0000 : STA $02				; source address
+	..size1	LDA.w #$0040 : STA $05				; upload size (always 0x0040)
+	..vram1	LDA.w #$0000 : STA $2116			; VRAM address
 		STY.w $420B					; DMA toggle
-		LDA.w #$0000 : STA $02				; source address
-		LDX.b #$00 : STX $04				; source bank
-		LDA.w #$0040 : STA $05				; upload size (always 0x0040)
-		LDA.w #$0000 : STA $2116			; VRAM address
+	..src2	LDA.w #$0000 : STA $02				; source address
+	..size2	LDA.w #$0040 : STA $05				; upload size (always 0x0040)
+	..vram2	LDA.w #$0000 : STA $2116			; VRAM address
 		STY.w $420B					; DMA toggle
+		..nexttile
+		; tile 1
+		LDX.b #$00 : STX $04
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
+		; tile 2
+		LDX.b #$00 : STX $04
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
+		; tile 3
+		LDX.b #$00 : STX $04
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
+		; tile 4
+		LDX.b #$00 : STX $04
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
+		; tile 5
+		LDX.b #$00 : STX $04
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
+		; tile 6
+		LDX.b #$00 : STX $04
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
+		; tile 7
+		LDX.b #$00 : STX $04
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
+		; tile 8
+		LDX.b #$00 : STX $04
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
+		; tile 9
+		LDX.b #$00 : STX $04
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
+		; tile 10
+		LDX.b #$00 : STX $04
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
+		; tile 11
+		LDX.b #$00 : STX $04
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
+		; tile 12
+		LDX.b #$00 : STX $04
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
+		; tile 13
+		LDX.b #$00 : STX $04
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
+		; tile 14
+		LDX.b #$00 : STX $04
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
+		; tile 15
+		LDX.b #$00 : STX $04
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
+		LDA.w #$0000 : STA $02
+		LDA.w #$0040 : STA $05
+		LDA.w #$0000 : STA $2116
+		STY.w $420B
 		..end
 
 
 
 
+	; always doing full DMA here saves cycles on 3-part transfer and loses cycles on 2-part transfer
+	; checking before the DMA will save ~5 cycles on 2-part transfer and lose ~10 cycles on 3-part transfer
 	.AppendRow1
-		PHX						; push RAM code index
-		TXY						; Y = RAM code index
-		LDX #$0000					;\
-	-	LDA.l ..code,x : STA.w !RAMcode+$00,y		; |
-		INY #2						; | transfer code to RAM
-		INX #2						; |
-		CPX.w #..end-..code : BCC -			;/
-		PLX						; restore RAM code index
+		%DMAsettings($1801)
+		%videoport($80)
+		%sourcebank($00)
+
+		PHB : PHK : PLB					;\
+		LDA.w #..code : STA $2232			; |
+		LDA.w #..end-..code : STA $2238			; | copy code to RAM with SA-1 DMA
+		TYA						; |
+		CLC : ADC.w #!RAMcode				; |
+		STA $2235					; |
+		SEP #$20					; |
+		LDA #$90 : STA $220A				; > disable DMA IRQ
+		LDA #$C4 : STA $2230				; > DMA settings
+		LDA.b #..code>>16 : STA $2234			; > bank
+		LDA.b #!RAMcode>>16 : STA $2237			; > dest bank (this write starts the DMA)
+		STZ $2230					; |
+		LDA #$F0 : STA $220B				; clear all IRQ flags
+		LDA #$B0 : STA $220A				; enable DMA IRQ
+		PLB						; |
+		REP #$30					;/
 
 		LDA $0E						;\
 		SEC : SBC #$0050				; | update transfer size
@@ -1555,13 +1789,12 @@ Build_RAM_Code:
 		ASL #2						; | determine which tilemap to use
 		ORA $00						; |
 		ORA.l !BG1Address				; |
-		STA.w !RAMcode+$0A,x				;/
+		%writecode(..vram1)				;/
 		EOR #$0400					;\
 		AND #$FFE0					; | continue into next tilemap
-		STA.w !RAMcode+$1D,x				;/
+		%writecode(..vram2)				;/
 		EOR #$0400					;\ row 3
-		STA.w !RAMcode+$30,x				;/
-
+		%writecode(..vram3)				;/
 
 		LDA $02
 		LSR #2
@@ -1582,21 +1815,21 @@ Build_RAM_Code:
 		SEC : SBC #$0040
 		EOR #$FFFF : INC A
 		STA $02
-		STA.w !RAMcode+$15,x
-		LDA #$0040 : STA.w !RAMcode+$28,x
+		%writecode(..size1)
+		LDA #$0040 : %writecode(..size2)
 		LDA #$0010
 		SEC : SBC $02
-		STA.w !RAMcode+$3B,x
+		%writecode(..size3)
 
 		LDA $02
 		CLC : ADC #$6950
-		STA.w !RAMcode+$23,x
+		%writecode(..src2)
 		CLC : ADC #$0040
-		STA.w !RAMcode+$36,x
+		%writecode(..src3)
 
-		TXA
+		TYA
 		CLC : ADC.w #..end-..code
-		TAX
+		TAY
 		RTS
 
 
@@ -1604,49 +1837,61 @@ Build_RAM_Code:
 		..two
 		SEC : SBC #$0040
 		EOR #$FFFF : INC A
-		STA.w !RAMcode+$15,x				; size of first row (32 - w)
+		%writecode(..size1)				; size of first row (32 - w)
 		STA $02
 		LDA #$0050
 		SEC : SBC $02
-		STA.w !RAMcode+$28,x				; size of second row (40 - (32 - w))
+		%writecode(..size2)				; size of second row (40 - (32 - w))
 
 		LDA $02						;\
 		CLC : ADC #$6950				; | source address of second row
-		STA.w !RAMcode+$23,x				;/
+		%writecode(..src2)				;/
 
-		TXA						;\
+		TYA						;\
 		CLC : ADC.w #..end2-..code			; | increase RAM code index
-		TAX						;/
+		TAY						;/
 		RTS
 
 
 		..code
-		LDX #$00 : STX $04	;
-		LDA #$1801 : STA $00	;
-		LDA #$0000 : STA $2116	; modify 0A-0B
-		LDA #$6950 : STA $02	; modify 10-11
-		LDA #$0050 : STA $05	; modify 15-16
+	..vram1	LDA #$0000 : STA $2116	; modify 0A-0B
+	..src1	LDA #$6950 : STA $02	; modify 10-11
+	..size1	LDA #$0050 : STA $05	; modify 15-16
 		STY $420B		;
-		LDA #$0000 : STA $2116	; modify 1D-1E
-		LDA #$6950 : STA $02	; modify 23-24
-		LDA #$0050 : STA $05	; modify 28-29
+	..vram2	LDA #$0000 : STA $2116	; modify 1D-1E
+	..src2	LDA #$6950 : STA $02	; modify 23-24
+	..size2	LDA #$0050 : STA $05	; modify 28-29
 		STY $420B		;
 		..end2
-		LDA #$0000 : STA $2116	; modify 30-31
-		LDA #$6950 : STA $02	; modify 36-37
-		LDA #$0050 : STA $05	; modify 3B-3C
+	..vram3	LDA #$0000 : STA $2116	; modify 30-31
+	..src3	LDA #$6950 : STA $02	; modify 36-37
+	..size3	LDA #$0050 : STA $05	; modify 3B-3C
 		STY $420B		;
 		..end
 
+
+
 	.AppendRow2
-		PHX						; push RAM code index
-		TXY						; Y = RAM code index
-		LDX #$0000					;\
-	-	LDA.l ..code,x : STA.w !RAMcode+$00,y		; |
-		INY #2						; | transfer code to RAM
-		INX #2						; |
-		CPX.w #..end-..code : BCC -			;/
-		PLX						; restore RAM code index
+		%DMAsettings($1801)
+		%videoport($80)
+		%sourcebank($00)
+
+		PHB : PHK : PLB					;\
+		LDA.w #..code : STA $2232			; |
+		LDA.w #..end-..code : STA $2238			; | copy code to RAM with SA-1 DMA
+		TYA						; |
+		CLC : ADC.w #!RAMcode				; |
+		STA $2235					; |
+		SEP #$20					; |
+		LDA #$90 : STA $220A				; > disable DMA IRQ
+		LDA #$C4 : STA $2230				; > DMA settings
+		LDA.b #..code>>16 : STA $2234			; > bank
+		LDA.b #!RAMcode>>16 : STA $2237			; > dest bank (this write starts the DMA)
+		STZ $2230					; |
+		LDA #$F0 : STA $220B				; clear all IRQ flags
+		LDA #$B0 : STA $220A				; enable DMA IRQ
+		PLB						; |
+		REP #$30					;/
 
 		LDA $0E						;\
 		SEC : SBC #$0050				; | update transfer size
@@ -1666,13 +1911,12 @@ Build_RAM_Code:
 		ASL #2						; | determine which tilemap to use
 		ORA $00						; |
 		ORA.l !BG2Address				; |
-		STA.w !RAMcode+$0A,x				;/
+		%writecode(..vram1)				;/
 		EOR #$0400					;\
 		AND #$FFE0					; | continue into next tilemap
-		STA.w !RAMcode+$1D,x				;/
+		%writecode(..vram2)				;/
 		EOR #$0400					;\ row 3
-		STA.w !RAMcode+$30,x				;/
-
+		%writecode(..vram3)				;/
 
 		LDA $02
 		LSR #2
@@ -1693,21 +1937,21 @@ Build_RAM_Code:
 		SEC : SBC #$0040
 		EOR #$FFFF : INC A
 		STA $02
-		STA.w !RAMcode+$15,x
-		LDA #$0040 : STA.w !RAMcode+$28,x
+		%writecode(..size1)
+		LDA #$0040 : %writecode(..size2)
 		LDA #$0010
 		SEC : SBC $02
-		STA.w !RAMcode+$3B,x
+		%writecode(..size3)
 
 		LDA $02
 		CLC : ADC #$69E0
-		STA.w !RAMcode+$23,x
+		%writecode(..src2)
 		CLC : ADC #$0040
-		STA.w !RAMcode+$36,x
+		%writecode(..src3)
 
-		TXA
+		TYA
 		CLC : ADC.w #..end-..code
-		TAX
+		TAY
 		RTS
 
 
@@ -1715,50 +1959,60 @@ Build_RAM_Code:
 		..two
 		SEC : SBC #$0040
 		EOR #$FFFF : INC A
-		STA.w !RAMcode+$15,x				; size of first row (32 - w)
+		%writecode(..size1)				; size of first row (32 - w)
 		STA $02
 		LDA #$0050
 		SEC : SBC $02
-		STA.w !RAMcode+$28,x				; size of second row (40 - (32 - w))
+		%writecode(..size2)				; size of second row (40 - (32 - w))
 
 		LDA $02						;\
 		CLC : ADC #$69E0				; | source address of second row
-		STA.w !RAMcode+$23,x				;/
+		%writecode(..src2)				;/
 
-		TXA						;\
+		TYA						;\
 		CLC : ADC.w #..end2-..code			; | increase RAM code index
-		TAX						;/
+		TAY						;/
 		RTS
 
 
 		..code
-		LDX #$00 : STX $04	;
-		LDA #$1801 : STA $00	;
-		LDA #$0000 : STA $2116	; modify 0A-0B
-		LDA #$69E0 : STA $02	; modify 10-11
-		LDA #$0050 : STA $05	; modify 15-16
+	..vram1	LDA #$0000 : STA $2116	; modify 0A-0B
+	..src1	LDA #$69E0 : STA $02	; modify 10-11
+	..size1	LDA #$0050 : STA $05	; modify 15-16
 		STY $420B		;
-		LDA #$0000 : STA $2116	; modify 1D-1E
-		LDA #$69E0 : STA $02	; modify 23-24
-		LDA #$0050 : STA $05	; modify 28-29
+	..vram2	LDA #$0000 : STA $2116	; modify 1D-1E
+	..src2	LDA #$69E0 : STA $02	; modify 23-24
+	..size2	LDA #$0050 : STA $05	; modify 28-29
 		STY $420B		;
 		..end2
-		LDA #$0000 : STA $2116	; modify 30-31
-		LDA #$69E0 : STA $02	; modify 36-37
-		LDA #$0050 : STA $05	; modify 3B-3C
+	..vram3	LDA #$0000 : STA $2116	; modify 30-31
+	..src3	LDA #$69E0 : STA $02	; modify 36-37
+	..size3	LDA #$0050 : STA $05	; modify 3B-3C
 		STY $420B		;
 		..end
 
 
 	.AppendColumn1
-		PHX						; push RAM code index
-		TXY						; Y = RAM code index
-		LDX #$0000					;\
-	-	LDA.l ..code,x : STA.w !RAMcode+$00,y		; |
-		INY #2						; | transfer code to RAM
-		INX #2						; |
-		CPX.w #..end-..code : BCC -			;/
-		PLX						; restore RAM code index
+		%DMAsettings($1801)
+		%videoport($81)
+		%sourcebank($00)
+
+		PHB : PHK : PLB					;\
+		LDA.w #..code : STA $2232			; |
+		LDA.w #..end-..code : STA $2238			; | copy code to RAM with SA-1 DMA
+		TYA						; |
+		CLC : ADC.w #!RAMcode				; |
+		STA $2235					; |
+		SEP #$20					; |
+		LDA #$90 : STA $220A				; > disable DMA IRQ
+		LDA #$C4 : STA $2230				; > DMA settings
+		LDA.b #..code>>16 : STA $2234			; > bank
+		LDA.b #!RAMcode>>16 : STA $2237			; > dest bank (this write starts the DMA)
+		STZ $2230					; |
+		LDA #$F0 : STA $220B				; clear all IRQ flags
+		LDA #$B0 : STA $220A				; enable DMA IRQ
+		PLB						; |
+		REP #$30					;/
 
 		LDA $0E						;\
 		SEC : SBC #$0040				; | update transfer size
@@ -1778,7 +2032,7 @@ Build_RAM_Code:
 		ASL #2						; | determine which tilemap to use
 		ORA $00						; |
 		ORA.l !BG1Address				; |
-		STA.w !RAMcode+$0F,x				;/
+		%writecode(..vram1)				;/
 
 	; h = start of first column (height of second column)
 	; h = 32 - y (256 - y in pixels)
@@ -1786,63 +2040,66 @@ Build_RAM_Code:
 	; h = 32 -> skip second column
 
 		AND #$F41F
-		STA.w !RAMcode+$22,x				; same, but y = 0
+		%writecode(..vram2)				; same, but y = 0
 		LDA $02
 		LSR #2
 		STA $02 : BEQ ..one				; check if only 1 column should be used
 		CMP #$0040 : BNE ..both
 
 		..one
-		LDA #$6910 : STA.w !RAMcode+$15,x
-		LDA.l ..end2+0 : STA.w !RAMcode+(..end3-..code)+0,x
-		LDA.l ..end2+2 : STA.w !RAMcode+(..end3-..code)+2,x
-		LDA.l ..end2+3 : STA.w !RAMcode+(..end3-..code)+3,x
-		TXA
-		CLC : ADC.w #..end3-..code+5
-		TAX
+		TYA
+		CLC : ADC.w #..end2-..code
+		TAY
 		RTS
 
 		..both
 		SEC : SBC #$0040
 		EOR #$FFFF : INC A
 		CLC : ADC #$6910
-		STA.w !RAMcode+$28,x				; source address of second column
-		LDA $02 : STA.w !RAMcode+$2D,x			; second column = h tall
+		%writecode(..src2)				; source address of second column
+		LDA $02 : %writecode(..size2)			; second column = h tall
 		SEC : SBC #$0040
 		EOR #$FFFF : INC A
-		STA.w !RAMcode+$1A,x				; first column = 32 - h tall
-		TXA						;\
+		%writecode(..size1)				; first column = 32 - h tall
+		TYA						;\
 		CLC : ADC.w #..end-..code			; | increase RAM code index
-		TAX						;/
+		TAY						;/
 		RTS
 
 		..code
-		LDX #$81 : STX $2115	; vide port control = word column
-		LDX #$00 : STX $04	;
-		LDA #$1801 : STA $00	;
-		LDA #$0000 : STA $2116	; modify 0F-10
-		LDA #$6910 : STA $02	; modify 15-16
-		LDA #$0040 : STA $05	; modify 1A-1B
+	..vram1	LDA #$0000 : STA $2116	; modify 0F-10
+	..src1	LDA #$6910 : STA $02	; modify 15-16
+	..size1	LDA #$0040 : STA $05	; modify 1A-1B
 		STY $420B		;
-		..end3
-		LDA #$0000 : STA $2116	; modify 22-23
-		LDA #$6910 : STA $02	; modify 28-29
-		LDA #$0040 : STA $05	; modify 2D-2E
-		STY $420B
 		..end2
-		LDX #$80 : STX $2115	; restore video port control
+	..vram2	LDA #$0000 : STA $2116	; modify 22-23
+	..src2	LDA #$6910 : STA $02	; modify 28-29
+	..size2	LDA #$0040 : STA $05	; modify 2D-2E
+		STY $420B
 		..end
 
 
 	.AppendColumn2
-		PHX						; push RAM code index
-		TXY						; Y = RAM code index
-		LDX #$0000					;\
-	-	LDA.l ..code,x : STA.w !RAMcode+$00,y		; |
-		INY #2						; | transfer code to RAM
-		INX #2						; |
-		CPX.w #..end-..code : BCC -			;/
-		PLX						; restore RAM code index
+		%DMAsettings($1801)
+		%videoport($81)
+		%sourcebank($00)
+
+		PHB : PHK : PLB					;\
+		LDA.w #..code : STA $2232			; |
+		LDA.w #..end-..code : STA $2238			; | copy code to RAM with SA-1 DMA
+		TYA						; |
+		CLC : ADC.w #!RAMcode				; |
+		STA $2235					; |
+		SEP #$20					; |
+		LDA #$90 : STA $220A				; > disable DMA IRQ
+		LDA #$C4 : STA $2230				; > DMA settings
+		LDA.b #..code>>16 : STA $2234			; > bank
+		LDA.b #!RAMcode>>16 : STA $2237			; > dest bank (this write starts the DMA)
+		STZ $2230					; |
+		LDA #$F0 : STA $220B				; clear all IRQ flags
+		LDA #$B0 : STA $220A				; enable DMA IRQ
+		PLB						; |
+		REP #$30					;/
 
 		LDA $0E						;\
 		SEC : SBC #$0040				; | update transfer size
@@ -1862,7 +2119,7 @@ Build_RAM_Code:
 		ASL #2						; | determine which tilemap to use
 		ORA $00						; |
 		ORA.l !BG2Address				; |
-		STA.w !RAMcode+$0F,x				;/
+		%writecode(..vram1)				;/
 
 	; h = start of first column (height of second column)
 	; h = 32 - y (256 - y in pixels)
@@ -1870,64 +2127,68 @@ Build_RAM_Code:
 	; h = 32 -> skip second column
 
 		AND #$FC1F
-		STA.w !RAMcode+$22,x				; same, but y = 0
+		%writecode(..vram2)				; same, but y = 0
 		LDA $02
 		LSR #2
 		STA $02 : BEQ ..one				; check if only 1 column should be used
 		CMP #$0040 : BNE ..both
 
 		..one
-		LDA #$69A0 : STA.w !RAMcode+$15,x
-		LDA.l ..end2+0 : STA.w !RAMcode+(..end3-..code)+0,x
-		LDA.l ..end2+2 : STA.w !RAMcode+(..end3-..code)+2,x
-		LDA.l ..end2+3 : STA.w !RAMcode+(..end3-..code)+3,x
-		TXA
-		CLC : ADC.w #..end3-..code+5
-		TAX
+		TYA
+		CLC : ADC.w #..end3-..code
+		TAY
 		RTS
 
 		..both
 		SEC : SBC #$0040
 		EOR #$FFFF : INC A
 		CLC : ADC #$69A0
-		STA.w !RAMcode+$28,x				; source address of second column
-		LDA $02 : STA.w !RAMcode+$2D,x			; second column = h tall
+		%writecode(..src2)				; source address of second column
+		LDA $02 : %writecode(..size2)			; second column = h tall
 		SEC : SBC #$0040
 		EOR #$FFFF : INC A
-		STA.w !RAMcode+$1A,x				; first column = 32 - h tall
-		TXA						;\
+		%writecode(..size1)				; first column = 32 - h tall
+		TYA						;\
 		CLC : ADC.w #..end-..code			; | increase RAM code index
-		TAX						;/
+		TAY						;/
 		RTS
 
 		..code
-		LDX #$81 : STX $2115	; vide port control = word column
-		LDX #$00 : STX $04	;
-		LDA #$1801 : STA $00	;
-		LDA #$0000 : STA $2116	; modify 0F-10
-		LDA #$69A0 : STA $02	; modify 15-16
-		LDA #$0040 : STA $05	; modify 1A-1B
+	..vram1	LDA #$0000 : STA $2116	; modify 0F-10
+	..src1	LDA #$69A0 : STA $02	; modify 15-16
+	..size1	LDA #$0040 : STA $05	; modify 1A-1B
 		STY $420B		;
 		..end3
-		LDA #$0000 : STA $2116	; modify 22-23
-		LDA #$69A0 : STA $02	; modify 28-29
-		LDA #$0040 : STA $05	; modify 2D-2E
+	..vram2	LDA #$0000 : STA $2116	; modify 22-23
+	..src2	LDA #$69A0 : STA $02	; modify 28-29
+	..size2	LDA #$0040 : STA $05	; modify 2D-2E
 		STY $420B
 		..end2
-		LDX #$80 : STX $2115	; restore video port control
 		..end
 
 
 
 	.AppendBackground
-		PHX						; push RAM code index
-		TXY						; Y = RAM code index
-		LDX #$0000					;\
-	-	LDA.l ..code,x : STA.w !RAMcode+$00,y		; |
-		INY #2						; | transfer code to RAM
-		INX #2						; |
-		CPX.w #..end-..code : BCC -			;/
-		PLX						; restore RAM code index
+		%DMAsettings($1801)
+		%videoport($80)
+		%sourcebank(!BG2Tilemap>>16)
+
+		PHB : PHK : PLB					;\
+		LDA.w #..code : STA $2232			; |
+		LDA.w #..end-..code : STA $2238			; | copy code to RAM with SA-1 DMA
+		TYA						; |
+		CLC : ADC.w #!RAMcode				; |
+		STA $2235					; |
+		SEP #$20					; |
+		LDA #$90 : STA $220A				; > disable DMA IRQ
+		LDA #$C4 : STA $2230				; > DMA settings
+		LDA.b #..code>>16 : STA $2234			; > bank
+		LDA.b #!RAMcode>>16 : STA $2237			; > dest bank (this write starts the DMA)
+		STZ $2230					; |
+		LDA #$F0 : STA $220B				; clear all IRQ flags
+		LDA #$B0 : STA $220A				; enable DMA IRQ
+		PLB						; |
+		REP #$30					;/
 
 		LDA $0E						;\
 		SEC : SBC #$0080				; | update transfer size
@@ -1937,243 +2198,261 @@ Build_RAM_Code:
 		AND #$01F8					; |
 		ASL #3						; |
 		CLC : ADC.w #!BG2Tilemap			; | read directly from the raw copy of the BG2 tilemap
-		STA.w !RAMcode+$10,x				; | (note that the raw is twice as large as the VRAM space)
+		%writecode(..src1)				; | (note that the raw is twice as large as the VRAM space)
 		CLC : ADC #$1000				; |
-		STA.w !RAMcode+$23,x				;/
+		%writecode(..src2)				;/
 
 		LDA.l !BG2ZipRowY				;\
 		AND #$00F8					; |
 		ASL #2						; |
 		ORA.l !BG2Address				; | VRAM address
-		STA.w !RAMcode+$0A,x				; |
+		%writecode(..vram1)				; |
 		EOR #$0400					; |
-		STA.w !RAMcode+$1D,x				;/
+		%writecode(..vram2)				;/
 
-		TXA
+		TYA
 		CLC : ADC.w #..end-..code
-		TAX
+		TAY
 		RTS
 
 
 		..code
-		LDA #$1801 : STA $00
-		LDX.b #!BG2Tilemap>>16 : STX $04
-		LDA #$0000 : STA $2116		; modify 0A-0B
-		LDA #$0000 : STA $02		; modify 10-11
-		LDA #$0040 : STA $05
+	..vram1	LDA #$0000 : STA $2116		; modify 0A-0B
+	..src1	LDA #$0000 : STA $02		; modify 10-11
+	..size1	LDA #$0040 : STA $05
 		STY $420B
-		LDA #$0000 : STA $2116		; modify 1D-1E
-		LDA #$0000 : STA $02		; modify 23-24
-		LDA #$0040 : STA $05
+	..vram2	LDA #$0000 : STA $2116		; modify 1D-1E
+	..src2	LDA #$0000 : STA $02		; modify 23-24
+	..size2	LDA #$0040 : STA $05
 		STY $420B
 		..end
 
 
-
-	.AppendCCDMA		; < i'll figure this one out later
-
-
 	.AppendPalette
-		PHX						; push RAM code index
-		PHY						; push CGRAM table index
-		TXY						; Y = RAM code index
-		LDX #$0000					;\
-	-	LDA.l ..code,x : STA.w !RAMcode+$00,y		; |
-		INY #2						; | transfer code to RAM
-		INX #2						; |
-		CPX.w #..end-..code : BCC -			;/
-		PLY						; restore CGRAM table index
-		PLX						; restore RAM code index
+		LDX #$0000
 
-		LDA.w !CGRAMtable+$02,y : STA.w !RAMcode+$06,x	; source address
-		SEP #$20					;\
-		LDA.w !CGRAMtable+$04,y : STA.w !RAMcode+$0B,x	; | source bank
-		LDA.w !CGRAMtable+$05,y : STA.w !RAMcode+$14,x	; > destination CGRAM
-		REP #$20					;/
-		LDA.w !CGRAMtable+$00,y : STA.w !RAMcode+$0F,x	; upload size
-		LDA $0E						;\
-		SEC : SBC.w !CGRAMtable+$00,y			; | update transfer size
-		STA $0E						;/
-		LDA #$0000 : STA.w !CGRAMtable+$00,y		; clear this slot
-
-		TYA						;\
-		CLC : ADC #$0006				; | add 6 to CGRAM table index
-		TAY						;/
-		TXA						;\
-		CLC : ADC.w #..end-..code			; | increase RAM code index
-		TAX						;/
-
+		..loop
+		LDA.w !CGRAMtable+$00,x : BNE ..process
+		TXA
+		CLC : ADC #$0006
+		TAX
+		CMP #$00FC : BCC ..loop
 		RTS
 
+		..process
+		%DMAsettings($2202)
+		LDA.w !CGRAMtable+$04,x : %sourcebankA()
+
+		!Temp = 0					; make new RAM code
+		%makecode($00A9)				; LDA #$xxxx
+		!Temp := !Temp+1				; skip hi byte since it will be written by modification
+		%makecode($0285)				; STA $02
+		%makecode($00A9)				; LDA #$xxxx
+		!Temp := !Temp+1				; skip hi byte since it will be written by modification
+		%makecode($0585)				; STA $05
+		%makecode($00A2)				; LDX #$xx
+		%makecode($218E)				; STX $xx21
+		%makecode($8C21)				; $21 (previous opcode) : STY $xxxx
+		%makecode($420B)				; $420B (previous opcode)
+
+		LDA.w !CGRAMtable+$02,x : %writecode(..src)	; source address
+		SEP #$20					;\
+		LDA.w !CGRAMtable+$05,x : %writecode(..cgram)	; > destination CGRAM
+		REP #$20					;/
+		LDA.w !CGRAMtable+$00,x : %writecode(..size)	; upload size
+		LDA $0E						;\
+		SEC : SBC.w !CGRAMtable+$00,x			; | update transfer size
+		STA $0E						;/
+		STZ.w !CGRAMtable+$00,x				; clear this slot
+
+		TYA						;\
+		CLC : ADC.w #..end-..code			; | increase RAM code index
+		TAY						;/
+
+		..next
+		TXA						;\
+		CLC : ADC #$0006				; | add 6 to CGRAM table index
+		CMP #$00FC : BCS ..return			; |
+		TAX						;/
+		JMP ..loop
+
+		..return
+		RTS
+
+	; this code is not inserted, just here as reference (read by %writecode macro)
 		..code
-		LDA #$2202 : STA $00		; 00-04
-		LDA #$0000 : STA $02		; 05-09
-		LDX #$00 : STX $04		; 0A-0D
-		LDA #$0000 : STA $05		; 0E-12
-		LDX #$00 : STX $2121		; 13-16
-		STY $420B			; 17-19
+	..src	LDA #$0000 : STA $02
+	..size	LDA #$0000 : STA $05
+	..cgram	LDX #$00 : STX $2121
+		STY $420B
 		..end
 
 
 	.AppendSMWPalette
-		LDA #$64A2 : STA.w !RAMcode+$00,x		; LDX #$64
-		LDA #$218E : STA.w !RAMcode+$02,x		; STX $xx21
-		LDA #$A221 : STA.w !RAMcode+$04,x		; $21xx : LDX #
-		PHX						;\
-		LDA $14						; |
+		!Temp = 0					; new RAM code
+		%makecode($64A2)				; LDX #$64
+		%makecode($218E)				; STX $xx21
+		%makecode($A221)				; $21xx : LDX #
+		LDA $14						;\
 		AND #$001C					; |
-		LSR A						; | update color
+		LSR A						; | read color data
 		TAX						; |
-		LDA.l $00B60C,x					; |
-		PLX						;/
-		STA.w !RAMcode+$06,x				; > first half of color
-		STA.w !RAMcode+$0A,x				; > second half of color
-		LDA #$228E : STA.w !RAMcode+$07,x		; STX $xx22
-		LDA #$A221 : STA.w !RAMcode+$09,x		; $21xx : LDX #
-		LDA #$008E : STA.w !RAMcode+$0C,x		; STX $xxxx
-		LDA #$2122 : STA.w !RAMcode+$0D,x		; $2122
-		TXA						;\
-		CLC : ADC #$000F				; | increment RAM code index
-		TAX						;/
+		LDA.l $00B60C,x					;/
+		STA.w !RAMcode+$06,y				; > first half of color (lo byte)
+		STA.w !RAMcode+$0B-1,y				; > second half of color (hi byte)
+		!Temp := !Temp+1				; skip 1 byte (8-bit color value)
+		%makecode($228E)				; STX $xx22
+		%makecode($A221)				; $21xx : LDX #
+		!Temp := !Temp+1				; skip 1 byte (8-bit color value)
+		%makecode($008E)				; STX $xxxx
+		!Temp := !Temp-1				; prevent overflow
+		%makecode($2122)				; $2122
+		TYA						;\
+		CLC : ADC.w #!Temp				; | increment RAM code index
+		TAY						;/
 		RTS
 
 
 
 	.AppendLight
+		%DMAsettings($2202)
+		%sourcebank(!LightData_SNES>>16)
 		PHD						; push DP
 		LDA #$0100 : TCD				; access !LightList on DP
-		TXY						; Y = RAM code index
 		LDA.b !LightIndexStart				;\
 		ASL #3						; |
 		XBA						; | X = !LightList index
 		AND #$000F					; |
 		TAX						;/
-	-	LDA.b !LightList,x				;\ see if this row is included or not
+	-	LDA.b !LightList,x				;\
+		ORA.w !ShaderRowDisable,x			; | see if this row is excluded or disabled for this op
 		AND #$00FF : BEQ ..includethis			;/
 		..exclude					;\
 		INX						; | loop through list
 		CPX #$0010 : BCC -				; |
-		TYX						; > restore X
 		PLD						; |
 		RTS						;/
 
 		..includethis					; include code
-		LDA.w #$02A9 : STA.w !RAMcode+$00,y		; LDA #$XX02
-		LDA.w #$8522 : STA.w !RAMcode+$02,y		; 22 : STA.b $XX
-		LDA.w #$A900 : STA.w !RAMcode+$04,y		; 00 : LDA #$XXXX
+		!Temp = 0					; new RAM code
+		%makecode($00A9)				; LDA #$xxxx
+		!Temp := !Temp-1				; write to xxxx
 		LDA.b !LightBuffer-1				;\
 		AND #$0100					; |
 		EOR #$0100					; |
 		ASL A						; |
 		ADC.w #!LightData_SNES+2			; | source address (skip first transparent color)
-		STA.w !RAMcode+$06,y				; | (takes the place of previous XXXX)
+		STA.w !RAMcode+!Temp,y				; | (takes the place of previous XXXX)
 		TXA						; |
 		XBA						; |
 		LSR #3						; |
-		CLC : ADC.w !RAMcode+$06,y			; |
-		STA.w !RAMcode+$06,y				;/
-		LDA.w #$0285 : STA.w !RAMcode+$08,y		; STA $02
-		LDA.w #$7EA2 : STA.w !RAMcode+$0A,y		; LDX #$7E (source bank always 0x7E)
-		LDA.w #$0486 : STA.w !RAMcode+$0C,y		; STX $04
-		LDA.w #$1EA9 : STA.w !RAMcode+$0E,y		; LDA #$XX1E
-		LDA.w #$8500 : STA.w !RAMcode+$10,y		; 00 : STA.b $XX
-		LDA.w #$A205 : STA.w !RAMcode+$12,y		; 05 : LDX #$XX
+		CLC : ADC.w !RAMcode+!Temp,y			; |
+		STA.w !RAMcode+!Temp,y				;/
+		!Temp := !Temp+2				; advance offset
+		%makecode($0285)				; STA $02
+		%makecode($1EA9)				; LDA #$xx1E
+		%makecode($8500)				; $00 (previous opcode) : STA $xx
+		%makecode($A205)				; $05 (previous opcode) : LDX #$xx
 		TXA						;\
-		ASL #4						; | dest CGRAM (takes place of previous XX)
-		ORA #$8E01					; | > STX $XXXX
-		STA.w !RAMcode+$14,y				;/
-		LDA.w #$2121 : STA.w !RAMcode+$16,y		; 2121
-		LDA.w #$0B8C : STA.w !RAMcode+$18,y		; STY $XX0B
-		LDA.w #$6B42 : STA.w !RAMcode+$1A,y		; 42XX : RTL
-		LDA $00300E					;\
-		SEC : SBC #$001E				; | update size remaining
-		STA $00300E					;/
+		ASL #4						; | dest CGRAM (previous opcode) : STX $xxxx
+		ORA #$8E01					; |
+		STA.w !RAMcode+!Temp,y				;/
+		!Temp := !Temp+2				; advance offset
+		%makecode($2121)				; $2121 (previous opcode)
+		%makecode($008C)				; STY $xxxx
+		!Temp := !Temp-1				; write to xxxx
+		%makecode($420B)				; $420B (previous opcode)
+
+		LDA.l $0E					;\
+		SEC : SBC #$001E				; | update remaining size
+		STA.l $0E					;/
 
 	-	INX						;\
 		CPX #$0010 : BCS ..done				; |
 		LDA.b !LightList,x				; |
+		ORA.w !ShaderRowDisable,x			; |
 		AND #$00FF : BNE ..next				; | increment upload size to minimize number of uploads
-		LDA.w !RAMcode+$0F,y				; |
+		LDA.w !RAMcode+$06,y				; |
 		CLC : ADC #$0020				; |
-		STA.w !RAMcode+$0F,y				; |
-		LDA $00300E					; |
+		STA.w !RAMcode+$06,y				; |
+		LDA.l $0E					; |
 		SEC : SBC #$0020				; > update size remaining 
-		STA $00300E					; |
+		STA.l $0E					; |
 		BRA -						;/
 
 		..next						;\
 		TYA						; |
-		CLC : ADC #$001B				; | add another upload
+		CLC : ADC.w #!Temp				; | add another upload
 		TAY						; |
 		JMP ..exclude					;/
 
 		..done
 		TYA						;\
-		CLC : ADC #$001B				; | increment RAM code index
-		TAX						;/
+		CLC : ADC.w #!Temp				; | increment RAM code index
+		TAY						;/
 		PLD						; restore DP
 		RTS						; return
 
 
-
-
-
-
-
-
-
-
 	.AppendSMW0D7C
-		PHX						; push RAM code index
-		TXY						; Y = RAM code index
-		LDX #$0000					;\
-	-	LDA.l ..code,x : STA.w !RAMcode+$00,y		; |
-		INY #2						; | transfer code to RAM
-		INX #2						; |
-		CPX.w #..end-..code : BCC -			;/
+		%DMAsettings($1801)
+		%videoport($80)
+
+		PHB : PHK : PLB					;\
+		LDA.w #..code : STA $2232			; |
+		LDA.w #..end-..code : STA $2238			; | copy code to RAM with SA-1 DMA
+		TYA						; |
+		CLC : ADC.w #!RAMcode				; |
+		STA $2235					; |
+		SEP #$20					; |
+		LDA #$90 : STA $220A				; > disable DMA IRQ
+		LDA #$C4 : STA $2230				; > DMA settings
+		LDA.b #..code>>16 : STA $2234			; > bank
+		LDA.b #!RAMcode>>16 : STA $2237			; > dest bank (this write starts the DMA)
+		STZ $2230					; |
+		LDA #$F0 : STA $220B				; clear all IRQ flags
+		LDA #$B0 : STA $220A				; enable DMA IRQ
+		PLB						; |
+		REP #$30					;/
+
 		LDA $0E						;\
 		SEC : SBC #$0080				; | update transfer size
 		STA $0E						;/
-		PLX						; restore RAM code index
 		LDA.l $6D76					;\
 		CLC : ADC.l !FileAddress+0			; | source address
 		SEC : SBC #$7D00				; |
-		STA.w !RAMcode+..src1-..code+1,x		;/
+		%writecode(..src1)				;/
 		SEP #$20					;\
-		LDA.l !FileAddress+2				; | source bank
-		STA.w !RAMcode+..bank-..code+1,x		; |
+		LDA.l !FileAddress+2 : %writecode(..bnk)	; | source bank
 		REP #$20					;/
-		LDA.l $6D7C					;\ VRAM address
-		STA.w !RAMcode+..VRAM1-..code+1,x		;/
+		LDA.l $6D7C : %writecode(..vram1)		; VRAM address
 		CMP #$0800 : BEQ ..berry			; check for berry
-		TXA						;\
+		TYA						;\
 		CLC : ADC.w #..end2-..code			; | increment RAM code index
-		TAX						;/
+		TAY						;/
 		RTS
 
-	..berry	CLC : ADC #$0100				;\ VRAM address for lower half
-		STA.w !RAMcode+..VRAM2-..code+1,x		;/
-		LDA #$0040					;\ berry size
-		STA.w !RAMcode+..size-..code+1,x		;/
+		..berry
+		CLC : ADC #$0100				;\ VRAM address for lower half
+		%writecode(..vram2)				;/
 		LDA.l $6D76					;\
 		CLC : ADC.l !FileAddress+0			; |
 		SEC : SBC #$7D00				; | source address for lower half
 		CLC : ADC #$0040				; |
-		STA.w !RAMcode+..src2-..code+1,x		;/
-		TXA						;\
+		%writecode(..src2)				;/
+		TYA						;\
 		CLC : ADC.w #..end-..code			; | increment RAM code index
-		TAX						;/
+		TAY						;/
 		RTS
 
 		..code
-		LDA #$1801 : STA $00		; upload mode
-	..bank	LDX #$00 : STX $04		; bank
-	..VRAM1	LDA #$0000 : STA $2116		;\
+	..bnk	LDX #$00 : STX $04		; bank
+	..vram1	LDA #$0000 : STA $2116		;\
 	..src1	LDA #$0000 : STA $02		; | 0x80 bytes from $6D76 -> $6D7C
-	..size	LDA #$0080 : STA $05		; |
+		LDA #$0080 : STA $05		; |
 		STY $420B			;/
 		..end2
-	..VRAM2	LDA #$0000 : STA $2116		;\
+	..vram2	LDA #$0000 : STA $2116		;\
 	..src2	LDA #$0000 : STA $02		; | special case: when $6D7C = 0x0800, it is split into upper/lower half
 		LDA #$0040 : STA $05		; | when this happens, also update color 0x64
 		STY $420B			;/
@@ -2181,36 +2460,46 @@ Build_RAM_Code:
 
 
 	.AppendSMW0D7E
-		PHX						; push RAM code index
-		TXY						; Y = RAM code index
-		LDX #$0000					;\
-	-	LDA.l ..code,x : STA.w !RAMcode+$00,y		; |
-		INY #2						; | transfer code to RAM
-		INX #2						; |
-		CPX.w #..end-..code : BCC -			;/
+		%DMAsettings($1801)
+		%videoport($80)
+
+		PHB : PHK : PLB					;\
+		LDA.w #..code : STA $2232			; |
+		LDA.w #..end-..code : STA $2238			; | copy code to RAM with SA-1 DMA
+		TYA						; |
+		CLC : ADC.w #!RAMcode				; |
+		STA $2235					; |
+		SEP #$20					; |
+		LDA #$90 : STA $220A				; > disable DMA IRQ
+		LDA #$C4 : STA $2230				; > DMA settings
+		LDA.b #..code>>16 : STA $2234			; > bank
+		LDA.b #!RAMcode>>16 : STA $2237			; > dest bank (this write starts the DMA)
+		STZ $2230					; |
+		LDA #$F0 : STA $220B				; clear all IRQ flags
+		LDA #$B0 : STA $220A				; enable DMA IRQ
+		PLB						; |
+		REP #$30					;/
+
 		LDA $0E						;\
 		SEC : SBC #$0080				; | update transfer size
 		STA $0E						;/
-		PLX						; restore RAM code index
+
 		LDA.l $6D78					;\
 		CLC : ADC.l !FileAddress+0			; | source address
 		SEC : SBC #$7D00				; |
-		STA.w !RAMcode+..src-..code+1,x			;/
+		%writecode(..src)				;/
 		SEP #$20					;\
-		LDA.l !FileAddress+2				; | source bank
-		STA.w !RAMcode+..bank-..code+1,x		; |
+		LDA.l !FileAddress+2 : %writecode(..bnk)	; | source bank
 		REP #$20					;/
-		LDA.l $6D7E					;\ VRAM address
-		STA.w !RAMcode+..VRAM-..code+1,x		;/
-		TXA						;\
+		LDA.l $6D7E : %writecode(..vram)		; VRAM address
+		TYA						;\
 		CLC : ADC.w #..end-..code			; | increment RAM code index
-		TAX						;/
+		TAY						;/
 		RTS
 
 		..code
-		LDA #$1801 : STA $00		; upload mode
-	..bank	LDX #$00 : STX $04		; bank
-	..VRAM	LDA #$0000 : STA $2116		;\
+	..bnk	LDX #$00 : STX $04		; bank
+	..vram	LDA #$0000 : STA $2116		;\
 	..src	LDA #$0000 : STA $02		; | 0x80 bytes from $6D78 -> $6D7E
 		LDA #$0080 : STA $05		; |
 		STY $420B			;/
@@ -2218,36 +2507,45 @@ Build_RAM_Code:
 
 
 	.AppendSMW0D80
-		PHX						; push RAM code index
-		TXY						; Y = RAM code index
-		LDX #$0000					;\
-	-	LDA.l ..code,x : STA.w !RAMcode+$00,y		; |
-		INY #2						; | transfer code to RAM
-		INX #2						; |
-		CPX.w #..end-..code : BCC -			;/
+		%DMAsettings($1801)
+		%videoport($80)
+
+		PHB : PHK : PLB					;\
+		LDA.w #..code : STA $2232			; |
+		LDA.w #..end-..code : STA $2238			; | copy code to RAM with SA-1 DMA
+		TYA						; |
+		CLC : ADC.w #!RAMcode				; |
+		STA $2235					; |
+		SEP #$20					; |
+		LDA #$90 : STA $220A				; > disable DMA IRQ
+		LDA #$C4 : STA $2230				; > DMA settings
+		LDA.b #..code>>16 : STA $2234			; > bank
+		LDA.b #!RAMcode>>16 : STA $2237			; > dest bank (this write starts the DMA)
+		STZ $2230					; |
+		LDA #$F0 : STA $220B				; clear all IRQ flags
+		LDA #$B0 : STA $220A				; enable DMA IRQ
+		PLB						; |
+		REP #$30					;/
+
 		LDA $0E						;\
 		SEC : SBC #$0080				; | update transfer size
 		STA $0E						;/
-		PLX						; restore RAM code index
 		LDA.l $6D7A					;\
 		CLC : ADC.l !FileAddress+0			; | source address
 		SEC : SBC #$7D00				; |
-		STA.w !RAMcode+..src-..code+1,x			;/
+		%writecode(..src)				;/
 		SEP #$20					;\
-		LDA.l !FileAddress+2				; | source bank
-		STA.w !RAMcode+..bank-..code+1,x		; |
+		LDA.l !FileAddress+2 : %writecode(..bnk)	; | source bank
 		REP #$20					;/
-		LDA.l $6D80					;\ VRAM address
-		STA.w !RAMcode+..VRAM-..code+1,x		;/
-		TXA						;\
+		LDA.l $6D80 : %writecode(..vram)		; VRAM address
+		TYA						;\
 		CLC : ADC.w #..end-..code			; | increment RAM code index
-		TAX						;/
+		TAY						;/
 		RTS
 
 		..code
-		LDA #$1801 : STA $00		; upload mode
-	..bank	LDX #$00 : STX $04		; bank
-	..VRAM	LDA #$0000 : STA $2116		;\
+	..bnk	LDX #$00 : STX $04		; bank
+	..vram	LDA #$0000 : STA $2116		;\
 	..src	LDA #$0000 : STA $02		; | 0x80 bytes from $6D7A -> $6D80
 		LDA #$0080 : STA $05		; |
 		STY $420B			;/
@@ -2311,64 +2609,65 @@ Build_RAM_Code:
 ;
 
 	.AppendMario	; GFX + palette (palette scrapped, now handled by palset loader)
-		PHX						; push RAM code index
-		TXY						; Y = RAM code index
-		LDX #$0000					;\
-	-	LDA.l ..code,x : STA.w !RAMcode+$00,y		; |
-		INY #2						; | transfer code to RAM
-		INX #2						; |
-		CPX.w #..end-..code : BCC -			;/
-		PLX						; restore RAM code index
+		%DMAsettings($1801)
+		%videoport($80)
+
+		PHY
+		LDY.w #!File_Mario : JSL !GetFileAddress
+		PLY
+		LDA.l !FileAddress+2 : %sourcebankA()
+
+		PHB : PHK : PLB					;\
+		LDA.w #..code : STA $2232			; |
+		LDA.w #..end-..code : STA $2238			; | copy code to RAM with SA-1 DMA
+		TYA						; |
+		CLC : ADC.w #!RAMcode				; |
+		STA $2235					; |
+		SEP #$20					; |
+		LDA #$90 : STA $220A				; > disable DMA IRQ
+		LDA #$C4 : STA $2230				; > DMA settings
+		LDA.b #..code>>16 : STA $2234			; > bank
+		LDA.b #!RAMcode>>16 : STA $2237			; > dest bank (this write starts the DMA)
+		STZ $2230					; |
+		LDA #$F0 : STA $220B				; clear all IRQ flags
+		LDA #$B0 : STA $220A				; enable DMA IRQ
+		PLB						; |
+		REP #$30					;/
 
 		LDA $0E						;\
 		SEC : SBC #$0200				; | update transfer size
 		STA $0E						;/
 
-		PHY
-		LDY.w #!File_Mario
-		JSL !GetFileAddress
-		PLY
-
-		LDA.l !MarioGFX1				;\ VRAM address for upper half
-		STA.w !RAMcode+..VRAM1-..code+1,x		;/
+		LDA.l !MarioGFX1 : %writecode(..vram1)		; VRAM address for upper half
 		LDA.l $6D85					;\
 		CLC : ADC.l !FileAddress+0			; | source address 1
-		STA.w !RAMcode+..src1-..code+1,x		;/
+		%writecode(..src1)				;/
 		LDA.l $6D87					;\
 		CLC : ADC.l !FileAddress+0			; | source address 2
-		STA.w !RAMcode+..src2-..code+1,x		;/
+		%writecode(..src2)				;/
 		LDA.l $6D89					;\
 		CLC : ADC.l !FileAddress+0			; | source address 3
-		STA.w !RAMcode+..src3-..code+1,x		;/
-		LDA.l !MarioGFX2				;\ VRAM address for lower half
-		STA.w !RAMcode+..VRAM2-..code+1,x		;/
+		%writecode(..src3)				;/
+
+		LDA.l !MarioGFX2 : %writecode(..vram2)		; VRAM address for lower half
 		LDA.l $6D8F					;\
 		CLC : ADC.l !FileAddress+0			; | source address 4
-		STA.w !RAMcode+..src4-..code+1,x		;/
+		%writecode(..src4)				;/
 		LDA.l $6D91					;\
 		CLC : ADC.l !FileAddress+0			; | source address 5
-		STA.w !RAMcode+..src5-..code+1,x		;/
+		%writecode(..src5)				;/
 		LDA.l $6D93					;\
 		CLC : ADC.l !FileAddress+0			; | source address 6
-		STA.w !RAMcode+..src6-..code+1,x		;/
+		%writecode(..src6)				;/
 
-		SEP #$20					;\
-		LDA.l !FileAddress+2				; | set source bank
-		STA.w !RAMcode+..bank-..code+1,x		; |
-		REP #$20					;/
-
-
-		TXA						;\
+		TYA						;\
 		CLC : ADC.w #..end-..code			; | increment RAM code index
-		TAX						;/
+		TAY						;/
 		RTS
 
 
 		..code
-		LDA #$1801 : STA $00		;\ these apply for all following GFX transfers
-	..bank	LDX #$00 : STX $04		;/
-
-	..VRAM1	LDA #$0000 : STA $2116		; this applies for the next 4 transfers (!MarioGFX1)
+	..vram1	LDA #$0000 : STA $2116		; this applies for the next 4 transfers (!MarioGFX1)
 	..src1	LDA #$0000 : STA $02		;\
 		LDA #$0040 : STA $05		; | $6D85 -> !MarioGFX1
 		STY $420B			;/
@@ -2378,8 +2677,7 @@ Build_RAM_Code:
 	..src3	LDA #$0000 : STA $02		;\
 		LDA #$0040 : STA $05		; | $6D89 -> !MarioGFX1 + 0x80
 		STY $420B			;/
-
-	..VRAM2	LDA #$0000 : STA $2116		; this applies for the next 3 transfers (!MarioGFX2)
+	..vram2	LDA #$0000 : STA $2116		; this applies for the next 3 transfers (!MarioGFX2)
 	..src4	LDA #$0000 : STA $02		;\
 		LDA #$0040 : STA $05		; | $6D8F -> !MarioGFX1
 		STY $420B			;/
@@ -2450,12 +2748,11 @@ Build_RAM_Code:
 
 
 	.AppendExAnimationGFX
-		LDA.w $0182,y : BMI ..square			; check type
+		LDA.w $0182,x : BMI ..square			; check type
 
 	..row
 		PHX						; push RAM code index
 		PHY						; push ExAnimation table index
-		TXY						; Y = RAM code index
 		LDX #$0000					;\
 	-	LDA.l ..code,x : STA.w !RAMcode+$00,y		; |
 		INY #2						; | transfer code to RAM
@@ -2463,27 +2760,26 @@ Build_RAM_Code:
 		CPX.w #..end-..code : BCC -			;/
 		PLY						; restore ExAnimation table index
 		PLX						; restore RAM code index
-		LDA.w $0180,y : STA.w !RAMcode+$0F,x		;\
-		LDA.w $0182,y : STA.w !RAMcode+$14,x		; |
-		LDA.w $0184,y : STA.w !RAMcode+$06,x		; | insert data to code
+		LDA.w $0180,x : STA.w !RAMcode+$0F,y		;\
+		LDA.w $0182,x : STA.w !RAMcode+$14,y		; |
+		LDA.w $0184,x : STA.w !RAMcode+$06,y		; | insert data to code
 		SEP #$20					; |
-		LDA.w $0186,y : STA.w !RAMcode+$0B,x		; |
+		LDA.w $0186,x : STA.w !RAMcode+$0B,y		; |
 		REP #$20					;/
 
-		LDA #$0000 : STA.w $0180,y			; clear exanim slot
+		STZ.w $0180,x					; clear exanim slot
 
-		TYA						;\
-		CLC : ADC #$0007				; | add 7 to dynamo table index
-		TAY						;/
 		TXA						;\
-		CLC : ADC.w #..end-..code			; | increase RAM code index
+		CLC : ADC #$0007				; | add 7 to dynamo table index
 		TAX						;/
+		TYA						;\
+		CLC : ADC.w #..end-..code			; | increase RAM code index
+		TAY						;/
 		RTS
 
 	..square
 		PHX						; push RAM code index
 		PHY						; push ExAnimation table index
-		TXY						; Y = RAM code index
 		LDX #$0000					;\
 	-	LDA.l ..code,x : STA.w !RAMcode+$00,y		; |
 		INY #2						; | transfer code to RAM
@@ -2491,31 +2787,30 @@ Build_RAM_Code:
 		CPX.w #..end2-..code : BCC -			;/
 		PLY						; restore ExAnimation table index
 		PLX						; restore RAM code index
-		LDA.w $0180,y					;\
-		STA.w !RAMcode+$0F,x				; |
-		STA.w !RAMcode+$22,x				; |
-		LDA.w $0182,y					; |
+		LDA.w $0180,x					;\
+		STA.w !RAMcode+$0F,y				; |
+		STA.w !RAMcode+$22,y				; |
+		LDA.w $0182,x					; |
 		AND #$7FFF					; |
-		STA.w !RAMcode+$14,x				; |
+		STA.w !RAMcode+$14,y				; |
 		CLC : ADC #$0100				; | insert data to code
-		STA.w !RAMcode+$27,x				; |
-		LDA.w $0184,y : STA.w !RAMcode+$06,x		; |
+		STA.w !RAMcode+$27,y				; |
+		LDA.w $0184,x : STA.w !RAMcode+$06,y		; |
 		CLC : ADC #$0040				; |
-		STA !RAMcode+$1D,x				; |
+		STA.w !RAMcode+$1D,y				; |
 		SEP #$20					; |
-		LDA.w $0186,y : STA.w !RAMcode+$0B,x		; |
+		LDA.w $0186,x : STA.w !RAMcode+$0B,y		; |
 		REP #$20					;/
 
-		LDA #$0000 : STA.w $0180,y			; clear exanim slot
+		STZ.w $0180,x					; clear exanim slot
 
-		TYA						;\
-		CLC : ADC #$0007				; | add 7 to dynamo table index
-		TAY						;/
 		TXA						;\
-		CLC : ADC.w #..end2-..code			; | increase RAM code index
+		CLC : ADC #$0007				; | add 7 to dynamo table index
 		TAX						;/
+		TYA						;\
+		CLC : ADC.w #..end2-..code			; | increase RAM code index
+		TAY						;/
 		RTS
-
 
 		..code
 		LDA.w #$1801 : STA $00				; DMA settings
@@ -2534,108 +2829,43 @@ Build_RAM_Code:
 
 
 	.AppendExAnimationPalette
+		%DMAsettings($2202)
 
-
-; seems like lunar magic won't output this type anymore...?
-;		LDA.w $0180,y
-;		ASL A
-;		CMP #$0002 : BNE ..type1
-;		..type2
-;		PHX						; push RAM code index
-;		PHY						; push ExAnimation table index
-;		TXY						; Y = RAM code index
-;		LDX #$0000					;\
-;	-	LDA.l ..code2,x : STA.w !RAMcode+$00,y		; |
-;		INY #2						; | transfer code to RAM
-;		INX #2						; |
-;		CPX.w #..end2-..code2 : BCC -			;/
-;		PLY						; restore VRAM table index
-;		PLX						; restore RAM code index
-;		SEP #$20
-;		LDA.w $0182,y : STA.w !RAMcode+$01,x
-;		LDA.w $0184,y : STA.w !RAMcode+$06,x
-;		LDA.w $0185,y : STA.w !RAMcode+$0B,x
-;		REP #$20
-;		TYA
-;		CLC : ADC #$0007
-;		TAY
-;		TXA
-;		CLC : ADC.w #..end2-..code2
-;		TAX
-;		RTS
-
-
-		LDA.w $0180,y					;\
-		AND #$00FF					; | $00 = number of colors to transfer
-		STA $00						;/
-		PHX						;\ push X/Y
-		PHY						;/
-		PHB						; push bank
-		TYX						; X = exanim table index
-		LDY.w $0184,x					; Y = source address
-		LDA #$0000					; clear B
-		SEP #$20					;\
-		LDA.w $0186,x : PHA				; | push source bank
-		REP #$20					;/
-		LDA.w $0182,x					;\
-		ASL A						; | X = CGRAM index
-		TAX						;/
-		PLB						; bank = source bank
-	-	LDA.w $0000,y : STA.l !PaletteRGB,x		;\ transfer colors to RAM mirror so they can be included in next shade operation
-		DEC $00 : BNE -					;/
-		PLB						; restore bank
-		PLA						;\
-		CLC : ADC #$0007				; | pull Y and add 7
-		TAY						;/
-		PLX						; restore X
-		RTS						; return
-
-
-
-		..type1
 		PHX						; push RAM code index
 		PHY						; push ExAnimation table index
-		TXY						; Y = RAM code index
 		LDX #$0000					;\
-	-	LDA.l ..code1,x : STA.w !RAMcode+$00,y		; |
+	-	LDA.l ..code,x : STA.w !RAMcode+$00,y		; |
 		INY #2						; | transfer code to RAM
 		INX #2						; |
-		CPX.w #..end1-..code1 : BCC -			;/
+		CPX.w #..end-..code : BCC -			;/
 		PLY						; restore VRAM table index
 		PLX						; restore RAM code index
 
-		LDA.w $0180,y					;\
+		LDA.w $0180,x					;\
 		ASL A						; |
-		STA.w !RAMcode+$0F,x				; |
-		LDA.w $0184,y : STA.w !RAMcode+$06,x		; | insert data to code
+		STA.w !RAMcode+$0A,y				; |
+		LDA.w $0184,x : STA.w !RAMcode+$01,y		; | insert data to code
 		SEP #$20					; |
-		LDA.w $0186,y : STA.w !RAMcode+$0B,x		; |
-		LDA.w $0182,y : STA.w !RAMcode+$14,x		; |
+		LDA.w $0186,x : STA.w !RAMcode+$06,y		; |
+		LDA.w $0182,x : STA.w !RAMcode+$0F,y		; |
 		REP #$20					;/
 
+		TXA
+		CLC : ADC #$0007
+		TAX
+
 		TYA						;\
-		CLC : ADC #$0007				; | add 7 to dynamo table index
+		CLC : ADC.w #..end-..code			; | increase RAM code index
 		TAY						;/
-		TXA						;\
-		CLC : ADC.w #..end1-..code1			; | increase RAM code index
-		TAX						;/
 		RTS
 
-
-		..code1
-		LDA.w #$2202 : STA $00				; DMA settings
+		..code
 		LDA.w #$0000 : STA $02				; source address
 		LDX.b #$00 : STX $04				; source bank
 		LDA.w #$0000 : STA $05				; upload size
 		LDX.b #$00 : STX $2121				; CGRAM address
 		STY.w $420B					; DMA toggle
-		..end1
-
-;		..code2
-;		LDX.b #$00 : STX $2121				; CGRAM address
-;		LDX.b #$00 : STX $2122
-;		LDX.b #$00 : STX $2122
-;		..end2
+		..end
 
 
 ; LM has:
@@ -2737,7 +2967,7 @@ GetTilemapData:
 		LDA $1A					;\
 		AND #$FFF8				; |
 		CMP !BG1ZipRowX : BCS .Right		; | (compare to row because the column jumps left/right)
-	.Left	SEC : SBC #$0010			; | x position of zip column
+	.Left	SEC : SBC #$0008 ;#$0010		; | x position of zip column
 		BRA +					; |
 	.Right	CLC : ADC #$0110			; |
 	+	BPL $03 : LDA #$0000			; > no negative numbers allowed
@@ -3114,9 +3344,9 @@ Layer2Level:
 		CMP !BG2ZipRowY				; |
 		BEQ .Up					; |
 		BCS .Down				; |
-	.Up	SEC : SBC #$0004 ;#$0008		; | y position of zip row
+	.Up	SEC : SBC #$0000 ;#$0004 ;#$0008	; | y position of zip row
 		BRA +					; |
-	.Down	CLC : ADC #$00EC ;#$00F0		; |
+	.Down	CLC : ADC #$00F0 ;#$00EC ;#$00F8	; |
 	+	BPL $03 : LDA #$0000			; > no negative numbers allowed
 		AND #$FFF8				; |
 		CMP !BG2ZipRowY				; |
@@ -3491,7 +3721,11 @@ NMI:		PHP					;\
 		LDA #$0220 : STA $05			; |
 		STY $420B				;/
 
+
 	; HDMA update
+
+;	LDA !RAMcode_flag : PHA
+
 		LDX !MsgTrigger : BNE +			; > let message boxes use indirect mode
 		LDX !GameMode				;\
 		CPX #$02 : BCC .NoRAMcode		; | presents screen has no HDMA or dynamic BG3
@@ -3542,6 +3776,7 @@ NMI:		PHP					;\
 
 		INC $10					; set processing frame flag (anywhere in .NoLag where DP = $3000 and A is 8-bit will do)
 
+
 	; misc registers
 		REP #$10				; 16-bit index
 		TSX					;\ preserve stack in Y
@@ -3558,6 +3793,7 @@ NMI:		PHP					;\
 
 		; S = 212D
 		; 211A-211B: window combination logic, left at 0000 (OR)
+
 
 		LDX #$2125 : TXS			; this is actually faster than LDA dp : STA addr x3
 		LDA $43 : PHA				; $43 -> 2125
@@ -3601,7 +3837,10 @@ NMI:		PHP					;\
 
 	; CCDMA
 		REP #$20
+;	PLA						;\ only process CCDMA if RAM code was finished this frame
+;	CMP #$1234 : BNE .SkipCCDMA			;/
 		LDX.w $317F : BNE .RunCCDMA
+		.SkipCCDMA
 		JMP .NoCCDMA
 		.RunCCDMA
 		LDA #$3100 : TCD			; DP = $3100
@@ -3652,15 +3891,45 @@ NMI:		PHP					;\
 
 		LDA $309D : BEQ .LoadJoypad
 
+
+
+; 4218
+;	-> $A2 (hold)
+; 4219
+;	-> $A4 (hold)
+
+; 4218 ^ $A2 & 4218
+;	-> $A6 (press)
+; 4219 ^ $A4 & 4219
+;	-> $A8 (press)
+
+
+
+; 421A
+;	-> $A3 (hold)
+; 421B
+;	-> $A5 (hold)
+
+; 421A ^ $A3 & 421A
+;	-> $A7 (press)
+; 421B ^ $A5 & 421B
+;	-> $A9 (press)
+
 		.BufferJoypad
+		LDA $AA : TRB $A8			;\
+		LDA $AB : TRB $A6			; |
+		LDA $AC : TRB $A9			; |
+		LDA $AD : TRB $A7			; | clear press input from before buffer
+		STZ $AA					; |
+		STZ $AB					; |
+		STZ $AC					; |
+		STZ $AD					;/
 		LDA $4218				;\
 		EOR $A4					; |
 		AND $4218				; |
-		AND #$F0				; |
-		TSB $A8					; |
+		AND #$F0 : TSB $A8			; |
 		LDA $4218				; |
-		AND #$F0				; | buffer controller 1
-		TSB $A4					; |
+		AND #$F0 : TSB $A4			; | buffer joypad 1
 		LDA $4219				; |
 		EOR $A2					; |
 		AND $4219				; |
@@ -3669,48 +3938,39 @@ NMI:		PHP					;\
 		LDA $421A				;\
 		EOR $A5					; |
 		AND $421A				; |
-		AND #$F0				; |
-		TSB $A9					; |
-		LDA $421B				; |
-		AND #$F0				; | buffer controller 2
-		TSB $A5					; |
+		AND #$F0 : TSB $A9			; |
+		LDA $421A				; |
+		AND #$F0 : TSB $A5			; | buffer joypad 2
 		LDA $421B				; |
 		EOR $A3					; |
 		AND $421B				; |
 		TSB $A7					; |
 		LDA $421B : TSB $A3			;/
-		BRA .BuildMarioJoypad			; go to mario joypad
+		BRA .BuildMarioJoypad			; go to build mario joypad
 
 		.LoadJoypad
 		LDA $4218				;\
-		AND #$F0				; |
-		STA $A4					; |
-		TAY					; |
-		EOR $AC					; |
-		AND $A4					; |
-		STA $A8					; | build controller 1
-		STY $AC					; |
-		LDA $4219 : STA $A2			; |
-		TAY					; |
-		EOR $AA					; |
-		AND $A2					; |
-		STA $A6					; |
-		STY $AA					;/
+		EOR $A4					; |
+		AND $4218				; |
+		AND #$F0 : STA $A8 : STA $AA		; > press flags in case buffer mode turns on
+		LDA $4218				; |
+		AND #$F0 : STA $A4			; | load joypad 1
+		LDA $4219				; |
+		EOR $A2					; |
+		AND $4219				; |
+		STA $A6 : STA $AB			; > press flags in case buffer mode turns on
+		LDA $4219 : STA $A2			;/
 		LDA $421A				;\
-		AND #$F0				; |
-		STA $A5					; |
-		TAY					; |
-		EOR $AD					; |
-		AND $A5					; |
-		STA $A9					; | build controller 2
-		STY $AD					; |
-		LDA $421B : STA $A3			; |
-		TAY					; |
-		EOR $AB					; |
-		AND $A3					; |
-		STA $A7					; |
-		STY $AB					;/
-
+		EOR $A5					; |
+		AND $421A				; |
+		AND #$F0 : STA $A9 : STA $AC		; > press flags in case buffer mode turns on
+		LDA $421A				; |
+		AND #$F0 : STA $A5			; | load joypad 2
+		LDA $421B				; |
+		EOR $A3					; |
+		AND $421B				; |
+		STA $A7 : STA $AD			; > press flags in case buffer mode turns on
+		LDA $421B : STA $A3			;/
 
 		.BuildMarioJoypad
 		PLD					; restore DP here since indexing adds no cycles to addr read but adds 1 cycle to dp read

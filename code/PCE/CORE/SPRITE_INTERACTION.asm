@@ -50,14 +50,6 @@
 SPRITE_INTERACTION:
 		PHB : PHK : PLB
 
-		LDA !P2Character
-		CMP #$02 : BNE +
-		STZ !P2SenkuSmash			; > Clear senku smash flag
-		+
-
-	;	LDA !P2Platform : STA $7693		; platform previous frame
-	;	STZ !P2Platform				; cancel platform
-
 		REP #$20				;\
 		LDA !P2Hurtbox+2			; |
 		STA $01					; |
@@ -83,7 +75,7 @@ SPRITE_INTERACTION:
 	.Valid	LDA !CurrentPlayer : BNE +		;\
 		LDA $32E0,x : BNE -			; | Loop if sprite has player interaction disabled
 		BRA ++					; |
-	+	LDA $35F0,x : BNE .End			;/
+	+	LDA $35F0,x : BNE -			;/
 	++	CPX #$08				;\
 		BCS +					; |
 		LDA !P2Hitbox1IndexMem1			; |
@@ -91,11 +83,18 @@ SPRITE_INTERACTION:
 		BRA ++					; | Check index memory
 	+	LDA !P2Hitbox1IndexMem2			; |
 		ORA !P2Hitbox2IndexMem2			; |
-	++	AND BITS,x				; |
-		BNE .End				;/
+	++	AND BITS,x : BNE .End			;/
 
 		JSL !GetSpriteClipping04		; get sprite clipping values
-		JSL !CheckContact			; check for contact
+		LDA $3230,x
+		CMP #$09 : BNE +
+		LDA $05
+		SEC : SBC #$02
+		STA $05
+		BCS $02 : DEC $0B
+		INC $07
+		INC $07
+	+	JSL !CheckContact			; check for contact
 		BCC .End
 
 		LDA !P2Character
@@ -103,7 +102,11 @@ SPRITE_INTERACTION:
 		LDA $3230,x
 		CMP #$09 : BNE .NoCarry
 		LDA !P2Carry : BNE .NoCarry
-		BIT $6DA3 : BVC .NoCarry
+		LDA $3330,x
+		AND #$04 : BNE +
+		BIT $6DA3 : BVS .Carry
+	+	BIT $6DA7 : BVC .NoCarry
+		.Carry
 		JSR ItemPickup
 		BRA .Return
 		.NoCarry
@@ -122,8 +125,6 @@ SPRITE_INTERACTION:
 		.Shared
 		STX !SpriteIndex			; > !SpriteIndex = sprite index (yes)
 		XBA					;\
-		LDA !P2Character			;\ special checks for Kadaal
-		CMP #$02 : BEQ .Kadaal			;/
 		LDA $3230,x				; | Don't actually run this routine in state 2
 		CMP #$02 : BEQ .Return			;/ (but still let Kadaal senku smash)
 		XBA					;
@@ -143,29 +144,6 @@ SPRITE_INTERACTION:
 	..R	PLB
 	.RTL	RTL					; > Return
 
-
-	.Kadaal
-		LDY !P2ShellSpin			;\
-		BMI +					; | 
-		BEQ +					; | Invulnerable during spin attack
-		LDY !P2Invinc : BNE +			; |
-		LDY #$01 : STY !P2Invinc		;/
-
-	+	LDA $3230,x				;\ can't get hurt by sprites in state 02
-		CMP #$02 : BEQ .SenkuSmash		;/
-		XBA
-		LDY !P2Senku : BEQ .Process		; > Check for senku
-		CPY #$20 : BCS .Process			; > 20+ are valid
-		CMP #$0B : BEQ .Process			;\
-		CMP #$0F : BEQ .Process			; | 0B, 0F, 11 are valid
-		CMP #$11 : BEQ .Process			;/
-		CMP #$16 : BCC .SenkuSmash		;\ 16-1A are valid
-		CMP #$1B : BCS .SenkuSmash		;/
-		BRA .Process
-
-		.SenkuSmash
-		INC !P2SenkuSmash			;\ Set senku smash flag
-		BRA .End				;/
 
 
 INTERACTION_POINTER:	dw EMPTY_POINTER		; No interaction
@@ -195,8 +173,6 @@ INTERACTION_POINTER:	dw EMPTY_POINTER		; No interaction
 			dw INT_18			; Mega Mole
 			dw INT_19			; Player 2 upgrade 1
 			dw INT_1A			; Powerups
-			dw INT_1B			; Captain Warrior
-			dw INT_1C			; Adept Shaman
 
 STOMPSOUND_TABLE:	db $13,$14,$15,$16		; Indexed with consecutive kills
 			db $17,$18,$19,$00
@@ -289,7 +265,7 @@ GenJump:
 
 GenSide:
 	LDA !P2Invinc : BNE CompareY_Return
-	LDA #$08 : JSR DontInteract
+	LDA #$0F : JSR DontInteract
 	JSL HURT
 	RTS
 
@@ -469,8 +445,10 @@ CheckSlide:
 		JMP StarKill			;/
 
 .NoStar		JSR CheckSlide
-		LDA $3420,x			;\ Check if sprite is stunned
-		BEQ .NoKick			;/
+		LDA $33D0,x			;\
+		CMP #$05 : BEQ .Kick		; | check if sprite is stunned
+		CMP #$06 : BNE .NoKick		;/
+		.Kick
 		LDA #$03 : STA !SPC1		; > Kick sound
 		LDA #$02 : STA $3230,x		; > Status = knocked out
 		LDA #$E8 : STA $9E,x		; > Knock it up a bit
@@ -481,9 +459,9 @@ CheckSlide:
 
 .Side		LDA !P2Invinc			;\
 		ORA $32B0,x			; | Don't interact if these are set
-		ORA $3420,x			; |
+	;	ORA $3420,x			; |
 		BNE .Return			;/
-		LDA #$08 : JSR DontInteract	; > Set don't interact timer
+		LDA #$0F : JSR DontInteract	; > Set don't interact timer
 		JSL HURT			; > Hurt player
 .Return		RTS
 
@@ -504,7 +482,7 @@ KICK_DISP:	db $10,$F0
 
 ;SHELLESS KOOPA RAM USAGE:
 ;
-;	$00C2,x			; The Koopa (the one WITH the shell) uses this as a timer
+;	$BE,x			; The Koopa (the one WITH the shell) uses this as a timer
 ;	$3230,x			; Status is 08 (normal) the entire time
 ;	$3280,x			; Unused
 ;	$3290,x			; Unused
@@ -544,7 +522,11 @@ KICK_DISP:	db $10,$F0
 		BCS $03 : JMP .Side
 		JMP .TopKicked
 
-.Stunned	LDA $3200,x				;\
+.Stunned	LDA $3330,x				;\
+		AND #$04 : BEQ +			; | return if on ground
+		RTS					;/
+
+	+	LDA $3200,x				;\
 		CMP #$A2				; | Check for Mecha Koopa
 		BNE .Kick				;/
 .Mecha		JSR INT_04_Stunned			;\
@@ -571,7 +553,7 @@ KICK_DISP:	db $10,$F0
 
 .Side		LDA !P2Invinc : BNE .Return
 		JSL HURT
-		LDA #$08 : JMP DontInteract
+		LDA #$0F : JMP DontInteract
 
 .Normal		LDA #$06 : JSR CompareY
 		BCC .Side
@@ -596,7 +578,7 @@ KICK_DISP:	db $10,$F0
 		STA $3240,y			;/
 		PHX				;\
 		TYX				; | Reset tables for new sprite
-		JSL $07F7D2			; |
+		JSL !ResetSprite		; |
 		PLX				;/
 		LDA #$10			;\
 		STA $32B0,y			; | Some sprite tables that SMW normally sets
@@ -777,6 +759,7 @@ GOOMBAXSPEED:	db $2C,$D4
 
 .Side		LDA !P2Invinc : BNE .Return
 		JSL HURT
+		LDA #$0F : JSR DontInteract
 		RTS
 
 .Top		LDA #$0F : STA $3200,x		; Set new sprite number
@@ -788,19 +771,20 @@ GOOMBAXSPEED:	db $2C,$D4
 
 	INT_07:
 		LDX !SpriteIndex		;\
-		LDA !NewSpriteNum,x		; | Check for custom projectile
-		CMP #$05			; |
-		BNE .NoCustomShot		;/
-		LDA $BE,x			;\ Don't destroy unless fireball
-		BNE .NoCustomShot		;/
-		LDA #$04			;\
-		STA $3230,x			; |
-		LDA #$1F			; | Destroy custom projectile
-		STA $32D0,x			; |
-		JSR DontInteract		;/
-.NoCustomShot	LDA !P2Invinc			;\ Don't hurt player 2 while invulnerable
-		BNE .Return			;/
+	;	LDA !NewSpriteNum,x		; | Check for custom projectile
+	;	CMP #$05			; |
+	;	BNE .NoCustomShot		;/
+	;	LDA $BE,x			;\ Don't destroy unless fireball
+	;	BNE .NoCustomShot		;/
+	;	LDA #$04			;\
+	;	STA $3230,x			; |
+	;	LDA #$1F			; | Destroy custom projectile
+	;	STA $32D0,x			; |
+	;	JSR DontInteract		;/
+;.NoCustomShot	LDA !P2Invinc			;\ Don't hurt player 2 while invulnerable
+;		BNE .Return			;/
 		JSL HURT			; > Hurt player
+		LDA #$0F : JSR DontInteract	; interaction disable
 .Return		RTS
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1308,6 +1292,7 @@ CHUCK_PUSH:	db $20,$E0
 		RTS
 
 .Hurt		JSL HURT
+		LDA #$0F : JSR DontInteract	; interaction disable
 		RTS
 
 .ReturnPlat	STZ !P2Platform			; Reset pd--iiii
@@ -1368,6 +1353,7 @@ CHUCK_PUSH:	db $20,$E0
 		BCS .Top
 
 .Side		JSL HURT
+		LDA #$0F : JSR DontInteract	; interaction disable
 		RTS
 
 .Top		BIT !P2YSpeed
@@ -1421,32 +1407,6 @@ CHUCK_PUSH:	db $20,$E0
 		STA !P1CoinIncrease,y		;/
 		RTS
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-	INT_1B:
-		RTS
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-	INT_1C:
-		LDX !SpriteIndex
-		LDA $3280,x
-		AND #$03
-		CMP #$01 : BEQ .Process
-		RTS
-
-.Process	LDA #$08 : JSR CompareY
-		BCS .Top
-		JSL HURT
-		RTS
-
-.Top		LDA $BE,x
-		AND #$0F
-		ORA #$C0
-		STA $BE,x
-		LDA #$0C : JSR DontInteract
-		JMP GenJump
-
 
 
 ;===================;
@@ -1490,7 +1450,7 @@ INTERACTION_TABLE:	db $01,$01,$01,$01,$02,$02,$02,$02,$03,$03,$03,$03,$03,$04,$0
 			db $07,$00,$07,$07,$07,$00,$07,$17,$17,$00,$0F,$0F,$00,$01,$09,$18	;| 0BX
 			db $0F,$00,$07,$07,$0F,$07,$00,$00,$00					;| 0CX
 
-.Custom			db $00,$00,$00,$00,$00,$00,$1C,$07,$1B,$00,$00,$00,$00,$00,$00,$0A	;| 10X
+.Custom			db $00,$00,$00,$00,$00,$00,$00,$07,$00,$00,$00,$00,$00,$00,$00,$0A	;| 10X
 			db $00,$00,$00,$00,$00,$07,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 11X
 			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 12X
 			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 13X

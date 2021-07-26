@@ -110,7 +110,6 @@ KompositeKoopa:
 		LSR A : BCC ..P2
 	..P1	LDY !Player1Touch : BNE ..P2
 		PHA
-		LDA #$01 : STA !P2SenkuSmash-$80
 		LDA #$08 : STA !Player2Touch
 		LDY #$00 : JSR .CheckContact
 		BCC $03 : INC !Player1Hurt
@@ -119,7 +118,6 @@ KompositeKoopa:
 	...End	PLA
 	..P2	LDY !Player2Touch : BNE .CheckAttack
 		LSR A : BCC .CheckAttack
-		LDA #$01 : STA !P2SenkuSmash
 		LDA #$08 : STA !Player2Touch
 		LDY #$80 : JSR .CheckContact
 		BCC $03 : INC !Player2Hurt
@@ -142,7 +140,6 @@ KompositeKoopa:
 	..P1	LDY !Player1Touch : BNE ..P2
 		LSR A : BCC ..P2
 		PHA
-		LDA #$01 : STA !P2SenkuSmash-$80
 		LDY #$00 : JSR .CheckContact
 		BCC $03 : INC !Player1Hurt
 		LDA #$08 : STA !Player1Touch
@@ -151,7 +148,6 @@ KompositeKoopa:
 	...End	PLA
 	..P2	LDY !Player2Touch : BNE .Nope
 		LSR A : BCC .Nope
-		LDA #$01 : STA !P2SenkuSmash
 		LDY #$80 : JSR .CheckContact
 		BCC $03 : INC !Player2Hurt
 		LDA #$08 : STA !Player2Touch

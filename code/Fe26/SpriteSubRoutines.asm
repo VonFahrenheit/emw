@@ -1,5 +1,3 @@
-
-
 ;=======================;
 ; GENERIC SUPPORT CODES ;
 ;=======================;
@@ -19,7 +17,7 @@ SPRITE_OFF_SCREEN:
 	;	BEQ .VertY
 	;	DEC A : BEQ .VertY
 	;	LDA $3220,x
-	;	CMP #$F0 : BCS .VertY			; Can be up to 16px off the screen on the left
+	;	CMP #$F0 : BCS .VertY				; Can be up to 16px off the screen on the left
 	;	INC $3350,x
 	;	.VertY
 	;	LDA $3240,x
@@ -27,8 +25,8 @@ SPRITE_OFF_SCREEN:
 	;	LDA $3210,x
 	;	REP #$20
 	;	SEC : SBC $1C
-	;	CLC : ADC #$0060			;\ Used to be add 0x0040 compare to 0x0140
-	;	CMP #$01C0				;/
+	;	CLC : ADC #$0060				;\ Used to be add 0x0040 compare to 0x0140
+	;	CMP #$01C0					;/
 	;	SEP #$20
 	;	ROL A
 	;	AND #$01
@@ -59,8 +57,7 @@ SPRITE_OFF_SCREEN:
 		REP #$20
 		BIT !CameraBoxU : BMI .NoBoxY
 		CMP !CameraBoxU : BCC .NoBoxY
-		SBC #$00E0
-		BMI .GoodY
+		SBC #$00E0 : BMI .GoodY
 		CMP !CameraBoxD : BCC .GoodY
 
 		.NoBoxY
@@ -99,10 +96,10 @@ SPRITE_OFF_SCREEN:
 		CPY #$FF : BEQ .Kill
 		PHX
 		TYX
-		LDA $418A00,x			;\ 0xEE means don't respawn ever
-		CMP #$EE : BEQ +		;/
-		LDA #$00			;\ Respawn
-		STA $418A00,x			;/
+		LDA $418A00,x					;\ 0xEE means don't respawn ever
+		CMP #$EE : BEQ +				;/
+		LDA #$00					;\ Respawn
+		STA $418A00,x					;/
 	+	PLX
 		.Kill
 		STZ $3230,x
@@ -111,7 +108,7 @@ SPRITE_OFF_SCREEN:
 		RTL
 
 ;		.YBounds
-;		dw $00E0,$01C0			; above, below
+;		dw $00E0,$01C0					; above, below
 
 
 
@@ -128,7 +125,7 @@ SPRITE_OFF_SCREEN:
 		RTL
 
 
-; input: void
+; input: void (for _Target, Y = player index)
 ; output:
 ;	A = sprite X - player X
 ;	Y = 0 if player on the left, 1 if player on the right
@@ -154,12 +151,30 @@ SPRITE_OFF_SCREEN:
 		BPL .Set
 		RTL
 
+		.Target
+		LDA !P2Status-$80,y : BEQ ..go
+		TYA
+		EOR #$80
+		TAY
+	..go	LDA $3250,x : XBA
+		LDA $3220,x
+		REP #$20
+		SEC : SBC !P2XPosLo-$80,y
+		SEP #$20
+		BPL ..1
+	..0	LDY #$00
+		RTL
+	..1	LDY #$01
+		RTL
 
 
-; input: void
+
+
+
+; input: void (for _Target, A = offset and Y = player index)
 ; output:
 ;	A = sprite Y - player Y
-;	Y = 0 if player above, 1 if player below
+;	Y = 0 if player below, 1 if player above
 	SUB_VERT_POS:
 		LDA !P2Status-$80 : BNE .P2
 .P1		LDY #$00
@@ -182,6 +197,41 @@ SPRITE_OFF_SCREEN:
 		BPL .Set
 		RTL
 
+		.Target
+		STA $00
+		STZ $01
+		BPL $02 : DEC $01
+		LDA !P2Status-$80,y : BEQ ..go
+		TYA
+		EOR #$80
+		TAY
+	..go	LDA $3240,x : XBA
+		LDA $3210,x
+		REP #$20
+		CLC : ADC $00
+		SEC : SBC !P2YPosLo-$80,y
+		SEP #$20
+		BPL ..1
+	..0	LDY #$00
+		RTL
+	..1	LDY #$01
+		RTL
+
+
+
+; input: void
+; output: void
+	GroundSpeed:
+		LDA !SpriteSlope,x
+		BPL $03 : EOR #$FF : INC A
+		TAX
+		LDA.l .SlopeSpeed,x
+		LDX !SpriteIndex
+		STA !SpriteYSpeed,x
+		RTL
+
+		.SlopeSpeed
+		db $00,$10,$10,$20,$40
 
 
 ; input: A = target X speed
@@ -205,12 +255,61 @@ SPRITE_OFF_SCREEN:
 	.Return	RTL
 
 
+	.Friction
 	.Friction1
-		LDA !SpriteXSpeed,x : BPL ..dec
+		LDA !SpriteXSpeed,x : BEQ ..0
+		BPL ..dec
 	..inc	INC !SpriteXSpeed,x
 		RTL
 	..dec	DEC !SpriteXSpeed,x
 		RTL
+	..0	STZ !SpriteXSpeed,x
+		RTL
+
+	.Friction2
+		LDA !SpriteXSpeed,x : BEQ .Friction1_0
+		BPL ..dec
+	..inc	CMP #$FF : BEQ .Friction1_0
+		INC !SpriteXSpeed,x
+		RTL
+	..dec	CMP #$01 : BEQ .Friction1_0
+		DEC !SpriteXSpeed,x
+		RTL
+
+
+	.Unlimit
+	.Unlimit1
+		CMP !SpriteXSpeed,x : BEQ .Return		; return if alreaddy at target speed
+		CMP #$00 : BEQ .Friction1			; just use friction1 if target speed = 0
+		BMI ..left					; see if target is left/right
+		..right						;\
+		BIT !SpriteXSpeed,x : BMI ..inc			; |
+		CMP !SpriteXSpeed,x : BCC ..dec			; | accel: target right
+	..inc	INC !SpriteXSpeed,x				; |
+		RTL						;/
+		..left						;\
+		BIT !SpriteXSpeed,x : BPL ..dec			; |
+		CMP !SpriteXSpeed,x : BCS ..inc			; | accel: target left
+	..dec	DEC !SpriteXSpeed,x				; |
+		RTL						;/
+
+	.Unlimit2
+		CMP !SpriteXSpeed,x : BEQ .Return		; return if alreaddy at target speed
+		CMP #$00 : BEQ .Friction1			; just use friction1 if target speed = 0
+		BMI ..left					; see if target is left/right
+		..right						;\
+		BIT !SpriteXSpeed,x : BMI ..inc			; |
+		CMP !SpriteXSpeed,x : BCC ..dec			; | accel: target right
+	..inc	INC !SpriteXSpeed,x				; |
+		INC !SpriteXSpeed,x				; |
+		RTL						;/
+		..left						;\
+		BIT !SpriteXSpeed,x : BPL ..dec			; |
+		CMP !SpriteXSpeed,x : BCS ..inc			; | accel: target left
+	..dec	DEC !SpriteXSpeed,x				; |
+		DEC !SpriteXSpeed,x				; |
+		RTL						;/
+
 
 
 
@@ -233,6 +332,35 @@ SPRITE_OFF_SCREEN:
 		.Limit
 		STA !SpriteYSpeed,x
 	.Return	RTL
+
+
+	.Friction
+	.Friction1
+		LDA !SpriteYSpeed,x : BEQ ..0
+		BPL ..dec
+	..inc	INC !SpriteYSpeed,x
+		RTL
+	..dec	DEC !SpriteYSpeed,x
+		RTL
+	..0	STZ !SpriteYSpeed,x
+		RTL
+
+
+	.Unlimit
+	.Unlimit1
+		CMP !SpriteYSpeed,x : BEQ .Return		; return if alreaddy at target speed
+		CMP #$00 : BEQ .Friction1			; just use friction1 if target speed = 0
+		BMI ..up					; see if target is up/down
+		..down						;\
+		BIT !SpriteYSpeed,x : BMI ..inc			; |
+		CMP !SpriteYSpeed,x : BCC ..dec			; | accel: target down
+	..inc	INC !SpriteYSpeed,x				; |
+		RTL						;/
+		..up						;\
+		BIT !SpriteYSpeed,x : BPL ..inc			; |
+		CMP !SpriteYSpeed,x : BCS ..inc			; | accel: target up
+	..dec	DEC !SpriteYSpeed,x				; |
+		RTL						;/
 
 
 ; input: void
@@ -284,13 +412,16 @@ SPRITE_OFF_SCREEN:
 ; normal version just checks for contact
 ; _Destroy version will also destroy the fireball that touches the sprite (only 1 per frame, there is no way that this can cause problems, future Eric, i know what you're thinking!)
 ; input: sprite hurtbox loaded in $04 slot ($04-$07, $0A-$0B)
-; output: C set if contact, C clear if no contact
+; output:
+;	C set if contact, C clear if no contact
+;	Y = fireball fusion index
+;	$00: fireball X speed (converted to sprite format, but halved)
 	FireballContact:
 		LDY #!Ex_Amount-1
 	-	JSR .Main : BCS .Return
 		DEY : BPL -
 		CLC
-.Return		RTL
+		RTL
 
 	.Destroy
 		LDY #!Ex_Amount-1
@@ -301,7 +432,13 @@ SPRITE_OFF_SCREEN:
 	..puff	LDA #$0F : STA !Ex_Data2,y			; don't mess with carry here! it has to return set
 		LDA #$01+!ExtendedOffset : STA !Ex_Num,y	; smoke puff num
 		LDA #$01 : STA !SPC1				; SFX
-		RTL
+	.Return	LDA !Ex_XSpeed,y				;\
+		ASL #3						; |
+		CMP #$40					; | fireball speed output
+		BCC $02 : ORA #$80				; |
+		STA $00						;/
+		SEC						; set C
+		RTL						; return
 
 
 	; main JSR
@@ -325,6 +462,125 @@ SPRITE_OFF_SCREEN:
 	.ReturnC
 		CLC
 		RTS
+
+
+
+; input: A = 16-bit pointer to hitbox data
+; output: hitbox loaded in $04 slot
+	LOAD_HITBOX:
+		REP #$20				; A 16-bit
+		STA $0E					; store pointer
+
+		SEP #$20				;\
+		LDA !SpriteXLo,x : STA $0C		; |
+		LDA !SpriteXHi,x : STA $0D		; | get sprite coords
+		LDA !SpriteYHi,x : XBA			; |
+		LDA !SpriteYLo,x			; |
+		REP #$20				;/
+		LDY #$02				;\
+		CLC : ADC ($0E),y			; | Y coords
+		STA $05					; |
+		STA $0A					;/
+
+		LDY #$04				;\
+		LDA ($0E),y				; | W
+		AND #$00FF				; |
+		STA $06					;/
+
+		LDA ($0E)				; read X offset
+		LDY $3320,x : BNE .Left			; check direction
+		.Right					;\
+		EOR #$FFFF				; |
+		CLC : ADC #$0010			; | facing left adjustment
+		SEC : SBC $06				; |
+		.Left					;/
+		CLC : ADC $0C				;\
+		SEP #$20				; | add sprite Xpos and store
+		STA $04					; |
+		XBA : STA $0A				;/
+		LDY #$05				;\ H
+		LDA ($0E),y : STA $07			;/
+
+		RTL					; return
+
+; debug: display hitbox
+;	PEI ($04)
+;	PEI ($06)
+;	PEI ($0A)
+;	LDA $3320,x : PHA
+;	LDA #$01 : STA $3320,x
+;	LDA !SpriteXLo,x : PHA
+;	LDA !SpriteXHi,x : PHA
+;	LDA !SpriteYLo,x : PHA
+;	LDA !SpriteYHi,x : PHA
+;	LDA $04 : STA !SpriteXLo,x
+;	LDA $0A : STA !SpriteXHi,x
+;	LDA $05 : STA !SpriteYLo,x
+;	LDA $0B : STA !SpriteYHi,x
+;	REP #$20
+;	LDA #$0010 : STA !BigRAM+$00
+;	STZ !BigRAM+$03
+;	STZ !BigRAM+$07
+;	STZ !BigRAM+$0B
+;	STZ !BigRAM+$0F
+;	LDA #!BigRAM : STA $04
+;	SEP #$20
+;	LDA #$32
+;	STA !BigRAM+$02
+;	STA !BigRAM+$06
+;	STA !BigRAM+$0A
+;	STA !BigRAM+$0E
+;	LDA #$6E
+;	STA !BigRAM+$05
+;	STA !BigRAM+$09
+;	STA !BigRAM+$0D
+;	STA !BigRAM+$11
+;	LDA $06
+;	SEC : SBC #$10
+;	STA !BigRAM+$07
+;	STA !BigRAM+$0F
+;	LDA $07
+;	SEC : SBC #$10
+;	STA !BigRAM+$0C
+;	STA !BigRAM+$10
+;	JSL LOAD_TILEMAP_p3
+;	PLA : STA !SpriteYHi,x
+;	PLA : STA !SpriteYLo,x
+;	PLA : STA !SpriteXHi,x
+;	PLA : STA !SpriteXLo,x
+;	PLA : STA $3320,x
+;	REP #$20
+;	PLA : STA $0A
+;	PLA : STA $06
+;	PLA : STA $04
+;	SEP #$20
+;	RTL
+
+
+
+
+; input: void
+; output: void
+	OutputShieldBox:
+		PHB
+		LDA.b #!ShieldData>>16
+		PHA : PLB
+		TXA
+		STA $00
+		ASL A
+		ADC $00
+		ASL A
+		TAY
+		LDA $04 : STA.w !ShieldXLo,y
+		LDA $0A : STA.w !ShieldXHi,y
+		LDA $05 : STA.w !ShieldYLo,y
+		LDA $0B : STA.w !ShieldYHi,y
+		LDA $06 : STA.w !ShieldW,y
+		LDA $07 : STA.w !ShieldH,y
+		INC.w !ShieldExists
+		PLB
+		RTL
+
 
 
 ; input:
@@ -544,7 +800,7 @@ SPRITE_OFF_SCREEN:
 ;	$04 = X acc
 ;	$05 = Y acc
 ;	$06 = tile
-;	$07 = prop (S-PPCCCT, S is size bit, PP is mirrored to top 2 bits)
+;	$07 = prop (S-PPCCCT, S is size bit, PP is mirrored to top 2 bits for layer prio + OAM prio)
 ; output: $00 = index to spawned particle
 	SpawnParticle:
 		PHX						; push X
@@ -732,6 +988,161 @@ SPRITE_OFF_SCREEN:
 
 
 
+; input:
+; (targeting a player automatically)
+;	A = speed
+; (_Main: target player is already determined)
+;	Y = target player index
+;	$0F = speed
+; output:
+;	$04 = X speed
+;	$06 = Y speed
+	TARGET_PLAYER:
+		STA $0F					; store speed
+		LDY #$00				;\ if singleplayer, always target player 1
+		LDA !MultiPlayer : BEQ .P1		;/
+		LDA !P2Status-$80 : BNE .P2		; if player 1 is dead, target player 2
+		LDA !P2Status : BNE .P1			; if player 2 is dead, target player 1
+		LDA !RNG				;\
+		AND #$80 : TAY				; | if both are alive, target a random player
+		BRA .P1					;/
+	.P2	LDY #$80
+		.Main
+	.P1	LDA $3220,x				;\
+		SEC : SBC !P2XPosLo-$80,y		; |
+		STA $00					; | DX
+		LDA $3250,x				; |
+		SBC !P2XPosHi-$80,y			; |
+		STA $01					;/
+		LDA $3210,x				;\
+		SEC : SBC !P2YPosLo-$80,y		; |
+		STA $02					; | DY
+		LDA $3240,x				; |
+		SBC !P2YPosHi-$80,y			; |
+		STA $03					;/
+		BRA AIM_SHOT_Main			; go to main code
+
+
+; input:
+;	A = speed
+;	$00 = source X - target X
+;	$02 = source Y - target Y
+; output:
+;	$04 = X speed
+;	$06 = Y speed
+;
+; s = sqrt(dx^2 + dy^2)
+;
+; dx/x = s/0x40
+;
+; x = 0x40*dx/s
+; y = 0x40*dy/s
+;
+; dx and dy are actually 15-bit.
+	AIM_SHOT:
+		STA $0F
+	.Main	STZ $2250		; > Enable multiplication
+		REP #$20
+		STZ $0D			; > No shifts yet
+		LDA $00
+		BPL .Pos_dx
+		EOR #$FFFF : INC A
+.Pos_dx		STA $04			; $04 = |dx| (unscaled)
+
+		LDA $02
+		BPL .Pos_dy
+		EOR #$FFFF
+		INC A
+.Pos_dy		STA $06			; $06 = |dy| (unscaled)
+		LDY #$01		;\
+		CMP $04			; | Load the largest of the two
+		BCS $03 : LDA $04 : DEY	;/ > Y = 1, Y is bigger; Y = 0, X is bigger
+		CMP #$0100 : BCC .0100	;\
+		CMP #$0200 : BCC .0200	; |
+		CMP #$0400 : BCC .0400	; |
+		CMP #$0800 : BCC .0800	; |
+		CMP #$1000 : BCC .1000	; |
+		CMP #$2000 : BCC .2000	; | Downscale it
+.4000		LSR A : INC $0D		; |
+.2000		LSR A : INC $0D		; |
+.1000		LSR A : INC $0D		; |
+.0800		LSR A : INC $0D		; |
+.0400		LSR A : INC $0D		; |
+.0200		LSR A : INC $0D		; |
+.0100		STA $08			;/
+		LDA $06			;\
+		CMP $04			; | Load the smaller of the two
+		BCC $02 : LDA $04	;/
+
+.Loop		DEC $0D : BMI .Scaled	;\ Downscale the other number
+		LSR A : BRA .Loop	;/
+.Scaled		CPY #$01 : BEQ .BigY	; > Determine which number is biggest
+.BigX		STA $2251		;\
+		STZ $2253		; |
+		NOP			; | Calculate Y^2
+		BRA $00			; |
+		LDA $2306 : STA $0A	;/
+		LDA $08			;\
+		STA $2251		; |
+		STA $2253		; | Calculate X^2
+		NOP			; |
+		BRA .Shared		;/
+
+.BigY		STA $2251		;\
+		STA $2253		; |
+		NOP			; | Calculate X^2
+		BRA $00			; |
+		LDA $2306 : STA $0A	;/
+		LDA $08			;\
+		STA $2251		; |
+		STA $2253		; | Calculate Y^2
+		NOP			; |
+		BRA .Shared		;/
+
+.Shared		LDA $2306
+		CLC : ADC $0A
+		JSL !GetRoot		; (handles 17-bit numbers)
+		ROR A
+		LSR #7
+		STA $0A			; > $0A = distance
+		LDA $0F
+		AND #$00FF
+		STA $2251
+		LDA $04 : STA $2253
+		NOP
+		BRA $00
+		LDA $2306
+		STA $04			; > $04 = v*|dx|
+		LDA $06 : STA $2253
+		NOP
+		BRA $00
+		LDA $2306		; > A = v*|dy|
+		LDY #$01 : STY $2250	; > Enable division
+		STA $2251
+		LDA $0A
+		STA $2253
+		NOP
+		BRA $00
+		LDA $2306
+		BIT $02 : BMI +
+		EOR #$00FF
+		INC A
+	+	STA $06			; > $06 = y
+		LDA $04 : STA $2251
+		LDA $0A : STA $2253
+		NOP
+		BRA $00
+		LDA $2306
+		BIT $00 : BMI +
+		EOR #$00FF
+		INC A
+	+	STA $04			; > $04 = x
+		SEP #$20
+		RTL
+
+
+
+
 ;==========================;
 ; PLAYER INTERACTION CODES ;
 ;==========================;
@@ -807,9 +1218,10 @@ SPRITE_OFF_SCREEN:
 		LDY #$00
 
 	.CheckPlayer
-		LDA !P2Status-$80,y : BNE .Player2
+	;	LDA !P2Status-$80,y : BNE .Player2
 
 	.CheckHitbox
+		LDA !P2Hitbox1Shield-$80,y : BNE .Hitbox2		; no hit if a shield blocks the way
 		LDA !P2Hitbox1W-$80,y
 		ORA !P2Hitbox1H-$80,y
 		BEQ .Hitbox2
@@ -830,7 +1242,7 @@ SPRITE_OFF_SCREEN:
 		.Hitbox2
 		CPY #$81 : BCS .NoContact
 		TYA : BNE .Player2
-		CLC : ADC.b #(!P2Hitbox2)-(!P2Hitbox1)
+		CLC : ADC.b #!P2Hitbox2Offset
 		TAY
 		BRA .CheckHitbox
 
@@ -843,8 +1255,7 @@ SPRITE_OFF_SCREEN:
 		CLC
 		RTL
 
-		.YesContact
-		LDA #$04 : STA $9D
+	.YesContact
 		PHY
 		CPX #$08
 		BCC $01 : INY
@@ -858,9 +1269,19 @@ SPRITE_OFF_SCREEN:
 		LDA !P2Character-$80,y
 		CMP #$03 : BNE .NotLeeway
 		LDA #$08 : STA !P2ComboDash-$80,y
-		LDA #$00 : JSL DontInteract
+	;	LDA #$00 : JSL DontInteract
+	;	PLY : BRA .Return
 		.NotLeeway
 		PLY
+		LDA !P2Hitbox1DisTimer-$80,y : JSL DontInteract		; interaction disable
+		LDA !P2Hitbox1Hitstun-$80,y : STA $9D			; hitstun
+		.Return
+		LDA !P2Hitbox1SFX1-$80,y : BEQ .SkipSFX1		;\
+		STA !SPC1						; | SFX 1
+		.SkipSFX1						;/
+		LDA !P2Hitbox1SFX2-$80,y : BEQ .SkipSFX2		;\
+		STA !SPC4						; | SFX 2
+		.SkipSFX2						;/
 		SEC
 		RTL
 
@@ -981,7 +1402,7 @@ SPRITE_OFF_SCREEN:
 ; input: A = number of frames to not interact, Y = player index
 ; output: void
 	DontInteract:
-		CPY #$80 : BEQ .P2
+		CPY #$80 : BCS .P2
 	.P1	STA !SpriteDisP1,x
 		RTL
 	.P2	STA !SpriteDisP2,x
@@ -994,6 +1415,7 @@ SPRITE_OFF_SCREEN:
 ;	A = !BigRAM+$7E (instant BEQ will trigger if sprite was not hurt, instant BNE will trigger if it was)
 ;	!BigRAM+$7E = how many times sprite was hurt
 ;	!BigRAM+$7F = player contact bits (0 = no, 1 = p1, 2 = p2, 3 = both)
+; note: if "can be jumped on" = 0, crush state will not crush the sprite
 	P2Standard:
 		STZ !BigRAM+$7E
 		STZ !BigRAM+$7F
@@ -1040,29 +1462,63 @@ SPRITE_OFF_SCREEN:
 		CMP !P2YPosLo-$80,y
 		SEP #$20	
 		BCC .HurtPlayer
-		LDA #$08 : JSL DontInteract
+		LDA #$08 : JSL DontInteract		; interaction disable when stomping sprite: 8 frames
 		INC !BigRAM+$7E
 		JSL P2Bounce
 
 		.Bounce
+		LDA !SpriteTweaker1,x
+		AND #$10 : BEQ .NoCrush
 		LDA !P2Crush-$80,y : BNE .Crush
+		.NoCrush
 		JSL StompSound
 		RTS
 
 		.Crush
 		LDA #$04 : STA $3230,x
-		LDA #$1F : STA $32D0,x
+		LDA #$1B : STA $32D0,x
 		JSL $07FC3B
 		LDA #$08 : STA !SPC1
 		RTS
 
 		.HurtPlayer
+		LDA #$0F : JSL DontInteract		; interaction disable when hurt by sprite: 15 frames
 		TYA
 		CLC : ROL #2
 		INC A
 		JSL !HurtPlayers
 		RTS
 
+; input: sprite clipping loaded in $04 slot ($04-$07, $0A-$0B)
+; output: hurts players that touch the sprite, but only if interaction timers are clear
+	P2Hurt:
+		SEC : JSL !PlayerClipping : BCC .NoContact
+		STA !BigRAM+$7F
+		LSR A : BCC .P2
+
+		.P1
+		PHA
+		LDA !SpriteDisP1,x : BEQ ..int
+		LDA #$01 : TRB !BigRAM+$7F
+		BRA ..next
+	..int	LDY #$00
+		LDA #$0F : JSL DontInteract
+	..next	PLA
+
+		.P2
+		LSR A : BCC .Return
+		LDA !SpriteDisP2,x : BEQ ..int
+		LDA #$02 : TRB !BigRAM+$7F
+		BRA .Return
+	..int	LDY #$80
+		LDA #$0F : JSL DontInteract
+
+		.Return
+		LDA !BigRAM+$7F : BEQ .NoContact
+		JSL !HurtPlayers
+
+		.NoContact
+		RTL
 
 
 
@@ -1133,8 +1589,6 @@ SPRITE_OFF_SCREEN:
 
 
 
-
-
 ;=================;
 ; TILEMAP LOADERS ;
 ;=================;
@@ -1153,6 +1607,10 @@ SPRITE_OFF_SCREEN:
 ;		YXSPCCCT
 ;		everything is exactly what you'd expect, except S which is the size bit, and P which is shifted left (prio = 0 or 2, but never 1 or 3)
 ;	tile num is written as is
+;
+;	for LOAD_TILEMAP_COLOR, prop is this:
+;		YXPP--ST
+;		CCC bits come from sprite's $33C0,x
 ;
 ;	for LOAD_PSUEDO_DYNAMIC (yes i spelled that wrong when i was a teenager, get over it), prop has the following format:
 ;		YXPP--Sc
@@ -1203,7 +1661,7 @@ SPRITE_OFF_SCREEN:
 		LDA $3250,x : STA $01
 		LDA $3240,x : XBA
 		LDA $3210,x
-		REP #$20
+		REP #$30
 		SEC : SBC $1C
 		STA $02
 		LDA $00
@@ -1213,11 +1671,12 @@ SPRITE_OFF_SCREEN:
 		INC $04
 		INC $04
 		STZ $0C
+		STZ $0E
 		LDA $3320,x
 		LSR A : BCS +
 		LDA #$0040 : STA $0C
-	+	LDY #$00
-		REP #$30
+		DEC $0E
+	+	LDY #$0000
 		LDX !ActiveOAM
 		LDA !OAMindex_offset,x
 		CLC : ADC #$0200
@@ -1243,28 +1702,22 @@ SPRITE_OFF_SCREEN:
 
 		.WithinBounds
 		LDA ($04),y				;\
-		AND #$10				; |
-		ASL A					; |
-		STA $0A					; | YXPPCCCT
-		LDA ($04),y				; | (lower P bit is shifted 1 bit left)
+		AND #$20				; |
+		STA $0A					; | YXP-CCCT
+		LDA ($04),y				; | (lower P bit is size bit)
 		AND.b #$10^$FF				; |
 		ORA $0A					; |
 		EOR $0C					; |
 		STA !OAM_p0+$003,x			;/
 
-		STA $06					; keep OAM prop
 		LDA ($04),y				;\
 		AND #$10				; | tile size bit
 		BEQ $02 : LDA #$02			; |
 		STA $0A					;/
 		STZ $0B					;\ n flag trigger
 		BEQ $02 : DEC $0B			;/
-		LDA $06					; OAM prop
 
 		REP #$20
-		STZ $0E
-		AND #$0040
-		BEQ $02 : DEC $0E
 		INY
 
 		LDA ($04),y
@@ -1321,6 +1774,136 @@ SPRITE_OFF_SCREEN:
 	.End	RTS
 
 
+
+; input:
+;	X = sprite index
+;	$04 = pointer to tilemap
+; output: void
+	LOAD_TILEMAP_COLOR:
+	.p1	LDA #$02 : BRA .Shared			; default to prio 1 if not specified
+	.p2	LDA #$04 : BRA .Shared
+	.p0	LDA #$00 : BRA .Shared
+	.p3	LDA #$06
+
+		.Shared
+		STA !ActiveOAM
+		STZ !ActiveOAM+1
+		PHP
+		SEP #$30
+		LDA $3220,x : STA $00
+		LDA $3250,x : STA $01
+		LDA $3240,x : XBA
+		LDA $3210,x
+		REP #$30
+		SEC : SBC $1C
+		STA $02
+		LDA $00
+		SEC : SBC $1A
+		STA $00
+		LDA ($04) : STA $08
+		INC $04
+		INC $04
+		STZ $0C
+		STZ $0E
+		LDA $3320,x
+		LSR A : BCS +
+		LDA #$0040 : STA $0C
+		DEC $0E
+	+	LDA $33C0,x
+		AND #$000E : TSB $0C
+		LDY #$0000
+		LDX !ActiveOAM
+		LDA !OAMindex_offset,x
+		CLC : ADC #$0200
+		STA !BigRAM+$7E				; index break point
+		LDA !OAMindex_offset,x
+		CLC : ADC !OAMindex_p0,x
+		TAX
+		SEP #$20
+		JSR .Loop
+		REP #$20
+		STX $0E					; return $0E = effective index
+		TXA
+		LDX !ActiveOAM
+		SEC : SBC !OAMindex_offset,x
+		STA !OAMindex_p0,x
+		PLP
+		LDX !SpriteIndex
+		RTL
+
+		.Loop
+		CPX !BigRAM+$7E : BCC .WithinBounds
+		RTS
+
+		.WithinBounds
+		LDA ($04),y				;\
+		AND #$02 : STA $0A			; |
+		STZ $0B					;\ n flag trigger (for size bit)
+		BEQ $02 : DEC $0B			;/
+		LDA ($04),y				; | YXPP--ST
+		AND.b #$0E^$FF				; |
+		EOR $0C					; |
+		STA !OAM_p0+$003,x			;/
+
+
+		REP #$20
+		INY
+
+		LDA ($04),y
+		AND #$00FF
+		CMP #$0080
+		BMI $03 : ORA #$FF00
+		EOR $0E
+		CLC : ADC $00
+		BIT $0E : BPL +				;\
+		BIT $0A : BMI +				; | x-flipped 8x8 tiles move 8px right
+		CLC : ADC #$0008			;/
+	+	CMP #$0100 : BCC .GoodX
+		CMP #$FFF0 : BCS .GoodX
+		INY
+
+		.BadCoord
+		INY #2
+		SEP #$20
+		CPY $08 : BCC .Loop
+		RTS
+
+		.GoodX
+		STA $06					; temp tile xpos
+		INY
+		LDA ($04),y
+		AND #$00FF
+		CMP #$0080
+		BMI $03 : ORA #$FF00
+		CLC : ADC $02
+		CMP #$00E8 : BCC .GoodY
+		CMP #$FFF0 : BCC .BadCoord
+
+		.GoodY
+		SEP #$20
+		STA !OAM_p0+$001,x
+		LDA $06 : STA !OAM_p0+$000,x
+		INY
+		LDA ($04),y : STA !OAM_p0+$002,x
+		INY
+		PHX
+		REP #$20
+		TXA
+		LSR #2
+		TAX
+		SEP #$20
+		LDA $07
+		AND #$01
+		ORA $0A
+		STA !OAMhi_p0+$00,x
+		PLX
+		INX #4
+		CPY $08 : BCS .End
+	.L	JMP .Loop
+	.End	RTS
+
+
+
 ; input:
 ;	X = sprite index
 ;	$04 = pointer to tilemap
@@ -1340,7 +1923,7 @@ SPRITE_OFF_SCREEN:
 		LDA $3250,x : STA $01
 		LDA $3240,x : XBA
 		LDA $3210,x
-		REP #$20
+		REP #$30
 		SEC : SBC $1C
 		STA $02
 		LDA $00
@@ -1349,17 +1932,19 @@ SPRITE_OFF_SCREEN:
 		LDA ($04) : STA $08
 		INC $04
 		INC $04
-		STZ $0C
+		LDA !SpriteProp,x			;\
+		ORA $33C0,x				; | prop base
+		AND #$00FF				; |
+		STA $0C					;/
+		STZ $0E
 		LDA $3320,x
 		LSR A : BCS +
-		LDA #$0040 : STA $0C
-	+	LDY #$00
-		SEP #$20
-		LDA !SpriteTile,x : STA !BigRAM+$7C	; dynamic tile
-		LDA !SpriteProp,x			;\
-		ORA $33C0,x				; | add RAM palette
-		TSB $0C					;/
-		REP #$30
+		LDA #$0040 : TSB $0C
+		DEC $0E
+	+	LDY #$0000
+		LDA !SpriteTile,x			;\
+		AND #$00FF				; | dynamic tile
+		STA !BigRAM+$7C				;/
 		LDX !ActiveOAM
 		LDA !OAMindex_offset,x
 		CLC : ADC #$0200
@@ -1398,7 +1983,6 @@ SPRITE_OFF_SCREEN:
 		ORA $64					; > add global PP bits
 		ORA $06					; |
 		STA !OAM_p0+$003,x			;/
-		STA $06					; save prop byte
 		LDA $07					;\
 		AND #$10				; | get size bit
 		BEQ $02 : LDA #$02			; |
@@ -1409,7 +1993,6 @@ SPRITE_OFF_SCREEN:
 		EOR $0C					; | get dynamic prop
 		ORA $64					; |
 		STA !OAM_p0+$003,x			;/
-		STA $06					; save prop byte
 		LDA ($04),y				;\ S bit
 		AND #$02				;/
 
@@ -1417,12 +2000,8 @@ SPRITE_OFF_SCREEN:
 		STA $0A					; write S bit
 		BEQ $02 : LDA #$80			;\ n flag trigger
 		STA $0B					;/
-		LDA $06					; prop byte
 
 		REP #$20
-		STZ $0E
-		AND #$0040
-		BEQ $02 : DEC $0E
 		INY
 
 		LDA ($04),y
@@ -1502,7 +2081,7 @@ SPRITE_OFF_SCREEN:
 		LDA $3250,x : STA $01
 		LDA $3240,x : XBA
 		LDA $3210,x
-		REP #$20
+		REP #$30
 		SEC : SBC $1C
 		STA $02
 		LDA $00
@@ -1514,13 +2093,14 @@ SPRITE_OFF_SCREEN:
 		LDA $33C0,x
 		AND #$000E
 		STA $0C
+		STZ $0E
 		LDA $3320,x
 		LSR A : BCS +
 		LDA #$0040 : TSB $0C
-	+	LDA !GFX_Dynamic-1
-		BPL $02 : INC $0C
-		LDY #$00
-		REP #$30
+		DEC $0E
+	+	;LDA !GFX_Dynamic-1
+		;BPL $02 : INC $0C
+		LDY #$0000
 		LDX !ActiveOAM
 		LDA !OAMindex_offset,x
 		CLC : ADC #$0200
@@ -1559,7 +2139,6 @@ SPRITE_OFF_SCREEN:
 		ORA $64					; > add global PP bits
 		ORA $06					; |
 		STA !OAM_p0+$003,x			;/
-		STA $06					; save prop byte
 		LDA $07					;\
 		AND #$10				; | get size bit
 		BEQ $02 : LDA #$02			; |
@@ -1570,7 +2149,6 @@ SPRITE_OFF_SCREEN:
 		EOR $0C					; | get dynamic prop
 		ORA $64					; |
 		STA !OAM_p0+$003,x			;/
-		STA $06					; save prop byte
 		LDA ($04),y				;\ S bit
 		AND #$02				;/
 
@@ -1578,12 +2156,8 @@ SPRITE_OFF_SCREEN:
 		STA $0A					; write S bit
 		BEQ $02 : LDA #$80			;\ n flag trigger
 		STA $0B					;/
-		LDA $06					; prop byte
 
 		REP #$20
-		STZ $0E
-		AND #$0040
-		BEQ $02 : DEC $0E
 		INY
 		LDA ($04),y
 		AND #$00FF
@@ -1623,9 +2197,13 @@ SPRITE_OFF_SCREEN:
 		INY
 		PHX
 		LDA ($04),y : TAX
+		LDA !DynamicProp,x : STA $06		; -------T flip for dynamic tile
 		LDA $F0,x
 		PLX
 		STA !OAM_p0+$002,x			; tile num
+		LDA !OAM_p0+$003,x
+		EOR $06
+		STA !OAM_p0+$003,x
 		PHX
 		INY
 		REP #$20
@@ -1662,7 +2240,7 @@ SPRITE_OFF_SCREEN:
 
 
 
-; this routine generates a table in $F0-$FF
+; this routine generates a tile table in $F0-$FF (lo byte) and !DynamicProp (hi byte)
 ; this table is indexed by the sprite's tile numbers, and the read byte is used as a replacement
 ; NOTE:
 ;	dynamic sprites have to use tile numbers in the $00-$0F range
@@ -1691,33 +2269,27 @@ SPRITE_OFF_SCREEN:
 	..loop	STA $F0,x						; |
 		LSR $00							; | dynamic tile nums for first 8 possible tiles
 		BCC $01 : INX						; |
-		INC A							; |
-		CMP #$08 : BCC ..loop					;/
+		INC #2							; |
+		CMP #$10 : BCC ..loop					;/
 
 		.Block2							;\
 		LDY $01 : STY $00					; |
 	..loop	STA $F0,x						; |
 		LSR $00							; | dynamic tile nums for remaining 8 possible tiles
 		BCC $01 : INX						; |
-		INC A							; |
-		CMP #$10 : BCC ..loop					;/
+		INC #2							; |
+		CMP #$20 : BCC ..loop					;/
 
 		.Complete
-		LDA !GFX_Dynamic : STA $00				;\
-		AND #$F0 : TRB $00					; | base tile num
-		ASL A							; |
-		TSB $00							;/
 		LDX #$0F						;\
-	..loop	LDA $F0,x						; |
-		ASL A							; |
-		CMP #$10						; | calculate finished tile numbers
-		BCC $02 : EOR #$30					; |
-		CLC : ADC $00						; |
-		STA $F0,x						; |
+	..loop	LDY $F0,x						; |
+		LDA !DynamicMatrix+0,y : STA $F0,x			; | get full tile numbers from matrix
+		LDA !DynamicMatrix+1,y : STA !DynamicProp,x		; |
 		DEX : BPL ..loop					;/
 		PLP
 		PLX
 		RTL
+
 
 
 
@@ -1777,17 +2349,19 @@ SPRITE_OFF_SCREEN:
 ;
 ; input:
 ;	X = sprite index
-;	Y = ID of file to load from
+;	Y = ID of file to load from (call _Main to ignore input Y, use with first input setting file or hardcoding address)
 ;	$0C = pointer to square dynamo
 ; output: void
 	LOAD_SQUARE_DYNAMO:
-		JSL !GetFileAddress
-		PHX
-		PHP
-		REP #$30
-		TXA
-		ASL A
-		TAX
+		JSL !GetFileAddress					; get file address
+
+		.Main							;\
+		PHX							; |
+		PHP							; |
+		REP #$30						; | push stuff and get index to !DynamicList
+		TXA							; |
+		ASL A							; |
+		TAX							;/
 		LDA !DynamicList,x : STA $00				; $00 = which dynamic tiles are in use
 		LDX #$0000						; X = square table index
 		LDY #$0000						; Y = pointer index
@@ -1796,24 +2370,55 @@ SPRITE_OFF_SCREEN:
 		INC $0C							; | otherwise store size to $02 and set up pointer
 		INC $0C							;/
 
-	.Loop	LSR $00 : BCC .NextOne
 
-		.ThisOne
-		LDA !FileAddress+1 : STA !VRAMbase+!SquareTable+1,x	; source bank
+		.Loop							;\ return if at end of dynamo
+		CPY $02 : BCS .Return					;/
+		LDA ($0C),y : BPL .LoadTile				;\ check type
+		CMP #$C000 : BCC .GetFile				;/
+
+		.SkipTiles						;\
+		INY #2							; |
+		AND #$000F : BEQ .Loop					; |
+		PHA							; |
+		PEI ($04)						; | add skip count * 4 to X
+		STX $04							; |
+		ASL #2							; |
+		ADC $04							; |
+		TAX							; |
+		PLA : STA $04						;/
+		PLA							;\
+	-	LSR $00							; | shift $00 once per skip count
+		DEC A : BEQ .Loop					; |
+		BRA -							;/
+
+		.GetFile						;\
+		PHY							; |
+		AND #$7FFF : TAY					; |
+		JSL !GetFileAddress					; | get file address
+		PLY							; |
+		INY #2							; |
+		BRA .Loop						;/
+
+		.LoadTile						;\ see if tile is in use
+	..loop	LSR $00 : BCC ..nextone					;/
+		..thisone						;\ source bank
+		LDA !FileAddress+1 : STA !VRAMbase+!SquareTable+1,x	;/
 		LDA ($0C),y						;\
 		CLC : ADC !FileAddress+0				; | source address
 		STA !VRAMbase+!SquareTable+0,x				;/
-		INY #2							;\ return when entire square dynamo is loaded
-		CPY $02 : BCS .Return					;/
-
-		.NextOne						;\
+		INC !DynamicCount					; 1 more tile in use
+		INY #2							; increment index
+		INX #4							;\ increment output index and return if at end
+		CPX #$0040 : BCS .Return				;/
+		BRA .Loop						; loop
+		..nextone						;\
 		INX #4							; | otherwise loop until all tiles have been checked
-		CPX #$0040 : BCC .Loop					;/
+		CPX #$0040 : BCC ..loop					;/
 
-		.Return
-		PLP
-		PLX
-		RTL
+		.Return							;\
+		PLP							; | pull stuff
+		PLX							;/
+		RTL							; return
 
 
 

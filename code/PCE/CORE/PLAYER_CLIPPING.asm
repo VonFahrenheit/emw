@@ -77,10 +77,7 @@
 		JSL !Contact16				;/
 		BCC ..nocontact				; branch
 		INX #2					; mark P2 contact
-		LDA !P2Character			;\
-		CMP #$02 : BNE ..nocontact		; | mark senku smash for kadaal
-		LDA #$01 : STA !P2SenkuSmash		; |
-		..nocontact				;/
+		..nocontact				;
 
 		.Player1
 		LDA !P2Status-$80 : BNE .Result		;\ player must exist and not be in pipe
@@ -97,10 +94,7 @@
 		JSL !Contact16				;/
 		BCC ..nocontact				; branch
 		INX					; mark P1 contact
-		LDA !P2Character-$80			;\
-		CMP #$02 : BNE ..nocontact		; | mark senku smash for kadaal
-		LDA #$01 : STA !P2SenkuSmash		; |
-		..nocontact				;/
+		..nocontact				;
 
 		.Result
 		CLC					; clear carry

@@ -106,6 +106,11 @@ namespace Mario
 
 ; -- Misc Mario edits --
 
+
+	org $00CD33				; patch out FAIL init code
+		BRA $01 : NOP			; org: JSR $E92B (mario collision)
+
+
 	org $00D748
 		BEQ +				; org: BEQ $21 ($00D76B), don't apply friction when mario is at target speed
 	org $00D7A4
@@ -211,6 +216,21 @@ namespace Mario
 	org $00D093				; Disable automatic spin jump fireball
 		RTS				;\ Org: BEQ $18
 		NOP				;/
+
+
+	org $00D0B6
+	MarioDead:
+		STZ $19
+		LDA #$3E : STA !MarioImg
+		STZ !MarioXSpeed
+		JSR $DC2D
+		JSR $D92E
+		LDA $14
+		LSR #2
+		AND #$01
+		STA !MarioDirection
+		RTS
+	warnpc $00D11D
 
 
 	org $00E31E
@@ -348,6 +368,14 @@ namespace Mario
 		LDA $6DA9					; |
 		AND #$80 : TSB $6DA7				;/
 
+		LDA !CurrentPlayer : BNE +			;\
+		LDA $6DA5					; | player 1 case
+		AND #$80 : TSB $6DA2				; |
+		+						;/
+
+
+
+
 		STZ $73DE					; clear "mario looking up" flag
 
 		LDA $9D : BNE .NoTimers				; unless $9D is set, decement mario's timers
@@ -368,6 +396,12 @@ namespace Mario
 		BRA .NoBox					;/
 	.Anim	JSR RunMario					; > animation/status codes
 		.NoBox						;
+
+
+		STZ !P2Hitbox1IndexMem1				;\
+		STZ !P2Hitbox1IndexMem2				; | clear this stuff from riposte
+		STZ !P2Hitbox2IndexMem1				; |
+		STZ !P2Hitbox2IndexMem2				;/
 
 
 		PHK : PLB
@@ -433,6 +467,21 @@ namespace Mario
 		JSL CORE_UPDATE_SPEED				; > apply vector speeds (already includes a stasis check)
 		JSL CORE_SCREEN_BORDER				; > screen border
 
+
+		LDA !P2Pipe					;\
+		AND #$0F : BEQ .GetCollision			; |
+		LDA #$04 : TSB !P2Blocked			; | skip collision during pipe animation
+		LDA !P2Pipe : BMI +				; > don't set vertical pipe offset
+		LDA !P2YPosLo					; |
+		BIT #$01 : BEQ +				; |
+		AND #$F0					; |
+		ORA #$0E					; | also set horz pipe offset
+		SEC : SBC #$10					; |
+		STA !P2YPosLo					; |
+		BCS +						; |
+		DEC !P2YPosHi					; |
+		BRA +						; |
+		.GetCollision					;/
 		LDA !P2Ducking : BNE .Small			;\
 		LDA $19 : BEQ .Small				; |
 		.Big						; |
@@ -444,7 +493,7 @@ namespace Mario
 		LDA.w #.ClippingSmall				; |
 		.Collision					;/
 		JSL CORE_COLLISION				; interact with layer
-		JSL CORE_PIPE					; pipe code
+	+	JSL CORE_PIPE					; pipe code
 
 		JSL !GetP1Clipping				;\
 		LDA $00 : STA !P2Hurtbox+0			; |
@@ -675,13 +724,11 @@ namespace Mario
 
 		PHB						; push bank
 		LDA #$00 : PHA : PLB				; bank = 00
+		LDA !MarioWater : BNE .CallReturn		; none of this while in water
 		PHK : PEA .CallReturn-1				; RTL address
-		PEA $84CF-1					; RTL
-		LDA !MarioWater : BEQ +				;\ underwater version
-		JML $00D062					;/ (skip y speed influence and normal controls)
-
-	+	PEA $D7E4-1					; Y speed influence
-		JML $00D5F2					; controls
+		PEA $84CF-1					; RTS address: point to an RTL
+		PEA $D7E4-1					; Y speed influence address
+		JML $00D5F2					; controls routine
 
 		.CallReturn					; return here
 		LDA !MarioWater : BEQ +
@@ -1203,6 +1250,7 @@ MarioGraphics:
 		CPY.b #!palset_mario_fire : BEQ $03 : JMP ..NoGlow
 		+
 
+
 		PHY
 		TXY
 		BEQ $02 : LDY #$80
@@ -1214,22 +1262,22 @@ MarioGraphics:
 		BEQ $02 : LDX #$20
 		REP #$20
 		LDA #$7FFF
-		STA.l !PaletteBuffer+$104,x
-		STA.l !PaletteBuffer+$106,x
-		STA.l !PaletteBuffer+$108,x
-		STA.l !PaletteBuffer+$10A,x
-		STA.l !PaletteBuffer+$10C,x
-		STA.l !PaletteBuffer+$10E,x
-		STA.l !PaletteBuffer+$110,x
-		STA.l !PaletteBuffer+$112,x
-		STA.l !PaletteBuffer+$114,x
-		STA.l !PaletteBuffer+$116,x
-		STA.l !PaletteBuffer+$118,x
-		STA.l !PaletteBuffer+$11A,x
-		STA.l !PaletteBuffer+$11C,x
-		STA.l !PaletteBuffer+$11E,x
+		STA.l !PaletteCacheRGB+$104,x
+		STA.l !PaletteCacheRGB+$106,x
+		STA.l !PaletteCacheRGB+$108,x
+		STA.l !PaletteCacheRGB+$10A,x
+		STA.l !PaletteCacheRGB+$10C,x
+		STA.l !PaletteCacheRGB+$10E,x
+		STA.l !PaletteCacheRGB+$110,x
+		STA.l !PaletteCacheRGB+$112,x
+		STA.l !PaletteCacheRGB+$114,x
+		STA.l !PaletteCacheRGB+$116,x
+		STA.l !PaletteCacheRGB+$118,x
+		STA.l !PaletteCacheRGB+$11A,x
+		STA.l !PaletteCacheRGB+$11C,x
+		STA.l !PaletteCacheRGB+$11E,x
 		SEP #$20
-		LDA $02,s
+		LDA $02,s				; read !CurrentMario - 1 from PHX
 		BEQ $02 : LDA #$10
 		CLC : ADC #$82
 		TAX
@@ -1259,11 +1307,13 @@ MarioGraphics:
 		..Glow
 		CPX #$00
 		BEQ $02 : LDX #$20
-		LDA #$1F
-		STA !PaletteBuffer+$104,x
-		STA !PaletteBuffer+$106,x
-		STA !PaletteBuffer+$110,x
-		STA !PaletteBuffer+$114,x
+		REP #$20
+		LDA #$001F
+		STA !PaletteCacheRGB+$104,x
+		STA !PaletteCacheRGB+$106,x
+		STA !PaletteCacheRGB+$110,x
+		STA !PaletteCacheRGB+$114,x
+		SEP #$20
 		TXA
 		BEQ $02 : LDA #$10
 		CLC : ADC #$82

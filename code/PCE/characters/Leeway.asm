@@ -22,12 +22,12 @@ namespace Leeway
 
 		LDA #$03 : STA !P2Character
 		LDA #$02 : STA !P2MaxHP
-		LDA !P2Status : BEQ .Process
-		STZ !P2Invinc
-		CMP #$02 : BEQ .SnapToP1
-		CMP #$03 : BNE .KnockedOut
 
-		.Snapped			; State 03
+
+		LDA !P2Status : BEQ .Process
+		CMP #$01 : BEQ .KnockedOut
+
+		.Snap
 		REP #$20
 		LDA $94 : STA !P2XPosLo
 		LDA $96 : STA !P2YPosLo
@@ -44,29 +44,17 @@ namespace Leeway
 		RTL
 
 		.Fall
+		BIT !P2YSpeed : BMI +
+		LDA $14
+		LSR #3
+		AND #$01
+		STA !P2Direction
+	+	STZ !P2Carry
+		STZ !P2Invinc
 		LDA #!Lee_Dead : STA !P2Anim
 		STZ !P2AnimTimer
 		JMP ANIMATION_HandleUpdate
 
-		.SnapToP1
-		REP #$20
-		LDA !P2XPosLo
-		CMP $94
-		BCS +
-		ADC #$0004
-		BRA ++
-	+	SBC #$0004
-	++	STA !P2XPosLo
-		SEC : SBC $94
-		BPL $03 : EOR #$FFFF
-		CMP #$0008
-		BCS +
-		INC !P2Status
-	+	SEP #$20
-
-		.Return
-		PLB
-		RTL
 
 		.Process
 		LDA !P2MaxHP				;\
@@ -141,10 +129,9 @@ namespace Leeway
 
 
 	PIPE:
-		JSL CORE_PIPE
-		BCC CONTROLS
+		JSL CORE_PIPE : BCC CONTROLS
 		LDA #$04 : TRB $6DA3
-		JMP ANIMATION_HandleUpdate
+		JMP ANIMATION
 
 	BITS:
 		db $01,$02,$04,$08,$10,$20,$40,$80
@@ -159,13 +146,12 @@ namespace Leeway
 		TSB $6DA7			; |
 		TRB !P2Buffer			;/
 
-		LDA !P2HurtTimer
-		BEQ $03 : JMP PHYSICS
-
 		PEA PHYSICS-1
 
-	; Crouch check
+		LDA !P2HurtTimer
+		BEQ $03 : JMP .Friction
 
+	; crouch check
 		LDA !P2Anim
 		CMP #!Lee_Cut : BCS .NoCrouch
 		LDA $6DA3
@@ -173,7 +159,7 @@ namespace Leeway
 		LDA #$01 : STA !P2Ducking
 		.NoCrouch
 
-	; Climb check here
+	; climb check here
 		LDA !P2SwordAttack
 		AND #$7F
 		CMP #$05 : BCC +
@@ -490,11 +476,9 @@ namespace Leeway
 		LSR A : BCC +
 		LDA #$01 : STA !P2Direction
 		BRA ++
-	+	LSR A
-		BCC ++
+	+	LSR A : BCC ++
 		STZ !P2Direction
-	++	BIT $6DA7
-		BPL +
+	++	BIT $6DA7 : BPL +
 		STZ !P2Climbing				; vine/net jump
 		LDA #$B8 : STA !P2YSpeed
 		LDA #$2B : STA !SPC1			; jump SFX
@@ -543,6 +527,7 @@ namespace Leeway
 
 
 		; normal ground jump
+		; main jump code
 		.Jump
 		STZ !P2CoyoteTime				; clear coyote time
 		STZ !P2SwordAttack				; clear sword attack
@@ -551,7 +536,8 @@ namespace Leeway
 		LDA #$B0 : STA !P2YSpeed			; base jump y speed
 		LDA #$2B : STA !SPC1				; jump SFX
 		LDA #$01 : STA !P2JumpCancel			; load jump cancel
-		LDA !P2Dashing : BEQ .Shared			;\ dash jump flag
+		LDA !P2Dashing : BEQ .Shared			;\
+		..dashjump					; | dash jump flag
 		LDA #$01 : STA !P2DashJump			;/
 
 		.Shared
@@ -585,13 +571,15 @@ namespace Leeway
 	++	LDA $6DA3
 		AND #$03
 	+	TAX
-		LDA .XSpeed,x : BNE ..NoFriction	;\
+		LDA .XSpeed,x : BNE .NoFriction
+
+		.Friction				;\
 		LDA !P2Slope				; |
 		CLC : ADC #$04				; |
 		TAX					; |
 		LDA !P2XSpeed				; |
 		SEC : SBC .SlopeSpeed,x			; |
-		BEQ ..R					; |
+		BEQ .Return				; |
 		BPL ..pos				; |
 	..neg	INC A					; |
 		BEQ $01 : INC A				; | apply friction
@@ -603,7 +591,7 @@ namespace Leeway
 	..set	CLC : ADC .SlopeSpeed,x			; |
 		LDX #$00				; |
 		BRA ++					; |
-		..NoFriction				;/
+		.NoFriction				;/
 
 
 		LDA !P2XSpeed				;\
@@ -617,9 +605,16 @@ namespace Leeway
 		LDA .XAccHi,x				; |
 		ADC !P2XSpeed				;/
 	++	JSL CORE_SET_XSPEED			; update speed
-		LDA .Direction,x : BMI ..R		;\ update direction
+		LDA .Direction,x : BMI .Return		;\
+		CMP !P2Direction : BEQ .Return		; | update direction
 		STA !P2Direction			;/
-	..R	RTS					; return
+		LDA .DirSpeedOffset,x			;\
+		CLC : ADC !P2XSpeed			; |
+		TAY					; | speed boost when turning around
+		EOR !P2XSpeed				; |
+		BMI $02 : LDY #$00			; > cap speed boost at 0x00: it only helps you stop, not accelerate
+		STY !P2XSpeed				;/
+	.Return	RTS					; return
 
 
 		.XAcc
@@ -642,6 +637,10 @@ namespace Leeway
 		.Direction
 		db $FF,$01,$00,$FF
 		db $FF,$01,$00,$FF
+		.DirSpeedOffset
+		db $FF,$20,$E0,$FF
+		db $FF,$20,$E0,$FF
+
 
 		.ClimbX
 		db $F0,$10
@@ -1460,18 +1459,25 @@ namespace Leeway
 
 		JSL CORE_ATTACK_ActivateHitbox1
 		JSR .CheckContact
-		STZ !P2ActiveHitbox			; merge hitboxes
+		LDA !P2Hitbox2W					;\
+		ORA !P2Hitbox2H					; | only process hitbox 2 if it actuallly exists
+		BEQ .Return					;/
 		JSL CORE_ATTACK_ActivateHitbox2
 		JSR .CheckContact
+		.Return
 		REP #$20
 		LDA !P2Hitbox1IndexMem1
 		ORA !P2Hitbox2IndexMem1
 		STA !P2Hitbox1IndexMem1
 		STA !P2Hitbox2IndexMem1
 		SEP #$20
+		JSL CORE_GET_TILE_Attack
 		RTS
 
 		.CheckContact
+		LDY !P2ActiveHitbox
+		LDA !P2Hitbox1Shield,y : BNE .NoHit
+
 		LDX #$0F				; all sprites
 	.Loop	LDA $3230,x				;\ check sprite status
 		CMP #$08 : BCC .LoopEnd			;/
@@ -1512,31 +1518,8 @@ namespace Leeway
 
 		.LoopEnd				;\ loop
 		DEX : BPL .Loop				;/
-		JSL CORE_GET_TILE_Attack
 		RTS					; return
 
-	CaptainWarrior:
-		LDY $3320,x
-		BEQ $02 : LDY #$06
-		LDA $3220,x
-		CLC : ADC .Data+$00,y
-		STA $04
-		LDA $3250,x
-		ADC .Data+$01,y
-		STA $0A
-		LDA $3210,x
-		CLC : ADC .Data+$02,y
-		STA $05
-		LDA $3240,x
-		ADC .Data+$03,y
-		STA $0B
-		LDA .Data+$04,y : STA $06
-		LDA .Data+$05,y : STA $07
-		RTS
-
-	.Data
-	dw $FFF8,$FFE4 : db $18,$30		; Right
-	dw $FFF8,$FFE4 : db $18,$30		; Left
 
 	HIT_Ptr:
 	dw HIT_00
@@ -1566,16 +1549,25 @@ namespace Leeway
 	dw HIT_18
 	dw HIT_19
 	dw HIT_1A
-	dw HIT_1B	; < Captain Warrior
-	dw HIT_1C
-	dw HIT_1D
 
 
 
 
-	; hitbox data is based on facing right
-	; xdisp and xspeed are automatically flipped when facing left
-	; lo byte of x on second hitbox can not be 00, as that signals that there is no second hitbox
+; hitbox data is based on facing right
+; xdisp and xspeed are automatically flipped when facing left
+; lo byte of x on second hitbox can not be 00, as that signals that there is no second hitbox
+;
+; format:
+;	16-bit Xdisp
+;	16-bit Ydisp
+;	8-bit W
+;	8-bit H
+;	8-bit X speed
+;	8-bit Y speed
+;	8-bit interaction disable timer
+;	8-bit input for !SPC1
+;	8-bit input for !SPC4
+
 
 	HitboxTable:
 		dw .Cut0
@@ -1592,64 +1584,121 @@ namespace Leeway
 		dw .HangSlash1
 
 	.Cut0
-	dw $0004,$FFFA : db $1F,$10
-	db $10,$E8
+	dw $0004,$FFFA : db $1F,$10	; X/Y + W/H
+	db $10,$E8			; speeds
+	db $10				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
 	dw $FFE4,$FFF6 : db $20,$10
 	db $F0,$E8
+	db $10				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
 	.Cut1
 	dw $0004,$FFF6 : db $0D,$13
 	db $10,$E8
+	db $10				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
 	dw $FFE4,$FFF6 : db $20,$10
 	db $F0,$E8
+	db $10				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
 
 	.Slash0
 	dw $0002,$FFFA : db $30,$1C
 	db $20,$E8
+	db $10				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
 	dw $0012,$FFE6 : db $1D,$14
 	db $20,$E8
+	db $10				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
 	.Slash1
 	dw $0002,$0006 : db $27,$10
 	db $20,$E8
+	db $10				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
 	db $00
 
 	.DashSlash0
 	dw $0014,$FFF6 : db $1F,$20
 	db $00,$E8
+	db $18				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
 	dw $FFF1,$FFF4 : db $23,$1E
 	db $F0,$E8
+	db $18				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
 	.DashSlash1
 	dw $0014,$FFF2 : db $0D,$23
 	db $00,$E8
+	db $18				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
 	dw $FFF1,$FFF4 : db $23,$1E
 	db $F0,$E8
+	db $18				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
 
 	.AirSlash0
 	dw $0002,$FFF8 : db $30,$1C
 	db $20,$E8
+	db $10				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
 	dw $0012,$FFE4 : db $1D,$14
 	db $20,$E8
+	db $10				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
 	.AirSlash1
 	dw $0002,$0004 : db $27,$10
 	db $20,$E8
+	db $10				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
 	db $00
 
 	.WallSlash0				; note: this one is reverse (since leeway's direction is inverted while wall-clinging)
 	dw $FFD4,$FFFC : db $30,$1C
 	db $20,$E8
+	db $10				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
 	dw $FFD7,$FFE8 : db $1D,$14
 	db $E0,$E8
+	db $10				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
 	.WallSlash1
 	dw $FFDE,$0008 : db $27,$10
 	db $E0,$E8
+	db $10				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
 	db $00
 
 	.HangSlash0
 	dw $000E,$FFF2 : db $30,$23
 	db $20,$08
+	db $10				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
 	db $00
 	.HangSlash1
 	dw $000E,$0003 : db $25,$12
 	db $20,$08
+	db $10				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
 	db $00
 
 
@@ -1675,52 +1724,47 @@ namespace Leeway
 		.Knockback
 		JSL CORE_ATTACK_Main
 		LDA #$09 : STA $3230,x
-		JSR KNOCKBACK
-		STZ $9E,x
-		STZ $AE,x
-		RTS
+		JMP KNOCKBACK
 
 		.Standard
 		LDA $3200,x
-		CMP #$08 : BCS .Stun
+		CMP #$08 : BCC $03
+	-	JMP .Stun
 
 		JSL $02A9DE			; Get new sprite number into Y
-		BMI .Stun			; If there are no empty slots, don't spawn
+		BMI -				; If there are no empty slots, don't spawn
 
 		LDA $3200,x
 		SEC : SBC #$04
 		STA $3200,y			; Store sprite number for new sprite
 		LDA #$08 : STA $3230,y		; > Status: normal
-		LDA $3220,x			;\
-		STA $3220,y			; |
-		LDA $3250,x			; |
-		STA $3250,y			; | Set positions
-		LDA $3210,x			; |
-		STA $3210,y			; |
-		LDA $3240,x			; |
-		STA $3240,y			;/
+		LDA $3220,x : STA $3220,y	;\
+		LDA $3250,x : STA $3250,y	; | coords
+		LDA $3210,x : STA $3210,y	; |
+		LDA $3240,x : STA $3240,y	;/
 		PHX				;\
-		TYX				; | Reset tables for new sprite
-		JSL $07F7D2			; |
+		TYX				; | reset tables for new sprite
+		JSL !ResetSprite		; |
+		LDA.l CORE_BITS,x
+		CPX #$08 : BCS +
+		TSB !P2Hitbox1IndexMem1 : BRA ++
+	+	TSB !P2Hitbox1IndexMem2
+		++
 		PLX				;/
 		LDA #$10			;\
 		STA $32B0,y			; | Some sprite tables that SMW normally sets
 		STA $32D0,y			; |
+		STA !SpriteDisP1,y		; > don't interact
+		STA !SpriteDisP2,y		; > don't interact
 		LDA #$01 : STA $3310,y		;/
-
-
-		LDA BITS,y
-		CPY #$08
-		BCS +
-		TSB !P2Hitbox1IndexMem1 : BRA ++
-	+	TSB !P2Hitbox1IndexMem2
-		++
 
 		LDA #$10 : STA $3300,y		; > Temporarily disable player interaction
 		LDA $3430,x			;\ Copy "is in water" flag from sprite
 		STA $3430,y			;/
 		LDA #$02 : STA $32D0,y		;\ Some sprite tables
 		LDA #$01 : STA $30BE,y		;/
+
+		LDA $3330,x : STA $3330,y
 
 		PHX
 		LDA !P2Direction
@@ -1729,9 +1773,20 @@ namespace Leeway
 		BEQ $02 : EOR #$01
 		STA $3320,y
 		TAX				; X = new sprite direction
-		LDA CORE_KOOPA_XSPEED,x		; Load X speed table indexed by direction
+		LDA.l CORE_KOOPA_XSPEED,x	; Load X speed table indexed by direction
 		STA $30AE,y			; Store to new sprite X speed
 		PLX
+
+		; applying hitstun here causes the spawn to fail because SMW totally rules dude...
+		LDY !P2ActiveHitbox
+		LDA !P2Hitbox1SFX1,y : BEQ ..skipSFX1
+		STA !SPC1
+		..skipSFX1
+		LDA !P2Hitbox1SFX2,y : BEQ ..skipSFX2
+		STA !SPC4
+		..skipSFX2
+		JSL CORE_DISPLAYCONTACT
+
 
 		.Stun
 		LDA #$09 : STA $3230,x		; > Stun sprite
@@ -1741,6 +1796,12 @@ namespace Leeway
 		LDA #$FF : STA $32D0,x		; > Stun if not
 
 		.DontStun
+		LDA.l CORE_BITS,x
+		CPX #$08 : BCS +
+		TSB !P2Hitbox1IndexMem1 : BRA ++
+	+	TSB !P2Hitbox1IndexMem2
+		++
+
 		RTS
 
 
@@ -2001,84 +2062,29 @@ namespace Leeway
 		RTS
 
 
-	HIT_1B:
-		LDA !BossData+0
-		CMP #$81 : BNE .Return
-		LDA !BossData+2
-		AND #$7F
-		CMP #$04 : BEQ .Return
-		LDA $3420,x
-		BNE .Return
-		LDA !Difficulty
-		AND #$03 : TAY
-		LDA .InvincTime,y
-		STA $3420,x
-		LDA #$28 : STA !SPC4		; > OW! sound
-		LDY !P2Direction
-		LDA .XSpeed,y
-		STA $AE,x
-		LDA #$07 : STA !BossData+2
-		LDA #$7F : STA !BossData+3
-		DEC !BossData+1
-
-		.Return
-		RTS
-
-		.InvincTime
-		db $4F,$5F,$7F
-
-		.XSpeed
-		db $F0,$10
-
-	HIT_1C:
-		LDA !ExtraBits,x
-		AND #$04 : BNE HIT_19		; can't hit mask
-		LDA $3280,x
-		AND #$03
-		CMP #$01 : BNE HIT_19
-		LDA $BE,x
-		AND #$0F
-		ORA #$C0
-		STA $BE,x
-		JML CORE_ATTACK_Main
-
-	HIT_1D:
-		LDA #$3F : STA $3360,x		; > Set hurt timer
-		LDA #$28 : STA !SPC4		; > OW! sound
-		STZ $32D0,x			; > Reset main timer
-		DEC $3280,x			; > Deal damage
-		LDA BITS,x
-		CPX #$08
-		BCS +
-		TSB !P2Hitbox1IndexMem1
-		RTS
-	+	TSB !P2Hitbox1IndexMem2
-
-		.Return
-		RTS
-
 
 	KNOCKOUT:
-		LDA #$05 : STA $9D
-
 		LDA #$02 : STA $3230,x
-		LDA !P2HitboxOutputY
+		LDY !P2ActiveHitbox
+		LDA !P2Hitbox1Hitstun,y : STA $9D
+		LDA !P2Hitbox1YSpeed,y
 		SEC : SBC #$10
-		STA $9E,x
-		LDA !P2HitboxOutputX : STA $AE,x
+		STA !SpriteYSpeed,x
+		LDA !P2Hitbox1XSpeed,y : STA !SpriteXSpeed,x
+
 		LDA #$02 : STA !SPC1
 		JSL CORE_DISPLAY_CONTACT
 		RTS
 
 
 	KNOCKBACK:
-		LDA #$05 : STA $9D
-
-		LDA !P2HitboxOutputY : STA $9E,x
-		LDA !P2HitboxOutputX : STA $AE,x
-		LDA !P2Dashing : BEQ .GFX		;\
-		TXY					; | +50% i-frames when dashing
-		LDA #$18 : STA ($0E),y			;/
+		LDY !P2ActiveHitbox
+		LDA !P2Hitbox1Hitstun,y : STA $9D
+		LDA !P2Hitbox1XSpeed,y : STA !SpriteXSpeed,x
+		LDA !P2Hitbox1YSpeed,y : STA !SpriteYSpeed,x
+		LDA !P2Dashing : BEQ .GFX			;\
+		TXY						; | +50% i-frames when dashing
+		LDA #$18 : STA ($0E),y				;/
 
 	.GFX	LDA #$02 : STA !SPC1
 		JSL CORE_DISPLAY_CONTACT
@@ -2470,10 +2476,10 @@ namespace Leeway
 	db $2E,$01,$00,!P2Tile3+$01
 	..X
 	dw $0010
-	db $6E,$FC,$F0,!P2Tile1
-	db $6E,$04,$F0,!P2Tile1+$01
-	db $6E,$FC,$00,!P2Tile3
-	db $6E,$04,$00,!P2Tile3+$01
+	db $6E,$04,$F0,!P2Tile1
+	db $6E,$FC,$F0,!P2Tile1+$01
+	db $6E,$04,$00,!P2Tile3
+	db $6E,$FC,$00,!P2Tile3+$01
 
 	.24x40TM
 	dw $0018
@@ -3325,7 +3331,7 @@ print "  - clipping data: $", hex(.End-.ClippingStandard), " bytes (", dec((.End
 	dw $0000,$0000
 
 	.CutStart			;
-	dw .PrepTM : db $E7,$05
+	dw .PrepTM : db $19,$05
 	dw $0000,$0000
 	.Cut0				;
 	dw .CutTM0 : db $EC,$F2
@@ -3367,7 +3373,7 @@ print "  - clipping data: $", hex(.End-.ClippingStandard), " bytes (", dec((.End
 	dw $0000,$0000
 
 	.DashSlash0			;
-	dw .PrepTM : db $F3,$05
+	dw .PrepTM : db $0D,$05
 	dw $0000,$0000
 	.DashSlash1			;
 	dw .CutTM0 : db $DF,$F0
@@ -3446,7 +3452,7 @@ print "  - clipping data: $", hex(.End-.ClippingStandard), " bytes (", dec((.End
 	dw $0000,$0000
 
 	.AirSlash0			;
-	dw .PrepTM : db $F2,$F9
+	dw .PrepTM : db $0E,$F9
 	dw $FFFF,$0000
 	.AirSlash1			;
 	dw .SlashTM0 : db $DC,$FC
@@ -3476,37 +3482,37 @@ print "  - clipping data: $", hex(.End-.ClippingStandard), " bytes (", dec((.End
 	dw $0000,$0000
 
 	.WallCling			;
-	dw .WHorzTM : db $E7,$03
+	dw .WHorzTM : db $19,$03
 	dw $0000,$0000
 
 	.WallSlash0			;
-	dw .WHoldBackTM : db $05,$F4
+	dw .WHoldBackTM : db $FB,$F4
 	dw $FFFF,$0000
 	.WallSlash1			;
-	dw .WSlashTM0 : db $D2,$00
+	dw .WSlashTM0 : db $2E,$00
 	dw $0000,$0000
 	.WallSlash2			;
-	dw .WSlashTM1 : db $DA,$08
+	dw .WSlashTM1 : db $26,$08
 	dw $0000,$0000
 	.WallSlash3			;
-	dw .WDiaTM : db $F2,$08
+	dw .WDiaTM : db $0E,$08
 	dw $0000,$0000
 
 	.WallClimb0			;
-	dw .ClimbTM : db $EC,$07
+	dw .ClimbTM : db $14,$07
 	dw $FFFF,$0000
 	.WallClimb1			;
-	dw .ClimbTM : db $EC,$07
+	dw .ClimbTM : db $14,$07
 	dw $FFFF,$0000
 	.WallClimb2			;
-	dw .ClimbTM : db $EC,$07
+	dw .ClimbTM : db $14,$07
 	dw $FFFF,$0000
 	.WallClimb3			;
-	dw .ClimbTM : db $EC,$07
+	dw .ClimbTM : db $14,$07
 	dw $FFFF,$0000
 
 	.ClimbTop			;
-	dw .PrepTM : db $EF,$03
+	dw .PrepTM : db $11,$03
 	dw $0000,$0000
 
 	.ClimbBG0			;
@@ -3545,7 +3551,7 @@ print "  - clipping data: $", hex(.End-.ClippingStandard), " bytes (", dec((.End
 	.PrepTM
 	dw $0008
 	db $6E,$00,$00,!P2Tile5
-	db $6E,$08,$00,!P2Tile5+$01
+	db $6E,$F8,$00,!P2Tile5+$01
 
 	.CutTM0
 	dw $0010
@@ -3589,30 +3595,30 @@ print "  - clipping data: $", hex(.End-.ClippingStandard), " bytes (", dec((.End
 	.WHorzTM
 	dw $0008
 	db $6E,$00,$00,!P2Tile5
-	db $6E,$08,$00,!P2Tile5+$01
+	db $6E,$F8,$00,!P2Tile5+$01
 
 	.WSlashTM0
 	dw $001C
 	db $6E,$00,$00,!P2Tile5
-	db $6E,$08,$08,!P2Tile6
-	db $6E,$18,$08,!P2Tile7
-	db $6E,$20,$08,!P2Tile7+$01
-	db $6E,$08,$E8,$4B
-	db $6F,$18,$E8,$4D
-	db $6F,$20,$E8,$4E
+	db $6E,$F8,$08,!P2Tile6
+	db $6E,$E8,$08,!P2Tile7
+	db $6E,$E0,$08,!P2Tile7+$01
+	db $6E,$F8,$E8,$4B
+	db $6F,$F0,$E8,$4D
+	db $6F,$E8,$E8,$4E
 	.WSlashTM1
 	dw $000C
 	db $6E,$00,$00,!P2Tile5
-	db $6E,$10,$00,!P2Tile6
-	db $6E,$18,$00,!P2Tile6+$01
+	db $6E,$F0,$00,!P2Tile6
+	db $6E,$E8,$00,!P2Tile6+$01
 	.WDiaTM
 	dw $0008
 	db $6E,$00,$00,!P2Tile7
-	db $6E,$F8,$08,!P2Tile8
+	db $6E,$08,$08,!P2Tile8
 	.WHoldBackTM
 	dw $0008
 	db $4E,$00,$00,!P2Tile6
-	db $4E,$08,$00,!P2Tile6+$01
+	db $4E,$F8,$00,!P2Tile6+$01
 
 	.HoldDownTM
 	dw $0008
@@ -3632,7 +3638,7 @@ print "  - clipping data: $", hex(.End-.ClippingStandard), " bytes (", dec((.End
 	.ClimbTM
 	dw $0008
 	db $6E,$00,$00,!P2Tile7
-	db $6E,$F8,$08,!P2Tile8
+	db $6E,$08,$08,!P2Tile8
 
 	.NoTM
 	dw $0000
@@ -3665,7 +3671,7 @@ HIT_TABLE:		db $01,$01,$01,$01,$02,$02,$02,$02,$03,$03,$03,$03,$03,$04,$00,$05	;
 			db $07,$00,$07,$07,$07,$00,$07,$17,$17,$00,$0F,$0F,$00,$01,$0A,$18	;| 0BX
 			db $0F,$00,$01,$07,$0F,$07,$00,$00,$00					;| 0CX
 
-.Custom			db $00,$00,$00,$00,$00,$00,$1C,$07,$1B,$00,$00,$1D,$00,$00,$00,$00	;| 10X
+.Custom			db $00,$00,$00,$00,$00,$00,$00,$07,$00,$00,$00,$00,$00,$00,$00,$00	;| 10X
 			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 11X
 			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 12X
 			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 13X

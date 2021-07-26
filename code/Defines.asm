@@ -200,7 +200,7 @@ endmacro
 
 ; settings for shader:
 ; !LightList:
-;	operates row-by-row
+;	operates row-by-row and handles interaction between HSL and shader
 ;	if an entry is set to 0, it is handled by SNES shader (no interaction with HSL)
 ;	if an entry is set to 1, it is shaded by SA-1 before HSL conversion (good for fixed values, or for treating the HSL operation as a lighting op)
 ;	if an entry is set to 80, it is shaded by SA-1 after HSL conversion (good for variable values, since it treats the HSL operation as affecting the color rather than the light)
@@ -212,6 +212,8 @@ endmacro
 
 
 
+		!ShaderRowDisable	= $4044B0	; 16 bytes (1 for each row), 1 op, set by VR2-type uploads (HSL codes, palset loader)
+
 		!LightData_SNES		= $7EFC00	; 2 buffers of 512 bytes each for processing lighting
 
 
@@ -222,17 +224,16 @@ endmacro
 		!LightR			= $3176		; these are 16-bit numbers with 8-bit fixed point fractions
 		!LightG			= $3178		; normal value is 01.00, 01.00, 01.00, meaning that each color is applied 100%
 		!LightB			= $317A		; SNES will apply rounded shading in background mode using these values
-		!ProcessLight		= $317C		; 0 = not processing, 1 = in process, 2 = done, if highest bit is set, SA-1 is currently writing to !PaletteRGB and SNES should wait
+		!ProcessLight		= $317C		; 0 = not processing, 1 = in process, 2 = done, if highest bit is set, SA-1 is currently writing to !ShaderInput and SNES should wait
 		!LightList		= $3160		; 16 bytes
 
-
-		!LightList_SNES		= $0FE4		; 16 bytes that determine whether each row should be shaded or not
-		!LightIndexStart_SNES	= $0FF4		; these are copied to WRAM at the start of a shade operation
-		!LightIndexEnd_SNES	= $0FF6		; this way, SA-1 can queue as much as it wants without disrupting anything
-		!LightR_SNES		= $0FF8
-		!LightG_SNES		= $0FFA
-		!LightB_SNES		= $0FFC
-		!LightIndex_SNES	= $0FFE
+		!LightList_SNES		= $1E00		; 16 bytes that determine whether each row should be shaded or not
+		!LightIndexStart_SNES	= $1E10		; these are copied to WRAM at the start of a shade operation
+		!LightIndexEnd_SNES	= $1E12		; this way, SA-1 can queue as much as it wants without disrupting anything
+		!LightR_SNES		= $1E14
+		!LightG_SNES		= $1E16
+		!LightB_SNES		= $1E18
+		!LightIndex_SNES	= $1E1A
 
 		!MPU_SNES		= $317D		; SNES status in dual thread operation
 		!MPU_SA1		= $317E		; SA-1 status in dual thread operation
@@ -275,10 +276,13 @@ endmacro
 
 
 
-		!DynamicTile		= $7620		; 2 bytes, 1 bit per tile (0 = free, 1 = in use)
-							; cleaned up by Fe26 at the start of each loop
 
 		!DynamicList		= $7600		; 32 bytes, !DynamicTile mirror for each sprite (indexed by sprite number * 2)
+		!DynamicMatrix		= $7620		; 32 bytes, -------T tttttttt bits for each dynamic tile
+		!DynamicProp		= $7640		; 16 bytes, -------T bit of prop, complement to $F0 for dynamic sprites
+		!DynamicTile		= $7650		; 2 bytes, 1 bit per tile (0 = free, 1 = in use)
+							; cleaned up by Fe26 at the start of each loop
+		!DynamicCount		= $7652		; 16-bit, how many dynamic tiles will be updated this frame
 
 
 
@@ -543,7 +547,7 @@ endmacro
 		!GFX_GoombaSlave	= !GFX_status+$80
 		!GFX_KoopaBlue		= !GFX_status+$81
 		!GFX_HammerRex		= !GFX_status+$82
-		!GFX_NoviceShaman	= !GFX_status+$83
+		!GFX_Conjurex		= !GFX_status+$83
 		!GFX_MagicMole		= !GFX_status+$84
 		!GFX_Thif		= !GFX_status+$85
 		!GFX_KompositeKoopa	= !GFX_status+$86
@@ -601,6 +605,8 @@ endmacro
 		!SD_LuigiFireball	= !GFX_status+$106
 		!SD_Baseball		= !GFX_status+$107
 		!SD_KadaalLinear	= !GFX_status+$108
+		!SD_Fireball32x32	= !GFX_status+$109
+		!SD_EnemyFireball16x16	= !GFX_status+$10A
 
 	; super dynamic format:
 	; bbpppppp
@@ -725,6 +731,8 @@ endmacro
 		%def_palset(special_flash_blue)
 		%def_palset(special_flash_yellow)
 		%def_palset(special_flash_caster)
+		%def_palset(special_kingking_blue)
+		%def_palset(special_kingking_red)
 
 
 
@@ -753,6 +761,10 @@ endmacro
 
 		!StatusBar		= $6EF9			; 32 bytes, tile numbers for status bar
 
+		!Timer			= $6F30
+		!TimerFrames		= !Timer		; 8-bit
+		!TimerSeconds		= !Timer+1		; 16-bit
+
 
 
 
@@ -763,7 +775,7 @@ endmacro
 		!P2Basics		= !P2Base+$00
 		!P2Physics		= !P2Base+$1E
 		!P2Hitbox		= !P2Base+$3F
-		!P2Custom		= !P2Base+$56
+		!P2Custom		= !P2Base+$5E
 
 
 	; --BASICS--
@@ -788,6 +800,8 @@ endmacro
 		!P2HurtboxYHi		= !P2Hurtbox+$03		; |
 		!P2HurtboxW		= !P2Hurtbox+$04		; |
 		!P2HurtboxH		= !P2Hurtbox+$05		;/
+		!P2HurtboxX		= !P2HurtboxXLo			;\ alt names
+		!P2HurtboxY		= !P2HurtboxYLo			;/
 		!P2KillCount		= !P2Basics+$14			; kill count, usually cleared upon touching ground
 		!P2Buffer		= !P2Basics+$15			;\
 		!P2Buffer1		= !P2Buffer+$00			; | input buffer
@@ -811,6 +825,12 @@ endmacro
 		!P2YPos			= !P2YFraction+$01		; | 24-bit xpos
 		!P2YPosLo		= !P2YFraction+$01		; |
 		!P2YPosHi		= !P2YFraction+$02		;/
+
+		!P2XLo			= !P2XPosLo			;\
+		!P2XHi			= !P2XPosHi			; | shorter mirrors
+		!P2YLo			= !P2YPosLo			; |
+		!P2YHi			= !P2YPosHi			;/
+
 
 		!P2XSpeedFraction	= !P2Physics+$06		;\ 16-bit xspeed
 		!P2XSpeed		= !P2XSpeedFraction+$01		;/
@@ -867,6 +887,7 @@ endmacro
 
 
 	; --HITBOXES--
+		; pre-loaded:
 		!P2Hitbox1		= !P2Hitbox+$00			;\
 		!P2Hitbox1XLo		= !P2Hitbox1+$00		; |
 		!P2Hitbox1XHi		= !P2Hitbox1+$01		; |
@@ -876,12 +897,21 @@ endmacro
 		!P2Hitbox1H		= !P2Hitbox1+$05		;/
 		!P2Hitbox1X		= !P2Hitbox1XLo			; reference options
 		!P2Hitbox1Y		= !P2Hitbox1YLo			; reference options
-		!P2Hitbox1IndexMem1	= !P2Hitbox1+$06		;\ hitbox 1 index mem (1 bit per sprite)
-		!P2Hitbox1IndexMem2	= !P2Hitbox1+$07		;/
-		!P2Hitbox1XSpeed	= !P2Hitbox1+$08		; x knockback
-		!P2Hitbox1YSpeed	= !P2Hitbox1+$09		; y knockback
+		!P2Hitbox1XSpeed	= !P2Hitbox1+$06		; x knockback
+		!P2Hitbox1YSpeed	= !P2Hitbox1+$07		; y knockback
+		!P2Hitbox1DisTimer	= !P2Hitbox1+$08		; interaction disable timer on hit
+		!P2Hitbox1Hitstun	= !P2Hitbox1+$09		; hitstun
+		!P2Hitbox1SFX1		= !P2Hitbox1+$0A		; SFX (!SPC1) on hit (0 = no SFX)
+		!P2Hitbox1SFX2		= !P2Hitbox1+$0B		; SFX (!SPC4) on hit (0 = no SFX)
+		; not pre-loaded:
+		!P2Hitbox1IndexMem1	= !P2Hitbox1+$0C		;\ hitbox 1 index mem (1 bit per sprite)
+		!P2Hitbox1IndexMem2	= !P2Hitbox1+$0D		;/
+		!P2Hitbox1Shield	= !P2Hitbox1+$0E		; marks shield contact
 
-		!P2Hitbox2		= !P2Hitbox+$0A			;\
+		!P2Hitbox1IndexMem	= !P2Hitbox1IndexMem1		; alt name
+
+		; pre-loaded:
+		!P2Hitbox2		= !P2Hitbox+$0F			;\
 		!P2Hitbox2XLo		= !P2Hitbox2+$00		; |
 		!P2Hitbox2XHi		= !P2Hitbox2+$01		; |
 		!P2Hitbox2YLo		= !P2Hitbox2+$02		; | hitbox 2
@@ -890,15 +920,39 @@ endmacro
 		!P2Hitbox2H		= !P2Hitbox2+$05		;/
 		!P2Hitbox2X		= !P2Hitbox2XLo			; reference options
 		!P2Hitbox2Y		= !P2Hitbox2YLo			; reference options
-		!P2Hitbox2IndexMem1	= !P2Hitbox2+$06		;\ hitbox 2 index mem (1 bit per sprite)
-		!P2Hitbox2IndexMem2	= !P2Hitbox2+$07		;/
-		!P2Hitbox2XSpeed	= !P2Hitbox2+$08		; x knockback
-		!P2Hitbox2YSpeed	= !P2Hitbox2+$09		; y knockback
+		!P2Hitbox2XSpeed	= !P2Hitbox2+$06		; x knockback
+		!P2Hitbox2YSpeed	= !P2Hitbox2+$07		; y knockback
+		!P2Hitbox2DisTimer	= !P2Hitbox2+$08		; interaction disable timer on hit
+		!P2Hitbox2Hitstun	= !P2Hitbox1+$09		; hitstun
+		!P2Hitbox2SFX1		= !P2Hitbox2+$0A		; SFX (!SPC1) on hit (0 = no SFX)
+		!P2Hitbox2SFX2		= !P2Hitbox2+$0B		; SFX (!SPC4) on hit (0 = no SFX)
+		; not pre-loaded:
+		!P2Hitbox2IndexMem1	= !P2Hitbox2+$0C		;\ hitbox 2 index mem (1 bit per sprite)
+		!P2Hitbox2IndexMem2	= !P2Hitbox2+$0D		;/
+		!P2Hitbox2Shield	= !P2Hitbox2+$0E		; marks shield contact
 
-		!P2HitboxOutputX	= !P2Hitbox+$14			;\ used by sprites to know which knockback to apply
-		!P2HitboxOutputY	= !P2Hitbox+$15			;/
+		!P2Hitbox2IndexMem	= !P2Hitbox2IndexMem1		; alt name
 
-		!P2ActiveHitbox		= !P2Hitbox+$16			; 0 = hitbox 1, A = hitbox 2
+
+		!P2ActiveHitbox		= !P2Hitbox+$1E			; 0 = hitbox 1, !P2Hitbox2Offset = hitbox 2
+
+
+		; offsets
+		!P2HitboxXOffset	= (!P2Hitbox1X-(!P2Hitbox1))
+		!P2HitboxYOffset	= (!P2Hitbox1Y-(!P2Hitbox1))
+		!P2HitboxWOffset	= (!P2Hitbox1W-(!P2Hitbox1))
+		!P2HitboxHOffset	= (!P2Hitbox1H-(!P2Hitbox1))
+		!P2HitboxXSpeedOffset	= (!P2Hitbox1XSpeed-(!P2Hitbox1))
+		!P2HitboxYSpeedOffset	= (!P2Hitbox1YSpeed-(!P2Hitbox1))
+		!P2HitboxDisOffset	= (!P2Hitbox1DisTimer-(!P2Hitbox1))
+		!P2HitboxHitstunOffset	= (!P2Hitbox1Hitstun-(!P2Hitbox1))
+		!P2HitboxSFX1Offset	= (!P2Hitbox1SFX1-(!P2Hitbox1))
+		!P2HitboxSFX2Offset	= (!P2Hitbox1SFX2-(!P2Hitbox1))
+		!P2HitboxIndex1Offset	= (!P2Hitbox1IndexMem1-(!P2Hitbox1))
+		!P2HitboxIndex2Offset	= (!P2Hitbox1IndexMem2-(!P2Hitbox1))
+
+		!P2Hitbox2Offset	= (!P2Hitbox2-(!P2Hitbox1))
+
 
 
 
@@ -942,8 +996,8 @@ endmacro
 		!P2Sliding		= !P2Custom+$0B			; flag for luigi sliding on slopes
 
 	; --KADAAL--
-		!P2Punch1		= !P2Custom+$00			; timer (decrements) for kadaal's punch 1
-		!P2Punch2		= !P2Custom+$01			; timer (decrements) for kadaal's punch 2
+		!P2Punch		= !P2Custom+$00			; timer (decrements) for kadaal's punch
+		!P2Headbutt		= !P2Custom+$01			; timer (decrements) for kadaal's headbutt
 		!P2DashTimerR1		= !P2Custom+$02			;\
 		!P2DashTimerR2		= !P2Custom+$03			; | kadaal's dash timers
 		!P2DashTimerL1		= !P2Custom+$04			; | (doesn't own a fusion sprite, so 53 free for this)
@@ -953,7 +1007,7 @@ endmacro
 		;!P2Dashing		= !P2Custom+$08			; 08
 		!P2SenkuDir		= !P2Custom+$09			; which direction kadaal's senku will go (0 = right, 1 = left)
 		!P2AllRangeSenku	= !P2Custom+$0A			; all range direction for senku, requires upgrade
-		!P2SenkuSmash		= !P2Custom+$0B			; timer (decrements) for senku smash
+	;	!P2SenkuSmash		= !P2Custom+$0B			; timer (decrements) for senku smash
 		!P2JumpLag		= !P2Custom+$0C			; timer (decrements) for kadaal's land lag
 		!P2ShellSpin		= !P2Custom+$0D			; timer (decrements) for shell spin attack
 		!P2ShellSlide		= !P2Custom+$0E			; kadaal's shell slide
@@ -979,7 +1033,6 @@ endmacro
 		!P2Stamina		= !P2Custom+$0E			; resource for leeway's climb and wall jump
 		!LeewayMaxStamina	= #$78
 		!P2JumpCancel		= !P2Custom+$0F			; set when leeway starts a jump, cleared when he lets go of B, which gives him a downward speed boost
-
 
 
 
@@ -1034,21 +1087,22 @@ endmacro
 	%def_anim(Kad_Walk, 4)
 	%def_anim(Kad_Spin, 4)
 	%def_anim(Kad_Squat, 1)
+	%def_anim(Kad_Rise, 1)
 	%def_anim(Kad_Shell, 4)
-	%def_anim(Kad_Fall, 1)
+	%def_anim(Kad_Fall, 3)
 	%def_anim(Kad_Turn, 1)
 	%def_anim(Kad_Senku, 1)
-	%def_anim(Kad_Punch1, 4)
-	%def_anim(Kad_Punch2, 4)
+	%def_anim(Kad_Punch, 4)
 	%def_anim(Kad_Hurt, 1)
 	%def_anim(Kad_Dead, 1)
 	%def_anim(Kad_Dash, 6)
 	%def_anim(Kad_Climb, 2)
 	%def_anim(Kad_Duck, 2)
 	%def_anim(Kad_Swim, 4)
-	%def_anim(Kad_SenkuSmash, 5)		;\
-	%def_anim(Kad_ShellDrill, 5)		; | these 3 animations have to be last in the list
-	%def_anim(Kad_DrillLand, 4)		;/
+	%def_anim(Kad_SenkuSmash, 5)		; change to dropkick
+	%def_anim(Kad_Headbutt, 4)
+
+
 
 	!Temp = 0
 	%def_anim(Lee_Idle, 3)
@@ -1211,7 +1265,7 @@ endmacro
 		!VRAMbank		= $40
 		!VRAMbase		= !VRAMbank*$10000	; use !VRAMbase+!VRAMtable for long addressing
 		!VRAMtable		= $4500
-		!VRAMsize		= !VRAMtable+$FC	; remaining upload size
+		!VRAMsize		= !VRAMtable+$FC	; data used by PCE
 		!VRAMslot		= !VRAMtable+$FE	; index to start upload from
 		!CGRAMtable		= $4600
 		!TileUpdateTable	= $4700			; first 2 bytes in this table are the header (number of bytes)
@@ -1223,7 +1277,19 @@ endmacro
 
 		!SquareTable		= $44C0			; 4 bytes per entry (indexed by dynamic tile number * 4)
 								; each entry simply holds a 24-bit source address to be uploaded to that square
-								; 4th byte of each entry is unused but this alignment makes for easier indexing
+
+
+	macro RawDyn(tiles, source, dest)
+		dw <tiles>*$20
+		dl <source>
+		dw <dest>
+	endmacro
+
+	macro FileDyn(tiles, sourcetile, dest)
+		dw <tiles>*$20
+		dl <sourcetile>*$20
+		dw <dest>
+	endmacro
 
 
 
@@ -1231,11 +1297,17 @@ endmacro
 		dw <tilenum>*$20
 	endmacro
 
+	macro SquareFile(file)
+		dw $8000|<file>
+	endmacro
+
+	macro SquareSkipTiles(tiles)
+		dw $C000|<tiles>
+	endmacro
 
 
 
-
-		!Debug			= 0			; 0 = do not insert debug code
+		!Debug			= 1			; 0 = do not insert debug code
 								; 1 = insert debug code
 
 	macro DebugCode()
@@ -1263,7 +1335,7 @@ endmacro
 		; do not use several trackers at the same time!
 		!TrackSpriteLoad	= 0			; 0 = do not track sprite load, 1 = track sprite load
 		!TrackOAM		= 0			; 0 = do not track OAM, 1 = track OAM
-		!TrackCPU		= 0			; 0 = do not track CPU performance, 1 = track CPU performance and save in .srm file
+		!TrackCPU		= 1			; 0 = do not track CPU performance, 1 = track CPU performance and save in .srm file
 		!ResetTracker		= 0			; 0 = keep tracker on bootup, 1 = reset tracker on bootup
 
 		; toggles for !TrackCPU
@@ -1529,7 +1601,6 @@ endmacro
 	%def_particle(ratio)
 	%def_particle(anim_add)
 	%def_particle(anim_sub)
-	%def_particle(weather)
 	%def_particle_simple(smoke8x8)
 	%def_particle_simple(smoke16x16)
 	%def_particle_simple(contact)
@@ -1558,9 +1629,33 @@ endmacro
 
 
 
+
+
+
+
+		; shield box data
+		!ShieldByteCount	= $06
+		!ShieldData		= $418B00
+		!ShieldXLo		= !ShieldData+0
+		!ShieldXHi		= !ShieldData+1
+		!ShieldYLo		= !ShieldData+2
+		!ShieldYHi		= !ShieldData+3
+		!ShieldW		= !ShieldData+4
+		!ShieldH		= !ShieldData+5
+		!ShieldX		= !ShieldXLo
+		!ShieldY		= !ShieldYLo
+
+		!ShieldExists		= !ShieldData+($10*!ShieldByteCount)
+
+	; call from bank $41!
+	macro ClearShield(num)
+		STZ.w !ShieldW+(<num>*!PlatformByteCount)
+	endmacro
+
+
+
 		; platform box data
 		!PlatformByteCount	= $0C
-
 		!PlatformData		= $418F00		; 192 bytes (16 slots, 11 bytes per slot, index with sprite num * 0x0C)
 		!PlatformStatus		= !PlatformData+0	; which collision points to interact with (00 = this platform does not exist)
 		!PlatformXLeft		= !PlatformData+1	; 16-bit Xpos of left border
@@ -1573,12 +1668,11 @@ endmacro
 
 		!PlatformExists		= !PlatformData+($10*!PlatformByteCount)
 
-
-
-
+	; call from bank $41!
 	macro ClearPlatform(num)
-		STA !PlatformStatus+(<num>*!PlatformByteCount)
+		STZ.w !PlatformStatus+(<num>*!PlatformByteCount)
 	endmacro
+
 
 
 
@@ -1639,17 +1733,17 @@ endmacro
 
 		!PaletteCacheHSL	= !PaletteHSL+$300
 		!PaletteBufferHSL	= !PaletteHSL+$600
+		!PaletteCacheRGB	= !PaletteHSL+$900
+		!PaletteBuffer		= !PaletteHSL+$B00
+		!ShaderInput		= !PaletteHSL+$D00
 
-		!PaletteBuffer		= !PaletteHSL+$900
 
+		!DizzyEffect		= $405DF8		; when enabled, table at $40A040 must be used to adjust sprite heights
 
+		!3DWater_Color		= $405DF9		; 16-bit, should be set at level init
+		!FileAddress		= $405DFB		; 24-bit, scratch pointer to file
 
-		!DizzyEffect		= $4059F8		; when enabled, table at $40A040 must be used to adjust sprite heights
-
-		!3DWater_Color		= $4059F9		; 16-bit, should be set at level init
-		!FileAddress		= $4059FB		; 24-bit, scratch pointer to file
-
-	; next entry at $4059FE
+	; next entry at $405DFE
 
 
 		; these are values not addresses
@@ -1772,16 +1866,24 @@ endmacro
 
 
 
+		!SpriteNum_cache	= $87
 		!SpriteNum_ptr		= $D8
 		!SpriteYLo_ptr		= $DA
 		!SpriteXLo_ptr		= $DE
-
 
 		!SpriteXSpeed		= $AE
 		!SpriteYSpeed		= $9E
 
 		!SpriteSpeedX		= !SpriteXSpeed
 		!SpriteSpeedY		= !SpriteYSpeed
+
+
+		!SpriteNum		= $3200
+
+		!SpriteXLo		= $3220
+		!SpriteXHi		= $3250
+		!SpriteYLo		= $3210
+		!SpriteYHi		= $3240
 
 
 		!SpriteXFraction	= $3270
@@ -1813,6 +1915,7 @@ endmacro
 
 		!SpriteAnimTimer	= $3310,x
 		!SpriteAnimIndex	= $33D0,x
+		!SpriteAnimTimerY	= $3310,y
 		!SpriteAnimIndexY	= $33D0,y
 
 
@@ -1834,7 +1937,7 @@ endmacro
 	; $3580
 
 		!SpriteStasis		= $7500	;$34E0
-		!SpritePhaseTimer	= $7510		; while set, sprite will not experience normal collision (extra collision still applies)
+		!SpritePhaseTimer	= $7510			; while set, sprite will not experience normal collision (extra collision still applies)
 		!SpriteGravityMod	= $7520	;$3500
 		!SpriteGravityTimer	= $7530	;$3510
 		!SpriteVectorY		= $7540	;$3520
@@ -1843,7 +1946,7 @@ endmacro
 		!SpriteVectorAccX	= $7570	;$3550
 		!SpriteVectorTimerY	= $7580	;$3560
 		!SpriteVectorTimerX	= $7590	;$3570
-		!SpriteExtraCollision	= $75A0	;$3580			; Applies only on the frame that it's set
+		!SpriteExtraCollision	= $75A0	;$3580		; Applies only on the frame that it's set
 		!SpriteDeltaX		= $75B0
 		!SpriteDeltaY		= $75C0
 
@@ -1852,6 +1955,50 @@ endmacro
 
 		!SpriteTile		= $6030			; offset to add to sprite tilemap numbers
 		!SpriteProp		= $6040			; lowest bit of sprite OAM prop
+
+
+
+		; for projectile sprite
+		; (here to it can be easily accessed)
+
+		!ProjectileType		= $3280		; C-tttttt
+							; C = collision
+							; tttttt = type index (movement + interaction)
+
+		!ProjectileAnimType	= $3290		; YXPPpppp
+							; Y = apply Yflip every 2 frames
+							; X = apply Xflip every 2 frames
+							; PP = which OAM table to use
+							; pppp = particle spawn pattern (0 = no particles)
+
+		!ProjectileAnimFrames	= $32A0		; how many frames of animation there are
+		!ProjectileAnimTime	= $32B0		; time between animation frames
+		!ProjectileGravity	= $32C0		; used as gravity... yup
+		!ProjectileTimer	= $32D0		; life timer (if set to 0 at spawn, life timer is infinite)
+
+
+		!ProjectileHomingSpeed	= $34E0		; composite speed to accelerate towards when homing
+		!ProjectileTarget	= $3580		; used for targeting types
+
+
+		; these are used as input for SpawnParticle (see Projectile.asm), only used if particle pattern != 0
+		!ProjectilePrtNum	= $34F0			; A input for SpawnParticle
+		!ProjectilePrt00	= $3500			;\
+		!ProjectilePrt01	= $3510			; |
+		!ProjectilePrt02	= $3520			; |
+		!ProjectilePrt03	= $3530			; | $00-$07 input for SpawnParticle
+		!ProjectilePrt04	= $3540			; |
+		!ProjectilePrt05	= $3550			; |
+		!ProjectilePrt06	= $3560			; |
+		!ProjectilePrt07	= $3570			;/
+		!ProjectilePrtX		= !ProjectilePrt00	;\
+		!ProjectilePrtY		= !ProjectilePrt01	; |
+		!ProjectilePrtXSpeed	= !ProjectilePrt02	; |
+		!ProjectilePrtYSpeed	= !ProjectilePrt03	; | name mirrors
+		!ProjectilePrtXAcc	= !ProjectilePrt04	; |
+		!ProjectilePrtYAcc	= !ProjectilePrt05	; |
+		!ProjectilePrtTile	= !ProjectilePrt06	; |
+		!ProjectilePrtProp	= !ProjectilePrt07	;/
 
 
 
@@ -2075,6 +2222,7 @@ endmacro
 		!BG2ModeV		= $7414
 		!BG2BaseV		= $7417		; 16-bit
 		!MsgTrigger		= $7426
+		!DeathTimer		= $743C		; used for death animation
 		!ScrollSpriteNum	= $743E
 		!ScrollSpriteNum_L1	= !ScrollSpriteNum
 		!ScrollSpriteNum_L2	= $743F

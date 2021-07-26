@@ -413,6 +413,7 @@ print "Level code handler inserted at $", pc, "."
 		LDY.b #!File_Mario			; |
 		JSL !GetFileAddress			; |
 
+		LDY #$80 : STY $2115
 		LDA !FileAddress+1 : STA $4313		; |
 		LDA !FileAddress			; |
 		CLC : ADC.w #$7000-$400+$100		; |
@@ -507,10 +508,21 @@ print "Level code handler inserted at $", pc, "."
 		PLA : STA !P2Pipe			; |
 		.P2Done					;/
 
+		LDA.b #1 : STA !TimerFrames		; set timer to update right away
 		LDA !MarioDirection			;\
 		STA !P2Direction-$80			; | character facing
 		STA !P2Direction			;/
 		LDA $741A : BNE +			;\ How many doors have been entered
+
+		REP #$20				;\
+		LDA !Translevel				; |
+		ASL A					; |
+		TAX					; | init time limit (on first sublevel only)
+		LDA.l LevelTimerTable,x			; |
+		INC A					; |
+		STA !TimerSeconds			; |
+		SEP #$20				;/
+
 		LDA !Characters				;\
 		AND #$0F : TAX				; |
 		LDA .PlayerHP,x : STA !P2HP		; > Reset player HP if it's the first sublevel
@@ -576,9 +588,10 @@ print "Level code handler inserted at $", pc, "."
 		PHP						;\ wrapper start
 		PHB : PHK : PLB					;/
 		%ReloadOAMData()				; reload
-		REP #$20					;\
-		LDA $6701 : STA $6703				; copy this (so it gets written as HSL)
-		LDA $96						; |
+		REP #$20					; A 16-bit
+		STZ !DynamicTile				; clear dynamic data
+		LDA $6701 : STA $6703				; > copy this (so it gets written as HSL)
+		LDA $96						;\
 		SEC : SBC #$0010				; |
 		STA $01						; |
 		STA $08						; |
@@ -597,6 +610,13 @@ print "Level code handler inserted at $", pc, "."
 		BCC +						; |
 		STZ $3230,x					; |
 	+	DEX : BPL -					;/
+
+		REP #$30					;\
+		LDX.w #!PaletteRGB				; |
+		LDY.w #!ShaderInput				; | copy RGB palette to shader input
+		LDA.w #$01FF					; |
+		MVN !ShaderInput>>16,$00			; |
+		SEP #$30					;/
 
 		LDX #$00					;\
 		LDY #$00					; | get HSL format palette
@@ -1160,6 +1180,8 @@ dl levelinit1FC
 dl levelinit1FD
 dl levelinit1FE
 dl levelinit1FF
+
+
 
 print "Level MAIN inserted at $", pc
 
@@ -1863,7 +1885,10 @@ HandleGraphics:
 		STA !Palset8,y						; |
 		TYA : STA !GFX_status+$180,x				;/
 
-		JSR UpdatePalset
+		TYX							;\ disable this for 1 operation
+		LDA #$01 : STA !ShaderRowDisable+8,x			;/
+
+		JSR UpdatePalset					; get color data
 
 	.next	DEY : BPL .loop						; loop
 		PLP
@@ -2130,38 +2155,40 @@ HandleGraphics:
 ;	A:		sprite palset to load
 LoadPalset:
 		PHB : PHK : PLB
-		PHX					; push X
-		STA $0F					; store palset to load in $0F
-		TAX					;\ if palset is already loaded, return
-		LDA !GFX_status+$180,x : BNE .Return	;/
-		LDX #$07				;\
-	-	LDA !Palset8,x				; |
-		AND #$7F				; | if palset is about to be loaded this frame, return
-		CMP $0F : BEQ .Return			; | (probably not necessary, just in case there's an error somewhere)
-		DEX : BPL -				;/
-		PLX					; pull X
-		LDY #$07				;\
-	.Loop	LDA !Palset8,y				; |
-		CMP #$80 : BEQ .Load			; | look for a free row in A-F
-	.Next	DEY					; |
-		CPY #$02 : BCS .Loop			;/
+		PHX							; push X
+		STA $0F							; store palset to load in $0F
+		TAX							;\ if palset is already loaded, return
+		LDA !GFX_status+$180,x : BNE .Return			;/
+		LDX #$07						;\
+	-	LDA !Palset8,x						; |
+		AND #$7F						; | if palset is about to be loaded this frame, return
+		CMP $0F : BEQ .Return					; | (probably not necessary, just in case there's an error somewhere)
+		DEX : BPL -						;/
+		PLX							; pull X
+		LDY #$07						;\
+	.Loop	LDA !Palset8,y						; |
+		CMP #$80 : BEQ .Load					; | look for a free row in A-F
+	.Next	DEY							; |
+		CPY #$02 : BCS .Loop					;/
 		PLB
-		RTL					; if none are found, return
+		RTL							; if none are found, return
 
-	.Load	LDA $0F : STA $00			;\
-		STZ $01					; | set palset to load here
-		ORA #$80				; |
-		STA !Palset8,y				;/
-		PHX					;\
-		AND #$7F				; |
-		TAX					; | mark palset as loaded
-		TYA : STA !GFX_status+$180,x		; |
-		LDA $0F : PHA				; |
-		JSR UpdatePalset			; > update
-		PLA : STA $0F				; |
-	.Return	PLX					;/
+	.Load	LDA $0F : STA $00					;\
+		STZ $01							; | set palset to load here
+		ORA #$80						; |
+		STA !Palset8,y						;/
+		PHX							;\
+		AND #$7F						; |
+		TAX							; | mark palset as loaded
+		TYA : STA !GFX_status+$180,x				; |
+		LDA $0F : PHA						; |
+		TYX							;\ disable this for 1 operation
+		LDA #$01 : STA !ShaderRowDisable+8,x			;/
+		JSR UpdatePalset					; > update
+		PLA : STA $0F						; |
+	.Return	PLX							;/
 		PLB
-		RTL					; return
+		RTL							; return
 
 
 UpdatePalset:
@@ -2172,7 +2199,7 @@ UpdatePalset:
 
 		LDY $08								;\
 		LDA $00								; |
-		XBA								; | address for variation 0 palset
+		XBA								; | address for palset
 		LSR #3								; |
 		CLC : ADC.w #!PalsetData+2					;/
 		STA $00								; also copy palette to RAM mirror
@@ -2181,7 +2208,7 @@ UpdatePalset:
 		PHY								; |
 		TYA								; |
 		ORA #$0008							; | set up pointer or whatever
-		ASL #4								; | (i don't remember what the ORA #$0008 is for)
+		ASL #4								; | (ORA #$0008 is for targeting palettes 8-F)
 		INC A								; |
 		ASL A								; |
 		TAX								; |
@@ -2194,7 +2221,9 @@ UpdatePalset:
 		CMP !LightB : BNE .PreShade					;/
 
 	.Raw
-	-	LDA [$00],y : STA !PaletteRGB,x					;\
+	-	LDA [$00],y
+		STA !PaletteRGB,x						;\
+		STA !ShaderInput,x						; |
 		INX #2								; | update palette in RAM
 		INY #2								; |
 		CPY #$001E : BCC -						;/ > loop
@@ -2212,7 +2241,7 @@ UpdatePalset:
 		ASL #4								; | dest CGRAM
 		INC A								; |
 		STA !VRAMbase+!CGRAMtable+$05,x					;/
-		RTS
+		RTS								; return
 
 	.PreShade
 		PEI ($04)							; preserve
@@ -2221,6 +2250,7 @@ UpdatePalset:
 		LDA !LightG : STA $06						; | DP speedup
 		LDA !LightB : STA $08						;/
 	-	LDA [$00],y : STA $0E						; > get source color
+		STA !ShaderInput,x						; > shader input
 		AND #$001F							;\
 		STA $2251							; |
 		LDA $04 : STA $2253						; |
@@ -2253,10 +2283,12 @@ UpdatePalset:
 		ORA $0C								; |
 		ASL #5								; |
 		ORA $0A								; | assemble color and write to palette
+		STA !PaletteRGB,x						; |
 		STA !PaletteBuffer,x						; |
 		INX #2								; |
 		INY #2								; |
-		CPY #$001E : BCC -						;/ > loop
+		CPY #$001E : BCS $03 : JMP -					;/ > loop
+
 		LDA #$0080 : TRB !ProcessLight					; SA-1 no longer writing to !PaletteRGB
 		PLA								;\ > pull from $04
 		PLY								; | source address
@@ -2271,7 +2303,7 @@ UpdatePalset:
 		ASL #4								; | dest CGRAM
 		INC A								; |
 		STA !VRAMbase+!CGRAMtable+$05,x					;/
-		RTS
+		RTS								; return
 
 
 
@@ -2371,9 +2403,11 @@ FadePalset:
 		RTS
 
 
+incsrc "level_data/TimeLimits.asm"
+
 
 print "Unsorted code inserted at $", pc, "."
-incsrc "levelcode/Unsorted.asm"
+incsrc "level_code/Unsorted.asm"
 
 print "Bank $18 level code ends at $", pc, "."
 
@@ -2383,28 +2417,28 @@ dw $FFF7
 dw $0008
 
 print "Realm 1 code inserted at $", pc, "."
-incsrc "levelcode/Realm1.asm"
+incsrc "level_code/Realm1.asm"
 
 print "Realm 2 code inserted at $", pc, "."
-incsrc "levelcode/Realm2.asm"
+incsrc "level_code/Realm2.asm"
 
 print "Realm 3 code inserted at $", pc, "."
-incsrc "levelcode/Realm3.asm"
+incsrc "level_code/Realm3.asm"
 
 print "Realm 4 code inserted at $", pc, "."
-incsrc "levelcode/Realm4.asm"
+incsrc "level_code/Realm4.asm"
 
 print "Realm 5 code inserted at $", pc, "."
-incsrc "levelcode/Realm5.asm"
+incsrc "level_code/Realm5.asm"
 
 print "Realm 6 code inserted at $", pc, "."
-incsrc "levelcode/Realm6.asm"
+incsrc "level_code/Realm6.asm"
 
 print "Realm 7 code inserted at $", pc, "."
-incsrc "levelcode/Realm7.asm"
+incsrc "level_code/Realm7.asm"
 
 print "Realm 8 code inserted at $", pc, "."
-incsrc "levelcode/Realm8.asm"
+incsrc "level_code/Realm8.asm"
 
 print "Level code ends at $", pc, "."
 print " "

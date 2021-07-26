@@ -11,7 +11,8 @@
 		LDA !Particle_Layer,x					;\
 		AND #$0002						; | oam size bit
 		STA !Particle_TileTemp+2				;/
-		JMP ParticleDrawRatio_BG1				; draw particle with ratio
+		JSR ParticleDrawRatio_BG1				; draw particle with ratio
+		JMP ParticleDespawn					; off-screen check
 
 	.BG2	LDX $00							; reload index
 		SEP #$20						; 8-bit A
@@ -24,7 +25,15 @@
 		LDA !Particle_Layer,x					;\
 		AND #$0002						; | oam size bit
 		STA !Particle_TileTemp+2				;/
-		JMP ParticleDrawRatio_BG2				; draw particle with ratio
+		JSR ParticleDrawRatio_BG2				; draw particle with ratio
+		JMP ParticleDespawn					; off-screen check
+
+		.NoTimer						;\
+		LDA.b #(ParticleMain_List_End-ParticleMain_List)/2	; |
+		STA !Particle_Type,x					; | if timer hits 0, erase particle and set index to the one that was just freed up
+		REP #$20						; | then return
+		TXA : STA.l !Particle_Index				; |
+		RTS							;/
 
 	.BG3	LDX $00							; reload index
 		SEP #$20						; 8-bit A
@@ -37,7 +46,8 @@
 		LDA !Particle_Layer,x					;\
 		AND #$0002						; | oam size bit
 		STA !Particle_TileTemp+2				;/
-		JMP ParticleDrawRatio_BG3				; draw particle with ratio
+		JSR ParticleDrawRatio_BG3				; draw particle with ratio
+		JMP ParticleDespawn					; off-screen check
 
 	.Cam	LDX $00							; reload index
 		SEP #$20						; 8-bit A
@@ -50,12 +60,6 @@
 		LDA !Particle_Layer,x					;\
 		AND #$0002						; | oam size bit
 		STA !Particle_TileTemp+2				;/
-		JMP ParticleDrawRatio_Cam				; draw particle with ratio
-
-		.NoTimer						;\
-		LDA.b #(ParticleMain_List_End-ParticleMain_List)/2	; |
-		STA !Particle_Type,x					; | if timer hits 0, erase particle and set index to the one that was just freed up
-		REP #$20						; | then return
-		TXA : STA.l !Particle_Index				; |
-		RTS							;/
+		JSR ParticleDrawRatio_Cam				; draw particle with ratio
+		JMP ParticleDespawn					; off-screen check
 

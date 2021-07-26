@@ -13,6 +13,8 @@ sa1rom
 ;=======;
 
 ; PCE FIX MUST BE PATCHED FIRST!!
+;	...but does it really?
+
 
 	org $00A6C7
 		JML PLAYER2_Pipe
@@ -122,6 +124,7 @@ sa1rom
 		ORA #$0F
 		STA !P2Pipe			; |
 		STA !P2Pipe-$80			;/
+
 		STZ !MarioAnim			; clear mario anim
 		REP #$20			;\
 		LDA $96				; | Fix Ypos
@@ -266,8 +269,14 @@ sa1rom
 
 		.GetCharacter
 		SEP #$30				; all regs 8-bit
-		LDA !P1Dead : BNE +			; run this code if mario is dead
-		LDA !CurrentMario : BEQ +		;\
+		LDA !CurrentMario : BNE ++		;\
+		REP #$20				; |
+		LDA !P2XPosLo-$80 : STA !MarioXPos	; | mario coords when he's not in play
+		LDA !P2YPosLo-$80 : STA !MarioYPos	; |
+		SEP #$20				; |
+		BRA +					;/
+	++	LDA !P1Dead : BNE +			; run this code if mario is dead
+		LDA !CurrentMario			;\
 		DEC A					; |
 		TAX					; |
 		LDA $6DA2,x : STA $15			; | mario input
@@ -280,9 +289,19 @@ sa1rom
 		..NoMario
 
 
+		LDA !Difficulty				;\
+		AND #$20 : BEQ .NotIronman		; |
+		LDA !MultiPlayer : BEQ .NotIronman	; |
+		LDA !P2Status-$80 : BEQ +		; |
+		LDY !P2Status : BNE +			; | ironman
+		STA !P2Status				; |
+	+	LDA !P2Status : BEQ .NotIronman		; |
+		LDY !P2Status-$80 : BNE .NotIronman	; |
+		STA !P2Status-$80			; |
+		.NotIronman				;/
+
+
 		REP #$30				; > All regs 16-bit
-
-
 		LDA.w #$007F				;\
 		LDX.w #!P2Base				; | Backup player 2 data
 		LDY.w #!PlayerBackupData		; |
@@ -313,10 +332,11 @@ sa1rom
 		LDA $6DA8 : STA $6DA9			;/
 		LDA !P2Status
 		CMP #$02 : BNE +
+		LDA !MultiPlayer : BEQ +
 		REP #$20
 		LDA !PlayerBackupData+$21 : STA !P2XPosLo
 		LDA !PlayerBackupData+$24 : STA !P2YPosLo
-		BRA +++
+		JMP +++
 		+
 
 		LDA !P2Platform : BNE ++		;\
@@ -339,6 +359,14 @@ sa1rom
 		SEP #$20				;/
 		JSR Stasis
 		JSR (..List,x)				; > run code for player 1
+
+		LDA !P2HurtTimer			;\
+		CMP #$0E : BNE +			; |
+		LDA !Difficulty				; | P1 riposte
+		AND #$03 : BNE +			; |
+		JSL CORE_RIPOSTE			; |
+		+					;/
+
 		LDA !Characters
 		AND #$F0
 		BEQ +
@@ -411,6 +439,14 @@ sa1rom
 		SEP #$20				;/
 		JSR Stasis
 		JSR (..List,x)				; > run code for player 2
+
+		LDA !P2HurtTimer			;\
+		CMP #$0E : BNE +			; |
+		LDA !Difficulty				; | P2 riposte
+		AND #$03 : BNE +			; |
+		JSL CORE_RIPOSTE			; |
+		+					;/
+
 		LDA !Characters
 		AND #$0F
 		BEQ +
@@ -432,6 +468,7 @@ sa1rom
 		..End
 
 
+
 	Leeway_Redirect:
 		JSL Leeway
 		RTS
@@ -439,10 +476,21 @@ sa1rom
 
 	RunMario:
 		LDA !MarioAnim : BEQ .Return		;\
+		CMP #$01 : BNE .NoRiposte		; |
+		LDA !Difficulty				; |
+		AND #$03 : BNE .NoRiposte		; | mario riposte
+		LDA !MarioAnimTimer			; |
+		CMP #$2C : BNE .NoRiposte		; |
+		JSL CORE_RIPOSTE			; |
+		.NoRiposte				;/
+		LDA !MarioAnim				;\
 		CMP #$09 : BNE +			; |
 		LDA !CurrentMario : BEQ +		; | if mario status = 9 and mario is in play, set PCE kill reg
 		LDA !P2Status : BNE +			; |
 		INC !P2Status				;/
+		LDA !Difficulty				;\
+		AND #$03 : BNE +			; | mario death riposte
+		JSL CORE_RIPOSTE			;/
 	+	LDA !MarioAnim				;\
 		PHB					; |
 		LDX #$00 : PHX : PLB			; |
@@ -487,6 +535,7 @@ BITS:	db $01,$02,$04,$08,$10,$20,$40,$80
 	incsrc "CORE/KNOCKED_OUT.asm"
 	incsrc "CORE/DISPLAY_CONTACT.asm"
 	incsrc "CORE/CHECK_ABOVE.asm"
+	incsrc "CORE/RIPOSTE.asm"
 	namespace off
 
 

@@ -350,7 +350,7 @@ print "-- SP_MENU --"
 
 
 	org $00A5D5
-		JSR STATUS_BAR_Main
+		JSR STATUS_BAR_Coins
 
 	org $008E1A					; Code that handles the status bar
 	STATUS_BAR:
@@ -360,47 +360,37 @@ print "-- SP_MENU --"
 		RTL
 
 	.Main
-		LDA !Difficulty				;\ only use timer during Time Mode
-		AND #$10 : BEQ .Coins			;/
-		LDA !LevelEnd				;\
-		ORA $309D				; | don't decrement timer if level is ending or sprites are locked
-		BNE .NoTimer				;/ (MPU-safe addr access)
-		LDA $6D9B
-		CMP #$C1
-		BEQ .NoTimer
-		DEC $6F30
-		BPL .NoTimer
-		LDA #$28
-		STA $6F30
-		LDA $6F31
-		ORA $6F32
-		ORA $6F33
-		BEQ .NoTimer
-		LDX #$02				;\
-	-	DEC $6F31,x				; |
-		BPL +					; |
-		LDA #$09				; | decrement timer
-		STA $6F31,x				; |
-		DEX					; |
-		BPL -					;/
-	+	LDA $6F31
-		BNE +
-		LDA $6F32				;\
-		AND $6F33				; |
-		CMP #$09				; | speed up music when time is 99
-		BNE +					; |
-		LDA #$1D				; |
-		STA !SPC1				;/
-	+	LDA $6F31				;\
-		ORA $6F32				; |
-		ORA $6F33				; | kill Mario when time is zero
-		BNE .NoTimer				; |
-		JSL $00F606				;/
-		LDA #$01				;\
-		STA !P2Status-$80			; | kill PCE characters
-		STA !P2Status				;/
+		LDA !Difficulty				;\ see if timer is enabled
+		AND #$04 : BEQ .NoTimer			;/
 
-.NoTimer	; TIMER WRITE TO OAM GOES HERE
+		LDA !TimerSeconds+1 : BMI .NoTimer	; don't process if negative
+
+		DEC !TimerFrames : BNE .DrawTimer	;\ timer (frames per second)
+		LDA.b #60 : STA !TimerFrames		;/
+		REP #$20				;\
+		LDA !TimerSeconds			; |
+		CMP.w #100 : BNE +			; |
+		LDX #$80 : STX !SPC1			; > speed up music tempo
+		LDX #$1D : STX !SPC4			; > running out of time SFX
+	+	LDA !TimerSeconds : BEQ .DrawTimer	; |
+		DEC !TimerSeconds			; | timer (seconds)
+		SEP #$20				; |
+		BNE .TimerUpdate			;/
+		LDA #$01				;\
+		LDY !P2Status-$80			; |
+		BNE $03 : STA !P2Status-$80		; | kill players when timer hits 0
+		LDY !P2Status				; |
+		BNE $03 : STA !P2Status			;/
+
+		.TimerUpdate
+		JSL UPDATE_TIMER
+
+		.DrawTimer
+		JSL DRAW_TIMER
+		.NoTimer
+
+
+
 
 .Coins		LDA !CoinSound
 		BEQ $03 : DEC !CoinSound
@@ -1152,12 +1142,12 @@ Mode7Presents:
 		REP #$20						; |
 		BRA ..main						;/
 
-	..init	BIT !ProcessLight : BMI ..wait				; > if SA-1 is currently writing to !PaletteRGB, wait
+	..init	BIT !ProcessLight : BMI ..wait				; > if SA-1 is currently writing to !ShaderInput, wait
 		INC !ProcessLight					;\
 		REP #$10						; | this code runs once at the start of a new process
 		LDX #$8000 : STX $4300					; |
-		LDX.w #!PaletteRGB : STX $4302				; | use DMA to copy the data (fuck version 1.1.1)
-		STZ $4304						; |
+		LDX.w #!ShaderInput : STX $4302				; | use DMA to copy the data (fuck version 1.1.1)
+		LDA.b #!ShaderInput>>16 : STA $4304			; | (i guess i'm not worried about the DMA + HDMA crash...?)
 		LDX #$0200 : STX $4305					; |
 		STZ $2183						; |
 		LDX.w #!LightData_SNES					; |
@@ -1372,6 +1362,107 @@ endmacro
 	%menuRAM(Integrity_3, 1)	;
 	%menuRAM(EraseTimer, 1)		; counts up while L + R are held, used to erase a file
 
+
+
+;================;
+;UPDATE TIMER GFX;
+;================;
+UPDATE_TIMER:
+		REP #$20				; A 16-bit
+		STZ $00					; 100s
+		STZ $02					; 10s
+		STZ $04					; 1s
+
+		.GetDigits				;\
+		LDA !TimerSeconds			; |
+	..100s	CMP.w #100 : BCC ..10s			; |
+		SBC.w #100				; |
+		INC $00					; |
+		BRA ..100s				; | get digits
+	..10s	CMP.w #10 : BCC ..1s			; |
+		SBC.w #10				; |
+		INC $02					; |
+		BRA ..10s				; |
+	..1s	STA $04					;/
+
+		LDY.b #!File_Sprite_BG_1		;\ file: sprite BG 1
+		JSL !GetFileAddress			;/
+		JSL !GetVRAM				; get VRAM table index
+		PHB					; push bank
+		LDY.b #!VRAMbank			;\ VRAM table bank
+		PHY : PLB				;/
+		LDA #$0020				;\
+		STA !VRAMtable+$00,x			; | upload size
+		STA !VRAMtable+$07,x			; |
+		STA !VRAMtable+$0E,x			;/
+		LDA !FileAddress+2			;\
+		STA !VRAMtable+$04,x			; | source bank
+		STA !VRAMtable+$0B,x			; |
+		STA !VRAMtable+$12,x			;/
+		LDA $00					;\
+		BNE $03 : LDA #$000A			; |
+		ASL #5					; | 100s source address
+		ADC.w #$60*$20				; |
+		ADC !FileAddress			; |
+		STA !VRAMtable+$02,x			;/
+		LDA $02					;\
+		BNE +					; |
+		LDY $00 : BNE +				; |
+		LDA #$000A				; | 10s source address
+	+	ASL #5					; |
+		ADC.w #$60*$20				; |
+		ADC !FileAddress			; |
+		STA !VRAMtable+$09,x			;/
+		LDA $04					;\
+		ASL #5					; |
+		ADC.w #$60*$20				; | 1s source address
+		ADC !FileAddress			; |
+		STA !VRAMtable+$10,x			;/
+
+		LDA #$6420 : STA !VRAMtable+$05,x	;\
+		LDA #$6430 : STA !VRAMtable+$0C,x	; | dest VRAM
+		LDA #$6520 : STA !VRAMtable+$13,x	;/
+
+		PLB					; restore bank
+		RTL					; return
+
+DRAW_TIMER:
+		SEP #$20
+		LDA !MegaLevelID : BNE .MegaLevel
+
+		.NormalLevel
+		REP #$20				; A 16-bit
+		LDA #$CE68 : STA !OAM_p3+$00C		;\ timer tile 0
+		LDA #$3453 : STA !OAM_p3+$00E		;/
+		LDA #$CE70 : STA !OAM_p3+$008		;\ timer tile 1
+		LDA #$3442 : STA !OAM_p3+$00A		;/
+		LDA #$CE78 : STA !OAM_p3+$004		;\ timer tile 2
+		LDA #$3443 : STA !OAM_p3+$006		;/
+		LDA #$CE80 : STA !OAM_p3+$000		;\ timer tile 3
+		LDA #$3452 : STA !OAM_p3+$002		;/
+		LDA #$0010 : STA !OAMindex_p3		; OAM index
+		LDA #$0000				;\
+		STA !OAMhi_p3+$000			; | tile size (8x8)
+		STA !OAMhi_p3+$002			;/
+		SEP #$20				; A 8-bit
+		RTL
+
+		.MegaLevel
+		REP #$20				; A 16-bit
+		LDA #$CE70 : STA !OAM_p3+$00C		;\ timer tile 0
+		LDA #$3453 : STA !OAM_p3+$00E		;/
+		LDA #$CE78 : STA !OAM_p3+$008		;\ timer tile 1
+		LDA #$3442 : STA !OAM_p3+$00A		;/
+		LDA #$CE80 : STA !OAM_p3+$004		;\ timer tile 2
+		LDA #$3443 : STA !OAM_p3+$006		;/
+		LDA #$CE88 : STA !OAM_p3+$000		;\ timer tile 3
+		LDA #$3452 : STA !OAM_p3+$002		;/
+		LDA #$0010 : STA !OAMindex_p3		; OAM index
+		LDA #$0000				;\
+		STA !OAMhi_p3+$000			; | tile size (8x8)
+		STA !OAMhi_p3+$002			;/
+		SEP #$20				; A 8-bit
+		RTL
 
 
 ;

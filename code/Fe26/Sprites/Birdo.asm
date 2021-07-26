@@ -321,7 +321,6 @@ Birdo:
 	db $08,$0A
 
 	Interact:
-		LDA #$01 : STA !P2SenkuSmash-$80,y
 		LDA !P2Blocked-$80,y
 		AND #$04 : BNE .Side
 		LDA !P2YSpeed-$80,y
@@ -416,7 +415,6 @@ Birdo:
 	.INIT	RTL
 
 		.Interact
-		LDA #$01 : STA !P2SenkuSmash-$80,y
 		LDA $BE,x : BNE +
 		LDA !P2Character-$80,y			; Check for Mario
 		BNE ..R

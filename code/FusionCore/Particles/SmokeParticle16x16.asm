@@ -20,7 +20,8 @@
 		STA !Particle_TileTemp					; | 16x16 size
 		PLX							;/
 		LDA #$0002 : STA !Particle_TileTemp+2			; oam size bit
-		JMP ParticleDrawSimple_BG1				; draw particle without ratio
+		JSR ParticleDrawSimple_BG1				; draw particle without ratio
+		JMP ParticleDespawn					; off-screen check
 
 	.8x8	LDA #$345E						;\
 		STA !Particle_TileTemp					; | 8x8 size
@@ -33,6 +34,7 @@
 		CLC : ADC #$0004					; |
 		STA !Particle_YLo,x					;/
 		JSR ParticleDrawSimple_BG1				; draw particle without ratio
+		JSR ParticleDespawn					; off-screen check
 		PLA : STA !Particle_YLo,x				;\ restore position
 		PLA : STA !Particle_XLo,x				;/
 		RTS							; return

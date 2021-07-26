@@ -82,10 +82,8 @@ HappySlime:
 		!Goal2			= $35E0,x
 
 	INIT:
-		PHB : PHK : PLB
 		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
-		PLB
 		RTL
 
 	MAIN:
@@ -708,6 +706,7 @@ HappySlime:
 		LDA #$08 : STA !SPC4			;/ > bounce SFX
 		BRA .CheckAttack
 		.Hurt
+		LDA #$08 : JSL DontInteract
 		LDA !BigRAM+$7F
 		AND #$02
 		LSR A
@@ -917,7 +916,6 @@ HappySlime:
 		AND.b #$04^$FF
 		STA !ExtraBits,x
 		LDA #$40 : STA !SlimeInvincTimer
-		LDA #$08 : JSL DontInteract
 		STZ !SpriteXSpeed,x
 		LDA #$10 : STA !SpriteYSpeed,x
 		STZ !SpriteAnimTimer

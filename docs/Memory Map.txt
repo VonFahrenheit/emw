@@ -82,7 +82,8 @@
 		$0C00-$0DFF:	512 B	Table for HDMA channel 7.
 		$0E00-$0FFF:	512 B	RAM code for SNES to apply lighting in background mode
 		$1000-$1DFF:	3.4 KB	backup for layer 3 GFX during text box (normal = $900 bytes, cinematic = $D90 bytes)
-		$1E00-$1E7F:	128 B	----
+		$1E00-$1E1F:	32 B	shader regs
+		$1E20-$1E7F:	96 B	----
 		$1E80-$1EA5:	38 B	Vitor's RAM codes
 		$1EA6-$1EFF:	90 B	custom RAM codes (see SP_Menu.asm)
 		$1F00-$1F0B:	12 B	$43X2 mirrors for HDMA channels 2-7, 2 bytes each
@@ -194,7 +195,7 @@
 		$6DDF-$6EF4:	278 B	SMW's overworld sprite data
 					I use it as 3D tilemap cache
 
-		$6FBE-$73BD:	1024 B	----
+		$6FBE-$73BD:	1024 B	some map16 table
 
 		$7938-$79B7:	128 B	SMW's sprite load status table, moved to $418A00
 					I use it like this:
@@ -228,8 +229,11 @@
 		$75E9:		1 B	sprite index (unchanged)
 		$75EA-$75FF:	22 B	----
 		$7600-$761F:	32 B	each sprite's claim to dynamic tiles
-		$7620-$7621:	2 B	dynamic tile status (1 bit per tile)
-		$7622-$7691:	112 B	----
+		$7620-$763F:	32 B	where each dynamic tile is placed in VRAM
+		$7640-$764F:	16 B	hi bit of tile num for dynamic sprites, written per tile
+		$7650-$7651:	2 B	dynamic tile status (1 bit per tile)
+		$7652-$7653:	2 B	how many dynamic tiles were loaded this frame
+		$7654-$7691:	62 B	----
 		$7692:		1 B	sprite memory setting from header (unchanged)
 		$786C-$7877:	12 B	----
 		$787B-$7886:	12 B	----
@@ -242,14 +246,15 @@
 		$2000-$3FFF:	8 KB	reserved for CCDMA uploads
 		$4000-$43FF:	1024 B	last KB of image cache, usually only used as a backup for layer 3 tilemap
 		$4400-$447F:	128 B	message box data
-		$4480-$44BF:	64 B	----
+		$4480-$44AF:	48 B	----
+		$44B0-$44BF:	16 B	shader row disable, 1 op, set by VR2-type uploads
 		$44C0-$44FF:	64 B	square dynamo table (4 bytes per dynamic tile)
 		$4500-$48FF:	1024 B	VR3 RAM
 		$4900-$49FF:	256 B	DEBUG: CPU performance data
 		$4A00-$4DFF:	1024 B	RAM code area for fast upload
 		$4E00-$4E7F:	128 B	player backup data
-		$4E80-$4E80:	1 B	multiplayer flag
-		$4E81-$4E81:	1 B	current player during PCE/menu processing
+		$4E80:		1 B	multiplayer flag
+		$4E81:		1 B	current player during PCE/menu processing
 		$4E82-$4E83:	2 B	----
 		$4E84-$6FFF:	8.3 KB	misc, check !Defines ($404EB8 holds rendering backup regs, $404EF8 is 1KB area for HSL colors)
 		$7000-$AFFF:	16 KB	decompression buffer (during levels, $9000-$AFFF holds the layer 2 background tilemap)
@@ -263,9 +268,13 @@
 		$8300-$87FF:	1.25 KB	----
 		$8800-$89FF:	512 B	wiggler data
 		$8A00-$8AFE:	255 B	sprite/shooter load status (00: reload, EE: never reload)
-		$8AFF-$8EFF:	1 KB	----
+		$8AFF:		1 B	----
+		$8B00-$8B5F:	96 B	shield box data
+		$8B60:		1 B	shield exists flag (0 = no, 1 = yes)
+		$8B61-$8B64:	4 B	shield hit by hitbox flags
+		$8B65-$8EFF:	923 B	----
 		$8F00-$8FBF:	192 B	platform data
-		$8FC0-$8FC0:	1 B	platform exists flag (0 = no, 1 = yes)
+		$8FC0:		1 B	platform exists flag (0 = no, 1 = yes)
 		$8FC1-$8FF7:	55 B	----
 		$8FF8-$8FFF:	8 B	index to OAM mirrors, 16-bit index to each table
 		$9000-$99FF:	2.5 KB	OAM mirrors (p0-p3, 4 lo tables followed by 4 hi tables, decompressed)
