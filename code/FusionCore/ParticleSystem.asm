@@ -197,25 +197,26 @@
 
 		.List
 		dw BasicParticle_BG1		; 01
-		dw BasicParticle_BG2		; 02
-		dw BasicParticle_BG3		; 03
-		dw BasicParticle_Cam		; 04
-		dw RatioParticle_BG1		; 05
-		dw RatioParticle_BG2		; 06
-		dw RatioParticle_BG3		; 07
-		dw RatioParticle_Cam		; 08
-		dw AnimAddParticle_BG1		; 09
-		dw AnimAddParticle_BG2		; 0A
-		dw AnimAddParticle_BG3		; 0B
-		dw AnimAddParticle_Cam		; 0C
-		dw AnimSubParticle_BG1		; 0D
-		dw AnimSubParticle_BG2		; 0E
-		dw AnimSubParticle_BG3		; 0F
-		dw AnimSubParticle_Cam		; 10
-		dw SmokeParticle8x8		; 15
-		dw SmokeParticle16x16		; 16
-		dw ContactParticle		; 17
-		dw SpritePart			; 18
+		dw BasicParticle_BG2
+		dw BasicParticle_BG3
+		dw BasicParticle_Cam
+		dw RatioParticle_BG1
+		dw RatioParticle_BG2
+		dw RatioParticle_BG3
+		dw RatioParticle_Cam
+		dw AnimAddParticle_BG1
+		dw AnimAddParticle_BG2
+		dw AnimAddParticle_BG3
+		dw AnimAddParticle_Cam
+		dw AnimSubParticle_BG1
+		dw AnimSubParticle_BG2
+		dw AnimSubParticle_BG3
+		dw AnimSubParticle_Cam
+		dw SmokeParticle8x8
+		dw SmokeParticle16x16
+		dw ContactParticle
+		dw ContactBigParticle
+		dw SpritePart
 
 		dw .ClearParticle		; final index, a particle is set to this when it's erased which makes it clear its data next frame
 
@@ -229,6 +230,7 @@ incsrc "Particles/AnimSubParticle.asm"
 incsrc "Particles/SmokeParticle8x8.asm"
 incsrc "Particles/SmokeParticle16x16.asm"
 incsrc "Particles/ContactParticle.asm"
+incsrc "Particles/ContactBigParticle.asm"
 incsrc "Particles/SpritePart.asm"
 
 

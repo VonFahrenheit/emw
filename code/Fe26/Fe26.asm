@@ -186,8 +186,7 @@ endmacro
 		LDX #$0F			; > Highest sprite slot Mario's fireball interacts with
 
 	org $0180B8
-		LDA #$00			;\ Source: BEQ $04 : JSL $02F808 (cluster sprite routine)
-		STA !ProcessingSprites		;/ Clear "processing sprites" flag
+		NOP #6				; org: BEQ $04 : JSL $02F008 (cluster sprite routine)
 
 	org $02A9C9
 		JSL KeepExtraBits		; DON'T autoclean this!
@@ -396,8 +395,6 @@ MainSpriteLoop:
 		JSR LoadSpriteFromLevel			; |
 		.NoLoad					;/
 
-		LDA #$01 : STA !ProcessingSprites	; set processing sprites flag
-
 		STZ $7471
 		STZ $78C2
 		LDX #$0F
@@ -547,8 +544,6 @@ MainSpriteLoop:
 		JMP .Loop
 
 		.SpritesDone
-		LDA #$00 : STA !ProcessingSprites	; clear processing sprites flag
-
 		PHP
 		REP #$20
 		LDA !DizzyEffect

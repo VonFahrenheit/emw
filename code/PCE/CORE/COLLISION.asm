@@ -137,6 +137,7 @@ COLLISION:
 		.NoDropDown				;/
 
 
+		LDA !P2Carry : BNE .ClearClimb		; can't climb while carrying an object
 		LDX !BigRAM+$20 : BEQ .ClearClimb	; check can climb flags
 		LDA !P2InAir : BEQ .ClearClimb		; can't climb if touching ground
 		LDA !P2Climbing : BNE +			; skip up check if already climbing
@@ -417,6 +418,9 @@ COLLISION:
 		STA !P2YPosLo				; |
 		SEP #$20				; |
 		.DownDone				;/
+		BIT $0E : BPL ..noclear			;\
+		LDA #$04 : TRB $0F			; | if moving up, clear down collision
+		..noclear				;/
 
 
 
@@ -448,6 +452,9 @@ COLLISION:
 		LDA !SPC1 : BNE .UpDone			; |
 		LDA #$01 : STA !SPC1			; > bonk sfx
 		.UpDone					;/
+		BIT $0E : BMI ..noclear			;\
+		LDA #$08 : TRB $0F			; | if moving down, clear up collision
+		..noclear				;/
 
 		; side collision
 		LDA !PlatformExists : BEQ +		;\
@@ -494,6 +501,17 @@ COLLISION:
 		EOR #$0F				; |
 		TSB !P2XPosLo				; |
 		.SideDone				;/
+		LDA $785F				;\
+		ORA $785F+1				; | don't clear if standing still
+		BEQ ..noclear				;/
+		LDA $0E					;\
+		AND #$40				; |
+		EOR #$40				; |
+		BEQ $02 : LDA #$01			; | don't set collision flag if moving away from the wall
+		INC A					; |
+		TRB $0F					; |
+		..noclear				;/
+
 
 		; center collision
 		LDY #$07 : JSR GET_TILE			; center point
@@ -2033,9 +2051,8 @@ endmacro
 
 		..BottomTile
 		LDA $0F				;\
-		AND #$04			; |
-		ORA !P2Platform			; | must be on ground
-		ORA !P2SpritePlatform		; |
+		AND #$04			; | must be on ground
+		ORA !P2Platform			; |
 		BEQ .SetBlocked			;/
 		TYA
 		CMP #$02 : BEQ ..EnterRight

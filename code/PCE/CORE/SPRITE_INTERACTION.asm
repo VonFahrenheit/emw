@@ -98,10 +98,11 @@ SPRITE_INTERACTION:
 		BCC .End
 
 		LDA !P2Character
-		CMP #$02 : BCS .NoCarry
+		CMP #$03 : BCS .NoCarry
 		LDA $3230,x
 		CMP #$09 : BNE .NoCarry
 		LDA !P2Carry : BNE .NoCarry
+		LDA !P2Climbing : BNE .NoCarry
 		LDA $3330,x
 		AND #$04 : BNE +
 		BIT $6DA3 : BVS .Carry
@@ -317,7 +318,7 @@ Bounce:
 	LDY !P2Character : BNE +	;\
 	LDA !P2FireCharge : BNE +	; | mario code
 	INC !P2FireCharge		; |
-	LDA #$14 : STA !P2FireFlash	;/
+	LDA #$14 : STA !P2FlashPal	;/
 
 +	LDA .BounceSpeed,y		;\
 	BIT $6DA3 : BPL +		; | which table to read from
@@ -542,7 +543,7 @@ KICK_DISP:	db $10,$F0
 
 		LDA !CurrentPlayer			;\
 		INC A					; | Specify owner
-		STA $34F0,x				;/
+		STA !ShellOwner,x			;/
 		LDA #$03 : STA !SPC1			; > Kick sound
 		LDA #$18 : JSR DontInteract		; > Set don't interact timer
 		LDA #$0A : STA $3230,x			; > Status: kicked
@@ -716,7 +717,9 @@ GOOMBAXSPEED:	db $2C,$D4
 .Stunned	LDA !StarTimer : BEQ .NoStar
 .Star		JMP StarKill
 
-.NoStar		LDA #$03 : STA !SPC1		; > Kick enemy sound
+.NoStar		LDA #$06 : JSR CompareY
+		BCS .Return
+		LDA #$03 : STA !SPC1		; > Kick enemy sound
 		JSR ItemKick			; item kick
 		JSR SUB_HORZ_POS_Rev
 		LDA GOOMBAXSPEED,y
@@ -1391,20 +1394,23 @@ CHUCK_PUSH:	db $20,$E0
 		BRA .Shared
 
 .Powerup	LDA !P2HP			;\
-		CMP #$03			; | Give HP
-		BCS .Shared			; |
+		CMP !P2MaxHP : BCS .Shared	; | give HP
 		INC !P2HP			;/
 
 .Shared		LDA #$0A : STA !SPC1
+		LDA #$14 : STA !P2FlashPal	; flash pal
 		RTS
 
 .1UP		LDA #$0D : STA $00
-		LDA !P2MaxHP : STA !P2HP	; Full heal
+		LDA !P2MaxHP : STA !P2HP	; full heal
 		LDA !CurrentPlayer		;\
-		TAY				; | Increase coins
-		LDA !P1CoinIncrease,y		; |
+		TAY				; |
+		LDA !P1CoinIncrease,y		; | increase coins
 		CLC : ADC #$64			; |
 		STA !P1CoinIncrease,y		;/
+
+		LDA #$B4 : STA !P2FlashPal	; flash pal
+
 		RTS
 
 

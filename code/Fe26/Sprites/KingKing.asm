@@ -5,33 +5,6 @@
 
 ; --Defines--
 
-;	!Phase		= !BossData+0
-;	!HP		= !BossData+1
-;	!Attack		= !BossData+2
-;	!AttackTimer	= !BossData+3
-;	!BossIndex	= !BossData+4
-;	!ScepterIndex	= !BossData+5
-;	!BlinkTimer	= !BossData+6		; Timer until boss blinks
-
-;	!HoldingScepter	= $BE,x			; If set, scepter will not be displayed on Kingking's sprite.
-;	!TrueDirection	= $3280,x
-;	!DeathFlag	= $32A0,x
-;	!DeathTimer	= $32B0,x
-;	!StunTimer	= $32D0,x
-;	!PrevDirection	= $33E0,x
-;	!XSpeedIndex	= $3410,x
-;	!InvincTimer	= $3420,x
-;	!HeadTimer	= $34A0,x		; !SpriteAnimTimer is for body
-;	!HeadAnim	= $34C0,x		; !SpriteAnimIndex is for body
-
-;	!AttackMemory	= $6DF5			; < Technically an OW sprite table, but who cares
-;	!PreviousFrame	= $6DF6
-;	!WalkStep	= $6DF7			; Used to pace back and forth
-;	!IdleAttack	= $6DF8			; 0 for nothing, 1 for fire, 2 for stomp
-;	!EnrageTimer	= $6DF9
-
-
-
 	!Phase			= $BE
 	!HP			= $3280
 	!Attack			= $3290
@@ -41,6 +14,7 @@
 	!StunTimer		= $32D0
 
 	!WalkDirection		= $34E0
+	!DissolveCoord		= $34F0		; boss not shell owner
 
 	!HoldingScepter		= $3500
 	!InvincTimer		= $3510
@@ -52,6 +26,12 @@
 	!WalkStep		= $3560
 	!IdleAttack		= $3570
 	!EnrageTimer		= $3580
+
+
+	!IntroMsg		= 1
+	!DeathMsg		= 2
+
+	!DeathBuffer		= $41D000
 
 
 
@@ -66,12 +46,16 @@
 
 
 
+
+
+
 	!Temp = 0
 	%def_anim(KK_Idle, 1)
 	%def_anim(KK_Walk, 8)
 	%def_anim(KK_WalkBack, 6)
 	%def_anim(KK_Fire, 1)
 	%def_anim(KK_Throw, 3)
+	%def_anim(KK_Smack, 3)
 	%def_anim(KK_Squat, 1)
 	%def_anim(KK_Jump, 1)
 	%def_anim(KK_Charge, 6)
@@ -95,7 +79,7 @@
 	%def_anim(KK_Scepter_Spin, 3)
 	%def_anim(KK_Scepter_Idle, 1)
 	%def_anim(KK_Scepter_Dunk, 2)
-	%def_anim(KK_Scepter_Fall, 1)
+	%def_anim(KK_Scepter_Fall, 6)
 	%def_anim(KK_Scepter_Fire, 1)
 
 
@@ -231,10 +215,10 @@
 
 	DATA:
 		.BaseHP
-		db $08,$0C,$10
+		db $01,$0C,$10
 
 		.DelayTable
-		db $3C,$28,$1E,$0F
+		db $3C,$28,$20,$18
 
 	; index:
 	; dir + Attack_SpeedIndex,[attack] + difficulty&3 * 8
@@ -259,8 +243,10 @@
 
 
 		.EnrageBox
-		dw $FFA0,$FFC0 : db $C0,$FF
+		dw $FFA0,$FF80 : db $C0,$FF
 
+		.SmackBox
+		dw $FFD8,$FFD1 : db $60,$40
 
 		.BaseHorz
 		dw $2000,$2000,$2000,$2000
@@ -283,11 +269,11 @@
 		LDA !Phase,x : BMI .Main
 		.Init
 		ORA #$80 : STA !Phase,x
-		LDA #$10 : STA !StunTimer,x
+		LDA #$FF : STA !StunTimer,x
 		.Main
 		LDA !StunTimer,x
 		CMP #$80 : BNE .NoMsg
-		LDY #$00 : STY !MsgTrigger
+		LDY #!IntroMsg : STY !MsgTrigger
 		.NoMsg
 		LDA !StunTimer,x : BEQ .Next
 		.Return
@@ -297,7 +283,7 @@
 		LDA #$02 : STA !Phase,x				; next phase
 		LDA #!KK_Walk : STA !SpriteAnimIndex		;\ anim
 		STZ !SpriteAnimTimer				;/
-		LDA #$02 : STA $3E				; mode 2
+		LDA #$02 : STA !2105				; mode 2
 		PHB						;\
 		LDA #$40					; |
 		PHA : PLB					; |
@@ -346,7 +332,7 @@
 		LDY #$0F					; |
 		LDA $00						; |
 		LSR A						; |
-		JSL !MixRGB					;/
+		JSL !MixRGB_Upload				;/
 		LDX !SpriteIndex				; X = sprite index
 		JMP GRAPHICS					; go to GRAPHICS
 		.End
@@ -359,19 +345,291 @@
 
 
 	Death:
-		JSR UPDATE_MODE2				; update wave
 		LDX !SpriteIndex				; X = sprite index
-		LDA !Phase,x : BMI .Main
+		LDA !Phase,x : BPL .Init
+		JMP .Main
 		.Init
 		ORA #$80 : STA !Phase,x
-		STA !SPC3					; > fade music
+		LDA #$80 : STA !SPC3				; > fade music
+
+		STZ !SpriteXSpeed,x				;\ no speed
+		STZ !SpriteYSpeed,x				;/
+
+		LDA #$FF : STA !StunTimer,x
+		REP #$30
+		LDA #$000E : STA $00
+		LDA $33C0,x
+		AND #$000E
+		ASL #4
+		ORA #$0102
+		TAX
+	-	LDA !PaletteCacheRGB,x : STA !PaletteRGB,x
+		LDA #$0000 : STA !PaletteCacheRGB,x
+		INX #2
+		DEC $00 : BPL -
+		SEP #$30
+		LDX !SpriteIndex
+		INC !HoldingScepter,x
+		LDY !ScepterIndex,x
+		LDA !ScepterStatus,y
+		AND #$7F : BNE ..skipcoords
+		JSL SPRITE_A_SPRITE_B_COORDS
+		LDA #$10 : STA.w !SpriteXSpeed,y
+		LDA $3320,x : STA $3320,y
+		BEQ ..xspeeddone
+		LDA #$F0 : STA.w !SpriteXSpeed,y
+		..xspeeddone
+		LDA #$C0 : STA.w !SpriteYSpeed,y
+
+		..skipcoords
+		LDA #$03 : STA !ScepterStatus,y
+		LDA #$FF : STA !StunTimer,y
+		LDA #!KK_Scepter_Fall : STA !SpriteAnimIndexY
+		LDA #$00 : STA !SpriteAnimTimerY
+
+		STZ $00
+		LDA #$18 : STA $01
+		LDY $3320,x
+		LDA .CrownSpeed,y : STA $02
+		LDA #$E0 : STA $03
+		REP #$20
+		LDA.w #.Crown : STA $04
+		SEP #$20
+		LDY #$00
+		JSL SpawnSpriteTile
+
+		REP #$20
+		LDA.w #.PrtDynamo : STA $0C
+		SEP #$20
+		LDY.b #!File_Sprite_BG_1
+		CLC : JSL !UpdateFromFile
+
+		LDY.b #!File_KingkingDeath : JSL !GetFileAddress
+
+		REP #$20
+		LDA.w #(8*9*32) : STA $2238			; number of bytes to DMA
+		LDA !FileAddress : STA $2232			;\
+		LDA.w #!DeathBuffer : STA $2235			; | copy file to RAM with SA-1 DMA
+		SEP #$20					; |
+		LDA #$90 : STA $220A				; > disable DMA IRQ
+		LDA #$C4 : STA $2230				; > DMA settings
+		LDA !FileAddress+2 : STA $2234			; > bank
+		LDA.b #!DeathBuffer>>16 : STA $2237		; > dest bank (this write starts the DMA)
+		STZ $2230					;/
+		LDA #$F0 : STA $220B				; clear all IRQ flags
+		LDA #$B0 : STA $220A				; enable DMA IRQ
 
 		.Main
+		LDA !DissolveCoord,x
+		CMP #$48 : BCC .Process
+		STZ $3230,x
+		RTS
 
-		.NoUpdate
+		.Process
+		LDA $3330,x
+		AND #$04 : BNE ..nospeed
+		JSL !SpriteApplySpeed
+		..nospeed
+		LDA !StunTimer,x
+		BEQ .Dissolve
+		CMP #$80
+		BEQ ..talk
+		BCC .Fade
+		JSR UPDATE_MODE2				; update wave
 		LDX !SpriteIndex
-		JMP GRAPHICS
+		JMP .Upload
 
+		..talk
+		LDA #!DeathMsg : STA !MsgTrigger
+		LDA #$09 : STA !2105
+		REP #$20
+		LDA.w #.BG3Dynamo : STA $0C
+		SEP #$20
+		CLC : JSL !UpdateGFX
+		JMP .Draw
+
+
+		.Fade
+		LDA $33C0,x
+		ASL #3
+		ORA #$81
+		STA $00
+		LDA !StunTimer,x
+		LSR A
+		CMP #$20
+		BCC $02 : LDA #$1F
+		AND #$1F
+		LDX $00
+		LDY #$0F
+		JSL !MixRGB_Upload
+		LDX !SpriteIndex
+		JMP .Upload
+
+		.Dissolve
+		LDA $14
+		AND #$01 : BEQ ..noinc
+		INC !DissolveCoord,x
+		..noinc
+		ASL A
+		DEC A
+		CLC : ADC !SpriteXLo,x
+		STA !SpriteXLo,x
+
+		LDA !RNG
+		AND #$1F
+		SBC #$0C
+		STA $00
+		LDA !DissolveCoord,x
+		SEC : SBC #$38
+
+		BMI +
+		CMP #$0A
+		BCC $02 : LDA #$0A
+
+	+	STA $01
+		STZ $02
+		STZ $03
+		STZ $04
+		LDA #$F0 : STA $05
+		LDA #$FF : STA $06
+		LDA $33C0,x
+		ORA #$31 : STA $07
+		LDA #!prt_basic : JSL SpawnParticle
+
+
+
+		REP #$30
+		LDA !DissolveCoord,x
+		AND #$00FF
+		XBA
+		LSR #3
+		TAX
+		LDA #$0000
+		STA !DeathBuffer+$00,x
+		STA !DeathBuffer+$02,x
+		STA !DeathBuffer+$04,x
+		STA !DeathBuffer+$06,x
+		STA !DeathBuffer+$08,x
+		STA !DeathBuffer+$0A,x
+		STA !DeathBuffer+$0C,x
+		STA !DeathBuffer+$0E,x
+		STA !DeathBuffer+$10,x
+		STA !DeathBuffer+$12,x
+		STA !DeathBuffer+$14,x
+		STA !DeathBuffer+$16,x
+		SEP #$30
+		LDX !SpriteIndex
+
+		.Upload
+		PHB
+		LDA.b #!VRAMbank
+		PHA : PLB
+
+		LDA.b #!DeathBuffer>>16
+		STA !CCDMAtable+$80+$04
+		STA !CCDMAtable+$80+$0C
+		STA !CCDMAtable+$80+$14
+		STA !CCDMAtable+$80+$1C
+		STA !CCDMAtable+$80+$24
+		STA !CCDMAtable+$80+$2C
+		STA !CCDMAtable+$80+$34
+		STA !CCDMAtable+$80+$3C
+		STA !CCDMAtable+$80+$44
+
+		REP #$20
+		LDA #$00C0
+		STA !CCDMAtable+$80+$00
+		STA !CCDMAtable+$80+$08
+		STA !CCDMAtable+$80+$10
+		STA !CCDMAtable+$80+$18
+		STA !CCDMAtable+$80+$20
+		STA !CCDMAtable+$80+$28
+		STA !CCDMAtable+$80+$30
+		STA !CCDMAtable+$80+$38
+		STA !CCDMAtable+$80+$40
+
+		LDA.w #!DeathBuffer+$000 : STA !CCDMAtable+$80+$02
+		LDA.w #!DeathBuffer+$100 : STA !CCDMAtable+$80+$0A
+		LDA.w #!DeathBuffer+$200 : STA !CCDMAtable+$80+$12
+		LDA.w #!DeathBuffer+$300 : STA !CCDMAtable+$80+$1A
+		LDA.w #!DeathBuffer+$400 : STA !CCDMAtable+$80+$22
+		LDA.w #!DeathBuffer+$500 : STA !CCDMAtable+$80+$2A
+		LDA.w #!DeathBuffer+$600 : STA !CCDMAtable+$80+$32
+		LDA.w #!DeathBuffer+$700 : STA !CCDMAtable+$80+$3A
+		LDA.w #!DeathBuffer+$800 : STA !CCDMAtable+$80+$42
+
+		LDA #$7000 : STA !CCDMAtable+$80+$05
+		LDA #$7100 : STA !CCDMAtable+$80+$0D
+		LDA #$7200 : STA !CCDMAtable+$80+$15
+		LDA #$7300 : STA !CCDMAtable+$80+$1D
+		LDA #$7400 : STA !CCDMAtable+$80+$25
+		LDA #$7500 : STA !CCDMAtable+$80+$2D
+		LDA #$7600 : STA !CCDMAtable+$80+$35
+		LDA #$7700 : STA !CCDMAtable+$80+$3D
+		LDA #$7800 : STA !CCDMAtable+$80+$45
+
+		SEP #$20
+		LDA #$0D
+		STA !CCDMAtable+$80+$07
+		STA !CCDMAtable+$80+$0F
+		STA !CCDMAtable+$80+$17
+		STA !CCDMAtable+$80+$1F
+		STA !CCDMAtable+$80+$27
+		STA !CCDMAtable+$80+$2F
+		STA !CCDMAtable+$80+$37
+		STA !CCDMAtable+$80+$3F
+		STA !CCDMAtable+$80+$47
+
+		PLB
+
+		.Draw
+		REP #$20
+		LDA.w #.Tilemap : STA $04
+		SEP #$20
+		JSL LOAD_TILEMAP_COLOR
+		RTS
+
+
+		.Tilemap
+		dw $003C
+		db $33,$F0,$C8,$00
+		db $33,$00,$C8,$02
+		db $33,$10,$C8,$04
+		db $33,$F0,$D0,$10
+		db $33,$00,$D0,$12
+		db $33,$10,$D0,$14
+		db $33,$F0,$E0,$30
+		db $33,$00,$E0,$32
+		db $33,$10,$E0,$34
+		db $33,$F0,$F0,$50
+		db $33,$00,$F0,$52
+		db $33,$10,$F0,$54
+		db $33,$F0,$00,$70
+		db $33,$00,$00,$72
+		db $33,$10,$00,$74
+
+		.Crown
+		db $32,$07,$C5,$AC
+
+
+		.PrtDynamo
+		dw ..end-..start
+		..start
+		dw $0020 : dl $7F*$20 : dw $7FF0
+		..end
+
+		.CrownSpeed
+		db $F0,$10
+
+
+		.BG3Dynamo
+		dw ..end-..start
+		..start
+		dw $4040 : dl .SomeClear : dw $5000
+		..end
+
+		.SomeClear
+		dw $00FC
 
 
 
@@ -412,20 +670,6 @@
 
 		%decreg(!InvincTimer)
 
-
-		.Blink						;\
-		LDA !BlinkTimer,x : BNE ..process		; |
-		LDA !RNG					; | wait 2-4 seconds in-between blinks
-		AND #$78					; |
-		CLC : ADC #$78					; |
-		STA !BlinkTimer,x				;/
-		..process					;\
-		DEC !BlinkTimer : BNE ..done			; |
-		LDA !HeadAnim : BNE ..done			; | blink when timer hits zero (unless already in animation)
-		LDA #!KK_Head_Blink : STA !HeadAnim		; |
-		LDA #$04 : STA !HeadTimer			; |
-		..done						;/
-
 		.Enrage						;\
 		LDA !EnrageTimer,x				; |
 		BMI ..done					; |
@@ -434,7 +678,6 @@
 		..nodec						; |
 		REP #$20					; |
 		LDA.w #DATA_EnrageBox : JSL LOAD_HITBOX		; |
-		SEP #$20					; |
 		SEC : JSL !PlayerClipping : BCS ..done		;/
 		LDA !EnrageTimer,x : BMI ..done			;\
 		INC !EnrageTimer,x				; | increment enrage timer until it hits 128
@@ -475,8 +718,15 @@
 		AND #$7F					; | no enrage in phase 1
 		CMP #$02 : BEQ ..norage				;/
 		LDA !EnrageTimer,x : BPL ..norage		;\ enrage attack
-		LDA #$05 : BRA ..setattack			;/
+		LDA #$06 : BRA ..setattack			;/
 		..norage
+
+		REP #$20					;\
+		LDA.w #DATA_SmackBox : JSL LOAD_HITBOX		; |
+		SEC : JSL !PlayerClipping : BCC ..nosmack	; | smack check
+		LDA #$05 : BRA ..setattack			; |
+		..nosmack					;/
+
 
 		LDA !RNG					;\
 		AND #$0F					; |
@@ -491,7 +741,7 @@
 		AND #$03					;/
 		..setattack					;\
 		CMP !AttackMem,x : BNE ..fresh			; |
-		INC #2						; | don't allow the same attack twice in a row
+		INC A						; | don't allow the same attack twice in a row
 		AND #$03					; |
 		..fresh						;/
 		STA !Attack,x					;\ set attack + attack mem
@@ -501,7 +751,9 @@
 
 
 	Attack:
-		PEA UpdateSpeed-1				;\
+		PEA UpdateSpeed-1				; RTS address
+
+		.Main						;\
 		LDA !Attack,x					; |
 		ASL A						; | execute pointer
 		TAX						; |
@@ -513,6 +765,7 @@
 		dw Jump						; jump
 		dw Charge					; charge
 		dw Throw					; ultimate scepter attack
+		dw Smack					; scepter smack
 		dw FireBreath					; fire breath
 
 		.Timer
@@ -521,6 +774,7 @@
 		db $04						; jump
 		db $80						; charge
 		db $FF						; ultimate scepter attack
+		db $20						; smack
 		db $FF						; fire breath
 
 		.SpeedIndex
@@ -528,6 +782,7 @@
 		db $00
 		db $02
 		db $04
+		db $00
 		db $00
 		db $00
 
@@ -539,6 +794,14 @@
 		AND #$04 : BNE .Process				; | wait for boss to land
 		RTS						; |
 		.Process					;/
+		REP #$20					;\
+		LDA.w #Smack_Hitbox : JSL LOAD_HITBOX		; |
+		SEC : JSL !PlayerClipping : BCC ..nosmack	; |
+		LDA #$05 : STA !Attack,x			; | smack players with scepter if they get too close
+		LDA #$20 : STA !AttackTimer,x			; |
+		JMP Attack_Main					; |
+		..nosmack					;/
+
 		LDA !Attack,x : BMI .Main			;\
 		.Init						; |
 		ORA #$80 : STA !Attack,x			; |
@@ -689,9 +952,19 @@
 		EOR #$80					; |
 		TAY						;/
 
-		.Spawn						;\
+		.Spawn
 		LDA #$17 : STA !SPC4				; > fire spit SFX
-		LDA !P2XPosLo-$80,y : STA $00			; | player x pos
+		LDA !Difficulty
+		AND #$03 : BNE .FlexArc
+
+		.FixedArc					;\
+		LDY $3320,x					; |
+		LDA .EasyXSpeed,y : STA $02			; | fixed arc on easy
+		LDA #$B0 : STA $03				; |
+		BRA .SetCoords					;/
+
+		.FlexArc
+		LDA !P2XPosLo-$80,y : STA $00			;\ player x pos
 		LDA !P2XPosHi-$80,y : STA $01			;/
 
 		LDA !SpriteXHi,x : XBA				;\
@@ -703,7 +976,25 @@
 		SEP #$20					; |
 		STA $02						;/
 		LDA #$B0 : STA $03				; Y speed = -0x50
-		LDY $3320,x					;\ X offset based on direction
+		LDA !Difficulty					;\
+		AND #$03					; |
+		CMP #$02 : BEQ .Unlimit				; |
+		.LimitArc					; |
+		LDA $02 : BMI ..neg				; |
+		..pos						; |
+		CMP #$18 : BCS +				; |
+		LDA #$18 : BRA ++				; |
+	+	CMP #$30 : BCC .Unlimit				; | limit projectile x speed on normal
+		LDA #$30 : BRA ++				; |
+		..neg						; |
+		CMP #$E8 : BCC +				; |
+		LDA #$E8 : BRA ++				; |
+	+	CMP #$D0 : BCS .Unlimit				; |
+		LDA #$D0					; |
+	++	STA $02						; |
+		.Unlimit					;/
+		LDY $3320,x					; Y = dir
+		.SetCoords					;\ X offset based on direction
 		LDA .XOffset,y : STA $00			;/
 		LDA #$E5 : STA $01				; Y offset = -27
 		SEC : LDA #$07					;\
@@ -736,6 +1027,8 @@
 		.XOffset
 		db $06,$FA
 
+		.EasyXSpeed
+		db $20,$E0
 
 
 
@@ -804,18 +1097,12 @@
 		LDA $3330,x					; | wait for sprite to land
 		AND #$04 : BNE .Ground				;/
 		LDA !SpriteYSpeed,x : BPL .DownEye		;\
-		CMP #$E0 : BCC .UpEye				; |
+		CMP #$E0 : BCC .Return				; |
 		.DownEye					; | eye movement
 		LDA #!KK_Head_EyesDown : STA !HeadAnim,x	; |
-		.UpEye						;/
-		LDA $3330,x					;\
-		AND #$03 : BEQ .Return				; |
-		LDA !WalkDirection,x				; | in case boss jumps into a wall...
-		EOR #$01					; |
-		STA !WalkDirection,x				; |
-		LDA #$09 : STA !SPC4				;/> stomp SFX
-		.Return
-		RTS
+		LDA #$04 : STA !HeadTimer,x			;/
+		.Return						;\ return
+		RTS						;/
 
 		.Ground						;\
 		LDA #$09 : STA !SPC4				; > stomp SFX
@@ -837,6 +1124,7 @@
 		LDA #!KK_Head_Normal+1 : STA !HeadAnim,x	; | (with head bop)
 		LDA #$06 : STA !HeadTimer,x			;/
 		STZ !AttackTimer,x
+		STZ !SpriteXSpeed,x
 		RTS
 
 		.Offset
@@ -1137,9 +1425,24 @@
 		JSR Wait					; |
 		.Main						;/
 
+		LDA !StunTimer,x : BEQ .Move			;\ delay head timer while stunned
+		INC !HeadTimer,x				;/
+		.Move
+
+		REP #$20					;\
+		LDA.w #Smack_Hitbox : JSL LOAD_HITBOX		; |
+		SEC : JSL !PlayerClipping : BCC ..nosmack	; |
+		LDA #$05 : STA !Attack,x			; | smack players with scepter if they get too close
+		LDA #$20 : STA !AttackTimer,x			; |
+		JMP Attack_Main					; |
+		..nosmack					;/
+
+		LDA !SpriteAnimIndex
+		CMP #!KK_Charge+2 : BEQ ..spawn
+		CMP #!KK_Charge+5 : BNE ..nodust
+		..spawn
 		JSR .Dust
-		LDA !StunTimer,x				;\ delay head timer while stunned
-		BEQ $03 : INC !HeadTimer,x			;/
+		..nodust
 
 		LDA !AttackTimer,x : BNE .KeepAnim		;\
 		STZ !SpriteAnimIndex				; | reset anim when attack ends
@@ -1170,10 +1473,6 @@
 
 
 		.Dust
-		LDA !SpriteAnimIndex
-		CMP #!KK_Charge+2 : BEQ ..spawn
-		CMP #!KK_Charge+5 : BNE ..return
-		..spawn
 		LDY $3320,x
 		LDA ..xoffset,y : STA $00
 		LDA #$0C : STA $01
@@ -1282,6 +1581,102 @@
 		.Offset
 		db $14,$EC
 
+	Smack:
+		LDX !SpriteIndex				; X = sprite index
+		LDA !Attack,x : BMI .Main			;\
+		.Init						; | init/main
+		ORA #$80 : STA !Attack,x			;/
+		LDA !SpriteXSpeed,x : BPL ..pos			;\
+		..neg						; |
+		EOR #$FF					; |
+		LSR A						; |
+		EOR #$FF : BRA ..set				; | init speed
+		..pos						; |
+		LSR A : BRA ..set				; |
+		..set						; |
+		STA !SpriteXSpeed,x				;/
+		JSR Wait					;\
+		LDA #!KK_Smack : STA !SpriteAnimIndex		; |
+		STZ !SpriteAnimTimer				; |
+		LDA !SpriteXSpeed,x				; |
+		CLC : ADC #$20					; | init anim
+		CMP #$40 : BCC ..nofast				; | (save 8 frames on startup when moving fast)
+		LDA #$08 : STA !SpriteAnimTimer			; |
+		..nofast					; |
+		LDA #!KK_Head_EyesDown : STA !HeadAnim,x	; |
+		LDA #$19 : STA !HeadTimer,x			;/
+		LDA #$25 : STA !SPC1				; > roar SFX
+		JSL SUB_HORZ_POS				;\
+		TYA : STA $3320,x				; | init dir
+		.Main						;/
+		LDA !StunTimer,x : BNE .Process			;\
+		STZ !AttackTimer,x				; | end when stun runs out
+		RTS						;/
+		.Process					;\
+		LDA !SpriteAnimIndex				; |
+		CMP #!KK_Smack+1 : BNE .Return			; |
+		JSR .Dust					; > dust
+		REP #$20					; | hitbox
+		LDA.w #.Hitbox : JSL LOAD_HITBOX		; |
+		LDA #$40 : JSL P2Hurt				;/
+		BCC ..nocontact					;\
+		LDA #$09 : STA !SPC4				; | smash SFX
+		..nocontact					;/
+		.Return						;\ return
+		RTS						;/
+
+		.Hitbox
+		dw $FFD8,$FFD1 : db $18,$40
+
+		.Dust
+		LDY $3320,x
+		LDA ..xoffset,y : STA $00
+		LDA #$0C : STA $01
+		LDA !RNG
+		AND #$0F
+		SBC #$08
+		ADC ..xspeed,y
+		STA $02
+		LDA !RNG
+		LSR #4
+		ORA #$E0
+		STA $03
+		STZ $04
+		STZ $05
+		LDA #$F0 : STA $07
+		LDA #!prt_smoke8x8 : JSL SpawnParticle
+		..return
+		RTS
+		..xoffset
+		db $18,$E8
+		..xspeed
+		db $20,$E0
+
+		.Dust2
+		LDY $3320,x
+		LDA ..xoffset,y : STA $00
+		LDA #$0C : STA $01
+		LDA !RNG
+		AND #$0F
+		SBC #$08
+		ADC ..xspeed,y
+		STA $02
+		LDA !RNG
+		LSR #4
+		ORA #$F0
+		STA $03
+		STZ $04
+		STZ $05
+		LDA #$F0 : STA $07
+		LDA #!prt_smoke8x8 : JSL SpawnParticle
+		..return
+		RTS
+		..xoffset
+		db $18,$E8
+		..xspeed
+		db $E0,$20
+
+
 
 	FireBreath:
 		LDX !SpriteIndex				; X = sprite index
@@ -1296,15 +1691,9 @@
 		TYA : STA $3320,x				; |
 		.Main						;/
 		LDA !StunTimer,x : BEQ .End			;\
-		SEC : SBC #$10
-		BPL $02 : LDA #$00
-		ASL A
-		STA !EnrageTimer,x
-
-		LDA !StunTimer,x
-		CMP #$08 : BEQ .Squat				; | do things at these times
-		CMP #$38 : BEQ .BigFire				; |
-		CMP #$48 : BEQ .PrepFire			;/
+		CMP #$08+1 : BCC .Squat				; | do things at these times
+		CMP #$38+1 : BCC .BigFire			; |
+		CMP #$48+1 : BCC .PrepFire			;/
 		.Return
 		RTS
 
@@ -1322,6 +1711,11 @@
 		.BigFire
 		LDA #$17 : STA !SPC4				; fire SFX
 		LDA #!KK_Head_Fire : STA !HeadAnim,x
+		LDA #$02 : STA !HeadTimer,x
+
+		LDA !StunTimer,x
+		CMP #$38 : BNE .Return
+
 		LDY !ScepterIndex,x
 		LDA $3320,x : STA $3320,y
 		LDA !SpriteYLo,x
@@ -1348,7 +1742,7 @@
 		LDA #!KK_Fire : STA !SpriteAnimIndex
 		STZ !SpriteAnimTimer
 		LDA #!KK_Head_PrepFire : STA !HeadAnim,x
-		LDA !StunTimer,x : STA !HeadTimer,x
+		LDA #$02 : STA !HeadTimer,x
 		RTS
 
 		.XSpeed
@@ -1360,10 +1754,21 @@
 
 
 	UpdateSpeed:
+		LDA !Attack,x
+		AND #$7F
+		CMP #$05 : BNE .NoFriction
+		JSL AccelerateX_Friction2
+		LDA !SpriteXSpeed,x
+		CLC : ADC #$10
+		CMP #$20 : BCC .Move
+		JSR Smack_Dust2
+		BRA .Move
+		.NoFriction
+
 		LDA !StunTimer,x : BNE INTERACTION		; no movement while stunned
 		LDA !Attack,x
 		AND #$7F
-		CMP #$05 : BNE .NoThrow
+		CMP #$06 : BNE .NoThrow
 		STZ !SpriteXSpeed,x : BRA .Move
 		.NoThrow
 
@@ -1373,7 +1778,7 @@
 		LDA !Attack,x
 		AND #$7F
 		CMP #$02 : BCS .NoFast
-		LDA #$06 : BRA .SetAttack
+		LDA #$06 : BRA .SetAttack			; this is a speed index, not an attack number
 		.NoFast
 
 		LDA !Attack,x
@@ -1383,7 +1788,6 @@
 
 		.SetAttack
 		STA $00
-
 		LDA !Difficulty
 		AND #$03
 		ASL #3
@@ -1393,8 +1797,13 @@
 		LDA.w DATA_XSpeed,y : STA !SpriteXSpeed,x
 
 		.Move
+		LDA !SpriteXLo,x : PHA
 		JSL !SpriteApplySpeed
-
+		PLA : STA $00
+		LDA $3330,x
+		AND #$03 : BEQ ..done
+		LDA $00 : STA !SpriteXLo,x
+		..done
 
 	INTERACTION:
 		JSR GRAPHICS					; do graphics first
@@ -1450,6 +1859,12 @@
 		REP #$20					; |
 		LDA HITBOX,y : JSL LOAD_HITBOX			;/
 		JSL FireballContact_Destroy			; fireballs break upon touching Kingking
+		LDA !Attack,x
+		AND #$7F
+		CMP #$03 : BNE ..00
+	..20	LDA #$20 : BRA ..knockback
+	..00	LDA #$00
+		..knockback
 		JSL P2Hurt					; hurt on contact
 		..nocontact
 
@@ -1527,7 +1942,7 @@
 		dw $FFF8,$0000 : db $18,$10
 
 		.Head
-		dw $0004,$FFF4 : db $18,$1C
+		dw $0004,$FFF8 : db $18,$1C
 
 
 
@@ -1640,11 +2055,25 @@
 		CLC : JSL !UpdateGFX
 
 
-
 		LDX !SpriteIndex				; X = sprite index
 		STZ !SpriteTile,x				;\ nope
 		STZ !SpriteProp,x				;/
 		JSL SETUP_SQUARE				; get tile nums
+
+
+		.Blink						;\
+		LDA !BlinkTimer,x : BNE ..process		; |
+		LDA !RNG					; | wait 2-4 seconds in-between blinks
+		AND #$3C					; |
+		CLC : ADC #$3C					; |
+		STA !BlinkTimer,x				;/
+		..process					;\
+		DEC !BlinkTimer,x : BNE ..done			; |
+		LDA !HeadAnim,x : BNE ..done			; | blink when timer hits zero (unless already in animation)
+		LDA #!KK_Head_Blink : STA !HeadAnim,x		; |
+		LDA #$04 : STA !HeadTimer,x			; |
+		..done						;/
+
 
 		.HandleUpdate
 		REP #$30					; all regs 16-bit
@@ -1682,7 +2111,6 @@
 		..sameanim
 		STA !SpriteAnimTimer				; > update animation timer
 
-
 	; draw head
 		REP #$20					;\
 		LDA.w ANIM+8,y					; > push head offsets
@@ -1717,8 +2145,7 @@
 		ASL A						; |
 		ADC $00						; |
 		TAY						; |
-		LDA !HeadTimer,x				; |
-		BEQ $03 : DEC !HeadTimer,x			; |
+		%decreg(!HeadTimer)				; |
 		CMP #$01 : BNE .SameHead			; | head anim
 		LDA #$08 : STA !HeadTimer,x			; |
 		LDA.w ANIM_HeadPtr+2,y : STA !HeadAnim,x	; |
@@ -1883,6 +2310,21 @@
 		dw .ThrowDyn2
 		db $FC,$E1
 
+	; smack
+		dw .48x40TM : db $0D,!KK_Smack+1
+		dw .ScepterWalk6
+		dw .WalkDyn6
+		db $FE,$DF
+		dw .48x48TM : db $07,!KK_Smack+2
+		dw .ScepterSmack
+		dw .ThrowDyn1
+		db $F8,$E0
+		dw .48x48TM : db $10,!KK_Idle
+		dw .ScepterThrow
+		dw .ThrowDyn2
+		db $FC,$E1
+
+
 	; squat
 		dw .40x32TM : db $40,!KK_Idle
 		dw .ScepterSquat
@@ -2012,7 +2454,7 @@
 		db $33,$08,$F0,$82
 		db $33,$F8,$00,$A0
 		db $33,$08,$00,$A2
-		db $32,$0B,$E4,$AC
+		db $32,$0B+2,$E4,$AC
 
 		.Bop
 		dw $0014
@@ -2020,7 +2462,7 @@
 		db $33,$08,$F0,$86
 		db $33,$F8,$00,$A4
 		db $33,$08,$00,$A6
-		db $32,$0E,$E1,$AC
+		db $32,$0E+2,$E1,$AE
 
 		.Roar
 		dw $0014
@@ -2028,7 +2470,7 @@
 		db $33,$08,$F0,$42
 		db $33,$F8,$00,$60
 		db $33,$08,$00,$62
-		db $32,$0B,$E4,$AC
+		db $32,$0B+2,$E4,$AC
 
 		.Spit
 		dw $0014
@@ -2036,7 +2478,7 @@
 		db $33,$08,$F0,$42
 		db $33,$F8,$00,$44
 		db $33,$08,$00,$64
-		db $32,$0B,$E4,$AC
+		db $32,$0B+2,$E4,$AC
 		..jaw
 		dw $0008
 		db $33,$F8,$00,$6C
@@ -2098,7 +2540,7 @@
 		db $33,$F8,$F0,$80
 		db $33,$F8,$00,$A0
 		db $33,$08,$00,$A2
-		db $32,$0B,$E4,$AC
+		db $32,$0B+2,$E4,$AC
 
 		.EyesClosed
 		dw $0018
@@ -2107,7 +2549,7 @@
 		db $33,$F8,$F0,$80
 		db $33,$F8,$00,$A0
 		db $33,$08,$00,$A2
-		db $32,$0B,$E4,$AC
+		db $32,$0B+2,$E4,$AC
 
 		.EyesUp
 		dw $0018
@@ -2116,7 +2558,7 @@
 		db $33,$F8,$F0,$80
 		db $33,$F8,$00,$A0
 		db $33,$08,$00,$A2
-		db $32,$0B,$E4,$AC
+		db $32,$0B+2,$E4,$AC
 
 		.EyesDown
 		dw $0014
@@ -2124,7 +2566,7 @@
 		db $33,$08,$F0,$24
 		db $33,$F8,$00,$60
 		db $33,$08,$00,$62
-		db $32,$0B,$E4,$AC
+		db $32,$0B+2,$E4,$AC
 
 
 
@@ -2177,8 +2619,8 @@
 
 	.ScepterThrow
 		dw $0008
-		db $32,$E8,$D1,$AA
-		db $32,$E8,$D9,$BA
+		db $32,$EA,$D2,$AA
+		db $32,$EA,$DA,$BA
 
 	.ScepterSquat
 		dw $0008
@@ -2189,6 +2631,17 @@
 		dw $0008
 		db $32,$E1,$F1,$C5
 		db $32,$E9,$F1,$C6
+
+	.ScepterSmack
+		dw $0020
+		db $32,$E8,$D1,$AA
+		db $32,$E8,$D9,$BA
+		db $32,$E0,$DD,$C5
+		db $32,$E8,$DD,$C6
+		db $32,$E0,$E9,$A5
+		db $32,$E8,$E9,$A6
+		db $B2,$E0,$F1,$C5
+		db $B2,$E8,$F1,$C6
 
 
 
@@ -2388,6 +2841,7 @@ UPDATE_MODE2:	PHB						;\
 
 	; wave motion code
 		REP #$30
+		STZ $F07A
 		STZ $F07C
 		STZ $F07E
 
@@ -2578,7 +3032,10 @@ Wait:		LDA !Difficulty
 
 
 		.ArcBounce
-		JSR .Dunk					; include dunk code
+		LDX !SpriteIndex				; X = sprite index
+		JSR .SetHitbox					; set hitbox
+		JSL !SpriteApplySpeed				; move
+		JSR .Dunk_nowall				; include most of dunk code
 		INC !StunTimer,x				;\
 		LDY !BossIndex,x				; |
 		LDA !SpriteXLo,x				; |
@@ -2622,6 +3079,10 @@ Wait:		LDA !Difficulty
 		LDX !SpriteIndex				; X = sprite index
 		JSR .SetHitbox					; set hitbox
 		JSL !SpriteApplySpeed				; move
+		LDA $3330,x					;\
+		AND #$03 : BEQ ..nowall				; | can't clip into walls
+		STZ !SpriteXSpeed,x				; |
+		..nowall					;/
 		LDA $3330,x					;\ check for ground contact
 		AND #$04 : BEQ ..return				;/
 		LDA #$C8					;\
@@ -2633,21 +3094,20 @@ Wait:		LDA !Difficulty
 		LSR #3						; |
 		ASL A						; |
 		TAX						; |
-		LDA #$FF					; |
+		LDA #$FF					; | generate waves
 		STA $40F040,x					; |
-		STA $40F042,x					; | generate waves
+		STA $40F042,x					; |
 		LDA #$01 : STA $40F041,x			; |
-		LDA #$41 : STA $40F043,x			; |
-		LDX !SpriteIndex				; |
-		LDA #$09 : STA !SPC4				; |
+		LDA #$41 : STA $40F043,x			;/
+		LDA #$09 : STA !SPC4				; dunk SFX
+		LDX !SpriteIndex				;\
+		LDA $3320,x : PHA				; |
+		ORA #$02					; | rock debris
+		STA $3320,x					; |
+		JSR KingKing_RockDebris				; |
+		PLA : STA $3320,x				;/
 
-		LDA $3320,x : PHA
-		ORA #$02
-		STA $3320,x
-		JSR KingKing_RockDebris
-		PLA : STA $3320,x
-
-		STZ !SpriteAnimIndex				; |
+		STZ !SpriteAnimIndex				;\ reset animation
 		STZ !SpriteAnimTimer				;/
 		..return					;\ return
 		RTS						;/
@@ -2769,7 +3229,13 @@ Wait:		LDA !Difficulty
 		dw .DunkTM00 : db $10,!KK_Scepter_Dunk+1
 		dw .DunkTM01 : db $FF,!KK_Scepter_Dunk+1
 	; fall
-		dw .FallTM00 : db $FF,!KK_Scepter_Fall
+		dw .FallTM00 : db $0C,!KK_Scepter_Fall+1
+		dw .FallTM01 : db $0C,!KK_Scepter_Fall+2
+		dw .FallTM02 : db $0C,!KK_Scepter_Fall+3
+		dw .FallTM03 : db $0C,!KK_Scepter_Fall+4
+		dw .FallTM04 : db $0C,!KK_Scepter_Fall+5
+		dw .FallTM05 : db $FF,!KK_Scepter_Fall+5
+
 	; fire blast
 		dw .FireTM00 : db $FF,!KK_Scepter_Fire
 
@@ -2803,8 +3269,28 @@ Wait:		LDA !Difficulty
 
 		.FallTM00
 		dw $0008
-		db $32,$E8,$00,$AA
-		db $32,$E8,$08,$BA
+		db $32,$F0,$E8,$AA
+		db $32,$F0,$F0,$BA
+		.FallTM01
+		dw $0008
+		db $32,$F0,$E8,$C5
+		db $32,$F8,$E8,$C6
+		.FallTM02
+		dw $0008
+		db $32,$F0,$E8,$A5
+		db $32,$F8,$E8,$A6
+		.FallTM03
+		dw $0008
+		db $B2,$F0,$E8,$C5
+		db $B2,$F8,$E8,$C6
+		.FallTM04
+		dw $0008
+		db $B2,$F0,$F0,$AA
+		db $B2,$F0,$E8,$BA
+		.FallTM05
+		dw $0008
+		db $B2,$F0,$F0,$A8
+		db $B2,$F0,$E8,$B8
 
 		.FireTM00
 		dw $0010

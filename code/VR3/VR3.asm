@@ -617,6 +617,36 @@ endmacro
 
 Build_RAM_Code:
 
+		.Playtime					;\
+		LDA !GameMode					; | increment playtime counter on game modes 0x0B and up
+		CMP #$0B : BCC ..done				;/
+		LDA !Playtime+0					;\
+		INC A						; |
+		CMP.b #60					; | frame counter
+		BCC $02 : LDA #$00				; |
+		STA !Playtime+0					; |
+		BNE ..done					;/
+		LDA !Playtime+1					;\
+		INC A						; |
+		CMP.b #60					; | second counter
+		BCC $02 : LDA #$00				; |
+		STA !Playtime+1					; |
+		BNE ..done					;/
+		LDA !Playtime+2					;\
+		INC A						; |
+		CMP.b #60					; | minute counter
+		BCC $02 : LDA #$00				; |
+		STA !Playtime+2					; |
+		BNE ..done					;/
+		REP #$20					;\
+		LDA !Playtime+3					; |
+		INC A						; |
+		CMP.w #999					; | hour counter
+		BCC $03 : LDA.w #999				; |
+		STA !Playtime+3					; |
+		SEP #$20					; |
+		..done						;/
+
 		%TrackSetup(!TrackVR3)
 
 		LDA.b #.SA1 : STA $3180
@@ -988,18 +1018,18 @@ Build_RAM_Code:
 		STZ.w !TileUpdateTable				; always clear, even when not uploaded, to prevent overflow
 
 
-		SEP #$20					;\
-		LDA !CurrentMario : BEQ .NoMario		; | check if mario is in play and who plays him
-		XBA						; |
-		LDA !MultiPlayer : BEQ .Mario			;/
-		XBA						;\
-		DEC A						; | P1 on frame 0, P2 on frame 1
-		EOR $14						; |
-		LSR A : BCS .NoMario				;/
-	.Mario
-		REP #$20
-		JSR .AppendMario
-		.NoMario
+;		SEP #$20					;\
+;		LDA !CurrentMario : BEQ .NoMario		; | check if mario is in play and who plays him
+;		XBA						; |
+;		LDA !MultiPlayer : BEQ .Mario			;/
+;		XBA						;\
+;		DEC A						; | P1 on frame 0, P2 on frame 1
+;		EOR $14						; |
+;		LSR A : BCS .NoMario				;/
+;	.Mario
+;		REP #$20
+;		JSR .AppendMario
+;		.NoMario
 
 
 		REP #$20
@@ -1009,8 +1039,10 @@ Build_RAM_Code:
 		LDY.w #!File_DynamicVanilla			; | get address of "GFX33"
 		JSL !GetFileAddress				; |
 		PLY						;/
-		LDA.l $6D7C					;\ update slot 1
-		BEQ $03 : JSR .AppendSMW0D7C			;/
+		LDA.l $6D7C : BEQ .No0D7C			;\
+		CMP #$0800 : BEQ .No0D7C			; | update slot 1
+		JSR .AppendSMW0D7C				; |
+		.No0D7C						;/
 		LDA.l $6D7E					;\ update slot 2
 		BEQ $03 : JSR .AppendSMW0D7E			;/
 		LDA.l $6D80					;\ update slot 3
@@ -2426,7 +2458,7 @@ Build_RAM_Code:
 		LDA.l !FileAddress+2 : %writecode(..bnk)	; | source bank
 		REP #$20					;/
 		LDA.l $6D7C : %writecode(..vram1)		; VRAM address
-		CMP #$0800 : BEQ ..berry			; check for berry
+	;	CMP #$0800 : BEQ ..berry			; check for berry
 		TYA						;\
 		CLC : ADC.w #..end2-..code			; | increment RAM code index
 		TAY						;/
@@ -3644,10 +3676,6 @@ FetchExAnim:
 ;
 
 
-; to do:
-;	- make sure BG2 background works
-;	( sometimes misses a row )
-
 macro CCDMA(slot)
 	LDY $97+(<slot>*8) : STY.w $2231	; CCDMA mode
 	LDA $92+(<slot>*8)			;\
@@ -4106,7 +4134,7 @@ IRQ:
 		db $20,$20,$20,$20,$20,$20		; P2 hearts
 		db $28,$24,$24,$24,$24
 
-.StatusPal	dw $0000,$0CFB,$2FEB			; Palette 0
+.StatusPal	dw $7FFF,$0CFB,$001F			; Palette 0
 		dw $0000,$0000,$7AAB,$7FFF		; Palette 1
 		dw $0000,$0000,$1E9B,$3B7F		; Palette 2
 

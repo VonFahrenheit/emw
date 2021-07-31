@@ -134,7 +134,7 @@
 		CLC : ADC !P2XPosLo-$80,y
 		STA !P2XPosLo-$80,y
 		SEP #$20
-		LDA #$80 : STA !P2SpritePlatform-$80,y
+	;	LDA #$80 : STA !P2SpritePlatform-$80,y
 		LDA #$00 : STA !P2YSpeed-$80,y
 		LDA !BigRAM
 		CMP #$01 : BNE ..R

@@ -1,10 +1,7 @@
 COYOTE_TIME:
 
 		LDA !P2Blocked
-		AND #$04
-		ORA !P2Platform
-		ORA !P2SpritePlatform
-		BNE .Ground
+		AND #$04 : BNE .Ground
 
 		.Air
 		LDA !P2CoyoteTime

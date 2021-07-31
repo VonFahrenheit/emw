@@ -168,9 +168,6 @@ SPRITE_OFF_SCREEN:
 		RTL
 
 
-
-
-
 ; input: void (for _Target, A = offset and Y = player index)
 ; output:
 ;	A = sprite Y - player Y
@@ -216,7 +213,6 @@ SPRITE_OFF_SCREEN:
 		RTL
 	..1	LDY #$01
 		RTL
-
 
 
 ; input: void
@@ -1256,21 +1252,32 @@ SPRITE_OFF_SCREEN:
 		RTL
 
 	.YesContact
+		LDA !P2Hitbox1Hitstun-$80,y : STA $0C
+
 		PHY
 		CPX #$08
 		BCC $01 : INY
 		LDA.l .ContactBits,x
 		ORA !P2Hitbox1IndexMem1-$80,y
 		STA !P2Hitbox1IndexMem1-$80,y
+		LDA $0C
+		CMP #$06 : BCC ..small
 		TYA
 		AND #$80
 		TAY
+		LDA !P2Character-$80,y
+		CMP #$02 : BNE ..gosmall
+		JSL P2BigContactGFX
+		BRA .NotLeeway
+		..small
+		TYA
+		AND #$80
+		TAY
+		..gosmall
 		JSL P2HitContactGFX
 		LDA !P2Character-$80,y
 		CMP #$03 : BNE .NotLeeway
 		LDA #$08 : STA !P2ComboDash-$80,y
-	;	LDA #$00 : JSL DontInteract
-	;	PLY : BRA .Return
 		.NotLeeway
 		PLY
 		LDA !P2Hitbox1DisTimer-$80,y : JSL DontInteract		; interaction disable
@@ -1365,6 +1372,56 @@ SPRITE_OFF_SCREEN:
 		RTL
 
 
+; input:
+;	Y = player index
+;	clipping boxes loaded in both slots
+; output: void
+	P2BigContactGFX:
+		REP #$10
+		PHX
+		PHB
+		PHY
+		JSL !GetParticleIndex
+		LDA #$0007 : STA !Particle_Timer,x
+		LDA.w #!prt_contactbig : STA !Particle_Type,x
+		PLY
+		TYA
+		BEQ $03 : LDA #$0220				; set lowest c bit as well as add 0x20 to tile num
+		CLC : ADC.w #!P2Tile7-$20
+		ORA #$F000
+		STA !Particle_Tile,x
+		SEP #$20
+		LDA #$02 : STA !Particle_Layer,x
+		PLB
+		LDA $00 : STA $0C
+		LDA $08 : STA $0D
+		LDA $01 : STA $0E
+		LDA $09 : STA $0F
+		LDA $0A : XBA
+		LDA $04
+		REP #$20
+		CLC : ADC $0C
+		LSR A
+		STA $0C
+		SEP #$20
+		LDA $0B : XBA
+		LDA $05
+		REP #$20
+		CLC : ADC $0E
+		LSR A
+		STA $0E
+		SEC : SBC #$000E
+		STA !41_Particle_YLo,x
+		LDA $0C : STA !41_Particle_XLo,x
+		LDA !P2Direction-$80,y
+		AND #$00FF
+		BEQ $03 : LDA #$0040
+		STA !41_Particle_XSpeed,x
+		PLX
+		SEP #$30
+		RTL
+
+
 ; input: Y = player index
 ; output: void
 	P2Bounce:
@@ -1374,7 +1431,7 @@ SPRITE_OFF_SCREEN:
 		LDA !P2FireCharge-$80,y : BNE .Shared		; |
 		INC A						; | mario fire flash code
 		STA !P2FireCharge-$80,y				; |
-		LDA #$14 : STA !P2FireFlash-$80,y		;/
+		LDA #!MarioFlashPal : STA !P2FlashPal-$80,y	;/
 		.Shared						;\ refund special
 		LDA #$00 : STA !P2SpecialUsed-$80,y		;/
 		CPY #$80 : BEQ ..p2				;\
@@ -1489,29 +1546,53 @@ SPRITE_OFF_SCREEN:
 		JSL !HurtPlayers
 		RTS
 
-; input: sprite clipping loaded in $04 slot ($04-$07, $0A-$0B)
-; output: hurts players that touch the sprite, but only if interaction timers are clear
+; input:
+;	sprite clipping loaded in $04 slot ($04-$07, $0A-$0B)
+;	A = horizontal knockback for players
+; output:
+;	hurts players that touch the sprite, but only if interaction timers are clear
+;	C = clear if no contact, C = set if contact
 	P2Hurt:
+		LDY $3320,x : BEQ .Right
+		.Left
+		EOR #$FF : INC A
+		.Right
+		STA !BigRAM+$7E
 		SEC : JSL !PlayerClipping : BCC .NoContact
 		STA !BigRAM+$7F
 		LSR A : BCC .P2
 
 		.P1
 		PHA
+		LDA !P2Invinc-$80
+		ORA !StarTimer
+		BNE ..nope
 		LDA !SpriteDisP1,x : BEQ ..int
+		..nope
 		LDA #$01 : TRB !BigRAM+$7F
 		BRA ..next
-	..int	LDY #$00
+		..int
+		LDY #$00
 		LDA #$0F : JSL DontInteract
-	..next	PLA
+		LDA !BigRAM+$7E : STA !P2VectorX-$80
+		LDA #$0F : STA !P2VectorTimeX-$80
+		..next
+		PLA
 
 		.P2
 		LSR A : BCC .Return
+		LDA !P2Invinc
+		ORA !StarTimer
+		BNE ..nope
 		LDA !SpriteDisP2,x : BEQ ..int
+		..nope
 		LDA #$02 : TRB !BigRAM+$7F
 		BRA .Return
-	..int	LDY #$80
+		..int
+		LDY #$80
 		LDA #$0F : JSL DontInteract
+		LDA !BigRAM+$7E : STA !P2VectorX
+		LDA #$0F : STA !P2VectorTimeX
 
 		.Return
 		LDA !BigRAM+$7F : BEQ .NoContact

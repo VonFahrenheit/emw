@@ -180,10 +180,10 @@ PalsetDefaults:
 		LDA !MultiPlayer : BEQ +			; |
 		LDA !Characters					; |
 		AND #$0F : BNE +				; | mario fireball can be included in mario's file
-		LDA #$16 : BRA ++				; |
+		LDA #$1A : BRA ++				; |
 	+	LDA !Characters					; |
 		AND #$F0 : BNE .NoMarioFire			; |
-		LDA #$06					; |
+		LDA #$0A					; |
 	++	STA !GFX_ReznorFireball				; |
 		LDA #$01 : STA !SuperDynamicMark+$04		; |
 		.NoMarioFire					;/
@@ -937,7 +937,7 @@ db $FF
 .KoopaBlue
 dw ..end-..start|$8000	; hi prio file
 dw $F00
-db $00
+db $81
 db $10			; 1 full row
 ..start
 db $00,$00,$20

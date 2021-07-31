@@ -235,7 +235,9 @@
 		$7652-$7653:	2 B	how many dynamic tiles were loaded this frame
 		$7654-$7691:	62 B	----
 		$7692:		1 B	sprite memory setting from header (unchanged)
-		$786C-$7877:	12 B	----
+		; bunch of other stuff here
+		$786C:		1 B	max HP bonus (calculated from save file)
+		$786D-$7877:	11 B	----
 		$787B-$7886:	12 B	----
 		$790F-$791B:	13 B	----
 		$7FD6-$7FED:	24 B	----

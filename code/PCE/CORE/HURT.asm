@@ -1,16 +1,18 @@
-HURT:
-		LDA !P2Character : BNE .NotMario	; check for mario
-		LDA $19					;\
-		BEQ $02 : LDA #$01			; | mario HP (+1 removed to automatically "subtract" 1)
-		STA !P2HP				;/
-		JSL !HurtMario				; hurt mario
-		JSR .Mario				; mario code
-		RTL
-		.NotMario
 
+
+	HURT:
 		LDA !P2Invinc				;\
 		ORA !StarTimer				; | don't hurt player while star is active or player is invulnerable
 		BNE .Return				;/
+
+		LDA !Difficulty				;\
+		AND #$10 : BEQ .NotCrit			; | critical mode sets HP to 1 when player gets hit
+		LDA #$01 : STA !P2HP			; |
+		.NotCrit				;/
+
+		LDA #$F8 : STA !P2YSpeed		; give player some Y speed
+		LDA #$20 : STA !SPC1			; play Yoshi "OW" SFX
+		LDA #$80 : STA !P2Invinc		; set invincibility timer
 
 		LDA !P2Character			;\
 		ASL A					; |
@@ -22,14 +24,6 @@ HURT:
 		PLX					;/
 
 		LDA #$0F : STA !P2HurtTimer		; set hurt animation timer
-
-		LDA !Difficulty				;\ critical mode
-		AND #$10 : BNE .Kill			;/
-
-		LDA #$F8 : STA !P2YSpeed		; give player some Y speed
-		LDA #$20 : STA !SPC1			; play Yoshi "OW" SFX
-		LDA #$80 : STA !P2Invinc		; set invincibility timer
-
 		LDA !P2HP				;\
 		DEC A					; |
 		STA !P2HP				; | decrement HP and kill player 2 if zero
@@ -52,10 +46,25 @@ HURT:
 		..End
 
 		.Mario
+		LDA !P2Invinc : STA !MarioFlashTimer
+		LDA !P2HP
+		CMP #$01 : BEQ ..kill
+		CMP #$02 : BNE ..noshrink
+		LDA #$04 : STA !SPC1			; power down SFX
+		LDA #$01 : STA !MarioAnim
+		STZ $19
+		LDA #$2F : STA !MarioAnimTimer
+		..noshrink
+		LDA #$F8 : STA !MarioYSpeed
 		STZ !P2FastSwim				;\ end fast swim
 		STZ !P2FastSwimAnim			;/
 		STZ !P2FlareDrill			; end flare drill
 		STZ !P2HangFromLedge			; fall if hanging from ledge
+		RTS
+		..kill
+		LDA #$90
+		STA !MarioYSpeed
+		STA !P2YSpeed
 		RTS
 
 		.Luigi

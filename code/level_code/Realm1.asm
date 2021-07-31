@@ -1889,7 +1889,7 @@ level26:
 		LSR #4					; | BG3 Vscroll = Variable3
 		STA $24					;/
 
-		LDA #$01F8				;\
+		LDA #$01E8				;\
 		LDY #$01				; | Regular exit
 		JML END_Right				;/
 

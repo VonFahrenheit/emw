@@ -397,7 +397,7 @@ print "Level code handler inserted at $", pc, "."
 		LDA #$0020 : STA $4305			; |
 		LDX #$80 : STX $2121			; |
 		LDX #$01 : STX $420B			;/
-		LDX #$80 : STX $2118			; > Setup for Mario GFX upload
+		LDX #$80 : STX $2115			; > Setup for Mario GFX upload
 		LDA !MultiPlayer			;\ Ignore P2 during single player
 		AND #$00FF : BEQ +			;/
 		LDA !Characters				;\
@@ -520,15 +520,15 @@ print "Level code handler inserted at $", pc, "."
 		TAX					; | init time limit (on first sublevel only)
 		LDA.l LevelTimerTable,x			; |
 		INC A					; |
-		STA !TimerSeconds			; |
+		STA !TimerSeconds			;/
+		STZ !TimeElapsed+0			;\
+		STZ !TimeElapsed+1			; | reset time elapsed (on first sublevel only)
 		SEP #$20				;/
 
-		LDA !Characters				;\
-		AND #$0F : TAX				; |
-		LDA .PlayerHP,x : STA !P2HP		; > Reset player HP if it's the first sublevel
-		LDA !Characters				; |
-		LSR #4 : TAX				; |
-		LDA .PlayerHP,x : STA !P2HP-$80		; |
+		LDA #$0F
+		STA !P2HP-$80
+		STA !P2HP
+
 		+					;/
 
 		LDA #$00 : STA !CurrentMario		; > No one plays Mario by default
@@ -568,9 +568,9 @@ print "Level code handler inserted at $", pc, "."
 		.Return
 		PLB
 
+		SEP #$30
+		JSL GAMEMODE14_Camera			; set scroll values for BG2
 		REP #$20
-		SEP #$10
-		JSL read3($048434)			; set scroll values for BG2
 		LDA $20
 		SEC : SBC #$0008
 		STA !BG2ZipColumnY			; store first value
@@ -587,6 +587,19 @@ print "Level code handler inserted at $", pc, "."
 		.SA1
 		PHP						;\ wrapper start
 		PHB : PHK : PLB					;/
+		SEP #$30
+
+		LDA !GameMode					;\
+		CMP #$0B : BCC ..nosave				; | save game when loading a new level (but only in game mode 0x0B and up)
+		JSL !SaveGame					; |
+		..nosave					;/
+
+		STZ !PlayerBonusHP				;\
+		LDA !Difficulty					; |
+		AND #$03 : BNE ..nobonushp			; | +1 max HP on easy
+		LDA #$01 : STA !PlayerBonusHP			; |
+		..nobonushp					;/
+
 		%ReloadOAMData()				; reload
 		REP #$20					; A 16-bit
 		STZ !DynamicTile				; clear dynamic data
@@ -663,8 +676,6 @@ pushpc
 org $048452
 dl LoadPalset	; code pointer, should be read manually
 pullpc
-
-.PlayerHP	db $00,$02,$03,$02,$00,$00		; < Max HP (Mario, Luigi, Kadaal, Leeway, Alter, Peach)
 
 
 .Table

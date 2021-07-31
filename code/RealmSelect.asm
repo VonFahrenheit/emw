@@ -194,16 +194,23 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 	-	STZ !LevelSelectBase,x			; | wipe level select data
 		DEX : BPL -				;/
 
+
+		LDA.b #!SaveGame : STA $3180		;\
+		LDA.b #!SaveGame>>8 : STA $3181		; | call SA-1 to save game when loading realm select
+		LDA.b #!SaveGame>>16 : STA $3182	; |
+		JSR $1E80				;/
+
+
 		; check whether intro level should be loaded!
 		LDA !LevelTable1+$5E : BMI .LoadRealmSelect
 		.LoadIntroLevel
-	;	LDA #$F0 : STA $6DB0
-	;	LDA #$10 : STA !GameMode
-	;	LDA.b #!IntroLevel+$24 : STA $6109	; intro level (translevel num... but only kind of...)
-	;	LDA.b #!IntroLevel>>8 : STA $7F11	; set hi bit of intro level num
-	;	LDA #$5E : STA !Translevel		;
-	;	LDA #$81 : STA $4200			; enable joypad but keep interrupts disabled
-	;	JML ReturnLoad				; return
+		LDA #$F0 : STA $6DB0
+		LDA #$10 : STA !GameMode
+		LDA.b #!IntroLevel+$24 : STA $6109	; intro level (translevel num... but only kind of...)
+		LDA.b #!IntroLevel>>8 : STA $7F11	; set hi bit of intro level num
+		LDA #$5E : STA !Translevel		;
+		LDA #$81 : STA $4200			; enable joypad but keep interrupts disabled
+		JML ReturnLoad				; return
 
 
 
@@ -474,6 +481,7 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 		dw $1869	; first half of BG2 (16 rows)
 		dw $1C69	; second half of BG2(16 rows)
 		dw $009F	; BG1 (invisible)
+
 
 
 	Palette:
@@ -1514,10 +1522,10 @@ endmacro
 		.MarioDyn
 		dw ..End-..Start
 		..Start
-		%CharDyn(!File_Mario, 2, $0E0, $10C)
-		%CharDyn(!File_Mario, 2, $0F0, $11C)
-		%CharDyn(!File_Mario, 2, $004, $10E)
-		%CharDyn(!File_Mario, 2, $014, $11E)
+		%CharDyn(!File_Mario, 2, $000, $10C)
+		%CharDyn(!File_Mario, 2, $010, $11C)
+		%CharDyn(!File_Mario, 2, $020, $10E)
+		%CharDyn(!File_Mario, 2, $030, $11E)
 		..End
 
 

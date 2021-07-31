@@ -6,27 +6,16 @@
 ; TO DO:
 ; TODO:
 ; - PCE
-;	- finally transcribe mario?
 ;	- side exit (remove from layer interaction code?)
-;	- mario powerup anim
 ;	- starman sparkles (Leeway crawl X offset)
-;	- mario tile interaction: continue past level borders
-; - FusionCore
-;	- particles
 ; - generators
 ; - scroll sprites ??
-; - transitions (level -> level and level -> realm)
-; - replace alt palset with light shader
 
 
 
 ; - trim:
 ;	- VR3 OAM handler
 ;	- Fe26 extra hijacks
-;	- PCE extra Mario hijacks
-;	- smooth camera setting
-;	- SP_Patch
-;		- camera hijacks
 
 
 
@@ -299,8 +288,10 @@ namespace GAMEMODE14
 		+
 
 		JSL $158008				; call PCE
+		LDA #$01 : STA !ProcessingSprites	; mark sprites as currently processing
 		JSL $168000				; call Fe26 main loop
 		JSL $148000				; call FusionCore (fusion sprites + particles)
+		LDA #$00 : STA !ProcessingSprites	; mark sprites as no longer processing
 		REP #$20				;\
 		PLA : STA $1C				; | restore BG1 Y
 		SEP #$30				;/

@@ -672,6 +672,7 @@ endmacro
 		%def_file(CaptainWarrior)
 		%def_file(CaptainWarrior_Axe)
 		%def_file(Kingking)
+		%def_file(KingkingDeath)
 		%def_file(LakituLovers)
 		%def_file(LavaLord)
 
@@ -749,6 +750,12 @@ endmacro
 								; all defines have to have their highest bit cleared ($80-$FF -> $00-$7F)
 								; and DP should be set to !BigRAM instead of !BigRAM-$80
 
+		!Timer			= $6F30
+		!TimerFrames		= !Timer		; 8-bit
+		!TimerSeconds		= !Timer+1		; 16-bit
+
+
+
 		!P1CoinIncrease		= $6F34			;\ Write here to increment player coins
 		!P2CoinIncrease		= $6F35			;/
 		!P1Coins		= $6F36			; > 2 bytes, goes to 9999
@@ -757,25 +764,30 @@ endmacro
 		!CoinOwner		= $6F3B			; Indicates who will get the next coin spawned
 								; 0 = Mario, 1 = P1 PCE, 2 = P2 PCE
 
+
+		!TimeElapsed		= $6F3C
+		!TimeElapsedFrames	= !TimeElapsed		; 8-bit
+		!TimeElapsedSeconds	= !TimeElapsed+1	; 8-bit
+		!TimeElapsedMinutes	= !TimeElapsed+2	; 8-bit
+
 		; Coin hoard is with SRAM stuff
 
 		!StatusBar		= $6EF9			; 32 bytes, tile numbers for status bar
-
-		!Timer			= $6F30
-		!TimerFrames		= !Timer		; 8-bit
-		!TimerSeconds		= !Timer+1		; 16-bit
 
 
 
 
 	; --P2 DATA --
+		!PlayerBonusHP		= $786C			; added to !P2MaxHP, calculated from file at level init
+
+
 		!P1Base			= $3600
 		!P2Base			= $3680
 
 		!P2Basics		= !P2Base+$00
-		!P2Physics		= !P2Base+$1E
+		!P2Physics		= !P2Base+$1F
 		!P2Hitbox		= !P2Base+$3F
-		!P2Custom		= !P2Base+$5E
+		!P2Custom		= !P2Base+$5F
 
 
 	; --BASICS--
@@ -814,6 +826,21 @@ endmacro
 		!P2DropDownTimer	= !P2Basics+$1B			; set to 0xA when player pushes down, counts down, when set, player can drop through ledges with down
 		!P2SlopeSpeed		= !P2Basics+$1C			; 00 = use default slope speed limiter, 01+ = do not limit
 		!P2Crush		= !P2Basics+$1D			; if set, player currently has the crushing property of mario's spin jump
+
+		!P2FlashPal		= !P2Basics+$1E
+			; format:
+			;	pppttttt
+			;	p = which flash color to use
+			;		0 = white
+			;		1 = black
+			;		2 = red
+			;		3 = green
+			;		4 = blue
+			;		5 = yellow
+			;		6 = cyan
+			;		7 = purple
+			;	t = timer
+
 
 
 	; --PHYSICS--
@@ -854,26 +881,25 @@ endmacro
 		!P2ExtraBlock		= !P2Physics+$16		; same as blocked, but can be modified externally
 		!P2InAir		= !P2Physics+$17		; 0 = on ground, slope or, platform, 4 = in midair
 		!P2Platform		= !P2Physics+$18		; index (+1) of sprite that player is standing on
-		!P2SpritePlatform	= !P2Physics+$19		; same as platform, can be modified externally
 
-		!P2Slope		= !P2Physics+$1A		; 0 = no slope, 1-4 = slope right, FC-FF = slope left
-		!P2Water		= !P2Physics+$1B		; 0 = not in water, 40 = in water
+		!P2Slope		= !P2Physics+$19		; 0 = no slope, 1-4 = slope right, FC-FF = slope left
+		!P2Water		= !P2Physics+$1A		; 0 = not in water, 40 = in water
 									; bits 0-4 show which parts are in water (same order as !P2Blocked)
 									; usually, bit 4 (10) has to be set for water physics to be used
 
-		!P2CoyoteTime		= !P2Physics+$1C		; coyote time status
+		!P2CoyoteTime		= !P2Physics+$1B		; coyote time status
 			; format:
 			;	j----ttt
 			; every frame, t decrements
 			; when t hits 0, j is cleared
-			; if j i set when the character is on the ground, they will jump and this will be cleared
+			; if j is set when the character is on the ground, they will jump and this will be cleared
 			; if t is nonzero, the character can jump even in midair
 			; when the character is on the ground, t is set to 3
 			; when the character presses jump in midair, j is set and t is set to 3
-		!P2Ducking		= !P2Physics+$1D		; 0 = not ducking, 4 = ducking
-		!P2Climbing		= !P2Physics+$1E		; 0 = not climbing, 1 = climbing
+		!P2Ducking		= !P2Physics+$1C		; 0 = not ducking, 4 = ducking
+		!P2Climbing		= !P2Physics+$1D		; 0 = not climbing, 1 = climbing
 
-		!P2Pipe			= !P2Physics+$1F		; pipe status
+		!P2Pipe			= !P2Physics+$1E		; pipe status
 			; format:
 			;	ddettttt
 			; dd = direction:
@@ -883,7 +909,7 @@ endmacro
 			;	03 (C0) down
 			; e = enter (1) / exit (0)
 			; t = timer (0x00-0x1F) 
-		!P2SlantPipe		= !P2Physics+$20		; timer (decrements) for shooting out of slant pipe
+		!P2SlantPipe		= !P2Physics+$1F		; timer (decrements) for shooting out of slant pipe
 
 
 	; --HITBOXES--
@@ -957,6 +983,7 @@ endmacro
 
 
 	; --SPECIFIC/GENERIC NAMES--
+		!P2Carry		= !P2Custom+$00
 		!P2FusionIndex		= !P2Custom+$03			; index to owned fusion sprite
 		!P2PickUp		= !P2Custom+$05			; timer for picking up an item
 		!P2SpecialUsed		= !P2Custom+$07			; cleared when touching ground or bouncing on enemy
@@ -965,21 +992,27 @@ endmacro
 		!P2TurnTimer		= !P2Custom+$0A			; timer (decrements) for turning around
 
 	; --MARIO--
-		!P2Carry		= !P2Custom+$00
+		;!P2Carry		= !P2Custom+$00
 		!P2FastSwim		= !P2Custom+$01
 		!P2FastSwimAnim		= !P2Custom+$02
 		!P2FlareDrill		= !P2Custom+$03			; doesn't own a fusion sprite (has to search table anyway)
 		!P2Overdrive		= !P2Custom+$04
 		;!P2PickUp		= !P2Custom+$05			; 05
-		!P2FireFlash		= !P2Custom+$06
+		!P2FireFlash		= !P2Custom+$06			; internally controlled frame counter
 		!P2GalaxySpinUsed	= !P2SpecialUsed		; 07
 		;!P2Dashing		= !P2Custom+$08			; 08
 		;!P2KickTimer		= !P2Custom+$09			; 09
 		;!P2TurnTimer		= !P2Custom+$0A			; 0A
 		!P2HangFromLedge	= !P2Custom+$0B
-		!P2FireCharge		= !P2Custom+$0C			; 0 = can't shoot fire, 1 = can shoot fire
-		!P2ClimbDirection	= !P2Custom+$0D
-		!P2ExternalCapeAnim	= !P2Custom+$0E
+		!P2ShrinkTimer		= !P2Custom+$0C			; timer for shrink animation
+		!P2FireCharge		= !P2Custom+$0D			; 0 = can't shoot fire, 1 = can shoot fire
+		!P2ClimbDirection	= !P2Custom+$0E
+		!P2ExternalCapeAnim	= !P2Custom+$0F
+		!P2SpinFlip		= !P2Custom+$10
+
+		!P2BackupTilemap	= !P2Custom+$11			; 16-bit! pointer to mario's tilemap on 30FPS frames
+
+		!MarioFlashPal		= $54
 
 	; --LUIGI--
 		;!P2Carry		= !P2Custom+$00
@@ -994,9 +1027,10 @@ endmacro
 		;!P2KickTimer		= !P2Custom+$09			; 09
 		;!P2TurnTimer		= !P2Custom+$0A			; 0A
 		!P2Sliding		= !P2Custom+$0B			; flag for luigi sliding on slopes
+		;!P2ShrinkTimer		= !P2Custom+$0C			; timer for shrink animation
 
 	; --KADAAL--
-		!P2Punch		= !P2Custom+$00			; timer (decrements) for kadaal's punch
+		;!P2Carry		= !P2Custom+$00
 		!P2Headbutt		= !P2Custom+$01			; timer (decrements) for kadaal's headbutt
 		!P2DashTimerR1		= !P2Custom+$02			;\
 		!P2DashTimerR2		= !P2Custom+$03			; | kadaal's dash timers
@@ -1014,9 +1048,12 @@ endmacro
 		!P2ShellSpeed		= !P2Custom+$0F			; flag that kadaal is going fast enough to maintain shell slide speed in air
 		!P2ShellDrill		= !P2Custom+$10			; flag that kadaal is performing shell drill
 		!P2BackDash		= !P2Custom+$11			; timer (decrements) for kadaal's back dash or perfect pivot
+		!P2Punch		= !P2Custom+$12			; timer (decrements) for kadaal's punch
+		!P2Throw		= !P2Custom+$13			; timer for kadaal's item throw
+
 
 	; --LEEWAY--
-		!P2SwordAttack		= !P2Custom+$00			; which sword attack leeway is performing
+		;!P2Carry		= !P2Custom+$00
 		!P2SwordTimer		= !P2Custom+$01			; timer (decrements) for leeway's current sword attack
 		!P2CrouchTimer		= !P2Custom+$02			; timer (decrements) for leeway going into crawl animation
 		!P2WallJumpInput	= !P2Custom+$03			; while timer is set, these bits are ORA'd to leeway's $6DA3
@@ -1033,7 +1070,7 @@ endmacro
 		!P2Stamina		= !P2Custom+$0E			; resource for leeway's climb and wall jump
 		!LeewayMaxStamina	= #$78
 		!P2JumpCancel		= !P2Custom+$0F			; set when leeway starts a jump, cleared when he lets go of B, which gives him a downward speed boost
-
+		!P2SwordAttack		= !P2Custom+$10			; which sword attack leeway is performing
 
 
 
@@ -1078,8 +1115,8 @@ endmacro
 	%def_anim(Lui_Spin, 4)
 	%def_anim(Lui_SpinEnd, 4)
 	%def_anim(Lui_Flutter, 3)
-	%def_anim(Lui_Hurt, 1)
-	%def_anim(Lui_Shrink, 1)
+	%def_anim(Lui_Hurt, 2)
+	%def_anim(Lui_Shrink, 2)
 	%def_anim(Lui_Dead, 1)
 
 	!Temp = 0
@@ -1101,6 +1138,8 @@ endmacro
 	%def_anim(Kad_Swim, 4)
 	%def_anim(Kad_SenkuSmash, 5)		; change to dropkick
 	%def_anim(Kad_Headbutt, 4)
+	%def_anim(Kad_Carry, 3)
+	%def_anim(Kad_Throw, 1)
 
 
 
@@ -1142,8 +1181,9 @@ endmacro
 		!SaveSharedSize		= $134
 		!SaveINIT		= !SRAM_block+(!SaveFileSize*3)+!SaveSharedSize-4
 		!ChecksumComplement	= $1337
-
 		!SRAM_buffer		= $41BC00		; has to be in same bank as !SRAM_block
+
+
 		!Difficulty		= !SRAM_buffer+$00
 					; -hicrtDD
 					; DD - difficulty setting (00 = EASY, 01 = NORMAL, 02 = INSANE)
@@ -1156,10 +1196,10 @@ endmacro
 		!CoinHoard		= !SRAM_buffer+$01	; 3 bytes, goes up to 999999 ($F423F)
 		!YoshiCoinCount		= !SRAM_buffer+$04
 		!Playtime		= !SRAM_buffer+$06	; 5 bytes (frames, seconds, minutes, hours)
-		!PlayTimeFrames		= !Playtime+0		; 1 byte
-		!PlayTimeSeconds	= !Playtime+1		; 1 byte
-		!PlayTimeMinutes	= !Playtime+2		; 1 byte
-		!PlayTimeHours		= !Playtime+3		; 2 bytes
+		!PlaytimeFrames		= !Playtime+0		; 1 byte
+		!PlaytimeSeconds	= !Playtime+1		; 1 byte
+		!PlaytimeMinutes	= !Playtime+2		; 1 byte
+		!PlaytimeHours		= !Playtime+3		; 2 bytes
 		!Characters		= !SRAM_buffer+$0B
 		!P1DeathCounter		= !SRAM_buffer+$0C	; 2 bytes
 		!P2DeathCounter		= !SRAM_buffer+$0E	; 2 bytes
@@ -1543,16 +1583,16 @@ endmacro
 		!Particle_Prop		= !Particle_Base+$02	; oam +3
 		!Particle_Layer		= !Particle_Base+$03	; determines scrolling
 		!Particle_Timer		= !Particle_Base+$04	; particle despawns when this hits 0 (if this is set to 0 at spawn, particle lasts indefinitely)
-		!Particle_XSub		= !Particle_Base+$05	;\
-		!Particle_XLo		= !Particle_Base+$06	; | 24-bit X coordinate
-		!Particle_XHi		= !Particle_Base+$07	;/
-		!Particle_XSpeed	= !Particle_Base+$08	; 16-bit X speed
-		!Particle_XAcc		= !Particle_Base+$0A	; 8-bit X acceleration (added x16 to speed each frame)
-		!Particle_YSub		= !Particle_Base+$0B	;\
-		!Particle_YLo		= !Particle_Base+$0C	; | 24-bit Y coordinate
-		!Particle_YHi		= !Particle_Base+$0D	;/
-		!Particle_YSpeed	= !Particle_Base+$0E	; 16-bit Y speed
-		!Particle_YAcc		= !Particle_Base+$10	; 8-bit Y acceleration (added x16 to speed each frame)
+		!Particle_XAcc		= !Particle_Base+$05	; 8-bit X acceleration (added x16 to speed each frame)
+		!Particle_XSub		= !Particle_Base+$06	;\
+		!Particle_XLo		= !Particle_Base+$07	; | 24-bit X coordinate
+		!Particle_XHi		= !Particle_Base+$08	;/
+		!Particle_XSpeed	= !Particle_Base+$09	; 16-bit X speed
+		!Particle_YAcc		= !Particle_Base+$0B	; 8-bit Y acceleration (added x16 to speed each frame)
+		!Particle_YSub		= !Particle_Base+$0C	;\
+		!Particle_YLo		= !Particle_Base+$0D	; | 24-bit Y coordinate
+		!Particle_YHi		= !Particle_Base+$0E	;/
+		!Particle_YSpeed	= !Particle_Base+$0F	; 16-bit Y speed
 
 		; bank 41 mirrors
 		!41_Particle_Type	= $410000+!Particle_Type
@@ -1604,6 +1644,7 @@ endmacro
 	%def_particle_simple(smoke8x8)
 	%def_particle_simple(smoke16x16)
 	%def_particle_simple(contact)
+	%def_particle_simple(contactbig)
 	%def_particle_simple(spritepart)
 
 
@@ -2271,7 +2312,7 @@ endmacro
 
 		!LevelTable1		= $7EA2		; BCH54321 (beaten, checkpoint flag, checkpoint level number hi bit, yoshi coins 1-5)
 		!LevelTable2		= $6A60		; cccccccc (checkpoint level number lo byte)
-		!LevelTable3		= $6120		; Rrrrrrrr (rank attained (0 = no 1 = yes), rank score (0-100))
+		!LevelTable3		= $6120		; --ffffff (best time frames (0-59))
 		!LevelTable4		= $7938		; U-ssssss (unlock (0 = locked, 1 = unlocked), best time seconds (0-59))
 		!LevelTable5		= $7F49		; --mmmmmm (best time minutes (0-63))
 
@@ -2335,6 +2376,7 @@ endmacro
 
 		!LoadPalset		= $048452		; pointer to LoadPalset routine, must be manually read to be accessed (this is to avoid repatch problems)
 
+		!SaveGame		= $009BC9		; rerouted to new code
 
 	macro CallMSG()
 		JSL read3($00A1DF+1)+4

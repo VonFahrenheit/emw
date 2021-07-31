@@ -19,8 +19,6 @@ pushpc
 org $04842E		; 048431 is taken by SP_Level
 dl GENERATE_BLOCK
 
-org $048434
-dl SCROLL_OPTIONS_Main	; JSL read3($048334) will instantly scroll layer 2 and execute the HDMA code
 
 ; 048437	;\
 ; 04843A	; | used by Fe26
@@ -1139,27 +1137,29 @@ GET_PARTICLE_INDEX:
 ; bit 01 set: hurt player 1
 ; bit 02 set: hurt player 2
 ; (both can be set to hurt both players at once)
-HurtPlayers:	LDY #$00				; > index 0
-		LSR A : BCC +
-		PHA
-		LDA !CurrentMario
-		CMP #$01 : BNE ++
-		LDA $7497 : BNE +++
-		JSR HurtP1_Mario			; > hurt Mario (P1, Y is already 0x00)
-		BRA +++
-	++	JSR HurtP1
-	+++	PLA
-	+	LSR A : BCC HurtP1_Return
-		LDA !CurrentMario
-		CMP #$02 : BNE HurtP2
-		LDA $7497 : BNE HurtP1_Return
-		LDY #$80 : JMP HurtP1_Mario		; > hurt Mario (P2)
 
+
+	HurtPlayers:
+		LSR A : BCC .P2
+	.P1	PHA
+		LDY #$00
+		JSR HurtP1
+		PLA
+	.P2	LSR A : BCC HurtP1_Return
 
 HurtP2:		LDY #$80				; > P2 index
 HurtP1:		LDA !P2Invinc-$80,y			;\
 		ORA !StarTimer				; | don't hurt player while star is active or player is invulnerable
 		BNE .Return				;/
+
+		LDA !Difficulty				;\
+		AND #$10 : BEQ .NotCrit			; | critical mode sets HP to 1 when player gets hit
+		LDA #$01 : STA !P2HP-$80,y		; |
+		.NotCrit				;/
+
+		LDA #$F8 : STA !P2YSpeed-$80,y		; give player some Y speed
+		LDA #$20 : STA !SPC1			; play Yoshi "OW" SFX
+		LDA #$80 : STA !P2Invinc-$80,y		; set invincibility timer
 
 		LDA !P2Character-$80,y			;\
 		ASL A					; |
@@ -1171,16 +1171,7 @@ HurtP1:		LDA !P2Invinc-$80,y			;\
 		JSR (.Ptr,x)				; |
 		PLX					;/
 
-
 		LDA #$0F : STA !P2HurtTimer-$80,y	; set hurt animation timer
-
-		LDA !Difficulty				;\ critical mode
-		AND #$10 : BNE .Kill			;/
-
-		LDA #$F8 : STA !P2YSpeed-$80,y		; give player some Y speed
-		LDA #$20 : STA !SPC1			; play Yoshi "OW" SFX
-		LDA #$80 : STA !P2Invinc-$80,y		; set invincibility timer
-
 		LDA !P2HP-$80,y				;\
 		DEC A					; |
 		STA !P2HP-$80,y				; | decrement HP and kill player 2 if zero
@@ -1203,15 +1194,26 @@ HurtP1:		LDA !P2Invinc-$80,y			;\
 		..End
 
 		.Mario
-		LDA $19					;\
-		BEQ $02 : LDA #$01			; | mario HP
-		STA !P2HP-$80,y				;/
+		LDA !P2HP-$80,y
+		CMP #$01 : BEQ ..kill
+		CMP #$02 : BNE ..noshrink
+		LDA #$04 : STA !SPC1			; power down SFX
+		LDA #$01 : STA !MarioAnim
+		STZ $19
+		LDA #$2F : STA !MarioAnimTimer
+		..noshrink
+		LDA #$F8 : STA !MarioYSpeed
+		LDA !P2Invinc-$80,y : STA !MarioFlashTimer
 		LDA #$00				; A = 0x00
 		STA !P2FastSwim-$80,y			;\ end fast swim
 		STA !P2FastSwimAnim-$80,y		;/
 		STA !P2FlareDrill-$80,y			; end flare drill
 		STA !P2HangFromLedge-$80,y		; fall if hanging from ledge
-		JSL !HurtMario				; hurt mario
+		RTS
+		..kill
+		LDA #$90
+		STA !MarioYSpeed
+		STA !P2YSpeed-$80,y
 		RTS
 
 		.Luigi
@@ -1697,6 +1699,7 @@ HSLtoRGB:
 		ASL #5						; |
 		ORA $00						; |
 		STA !PaletteBuffer,x				;/
+		STA !PaletteCacheRGB,x				;/
 		STA !ShaderInput,x
 		PLX
 
@@ -3327,633 +3330,6 @@ FIX_MIDWAY:
 
 
 
-;======================;
-;SCROLL OPTIONS ROUTINE;
-;======================;
-
-
-; don't restore the other ones, they set up the camera and Mario's position and stuff
-
-	pushpc
-	org $00F70D
-	;	LDA #$00C0			;\ restore SMW code from LM3
-	;	JSR $F7F4			;/
-
-	org $00F77B
-		SEC : SBC $742C,y		; restore SMW code from LM3
-
-
-	org $00F79D
-		; this is my hijack :)
-
-	org $00F871
-	;	LDY #$04			;\ restore SMW code from LM3
-	;	BRA $0C				;/
-
-	org $05DA17
-	;	SEP #$30			;\ restore SMW code from LM3
-	;	LDA !Translevel			;/
-	pullpc
-
-SCROLL_OPTIONS:
-
-
-; this routine is called once at level load (game mode == 0x11) to set initial screen coordinates
-; if I just rewrite those I can decide where the camera ends up
-; when this routine is called in this way, !Level is already set properly so I do know where I'm going
-
-
-; culprit: $80C426 (probably a LM routine)
-
-; LM table:
-; $832C		00
-; $832A		01
-; $8329		02
-; $8325		03
-; $8328		04
-; $8327		05
-; $8326		06
-; $8324		07
-
-; $833E		00
-; $8338		01
-; $8337		02
-; $8333		03
-; $8336		04
-; $8335		05
-; $8334		06
-; $8332		07
-
-; $FFFF
-
-
-
-		LDX !GameMode					;\
-		CPX #$11 : BNE .NoInit				; |
-		PHP						; |
-		SEP #$20					; |
-		LDX !Level					; |
-		LDA.l .LevelTable,x				; |
-		LDX !Level+1					; |
-		AND.l .LevelSwitch,x				; |
-		BEQ .NormalCoords				; | game mode 0x11 = INIT camera
-		CMP #$10 : BCC +				; |
-		LSR #4						; |
-	+	DEC A						; |
-		ASL A						; |
-		CMP.b #.CoordsEnd-.CoordsPtr			; |
-		BCS .NormalCoords				; |
-		TAX						; |
-		JSR (.CoordsPtr,x)				; |
-	.NormalCoords						; |
-		PLP						; |
-		JML $00F7C2					;/
-
-	.NoInit	CPX #$14 : BNE .NoBox				; if not game mode 0x14, no camera box
-
-		.Expand						;\
-		LDY #$01					; |
-	-	LDX !CameraForceTimer,y : BEQ .NextForce	; |
-		DEX						; |
-		TXA						; |
-		SEP #$20					; |
-		STA !CameraForceTimer,y				; |
-		REP #$20					; |
-		LDX !CameraForceDir,y				; |
-		PHY						; |
-		LDY #$00					; |
-		TXA						; |
-		AND #$0002					; | apply forced camera movement
-		BNE $02 : LDY #$02				; |
-		STY $55						; |
-		PLY						; |
-		LDA !CameraBackupX				; |
-		CLC : ADC.l .ForceTableX,x			; |
-		AND #$FFF8					; |
-		STA $1A						; |
-		LDA !CameraBackupY				; |
-		CLC : ADC.l .ForceTableY,x			; |
-		AND #$FFF8					; |
-		STA $1C						; |
-		JMP .CameraBackup				; |
-.NextForce	DEY : BPL -					;/
-
-		BIT !CameraBoxU : BMI .NoBox			;\
-		LDA.w #.SA1 : STA $3180				; |
-		LDA.w #.SA1>>8 : STA $3181			; |
-		PHP						; | if camera box is enabled, have SA-1 run that code then jump to backup
-		SEP #$20					; | otherwise run the no box code
-		JSR $1E80					; |
-		PLP						; |
-		JMP .CameraBackup				;/
-
-		.NoBox
-		LDX !SmoothCamera : BEQ .CameraBackup		; > see if smooth cam is enabled
-		PHB : PHK : PLB					;\
-		STZ $00						; |
-		LDX $5D						; |
-		DEX						; |
-		STX $01						; |
-		LDA !LevelHeight				; |
-		SEC : SBC #$00E0				; |
-		STA $02						; |
-		LDA !P2XPosLo-$80				; |
-		CLC : ADC !P2XPosLo				; |
-		LSR A						; |
-		SEC : SBC #$0080				; |
-		BPL $03 : LDA #$0000				; |
-		CMP $00						; |
-		BCC $02 : LDA $00				; |
-		STA $1A						; |
-		LDY !EnableVScroll : BEQ +			; |
-		LDA !P2YPosLo-$80				; |
-		CLC : ADC !P2YPosLo				; | smooth cam logic
-		BPL $03 : LDA #$0000				; |
-		LSR A						; |
-		SEC : SBC #$0070				; |
-		BPL $03 : LDA #$0000				; |
-		CMP $02						; |
-		BCC $02 : LDA $02				; |
-		STA $1C						; |
-	+	LDX #$02					; |
-	-	LDA !CameraBackupX,x				; |
-		CMP $1A,x : BEQ +				; |
-		LDY #$00					; |
-		BCC $02 : LDY #$02				; |
-		CLC : ADC.w .SmoothSpeed,y			; |
-		STA $00						; |
-		LDA !CameraBackupX,x				; |
-		SEC : SBC $1A,x					; |
-		BPL $04 : EOR #$FFFF : INC A			; |
-		CMP #$0006 : BCC +				; |
-		LDA $00 : STA $1A,x				; |
-	+	DEX #2 : BPL -					; |
-		PLB						;/
-
-		.CameraBackup
-		LDA !CameraBackupX : STA !BG1ZipRowX		;\
-		LDA !CameraBackupY : STA !BG1ZipRowY		; | coordinates from previous frame
-		LDA $1E : STA !BG2ZipRowX			; | (used for updating tilemap)
-		LDA $20 : STA !BG2ZipRowY			;/
-		LDA $1A : STA !CameraBackupX			;\ backup for next frame
-		LDA $1C : STA !CameraBackupY			;/
-
-		JSL .Main
-
-		LDA.l !HDMAptr+0 : BEQ .Return			;\
-		STA $00						; |
-		LDA.l !HDMAptr+1				; |
-		STA $01						; | Execute HDMA code
-		PEA $0000 : PLB					; |
-		PEA $F7C2-1					; |
-		JML [$3000]					;/
-
-	.Return	JML $00F7C2
-
-
-	.ForceTableY
-		dw $0000,$0000
-	.ForceTableX
-		dw $0008,$FFF8,$0000,$0000
-
-	.SmoothSpeed
-		dw $0006,$FFFA
-
-	.CameraOffset
-		dw $0100,$00E0
-	.CameraCenter
-		dw $0080,$0070
-
-
-		.SA1
-		PHB : PHK : PLB
-		PHP
-		SEP #$10
-		REP #$20
-
-		JSR .Aim					; get camera target
-		JSR .Forbiddance				; apply forbiddance box
-		JSR .Process					; process movement
-
-		LDX #$02					;\
-	-	LDY #$00					; |
-		LDA $1A,x					; |
-		CMP !CameraBackupX,x : BEQ +			; | special backup for camera box
-		BCC $02 : LDY #$02				; |
-		STY $55						; |
-	+	DEX #2 : BPL -					;/
-
-		LDA !CameraBoxL					;\
-		SEC : SBC #$0020				; |
-		STA $04						; |
-		LDA !CameraBoxR					; |
-		CLC : ADC #$0110				; |
-		STA $06						; | coords from box borders
-		LDA !CameraBoxU					; |
-		SEC : SBC #$0020				; |
-		STA $08						; |
-		LDA !CameraBoxD					; |
-		CLC : ADC #$00F0				; |
-		STA $0A						;/
-
-		LDX #$0F					;\
-	-	LDY $3230,x : BNE $03 : JMP .Next		; |
-		LDA $3470,x					; |
-		ORA #$0004					; |
-		STA $3470,x					; |
-		LDY !CameraForceTimer : BNE .Freeze		; |
-		LDY $3220,x : STY $00				; | search for sprites to interact with
-		LDY $3250,x : STY $01				; |
-		LDY $3210,x : STY $02				; |
-		LDY $3240,x : STY $03				; |
-		LDA $00						; |
-		SEC : SBC $04					; |
-		BPL .CheckR					; |
-		CMP #$FF00 : BCC .Delete			; |
-		CMP #$FFE0 : BCC .Freeze			;/
-
-	.Delete	LDA $3230,x					;\
-		AND #$FF00					; |
-		STA $3230,x					; |
-		LDY $33F0,x					; |
-		CPY #$FF : BEQ .Next				; |
-		PHX						; |
-		TYX						; | delete sprite
-		LDA $418A00,x					; |
-		AND #$00FF					; |
-		CMP #$00EE : BEQ +				; |
-		LDA $418A00,x					; |
-		AND #$FF00					; |
-		STA $418A00,x					; |
-	+	PLX						; |
-		BRA .Next					;/
-
-	.CheckR	LDA $00						;\
-		SEC : SBC $06					; |
-		BMI .GoodX					; | see if fully outside
-		CMP #$0020 : BCC .Delete			; |
-		CMP #$0100 : BCS .Delete			;/
-
-	.Freeze	LDA !SpriteStasis,x				;\
-		ORA #$0002					; | freeze sprite
-		STA !SpriteStasis,x				; |
-		BRA .Next					;/
-
-	.GoodX	LDA $02						;\
-		CMP $08 : BMI .Freeze				; | see if sprite should freeze
-		CMP $0A : BPL .Freeze				;/
-	.Next	DEX : BMI $03 : JMP -				; > next sprite
-
-		PLP						; return
-		PLB
-		RTL
-
-
-		.Aim
-		LDA !P2XPosLo-$80				;\
-		CLC : ADC !P2XPosLo				; |
-		LSR A						; |
-		SEC : SBC #$0080				; |
-		CMP #$4000					; |
-		BCC $03 : LDA #$0000				; |
-		STA $1A						; |
-		LDA !P2YPosLo-$80				; | logic for finding camera target
-		CLC : ADC !P2YPosLo				; |
-		LSR A						; |
-		SEC : SBC #$0070				; |
-		CMP #$4000					; |
-		BCC $03 : LDA #$0000				; |
-		STA $1C						; |
-		RTS						;/
-
-		.Process
-		LDX #$02
-	-	LDA $1A,x
-		CMP !CameraBoxL,x : BCS +
-		LDA !CameraBoxL,x : STA $1A,x
-		BRA ++
-	+	CMP !CameraBoxR,x : BCC ++ : BEQ ++
-		LDA !CameraBoxR,x : STA $1A,x
-	++	LDA !CameraBackupX,x				; apply smooth camera
-		CMP $1A,x : BEQ +
-		LDY #$00
-		BCC $02 : LDY #$02
-		CLC : ADC.w .SmoothSpeed,y
-		STA $00
-		LDA !CameraBackupX,x
-		SEC : SBC $1A,x
-		BPL $04 : EOR #$FFFF : INC A
-		CMP #$0006 : BCC +
-		LDA $00 : STA $1A,x
-	;	TXA
-	;	EOR #$0002
-	;	TAX
-	;	LDA !CameraBackupX,x : STA $1A,x
-	;	BRA .Absolute
-	+	DEX #2 : BPL -
-	..R	RTS
-
-
-		.Absolute
-		LDA $1A,x
-		CMP !CameraBoxL,x : BCS +
-		LDA !CameraBoxL,x : STA $1A,x
-		RTS
-	+	CMP !CameraBoxR,x : BCC + : BEQ +
-		LDA !CameraBoxR,x : STA $1A,x
-	+	RTS
-
-
-		.Forbiddance
-		LDX !CameraForbiddance
-		CPX #$FF : BEQ .Process_R
-		LDA !CameraForbiddance
-		AND #$003F
-		TAX
-
-		LDA !CameraBoxU : STA $0A	; forbiddance top border start
-		LDA !CameraBoxL
-	-	CPX #$00 : BEQ +
-		DEX
-		CLC : ADC #$0100
-		STA $08
-		CMP !CameraBoxR : BCC - : BEQ -
-		LDA $0A
-		CLC : ADC #$00E0
-		STA $0A				; forbiddance top border
-		LDA !CameraBoxL
-		BRA -
-
-	+	STA $08				; forbiddance left border
-		LDA !CameraForbiddance
-		ASL #2
-		AND #$1F00
-		CLC : ADC $08
-		CLC : ADC #$0100
-		STA $0C				; forbiddance right border
-		LDA !CameraForbiddance
-		AND #$F800
-		LSR #3
-		PHA
-		LSR #3
-		STA $0E
-		PLA
-		SEC : SBC $0E
-		CLC : ADC $0A
-		CLC : ADC #$00E0
-		STA $0E				; forbiddance bottom border
-
-
-		LDA $1A
-		CMP $0C : BCS .NoForbid
-		ADC #$0100
-		CMP $08 : BCC .NoForbid
-		LDA $1C
-		CMP $0E : BCS .NoForbid
-		ADC #$00E0
-		CMP $0A : BCC .NoForbid
-
-
-		LDX #$02
-	-	LDA $08,x
-		CLC : ADC $0C,x
-		LSR A
-		STA !BigRAM+0
-		LDA $1A,x
-		CLC : ADC .CameraCenter,x
-		CMP !BigRAM+0
-		BCS ..RD
-	..LU	LDA $08,x : STA $00,x
-		SEC : SBC .CameraOffset,x
-		BRA +
-	..RD	LDA $0C,x : STA $00,x
-	+	SEC : SBC $1A,x
-		BPL $04 : EOR #$FFFF : INC A
-		STA $04,x
-		DEX #2 : BPL -
-
-
-		LDX #$00
-		LDA $04
-		CMP $06
-		BCC $02 : LDX #$02
-		LDA $00,x
-		CMP !CameraBoxL,x : BNE +
-		TXA
-		EOR #$0002
-		TAX
-		LDA $00,x
-	+	CMP $08,x : BNE +
-		SEC : SBC .CameraOffset,x
-		BPL $03 : LDA #$0000
-	+	STA $1A,x
-
-		.NoForbid
-		RTS
-
-
-
-		.Main
-		LDA !BG2ModeH			;\
-		ASL A				; | X = pointer index
-		TAX				;/
-		BNE .ProcessHorz		;\ 0%
-		STZ $1E				;/
-
-		.ProcessHorz
-		LDA $1A				; > A = BG1 HScroll
-		JMP (.HPtr,x)			; > Execute pointer
-
-		.HPtr
-		dw .NoHorz			; 0 - 0%
-		dw .ConstantHorz		; 1 - 100%
-		dw .VariableHorz		; 2 - 50%
-		dw .SlowHorz			; 3 - 6.25%
-		dw .Variable2Horz		; 4 - 25%
-		dw .Variable3Horz		; 5 - 12.5%
-		dw .CloseHorz			; 6 - 87.5%
-		dw .Close2Horz			; 7 - 75%
-		dw .CloseHalfHorz		; 8 - 43.75%
-		dw .Close2HalfHorz		; 9 - 37.5%
-		dw .40PercentHorz		; A - 40%
-		dw .DoubleHorz			; B - 200%
-
-.DoubleHorz	ASL A
-		BRA .ConstantHorz
-.40PercentHorz	ASL #2
-		STA $4204
-		LDX #$0A
-		STX $4206
-		JSR .GetDiv
-		LDA $4216
-		CMP #$0005
-		LDA $4214
-		ADC #$0000
-		BRA .ConstantHorz
-.CloseHalfHorz	LSR A
-.Close2HalfHorz	LSR #2
-		SEC : SBC $1A
-		EOR #$FFFF
-		INC A
-		LSR A
-		BRA .ConstantHorz
-.CloseHorz	LSR A
-.Close2Horz	LSR #2
-		SEC : SBC $1A
-		EOR #$FFFF
-		INC A
-		BRA .ConstantHorz
-.SlowHorz	LSR A
-.Variable3Horz	LSR A
-.Variable2Horz	LSR A
-.VariableHorz	LSR A
-.ConstantHorz	STA $1E
-.NoHorz		LDA !BG2ModeV
-		ASL A
-		TAX
-		BNE .ProcessVert		;\ 0%
-		STZ $20				;/
-
-		.ProcessVert
-		LDA $1C
-		JMP (.VPtr,x)
-
-		.VPtr
-		dw .NoVert			; 0 - 0%
-		dw .ConstantVert		; 1 - 100%
-		dw .VariableVert		; 2 - 50%
-		dw .SlowVert			; 3 - 6.25%
-		dw .Variable2Vert		; 4 - 25%
-		dw .Variable3Vert		; 5 - 12.5%
-		dw .CloseVert			; 6 - 87.5%
-		dw .Close2Vert			; 7 - 75%
-		dw .CloseHalfVert		; 8 - 43.75%
-		dw .Close2HalfVert		; 9 - 37.5%
-		dw .40PercentVert		; A - 40%
-		dw .DoubleVert			; B - 200%
-
-.DoubleVert	ASL A
-		BRA .ConstantVert
-.40PercentVert	ASL #2
-		STA $4204
-		LDX #$0A
-		STX $4206
-		JSR .GetDiv
-		LDA $4216
-		CMP #$0005
-		LDA $4214
-		ADC #$0000
-		BRA .ConstantVert
-.CloseHalfVert	LSR A
-.Close2HalfVert	LSR #2
-		SEC : SBC $1C
-		EOR #$FFFF
-		INC A
-		LSR A
-		BRA .ConstantVert
-.CloseVert	LSR A
-.Close2Vert	LSR #2
-		SEC : SBC $1C
-		EOR #$FFFF
-		INC A
-		BRA .ConstantVert
-.SlowVert	LSR A
-.Variable3Vert	LSR A
-.Variable2Vert	LSR A
-.VariableVert	LSR A
-.ConstantVert	CLC : ADC !BG2BaseV		;\ Add temporary BG2 VScroll and write
-		STA $20				;/
-		RTL
-
-.NoVert		LDA !BG2BaseV
-		STA $20
-		RTL
-
-.GetDiv		NOP #2
-		RTS
-
-
-; honestly i don't really know what this is...
-; some way of setting camera coords on level init?
-
-; lo nybble is used by levels 0x000-0x0FF, hi nybble is used by levels 0x100-0x1FF
-; 0 means it's unused, so just use normal coords
-; any other number is treated as an index to the coordinate routine pointer table
-
-.LevelTable	db $00,$00,$00,$00,$00,$00,$00,$00		; 00-07
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 08-0F
-		db $00,$00,$00,$00,$01,$00,$00,$00		; 10-17
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 18-1F
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 20-27
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 28-2F
-		db $00,$00,$00,$00,$01,$00,$00,$00		; 30-37
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 38-3F
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 40-47
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 48-4F
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 50-57
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 58-5F
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 60-67
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 68-6F
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 70-77
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 78-7F
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 80-87
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 88-8F
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 90-97
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 98-9F
-		db $00,$00,$00,$00,$00,$00,$00,$00		; A0-A7
-		db $00,$00,$00,$00,$00,$00,$00,$00		; A8-AF
-		db $00,$00,$00,$00,$00,$00,$00,$00		; B0-B7
-		db $00,$00,$00,$00,$00,$00,$00,$00		; B8-BF
-		db $00,$00,$00,$00,$00,$00,$00,$00		; C0-C7
-		db $00,$00,$00,$00,$00,$00,$00,$00		; C8-CF
-		db $00,$00,$00,$00,$00,$00,$00,$00		; D0-D7
-		db $00,$00,$00,$00,$00,$00,$00,$00		; D8-DF
-		db $00,$00,$00,$00,$00,$00,$00,$00		; E0-E7
-		db $00,$00,$00,$00,$00,$00,$00,$00		; E8-EF
-		db $00,$00,$00,$00,$00,$00,$00,$00		; F0-F7
-		db $00,$00,$00,$00,$00,$00,$00,$00		; F8-FF
-
-
-.LevelSwitch	db $0F,$F0
-
-
-	; this is entered with all regs 8-bit
-	; PLP is used at return, so no need to bother keeping track of P
-
-
-	.CoordsPtr
-	dw .Coords1
-	.CoordsEnd
-
-
-	.Coords1
-		STZ $1A
-		REP #$20
-		LDX #$00
-		LDA $1C
-	-	CMP #$00E0 : BCC ..Yes
-		INX #2
-		SBC #$00E0
-		BRA -
-
-	..Yes	CMP #$0070
-		BCC $02 : INX #2
-		LDA.l ..Y,x : STA $1C
-		LDX #$02
-	-	LDA $1A,x
-		STA !CameraBackupX,x
-		STA !CameraBoxL,x
-		STA $7462,x
-		INC A
-		STA !CameraBoxR,x
-		DEX #2
-		BPL -
-		RTS
-
-	..Y	dw $0000,$00E0,$01C0,$02A0
-		dw $0380,$0460,$0540,$0620
-
-
 ;==========;
 ;1-UP BLOCK;
 ;==========;
@@ -5127,8 +4503,9 @@ org $00F545
 org $00F60C
 	NOP : NOP : NOP			; Source : STA $1DFB
 
-org $00F79D
-	JML SCROLL_OPTIONS		; Source: LDY $1413 : BEQ $08 (00F7AA)
+
+;org $00F79D
+;	JML SCROLL_OPTIONS		; Source: LDY $1413 : BEQ $08 (00F7AA)
 
 org $01C39D
 	db $20				; Priority set by powerups

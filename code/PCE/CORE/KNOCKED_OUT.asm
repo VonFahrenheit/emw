@@ -18,7 +18,7 @@ KNOCKED_OUT:
 		STZ !P2Blocked
 		STZ !P2ExtraBlock
 		STZ !P2Platform
-		STZ !P2SpritePlatform
+		STZ !P2FlashPal
 		LDA #$03 : STA !P2Gravity
 		LDA #$46 : STA !P2FallSpeed
 		JSL CORE_UPDATE_SPEED

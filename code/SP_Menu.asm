@@ -365,8 +365,19 @@ print "-- SP_MENU --"
 
 		LDA !TimerSeconds+1 : BMI .NoTimer	; don't process if negative
 
+		INC !TimeElapsedFrames			; 1 more frame has passed
 		DEC !TimerFrames : BNE .DrawTimer	;\ timer (frames per second)
 		LDA.b #60 : STA !TimerFrames		;/
+		STZ !TimeElapsedFrames			;\
+		LDA !TimeElapsedSeconds			; |
+		INC A					; |
+		CMP #60					; |
+		BCC $02 : LDA #$00			; | on a new second tick, clear frames elapsed and tick up seconds/minutes
+		STA !TimeElapsedSeconds			; |
+		BNE .UpCountDone			; |
+		INC !TimeElapsedMinutes			; |
+		.UpCountDone				;/
+
 		REP #$20				;\
 		LDA !TimerSeconds			; |
 		CMP.w #100 : BNE +			; |
@@ -471,54 +482,46 @@ print "-- SP_MENU --"
 
 		LDA !MultiPlayer : BNE .Player1HP	;\
 		LDA #$FC				; |
-		STA !StatusBar+$1B			; | Wipe player 2 coin counter during singleplayer
+		STA !StatusBar+$1B			; | Wwpe player 2 coin counter during singleplayer
 		STA !StatusBar+$1C			; |
 		STA !StatusBar+$1D			; |
 		STA !StatusBar+$1E			; |
 		STA !StatusBar+$1F			;/
 
-.Player1HP	LDA !P2Status-$80			;\ Don't write player 1 HP if player 1 is dead
-		BNE .Player2HP				;/
+.Player1HP	LDA !P2Status-$80 : BNE .Player2HP	; don't write player 1 HP if player 1 is dead
+
+		LDA !Difficulty				;\
+		AND #$10 : BEQ ..notcrit		; |
+		LDA #$0F : STA !StatusBar+$07		; | skull icon on critical mode
+		BRA .Player2HP				; |
+		..notcrit				;/
 		LDX !P2HP-$80				;\
 		CPX !P2MaxHP-$80			; |
 		BCC $03 : LDX !P2MaxHP-$80		; |
-		BEQ .Player2HP				; |
+		BEQ .Player2HP				; | write player 1 HP
 		DEX					; |
-		LDA #$0A				; | Write player 1 HP
+		LDA #$0A				; |
 	-	STA !StatusBar+$06,x			; |
-		DEX					; |
-		BPL -					;/
-.Player2HP	LDA !P2Status				;\ Don't write player 2 HP if player 2 is dead
-		BNE .MarioCheck				;/
+		DEX : BPL -				;/
+
+.Player2HP	LDA !P2Status : BNE .Return		; don't write player 2 HP if player 2 is dead
+		LDA !Difficulty				;\
+		AND #$10 : BEQ ..notcrit		; |
+		LDA #$0F : STA !StatusBar+$18		; | skull icon on critical mode
+		BRA .Return				; |
+		..notcrit				;/
 		LDX !P2HP				;\
 		CPX !P2MaxHP				; |
 		BCC $03 : LDX !P2MaxHP			; |
-		BEQ .MarioCheck				; |
+		BEQ .Return				; | write player 2 HP
 		DEX					; |
-		LDA #$0A				; | Write player 2 HP
+		LDA #$0A				; |
 	-	STA !StatusBar+$17,x			; |
-		DEX					; |
-		BPL -					;/	
-.MarioCheck	LDA !CurrentMario : BEQ .Return		; > If no one is playing Mario, return
-		TAY					;\ X = Index to status bar
-		LDX.w .MarioIndex-1,y			;/
-		LDY $6DC2				;\ Load Mario's item
-		LDA.w .MarioItem,y			;/
-		STA !StatusBar,x			; > Write to status bar
+		DEX : BPL -				;/	
 .Return		RTS					; > Return
 
 
-.MarioIndex	db $07,$18				; > Mario's index to status bar
-.MarioItem	db $FC,$0D,$0E,$0F,$FC			; Nothing, mushroom, flower, star, feather (nothing)
-
-
-.ScoreData	db $01,$00,$A0,$86,$00,$00,$10,$27
-		db $00,$00,$E8,$03,$00,$00,$64,$00
-		db $00,$00,$0A,$00,$00,$00,$01,$00
-
 .YoshiCoinGFX:	db $0C,$0B				; Not collected, collected
-
-;.1UpLimit	db $09,$04,$02
 
 	Thousands:
 		LDX #$00
@@ -560,7 +563,7 @@ warnpc $009045
 		NOP					;/ (all it does is decompress GFX32/33 and store them to RAM)
 
 	org $00905B
-		SBC.w STATUS_BAR_ScoreData+$02,y	; Fix this offset
+	;	SBC.w STATUS_BAR_ScoreData+$02,y	; Fix this offset
 
 	org $00940F					; Hijack Game Mode 01 routine
 	;	JML INIT				;\ Source: DEC $1DF5 : BNE $06 ($00941A)
@@ -625,36 +628,90 @@ warnpc $009045
 ;=======================;
 
 	org $00F37A					; Code that updates number of Yoshi Coins collected
-		JSL YOSHI_COIN				; Source: INC $1420 : CLC
+	;	JSL YOSHI_COIN				; Source: INC $1420 : CLC
 
 	org $00F5F8
-		BRA $02 : NOP #2			; prevent item in item box from automatically falling
+	;	BRA $02 : NOP #2			; prevent item in item box from automatically falling
 
 	org $00F620
-		STZ $9D					; prevent game from pausing when Mario gets hurt
+	;	STZ $9D					; prevent game from pausing when Mario gets hurt
 
 	org $01C563
-		INC $19					; remove grow animation
+	;	INC $19					; remove grow animation
+
+
+	org $01C538
+	GivePowerup:
+		STZ $3230,x				; despawn sprite
+		LDY #$0A : STY !SPC1			;\ powerup SFX
+		LDY #$0B : STY !SPC4			;/
+		CMP #$76 : BEQ .Star			; star
+		CMP #$78 : BEQ .GoldShroom		; gold shroom
+		CMP #$7F : BEQ .GoldShroom		; winged gold shroom
+
+		.Mushroom				;\
+		PHX					; |
+		LDA !CurrentMario : BEQ ..return	; |
+		DEC A					; |
+		LSR A					; |
+		ROR A					; |
+		TAX					; | mario pal flash + heal
+		LDA #$14 : STA !P2FlashPal-$80,x	; |
+		LDA !P2HP-$80,x				; |
+		CMP !P2MaxHP-$80,x : BCS ..return	; |
+		INC !P2HP-$80,x				; |
+		..return				; |
+		PLX					; |
+		RTS					;/
+
+		.GoldShroom				;\
+		PHX					; |
+		LDA !CurrentMario : BEQ ..return	; |
+		DEC A					; |
+		TAX					; |
+		LDA !P1CoinIncrease,x			; |
+		CLC : ADC #$64				; |
+		STA !P1CoinIncrease,x			; |
+		LDA !CurrentMario			; |
+		DEC A					; | 100 coins + full heal + pal flash
+		LSR A					; |
+		ROL A					; |
+		TAX					; |
+		LDA !P2MaxHP-$80,x : STA !P2HP-$80,x	; |
+		LDA #$14 : STA !P2FlashPal-$80,x	; |
+		..return				; |
+		PLX					; |
+		RTS					;/
+
+		.Star					;\
+		LDA #$FF : STA !StarTimer		; | set star timer
+		RTS					;/
+
+
+	warnpc $01C609
+
 
 	org $01C565
-		JSL MarioMushAnim
-		NOP
+	;	JSL MarioMushAnim
+	;	NOP
 
 	org $01C5A3
-		BRA $02 : NOP #2			; prevent some infinite score exploit
+	;	BRA $02 : NOP #2			; prevent some infinite score exploit
 
 	org $01C5AB
-		STZ $9D					; prevent game from pausing when Mario gets a cape
+	;	STZ $9D					; prevent game from pausing when Mario gets a cape
 
 	org $01C5B6
-		STZ $71					; remove get cape animation
+	;	STZ $71					; remove get cape animation
 
 	org $01C5F1
-		STZ $9D					; prevent game from pausing when Mario gets a flower
+	;	STZ $9D					; prevent game from pausing when Mario gets a flower
 
 	org $01C5F3
-		STZ $7407				; remove get fire animation
-		NOP
+	;	STZ $7407				; remove get fire animation
+	;	NOP
+
+
 
 	; run from mario's PCE code
 	org $028008
@@ -667,7 +724,7 @@ warnpc $009045
 		BNE .NoSFX				;\
 		LDA !MarioPowerUp : BEQ .NoSFX		; | powerup SFX when going small -> big
 		LDA #$0A : STA !SPC1			;/
-		LDA #$14 : STA !P2FireFlash		; flash white
+		LDA #$14 : STA !P2FlashPal		; flash white
 		.NoSFX
 
 		LDA !P2HangFromLedge : BEQ .Return	; check if mario is hanging from ledge
@@ -2398,7 +2455,8 @@ MAIN_MENU:
 	org $0498F6
 		RTS : NOP #3		; don't call save routine
 	org $009BC9
-		RTL			; kill vanilla save game routine (org: PHB)
+		JML SaveFileSRAM	;\ org: PHB : PHK : PLB : LDX $610A
+		NOP #2			;/
 	pullpc
 
 
@@ -3071,19 +3129,7 @@ endmacro
 		INC $7420 : CLC			; Overwritten code
 		RTL
 
-;=========;
-;MISC ANIM;
-;=========;
-MarioMushAnim:
-		LDA !CurrentMario : BEQ .Return
-		DEC A
-		LSR A
-		ROR A
-		PHX
-		TAX
-		LDA #$14 : STA !P2FireFlash-$80,x
-		PLX
-	.Return	RTL
+
 
 
 ;=============;

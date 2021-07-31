@@ -6209,14 +6209,11 @@ WARP_BOX:
 
 
 		.CheckDirections
-		LDA !P2Platform-$80,y
-		AND #$0F : BEQ +			; note that this branch only triggers if A = 0, so no LDA #$00 is needed
+		LDA !P2Platform-$80,y : BEQ +		; note that this branch only triggers if A = 0, so no LDA #$00 is needed
 		TAX
-		BRA ++
-	+	LDX !P2SpritePlatform-$80,y : BEQ +
-	++	LDA $AE,x
+		DEX
+		LDA !SpriteXSpeed,x
 	+	CLC : ADC !P2XSpeed-$80,y
-		CLC : ADC !P2VectorX-$80,y
 		BEQ ..checkY
 		ASL A
 		ROL A
@@ -6224,14 +6221,11 @@ WARP_BOX:
 		AND !BigRAM : BNE ..match
 
 		..checkY
-		LDA !P2Platform-$80,y
-		AND #$0F : BEQ +			; note that this branch only triggers if A = 0, so no LDA #$00 is needed
+		LDA !P2Platform-$80,y : BEQ +		; note that this branch only triggers if A = 0, so no LDA #$00 is needed
 		TAX
-		BRA ++
-	+	LDX !P2SpritePlatform-$80,y : BEQ +
-	++	LDA $9E,x
+		DEX
+		LDA !SpriteYSpeed,x
 	+	CLC : ADC !P2YSpeed-$80,y
-		CLC : ADC !P2VectorY-$80,y
 		BEQ ..nomatch
 		ASL A
 		ROL A
@@ -6380,21 +6374,71 @@ END:
 
 		.End
 		SEP #$20
-		LDA #$02 : STA $73CE
+		LDA #$02 : STA $73CE			; set this
 		LDA #$80				;\ fade music
 		STA !SPC3				;/
 		STA $6DD5				; set exit
-		LDX !Translevel : BEQ ++		;\ > intro level does not count
-		LDA !LevelTable1,x : BMI +		; |
+		LDX !Translevel : BEQ ..leveldone	;\ > intro level does not count
+		LDA !LevelTable1,x : BMI ..beaten	; |
 		INC $7F2E				; > you've now beaten one more level (only once/level)
 		ORA #$80				; | Set clear, remove midway
-	+	AND.b #$60^$FF				; > clear checkpoint
+		..beaten				; |
+		AND.b #$60^$FF				; > clear checkpoint
 		STA !LevelTable1,x			;/
 		STZ !LevelTable2,x			; > clear checkpoint level
 		STZ $73CE				; > clear midway flag
-	++	LDA #$0B : STA !GameMode
+		..leveldone
 
-		REP #$10				;\
+
+		.SaveTime				;\
+		LDA !Difficulty				; | only save time on time mode
+		AND #$04 : BEQ ..nosave			;/
+		LDA !LevelTable3,x			;\
+		ORA !LevelTable4,x			; |
+		ORA !LevelTable5,x			; | always store time if there is none
+		AND #$3F : BEQ ..storetime		; |
+		..compare				;/
+		LDA !LevelTable5,x			;\
+		AND #$3F				; |
+		CMP !TimeElapsedMinutes			; | check minutes
+		BEQ ..checkseconds			; |
+		BCS ..storetime				; |
+		BCC ..nosave				;/
+		..checkseconds				;\
+		LDA !LevelTable4,x			; |
+		AND #$3F				; |
+		CMP !TimeElapsedSeconds			; | check seconds
+		BEQ ..checkframes			; |
+		BCS ..storetime				; |
+		BCC ..nosave				;/
+		..checkframes				;\
+		LDA !LevelTable3,x			; | check frames
+		AND #$3F				; |
+		CMP !TimeElapsedFrames : BCC ..nosave	;/
+		..storetime				;\
+		LDA !LevelTable3,x			; |
+		AND #$C0 : STA $00			; |
+		LDA !LevelTable4,x			; |
+		AND #$C0 : STA $01			; |
+		LDA !LevelTable5,x			; |
+		AND #$C0 : STA $02			; |
+		LDA !TimeElapsedFrames			; |
+		AND #$3F				; |
+		ORA $00					; | store new fastest time
+		STA !LevelTable3,x			; |
+		LDA !TimeElapsedSeconds			; |
+		AND #$3F				; |
+		ORA $01					; |
+		STA !LevelTable4,x			; |
+		LDA !TimeElapsedMinutes			; |
+		AND #$3F				; |
+		ORA $02					; |
+		STA !LevelTable5,x			; |
+		..nosave				;/
+
+
+		.UnlockNextLevel			;\
+		REP #$10				; |
 		LDX !Level				; |
 		LDA.l LEVEL_Unlock,x			; |
 		SEP #$10				; | unlock level
@@ -6403,7 +6447,9 @@ END:
 		ORA #$80				; |
 		STA !LevelTable4,x			;/
 
-		RTL
+		LDA #$0B : STA !GameMode		; load overworld
+
+		RTL					; return
 
 
 ; --HDMA tables--

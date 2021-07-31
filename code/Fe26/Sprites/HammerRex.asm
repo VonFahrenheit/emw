@@ -47,8 +47,8 @@ HammerRex:
 
 	PHYSICS:
 		.ThrowHammer
-		LDA $32D0,x : BNE ..nothrow
-		LDA.l !Difficulty				;\
+		LDA $32D0,x : BNE ..nothrow			;\
+		LDA.l !Difficulty				; |
 		AND #$03					; |
 		TAY						; |
 		LDA !RNG					; | wait a random number of frames
@@ -335,6 +335,25 @@ HammerRex:
 		LDA $3240,x					; |
 		SBC #$00					; |
 		STA !Ex_YHi,y					;/
+
+		LDA !Difficulty
+		AND #$03 : BNE .FlexArc
+
+	; fixed arc on easy
+		.FixedArc
+		PHY
+		LDA !RNG
+		AND #$80 : TAY
+		JSL SUB_HORZ_POS_Target
+		TYA : STA $3320,x
+		LDA DATA_EasyThrowX,y
+		PLY
+		STA !Ex_XSpeed,y
+		LDA #$D0 : STA !Ex_YSpeed,y
+		RTS
+
+	; free arc on insane
+		.FlexArc
 		LDA !RNG,x					;\
 		AND #$80					; |
 		ORA.b #!P2YPosLo-$80				; | target a random player
@@ -366,6 +385,32 @@ HammerRex:
 		EOR #$FF					; |
 		INC A						; |
 		STA !Ex_XSpeed,y				;/
+
+		ROL #2
+		AND #$01
+		STA $3320,x
+
+	; limit arc on normal
+		LDA !Difficulty
+		AND #$03
+		CMP #$02 : BEQ .Return
+		.LimitArc
+		LDA #$D0 : STA !Ex_YSpeed,y
+		LDA !Ex_XSpeed,y : BMI ..neg
+		..pos
+		CMP #$14 : BCS +
+		LDA #$14 : BRA ++
+	+	CMP #$30 : BCC .Return
+		LDA #$30
+	++	STA !Ex_XSpeed,y
+		RTS
+		..neg
+		CMP #$EC : BCC +
+		LDA #$EC : BRA ++
+	+	CMP #$D0 : BCS .Return
+		LDA #$D0
+	++	STA !Ex_XSpeed,y
+		.Return
 		RTS						; return
 
 
@@ -378,13 +423,15 @@ HammerRex:
 		db $80,$80
 		db $FF,$01
 
-		.ThrowDelay
-		db $4F,$3F,$27			; EASY, NORMAL, INSANE
-
 		.HammerX
 		db $0C,$F4
 		db $00,$FF
 
+		.EasyThrowX
+		db $18,$E8
+
+		.ThrowDelay
+		db $3F,$37,$2F
 
 
 	namespace off

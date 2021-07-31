@@ -280,7 +280,7 @@ TerrainPlatform:
 
 		TXA
 		INC A
-		STA !P2SpritePlatform-$80,y
+	;	STA !P2SpritePlatform-$80,y
 		LDA $AE,x : STA !P2VectorX-$80,y
 		LDA $9E,x : STA !P2VectorY-$80,y
 		LDA #$01

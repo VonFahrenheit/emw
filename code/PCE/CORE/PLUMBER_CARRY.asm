@@ -18,9 +18,7 @@
 		LDY !P2Direction				; Y = index to tables
 		CMP #$04 : BEQ .Drop
 
-	.KickUp	LDA !P2XSpeed					;\
-		CLC : ADC !P2VectorX				; | give item X speed
-		STA !SpriteXSpeed,x				;/
+	.KickUp	LDA !P2XSpeed : STA !SpriteXSpeed,x		; item x speed = player x speed
 		LDA #$08 : STA !P2KickTimer			; kick pose
 		LDA #$03 : STA !SPC1				; kick sfx
 		LDA .CarryOffsetX+0,y				;\
@@ -30,27 +28,33 @@
 		BRA +						; go to shared code
 
 	.Forward
-		LDA !P2XSpeed					;\
-		CLC : ADC !P2VectorX				; |
-		STA !SpriteXSpeed,x				; | sprite speed = player speed (including vector)
-		LDA !P2YSpeed					; |
-		CLC : ADC !P2VectorY				; |
-		STA !SpriteYSpeed,x				;/
+		LDY !P2Direction				;\
+		LDA .ThrowSpeed,y : STA !SpriteXSpeed,x		; |
+		EOR !P2XSpeed : BMI ..sety			; |
+		LDA !P2XSpeed : STA $00				; | throw x speed
+		ASL $00						; | (reference: $01A087 in all.log)
+		ROR A						; |
+		CLC : ADC .ThrowSpeed,y				; |
+		STA !SpriteXSpeed,x				;/
+		..sety						;\ no y speed
+		STZ !SpriteYSpeed,x				;/
 		LDA #$08 : STA !P2KickTimer			; kick pose
 		LDA #$03 : STA !SPC1				; kick sfx
-		BRA ++						; go to shared code
+		LDA $3200,x					;\
+		CMP #$08 : BCS ++				; | sprites 00-07 go to state 0A (kicked)
+		LDA #$0A : BRA +++				;/
 
 	.Drop	LDA !P2XSpeed					;\
-		CLC : ADC !P2VectorX				; | give item X speed
-		CLC : ADC .ItemSpeed,y				; |
+		CLC : ADC .ItemSpeed,y				; | give item x speed
 		STA !SpriteXSpeed,x				;/
 		LDA #$08					; item Y speed = 8
 	+	STA !SpriteYSpeed,x				; set Y speed
-		LDA #$08					;\
-		STA $32E0,x					; | item can't interact with players for 8 frames
-		STA $35F0,x					;/
-	++	LDA #$09 : STA $3230,x				; throw sprite (state = 09)
+	++	LDA #$09					; state 09
+	+++	STA $3230,x					; write state
 		STZ !SpriteStasis,x				; clear stasis from sprite
+		LDA #$10					;\
+		STA !SpriteDisP1,x				; | item can't interact with players for 16 frames
+		STA !SpriteDisP2,x				;/
 		PLB
 		RTL
 
@@ -65,7 +69,7 @@
 
 	+	LDA !CurrentPlayer				;\
 		INC A						; | set shell owner
-		STA $34F0,x					;/
+		STA !ShellOwner,x				;/
 		LDA #$02					;\
 		STA !SpriteStasis,x				; | item can't move or interact with players
 		STA $32E0,x					; |
@@ -104,6 +108,8 @@
 		.ItemSpeed
 		db $F0,$10			; speed for dropping item with no kick
 
+		.ThrowSpeed
+		db $CC,$34
 
 
 

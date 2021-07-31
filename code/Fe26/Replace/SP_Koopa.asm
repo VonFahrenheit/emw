@@ -80,13 +80,13 @@ pullpc
 
 
 	OAMfix:
-		LDY $3230,x			;\ Only show different frame when carried
-		CPY #$0B : BNE .NoTilt		;/
-		LDA #$08			; > Special frame is 8
+		LDY $3230,x				;\ Only show different frame when carried
+		CPY #$0B : BNE .NoTilt			;/
+		LDA #$08				; > Special frame is 8
 
 		.NoTilt
-		LDY $33B0,x			; > Y = OAM index
-		JML $01980F			; > Return
+		LDY $33B0,x				; > Y = OAM index
+		JML $01980F				; > Return
 
 	ShellShakeFix:
 		CMP #$06 : BNE .0198A6
@@ -109,47 +109,47 @@ pullpc
 
 
 	MariosShell:
-		STZ $34F0,x			; > Mario owns this shell
-		LDA #$0A : STA $3230,x		; > Original code
-		RTL				; > Return
+		STZ !ShellOwner,x			; > Mario owns this shell
+		LDA #$0A : STA $3230,x			; > Original code
+		RTL					; > Return
 
 
 	CoinOwnerFix:
-		LDY #$00			; > Original code (prevent shatter?)
-		LDA $78A7			; > Tile number check
-		CMP #$1A : BEQ .Complicated	;\
-		CMP #$1B : BEQ .Coin		; |
-		CMP #$1C : BEQ .Coin		; |
-		CMP #$22 : BEQ .Star2		; | These values can spawn a coin
-		CMP #$23 : BEQ .Coin		; |
-		CMP #$24 : BEQ .Coin		; |
-		CMP #$2D : BEQ .StarBlock	;/
-		BRA .Return			; > Return for any other value
+		LDY #$00				; > Original code (prevent shatter?)
+		LDA $78A7				; > Tile number check
+		CMP #$1A : BEQ .Complicated		;\
+		CMP #$1B : BEQ .Coin			; |
+		CMP #$1C : BEQ .Coin			; |
+		CMP #$22 : BEQ .Star2			; | These values can spawn a coin
+		CMP #$23 : BEQ .Coin			; |
+		CMP #$24 : BEQ .Coin			; |
+		CMP #$2D : BEQ .StarBlock		;/
+		BRA .Return				; > Return for any other value
 
 		.Complicated
-		LDA $9A				;\
-		LSR #4				; |
-		BEQ .Star2			; |
-		CMP #$03 : BEQ .Star2		; | Spawns a star2 at these locations
-		CMP #$06 : BEQ .Star2		; |
-		CMP #$09 : BEQ .Star2		; |
-		CMP #$0C : BEQ .Star2		; |
-		CMP #$0F : BEQ .Star2		;/
-		BRA .Return			; > Otherwise return
+		LDA $9A					;\
+		LSR #4					; |
+		BEQ .Star2				; |
+		CMP #$03 : BEQ .Star2			; | Spawns a star2 at these locations
+		CMP #$06 : BEQ .Star2			; |
+		CMP #$09 : BEQ .Star2			; |
+		CMP #$0C : BEQ .Star2			; |
+		CMP #$0F : BEQ .Star2			;/
+		BRA .Return				; > Otherwise return
 
 		.Star2
-		LDA $7490 : BEQ .Coin		;\ If Mario doesn't have a star, this is just a coin
-		BRA .Return			;/
+		LDA $7490 : BEQ .Coin			;\ If Mario doesn't have a star, this is just a coin
+		BRA .Return				;/
 
 		.StarBlock
-		LDA $6DC0 : BEQ .Return		; > If Mario hasn't collected 30 coins, this is just a coin
+		LDA $6DC0 : BEQ .Return			; > If Mario hasn't collected 30 coins, this is just a coin
 
 		.Coin
-		LDA $34F0,x : STA !CoinOwner	; > Set coin owner
+		LDA !ShellOwner,x : STA !CoinOwner	; > Set coin owner
 
 		.Return
-		LDA $78A7			;\ Reload value and return
-		RTL				;/
+		LDA $78A7				;\ Reload value and return
+		RTL					;/
 
 
 		; 1A (star2, 1-up, or vine)
@@ -163,19 +163,19 @@ pullpc
 
 
 	ExtraBitFix:
-		STA $3200,y			; > Original code, store sprite number
-		LDA !ExtraBits,x		;\
-		AND #$04			; |
-		ORA !ExtraBits,y		; | Carry over extra bit to next sprite
-		STA !ExtraBits,y		; |
-		TYX				;/
-		RTL				; > Return
+		STA $3200,y				; > Original code, store sprite number
+		LDA !ExtraBits,x			;\
+		AND #$04				; |
+		ORA !ExtraBits,y			; | Carry over extra bit to next sprite
+		STA !ExtraBits,y			; |
+		TYX					;/
+		RTL					; > Return
 
 
 	AutoKick:
-		PHA				; > Push A
-		LDA !ExtraBits,x		;\ Check extra bit
-		AND #$04 : BNE .KickCheck	;/
+		PHA					; > Push A
+		LDA !ExtraBits,x			;\ Check extra bit
+		AND #$04 : BNE .KickCheck		;/
 		LDA $3200,x
 		CMP #$04 : BCC .Return
 		CMP #$0D : BCS .Return
@@ -192,24 +192,24 @@ pullpc
 
 
 		.Return
-		PLA				; > Pull A
-		JML $01ACF9			; > Original code
+		PLA					; > Pull A
+		JML $01ACF9				; > Original code
 
 		.KickRight
-		LDA #$32			;\ Speed = 0x32
-		BRA .Kick			;/
+		LDA #$32				;\ Speed = 0x32
+		BRA .Kick				;/
 
 		.KickHoming
-		JSL SUB_HORZ_POS		;\ Go towards a player
-		TYA : BEQ .KickRight		;/
+		JSL SUB_HORZ_POS			;\ Go towards a player
+		TYA : BEQ .KickRight			;/
 
 		.KickLeft
-		LDA #$CE			; > Speed = 0xCE
+		LDA #$CE				; > Speed = 0xCE
 
 		.Kick
-		STA $AE,x			; > Store speed
-		LDA #$0A : STA $3230,x		; > State = kicked
-		BRA .Return			; > Return
+		STA $AE,x				; > Store speed
+		LDA #$0A : STA $3230,x			; > State = kicked
+		BRA .Return				; > Return
 
 
 
@@ -259,7 +259,7 @@ pullpc
 		JSL SUB_HORZ_POS_P2
 		TYA
 		CMP $3320,x : BEQ .018957
-	+	INC $3420,x			; > Pause timer
+	+	INC $3420,x				; > Pause timer
 		BRA .018957
 
 		.Return
@@ -313,14 +313,14 @@ pullpc
 		LDA #$02 : STA !SpriteStasis,x
 		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
-		STZ $3420,x			; clear kick timer
-		STZ $33D0,x			; stand still
+		STZ $3420,x				; clear kick timer
+		STZ $33D0,x				; stand still
 		STZ $3310,x
 		RTS
 
 		..WalkBack
 		LDA $33D0,x
-		CMP #$04 : BEQ ...R		; kick index = 4
+		CMP #$04 : BEQ ...R			; kick index = 4
 		LDA $35B0,x : XBA
 		LDA $35A0,x
 		LDY #$00
@@ -352,8 +352,8 @@ pullpc
 
 	KoopaGFX:
 		LDA $3200,x
-		CMP #$04 : BCC .NotKoopa	;\ Sprites 0x04-0x0C are koopas
-		CMP #$0D : BCC .Koopa		;/
+		CMP #$04 : BCC .NotKoopa		;\ Sprites 0x04-0x0C are koopas
+		CMP #$0D : BCC .Koopa			;/
 
 		.NotKoopa
 		LDA $33D0,x
@@ -385,12 +385,12 @@ pullpc
 		LDA #$0E
 		CLC : ADC !SpriteTile,x
 		STA !OAM+$106,y
-		LDA !KoopaFrame			;\
-		AND #$0F			; |
-		CMP #$02 : BNE $03 : JMP +	; | store frame
-		ASL #4				; |
-		ORA #$02			; |
-		STA !KoopaFrame			;/
+		LDA !KoopaFrame				;\
+		AND #$0F				; |
+		CMP #$02 : BNE $03 : JMP +		; | store frame
+		ASL #4					; |
+		ORA #$02				; |
+		STA !KoopaFrame				;/
 		JMP +
 
 		.stand_f
@@ -400,10 +400,10 @@ pullpc
 		LDA #$08
 		CLC : ADC !SpriteTile,x
 		STA !OAM+$106,y
-		LDA !KoopaFrame			;\
-		AND #$0F : BEQ +		; | store frame
-		ASL #4				; |
-		STA !KoopaFrame			;/
+		LDA !KoopaFrame				;\
+		AND #$0F : BEQ +			; | store frame
+		ASL #4					; |
+		STA !KoopaFrame				;/
 		LDA #$FF
 		BRA +
 
@@ -418,12 +418,12 @@ pullpc
 		LDA #$0A
 		CLC : ADC !SpriteTile,x
 		STA !OAM+$106,y
-		LDA !KoopaFrame			;\
-		AND #$0F			; |
-		CMP #$01 : BEQ +		; | store frame
-		ASL #4				; |
-		ORA #$01			; |
-		STA !KoopaFrame			;/
+		LDA !KoopaFrame				;\
+		AND #$0F				; |
+		CMP #$01 : BEQ +			; | store frame
+		ASL #4					; |
+		ORA #$01				; |
+		STA !KoopaFrame				;/
 		LDA #$FF
 		BRA +
 
@@ -434,20 +434,20 @@ pullpc
 		LDA #$0C
 		CLC : ADC !SpriteTile,x
 		STA !OAM+$106,y
-		LDA !KoopaFrame			;\
-		AND #$0F			; |
-		CMP #$03 : BEQ +		; | store frame
-		ASL #4				; |
-		ORA #$03			; |
-		STA !KoopaFrame			;/
+		LDA !KoopaFrame				;\
+		AND #$0F				; |
+		CMP #$03 : BEQ +			; | store frame
+		ASL #4					; |
+		ORA #$03				; |
+		STA !KoopaFrame				;/
 		LDA #$FF
 
-	+	BPL +				;\
-		LDA !KoopaWing			; |
-		INC A				; | cycle between wing frames
-		CMP #$04			; |
-		BNE $02 : LDA #$00		; |
-		STA !KoopaWing			;/
+	+	BPL +					;\
+		LDA !KoopaWing				; |
+		INC A					; | cycle between wing frames
+		CMP #$04				; |
+		BNE $02 : LDA #$00			; |
+		STA !KoopaWing				;/
 
 
 	+	LDA $01
@@ -524,26 +524,26 @@ pullpc
 		SEC : SBC $1C
 		CLC : ADC.l .WingY,x
 		STA !OAM+$101,y
-		LDA !GFX_Wings			;\
-		ASL A				; |
-		ROL A				; | rotate highest bit into T spot
-		AND #$01			; |
-		STA !BigRAM			;/
-		LDA !GFX_Wings			;\
-		AND #$70			; |
-		ASL A				; |
-		STA !BigRAM+1			; | get tile number
-		LDA !GFX_Wings			; |
-		AND #$0F			; |
-		TSB !BigRAM+1			;/
+		LDA !GFX_Wings				;\
+		ASL A					; |
+		ROL A					; | rotate highest bit into T spot
+		AND #$01				; |
+		STA !BigRAM				;/
+		LDA !GFX_Wings				;\
+		AND #$70				; |
+		ASL A					; |
+		STA !BigRAM+1				; | get tile number
+		LDA !GFX_Wings				; |
+		AND #$0F				; |
+		TSB !BigRAM+1				;/
 		LDA.l .WingTile,x
 		CLC : ADC !BigRAM+1
 		STA !OAM+$102,y
-		LDA !OAM+$107,y			;\
-		AND #$F0			; | same prop as base sprite, but T bit is from GFX status
-		ORA !BigRAM			; |
-		ORA #$0A			; > and palette is always D (green)
-		STA !OAM+$103,y			;/
+		LDA !OAM+$107,y				;\
+		AND #$F0				; | same prop as base sprite, but T bit is from GFX status
+		ORA !BigRAM				; |
+		ORA #$0A				; > and palette is always D (green)
+		STA !OAM+$103,y				;/
 		TYA
 		LSR #2
 		TAY
@@ -565,7 +565,7 @@ pullpc
 
 
 		.Main
-		STZ $0F		; flag that shows if sprite should be drawn
+		STZ $0F					; flag that shows if sprite should be drawn
 		STZ $3490,x
 		STZ $3350,x
 		LDA $3220,x
@@ -642,7 +642,7 @@ pullpc
 		BCS $02 : ORA #$40
 		ORA $64
 		XBA
-		LDA $3410,x : BEQ +		; ignore hi priority bit if behind scenery flag is set
+		LDA $3410,x : BEQ +			; ignore hi priority bit if behind scenery flag is set
 		XBA
 		AND #$DF
 		RTS
@@ -687,27 +687,27 @@ pullpc
 		STA !OAM+$103,y
 
 		PHX
-		LDA !GFX_Shell			;\
-		ASL A				; |
-		ROL A				; | rotate highest bit into T spot
-		AND #$01			; |
-		STA !BigRAM			;/
-		LDA !GFX_Shell			;\
-		AND #$70			; |
-		ASL A				; |
-		STA !BigRAM+1			; | get tile number
-		LDA !GFX_Shell			; |
-		AND #$0F			; |
-		TSB !BigRAM+1			;/
+		LDA !GFX_Shell				;\
+		ASL A					; |
+		ROL A					; | rotate highest bit into T spot
+		AND #$01				; |
+		STA !BigRAM				;/
+		LDA !GFX_Shell				;\
+		AND #$70				; |
+		ASL A					; |
+		STA !BigRAM+1				; | get tile number
+		LDA !GFX_Shell				; |
+		AND #$0F				; |
+		TSB !BigRAM+1				;/
 		LDA $14
 		LSR #2
 		AND #$03
 		TAX
 		LDA.w $9A22,x
-		CLC : ADC !BigRAM+1		; add tile number
+		CLC : ADC !BigRAM+1			; add tile number
 		STA !OAM+$102,y
 		LDA.w $9A26,x
-		ORA !BigRAM			; add highest bit of tile number
+		ORA !BigRAM				; add highest bit of tile number
 		EOR !OAM+$103,y
 		STA !OAM+$103,y
 		PLX

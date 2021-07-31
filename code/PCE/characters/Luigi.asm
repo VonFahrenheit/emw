@@ -11,6 +11,9 @@ namespace Luigi
 		PHB : PHK : PLB
 		LDA #$01 : STA !P2Character
 		LDA #$02 : STA !P2MaxHP
+		LDA !P2MaxHP			;\
+		CLC : ADC !PlayerBonusHP	; | max HP buff
+		STA !P2MaxHP			;/
 
 		LDA !P2Init : BNE .Main
 
@@ -89,9 +92,14 @@ namespace Luigi
 		BEQ $03 : DEC !P2KickTimer
 		LDA !P2HurtTimer : BEQ +
 		DEC !P2HurtTimer
+		LDA !P2HP
+		CMP #$01 : BNE ++
+		LDA #$10 : STA !P2ShrinkTimer
 		BRA ++
 	+	LDA !P2Invinc
 		BEQ $03 : DEC !P2Invinc
+		LDA !P2ShrinkTimer
+		BEQ $03 : DEC !P2ShrinkTimer
 		++
 		LDA !P2SlantPipe
 		BEQ $03 : DEC !P2SlantPipe
@@ -437,6 +445,8 @@ namespace Luigi
 		BEQ +
 	++	JSR .JumpCheck
 	+	LDA #$39 : STA !P2FallSpeed		; fall speed is 0x39
+
+		LDA !P2Climbing : BNE .Done		; can't fast fall while climbing
 		BIT !P2YSpeed : BMI .Done
 		LDA $6DA3
 		AND #$04 : BEQ .Done
@@ -626,7 +636,6 @@ namespace Luigi
 		LDA !P2Blocked
 		AND #$04
 		ORA !P2Platform
-		ORA !P2SpritePlatform
 		ORA !P2Water
 		BNE +
 
@@ -642,9 +651,7 @@ namespace Luigi
 		+
 
 		JSL CORE_UPDATE_SPEED
-		LDA !P2Platform
-		ORA !P2SpritePlatform
-		BEQ +
+		LDA !P2Platform : BEQ +
 		LDA #$04 : TSB !P2Blocked
 		+
 
@@ -722,16 +729,25 @@ namespace Luigi
 		.NoPipe						;/
 
 
-		LDA !P2Anim
-		CMP #!Lui_Shrink : BEQ +
+	; hurt check
 		LDA !P2HurtTimer : BEQ .NoHurt
 		LDA !P2Anim
 		CMP #!Lui_Hurt : BEQ +
-		LDA #!Lui_Hurt : STA !P2Anim
+		CMP #!Lui_Hurt+1 : BEQ +
+		LDA #!Lui_Hurt
+	--	STA !P2Anim
 		STZ !P2AnimTimer
 	-
 	+	JMP .HandleUpdate
 		.NoHurt
+
+	; shrink check
+		LDA !P2ShrinkTimer : BEQ .NoShrink
+		LDA !P2Anim
+		CMP #!Lui_Shrink : BEQ -
+		CMP #!Lui_Shrink+1 : BEQ -
+		LDA #!Lui_Shrink : BRA --
+		.NoShrink
 
 		LDA !P2FireTimer : BNE -
 
@@ -1061,6 +1077,7 @@ namespace Luigi
 
 		LDY !P2Anim					;\ hurt animation always uses big luigi address
 		CPY #!Lui_Hurt : BEQ .BigAddress		;/
+		LDY !P2ShrinkTimer : BNE .BigAddress		; shrink animation always uses big luigi address
 
 		LDY !P2HP					;\
 		CPY #$02 : BCS .BigAddress			; |
@@ -1096,10 +1113,11 @@ namespace Luigi
 		STA !BigRAM+$1C					;/
 
 
-		LDY !P2Anim
-		CPY #!Lui_Hurt : BEQ .BigFormat
-		LDY !P2HP
-		CPY #$02 : BCS .BigFormat
+		LDY !P2Anim					;\
+		CPY #!Lui_Hurt : BEQ .BigFormat			; |
+		LDY !P2HP					; | conditions for big format
+		CPY #$02 : BCS .BigFormat			; |
+		LDY !P2ShrinkTimer : BNE .BigFormat		;/
 		LDA !BigRAM+$12 : STA !BigRAM+$19		; 3 -> 4
 		LDA !BigRAM+$0B : STA !BigRAM+$12		; 2 -> 3
 		.BigFormat
@@ -1123,6 +1141,7 @@ namespace Luigi
 
 
 	GRAPHICS:
+		JSL CORE_FLASHPAL
 		LDA !P2Status : BNE .DrawTiles
 		LDA !P2HurtTimer : BNE .DrawTiles
 		LDA !P2Anim
@@ -1136,10 +1155,11 @@ namespace Luigi
 		.DrawTiles
 		REP #$20
 		LDA $0E : STA $04
-		LDY !P2Anim
-		CPY #!Lui_Hurt : BEQ .Big
-		LDY !P2HP
-		CPY #$02 : BCS .Big
+		LDY !P2Anim				;\
+		CPY #!Lui_Hurt : BEQ .Big		; |
+		LDY !P2ShrinkTimer : BNE .Big		; | conditions for big luigi tilemap
+		LDY !P2HP				; |
+		CPY #$02 : BCS .Big			;/
 		CLC : ADC ($04)				;\
 		INC #2					; | small Luigi tilemap
 		STA $04					;/
@@ -1421,16 +1441,23 @@ namespace Luigi
 	dw .ClippingStandard
 
 	.Hurt
-	dw .16x32TM : db $0F,!Lui_Shrink	; 30
-	dw .HurtDyn
+	dw .16x32TM : db $04,!Lui_Hurt+1
+	dw .HurtDyn00
 	dw .ClippingCrouch
+	dw .16x32TM : db $0F,!Lui_Idle
+	dw .HurtDyn01
+	dw .ClippingCrouch
+
 	.Shrink
-	dw .16x32TM : db $10,!Lui_Idle		; 31
+	dw .16x32TM : db $04,!Lui_Shrink+1	; 31
 	dw .ShrinkDyn
+	dw .ClippingCrouch
+	dw .16x32TM : db $04,!Lui_Shrink+0
+	dw .IdleDyn
 	dw .ClippingCrouch
 
 	.Dead
-	dw .16x32TM : db $FF,!Lui_Dead		; 32
+	dw .16x32TM : db $FF,!Lui_Dead
 	dw .DeadDyn
 	dw .ClippingStandard
 
@@ -1562,14 +1589,7 @@ endmacro
 	.SwimFastDyn01	%LuiDyn(3, $103)
 	.SwimFastDyn02	%LuiDyn(3, $106)
 
-;	.ClimbFrontDyn	%LuiDyn(2, $0C9)
-;	.ClimbFrontTDyn	%LuiDyn(3, $0CB)
-;	.ClimbBackTDyn	%LuiDyn(2, $109)
-;	.ClimbBackDyn	%LuiDyn(2, $10B)
-;	.ClimbPunchDyn	%LuiDyn(3, $10D)
-
 	.ClimbDyn	%LuiDyn(2, $10B)
-
 
 	.HammerDyn00	%LuiDyn(2, $140)
 	.HammerDyn01	%LuiDyn(2, $142)
@@ -1597,9 +1617,10 @@ endmacro
 	.FlutterDyn01	%LuiDyn(2, $206)
 	.FlutterDyn02	%LuiDyn(2, $208)
 
-	.HurtDyn	%LuiDyn(2, $188)
-	.ShrinkDyn	%LuiDyn(2, $18A)
-	.DeadDyn	%LuiDyn(2, $18C)
+	.HurtDyn00	%LuiDyn(2, $188)
+	.HurtDyn01	%LuiDyn(2, $18A)
+	.ShrinkDyn	%LuiDyn(2, $18C)
+	.DeadDyn	%LuiDyn(2, $18E)
 
 
 

@@ -22,6 +22,9 @@ namespace Leeway
 
 		LDA #$03 : STA !P2Character
 		LDA #$02 : STA !P2MaxHP
+		LDA !P2MaxHP			;\
+		CLC : ADC !PlayerBonusHP	; | max HP buff
+		STA !P2MaxHP			;/
 
 
 		LDA !P2Status : BEQ .Process
@@ -882,9 +885,7 @@ namespace Leeway
 
 
 
-		LDA !P2Platform
-		ORA !P2SpritePlatform
-		BEQ +
+		LDA !P2Platform : BEQ +
 		PLA : BRA .Landing
 
 	+	PLA
@@ -1172,7 +1173,6 @@ namespace Leeway
 		LDA !P2Blocked
 		AND #$04
 		ORA !P2Platform
-		ORA !P2SpritePlatform
 		BNE .Ground
 
 		.Air
@@ -1438,6 +1438,7 @@ namespace Leeway
 
 
 	OUTPUT_HURTBOX:
+		JSL CORE_FLASHPAL
 		REP #$30
 		LDA.w #ANIM
 		JSL CORE_OUTPUT_HURTBOX

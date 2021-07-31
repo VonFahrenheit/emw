@@ -182,6 +182,7 @@ org $308008
 	dl CaptainWarrior
 	dl CaptainWarrior_Axe
 	dl Kingking
+	dl KingkingDeath
 	dl LakituLovers
 	dl LavaLord
 
@@ -211,6 +212,9 @@ org $318000
 
 	%InsertFile(Kingking)
 	incbin ../RawGraphics/DynamicSprites/KingKing.bin
+	.End
+	%InsertFile(KingkingDeath)
+	incbin ../RawGraphics/RealTimeLinear/KingkingDeath.bin
 	.End
 
 	%InsertFile(Sprite_BG_1)

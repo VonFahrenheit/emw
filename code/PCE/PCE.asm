@@ -339,12 +339,6 @@ sa1rom
 		JMP +++
 		+
 
-		LDA !P2Platform : BNE ++		;\
-		LDA !P2SpritePlatform			; | Sprite platform setup
-		STA !P2Platform				; |
-		BEQ ++					; |
-		LDA #$04 : TSB !P2Blocked		; |
-		++					;/
 		LDA !P2ExtraInput1			;\
 		BEQ $03 : STA $6DA3			; |
 		LDA !P2ExtraInput2			; |
@@ -374,7 +368,7 @@ sa1rom
 		STZ !P2ExtraInput1			; | Clear input overwrite
 		STZ !P2ExtraInput3			; |
 		SEP #$20				;/
-	+	STZ !P2SpritePlatform			; clear sprite platform
+		+
 
 		LDA !CurrentMario : BNE +		; > Mario check
 		LDA !Characters				;\
@@ -419,12 +413,6 @@ sa1rom
 		BCS +					; > Return if character ID is illegal
 		TAX					;
 
-		LDA !P2Platform : BNE +++		;\
-		LDA !P2SpritePlatform			; | Sprite platform setup
-		STA !P2Platform				; |
-		BEQ +++					; |
-		LDA #$04 : TSB !P2Platform		; |
-		+++					;/
 		LDA !P2ExtraInput1			;\
 		BEQ $03 : STA $6DA3			; |
 		LDA !P2ExtraInput2			; |
@@ -453,9 +441,7 @@ sa1rom
 		REP #$20				;\
 		STZ !P2ExtraInput1			; | Clear input overwrite
 		STZ !P2ExtraInput3			; |
-		SEP #$20				;/
-	+	STZ !P2SpritePlatform			; clear sprite platform
-		SEP #$30				; > All regs 8-bit
+	+	SEP #$30				; > All regs 8-bit
 		RTL					; > Return
 
 
@@ -475,22 +461,11 @@ sa1rom
 
 
 	RunMario:
-		LDA !MarioAnim : BEQ .Return		;\
-		CMP #$01 : BNE .NoRiposte		; |
-		LDA !Difficulty				; |
-		AND #$03 : BNE .NoRiposte		; | mario riposte
-		LDA !MarioAnimTimer			; |
-		CMP #$2C : BNE .NoRiposte		; |
-		JSL CORE_RIPOSTE			; |
-		.NoRiposte				;/
 		LDA !MarioAnim				;\
 		CMP #$09 : BNE +			; |
 		LDA !CurrentMario : BEQ +		; | if mario status = 9 and mario is in play, set PCE kill reg
 		LDA !P2Status : BNE +			; |
 		INC !P2Status				;/
-		LDA !Difficulty				;\
-		AND #$03 : BNE +			; | mario death riposte
-		JSL CORE_RIPOSTE			;/
 	+	LDA !MarioAnim				;\
 		PHB					; |
 		LDX #$00 : PHX : PLB			; |
@@ -536,6 +511,7 @@ BITS:	db $01,$02,$04,$08,$10,$20,$40,$80
 	incsrc "CORE/DISPLAY_CONTACT.asm"
 	incsrc "CORE/CHECK_ABOVE.asm"
 	incsrc "CORE/RIPOSTE.asm"
+	incsrc "CORE/FLASHPAL.asm"
 	namespace off
 
 
