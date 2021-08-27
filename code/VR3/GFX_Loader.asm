@@ -231,8 +231,11 @@
 
 	.Loop	INY #2						;\
 		LDA [$03],y					; |
-		AND #$0FFF					; | if there is a file, decompress it
-		CMP #$007F : BEQ .NoDecomp			; |
+		AND #$0FFF					; |
+		CMP #$007F : BEQ .NoDecomp			; | if there is a file, decompress it
+		CMP #$0001 : BEQ .NoDecomp			; |
+		CMP #$0002 : BEQ .NoDecomp			; |
+		CMP #$0003 : BEQ .NoDecomp			; |
 		JSL !DecompressFile				;/
 		LDA #$1801 : STA $4310				;\
 		LDA.w #!DecompBuffer : STA $4312		; |
@@ -830,14 +833,12 @@
 		LDA $02						;\
 		EOR #$0800					; | swap tilemaps between 1 and 2
 		STA $02						;/
-		LDA $20						;\
-		AND #$00F0					; |
-		CLC : ADC $01,s					; |
+		LDA $01,s					;\
 		CLC : ADC !LevelHeight				; |
 		STA $00						; |
 		LDA $20						; |
-		AND #$00F0					; | get tilemap 2
-		ASL #3						; |
+		AND #$00F0					; |
+		ASL #3						; | get tilemap 2
 		ADC $02						; |
 		TAY						; |
 		LDA $02						; |

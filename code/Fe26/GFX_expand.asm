@@ -26,8 +26,8 @@
 ;	- E = generic_darkgrey
 ;
 
-!GenericTilemap	= $9B83
-!GenericProp	= $9CDB
+	!GenericTilemap		= $9B83
+	!GenericProp		= $9CDB
 
 
 	SlideFix:		; fix initial frame when koopa slides out of shell
@@ -604,9 +604,8 @@
 		JSL .LakituCloudSize	; source: LDY #$02 : LDA #$01
 	org $01E969
 		JSL .LakituCloudFace	; source: STA !OAM+$008 (no index) : LDA $74B2
-		LDA !Tile_LakituCloud : STA !OAM+$002,y
-		LDA #$38
-		ORA !Prop_LakituCloud : STA !OAM+$003,y
+		ORA !GFX_LakituCloud_prop : STA !OAM+$003,y
+		LDA !GFX_LakituCloud_tile : STA !OAM+$002,y
 		TYA
 		LSR #2
 		TAY
@@ -1135,9 +1134,9 @@
 	.PlantStalk
 		AND #$C0
 		ORA #$1A
-		ORA !Prop_PlantStalk
+		ORA !GFX_PlantStalk_prop
 		STA !OAM+$107,y
-		LDA !Tile_PlantStalk
+		LDA !GFX_PlantStalk_tile
 		STA !OAM+$106,y
 		LDA $3200,x
 		CMP #$1A : BEQ +
@@ -1175,13 +1174,13 @@
 		LDX !SpriteIndex
 		LDA !OAM+$102,y
 		CMP #$0A : BNE +
-		LDA !Tile_Bone
+		LDA !GFX_Bone_tile
 		INC #2
 		STA !OAM+$102,y
 		LDA !OAM+$103,y
 		AND #$F0
 		ORA $33C0,x
-		ORA !Prop_Bone
+		ORA !GFX_Bone_prop
 		BRA ++
 
 	+	CLC : ADC !SpriteTile,x
@@ -1201,10 +1200,10 @@
 		LDY $33B0,x
 		LDA !OAM+$103,y
 		AND #$FE
-		ORA !Prop_SkeletonRubble
+		ORA !GFX_SkeletonRubble_prop
 		STA !OAM+$103,y
 		PLY
-		LDA !Tile_SkeletonRubble
+		LDA !GFX_SkeletonRubble_tile
 		CLC : ADC #$04			; extra +1 because of how tiles are ordered
 		STA $0F				; store this in RAM for later
 		SEC : SBC #$03
@@ -1231,24 +1230,13 @@
 		RTL
 
 	.BooStream2
-		LDA !GFX_Boo
-		ASL A
-		ROL A
-		AND #$01
-		STA $00
-		LDA !GFX_Boo
-		AND #$70
-		ASL A
-		STA $01
-		LDA !GFX_Boo
-		AND #$0F
-		ORA $01
+		LDA !GFX_Boo_tile
 		CLC : ADC !OAM+$002,y
 		STA !OAM+$002,y
 		LDA !OAM+$003,y
 		AND #$F0
 		ORA !Ex_Palset,x
-		ORA $00
+		ORA !GFX_Boo_prop
 		STA !OAM+$003,y
 		TYA
 		LSR #2
@@ -1273,11 +1261,11 @@
 
 	.AngelWings
 		LDA !OAM+$102,y
-		CLC : ADC !Tile_AngelWings
+		CLC : ADC !GFX_AngelWings_tile
 		STA !OAM+$102,y
 		LDA !OAM+$103,y
 		AND #$FE
-		ORA !Prop_AngelWings
+		ORA !GFX_AngelWings_prop
 		STA !OAM+$103,y
 		TYA
 		LSR #2
@@ -1460,8 +1448,8 @@
 		STA $3320,x
 		LDA !SpriteTile,x : PHA
 		LDA !SpriteProp,x : PHA
-		LDA !Tile_Parachute : STA !SpriteTile,x
-		LDA !Prop_Parachute : STA !SpriteProp,x
+		LDA !GFX_Parachute_tile : STA !SpriteTile,x
+		LDA !GFX_Parachute_prop : STA !SpriteProp,x
 		JSL $0190B2					; wrapper for JSR $9F0D
 		PLA : STA !SpriteProp,x
 		PLA : STA !SpriteTile,x
@@ -1476,11 +1464,8 @@
 		ROL A
 		ORA $64
 		AND #$FE
-		ORA !Prop_BombStar
 		PHA
-		LDA !OAM+$102,y
-		CLC : ADC !Tile_BombStar
-		STA !OAM+$102,y
+		LDA #$48 : STA !OAM+$102,y
 		PLA
 		RTL
 
@@ -1545,39 +1530,21 @@
 		JML .ReturnBooBlock
 
 	.Z
-		LDA !GFX_RipVanFish
-		ASL A
-		ROL A
-		AND #$01
+		LDA !GFX_RipVanFish_prop
 		ORA !OAM+$003,y
 		STA !OAM+$003,y
-		LDA !GFX_RipVanFish
-		AND #$70
-		ASL A
-		STA $00
-		LDA !GFX_RipVanFish
-		AND #$0F
-		ORA $00
+		LDA !GFX_RipVanFish_tile
 		CLC : ADC $8DD7,x
 		STA !OAM+$002,y
 		RTL
 
 	.TorpedoArm
-		LDA !GFX_TorpedoTed
-		ASL A
-		ROL A
-		AND #$01
+		LDA !GFX_TorpedoTed_prop
 		ORA !OAM+$003,y
 		AND #$F1
 		ORA !Ex_Palset,x
 		STA !OAM+$003,y
-		LDA !GFX_TorpedoTed
-		AND #$70
-		ASL A
-		STA $00
-		LDA !GFX_TorpedoTed
-		AND #$0F
-		ORA $00
+		LDA !GFX_TorpedoTed_tile
 		CLC : ADC !OAM+$002,y
 		STA !OAM+$002,y
 		TYA
@@ -1601,7 +1568,7 @@
 		RTL
 
 	.Hammer
-		LDA !Tile_Hammer : STA !OAM+$002,y
+		LDA !GFX_Hammer_tile : STA !OAM+$002,y
 		LDA !OAM+$003,y
 		AND #$3E
 		PHX
@@ -1610,7 +1577,7 @@
 		BPL $02 : ORA #$C0
 		BVC $02 : EOR #$40
 		PLX
-		ORA !Prop_Hammer
+		ORA !GFX_Hammer_prop
 		STA !OAM+$003,y
 		TYA
 		LSR #2
@@ -1684,7 +1651,7 @@
 		LDA $8FC7,y
 		AND #$40
 		LSR A
-		ORA !GFX_status+$18E
+		ORA !addr_palset_generic_grey
 		ASL A
 		STA $33C0,x
 		RTL
@@ -1783,6 +1750,7 @@
 		LDA !OAMhi+$41,x : STA !OAMhi+$02,y
 		PLX
 		PLY
+		LDA #$38
 		RTL
 	.PipeLakitu
 		PHA
@@ -1858,36 +1826,37 @@
 		RTL
 	.BubbleCarrierCargo
 		PHX
-		LDA $BE,x : TAX
+		REP #$30
+		LDA $BE,x
+		AND #$00FF
+		ASL A
+		TAX
 		LDA.l ..statustable,x : TAX
 		LDA !GFX_status,x
-		AND #$70
-		ASL A
+		CPX #$FFFF
+		SEP #$30
+		BEQ ..fail
 		STA $0F
-		LDA !GFX_status,x
-		AND #$0F
-		TSB $0F
 		LDA !OAM+$102,y
 		AND #$7F
 		CLC : ADC $0F
 		STA !OAM+$102,y
-		LDA !GFX_status,x
-		ASL A
-		ROL A
-		AND #$01
-		STA $0F
+		XBA : STA $0F
 		LDA !OAM+$103,y
 		AND #$FE
 		ORA $0F
 		STA !OAM+$103,y
+		..fail
 		PLX
 		LDA $32C0,x
 		CMP #$60
 		RTL
 
 		..statustable
-		db $03,$01,$45,$FE
-
+		dw !GFX_Goomba_offset
+		dw !GFX_Bobomb_offset
+		dw !GFX_Fish_offset
+		dw $FFFF
 
 
 	.Skull
@@ -1896,7 +1865,7 @@
 		LDA !OAM+$103,y
 		AND #$F0
 		LSR A
-		ORA !GFX_status+$18E
+		ORA !addr_palset_generic_grey
 		ASL A
 		ORA !SpriteProp,x
 		STA !OAM+$103,y
@@ -1907,19 +1876,10 @@
 		LDA !OAM+$102,y
 		CMP #$40 : BCS +
 		JMP .Remap
-	+	LDA !GFX_Koopa
-		ASL A
-		AND #$F0
-		STA $0F
-		LDA !GFX_Koopa
-		AND #$0F
-		ORA $0F
+	+	LDA !GFX_Koopa_tile
 		CLC : ADC !OAM+$102,y
 		STA !OAM+$102,y
-		LDA !GFX_Koopa
-		ASL A
-		ROL A
-		AND #$01
+		LDA !GFX_Koopa_prop
 		STA $0F
 		LDA !OAM+$103,y
 		AND #$FE
@@ -1930,19 +1890,10 @@
 
 
 	.WigglerFlower
-		LDA !GFX_Wiggler
-		AND #$70
-		ASL A
-		STA $00
-		LDA !GFX_Wiggler
-		AND #$0F
-		ORA $00
+		LDA !GFX_Wiggler_tile
 		CLC : ADC #$18
 		STA !OAM+$002,y
-		LDA !GFX_Wiggler
-		ASL A
-		ROL A
-		AND #$01
+		LDA !GFX_Wiggler_prop
 		ORA $64
 		JML .ReturnWigglerFlower
 	.Wiggler
@@ -1969,13 +1920,13 @@
 		RTL
 
 	.LotusFire
-		LDA !Tile_LotusPollen
+		LDA !GFX_LotusPollen_tile
 		CLC : ADC !OAM+$002,y
 		STA !OAM+$002,y
 		LDA !OAM+$003,y
 		AND #$F0
 		ORA !Ex_Palset,x
-		ORA !Prop_LotusPollen
+		ORA !GFX_LotusPollen_prop
 		STA !OAM+$003,y
 		TYA
 		LSR #2
@@ -2164,7 +2115,7 @@
 	.MoleAntiFail
 		ORA #$30
 		LSR A
-		ORA !GFX_status+$190
+		ORA !addr_palset_default_yellow
 		ASL A
 		STA $33C0,x
 		RTL
@@ -2295,11 +2246,11 @@
 		CMP #$F0 : BCS +
 		JMP .Remap		; remap dino torch normally
 	+	AND #$0F
-		CLC : ADC !Tile_DinoFire
+		CLC : ADC !GFX_DinoFire_tile
 		STA !OAM+$102,y
 		LDA !OAM+$103,y
 		AND #$FE
-		ORA !Prop_DinoFire
+		ORA !GFX_DinoFire_prop
 		STA !OAM+$103,y
 		INY #4
 		RTL
@@ -2319,12 +2270,12 @@
 		CPX #$00 : BEQ +
 		JMP .Remap
 	+	LDA !OAM+$102,y
-		CLC : ADC !Tile_Mechanism
+		CLC : ADC !GFX_Mechanism_tile
 		STA !OAM+$102,y
 		LDA !OAM+$103,y
 		AND #$F0
 		ORA #$06			; mechanism always uses blue palset
-		ORA !Prop_Mechanism
+		ORA !GFX_Mechanism_prop
 		STA !OAM+$103,y
 		PHX
 		LDX !SpriteIndex
@@ -2337,11 +2288,11 @@
 	.Chainsaw
 		LDA $C25B,x
 		PHX
-		CLC : ADC !Tile_Mechanism
+		CLC : ADC !GFX_Mechanism_tile
 		LDX !SpriteIndex
 		STA !OAM+$102,y
 		LDA #$36
-		ORA !Prop_Mechanism
+		ORA !GFX_Mechanism_prop
 		STA $0F
 		LDA #$0F : TRB $04
 		LDA !SpriteProp,x
@@ -2530,20 +2481,12 @@
 		STA !OAM+$106,y
 		PLX
 		CMP #$10 : BNE ..R
-		LDA !GFX_SmushedKoopa : STA $00
-		ASL A
-		ROL A
-		AND #$01
-		STA $01
+		LDA !GFX_SmushedKoopa_tile : STA !SpriteTile,x
+		LDA !GFX_SmushedKoopa_prop : STA $00
 		LDA !SpriteProp,x
 		AND #$FE
-		ORA $01
-		STA !SpriteProp,x
-		LDA $00
-		AND #$F0 : TRB $00
-		ASL A
 		ORA $00
-		STA !SpriteTile,x
+		STA !SpriteProp,x
 	..R	JML .Return
 
 
@@ -2698,20 +2641,20 @@
 		BIT !Ex_XSpeed,x
 		BMI $02 : EOR #$40
 		ORA !Ex_Palset,x
-		ORA !Prop_ReznorFireball
+		ORA !GFX_ReznorFireball_prop
 		STA !OAM+$003,y
-		LDA !Tile_ReznorFireball : STA !OAM+$002,y
+		LDA !GFX_ReznorFireball_tile : STA !OAM+$002,y
 		TYA
 		LSR #2
 		TAY
 		RTL
 
 	.Baseball
-		LDA !Tile_Baseball : STA !OAM+$002,y
+		LDA !GFX_Baseball_tile : STA !OAM+$002,y
 		LDA !OAM+$003,y
 		AND #$F0
 		ORA !Ex_Palset,x
-		ORA !Prop_Baseball
+		ORA !GFX_Baseball_prop
 		STA !OAM+$003,y
 		TYA
 		LSR #2
@@ -2743,14 +2686,14 @@
 	pullpc
 	.Main
 		CMP #$C0
-		LDA !Tile_AngelWings
+		LDA !GFX_AngelWings_tile
 		BCS $02 : INC #2
 		STA !OAM+$102,y
 		PHX
 		LDX $03
 		LDA $8DDF,x
 		AND #$FE
-		ORA !Prop_AngelWings
+		ORA !GFX_AngelWings_prop
 		STA $0F
 		PLX
 		PHY
@@ -2769,19 +2712,8 @@
 		LDA !SpriteTile,x : PHA
 		LDA !SpriteProp,x : PHA
 		LDA $33C0,x : PHA
-		LDA !GFX_AngelWings
-		AND #$0F
-		STA $04
-		LDA !GFX_AngelWings
-		AND #$70
-		ASL A
-		ORA $04
-		STA !SpriteTile,x
-		LDA !GFX_AngelWings
-		ASL A
-		ROL A
-		AND #$01
-		STA !SpriteProp,x
+		LDA !GFX_AngelWings_tile : STA !SpriteTile,x
+		LDA !GFX_AngelWings_prop : STA !SpriteProp,x
 		REP #$20
 		LDA $14
 		AND #$0008 : BEQ +
@@ -2919,7 +2851,7 @@
 	pullpc
 	.Main
 		LDA #$04
-		CLC : ADC !Tile_WaterEffects
+		CLC : ADC !GFX_WaterEffects_tile
 		STA !OAM+$002,y
 		LDA !OAM+$003,y
 		AND #$F0
@@ -2927,7 +2859,7 @@
 		LDX $7698
 		ORA !Ex_Palset,x
 		PLX
-		ORA !Prop_WaterEffects
+		ORA !GFX_WaterEffects_prop
 		STA !OAM+$003,y
 		RTL
 

@@ -1,3 +1,5 @@
+
+
 TarCreeper:
 
 	namespace TarCreeper
@@ -762,8 +764,7 @@ TarCreeper:
 		STA $0C					; |
 		PHY					; |
 		LDY.w #!File_TarCreeper_Body		; |
-		JSL LOAD_SQUARE_DYNAMO
-	;	JSL !UpdateFromFile			; |
+		JSL LOAD_SQUARE_DYNAMO			; |
 		PLY					;/
 		.NoDynamo
 
@@ -798,132 +799,12 @@ TarCreeper:
 
 
 		.AllArms
-;		LDA ($04) : STA !BigRAM+0
-;		INC $04
-;		INC $04
 		SEP #$30				; > All regs 8 bit
-;		LDA !GFX_Dynamic			;\
-;		AND #$70				; |
-;		ASL A					; |
-;		STA $00					; | $00 = claim offset
-;		LDA !ClaimedGFX				; |
-;		AND #$0F				; |
-;		ASL A					; |
-;		TSB $00					;/
 		PLA : STA !TarCreeperPrevDyn		; > Store dynamo for next frame
-;		LDX #$00
-;		LDY #$00
-
-
-;	-	LDA ($04),y				;\
-;		STA !BigRAM+2,x				; |
-;		LSR A : PHP				; > Save lowest bit
-;		INY					; |
-;		LDA ($04),y				; |
-;		STA !BigRAM+3,x				; |
-;		INY					; |
-;		LDA ($04),y				; | Copy body tilemap to !BigRAM
-;		STA !BigRAM+4,x				; |
-;		INY					; |
-;		LDA ($04),y				; |
-;		PLP : BCS .Static			; |
-;		ADC $00					; > Add claim offset
-;	.Static	STA !BigRAM+5,x				; |
-;		INX #4					; |
-;		INY					; |
-;		CPX !BigRAM+0				; |
-;		BCC -					;/
-
-
-
-
-
-
-
-;		PHX		
 		LDX !SpriteIndex
 		LDA !SpriteAnimIndex			;\
 		CMP #$2B : BCC .Arms
 		JMP INTERACTION_2
-
-
-
-;		CMP #$13 : BCS $03 : JMP .Arms		; | Don't draw normal arms during attack
-;		CMP #$19 : BEQ .Stretch			; | Stretch arm during frames 0x19 and 0x23-0x24
-;		CMP #$23 : BEQ .Stretch			; |
-;		CMP #$24 : BEQ .Stretch			;/
-;		CMP #$25 : BCC +			;\
-;		CMP #$2B : BCS +			; | Show arms during initial death animation
-;		JMP .Arms				; |
-;	+	JMP .NoStretch				;/
-;		.Stretch
-;		LDA !TarCreeperAttack			;\
-;		AND #$0F				; | Take attack counter times 8
-;		ASL #3					;/
-;		BIT !TarCreeperAttack			;\
-;		BVS +					; |
-;		ASL A					; | Times 16 when going out
-;		CMP #$80				; |
-;		BCC $02 : LDA #$70			;/
-;	+	STA $00
-;		LDY #$00				; > Grab
-;		LDA !TarCreeperAttack
-;		AND #$C0 : CMP #$C0
-;		BEQ .GrabSuccess
-;		LDY #$10				; > No grab
-;		LDA !BigRAM+$03
-;		SEC : SBC $00
-;		STA !BigRAM+$03
-;		LDA !BigRAM+$07
-;		SEC : SBC $00
-;		STA !BigRAM+$07
-;		LDA !BigRAM+$0B
-;		SEC : SBC $00
-;		STA !BigRAM+$0B
-;		LDA !BigRAM+$0F
-;		SEC : SBC $00
-;		STA !BigRAM+$0F
-;		.GrabSuccess
-;		LDX #$00				; > Tiles to add to tilemap
-;		LDA $00					; > Amount of pixels that hand has moved
-;		CMP #$10 : BCC .2back			;
-;		CMP #$18 : BCC .1back			;
-;		CMP #$28 : BCC .0arm
-;		CMP #$48 : BCC .1forward
-;		CMP #$58 : BCC .2forward
-;		CMP #$68 : BCC .3forward
-;		CMP #$78 : BCC .4forward
-;		BRA .5forward
-;.2back		LDA #$16 : STA !BigRAM+$17,y : INX
-;.1back		LDA #$06 : STA !BigRAM+$13,y : INX
-;		BRA .0arm
-;.5forward	LDA #$B6 : STA !BigRAM+$13,y : INX
-;.4forward	LDA #$C6 : STA !BigRAM+$1F,y : INX
-;.3forward	LDA #$D6 : STA !BigRAM+$1B,y : INX
-;.2forward	LDA #$E6 : STA !BigRAM+$17,y : INX
-;.1forward	LDA #$F6 : STA !BigRAM+$13,y : INX
-;.0arm		TXA : BEQ .NoStretch
-;		ASL #2
-;		TAX
-;		CLC : ADC !BigRAM
-;		STA !BigRAM
-;		CPY #$10
-;		BEQ +
-;	-	LDA #$2D : STA !BigRAM+$12-4,x
-;		LDA #$FC : STA !BigRAM+$14-4,x
-;		LDA #$84 : STA !BigRAM+$15-4,x
-;		DEX #4
-;		BNE -
-;		BRA .NoStretch
-;		+
-;	-	LDA #$2D : STA !BigRAM+$22-4,x
-;		LDA #$FC : STA !BigRAM+$24-4,x
-;		LDA #$84 : STA !BigRAM+$25-4,x
-;		DEX #4
-;		BNE -
-;		.NoStretch
-;		PLA					;\ Draw body without caring for arms
-;		JMP .ArmsDone				;/
 
 		.Arms
 		LDA !TarCreeperHandL
@@ -933,9 +814,6 @@ TarCreeper:
 
 
 		.SecondArmLoop
-;		PLX
-
-
 		STA $00					; > Full data at $00
 		AND #$C0				;\ Hand XY bits at $01
 		STA $01					;/
@@ -962,7 +840,7 @@ TarCreeper:
 		BIT !BigRAM+2,x				; |
 		BVC $02 : EOR #$FF			; |
 		CLC : ADC $0C				; > add shoulder X disp
-		BIT !BigRAM+2,x				; |
+		BIT $0B					; |
 		BVC $02 : EOR #$FF			; |
 		STA !BigRAM+3,x				; | add arm tilemap to !BigRAM
 		LDA !BigRAM+2,x				; |
@@ -1021,11 +899,7 @@ TarCreeper:
 	++	EOR #$FF				;/
 		+++
 
-	;	BIT !BigRAM+2,x
-	;	BVC $02 : EOR #$FF
 		CLC : ADC $0C				; > Add arm X disp
-		BIT !BigRAM+2,x				;\ Handle X flip
-		BVC $02 : EOR #$FF			;/
 		EOR $0A
 		STA !BigRAM+3,x				; > Store to tilemap
 		INY
@@ -1063,108 +937,6 @@ TarCreeper:
 		LDA.b #!BigRAM>>8 : STA $05		;/
 		LDX !SpriteIndex
 		JSL LOAD_PSUEDO_DYNAMIC
-
-
-
-;		LDA !TarCreeperAttack			;\
-;		AND #$C0 : CMP #$C0			; | Check for hi prio hand
-;		BEQ .HiPrioHand				; |
-;		JMP INTERACTION_2			;/
-;		.HiPrioHand
-;		LDA !TarCreeperAttack			;\
-;		AND #$0F				; |
-;		ASL #3					; |
-;		STA $0A					; |
-;		STZ $0B					; |
-;		REP #$20				; |
-;		LDA $00					; | Get x position of hand based on attack counter
-;		LDY $3320,x : BEQ +			; |
-;		SEC : SBC $0A				; |
-;		BRA ++					; |
-;	+	CLC : ADC $0A				; |
-;	++	STA $00					;/
-;		TSC : STA $0A				; > Stack pointer backup in case enough slots aren't found
-;		SEP #$20
-;		LDX #$00				; > OAM index
-;		LDY #$03				; > Loop counter
-;		LDA #$F0				; > Y pos to search for
-;	-	CMP.w !OAM+$001,x			;\
-;		BNE +					; |
-;		PHX					; |
-;		DEY					; | Look for 4 empty slots in the lo half of OAM
-;		BMI ++					; |
-;	+	INX #4					; |
-;		BNE -					; |
-;		JMP .PrioHandEnd			; |
-;		++					;/
-;		PLX
-;		LDA #$10 : STA $08
-;		LDY #$00
-;	-	LDA.w ANIM_HiPrioHandTM,y
-;		EOR $0C
-;		STA !OAM+$003,x
-;		REP #$20
-;		STZ $0E
-;		AND #$0040
-;		BEQ +
-;		LDA #$FFFF
-;		STA $0E
-;	+	INY
-;		LDA.w ANIM_HiPrioHandTM,y
-;		AND #$00FF
-;		CMP #$0080
-;		BMI $03 : ORA #$FF00
-;		EOR $0E
-;		CLC : ADC $00
-;		CMP #$0100
-;		BCC .GoodX
-;		CMP #$FFF0
-;		BCS .GoodX
-;		PLX
-;		INY #3
-;		SEP #$20
-;		CPY $08 : BNE -
-;		BRA .PrioHandEnd
-;.GoodX		STA $06
-;		INY
-;		LDA.w ANIM_HiPrioHandTM,y
-;		AND #$00FF
-;		CMP #$0080
-;		BMI $03 : ORA #$FF00
-;		CLC : ADC $02
-;		CMP #$00E8 : BCC .GoodY
-;		CMP #$FFF0 : BCS .GoodY
-;		PLX
-;		INY #2
-;		SEP #$20
-;		CPY $08 : BNE -
-;		BRA .PrioHandEnd
-;.GoodY		SEP #$20
-;		STA !OAM+$001,x
-;		LDA $06
-;		STA !OAM+$000,x
-;		INY
-;		LDA.w ANIM_HiPrioHandTM,y : STA !OAM+$002,x
-;		INY
-;		TXA
-;		LSR #2
-;		TAX
-;		LDA $07
-;		AND #$01
-;		ORA #$02
-;		STA !OAMhi+$00,x
-;		CPY $08 : BEQ .PrioHandEnd
-;		PLX
-;		JMP -
-;.PrioHandEnd	LDX !SpriteIndex			; > Restore sprite index
-;		LDA $0B : XBA				;\ Restore stack pointer
-;		LDA $0A : TCS				;/
-
-
-
-
-; !BigRAM+$60	index to right hand
-; !BigRAM+$61	index to left hand
 
 
 	INTERACTION_2:

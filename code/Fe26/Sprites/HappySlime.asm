@@ -1,3 +1,5 @@
+
+
 HappySlime:
 
 	namespace HappySlime
@@ -140,6 +142,9 @@ HappySlime:
 
 		.WallBits
 		db $FE,$FC
+
+		.SlimeX
+		db $F0,$10
 
 
 	; Figure out quadrant of target and set proper happiness value
@@ -706,18 +711,30 @@ HappySlime:
 		LDA #$08 : STA !SPC4			;/ > bounce SFX
 		BRA .CheckAttack
 		.Hurt
-		LDA #$08 : JSL DontInteract
+		STZ !SpriteXSpeed,x
+		LDA #$10 : STA !SpriteYSpeed,x
 		LDA !BigRAM+$7F
 		AND #$02
 		LSR A
 		ORA #$10
 		STA !Goal1
+		TYA
+		AND #$80
+		TAY
+		JSL SUB_HORZ_POS_Target
+		LDA DATA_SlimeX,y : STA $02
+		LDA #$E0 : STA $03
 		JSR HURT
 
 		.CheckAttack
 		JSL P2Attack : BCC .NoAttack
-		LDA !P2Hitbox1XSpeed-$80,y : STA !SpriteXSpeed,x
-		LDA !P2Hitbox1YSpeed-$80,y : STA !SpriteYSpeed,x
+		STZ $3330,x
+		LDA !P2Hitbox1XSpeed-$80,y
+		STA !SpriteXSpeed,x
+		STA $02
+		LDA !P2Hitbox1YSpeed-$80,y
+		STA !SpriteYSpeed,x
+		STA $03
 		TYA
 		ROL #2
 		AND #$01
@@ -876,29 +893,29 @@ HappySlime:
 
 	HITBOX:
 		.BODY
-		LDA $3220,x				;\
-		CLC : ADC #$02				; |
-		STA $04					; | Hitbox xpos
-		LDA $3250,x				; |
-		ADC #$00				; |
-		STA $0A					;/
-		LDA #$0C				;\ Hitbox width
-		STA $06					;/
-		LDA $3210,x				;\
-		CLC : ADC #$02				; |
-		STA $05					; | Hitbox ypos
-		LDA $3240,x				; |
-		ADC #$00				; |
-		STA $0B					;/
-		LDA #$0E				;\ Hitbox height
-		STA $07					;/
+		LDA $3220,x					;\
+		CLC : ADC #$02					; |
+		STA $04						; | hitbox xpos
+		LDA $3250,x					; |
+		ADC #$00					; |
+		STA $0A						;/
+		LDA #$0C					;\ hitbox width
+		STA $06						;/
+		LDA $3210,x					;\
+		CLC : ADC #$02					; |
+		STA $05						; | hitbox ypos
+		LDA $3240,x					; |
+		ADC #$00					; |
+		STA $0B						;/
+		LDA #$0E					;\ hitbox height
+		STA $07						;/
 		RTS
 
 	FOLLOW:
-		LDA !RNG				;\
-		AND #$01				; | Randomly choose player to follow
-		ORA #$10				; |
-		STA !Goal1				;/
+		LDA !RNG					;\
+		AND #$01					; | randomly choose player to follow
+		ORA #$10					; |
+		STA !Goal1					;/
 		RTS
 
 	PLAY:
@@ -911,33 +928,73 @@ HappySlime:
 	OBJECTS:
 
 	HURT:
-		LDA !SlimeInvincTimer : BNE .SFX
-		LDA !ExtraBits,x				; clear extra bit
-		AND.b #$04^$FF
-		STA !ExtraBits,x
-		LDA #$40 : STA !SlimeInvincTimer
-		STZ !SpriteXSpeed,x
-		LDA #$10 : STA !SpriteYSpeed,x
-		STZ !SpriteAnimTimer
+		LDA !SlimeInvincTimer : BEQ .Hurt
+		RTS
 
-		LDA !SpriteAnimIndex
-		CMP #!HappySlime_Midair : BEQ .Air
-		CMP #!HappySlime_WallUp : BCC .Ground
-		CMP #!HappySlime_WallUp_over : BCC .Air
-		CMP #!HappySlime_WallDown : BCC .Ground
-		CMP #!HappySlime_WallDown_over : BCC .Air
-	.Ground	LDA #!HappySlime_Stunned : STA !SpriteAnimIndex	;\
-		LDA $BE,x					; |
-		INC A						; | hit
-		AND #$7F					; |
-		BRA .Set					;/
-	.Air	LDA #!HappySlime_Midair : STA !SpriteAnimIndex	;\
+		.Hurt
+		LDA !ExtraBits,x				;\
+		AND.b #$04^$FF					; | clear extra bit
+		STA !ExtraBits,x				;/
+		LDA #$40 : STA !SlimeInvincTimer		;\ invinc timer + anim timer
+		STZ !SpriteAnimTimer				;/
+		LDA $3330,x					;\ on ground or in midair
+		AND #$04 : BEQ .Air				;/
+		.Ground						;\
+		LDA #!HappySlime_Stunned : STA !SpriteAnimIndex	; |
+		LDA $BE,x					; | hit
+		INC A						; |
+		AND #$7F : BRA .Set				;/
+		.Air						;\
+		LDA #!HappySlime_Midair : STA !SpriteAnimIndex	; |
 		LDA $BE,x					; |
 		INC A						; | hit + fall
 		AND #$7F					; |
 		ORA #$80					; |
-	.Set	STA $BE,x					;/
-	.SFX	LDA #$02 : STA !SPC1				; > contact SFX
+		.Set						; |
+		STA $BE,x					;/
+
+		LDA #$04 : STA $00
+		LDA #$04 : STA $01
+		STZ $04
+		LDA #$18 : STA $05
+		LDA !GFX_SlimeParticles_tile : STA $06
+		LDA !GFX_SlimeParticles_prop
+		ORA $33C0,x
+		ORA #$30
+		STA $07
+		LDA #!prt_basic : JSL SpawnParticle
+
+		LDA !RNG
+		AND #$0C
+		STA !BigRAM
+		LDA !RNG
+		AND #$1F
+		STA !BigRAM+1
+		LDA !RNG
+		AND #$07
+		EOR #$07
+		CLC : ADC $03
+		STA $03
+
+		LDA $06
+		CLC : ADC #$10
+		STA $06
+		LDA $02
+		SEC : SBC !BigRAM
+		STA $02
+		LDA #$C0 : TRB $07
+		LDA #!prt_basic : JSL SpawnParticle
+		LDA $02
+		CLC : ADC !BigRAM+1
+		STA $02
+		LDA !RNG
+		LSR #4
+		AND #$0F
+		SEC : SBC $03
+		EOR #$FF
+		STA $03
+		LDA #$C0 : TRB $07
+		LDA #!prt_basic : JSL SpawnParticle
 		RTS
 
 

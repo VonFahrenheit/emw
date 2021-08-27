@@ -1,3 +1,5 @@
+
+
 CoinGolem:
 
 	namespace CoinGolem

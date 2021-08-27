@@ -1233,7 +1233,7 @@ HurtP1:		LDA !P2Invinc-$80,y			;\
 		STA !P2ShellSpeed-$80,y			; end fast shell slide status
 		STA !P2Senku-$80,y			; end senku
 		STA !P2AllRangeSenku-$80,y		; reset all range senku
-		STA !P2ShellDrill-$80,y			; end shell drill
+		STA !P2DropKick-$80,y			; end drop kick
 		STA !P2BackDash-$80,y			; end back dash
 		STA !P2Dashing-$80,y			; end dash state
 		RTS
@@ -1320,6 +1320,96 @@ CONTACT16:
 		CLC
 		SEP #$20
 		RTS
+
+		LDA $00 : STA $0C
+		LDA $08 : STA $0D
+		LDA $0A : XBA
+		LDA $04
+		REP #$20
+		STA $0E
+		LDA $02
+		AND #$00FF
+		CLC : ADC $0C
+		CMP $0E
+		BMI .Return
+		LDA $06
+		AND #$00FF
+		CLC : ADC $0E
+		CMP $0C
+		BMI .Return
+		SEP #$20
+
+		LDA $01 : STA $0C
+		LDA $09 : STA $0D
+		LDA $0B : XBA
+		LDA $05
+		REP #$20
+		STA $0E
+		LDA $03
+		AND #$00FF
+		CLC : ADC $0C
+		CMP $0E
+		BMI .Return
+		LDA $07
+		AND #$00FF
+		CLC : ADC $0E
+		CMP $0C
+		BMI .Return
+
+
+; $08 -> $01 (X1 hi -> next to X1 lo)
+; $01 -> $08 (Y1 lo -> next to Y1 hi)
+; $03 -> $0C (H1 -> free area)
+
+; $0A -> $05 (X2 hi -> next to X2 lo)
+; $05 -> $0A (Y2 lo -> next to Y2 hi)
+; $07 -> $0E (H2 -> free area)
+
+
+; $00 - X1
+; $02 - W1
+; $04 - X2
+; $06 - W2
+; $08 - Y1
+; $0A - Y2
+; $0C - H1
+; $0E - H2
+
+	!X1	= $00
+	!W1	= $02
+	!X2	= $04
+	!W2	= $06
+	!Y1	= $08
+	!Y2	= $0A
+	!H1	= $0C
+	!H2	= $0E
+
+
+		REP #$20
+		LDA !X1
+		CLC : ADC !W1
+		CMP !X2 : BMI .Fail
+		LDA !X2
+		CLC : ADC !W2
+		CMP !X1 : BMI .Fail
+		LDA !Y1
+		CLC : ADC !H1
+		CMP !Y2 : BMI .Fail
+		LDA !Y2
+		CLC : ADC !H2
+		CMP !Y1 : BMI .Fail
+
+		.Contact
+		SEC
+		SEP #$20
+		RTS
+
+
+		.Fail
+		CLC
+		SEP #$20
+		RTS
+
 
 
 
@@ -3008,17 +3098,17 @@ DECOMP_FROM_FILE:
 		CMP #$10
 		BCC $02 : ADC #$0F
 		STA $02
-		LDA !GFX_Dynamic
+	;	LDA !GFX_Dynamic
 		AND #$70
 		ASL A
 		ADC $02
 		STA $02
-		LDA !GFX_Dynamic
+	;	LDA !GFX_Dynamic
 		AND #$0F
 		CLC : ADC $02
 		STA $02
 		STZ $03
-		LDA !GFX_Dynamic
+	;	LDA !GFX_Dynamic
 		BPL $02 : INC $03
 
 		PHX
@@ -3231,14 +3321,8 @@ CLEAR_PLAYER2:
 		STZ !BossData+5			; |
 		STZ !BossData+6			;/
 
-		LDA #$00			; > Set up clear
-		STA !NPC_ID+0			;\
-		STA !NPC_ID+1			; | Clear NPC ID pointer
-		STA !NPC_ID+2			;/
-		STA !NPC_Talk+0			;\
-		STA !NPC_Talk+1			; | Clear NPC talk pointer
-		STA !NPC_Talk+2			;/
-		STA !MsgMode			; > Clear message mode
+		LDA #$00			; > set up clear
+		STA !MsgMode			; > clear message mode
 		STA !HDMAptr+0			;\
 		STA !HDMAptr+1			; | clear HDMA pointer
 		STA !HDMAptr+2			;/

@@ -370,221 +370,219 @@ endmacro
 		!GlobalLightMix		= !GlobalPalsetMix
 
 
-
-
-	; these hold unpacked information for extra file tilemaps
-		!Extra_Tiles		= $74C8
-		!Extra_Prop		= !Extra_Tiles+$15
-
-		!Tile_Wings		= !Extra_Tiles+$00
-		!Tile_Shell		= !Extra_Tiles+$01
-		!Tile_LakituCloud	= !Extra_Tiles+$02
-		!Tile_Hammer		= !Extra_Tiles+$03
-		!Tile_SmallFireball	= !Extra_Tiles+$04
-		!Tile_ReznorFireball	= !Extra_Tiles+$05
-		!Tile_LotusPollen	= !Extra_Tiles+$06
-		!Tile_Baseball		= !Extra_Tiles+$07
-		!Tile_WaterEffects	= !Extra_Tiles+$08
-		!Tile_LavaEffects	= !Extra_Tiles+$09
-		!Tile_SkeletonRubble	= !Extra_Tiles+$0A
-		!Tile_Bone		= !Extra_Tiles+$0B
-		!Tile_PlantStalk	= !Extra_Tiles+$0C
-		!Tile_BombStar		= !Extra_Tiles+$0D
-		!Tile_Parachute		= !Extra_Tiles+$0E
-		!Tile_Mechanism		= !Extra_Tiles+$0F
-		!Tile_DinoFire		= !Extra_Tiles+$10
-		!Tile_AngelWings	= !Extra_Tiles+$11
-		!Tile_RexLegs1		= !Extra_Tiles+$12
-		!Tile_RexLegs2		= !Extra_Tiles+$13
-		!Tile_RexSmall		= !Extra_Tiles+$14
-
-		!Prop_Wings		= !Extra_Prop+$00
-		!Prop_Shell		= !Extra_Prop+$01
-		!Prop_LakituCloud	= !Extra_Prop+$02
-		!Prop_Hammer		= !Extra_Prop+$03
-		!Prop_SmallFireball	= !Extra_Prop+$04
-		!Prop_ReznorFireball	= !Extra_Prop+$05
-		!Prop_LotusPollen	= !Extra_Prop+$06
-		!Prop_Baseball		= !Extra_Prop+$07
-		!Prop_WaterEffects	= !Extra_Prop+$08
-		!Prop_LavaEffects	= !Extra_Prop+$09
-		!Prop_SkeletonRubble	= !Extra_Prop+$0A
-		!Prop_Bone		= !Extra_Prop+$0B
-		!Prop_PlantStalk	= !Extra_Prop+$0C
-		!Prop_BombStar		= !Extra_Prop+$0D
-		!Prop_Parachute		= !Extra_Prop+$0E
-		!Prop_Mechanism		= !Extra_Prop+$0F
-		!Prop_DinoFire		= !Extra_Prop+$10
-		!Prop_AngelWings	= !Extra_Prop+$11
-		!Prop_RexLegs1		= !Extra_Prop+$12
-		!Prop_RexLegs2		= !Extra_Prop+$13
-		!Prop_RexSmall		= !Extra_Prop+$14
-
-
 		!GFX_status		= $418100
-
-		!GFX_Koopa		= !GFX_status+$00
-		!GFX_KoopaGreen		= !GFX_Koopa
-		!GFX_KoopaRed		= !GFX_Koopa
-		!GFX_KoopaYellow	= !GFX_Koopa
-		!GFX_KoopaGreenRedYellow	= !GFX_Koopa
-		!GFX_BobOmb		= !GFX_status+$01
-		!GFX_Key		= !GFX_status+$02
-		!GFX_Goomba		= !GFX_status+$03
-		!GFX_PiranhaPlant	= !GFX_status+$04
-		!GFX_BulletBill		= !GFX_status+$05
-		!GFX_Starman		= !GFX_status+$06
-		!GFX_SpringBoard	= !GFX_status+$07
-		!GFX_PSwitch		= !GFX_status+$08
-		!GFX_Blocks		= !GFX_status+$09
-		!GFX_WallBouncer	= !GFX_status+$0A
-		!GFX_Sign		= !GFX_status+$0B
-		!GFX_BooBlock		= !GFX_status+$0C
-		!GFX_Spiny		= !GFX_status+$0D
-		!GFX_HoppingFlame	= !GFX_status+$0E
-		!GFX_GrowingPipe	= !GFX_status+$0F
-		!GFX_Lakitu		= !GFX_status+$10
-		!GFX_PBalloon		= !GFX_status+$11
-		!GFX_Wiggler		= !GFX_status+$12
-		!GFX_Magikoopa		= !GFX_status+$13
-		!GFX_NetKoopa		= !GFX_status+$14
-		!GFX_Thwomp		= !GFX_status+$15
-		!GFX_Thwimp		= !GFX_status+$16
-		!GFX_Podoboo		= !GFX_status+$17
-		!GFX_BallAndChain	= !GFX_status+$18
-		!GFX_FishBone		= !GFX_status+$19
-		!GFX_FallingSpike	= !GFX_status+$1A
-		!GFX_BouncingPodoboo	= !GFX_status+$1B
-		!GFX_MovingBlock	= !GFX_status+$1C
-		!GFX_BuzzyBeetle	= !GFX_status+$1D
-		!GFX_Football		= !GFX_status+$1E
-		!GFX_SpikeTop		= !GFX_status+$1F
-		!GFX_FloatingSkulls	= !GFX_status+$20
-		!GFX_Blargg		= !GFX_status+$21
-		!GFX_SwooperBat		= !GFX_status+$22
-		!GFX_ChuckRock		= !GFX_status+$23
-		!GFX_BrownGreyPlat	= !GFX_status+$24
-		!GFX_CheckerPlat	= !GFX_status+$25
-		!GFX_RockPlat		= !GFX_status+$26
-		!GFX_OrangePlat		= !GFX_status+$27
-		!GFX_RopeMechanism	= !GFX_status+$28
-		!GFX_Chainsaw		= !GFX_status+$29
-		!GFX_Fuzzy		= !GFX_status+$2A
-		!GFX_ScalePlat		= !GFX_status+$2B
-		!GFX_SpikeBall		= !GFX_status+$2C
-		!GFX_Urchin		= !GFX_status+$2D
-		!GFX_RipVanFish		= !GFX_status+$2E
-		!GFX_Dolphin		= !GFX_status+$2F
-		!GFX_TorpedoTed		= !GFX_status+$30
-		!GFX_BlurpFish		= !GFX_status+$31
-		!GFX_PorcuPuffer	= !GFX_status+$32
-		!GFX_SumoLightning	= !GFX_status+$33
-		!GFX_MontyMole		= !GFX_status+$34
-		!GFX_Pokey		= !GFX_status+$35
-		!GFX_SuperKoopa		= !GFX_status+$36
-		!GFX_VolcanoLotus	= !GFX_status+$37
-		!GFX_SumoBro		= !GFX_status+$38
-		!GFX_Ninji		= !GFX_status+$39
-		!GFX_Spotlight		= !GFX_status+$3A
-		!GFX_SmallBird		= !GFX_status+$3B
-		!GFX_BigBoo		= !GFX_status+$3C
-		!GFX_Boo		= !GFX_status+$3D
-		!GFX_ClimbingDoor	= !GFX_status+$3E
-		!GFX_CastlePlat		= !GFX_status+$3F
-		!GFX_Grinder		= !GFX_status+$40
-		!GFX_HotHead		= !GFX_status+$41
-		!GFX_WoodenSpike	= !GFX_status+$42
-		!GFX_StatueFireball	= !GFX_status+$43
-		!GFX_BowserStatue	= !GFX_status+$44
-		!GFX_Fish		= !GFX_status+$45
-		!GFX_LakituCloud	= !GFX_status+$46
-		!GFX_Chuck		= !GFX_status+$47
-		!GFX_AmazingHammerBro	= !GFX_status+$48
-		!GFX_BanzaiBill		= !GFX_status+$49
-		!GFX_Rex		= !GFX_status+$4A
-		!GFX_CarrotPlat		= !GFX_status+$4B
-		!GFX_TimerPlat		= !GFX_status+$4C
-		!GFX_MegaMole		= !GFX_status+$4D
-		!GFX_DinoRhino		= !GFX_status+$4E
-		!GFX_DinoTorch		= !GFX_status+$4F
-		!GFX_BossFireball	= !GFX_status+$50
-		!GFX_BowlingBall	= !GFX_status+$51
-		!GFX_MechaKoopa		= !GFX_status+$52
-		!GFX_Reznor		= !GFX_status+$53
-		!GFX_DryBones		= !GFX_status+$54
-		!GFX_BonyBeetle		= !GFX_status+$55
-		!GFX_Eerie		= !GFX_status+$56
-		!GFX_CarrierBubble	= !GFX_status+$57
-		!GFX_FishingBoo		= !GFX_status+$58
-		!GFX_Sparky		= !GFX_status+$59
-
-		!GFX_Wings		= !GFX_status+$5A
-		!GFX_Shell		= !GFX_status+$5B
-		!GFX_LakituCloud	= !GFX_status+$5C
-		!GFX_Hammer		= !GFX_status+$5D
-		!GFX_SmallFireball	= !GFX_status+$5E
-		!GFX_ReznorFireball	= !GFX_status+$5F
-		!GFX_LotusPollen	= !GFX_status+$60
-		!GFX_Baseball		= !GFX_status+$61
-		!GFX_WaterEffects	= !GFX_status+$62
-		!GFX_LavaEffects	= !GFX_status+$63
-		!GFX_SkeletonRubble	= !GFX_status+$64
-		!GFX_Bone		= !GFX_status+$65
-		!GFX_PlantStalk		= !GFX_status+$66
-		!GFX_BombStar		= !GFX_status+$67
-		!GFX_Parachute		= !GFX_status+$68
-		!GFX_Mechanism		= !GFX_status+$69
-		!GFX_DinoFire		= !GFX_status+$6A
-		!GFX_AngelWings		= !GFX_status+$6B
-		!GFX_RexLegs1		= !GFX_status+$6C
-		!GFX_RexLegs2		= !GFX_status+$6D
-		!GFX_RexSmall		= !GFX_status+$6E
-		!GFX_LuigiFireball	= !GFX_status+$6F
-		!GFX_ShellessKoopa	= !GFX_status+$70
-		!GFX_KickerKoopa	= !GFX_status+$71
-		!GFX_SmushedKoopa	= !GFX_status+$72
-
-		!GFX_GoombaSlave	= !GFX_status+$80
-		!GFX_KoopaBlue		= !GFX_status+$81
-		!GFX_HammerRex		= !GFX_status+$82
-		!GFX_Conjurex		= !GFX_status+$83
-		!GFX_MagicMole		= !GFX_status+$84
-		!GFX_Thif		= !GFX_status+$85
-		!GFX_KompositeKoopa	= !GFX_status+$86
-		!GFX_Birdo		= !GFX_status+$87
-		!GFX_Bumper		= !GFX_status+$88
-		!GFX_Monkey		= !GFX_status+$89
-		!GFX_TerrainPlat	= !GFX_status+$8A
-		!GFX_YoshiCoin		= !GFX_status+$8B
-		!GFX_CoinGolem		= !GFX_status+$8C
-		!GFX_BooHoo		= !GFX_status+$8D
-		!GFX_FlamePillar	= !GFX_status+$8E
-		!GFX_ParachuteGoomba	= !GFX_status+$8F
-		!GFX_ParachuteBobomb	= !GFX_status+$90
-		!GFX_MovingLedge	= !GFX_status+$91
-		!GFX_SuperKoopa2	= !GFX_status+$92
-		!GFX_GasBubble		= !GFX_status+$93
-		!GFX_RexHat1		= !GFX_status+$94
-		!GFX_RexHat2		= !GFX_status+$95
-		!GFX_RexHat3		= !GFX_status+$96
-		!GFX_RexHat4		= !GFX_status+$97
-		!GFX_RexHat5		= !GFX_status+$98
-		!GFX_RexHat6		= !GFX_status+$99
-		!GFX_RexHat6		= !GFX_status+$9A
-		!GFX_RexHelmet		= !GFX_status+$9B
-		!GFX_RexBag1		= !GFX_status+$9C
-		!GFX_RexBag2		= !GFX_status+$9D
-		!GFX_RexBag3		= !GFX_status+$9E
-		!GFX_RexBag4		= !GFX_status+$9F
-		!GFX_RexSword		= !GFX_status+$A0
-		!GFX_FlyingRex		= !GFX_status+$A1
-		!GFX_Fuzzy		= !GFX_status+$A2
-		!GFX_Shield		= !GFX_status+$A3
-		!GFX_TarCreeperHands	= !GFX_status+$A4
-		!GFX_ParaKoopa		= !GFX_status+$A5
+		!Part_status		= !GFX_status+$000	; 512 entries for parts (9-bit, 2 bytes each)
+		!Set_status		= !GFX_status+$400	; 128 entries for sets (9-bit, 2 bytes each)
+		!SuperSet_status	= !GFX_status+$500	; 64 entries for super sets (9-bit, 2 bytes each)
+		!Palset_status		= !GFX_status+$580	; 128 entries for palsets, 7+1 bit, 1 byte each
+		!SD_status		= !GFX_status+$600	; 256 entries for super-dynamic files, 6+2 bit, 1 byte each
 
 
-		!GFX_Dynamic		= !GFX_status+$FF	; this one is not used by sprite files, it marks the start of the dynamic area
+		macro def_GFX(name)
+			!GFX_<name> := !GFX_status+!Temp
+			!GFX_<name>_tile := !GFX_<name>
+			!GFX_<name>_prop := !GFX_<name>+1
+			!GFX_<name>_offset := !Temp
+			!Temp := !Temp+2
+		endmacro
+
+
+	; GFX parts
+		!Temp = 0
+
+		; simple enemies
+		%def_GFX(Goomba)
+		%def_GFX(GoombaSlave)
+		%def_GFX(Bobomb)
+		%def_GFX(Spiny)
+		%def_GFX(SpikeTop)
+		%def_GFX(BuzzyBeetle)
+		%def_GFX(SwooperBat)
+		%def_GFX(MontyMole)
+		%def_GFX(MegaMole)
+		%def_GFX(MiniMole)
+		%def_GFX(HoppingFlame)
+		%def_GFX(Lakitu)
+		%def_GFX(Wiggler)
+		%def_GFX(Thwomp)
+		%def_GFX(Thwimp)
+		%def_GFX(Podoboo)
+		%def_GFX(DiagPodoboo)
+		%def_GFX(BallAndChain)
+		%def_GFX(FallingSpike)
+		%def_GFX(WoodenSpike)
+		%def_GFX(Grinder)
+		%def_GFX(Sparky)
+		%def_GFX(HotHead)
+		%def_GFX(MechaKoopa)
+		%def_GFX(SpikeBall)
+		%def_GFX(Fuzzy)
+		%def_GFX(SuperKoopa)
+		%def_GFX(Pokey)
+		%def_GFX(Ninji)
+		%def_GFX(Thif)
+		%def_GFX(NetKoopa)
+		%def_GFX(BulletBill)
+		%def_GFX(BulletBillDiag)
+		%def_GFX(BulletBillUp)
+		%def_GFX(BanzaiBill)
+		%def_GFX(BowlingBall)
+		%def_GFX(FishBone)
+		%def_GFX(DryBones)
+		%def_GFX(BonyBeetle)
+		%def_GFX(Fish)
+		%def_GFX(BlurpFish)
+		%def_GFX(RipVanFish)
+		%def_GFX(PorcuPuffer)
+		%def_GFX(Dolphin)
+		%def_GFX(Urchin)
+		%def_GFX(TorpedoTed)
+		%def_GFX(Reznor)
+		%def_GFX(Birdo)
+		%def_GFX(Monkey)
+		%def_GFX(FlamePillar)
+		%def_GFX(GasBubble)
+		%def_GFX(UltraFuzzy)
+		%def_GFX(TarCreeperHands)
+		%def_GFX(Boo)
+		%def_GFX(Eerie)
+		%def_GFX(FishingBoo)
+		%def_GFX(BooHoo)
+
+		; beneficial sprites
+		%def_GFX(Starman)
+		%def_GFX(GoldShroom)
+		%def_GFX(PSwitch)
+		%def_GFX(SpringBoard)
+		%def_GFX(Bumper)
+		%def_GFX(PBalloon)
+		%def_GFX(Sign)
+		%def_GFX(Key)
+		%def_GFX(SmallBird)
+		%def_GFX(YoshiCoin)
+
+		; platforms
+		%def_GFX(GrowingPipe)
+		%def_GFX(MovingBlock)
+		%def_GFX(FloatingSkulls)
+		%def_GFX(BrownGreyPlat)
+		%def_GFX(CheckerPlat)
+		%def_GFX(RockPlat)
+		%def_GFX(OrangePlat)
+		%def_GFX(ScalePlat)
+		%def_GFX(CastlePlat)
+		%def_GFX(CarrotPlat)
+		%def_GFX(TimerPlat)
+		%def_GFX(MovingLedge)
+		%def_GFX(TerrainPlat)
+		%def_GFX(Elevator)
+
+		; support sprite parts
+		%def_GFX(Shield)
+		%def_GFX(Portal)
+
+		; sprite support parts
+		%def_GFX(Football)
+		%def_GFX(ChuckRock)
+		%def_GFX(Rope)
+		%def_GFX(Chainsaw)
+		%def_GFX(Mechanism)
+		%def_GFX(StatueFireball)
+		%def_GFX(LakituCloud)
+		%def_GFX(BossFireball)
+		%def_GFX(SmallFireball)
+		%def_GFX(ReznorFireball)
+		%def_GFX(LotusPollen)
+		%def_GFX(Baseball)
+		%def_GFX(WaterEffects)
+		%def_GFX(LavaEffects)
+		%def_GFX(Parachute)
+		%def_GFX(PlantStalk)
+		%def_GFX(Wings)		; bat wings
+		%def_GFX(AngelWings)
+		%def_GFX(Hammer)
+		%def_GFX(DinoFire)
+		%def_GFX(SmushedKoopa)
+		%def_GFX(Shell)
+		%def_GFX(FelMagic)
+		%def_GFX(Bone)
+		%def_GFX(SkeletonRubble)
+		%def_GFX(SlimeParticles)
+
+		; rex support parts
+		%def_GFX(RexLegs1)
+		%def_GFX(RexLegs2)
+		%def_GFX(RexSmall)
+		%def_GFX(RexHat1)
+		%def_GFX(RexHat2)
+		%def_GFX(RexHat3)
+		%def_GFX(RexHat4)
+		%def_GFX(RexHat5)
+		%def_GFX(RexHat6)
+		%def_GFX(RexHat7)
+		%def_GFX(RexHelmet)
+		%def_GFX(RexBag1)
+		%def_GFX(RexBag2)
+		%def_GFX(RexBag3)
+		%def_GFX(RexBag4)
+		%def_GFX(RexSword)
+
+		; player support parts
+		%def_GFX(LuigiFireball)
+
+
+
+	; GFX sets
+		!Temp = $400
+
+		; vanilla enemies
+		%def_GFX(ParaGoomba)
+		%def_GFX(PiranhaPlant)	; stalk, fire
+		%def_GFX(Magikoopa)
+		%def_GFX(Blargg)	; lava parts
+		%def_GFX(VolcanoLotus)
+		%def_GFX(BooBlock)
+		%def_GFX(BigBoo)
+		%def_GFX(SumoBro)
+		%def_GFX(SumoLightning)
+		%def_GFX(BowserStatue)
+		%def_GFX(Chuck)
+		%def_GFX(AmazingHammerBro)
+		%def_GFX(DinoRhino)
+		%def_GFX(DinoTorch)
+		%def_GFX(ShellessKoopa)
+		%def_GFX(KickerKoopa)
+		%def_GFX(DryBonesThrower)
+		%def_GFX(BulletBillCardinals)
+		%def_GFX(ParachuteGoomba)
+		%def_GFX(ParachuteBobomb)
+
+		; neutral things
+		%def_GFX(Blocks)	; includes wings
+
+		; custom enemies
+		%def_GFX(Rex)
+		%def_GFX(HammerRex)
+		%def_GFX(FlyingRex)
+		%def_GFX(Conjurex)
+		%def_GFX(MagicMole)
+		%def_GFX(KompositeKoopa)
+		%def_GFX(CoinGolem)
+
+
+
+	; super sets
+		!Temp = $500
+		%def_GFX(ParaKoopa)
+		%def_GFX(Koopa)
+		%def_GFX(KoopaBlue)
+		%def_GFX(SuperKoopaKicker)
+		%def_GFX(ParachuteGen)
+		%def_GFX(CarrierBubble)
+		%def_GFX(ExplodingBlock)
+
+
+
 
 	; each file has a marker for where it is loaded (unloaded = 0)
 	; format: pyyyxxxx
@@ -628,8 +626,8 @@ endmacro
 		!PalsetD		= $602D
 		!PalsetE		= $602E
 		!PalsetF		= $602F
-
 	; index to palset table
+
 
 
 
@@ -666,6 +664,7 @@ endmacro
 		%def_file(NPC_Survivor)
 		%def_file(NPC_Tinkerer)
 		%def_file(NPC_Melody)
+		%def_file(NPC_Toad)
 		%def_file(MiniMech)
 
 		; boss files
@@ -694,6 +693,7 @@ endmacro
 
 	macro def_palset(name)
 		!palset_<name> := !temppalset
+		!addr_palset_<name> := !Palset_status+!temppalset
 		!temppalset := !temppalset+1
 	endmacro
 
@@ -734,6 +734,8 @@ endmacro
 		%def_palset(special_flash_caster)
 		%def_palset(special_kingking_blue)
 		%def_palset(special_kingking_red)
+
+		%def_palset(special_toad)
 
 
 
@@ -1041,15 +1043,15 @@ endmacro
 		;!P2Dashing		= !P2Custom+$08			; 08
 		!P2SenkuDir		= !P2Custom+$09			; which direction kadaal's senku will go (0 = right, 1 = left)
 		!P2AllRangeSenku	= !P2Custom+$0A			; all range direction for senku, requires upgrade
-	;	!P2SenkuSmash		= !P2Custom+$0B			; timer (decrements) for senku smash
-		!P2JumpLag		= !P2Custom+$0C			; timer (decrements) for kadaal's land lag
-		!P2ShellSpin		= !P2Custom+$0D			; timer (decrements) for shell spin attack
-		!P2ShellSlide		= !P2Custom+$0E			; kadaal's shell slide
-		!P2ShellSpeed		= !P2Custom+$0F			; flag that kadaal is going fast enough to maintain shell slide speed in air
-		!P2ShellDrill		= !P2Custom+$10			; flag that kadaal is performing shell drill
-		!P2BackDash		= !P2Custom+$11			; timer (decrements) for kadaal's back dash or perfect pivot
-		!P2Punch		= !P2Custom+$12			; timer (decrements) for kadaal's punch
-		!P2Throw		= !P2Custom+$13			; timer for kadaal's item throw
+		!P2JumpLag		= !P2Custom+$0B			; timer (decrements) for kadaal's land lag
+		!P2ShellSpin		= !P2Custom+$0C			; timer (decrements) for shell spin attack
+		!P2ShellSlide		= !P2Custom+$0D			; kadaal's shell slide
+		!P2ShellSpeed		= !P2Custom+$0E			; flag that kadaal is going fast enough to maintain shell slide speed in air
+		!P2BackDash		= !P2Custom+$0F			; timer (decrements) for kadaal's back dash or perfect pivot
+		!P2Punch		= !P2Custom+$10			; timer (decrements) for kadaal's punch
+		!P2DashSmoke		= !P2Custom+$11
+		!P2Throw		= !P2Custom+$12			; timer for item throw
+		!P2DropKick		= !P2Custom+$13
 
 
 	; --LEEWAY--
@@ -1071,6 +1073,9 @@ endmacro
 		!LeewayMaxStamina	= #$78
 		!P2JumpCancel		= !P2Custom+$0F			; set when leeway starts a jump, cleared when he lets go of B, which gives him a downward speed boost
 		!P2SwordAttack		= !P2Custom+$10			; which sword attack leeway is performing
+		;!P2DashSmoke		= !P2Custom+$11
+		;!P2Throw		= !P2Custom+$12			; timer for item throw
+
 
 
 
@@ -1140,6 +1145,7 @@ endmacro
 	%def_anim(Kad_Headbutt, 4)
 	%def_anim(Kad_Carry, 3)
 	%def_anim(Kad_Throw, 1)
+	%def_anim(Kad_Victory, 1)
 
 
 
@@ -1646,6 +1652,8 @@ endmacro
 	%def_particle_simple(contact)
 	%def_particle_simple(contactbig)
 	%def_particle_simple(spritepart)
+	%def_particle_simple(coinglitter)
+	%def_particle_simple(sparkle)
 
 
 
@@ -1722,11 +1730,14 @@ endmacro
 		!PlayerBackupData	= $404E00		; > 128 bytes
 
 		!MultiPlayer		= $404E80
-		!CurrentPlayer		= $404E81		; Used on OW for character select and during levels
+		!CurrentPlayer		= $404E81		; used on OW for character select and during levels
+		!CurrentMario		= $404E82		; > 0 = no Mario, 1 = P1 Mario, 2 = P2 Mario
 
-		; $404E82 free
+		!MsgMode		= $404E83		; 0 = normal message box
+								; 1 = play animation during message box
+								; 2 = message box has no pause-effect
 
-		!CurrentMario		= $404E84		; > 0 = no Mario, 1 = P1 Mario, 2 = P2 Mario
+		; $404E84 (1 byte) free
 
 		!VineDestroy		= $404E85
 		!VineDestroyPage	= !VineDestroy+$00	; > Map16 page of vines
@@ -1737,17 +1748,8 @@ endmacro
 		!VineDestroyDirection	= !VineDestroy+$11
 		!VineDestroyTimer	= !VineDestroy+$15	; > Also borrowed by lightning bolt
 
-		!NPC_ID			= $404E9E		; Used for NPC loading
-		!NPC_Talk		= $404EA1		; Pointer to NPC talk table
 
-		!MsgMode		= $404EA4		; 0 = normal message box
-								; 1 = play animation during message box
-								; 2 = message box has no pause-effect
-
-
-		!MarioExtraWaterJump	= $404EA5
-
-		; $404EA6-$404EB0 (11 bytes) free
+		; $404E9E-$404EB0 (19 bytes) free
 
 		!ProcessingSprites	= $404EB1		; Set while sprites are being processed
 
@@ -1784,7 +1786,12 @@ endmacro
 		!3DWater_Color		= $405DF9		; 16-bit, should be set at level init
 		!FileAddress		= $405DFB		; 24-bit, scratch pointer to file
 
-	; next entry at $405DFE
+
+		!NPC_Talk		= $405DFE		; 256 bytes, 1 for each NPC ID, index with NPC ID to get input for !MsgTrigger
+
+
+	
+	; next entry at $405EFE
 
 
 		; these are values not addresses
@@ -2226,7 +2233,7 @@ endmacro
 		!MarioYPosLo		= $96
 		!MarioYPosHi		= $97
 		!GameMode		= $6100
-		!2132			= $6701
+		!2132_RGB		= $6701
 		!PaletteRGB		= $6703
 		!Color0			= $6903
 		!LevelMode		= $6D9B

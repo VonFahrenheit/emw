@@ -1,3 +1,5 @@
+
+
 UltraFuzzy:
 
 	namespace UltraFuzzy
@@ -32,8 +34,8 @@ UltraFuzzy:
 		.Process
 		JSL SPRITE_OFF_SCREEN
 
-		LDA #$0F : JSL LoadPalset
-		LDA !GFX_status+$18F
+		LDA #!palset_generic_ghost_blue : JSL LoadPalset
+		LDA !Palset_status+!palset_generic_ghost_blue
 		ASL A
 		STA $33C0,x
 

@@ -39,7 +39,7 @@ sa1rom
 	print "-- MSG --"
 	print "Inserted hijack at $", pc, "."
 
-		autoclean JML MESSAGE_ENGINE		; Hijack message box routine
+		autoclean JML MESSAGE_ENGINE				; hijack message box routine
 
 
 ; - Defines:
@@ -60,31 +60,34 @@ sa1rom
 	TrueReturn:
 		%TrackCPU(!TrackMSG)
 
-		LDA $400000+!MsgImportant : BNE .NoSkip	;\
-		LDA #$10				; |
-		TRB $6DA6				; | if skip is enabled, clear start input to prevent accidental pausing
-		TRB $6DA7				; |
-		.NoSkip					;/
+		LDA $400000+!MsgImportant : BNE .NoSkip			;\
+		LDA #$10						; |
+		TRB $6DA6						; | if skip is enabled, clear start input to prevent accidental pausing
+		TRB $6DA7						; |
+		.NoSkip							;/
 
 		LDA.l !MsgMode : BEQ .Mode0
 		CMP #$01 : BEQ .Mode1
 		CMP #$02 : BEQ .Mode2
 
-		.Mode0					; full pause mode
+		.Mode0							; full pause mode
 		JML !BuildOAM
 
-		.Mode1					; run animations but don't let players move
+		.Mode1							; run animations but don't let players move
 		LDA #$02
 		STA !P2Stasis-$80
 		STA !P2Stasis
 
-		.Mode2					; everything moves during message
-		LDX #$25				;\
-		LDA #$02				; |
-	-	STA !OAMhi,x				; | Set proper OAM size
-		DEX					; |
-		CPX #$03 : BNE -			;/
-		LDA #$98 : STA !OAMindex		; > Set OAM index to after message tiles
+		.Mode2							; everything moves during message
+;		LDA $400000+!MsgVertOffset
+;		AND #$40 : BEQ ..noborder
+;		LDX #$25						;\
+;		LDA #$02						; |
+;	-	STA !OAMhi_p3,x						; | set proper OAM size
+;		DEX							; |
+;		CPX #$03 : BNE -					;/
+;		LDA #$98 : STA !OAMindex_p3				; > set OAM index to after message tiles
+;		..noborder
 		REP #$20
 		LDA $01,s
 		INC #2
@@ -94,10 +97,11 @@ sa1rom
 
 
 	MESSAGE_ENGINE:
-		PHK : PEA.w TrueReturn-1		; Set proper return address
+		PHK : PEA.w TrueReturn-1				; set proper return address
 
 		%TrackSetup(!TrackMSG)
 
+	; INIT CODE
 		LDA $400000+!MsgInit
 		CMP #$80 : BEQ .NoInit
 		LDA #$80 : STA $400000+!MsgInit
@@ -109,23 +113,23 @@ sa1rom
 		STZ $0201,x
 		DEX #2 : BPL -
 		PLP
-		JSR MAKE_BACKUP				; will also call CLEAR_BOX at the end
-		JSR ApplyHeader
-		REP #$20				;\
-		STZ $6DA2				; |
-		STZ $6DA4				; |
-		STZ $6DA6				; | don't buffer inputs on frame 1
-		STZ $6DA8				; |
-		SEP #$20				; |
-		BRA .NoBuffer				;/
+		JSR MAKE_BACKUP						; will also call ApplyHeader and CLEAR_BOX at the end
+		REP #$20						;\
+		STZ $6DA2						; |
+		STZ $6DA4						; |
+		STZ $6DA6						; | don't buffer inputs on frame 1
+		STZ $6DA8						; |
+		SEP #$20						; |
+		BRA .NoBuffer						;/
 		.NoInit
 
-		LDX #$07				;\
-	-	LDA $6DA2,x				; |
-		ORA $400000+!MsgInputBuffer,x		; | buffer input every frame
-		STA $400000+!MsgInputBuffer,x		; |
-		DEX : BPL -				; |
-		.NoBuffer				;/
+	; MAIN CODE
+		LDX #$07						;\
+	-	LDA $6DA2,x						; |
+		ORA $400000+!MsgInputBuffer,x				; | buffer input every frame
+		STA $400000+!MsgInputBuffer,x				; |
+		DEX : BPL -						; |
+		.NoBuffer						;/
 
 		PHB : LDA #$40
 		PHA : PLB
@@ -134,8 +138,8 @@ sa1rom
 		LDA !MsgImportant : BNE .NoSkip
 		JSR CHECK_INPUT_Start
 		BEQ .NoSkip
-		LDA #$FF : STA !MsgImportant		; buffer message skip
-		BRA .NoDelay				; no delay when skipping message
+		LDA #$FF : STA !MsgImportant				; buffer message skip
+		BRA .Process						; no delay when skipping message
 		.NoSkip
 		LDA !MsgWaitFlag : BEQ .NoWait
 		.SearchInput
@@ -146,33 +150,28 @@ sa1rom
 	.Return	PLB
 		RTL
 		.NoWait
-		LDA !MsgDelay : BEQ .NoDelay		; do nothing during delay (might wanna change this to at least read inputs)
-		DEC !MsgDelay
-		PLB
-		RTL
 
-		.NoDelay
-		PHK : PLB				; Change bank
-
-		LDX !WindowDir				; X = Window growing/shrinking flag
+		.Process
+		PHK : PLB						; change bank
+		LDX !WindowDir						; X = Window growing/shrinking flag
 		LDA $400000+!MsgCinematic : BEQ +
 		LDA !WindowSize
 		CMP.w WindowSize+2,x
 		BRA ++
 
-	+	LDA !WindowSize				; A = Window size
+	+	LDA !WindowSize						; A = Window size
 		CMP.w WindowSize,x
-	++	BEQ .WindowOpen				; check window size
-		LDA #$04 : STA $400000+!MsgStartupTimer	; timer = 4
-		REP #$20				;\
-		LDA #$0000				; |
-		STA $400000+!MsgInputBuffer+0		; | clear hold buffer
-		STA $400000+!MsgInputBuffer+2		; |
-		SEP #$20				;/
-		JMP HANDLE_WINDOWING			; handle windowing
+	++	BEQ .WindowOpen						; check window size
+		LDA #$04 : STA $400000+!MsgStartupTimer			; timer = 4
+		REP #$20						;\
+		LDA #$0000						; |
+		STA $400000+!MsgInputBuffer+0				; | clear hold buffer
+		STA $400000+!MsgInputBuffer+2				; |
+		SEP #$20						;/
+		JMP HANDLE_WINDOWING					; handle windowing
 
 		.WindowOpen
-		TXA : BNE .LastFrame			; if dir = 0, start loading message data
+		TXA : BNE .LastFrame					; if dir = 0, start loading message data
 		LDA $400000+!MsgImportant
 		CMP #$FF : BNE .NoSkipBuffer
 		LDA.l !MsgMode : BNE +
@@ -185,8 +184,8 @@ sa1rom
 		.LastFrame
 		; this code runs on the last frame of the window being open
 		LDA #$04 : TRB !HDMA
-		STZ !MsgTrigger				; otherwise close the message and restore a bunch of regs from backups
-		STZ !WindowDir				;
+		STZ !MsgTrigger						; otherwise close the message and restore a bunch of regs from backups
+		STZ !WindowDir						;
 		LDA $400000+!MsgBackup41 : STA $41
 		LDA $400000+!MsgBackup42 : STA $42
 		LDA $400000+!MsgBackup43 : STA $43
@@ -202,8 +201,8 @@ sa1rom
 
 		LDA #$40
 		PHA : PLB
-		LDA #$00 : STA.l !MsgMode		; this one is not stored with the rest of MsgRAM
-		STZ !MsgInit				; clear init flag
+		LDA #$00 : STA.l !MsgMode				; this one is not stored with the rest of MsgRAM
+		STZ !MsgInit						; clear init flag
 		STZ !MsgIndex
 		STZ !MsgIndexHi
 		STZ !MsgX
@@ -220,8 +219,7 @@ sa1rom
 
 
 	LOAD_MESSAGE:
-		LDA #$1F						;\
-		STA !MainScreen						; | everything on main screen, nothing on subscreen
+		LDA #$1F : STA !MainScreen				;\ everything on main screen, nothing on subscreen
 		STZ !SubScreen						;/
 		LDA #$09 : STA !2105					; > mode 1 with absolute priority for layer 3
 		LDA.l !MsgMode : BEQ .NoClear				;\
@@ -241,6 +239,14 @@ sa1rom
 		LDA !MsgStartupTimer : BEQ .TimerDone			;\
 		DEC !MsgStartupTimer					; | decrement startup timer
 		.TimerDone						;/
+
+		LDA !MsgDelay : BEQ .NoDelay				; do nothing during delay (might wanna change this to at least read inputs)
+		DEC !MsgDelay
+		PLB
+		RTL
+		.NoDelay
+
+
 
 		LDA !MsgEnd : BEQ .Text					;\
 		LDX !MsgCounter : BEQ .SkipText				; |
@@ -386,7 +392,7 @@ sa1rom
 		AND #$000F						; |
 		XBA							; | restore layer 3 GFX overwritten by text
 		ASL #4							; | (backed up in SNES WRAM
-		ORA #$0014*8						; |
+		ORA #$0018*8						; |
 		STA !VRAMtable+$2F,x					; |
 		LDA #$0E00 : STA !VRAMtable+$2A,x			;/
 
@@ -399,21 +405,27 @@ sa1rom
 		LDA #$0400 : STA !VRAMtable+$31,x			;/
 
 		PHK : PLB
-
+		REP #$30
+		LDA !OAMindex_p3 : TAX
 		SEP #$20
 		LDA #$F0
-		LDX !OAMindex
-		REP #$10						; prevent negative flag fail
-	-	STA !OAM+$001,x
+	-	STA !OAM_p3+$001,x
 		DEX #4 : BPL -
-		STZ !OAMindex
+
+		SEP #$30						;\
+		LDA !MsgPal						; |
+		LSR #4							; |
+		TAX							; | unlock portrait colors for shader
+		LDA #$00						; |
+		STA !ShaderRowDisable,x					; |
+		STA !ShaderRowDisable+1,x				;/
 
 		PLB
 		PLP
 		RTL
 
 
-CHECK_INPUT:
+	CHECK_INPUT:
 		.Press
 		LDA !MsgStartupTimer : BNE .Buffer			; check for startup timer
 		LDA !MultiPlayer : BEQ ..1P				;\
@@ -466,45 +478,45 @@ CHECK_INPUT:
 
 
 
-UPDATE_COORDS:
+	UPDATE_COORDS:
 		PHP
 		SEP #$20
-		LDA !MsgVertOffset			;\
-		AND #$3F				; |
-		ASL A					; | get vertical window offset
-		STA $00					; |
-		STZ $01					;/
+		LDA !MsgVertOffset					;\
+		AND #$3F						; |
+		ASL A							; | get vertical window offset
+		STA $00							; |
+		STZ $01							;/
 
-		LDA !MsgScroll				;\
-		CMP !MsgTargScroll : BEQ .Yes		; | update scrolling
-		INC #2					; |
-		STA !MsgScroll				; |
-		CMP !MsgTargScroll : BCC .Yes		; |
-		LDA !MsgTargScroll : STA !MsgScroll	;/ > prevent desync
+		LDA !MsgScroll						;\
+		CMP !MsgTargScroll : BEQ .Yes				; | update scrolling
+		INC #2							; |
+		STA !MsgScroll						; |
+		CMP !MsgTargScroll : BCC .Yes				; |
+		LDA !MsgTargScroll : STA !MsgScroll			;/ > prevent desync
 
 	.Yes	LDA !MsgCinematic : BEQ .Normal
 		CMP #$01 : BEQ .CinematicTop
 
 		.CinematicBottom
 		LDA !MsgScroll
-		REP #$20				;\
-		AND #$00FF				; | Ypos
-		SEC : SBC #$009E			; > base Ypos = -0x9E (cinematic bottom)
-		STA $24					;/
+		REP #$20						;\
+		AND #$00FF						; | Ypos
+		SEC : SBC #$009E					; > base Ypos = -0x9E (cinematic bottom)
+		STA $24							;/
 		BRA .CinematicX
 
 		.CinematicTop
 		LDA !MsgScroll
-		REP #$20				;\
-		AND #$00FF				; | Ypos
-		SEC : SBC #$0002			; > base Ypos = -0x02 (cinematic top)
-		STA $24					;/
+		REP #$20						;\
+		AND #$00FF						; | Ypos
+		SEC : SBC #$0002					; > base Ypos = -0x02 (cinematic top)
+		STA $24							;/
 
 		.CinematicX
 		LDA !MsgPortrait
 		AND #$00FF : BEQ .CenterX
 		AND #$0040 : BEQ +
-		LDA #$FFD8 : STA $22			; > Xpos (cinematic mode, cut by left-side portrait)
+		LDA #$FFD8 : STA $22					; > Xpos (cinematic mode, cut by left-side portrait)
 		PLP
 		RTS
 
@@ -513,29 +525,29 @@ UPDATE_COORDS:
 		RTS
 
 		.CenterX
-		LDA #$0020				;\
-		SEC : SBC !MsgWidth			; |
-		AND #$00FF				; | center text for cinematic mode
-		ASL #2					; |
-		EOR #$FFFF : INC A			; |
-		STA $22					;/
+		LDA #$0020						;\
+		SEC : SBC !MsgWidth					; |
+		AND #$00FF						; | center text for cinematic mode
+		ASL #2							; |
+		EOR #$FFFF : INC A					; |
+		STA $22							;/
 		PLP
 		RTS
 
 		.Normal
 		LDA !MsgScroll
-		REP #$20				;\
-		AND #$00FF				; | Ypos
-		SEC : SBC #$0040			; > base Ypos = -0x40 (normal mode)
-		SEC : SBC $00				; |
-		STA $24					;/
-		LDA #$FFC8 : STA $22			; > Xpos (normal mode)
+		REP #$20						;\
+		AND #$00FF						; | Ypos
+		SEC : SBC #$0040					; > base Ypos = -0x40 (normal mode)
+		SEC : SBC $00						; |
+		STA $24							;/
+		LDA #$FFC7 : STA $22					; > Xpos (normal mode)
 		PLP
 		RTS
 
 
 
-MAKE_BACKUP:
+	MAKE_BACKUP:
 		LDA.b #.SA1 : STA $3180
 		LDA.b #.SA1>>8 : STA $3181
 		LDA.b #.SA1>>16 : STA $3182
@@ -607,7 +619,7 @@ MAKE_BACKUP:
 		AND #$000F						; |
 		XBA							; |
 		ASL #4							; | backup all the layer 3 GFX that the text will use in SNES WRAM
-		ORA #$8000+($0014*8)					; |
+		ORA #$8000+($0018*8)					; |
 		STA !VRAMtable+$2F,x					; |
 		LDA #$0E00 : STA !VRAMtable+$2A,x			;/
 
@@ -623,16 +635,14 @@ MAKE_BACKUP:
 		PLP							;/
 
 
-	;	LDA.b #GFX>>16						;\
-	LDA !FileAddress+2
+		LDA !FileAddress+2					;\
 		STA !VRAMtable+$04,x					; | bank
 		STA !VRAMtable+$0B,x					;/
 		REP #$20						; > A 16 bit
 		LDA #$0080						;\
 		STA !VRAMtable+$00,x					; | size
 		STA !VRAMtable+$07,x					;/
-	;	LDA #GFX_Borders					;\
-	LDA !FileAddress
+		LDA !FileAddress					;\
 		STA !VRAMtable+$02,x					; | source
 		CLC : ADC #$00A0					; |
 		STA !VRAMtable+$09,x					;/
@@ -650,36 +660,28 @@ MAKE_BACKUP:
 		LDA.w #!ImageCache+$1000>>8 : STA !VRAMtable+$11,x	; |
 		LDA #$0400 : STA !VRAMtable+$0E,x			;/
 
-		LDA #$004F
-		JSR READ_FONT_CHAR
-		LDA $0E
+		LDA #$004F						;\
+		JSR READ_FONT_CHAR					; |
+		LDA $0E							; |
 		AND #$000F						; |
 		ASL #3							; |
-		STA $00							; | $00 = index to character in cached font
+		STA $00							; | $00 = index to arrow character in cached font
 		LDA $0E							; |
 		AND #$00F0						; |
 		XBA							; |
 		LSR #2							; |
 		TSB $00							;/
 
-	;	AND #$000F
-	;	ASL A
-	;	STA $00
-	;	LDA $0E
-	;	AND #$00F0
-	;	ASL #4
-	;	TSB $00
-
-		REP #$10						; |
-		LDX $00							;/
-		LDA.w !ImageCache+$000,x : STA.w !GFX_buffer+$280	;\
+		REP #$10						;\
+		LDX $00							; |
+		LDA.w !ImageCache+$000,x : STA.w !GFX_buffer+$280	; |
 		LDA.w !ImageCache+$020,x : STA.w !GFX_buffer+$282	; |
 		LDA.w !ImageCache+$040,x : STA.w !GFX_buffer+$284	; |
 		LDA.w !ImageCache+$060,x : STA.w !GFX_buffer+$286	; |
 		LDA.w !ImageCache+$080,x : STA.w !GFX_buffer+$288	; |
 		LDA.w !ImageCache+$0A0,x : STA.w !GFX_buffer+$28A	; |
-		LDA.w !ImageCache+$0C0,x : STA.w !GFX_buffer+$28C	; |
-		LDA.w !ImageCache+$0E0,x : STA.w !GFX_buffer+$28E	; | cache arrow GFX in 8px wide format
+		LDA.w !ImageCache+$0C0,x : STA.w !GFX_buffer+$28C	; | cache arrow GFX in 8px wide format
+		LDA.w !ImageCache+$0E0,x : STA.w !GFX_buffer+$28E	; |
 		LDA.w !ImageCache+$100,x : STA.w !GFX_buffer+$290	; |
 		LDA.w !ImageCache+$120,x : STA.w !GFX_buffer+$292	; |
 		LDA.w !ImageCache+$140,x : STA.w !GFX_buffer+$294	; |
@@ -689,13 +691,10 @@ MAKE_BACKUP:
 		LDA.w !ImageCache+$1C0,x : STA.w !GFX_buffer+$29C	; |
 		LDA.w !ImageCache+$1E0,x : STA.w !GFX_buffer+$29E	;/
 
-		REP #$10						;\
-		LDX #$01FE						; | clear second half of rendering buffer
-	-	STZ.w !GFX_buffer+$000,x				; | (first half will be cleared automatically when the first line starts rendering)
-		STZ.w !GFX_buffer+$E00,x				; | (also clear backup buffer)
-		DEX #2 : BPL -						;/
 
-		JSR CLEAR_BOX
+		JSL ApplyHeader_Main					; (go to SA-1 code) apply header so box can be properly cleared, accounting for borders/size
+
+		JSR CLEAR_BOX						; wipe box
 
 		PLP
 		PLB
@@ -703,9 +702,8 @@ MAKE_BACKUP:
 
 
 
-CLEAR_BOX:
 ; wipe message box
-
+	CLEAR_BOX:
 		PHP
 		SEP #$30
 
@@ -722,43 +720,74 @@ CLEAR_BOX:
 
 		JSL !GetVRAM
 		REP #$20
-		LDA #$38FC : STA.w !GFX_buffer+$2FE
-		LDA.w #!GFX_buffer+$2FE : STA !VRAMtable+$02,x
-		LDA.w #!GFX_buffer+$2FE>>8 : STA !VRAMtable+$03,x
-		LDA.l !2109
-		AND #$00FC
-		XBA
-		STA !VRAMtable+$05,x
-		LDA #$4400 : STA !VRAMtable+$00,x
 
-		LDA #$0000 : STA.w !GFX_buffer+$2FC			;\
-		LDA.w #!GFX_buffer+$2FC : STA !VRAMtable+$09,x		; |
-		LDA.w #!GFX_buffer+$2FC>>8 : STA !VRAMtable+$0A,x	; |
+		.EmptyTile						;\
+		LDA #$3814						; |
+		BIT !MsgVertOffset-1					; | tile 0x014 if no border, tile 0x015 if border
+		BVS $01 : INC A						; |
+		STA.w !GFX_buffer+$2FE					;/
+
+
+		LDA.w #!GFX_buffer+$2FE : STA !VRAMtable+$02,x		;\
+		LDA.w #!GFX_buffer+$2FF : STA !VRAMtable+$09,x		; |
+		LDA.w #!GFX_buffer+$2FE>>8				; |
+		STA !VRAMtable+$03,x					; |
+		STA !VRAMtable+$0A,x					; |
+		LDA.l !2109						; |
+		AND #$00FC						; | wipe box tilemap area
+		XBA							; | lo + hi bytes, fixed uploads
+		STA !VRAMtable+$05,x					; | (fixed from RAM uses even -> lo and odd -> hi mode)
+		STA !VRAMtable+$0C,x					; |
+		LDA #$4200						; |
+		STA !VRAMtable+$00,x					; |
+		STA !VRAMtable+$07,x					;/
+
+
+		LDA.w #.Some00 : STA !VRAMtable+$10,x			;\
+		LDA.w #.Some00>>8 : STA !VRAMtable+$11,x		; |
 		LDA.l !210C						; |
 		AND #$000F						; | queue clear of layer 3 GFX
-		XBA							; |
+		XBA							; | (from ROM, so lo + hi use the same upload)
 		ASL #4							; |
-		ORA.w #$0014*8						; |
-		STA !VRAMtable+$0C,x					; |
-		LDA #$4E00 : STA !VRAMtable+$07,x			;/
+		ORA.w #$0018*8						; |
+		STA !VRAMtable+$13,x					; |
+		LDA #$4E00 : STA !VRAMtable+$0E,x			;/
 
-		REP #$30						;\
+
+		.ClearBuffer
+		REP #$30						;\ check if should be translucent
+		BIT !MsgVertOffset-1 : BVC ..border			;/
+
+		..noborder						;\
 		LDX #$01FE						; |
-	-	STZ.w !GFX_buffer+$000,x				; | clear rendering buffers
+	-	STZ.w !GFX_buffer+$000,x				; | clear rendering buffers (no border)
 		STZ.w !GFX_buffer+$C00,x				; |
 		STZ.w !GFX_buffer+$E00,x				; |
 		DEX #2 : BPL -						;/
+		BRA ..cleardone
 
+		..border						;\
+		LDX #$01FE						; |
+		LDA.w #$5555						; |
+	-	STA.w !GFX_buffer+$000,x				; | clear rendering buffers (no border)
+		STA.w !GFX_buffer+$C00,x				; |
+		STA.w !GFX_buffer+$E00,x				; |
+		DEX #2 : BPL -						;/
 
+		..cleardone
 		PLP
 		RTS
 
+		.Some00
+		db $00
 
-HANDLE_WINDOWING:
-		LDA #$04				;\
-		TRB !MainScreen				; | hide layer 3 while window is opening/closing
-		TRB !SubScreen				;/
-		LDA #$01 : STA $73D5			; disable layer 3 scroll
+
+	HANDLE_WINDOWING:
+
+		LDA #$1B : STA !MainScreen				;\ everything except BG3 on main screen, nothing on subscreen
+		STZ !SubScreen						;/
+
+		LDA #$01 : STA $73D5					; disable layer 3 scroll
 
 		PHB : LDA #$40
 		PHA : PLB
@@ -775,22 +804,20 @@ HANDLE_WINDOWING:
 	; The actual window begins at $650C (scanline 0x36)
 
 
-	;	STZ !MsgIndex				;\
-	;	STZ !MsgIndexHi				; |
-	;	STZ !MsgX				; |
-	;	STZ !MsgRow				; | make sure the counters don't mess up
-	;	STZ !MsgScroll				; |
-	;	STZ !MsgTargScroll			; |
-	;	STZ !MsgDelay				;/
-		LDA !MsgCinematic			; load, baby!
-		PLB					; this actually affects z...
-
-		CMP #$00 : BEQ .NormalMode		; ...so we have to CMP #$00 like a fucking peasant
+	;	STZ !MsgIndex						;\
+	;	STZ !MsgIndexHi						; |
+	;	STZ !MsgX						; |
+	;	STZ !MsgRow						; | make sure the counters don't mess up
+	;	STZ !MsgScroll						; |
+	;	STZ !MsgTargScroll					; |
+	;	STZ !MsgDelay						;/
+		PLB							; this actually affects z...
+		LDA.l $400000+!MsgCinematic : BEQ .NormalMode		; so we have to LDA.l
 		STA $00
 		LDA !WindowSize
 		LDY !WindowDir : BNE +
 		CMP #$30 : BNE +
-		LDX #$22 : STX !SPC4			; message box sfx
+		LDX #$22 : STX !SPC4					; message box sfx
 	+	CLC : ADC.w WindowSpeed,y
 		STA !WindowSize
 		REP #$20
@@ -803,7 +830,7 @@ HANDLE_WINDOWING:
 		.CinematicTop
 		LDX #$00
 		LDA #$FF00
-		CPX $00 : BEQ ..end1			; if size is 0, skip to loop 2 immediately
+		CPX $00 : BEQ ..end1					; if size is 0, skip to loop 2 immediately
 	..loop1	STA $0200,x
 		INX #2
 		CPX $00 : BCC ..loop1
@@ -818,7 +845,7 @@ HANDLE_WINDOWING:
 		LDA !WindowSize
 		LDY !WindowDir : BNE +
 		CMP #$40 : BNE +
-		LDX #$22 : STX !SPC4			; message box sfx
+		LDX #$22 : STX !SPC4					; message box sfx
 	+	CLC : ADC.w WindowSpeed,y
 		STA !WindowSize
 		CLC : ADC #$80
@@ -826,29 +853,29 @@ HANDLE_WINDOWING:
 		LDA.l $400000+!MsgVertOffset
 		AND #$3F
 		ASL #2
-		STA $00					; store window offset
-		TAX					; X = window offset
-		CLC : ADC #$50				;\ Y = window offset + 0x50
-		TAY					;/
-		SEC : SBC #$50				;\
-		CLC : ADC !WindowSize			; | set up mirror of !WindowSize
-		STA $01					;/
+		STA $00							; store window offset
+		TAX							; X = window offset
+		CLC : ADC #$50						;\ Y = window offset + 0x50
+		TAY							;/
+		SEC : SBC #$50						;\
+		CLC : ADC !WindowSize					; | set up mirror of !WindowSize
+		STA $01							;/
 		LDA #$80
 		SEC : SBC !WindowSize
-		REP #$20				; > A 16 bit
-..loop		CPX $01 : BCC +				;\
-		LDA.w #$00FF				; |
-	+	STA $026C,y				; |
-		STA $02BC,x				; | normal mode window
-		INX #2					; |
-		DEY #2					; |
-		CPY $00 : BNE ..loop			;/
+		REP #$20						; > A 16 bit
+..loop		CPX $01 : BCC +						;\
+		LDA.w #$00FF						; |
+	+	STA $026C,y						; |
+		STA $02BC,x						; | normal mode window
+		INX #2							; |
+		DEY #2							; |
+		CPY $00 : BNE ..loop					;/
 		BRA .SetHDMA
 
 		.CinematicBottom
-		LDA #$00A6				;\
-		SEC : SBC $00				; | we're writing 0xB0 bytes and we want to swap A when we enter the window zone (0xA6 - size bytes left)
-		STA $00					;/
+		LDA #$00A6						;\
+		SEC : SBC $00						; | we're writing 0xB0 bytes and we want to swap A when we enter the window zone (0xA6 - size bytes left)
+		STA $00							;/
 		LDX #$00
 		LDA #$00FF
 	..loop1	STA $0300,x
@@ -860,24 +887,24 @@ HANDLE_WINDOWING:
 		INX #2
 		CPX #$B0 : BCC ..loop2
 
-.SetHDMA	SEP #$20				; A 8-bit
-		LDA.l $400000+!MsgVertOffset		;\
-		AND #$40 : BEQ .ClippingWindow		; |
-		STZ $41					; | if window is disabled, only clip layer 3 (outside the text area)
-		STZ $43					; |
-		BRA +					;/
+.SetHDMA	SEP #$20						; A 8-bit
+		LDA.l $400000+!MsgVertOffset				;\
+		AND #$40 : BEQ .ClippingWindow				; |
+		STZ $41							; | if window is disabled, only clip layer 3 (outside the text area)
+		STZ $43							; |
+		BRA +							;/
 
 		.ClippingWindow
-		LDA #$22 : STA $41			;\ Enable window 1 for BG1 and BG2
-		LDA #$22 : STA $43			;\ Enable window 1 for color and sprite layers
-		LDA #$20 : STA $44
-	+	LDA #$03 : STA $42			;\ enable inverted layer 3 masking
-		LDX #$04				;\
-	-	LDA HDMAsettings,x			; | enable HDMA settings
-		STA $4320,x				; |
-		DEX : BPL -				;/
-		STZ $4327				; > indirect HDMA bank
-		LDA #$04 : TSB !HDMA			; HDMA on channel 2
+		LDA #$22 : STA $41					; enable window 1 for BG1 and BG2
+		LDA #$20 : STA $43					; enable window 1 for color but not sprite layer
+		LDA #$20 : STA $44					; color math: backdrop enable
+	+	LDA #$03 : STA $42					; enable inverted layer 3 masking
+		LDX #$04						;\
+	-	LDA HDMAsettings,x					; | enable HDMA settings
+		STA $4320,x						; |
+		DEX : BPL -						;/
+		STZ $4327						; > indirect HDMA bank
+		LDA #$04 : TSB !HDMA					; HDMA on channel 2
 .Return		PLB
 		RTL
 
@@ -893,31 +920,33 @@ HANDLE_WINDOWING:
 
 	pushpc
 	org $00927C
-		db $F0 : dw $64A0			; indirect HDMA pointer table
+		db $F0 : dw $64A0					; indirect HDMA pointer table
 		db $F0 : dw $6580
 		db $00
 	warnpc $009283
 	pullpc
 
-
-
-HDMAsettings:	db $41,$26
+	HDMAsettings:
+		db $41,$26
 		dl HDMAtable
 
-HDMAtable:	db $F0 : dw $0200
+	HDMAtable:
+		db $F0 : dw $0200
 		db $F0 : dw $02E0
 		db $00
 
-
-WindowSize:	db $48,$00				; Maximum/minimum values for window size. Minimum should be 00.
+	WindowSize:
+		db $48,$00						; max/min values for window size
 		db $38,$00
-WindowSpeed:	db $08,$F8				; Message box growing/shrinking speed.
+	WindowSpeed:
+		db $08,$F8						; message box growing/shrinking speed.
 
 
 ;============;
 ;APPLY HEADER;
 ;============;
-ApplyHeader:	PHB : PHK : PLB
+	ApplyHeader:
+		PHB : PHK : PLB
 		PHP
 		SEP #$20
 		LDA.b #.Main : STA $3180
@@ -963,6 +992,7 @@ ApplyHeader:	PHB : PHK : PLB
 		; read header
 		LDY #$0000 : STY !MsgIndex				; reset index
 	.Next	LDA [$08],y : BPL .HeaderDone				;\
+		CMP #$FE : BEQ .HeaderDone				; > line break also ends header
 		PEA.w .Next-1						; | keep applying commands until first text byte is hit
 		JMP HANDLE_COMMANDS					;/ (!MsgIndex is auto-incremented by command handler)
 
@@ -1014,7 +1044,8 @@ ApplyHeader:	PHB : PHK : PLB
 ;======================;
 ;TEXT UPLOADING ROUTINE;
 ;======================;
-UPLOAD_TEXT:	PHB : PHK : PLB
+	UPLOAD_TEXT:
+		PHB : PHK : PLB
 		PHP
 		SEP #$20
 		LDA.b #.SA1 : STA $3180
@@ -1073,7 +1104,7 @@ UPLOAD_TEXT:	PHB : PHK : PLB
 		XBA							; |
 		ASL #4							; | finish VRAM calculation
 		ORA.l $2306						; |
-		CLC : ADC.w #$0014*8					; |
+		CLC : ADC.w #$0018*8					; |
 		STA !CCDMAtable+$05,x					;/
 
 		SEP #$20
@@ -1097,7 +1128,7 @@ UPLOAD_TEXT:	PHB : PHK : PLB
 		XBA							; |
 		ASL #4							; | finish VRAM calculation
 		ORA.l $2306						; |
-		CLC : ADC.w #$0014*8					; |
+		CLC : ADC.w #$0018*8					; |
 		STA !CCDMAtable+$05,x					;/
 		SEP #$20
 
@@ -1134,7 +1165,7 @@ UPLOAD_TEXT:	PHB : PHK : PLB
 		AND #$FF00
 		ORA #$2000
 		STA $0C
-		LDA #$0014
+		LDA #$0018
 		CLC : ADC.l $2306
 		ORA $0C
 		LDX #$0000
@@ -1147,7 +1178,7 @@ UPLOAD_TEXT:	PHB : PHK : PLB
 		INC A
 		STA.l $2253
 		LDX #$0000
-		LDA #$0014
+		LDA #$0018
 		CLC : ADC.l $2306
 		ORA $0C
 	-	STA.w !GFX_buffer+$240,x
@@ -1184,165 +1215,165 @@ UPLOAD_TEXT:	PHB : PHK : PLB
 	; actual text loader here
 	; it is responsible for reading the text data, allocating text to rows, and calling the renderer and command handler
 		.Main
-		PHK : PLA					;\ bank byte of pointer
-		STA $0A						;/
-		REP #$30					; all regs 16-bit
-		LDA.l !MsgTrigger				;\
-		AND #$00FF					; |
-		DEC A						; | Y = index to main pointer table
-		ASL A						; |
-		TAY						;/
-		LDA.l !Translevel				;\
-		AND #$00FF					; |
-		ASL A						; | lo/mid bytes of pointer
-		TAX						; |
-		LDA.l Text_MainPtr,x : STA $08			;/
-		LDA [$08],y : STA $08				; get pointer
-		SEP #$20					; A 8-bit
+		PHK : PLA						;\ bank byte of pointer
+		STA $0A							;/
+		REP #$30						; all regs 16-bit
+		LDA.l !MsgTrigger					;\
+		AND #$00FF						; |
+		DEC A							; | Y = index to main pointer table
+		ASL A							; |
+		TAY							;/
+		LDA.l !Translevel					;\
+		AND #$00FF						; |
+		ASL A							; | lo/mid bytes of pointer
+		TAX							; |
+		LDA.l Text_MainPtr,x : STA $08				;/
+		LDA [$08],y : STA $08					; get pointer
+		SEP #$20						; A 8-bit
 	.Process
-		LDY !MsgIndex					; Y = index
-		LDA !MsgWordLength : BNE .Ok			; if we're already processing a word, keep rendering it
+		LDY !MsgIndex						; Y = index
+		LDA !MsgWordLength : BNE .Ok				; if we're already processing a word, keep rendering it
 
 	.WordLength
-		XBA						; clear B
-		PHY						;\
-	-	LDA [$08],y					; |
-		INY						; |
-		CMP #$FF : BEQ ..end				; |
-		CMP #$FE : BEQ ..end				; | calculate length of word (defined as a string ended by 7F, FE, or FF, ignoring values of 80-FD)
-		CMP #$7F : BEQ ..end				; | (commands 80-EF all have a length of 1 byte)
-		BCC ..char					; |
-		CMP #$F0 : BCC -				; |
-		BNE ..commandlength				;/
-	--	LDA [$08],y : BPL +				;\
-		INY : BRA -					; | command F0 has a variable length, ending at any value 80+
-	+	INY : BRA --					;/
-		..commandlength					;\
-		REP #$20					; |
-		AND #$000F					; |
-		TAX						; |
-		STY $0E						; | read length for commands F1-FD
-		LDA.l HANDLE_COMMANDS_CommandLength,x		; |
-		CLC : ADC $0E					; |
-		TAY						; |
-		SEP #$20					; |
-		BRA -						;/
-	..char	JSR READ_FONT_CHAR				;\
-		LDA $0F						; |
-		CLC : ADC !MsgWordLength			; | read character width
-		STA !MsgWordLength				; |
-		BRA -						;/
-	..end	PLY						;\
-		LDA !MsgWordLength				; |
-		CLC : ADC !MsgX					; |
-		BCS ..wrap					; > detect wrap
-		STA $0F						; | see if word will fit on the current line
-		LDA !MsgWidth					; |
-		ASL #3						; |
-		BNE $01 : DEC A					; |
-		CMP $0F : BCS .Ok				;/
-	..wrap	INC !MsgRow					;\
-		STZ !MsgX					; | if it won't fit, start new line
-		STZ !MsgInstantLine				; > clear instant line flag
-		RTS						;/
+		XBA							; clear B
+		PHY							;\
+	-	LDA [$08],y						; |
+		INY							; |
+		CMP #$FF : BEQ ..end					; |
+		CMP #$FE : BEQ ..end					; | calculate length of word (defined as a string ended by 7F, FE, or FF, ignoring values of 80-FD)
+		CMP #$7F : BEQ ..end					; | (commands 80-EF all have a length of 1 byte)
+		BCC ..char						; |
+		CMP #$F0 : BCC -					; |
+		BNE ..commandlength					;/
+	--	LDA [$08],y : BPL +					;\
+		INY : BRA -						; | command F0 has a variable length, ending at any value 80+
+	+	INY : BRA --						;/
+		..commandlength						;\
+		REP #$20						; |
+		AND #$000F						; |
+		TAX							; |
+		STY $0E							; | read length for commands F1-FD
+		LDA.l HANDLE_COMMANDS_CommandLength,x			; |
+		CLC : ADC $0E						; |
+		TAY							; |
+		SEP #$20						; |
+		BRA -							;/
+	..char	JSR READ_FONT_CHAR					;\
+		LDA $0F							; |
+		CLC : ADC !MsgWordLength				; | read character width
+		STA !MsgWordLength					; |
+		BRA -							;/
+	..end	PLY							;\
+		LDA !MsgWordLength					; |
+		CLC : ADC !MsgX						; |
+		BCS ..wrap						; > detect wrap
+		STA $0F							; | see if word will fit on the current line
+		LDA !MsgWidth						; |
+		ASL #3							; |
+		BNE $01 : DEC A						; |
+		CMP $0F : BCS .Ok					;/
+	..wrap	INC !MsgRow						;\
+		STZ !MsgX						; | if it won't fit, start new line
+		STZ !MsgInstantLine					; > clear instant line flag
+		RTS							;/
 
 
 
-	.Ok	REP #$20				;\
-		INC !MsgIndex				; | increment index
-		SEP #$20				;/
-		LDA [$08],y : BPL ..Text		; 00-7F are text, 80-FF are commands
+	.Ok	REP #$20						;\
+		INC !MsgIndex						; | increment index
+		SEP #$20						;/
+		LDA [$08],y : BPL ..Text				; 00-7F are text, 80-FF are commands
 
 	..Command
-		CMP #$FE : BCS +			; FE and FF always terminate the current render
-		PEA.w ..CommandReturn-1			; whereas other commands always continue the loop after being processed
+		CMP #$FE : BCS +					; FE and FF always terminate the current render
+		PEA.w ..CommandReturn-1					; whereas other commands always continue the loop after being processed
 	+	JMP HANDLE_COMMANDS
 		..CommandReturn
-		LDA !MsgTerminateRender : BEQ ..Full	; see if the most recent command requires the render to be terminated
+		LDA !MsgTerminateRender : BEQ ..Full			; see if the most recent command requires the render to be terminated
 		RTS
 
 
 
-	..Text	INC !MsgCharCount			; 1 more character rendered
-		REP #$20				;\
-		AND #$00FF				; | check for space
-		CMP #$007F : BNE ..Char			;/
+	..Text	INC !MsgCharCount					; 1 more character rendered
+		REP #$20						;\
+		AND #$00FF						; | check for space
+		CMP #$007F : BNE ..Char					;/
 
 	; code for rendering a space
-		SEP #$20				;\
-		STZ !MsgWordLength			; > new word
-		LDA !MsgX : BNE ..Space			; |
+		SEP #$20						;\
+		STZ !MsgWordLength					; > new word
+		LDA !MsgX : BNE ..Space					; |
 
 	; code for starting a new line with a space
-		JSR RENDER_TEXT_Clear			; | special case when line starts with a space
-		SEP #$20				; |
-		LDA #$06 : STA !MsgX			; |
-		LDA !MsgInstantLine : BNE ..Full	; > keep going if instant line flag is set
-		LDA !MsgSpeed : BEQ ..Full		; > end at new word unless max speed
-		RTS					; |
-	..Full	JMP .Process				;/
+		JSR RENDER_TEXT_Clear					; | special case when line starts with a space
+		SEP #$20						; |
+		LDA #$06 : STA !MsgX					; |
+		LDA !MsgInstantLine : BNE ..Full			; > keep going if instant line flag is set
+		LDA !MsgSpeed : BEQ ..Full				; > end at new word unless max speed
+		RTS							; |
+	..Full	JMP .Process						;/
 
 	; code for rendering a space on an existing line
-	..Space	CLC : ADC #$06				;\
-		BCS +					; > detect wrap
-		STA !MsgX				; |
-		LDA !MsgWidth				; | add a space on the current line
-		ASL #3					; |
-		BNE $01 : DEC A				; |
-		CMP !MsgX : BCC +			;/
-		LDA !MsgInstantLine : BNE ..Full	; > keep going if instant line flag is set
-		LDA !MsgSpeed : BNE .Return		; end at new word unless rendering full line
-		JMP .Process				; if we didn't hit a new row, just get next character
-	+	INC !MsgRow				;\
-		STZ !MsgX				; | new row from space
-		STZ !MsgInstantLine			; > clear instant line flag
-	;	LDA !MsgSpeed : BNE .Return		; > end at new word unless rendering full line
-	;	JMP .Process				;/
+	..Space	CLC : ADC #$06						;\
+		BCS +							; > detect wrap
+		STA !MsgX						; |
+		LDA !MsgWidth						; | add a space on the current line
+		ASL #3							; |
+		BNE $01 : DEC A						; |
+		CMP !MsgX : BCC +					;/
+		LDA !MsgInstantLine : BNE ..Full			; > keep going if instant line flag is set
+		LDA !MsgSpeed : BNE .Return				; end at new word unless rendering full line
+		JMP .Process						; if we didn't hit a new row, just get next character
+	+	INC !MsgRow						;\
+		STZ !MsgX						; | new row from space
+		STZ !MsgInstantLine					; > clear instant line flag
+	;	LDA !MsgSpeed : BNE .Return				; > end at new word unless rendering full line
+	;	JMP .Process						;/
 		RTS
 
 
 	; code for rendering a character
-	..Char	JSR READ_FONT_CHAR			;\
-		LDA $0E					; |
-		AND #$000F				; |
-		ASL #3					; |
-		STA $00					; | $00 = index to character in cached font
-		LDA $0E					; |
-		AND #$00F0				; |
-		XBA					; |
-		LSR #2					; |
-		TSB $00					;/
-		LDA $0F					;\
-		AND #$00FF				; | $04 = width of character
-		STA $04					;/
+	..Char	JSR READ_FONT_CHAR					;\
+		LDA $0E							; |
+		AND #$000F						; |
+		ASL #3							; |
+		STA $00							; | $00 = index to character in cached font
+		LDA $0E							; |
+		AND #$00F0						; |
+		XBA							; |
+		LSR #2							; |
+		TSB $00							;/
+		LDA $0F							;\
+		AND #$00FF						; | $04 = width of character
+		STA $04							;/
 
-		LDA !MsgWidth				;\
-		AND #$00FF				; |
-		ASL #3					; | render width
-		CMP #$0100				; | capped at 255px (no, not 256)
-		BCC $03 : LDA #$00FF			; |
-		STA $0E					;/
+		LDA !MsgWidth						;\
+		AND #$00FF						; |
+		ASL #3							; | render width
+		CMP #$0100						; | capped at 255px (no, not 256)
+		BCC $03 : LDA #$00FF					; |
+		STA $0E							;/
 		SEP #$20
-		STZ $03					; hi byte of X coordinate should always be 0
+		STZ $03							; hi byte of X coordinate should always be 0
 
 		LDA !MsgX
 		CLC : ADC $04
 		CMP $0E
 		BEQ .Go
 		BCC .Go
-		INC !MsgRow				;\ start new row
-		STZ !MsgX				;/
-		STZ !MsgInstantLine			; clear instant line flag
-		STY !MsgIndex				; make sure the character isn't skipped
-	.Return	RTS					; starting a new row always ends the transfer
+		INC !MsgRow						;\ start new row
+		STZ !MsgX						;/
+		STZ !MsgInstantLine					; clear instant line flag
+		STY !MsgIndex						; make sure the character isn't skipped
+	.Return	RTS							; starting a new row always ends the transfer
 
-	.Go	LDA !MsgX : STA $02			; lo byte of output index = X coordinate of character
-		CLC : ADC $04				;\ increment X by width of the character
-		STA !MsgX				;/
+	.Go	LDA !MsgX : STA $02					; lo byte of output index = X coordinate of character
+		CLC : ADC $04						;\ increment X by width of the character
+		STA !MsgX						;/
 		SEP #$20
-		LDA !MsgRow : STA $03			; hi byte of output index = row of character
-		LDA !MsgFillerColor : STA $06		; set filler color
-		JSR RENDER_TEXT				; render character to buffer
+		LDA !MsgRow : STA $03					; hi byte of output index = row of character
+		LDA !MsgFillerColor : STA $06				; set filler color
+		JSR RENDER_TEXT						; render character to buffer
 
 ; NOTE FOR FUTURE ERIC
 ; this works out to adding 9px to each row: 8px from moving the buffer up by 8px and 1px from adding the row number (0-7)
@@ -1352,7 +1383,7 @@ UPLOAD_TEXT:	PHB : PHK : PLB
 
 
 		.Continue
-		SEP #$20				; A 8-bit
+		SEP #$20						; A 8-bit
 
 		LDA !MsgInstantLine : BNE .Next
 		LDA !MsgSpeed
@@ -1361,7 +1392,7 @@ UPLOAD_TEXT:	PHB : PHK : PLB
 
 		SEC : SBC #$09
 		EOR #$FF : INC A
-		CMP !MsgCharCount			; not increased by commands
+		CMP !MsgCharCount					; not increased by commands
 		BEQ .Return
 		BCC .Return
 
@@ -1374,22 +1405,22 @@ UPLOAD_TEXT:	PHB : PHK : PLB
 ; output:
 ;	$0E = tile number
 ;	$0F = character width
-READ_FONT_CHAR:
+	READ_FONT_CHAR:
 		PHP
 		REP #$30
-		AND #$00FF				;\
-		ASL A					; | $0E = 16-bit index to font data table
-		STA $0E					;/
-		LDA !MsgFont				;\
-		AND #$00FF				; |
-		ASL A					; |
-		TAX					; | get index to table and add index to font data
-		LDA.l GFX_FontData,x			; |
-		CMP #$FFFF				; |
-		BNE $04 : LDA.l GFX_FontData		; |
-		CLC : ADC $0E				;/
-		TAX					;\ store font data of char to $0E-$0F
-		LDA.l GFX_FontData,x : STA $0E		;/
+		AND #$00FF						;\
+		ASL A							; | $0E = 16-bit index to font data table
+		STA $0E							;/
+		LDA !MsgFont						;\
+		AND #$00FF						; |
+		ASL A							; |
+		TAX							; | get index to table and add index to font data
+		LDA.l GFX_FontData,x					; |
+		CMP #$FFFF						; |
+		BNE $04 : LDA.l GFX_FontData				; |
+		CLC : ADC $0E						;/
+		TAX							;\ store font data of char to $0E-$0F
+		LDA.l GFX_FontData,x : STA $0E				;/
 		PLP
 		RTS
 
@@ -1432,7 +1463,7 @@ READ_FONT_CHAR:
 ;	- set !MsgDelay to !MsgSpeed - 8
 
 
-; starting tile should be row * width + $14
+; starting tile should be row * width + $18
 ; that way i don't need different tables for different dimensions
 ; VRAM offset is always row * $20
 
@@ -1455,7 +1486,8 @@ endmacro
 ; note that the input GFX is assumed to be a 128x64px linear 2bpp file
 ; output is a 256x8px linear 2bpp image, uploaded using CCDMA
 ; this routine can only be run by SA-1 CPU
-RENDER_TEXT:
+
+	RENDER_TEXT:
 		PHB							; push bank
 		PHK : PLB
 		LDA $02 : BNE .NoClear					;\ check if X position is 0
@@ -1494,7 +1526,7 @@ RENDER_TEXT:
 		PHA : PLB						; |
 		REP #$20						;/
 		LDA !MsgRow						;\
-		AND #$00FF : BEQ ..NoBackup				; |
+		AND #$00FF : BEQ ..nobackup				; |
 		DEC A							; |
 		ASL #4							; |
 		TAX							; |
@@ -1514,7 +1546,12 @@ RENDER_TEXT:
 		LDA.w !GFX_buffer+$F42 : STA.w !GFX_buffer+$01A,x	; |
 		LDA.w !GFX_buffer+$F82 : STA.w !GFX_buffer+$01C,x	; |
 		LDA.w !GFX_buffer+$FC2 : STA.w !GFX_buffer+$01E,x	; |
-		..NoBackup						;/
+		..nobackup						;/
+
+
+		BIT !MsgVertOffset-1 : BVC ..border
+
+		..noborder
 		LDX #$01FE						;\
 	-	LDA.w !GFX_buffer+$E00,x : STA.w !GFX_buffer+$C00,x	; |
 		STZ.w !GFX_buffer+$E00,x				; | move second half of render buffer into the first half, then clear the second half
@@ -1522,10 +1559,19 @@ RENDER_TEXT:
 		PLB							; |
 		RTS							;/
 
+		..border
+		LDX #$01FE						;\
+	-	LDA.w !GFX_buffer+$E00,x : STA.w !GFX_buffer+$C00,x	; |
+		LDA.w #$5555 : STA.w !GFX_buffer+$E00,x			; | move second half of render buffer into the first half, then clear the second half
+		DEX #2 : BPL -						; |
+		PLB							; |
+		RTS							;/
 
 
 
-DRAW_BORDER:	PHK : PLB
+
+	DRAW_BORDER:
+		PHK : PLB
 
 		LDA $400000+!MsgCinematic : BNE +
 
@@ -1539,48 +1585,51 @@ DRAW_BORDER:	PHK : PLB
 		.SA1
 		PHP
 		PHB : PHK : PLB
-		SEP #$30
-		LDX #$00				; tilemap index
-		LDY !OAMindex				; OAM index
-		LDA.l $400000+!MsgVertOffset		;\
-		AND #$3F				; | Y offset
-		ASL A					; |
-		STA $00					;/
-		REP #$20				; 16-bit A
-		LDA.l $400000+!MsgVRAM3			;\
-		LSR #4					; | tile offset
-		SEP #$20				; |
-		STA $01					;/
-	-	LDA.w .TileMap+0,x : STA.w !OAM+0,y
-		LDA.w .TileMap+1,x
+		REP #$30
+		LDY #$0000						; Y = tilemap index
+		LDA !OAMindex_p3 : TAX					; X = OAM index
+		SEP #$20
+		LDA.l $400000+!MsgVertOffset				;\
+		AND #$3F						; | Y offset
+		ASL A							; |
+		STA $00							;/
+		REP #$20						; 16-bit A
+		LDA.l $400000+!MsgVRAM3					;\
+		LSR #4							; | tile offset
+		SEP #$20						; |
+		STA $01							;/
+	-	LDA.w .TileMap+0,y : STA !OAM_p3+0,x
+		LDA.w .TileMap+1,y
 		CLC : ADC $00
-		STA.w !OAM+1,y
-		LDA.w .TileMap+2,x
+		STA !OAM_p3+1,x
+		LDA.w .TileMap+2,y
 		CLC : ADC $01
-		STA !OAM+2,y
-		LDA.w .TileMap+3,x : STA !OAM+3,y
+		STA !OAM_p3+2,x
+		LDA.w .TileMap+3,y : STA !OAM_p3+3,x
 		INY #4
 		INX #4
-		CPX.b #.End-.TileMap : BCC -
-		LDA !OAMindex
+		CPX.w #.End-.TileMap : BCC -
+		REP #$20
+		LDA !OAMindex_p3
 		LSR #2
 		TAX
-		REP #$20
 		LDA #$0202
-		STA !OAMhi+$00,x
-		STA !OAMhi+$02,x
-		STA !OAMhi+$04,x
-		STA !OAMhi+$06,x
-		STA !OAMhi+$08,x
-		STA !OAMhi+$0A,x
-		STA !OAMhi+$0C,x
-		STA !OAMhi+$0E,x
-		STA !OAMhi+$10,x
-		STA !OAMhi+$12,x
-		STA !OAMhi+$14,x
-		STA !OAMhi+$16,x
-		STA !OAMhi+$18,x
-		STY !OAMindex
+		STA !OAMhi_p3+$00,x
+		STA !OAMhi_p3+$02,x
+		STA !OAMhi_p3+$04,x
+		STA !OAMhi_p3+$06,x
+		STA !OAMhi_p3+$08,x
+		STA !OAMhi_p3+$0A,x
+		STA !OAMhi_p3+$0C,x
+		STA !OAMhi_p3+$0E,x
+		STA !OAMhi_p3+$10,x
+		STA !OAMhi_p3+$12,x
+		STA !OAMhi_p3+$14,x
+		STA !OAMhi_p3+$16,x
+		STA !OAMhi_p3+$18,x
+		LDA !OAMindex_p3
+		CLC : ADC.w #.End-.TileMap
+		STA !OAMindex_p3
 
 		PLB
 		PLP
@@ -1590,67 +1639,68 @@ DRAW_BORDER:	PHK : PLB
 		; total 26 (0x1A) tiles
 		;  ___ ___ ___ ___
 		; | X | Y | T | P |
-.TileMap	db $31,$37,$00,$21			; > Topleft corner
-		db $41,$37,$01,$21			;\
-		db $51,$37,$01,$21			; |
-		db $61,$37,$01,$21			; |
-		db $71,$37,$01,$21			; | Upper border
-		db $81,$37,$01,$21			; |
-		db $91,$37,$01,$21			; |
-		db $A1,$37,$01,$21			; |
-		db $B1,$37,$01,$21			;/
-		db $C1,$37,$00,$61			; > Topright corner
-		db $31,$47,$03,$21			;\
-		db $C1,$47,$03,$61			; |
-		db $31,$57,$03,$21			; | Side borders
-		db $C1,$57,$03,$61			; |
-		db $31,$67,$03,$21			; |
-		db $C1,$67,$03,$61			;/
-		db $31,$77,$00,$A1			; > Botleft corner
-		db $41,$77,$01,$A1			;\
-		db $51,$77,$01,$A1			; |
-		db $61,$77,$01,$A1			; |
-		db $71,$77,$01,$A1			; | Lower border
-		db $81,$77,$01,$A1			; |
-		db $91,$77,$01,$A1			; |
-		db $A1,$77,$01,$A1			; |
-		db $B1,$77,$01,$A1			;/
-		db $C1,$77,$00,$E1			; > Botright corner
+.TileMap	db $31,$37,$00,$21					; > Topleft corner
+		db $41,$37,$01,$21					;\
+		db $51,$37,$01,$21					; |
+		db $61,$37,$01,$21					; |
+		db $71,$37,$01,$21					; | Upper border
+		db $81,$37,$01,$21					; |
+		db $91,$37,$01,$21					; |
+		db $A1,$37,$01,$21					; |
+		db $B1,$37,$01,$21					;/
+		db $C1,$37,$00,$61					; > Topright corner
+		db $31,$47,$03,$21					;\
+		db $C1,$47,$03,$61					; |
+		db $31,$57,$03,$21					; | Side borders
+		db $C1,$57,$03,$61					; |
+		db $31,$67,$03,$21					; |
+		db $C1,$67,$03,$61					;/
+		db $31,$77,$00,$A1					; > Botleft corner
+		db $41,$77,$01,$A1					;\
+		db $51,$77,$01,$A1					; |
+		db $61,$77,$01,$A1					; |
+		db $71,$77,$01,$A1					; | Lower border
+		db $81,$77,$01,$A1					; |
+		db $91,$77,$01,$A1					; |
+		db $A1,$77,$01,$A1					; |
+		db $B1,$77,$01,$A1					;/
+		db $C1,$77,$00,$E1					; > Botright corner
 		.End
 
 
 
-DRAW_PORTRAIT:	BPL .INIT
+	DRAW_PORTRAIT:
+		BPL .INIT
 		JMP .MAIN
 
 		.INIT
 		DEC A
 		ASL #2
 		TAX
-		LDA.l !PortraitPointers+2,x : STA $00			;\
-		LDA.l !PortraitPointers+3,x : STA $01			; | GFX pointer
-		LDA.l !PortraitPointers+4,x : STA $02			;/
+		LDA.l !PortraitPointers+2,x : STA $00				;\
+		LDA.l !PortraitPointers+3,x : STA $01				; | GFX pointer
+		LDA.l !PortraitPointers+4,x : STA $02				;/
 
 
 		LDA #!VRAMbank
 		PHA : PLB
-		JSL !GetCGRAM						;\ get CGRAM table index
-		BCS ++							;/
-		LDA #$3E : STA !CGRAMtable+$00,y			;\ data size
-		LDA #$00 : STA !CGRAMtable+$01,y			;/
-		LDA.l !PortraitPointers+5,x				;\
-		ASL A							; |
-		TAX							; |
+		JSL !GetCGRAM : BCS ..paldone					; get CGRAM table index
+		LDA #$3E : STA !CGRAMtable+$00,y				;\ data size
+		LDA #$00 : STA !CGRAMtable+$01,y				;/
+		LDA.l !PortraitPointers+5,x					;\
+		ASL A								; |
+		TAX								; |
 		LDA.l (!PortraitPointers&$FF0000)+read2(!PortraitPointers)+0,x	; | source address
-		STA !CGRAMtable+$02,y					; |
+		STA !CGRAMtable+$02,y						; |
 		LDA.l (!PortraitPointers&$FF0000)+read2(!PortraitPointers)+1,x	; |
-		STA !CGRAMtable+$03,y					; |
-		LDA.b #!PortraitPointers>>16				; |
-		STA !CGRAMtable+$04,y					;/
-		LDA !MsgPal : STA !CGRAMtable+$05,y			; > destination CGRAM
+		STA !CGRAMtable+$03,y						; |
+		LDA.b #!PortraitPointers>>16					; |
+		STA !CGRAMtable+$04,y						;/
+		LDA !MsgPal : STA !CGRAMtable+$05,y				; > destination CGRAM
+		..paldone
 
-	++	LDA #$10 : STA $03					; > 16 8x8 tiles
-		JSL !PlaneSplit						; > decode
+		LDA #$10 : STA $03						; > 16 8x8 tiles
+		JSL !PlaneSplit							; > decode
 
 
 		REP #$20
@@ -1690,50 +1740,6 @@ DRAW_PORTRAIT:	BPL .INIT
 		LDA.b #!BufferHi>>16 : STA !CCDMAtable+$04,x		; source bank
 		LDA #$09 : STA !CCDMAtable+$07,x			; settings = 4bpp, 32px
 
-	;	REP #$20						; > A 16-bit
-	;	JSL !GetVRAM						; > get VRAM table index
-	;	LDA #$0080						;\
-	;	STA !VRAMtable+$00,x					; |
-	;	STA !VRAMtable+$07,x					; |
-	;	STA !VRAMtable+$0E,x					; |
-	;	STA !VRAMtable+$15,x					; | data size
-	;	STA !VRAMtable+$1C,x					; |
-	;	STA !VRAMtable+$23,x					; |
-	;	STA !VRAMtable+$2A,x					; |
-	;	STA !VRAMtable+$31,x					;/
-	;	LDA.w #!BufferLo+$000					;\
-	;	STA !VRAMtable+$02,x					; |
-	;	LDA.w #!BufferLo+$080					; |
-	;	STA !VRAMtable+$09,x					; |
-	;	LDA.w #!BufferLo+$100					; |
-	;	STA !VRAMtable+$10,x					; |
-	;	LDA.w #!BufferLo+$180					; | source address
-	;	STA !VRAMtable+$17,x					; |
-	;	LDA.w #!BufferHi+$000					; |
-	;	STA !VRAMtable+$1E,x					; |
-	;	LDA.w #!BufferHi+$080					; |
-	;	STA !VRAMtable+$25,x					; |
-	;	LDA.w #!BufferHi+$100					; |
-	;	STA !VRAMtable+$2C,x					; |
-	;	LDA.w #!BufferHi+$180					; |
-	;	STA !VRAMtable+$33,x					;/
-	;	LDA.w #!BufferLo>>16					;\
-	;	STA !VRAMtable+$04,x					; |
-	;	STA !VRAMtable+$0B,x					; |
-	;	STA !VRAMtable+$12,x					; |
-	;	STA !VRAMtable+$19,x					; | source bank
-	;	STA !VRAMtable+$20,x					; |
-	;	STA !VRAMtable+$27,x					; |
-	;	STA !VRAMtable+$2E,x					; |
-	;	STA !VRAMtable+$35,x					;/
-	;	LDA !MsgVRAM1 : STA !VRAMtable+$05,x			;\
-	;	CLC : ADC #$0100 : STA !VRAMtable+$0C,x			; |
-	;	SEC : SBC #$00C0 : STA !VRAMtable+$13,x			; |
-	;	CLC : ADC #$0100 : STA !VRAMtable+$1A,x			; | dest VRAM
-	;	LDA !MsgVRAM2 : STA !VRAMtable+$21,x			; |
-	;	CLC : ADC #$0100 : STA !VRAMtable+$28,x			; |
-	;	SEC : SBC #$00C0 : STA !VRAMtable+$2F,x			; |
-	;	CLC : ADC #$0100 : STA !VRAMtable+$36,x			;/
 
 		LDA #$80 : TSB !MsgPortrait				; > set portrait init flag
 
@@ -1767,6 +1773,13 @@ DRAW_PORTRAIT:	BPL .INIT
 
 
 		.MAIN
+		LDA !MsgPal						;\
+		LSR #4							; |
+		TAX							; | keep locking portrait colors out of shader
+		LDA #$01						; | (shader restores colors during window close animation)
+		STA !ShaderRowDisable,x					; |
+		STA !ShaderRowDisable+1,x				;/
+
 		REP #$20
 		LDA !MsgVRAM1
 		LSR #4
@@ -1793,10 +1806,13 @@ DRAW_PORTRAIT:	BPL .INIT
 	+	PHB : PHK : PLB						; bank wrapper
 
 
-		LDX !OAMindex						; X = OAM index
-		LDY #$03						; Y = times to loop
+		REP #$30
+		LDA !OAMindex_p3 : TAX					; X = OAM index
+		LDY #$0003						; Y = times to loop
+		SEP #$20
 		LDA $400000+!MsgVertOffset : BMI .TopCorner		; top corner
-		LDA $400000+!MsgCinematic : BNE .Cinematic
+		LDA $400000+!MsgCinematic : BEQ .Normal
+		JMP .Cinematic
 
 	.Normal
 		BIT $02 : BVC .NormalRight
@@ -1807,15 +1823,13 @@ DRAW_PORTRAIT:	BPL .INIT
 		ASL A
 		STA $03
 	..loop	LDA .NormalLeftX,y
-		STA !OAM+$000,x
-		STA !OAM+$004,x
+		STA !OAM_p3+$000,x
+		STA !OAM_p3+$004,x
 		LDA .NormalY,y
 		SEC : SBC $03
-		STA !OAM+$001,x
-		STA !OAM+$005,x
-		TXA
-		CLC : ADC #$08
-		TAX
+		STA !OAM_p3+$001,x
+		STA !OAM_p3+$005,x
+		INX #8
 		DEY : BPL ..loop
 		JMP .End
 
@@ -1825,30 +1839,26 @@ DRAW_PORTRAIT:	BPL .INIT
 		ASL A
 		STA $03
 	..loop	LDA .NormalRightX,y
-		STA !OAM+$000,x
-		STA !OAM+$004,x
+		STA !OAM_p3+$000,x
+		STA !OAM_p3+$004,x
 		LDA .NormalY,y
 		SEC : SBC $03
-		STA !OAM+$001,x
-		STA !OAM+$005,x
-		TXA
-		CLC : ADC #$08
-		TAX
+		STA !OAM_p3+$001,x
+		STA !OAM_p3+$005,x
+		INX #8
 		DEY : BPL ..loop
 		JMP .End
 
 	.TopCorner
 		LDA .TopCornerX,y
-		STA !OAM+$000,x
-		STA !OAM+$004,x
+		STA !OAM_p3+$000,x
+		STA !OAM_p3+$004,x
 		LDA .TopCornerY,y
-		STA !OAM+$001,x
-		STA !OAM+$005,x
-		TXA
-		CLC : ADC #$08
-		TAX
+		STA !OAM_p3+$001,x
+		STA !OAM_p3+$005,x
+		INX #8
 		DEY : BPL .TopCorner
-		BRA .End
+		JMP .End
 
 	.Cinematic
 		CMP #$02 : BEQ .CinBot
@@ -1858,27 +1868,23 @@ DRAW_PORTRAIT:	BPL .INIT
 
 	.CinTopLeft
 		LDA .CinLeftX,y
-		STA !OAM+$000,x
-		STA !OAM+$004,x
+		STA !OAM_p3+$000,x
+		STA !OAM_p3+$004,x
 		LDA .CinTopY,y
-		STA !OAM+$001,x
-		STA !OAM+$005,x
-		TXA
-		CLC : ADC #$08
-		TAX
+		STA !OAM_p3+$001,x
+		STA !OAM_p3+$005,x
+		INX #8
 		DEY : BPL .CinTopLeft
 		BRA .End
 
 	.CinTopRight
 		LDA .CinRightX,y
-		STA !OAM+$000,x
-		STA !OAM+$004,x
+		STA !OAM_p3+$000,x
+		STA !OAM_p3+$004,x
 		LDA .CinTopY,y
-		STA !OAM+$001,x
-		STA !OAM+$005,x
-		TXA
-		CLC : ADC #$08
-		TAX
+		STA !OAM_p3+$001,x
+		STA !OAM_p3+$005,x
+		INX #8
 		DEY : BPL .CinTopRight
 		BRA .End
 
@@ -1887,59 +1893,52 @@ DRAW_PORTRAIT:	BPL .INIT
 
 	.CinBotLeft
 		LDA .CinLeftX,y
-		STA !OAM+$000,x
-		STA !OAM+$004,x
+		STA !OAM_p3+$000,x
+		STA !OAM_p3+$004,x
 		LDA .CinBotY,y
-		STA !OAM+$001,x
-		STA !OAM+$005,x
-		TXA
-		CLC : ADC #$08
-		TAX
+		STA !OAM_p3+$001,x
+		STA !OAM_p3+$005,x
+		INX #8
 		DEY : BPL .CinBotLeft
 		BRA .End
 
 	.CinBotRight
 		LDA .CinRightX,y
-		STA !OAM+$000,x
-		STA !OAM+$004,x
+		STA !OAM_p3+$000,x
+		STA !OAM_p3+$004,x
 		LDA .CinBotY,y
-		STA !OAM+$001,x
-		STA !OAM+$005,x
-		TXA
-		CLC : ADC #$08
-		TAX
+		STA !OAM_p3+$001,x
+		STA !OAM_p3+$005,x
+		INX #8
 		DEY : BPL .CinBotRight
 
 		.End
-		LDA !OAMindex
+		REP #$20
+		LDA !OAMindex_p3
 		LSR #2
 		TAX
-		LDA #$02
-		STA !OAMhi+$00,x
-		STA !OAMhi+$01,x
-		STA !OAMhi+$02,x
-		STA !OAMhi+$03,x
-		STA !OAMhi+$04,x
-		STA !OAMhi+$05,x
-		STA !OAMhi+$06,x
-		STA !OAMhi+$07,x
+		LDA #$0202
+		STA !OAMhi_p3+$00,x
+		STA !OAMhi_p3+$02,x
+		STA !OAMhi_p3+$04,x
+		STA !OAMhi_p3+$06,x
+		LDA !OAMindex_p3 : TAX
 
-		LDX !OAMindex
-		LDY #$03
+		SEP #$20
+		LDY #$0003
 	-	LDA .Tiles,y
 		CLC : ADC $00
-		STA !OAM+$002,x
+		STA !OAM_p3+$002,x
 		CLC : ADC $01
-		STA !OAM+$006,x
-		LDA $02 : STA !OAM+$003,x
+		STA !OAM_p3+$006,x
+		LDA $02 : STA !OAM_p3+$003,x
 		INC #2
-		STA !OAM+$007,x
-		TXA
-		CLC : ADC #$08
-		TAX
+		STA !OAM_p3+$007,x
+		INX #8
 		DEY : BPL -
-		STX !OAMindex
-
+		REP #$20
+		TXA : STA !OAMindex_p3
+		SEP #$30
 		PLB
 		RTS
 
@@ -1963,7 +1962,8 @@ DRAW_PORTRAIT:	BPL .INIT
 ;====================;
 ;UPDATE ARROW ROUTINE;
 ;====================;
-UPDATE_ARROW:	PHB : PHK : PLB
+	UPDATE_ARROW:
+		PHB : PHK : PLB
 		PHP
 		SEP #$30
 		LDA.b #.SA1 : STA $3180
@@ -2058,36 +2058,6 @@ UPDATE_ARROW:	PHB : PHK : PLB
 		LDA $0E : STA !VRAMbase+!CCDMAtable+$05,x			; dest VRAM
 		LDA #$0010 : STA !VRAMbase+!CCDMAtable+$00,x			; > 16 bytes
 
-	;	JSL !GetCCDMA
-	;	LDA #$02						;\
-	;	STA $3190,x						; | width = 8px, bit depth = 2bpp
-	;	STA $3190+8,x						;/
-	;	LDA.b #!GFX_buffer>>16					;\
-	;	STA $3195,x						; |
-	;	STA $3195+8,x						; | source address = !GFX_buffer+$2A0 and !GFX_buffer+$2B0
-	;	REP #$20						; |
-	;	LDA.w #!GFX_buffer+$2A0 : STA $3193,x			; |
-	;	LDA.w #!GFX_buffer+$2B0 : STA $3193+8,x			;/
-	;	LDA #$0010						;\
-	;	STA $3196,x						; | 16 bytes
-	;	STA $3196+8,x						;/
-	;	LDA $400000+!MsgWidth					;\
-	;	AND #$00FF						; |
-	;	ASL #3							; |
-	;	PHA							; > preserve for second tile
-	;	STA $2253						; |
-	;	LDA !210C						; | VRAM address = layer 3 GFX address + (row * width * 8) + ($15 * 8)
-	;	AND #$000F						; |
-	;	XBA							; |
-	;	ASL #4							; |
-	;	ORA $2306						; |
-	;	CLC : ADC.w #$0015*8					; |
-	;	STA $3191,x						;/
-	;	PLA							;\
-	;	CLC : ADC $3191,x					; | VRAM address of second tile
-	;	STA $3191+8,x						;/
-	;	INC $317F						;\ 2 CCDMA uploads
-	;	INC $317F						;/
 
 		SEP #$30
 		LDA #$40
@@ -2176,7 +2146,7 @@ UPDATE_ARROW:	PHB : PHK : PLB
 ; CX - set player 1 character (X is character)
 ; DX - talk (X is talk flag value)
 ; EX - speed (X is speed value)
-; F0 - unused
+; F0 - header settings
 ; F1 - unused
 ; F2 - clear box
 ; F3,XX - music, !SPC3 value
@@ -2196,7 +2166,7 @@ UPDATE_ARROW:	PHB : PHK : PLB
 ; programming note:
 ;	$0F can be used freely as scratch RAM in this routine
 ;
-HANDLE_COMMANDS:
+	HANDLE_COMMANDS:
 		CMP #$A0 : BCC .Return			; 80-9F are currently unused
 		CMP #$B0 : BCC .Font			; AX - font
 		CMP #$C0 : BCC .P2Char			; BX - player 2 character

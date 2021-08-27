@@ -177,6 +177,7 @@ org $308008
 	dl NPC_Survivor
 	dl NPC_Tinkerer
 	dl NPC_Melody
+	dl NPC_Toad
 	dl MiniMech
 
 	dl CaptainWarrior
@@ -288,6 +289,10 @@ org $368008
 
 	%InsertFile(LavaLord)
 	incbin ../RawGraphics/DynamicSprites/LavaLord.bin
+	.End
+
+	%InsertFile(NPC_Toad)
+	incbin ../RawGraphics/DynamicSprites/Toad.bin
 	.End
 
 %BankEnd(36)
@@ -514,6 +519,8 @@ PalsetData:
 
 	%storepal(special_kingking_blue)
 	%storepal(special_kingking_red)
+
+	%storepal(special_toad)
 
 
 

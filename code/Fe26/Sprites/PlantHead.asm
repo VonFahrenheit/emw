@@ -16,7 +16,6 @@ PlantHead:
 
 	INIT:
 		PHB : PHK : PLB
-;		LDA !GFX_status+$06 : STA !ClaimedGFX
 
 		LDA !ExtraBits,x
 		AND #$04 : BEQ .NoAlt

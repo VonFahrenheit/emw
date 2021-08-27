@@ -505,6 +505,7 @@ BITS:	db $01,$02,$04,$08,$10,$20,$40,$80
 	incsrc "CORE/SET_GLITTER.asm"
 	incsrc "CORE/SET_SPLASH.asm"
 	incsrc "CORE/SMOKE_AT_FEET.asm"
+	incsrc "CORE/DASH_SMOKE.asm"
 	incsrc "CORE/PLAYER_CLIPPING.asm"
 	incsrc "CORE/PLATFORM.asm"
 	incsrc "CORE/KNOCKED_OUT.asm"

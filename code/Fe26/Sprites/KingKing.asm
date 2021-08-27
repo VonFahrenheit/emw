@@ -150,7 +150,7 @@
 
 		LDA #!palset_special_kingking_blue
 		JSL LoadPalset
-		LDA !GFX_status+$180+!palset_special_kingking_blue
+		LDA !Palset_status+!palset_special_kingking_blue
 		ASL A
 		STA $33C0,x
 		REP #$30

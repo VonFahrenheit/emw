@@ -461,42 +461,36 @@ SPRITE_OFF_SCREEN:
 
 
 
-; input: A = 16-bit pointer to hitbox data
+; input: A = 16-bit pointer to hitbox data (hitbox based on facing left)
 ; output: hitbox loaded in $04 slot
 	LOAD_HITBOX:
-		REP #$20				; A 16-bit
-		STA $0E					; store pointer
-
+		REP #$30				; all regs 16-bit
+		TAY					; Y = index to hitbox data
 		SEP #$20				;\
 		LDA !SpriteXLo,x : STA $0C		; |
 		LDA !SpriteXHi,x : STA $0D		; | get sprite coords
 		LDA !SpriteYHi,x : XBA			; |
 		LDA !SpriteYLo,x			; |
 		REP #$20				;/
-		LDY #$02				;\
-		CLC : ADC ($0E),y			; | Y coords
-		STA $05					; |
+		CLC : ADC $0002,y			;\
+		STA $05					; | Y coords
 		STA $0A					;/
 
-		LDY #$04				;\
-		LDA ($0E),y				; | W
-		AND #$00FF				; |
-		STA $06					;/
+		LDA $0004,y : STA $06			; W + H
+		AND #$00FF : STA $0E			; W, 16-bit
 
-		LDA ($0E)				; read X offset
+		LDA $0000,y				; read X offset
+		SEP #$10				; index 8-bit
 		LDY $3320,x : BNE .Left			; check direction
 		.Right					;\
 		EOR #$FFFF				; |
 		CLC : ADC #$0010			; | facing left adjustment
-		SEC : SBC $06				; |
+		SEC : SBC $0E				; |
 		.Left					;/
 		CLC : ADC $0C				;\
 		SEP #$20				; | add sprite Xpos and store
 		STA $04					; |
 		XBA : STA $0A				;/
-		LDY #$05				;\ H
-		LDA ($0E),y : STA $07			;/
-
 		RTL					; return
 
 ; debug: display hitbox
@@ -797,7 +791,9 @@ SPRITE_OFF_SCREEN:
 ;	$05 = Y acc
 ;	$06 = tile
 ;	$07 = prop (S-PPCCCT, S is size bit, PP is mirrored to top 2 bits for layer prio + OAM prio)
-; output: $00 = index to spawned particle
+; output:
+;	$0E = index to spawned particle
+;	mirrors the PP bits of $07 to the upper 2 bits, but the rest of $00-$07 remain
 	SpawnParticle:
 		PHX						; push X
 		STA $0F						; $0F = particle num
@@ -819,17 +815,17 @@ SPRITE_OFF_SCREEN:
 		ADC $09						; |
 		STA $09						;/
 		LDA $00						;\
-		STZ $01						; |
-		BPL $02 : DEC $01				; |
+		STZ $0B						; |
+		BPL $02 : DEC $0B				; |
 		CLC : ADC $3220,x				; | $00 = 16-bit Xpos
-		STA $00						; |
+		STA $0A						; |
 		LDA $3250,x					; |
-		ADC $01						; |
-		STA $01						;/
+		ADC $0B						; |
+		STA $0B						;/
 
 		PHB						; push bank
 		JSL !GetParticleIndex				; X = 16-bit particle index, bank = $41
-		LDA $00 : STA !Particle_XLo,x			;\ particle coords
+		LDA $0A : STA !Particle_XLo,x			;\ particle coords
 		LDA $08 : STA !Particle_YLo,x			;/
 		LDA $06 : STA !Particle_Tile,x			; particle tile/prop
 		LDA $02						;\
@@ -854,9 +850,11 @@ SPRITE_OFF_SCREEN:
 		BNE $03 : LDY #$0013				;/
 		CMP #!prt_smoke16x16				;\ timer for 16x16 = 0x17
 		BNE $03 : LDY #$0017				;/
+		CMP #!prt_sparkle				;\ timer for sparkle = 0x20
+		BNE $03 : LDY #$0020				;/
 		TYA : STA !Particle_Timer,x			; store particle timer
 
-		STX $00						; save this index
+		STX $0E						; save this index
 		PLB						; restore bank
 		SEP #$30					; all regs 8-bit
 		PLX						; restore X
@@ -967,17 +965,13 @@ SPRITE_OFF_SCREEN:
 ; output: !SpriteProp and !SpriteTile updated
 	LoadGFXIndex:
 		PHX
+		REP #$30
 		TAX
-		LDA !GFX_status,x : STA $00
+		LDA !GFX_status,x
+		SEP #$30
 		PLX
-		ROL #2
-		AND #$01
-		STA !SpriteProp,x
-		LDA $00
-		AND #$F0 : TRB $00
-		ASL A
-		ORA $00
 		STA !SpriteTile,x
+		XBA : STA !SpriteProp,x
 		RTL
 
 

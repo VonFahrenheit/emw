@@ -655,7 +655,7 @@ warnpc $009045
 		DEC A					; |
 		LSR A					; |
 		ROR A					; |
-		TAX					; | mario pal flash + heal
+		TAX					; | flash white + heal
 		LDA #$14 : STA !P2FlashPal-$80,x	; |
 		LDA !P2HP-$80,x				; |
 		CMP !P2MaxHP-$80,x : BCS ..return	; |
@@ -673,18 +673,27 @@ warnpc $009045
 		CLC : ADC #$64				; |
 		STA !P1CoinIncrease,x			; |
 		LDA !CurrentMario			; |
-		DEC A					; | 100 coins + full heal + pal flash
+		DEC A					; | 100 coins + full heal + flash gold
 		LSR A					; |
 		ROL A					; |
 		TAX					; |
 		LDA !P2MaxHP-$80,x : STA !P2HP-$80,x	; |
-		LDA #$14 : STA !P2FlashPal-$80,x	; |
+		LDA #$B4 : STA !P2FlashPal-$80,x	; |
 		..return				; |
 		PLX					; |
 		RTS					;/
 
-		.Star					;\
-		LDA #$FF : STA !StarTimer		; | set star timer
+		.Star					;\ set star timer
+		LDA #$FF : STA !StarTimer		;/
+		PHX					;\
+		LDA !CurrentMario : BEQ ..return	; |
+		DEC A					; |
+		LSR A					; |
+		ROR A					; | flash white
+		TAX					; |
+		LDA #$14 : STA !P2FlashPal-$80,x	; |
+		..return				; |
+		PLX					; |
 		RTS					;/
 
 
@@ -1682,6 +1691,11 @@ MAIN_MENU:
 
 
 
+		STZ $41
+		STZ $42
+		STZ $43
+
+
 		STZ $4334							;\
 		STZ $4344							; | HDMA banks
 		STZ $4354							;/
@@ -1785,7 +1799,6 @@ MAIN_MENU:
 		STZ !MenuBG3_Y_3
 		SEP #$20
 		JSR HandleBG3Files
-
 
 		LDA $17
 		AND #$30

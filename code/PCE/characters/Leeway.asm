@@ -76,6 +76,10 @@ namespace Leeway
 		LDA !P2Hitbox2IndexMem1 : TSB !P2Hitbox1IndexMem1	; | merge index mem for hitboxes
 		SEP #$20						;/
 
+		LDA !P2DashSmoke : BEQ .NoDashSmoke
+		JSL CORE_DASH_SMOKE
+		.NoDashSmoke
+
 
 
 		LDA !P2HurtTimer
@@ -84,6 +88,8 @@ namespace Leeway
 		BEQ $03 : DEC !P2Invinc
 		LDA !P2CrouchTimer
 		BEQ $03 : DEC !P2CrouchTimer
+		LDA !P2DashSmoke
+		BEQ $03 : DEC !P2DashSmoke
 
 
 
@@ -460,6 +466,7 @@ namespace Leeway
 		.GroundDash
 		LDA #$2D : STA !SPC1			; dash SFX
 		LDA #$18 : STA !P2Dashing
+		LDA #$05 : STA !P2DashSmoke		; dash smoke for 5 frames
 		.NoDash
 
 		LDA !P2Blocked				;\
@@ -1012,8 +1019,8 @@ namespace Leeway
 		STZ !P2AnimTimer
 		LDA #$1A : STA !P2SwordTimer
 		..Process
-		LDA !P2InAir : BNE +
-		JSL CORE_SMOKE_AT_FEET
+	;	LDA !P2InAir : BNE +
+	;	JSL CORE_SMOKE_AT_FEET
 	+	LDA !P2Anim
 		CMP #!Lee_DashSlash+1 : BEQ +
 		CMP #!Lee_DashSlash+2 : BEQ ++
@@ -1160,7 +1167,7 @@ namespace Leeway
 		LDA !P2Dashing : BEQ .NoDash
 
 		.Dash
-		JSL CORE_SMOKE_AT_FEET
+	;	JSL CORE_SMOKE_AT_FEET
 		LDA !P2Anim
 		CMP #!Lee_Dash : BCC +
 		CMP #!Lee_Dash_over : BCS +
@@ -3226,6 +3233,10 @@ endmacro
 	%LeeDyn(3, $35C, !P2Tile1+$10)
 	%LeeDyn(3, $36C, !P2Tile3)
 	%LeeDyn(3, $37C, !P2Tile3+$10)
+	%SwdDyn(2, $006, !P2Tile5+$01)
+	%SwdDyn(2, $016, !P2Tile5+$11)
+	%SwdDyn(2, $016, !P2Tile6+$01)
+	%SwdDyn(2, $026, !P2Tile6+$11)
 	..End
 
 

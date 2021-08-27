@@ -449,8 +449,7 @@ AggroRex:
 		STA !AggroRexPrevFrame,x
 		BEQ .NoDynamo
 
-		LDY #!File_AggroRex
-		JSL LOAD_SQUARE_DYNAMO
+		LDY #!File_AggroRex : JSL LOAD_SQUARE_DYNAMO
 		.NoDynamo
 
 		LDA !AggroRexStunTimer,x : BNE .Draw

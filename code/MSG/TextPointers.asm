@@ -36,6 +36,7 @@
 ;	linebreak()
 ;	- takes no input
 ;	- immediately ends the current line
+;	- this command will also end the header if placed before any text, meaning that if it is part of the header it has to be the last command in the header
 ;
 ;	endmessage()
 ;	- takes no input
@@ -434,6 +435,8 @@ dw .L13B
 ;===================;
 
 .L000	dw .Survivor_Talk_1			; 01
+
+
 	dw .Tinker_Talk_1			; 02
 	dw .Mario_Upgrade_1			; 03
 	dw .Mario_Upgrade_2			; 04
@@ -450,19 +453,19 @@ dw .L13B
 	dw .Luigi_Upgrade_6			; 0F
 	dw .Luigi_Upgrade_7			; 10
 	dw .Kadaal_Upgrade_SenkuControl		; 11
-	dw .Kadaal_Upgrade_AirSenku			; 12
-	dw .Kadaal_Upgrade_SenkuSmash			; 13
-	dw .Kadaal_Upgrade_ShellSpin			; 14
-	dw .Kadaal_Upgrade_LandSlide			; 15
-	dw .Kadaal_Upgrade_ShellDrill			; 16
+	dw .Kadaal_Upgrade_AirSenku		; 12
+	dw .Kadaal_Upgrade_SenkuSmash		; 13
+	dw .Kadaal_Upgrade_ShellSpin		; 14
+	dw .Kadaal_Upgrade_LandSlide		; 15
+	dw .Kadaal_Upgrade_ShellDrill		; 16
 	dw .Kadaal_Upgrade_SturdyShell		; 17
-	dw .Leeway_Upgrade_ComboSlash			; 18
-	dw .Leeway_Upgrade_AirDash			; 19
+	dw .Leeway_Upgrade_ComboSlash		; 18
+	dw .Leeway_Upgrade_AirDash		; 19
 	dw .Leeway_Upgrade_AirDashPlus		; 1A
-	dw .Leeway_Upgrade_ComboAirSlash		; 1B
-	dw .Leeway_Upgrade_HeroicCape			; 1C
-	dw .Leeway_Upgrade_DinoGrip			; 1D
-	dw .Leeway_Upgrade_StarStrike			; 1E
+	dw .Leeway_Upgrade_ComboAirSlash	; 1B
+	dw .Leeway_Upgrade_HeroicCape		; 1C
+	dw .Leeway_Upgrade_DinoGrip		; 1D
+	dw .Leeway_Upgrade_StarStrike		; 1E
 	dw .Alter_Upgrade_1			; 1F
 	dw .Alter_Upgrade_2			; 20
 	dw .Alter_Upgrade_3			; 21
@@ -477,6 +480,17 @@ dw .L13B
 	dw .Peach_Upgrade_5			; 2A
 	dw .Peach_Upgrade_6			; 2B
 	dw .Peach_Upgrade_7			; 2C
+
+
+	dw .MarioSwitch				; 2D
+	dw .LuigiSwitch				; 2E
+	dw .KadaalSwitch			; 2F
+	dw .LeewaySwitch			; 30
+	dw .AlterSwitch				; 31
+	dw .PeachSwitch				; 32
+
+	dw .Toad1				; 33
+
 
 
 

@@ -84,7 +84,7 @@
 		STZ !P2ShellSpeed			; end fast shell slide status
 		STZ !P2Senku				; end senku
 		STZ !P2AllRangeSenku			; reset all range senku
-		STZ !P2ShellDrill			; end shell drill
+		STZ !P2DropKick				; end drop kick
 		STZ !P2BackDash				; end back dash
 		STZ !P2Dashing				; end dash state
 		RTS

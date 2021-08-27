@@ -120,6 +120,10 @@ namespace Kadaal
 		LDA !P2Hitbox2IndexMem1 : TSB !P2Hitbox1IndexMem1	; | merge index mem for hitboxes
 		SEP #$20						;/
 
+		LDA !P2DashSmoke : BEQ .NoSmoke
+		JSL CORE_DASH_SMOKE
+		.NoSmoke
+
 		LDA !P2JumpLag
 		BEQ $03 : DEC !P2JumpLag
 		LDA !P2HurtTimer
@@ -138,6 +142,8 @@ namespace Kadaal
 		BEQ $03 : DEC !P2BackDash
 		LDA !P2Throw
 		BEQ $03 : DEC !P2Throw
+		LDA !P2DashSmoke
+		BEQ $03 : DEC !P2DashSmoke
 
 		LDA !P2ShellSpin
 		BEQ +
@@ -432,6 +438,10 @@ namespace Kadaal
 	+	STZ !P2SenkuDir
 
 		.ProcessSenku
+		LDA !P2Senku
+		CMP #$1F : BNE ..notakeoff
+		LDA #$05 : STA !P2DashSmoke
+		..notakeoff
 		LDA #$01 : STA !P2ShellSpeed
 		LDA #$0F
 		STA !P2DashTimerR2
@@ -492,8 +502,9 @@ namespace Kadaal
 		STZ !P2Headbutt					; clear headbutt
 		STZ !P2ShellSpin				; clear spin attack
 		LDA #$30 : STA !P2Senku
+		LDA #$34 : STA !P2FlashPal			; flash black
 		LDA #$01 : STA !P2SenkuUsed
-		STZ !P2ShellDrill
+		STZ !P2DropKick
 		RTS
 		.NoSenku
 
@@ -698,6 +709,7 @@ namespace Kadaal
 		LDA #$23 : STA !P2Headbutt
 		STZ !P2Punch
 		LDA #$2D : STA !SPC1				; headbutt init SFX
+		LDA #$03 : STA !P2DashSmoke			; dash smoke for 3 frames
 		BRA .AttackShared
 		.Punch
 		LDA #$0E : STA !P2Punch
@@ -1112,7 +1124,7 @@ namespace Kadaal
 		STZ !P2Senku
 		STZ !P2SenkuUsed
 		STZ !P2ShellSpin
-		STZ !P2ShellDrill
+		STZ !P2DropKick
 		STZ !P2Dashing
 		STZ !P2ShellSpeed
 		STZ !P2Throw
@@ -2562,6 +2574,11 @@ namespace Kadaal
 		dw .ThrowDynamo
 		dw .ClippingStandard
 
+	; victory
+		.Victory
+		dw .IdleTM : db $FF,!Kad_Victory
+		dw .VictoryDynamo
+		dw .ClippingStandard
 
 
 
@@ -3070,6 +3087,16 @@ endmacro
 		%KadDyn(3, $176, !P2Tile1+$10)
 		%KadDyn(3, $186, !P2Tile3)
 		%KadDyn(3, $196, !P2Tile3+$10)
+		..end
+
+	; victory
+		.VictoryDynamo
+		db ..end-..start
+		..start
+		%KadDyn(2, $118, !P2Tile1)
+		%KadDyn(2, $128, !P2Tile1+$10)
+		%KadDyn(2, $138, !P2Tile2)
+		%KadDyn(2, $148, !P2Tile2+$10)
 		..end
 
 

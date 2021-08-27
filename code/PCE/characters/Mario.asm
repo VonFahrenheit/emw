@@ -209,6 +209,15 @@ namespace Mario
 		PLX
 		RTL
 
+; -- smoke fix --
+	org $00FE4A
+		PHX				;\
+		JSL CORE_SMOKE_AT_FEET		; | org LDA $13 : AND #$03 : ORA !MarioInAir : ORA $81
+		PLX				; |
+		RTS				; |
+		NOP				;/
+
+
 
 ; -- sprite edits --
 	org $01A847				; star kill code
@@ -218,6 +227,9 @@ namespace Mario
 		JSL StarKill			;\
 		RTS				; | org: JSR $A728 : JSR $A847
 		NOP				;/
+
+	org $01A92C				; patch out yoshi check to let mario bounce properly from spin jump
+		BRA $03 : NOP #3		; org: LDA $787A : BEQ $04 ($01A935)
 
 
 ; --Remap Mario tiles--
@@ -314,11 +326,11 @@ namespace Mario
 
 		.Controls
 		LDA !P2HurtTimer : BEQ ..normal
-		STZ $15
+		LDA #$0F : TRB $15
 		STZ $16
 		STZ $17
 		STZ $18
-		STZ $6DA3
+		TRB $6DA3
 		STZ $6DA5
 		STZ $6DA7
 		STZ $6DA9
@@ -887,7 +899,7 @@ namespace Mario
 
 ; $00E2BD - $00E4B8 + the JSR at $00F636 - $00F69E
 MarioGraphics:
-		LDA !MultiPlayer : BEQ .ThisOne		; animate at 60fps on single player
+		LDA !MultiPlayer : BEQ .ThisOne			; animate at 60fps on single player
 		LDA $14
 		AND #$01
 		CMP !CurrentPlayer : BEQ .ThisOne
@@ -896,6 +908,16 @@ MarioGraphics:
 		LDA !P2BackupTilemap : STA $0E
 		JMP GRAPHICS
 		.ThisOne
+		LDA !P2ExternalAnimTimer : BNE ..external	;\
+		STZ !P2ExternalAnim				; | check for external anim
+		BRA ..noexternal				;/
+		..external					;\
+		DEC !P2ExternalAnimTimer			; |
+		REP #$30					; | enforce external anim while external anim timer is set
+		LDA !P2ExternalAnim : BRA .Vanilla_load		; |
+		..noexternal					;/
+
+
 		LDA !P2HurtTimer : BEQ .NoHurt
 		LDA !P2HP : BNE .Hurt
 		STZ !P2ShrinkTimer
@@ -924,6 +946,7 @@ MarioGraphics:
 		.Vanilla
 		REP #$30
 		LDA !MarioImg
+		..load
 		AND #$00FF
 		ASL #2
 		TAY
@@ -1313,7 +1336,6 @@ endmacro
 		CMP #$07
 		BCC $03 : INC $78D2
 		TAX
-		DEX
 		LDA.l CORE_STOMPSOUND_TABLE,x : STA !SPC1
 		PLX
 

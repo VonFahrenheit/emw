@@ -529,6 +529,10 @@ CaptainWarrior:
 
 	Chop:
 		LDX !SpriteIndex					; X = sprite index
+
+		JSR .Dust
+
+
 		STZ !SpriteXSpeed,x					; X speed = 0
 		LDA !SpriteAnimIndex					;\
 		CMP #!CW_Chop+3 : BCS .Return				; | must be in chop animation
@@ -547,6 +551,48 @@ CaptainWarrior:
 		.HitboxTable
 		dw HITBOX_Chop0
 		dw HITBOX_Chop1
+
+		.Dust
+		LDA !SpriteAnimIndex
+		SEC : SBC #!CW_Chop
+		CMP #$03 : BCS ..return
+		ASL A
+		ADC $3320,x
+		TAY
+		LDA ..xoffset,y : STA $00
+		LDA #$0C : STA $01
+		LDA !RNG
+		AND #$0F
+		SBC #$08
+		ADC ..xspeed,y
+		STA $02
+		EOR #$FF : INC A
+		STA $04
+		LDA !RNG
+		LSR #4
+		ORA ..yspeed,y
+		STA $03
+		EOR #$FF : INC A
+		STA $05
+		LDA #$F0 : STA $07
+		LDA #!prt_smoke8x8 : JSL SpawnParticle
+		..return
+		RTS
+		..xoffset
+		db $F8,$08
+		db $08,$F8
+		db $14,$EC
+		..xspeed
+		db $10,$F0
+		db $10,$F0
+		db $10,$F0
+		..yspeed
+		db $F8,$F8
+		db $F8,$F8
+		db $F0,$F0
+
+
+
 
 
 	Jump:

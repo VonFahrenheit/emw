@@ -1,3 +1,5 @@
+
+
 FlamePillar:
 
 	namespace FlamePillar

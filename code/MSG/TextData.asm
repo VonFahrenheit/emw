@@ -38,6 +38,52 @@
 	db "You have returned, hero! Feel free to stay as long as you like!"
 	%endmessage()
 
+	.MarioSwitch
+	%mode(1)
+	%portrait(1, 0)
+	%speed(7)
+	db "It's-a go time!"
+	%endmessage()
+	.LuigiSwitch
+	%mode(1)
+	%portrait(2, 0)
+	%speed(7)
+	db "Go-igi!"
+	%endmessage()
+	.KadaalSwitch
+	%mode(1)
+	%portrait(3, 0)
+	%speed(7)
+	db "...very well."
+	%endmessage()
+	.LeewaySwitch
+	%mode(1)
+	%portrait(4, 0)
+	%speed(7)
+	db "I knew you'd need me for this one!"
+	%endmessage()
+	.AlterSwitch
+	%mode(1)
+	%portrait(5, 0)
+	%speed(7)
+	db "[PLACEHOLDER]"
+	%endmessage()
+	.PeachSwitch
+	%mode(1)
+	%portrait(6, 0)
+	%speed(7)
+	db "[PLACEHOLDER]"
+	%endmessage()
+
+
+	.Toad1
+	%mode(1)
+	%speed(9)
+	db "TOOOOOOOOAAAAAAAD!!!!"
+	%endmessage()
+
+
+
 	.Tinker_Talk_1
 	%portrait(7, 0)
 	%speed(8)
@@ -588,6 +634,8 @@
 	db "A relaxing way to experience the game."
 	%linebreak()
 	db "Enemies are weaker and less aggressive."
+	%linebreak()
+	db "Enemies take contact damage upon touching you."
 	%linebreak()
 	db "Bottomless pits are not instant death."
 	%linebreak()

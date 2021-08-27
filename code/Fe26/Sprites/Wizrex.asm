@@ -66,7 +66,7 @@ Wizrex:
 
 		LDX !SpriteIndex				;\
 		LDA #!palset_special_wizrex : JSL LoadPalset	; |
-		LDA !GFX_status+$180+!palset_special_wizrex	; | get palset
+		LDA !Palset_status+!palset_special_wizrex	; | get palset
 		ASL A						; |
 		STA $33C0,x					;/
 
@@ -78,7 +78,7 @@ Wizrex:
 		PHA : PLB
 		REP #$30
 		LDX.w #(!palset_special_wizrex)*$20
-		LDA !GFX_status+$180+!palset_special_wizrex
+		LDA !Palset_status+!palset_special_wizrex
 		AND #$00FF
 		ORA #$0008
 		XBA
@@ -277,7 +277,7 @@ Wizrex:
 		JSL LOAD_DYNAMIC				;/
 
 		.Return
-		LDA !GFX_status+$180+!palset_special_wizrex	;\
+		LDA !Palset_status+!palset_special_wizrex	;\
 		ASL A						; | default to wizrex palset
 		STA $33C0,x					;/
 
@@ -570,7 +570,7 @@ Wizrex:
 		LDA !WizrexFlyTimer,x : BMI .Return		;\
 		LSR #2						; |
 		XBA						; |
-		LDA !GFX_status+$180+!palset_special_wizrex	; |
+		LDA !Palset_status+!palset_special_wizrex	; |
 		ORA #$08					; |
 		ASL #4						; | blend RGB palset
 		TAX						; |
@@ -1486,12 +1486,9 @@ Wizrex:
 		LDA !41_Particle_Prop,x
 		AND #$0E^$FF
 		ORA #$08
+		ORA !DynamicProp,y
 		STA !41_Particle_Prop,x
-		LDA !GFX_Dynamic : BPL .page0
-	.page1	LDA !41_Particle_Prop,x
-		INC A
-		STA !41_Particle_Prop,x
-	.page0	SEP #$10
+		SEP #$10
 		LDX !SpriteIndex
 		RTS
 

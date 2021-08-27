@@ -277,7 +277,8 @@ Rex:
 		AND #$04^$FF						; | clear extra bit so sprite can move again
 		STA !ExtraBits,x					;/
 		STZ !SpriteTweaker2,x					; clear tweaker 2 to make hurtbox smaller
-		LDA.b #!GFX_RexSmall-!GFX_status : JSL LoadGFXIndex
+		REP #$20
+		LDA.w #!GFX_RexSmall_offset : JSL LoadGFXIndex
 		BRA .HandleUpdate
 
 		.Anim
@@ -312,10 +313,12 @@ Rex:
 
 	; draw bag
 		LDA !ExtraProp1,x : BEQ .NoBag
+		ASL A
 		TAY
 		LDA !SpriteTile,x : PHA
 		LDA !SpriteProp,x : PHA
-		LDA ANIM_BagIndex-1,y : JSL LoadGFXIndex
+		REP #$20
+		LDA ANIM_BagIndex-2,y : JSL LoadGFXIndex
 		LDA !ExtraProp1,x
 		DEC A
 		ASL #3
@@ -349,10 +352,12 @@ Rex:
 	; draw hat
 		LDA !ExtraProp2,x
 		AND #$3F : BEQ .NoHat
+		ASL A
 		TAY
 		LDA !SpriteTile,x : PHA
 		LDA !SpriteProp,x : PHA
-		LDA ANIM_HatIndex-1,y : JSL LoadGFXIndex
+		REP #$20
+		LDA ANIM_HatIndex-2,y : JSL LoadGFXIndex
 		LDA !ExtraProp2,x
 		AND #$3F
 		DEC A
@@ -386,9 +391,10 @@ Rex:
 
 
 	; draw legs
-		LDA.b #!GFX_RexLegs1-!GFX_status
+		REP #$20
+		LDA.w #!GFX_RexLegs1_offset
 		LDY !ExtraProp1,x
-		BEQ $01 : INC A
+		BEQ $02 : INC #2
 		JSL LoadGFXIndex
 		REP #$20
 		LDA $04
@@ -462,24 +468,24 @@ Rex:
 
 	; format: GFX index, ccc bits
 	.HatIndex
-		db $94						; 01
-		db $95						; 02
-		db $96						; 03
-		db $97						; 04
-		db $98						; 05
-		db $99						; 06
-		db $9A						; 07
-		db $9B						; 08
+		dw !GFX_RexHat1_offset				; 01
+		dw !GFX_RexHat2_offset				; 02
+		dw !GFX_RexHat3_offset				; 03
+		dw !GFX_RexHat4_offset				; 04
+		dw !GFX_RexHat5_offset				; 05
+		dw !GFX_RexHat6_offset				; 06
+		dw !GFX_RexHat7_offset				; 07
+		dw !GFX_RexHelmet_offset			; 08
 
 	; format: GFX index, ccc bits
 	.BagIndex
-		db $9C						; 01
-		db $9D						; 02
-		db $9E						; 03
-		db $9F						; 04
-		db $A0						; 05
-		db $A0						; 06
-		db $A0						; 07
+		dw !GFX_RexBag1_offset				; 01
+		dw !GFX_RexBag2_offset				; 02
+		dw !GFX_RexBag3_offset				; 03
+		dw !GFX_RexBag4_offset				; 04
+		dw !GFX_RexSword_offset				; 05
+		dw !GFX_RexSword_offset				; 06
+		dw !GFX_RexSword_offset				; 07
 
 	.HatPtr
 		dw .Hat1,.Hat1_tilt				; 01
@@ -666,12 +672,12 @@ Rex:
 		LDA !ExtraProp2,x					;\
 		AND #$3F						; |
 		DEC A							; |
+		ASL A							; |
 		PHA							; |
-		ASL #2							; |
-		TAY							; | hat index + pointer
+		ASL A							; | hat index + pointer
+		TAY							; |
 		REP #$20						; |
 		LDA.w ANIM_HatPtr,y : STA $04				; |
-		SEP #$20						; |
 		PLY							; |
 		LDA.w ANIM_HatIndex,y : JSL LoadGFXIndex		;/
 

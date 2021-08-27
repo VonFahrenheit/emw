@@ -1,3 +1,5 @@
+
+
 EliteKoopa:
 
 	namespace EliteKoopa

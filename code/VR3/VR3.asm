@@ -1039,6 +1039,7 @@ Build_RAM_Code:
 		LDY.w #!File_DynamicVanilla			; | get address of "GFX33"
 		JSL !GetFileAddress				; |
 		PLY						;/
+		LDA !FileAddress+2 : %sourcebankA()		; source bank for these uploads
 		LDA.l $6D7C : BEQ .No0D7C			;\
 		CMP #$0800 : BEQ .No0D7C			; | update slot 1
 		JSR .AppendSMW0D7C				; |
@@ -1322,12 +1323,12 @@ Build_RAM_Code:
 		STA $0E						;/
 		PLY						; restore RAMcode index
 
-
 	;
 	; ExAnimation block
 	; NOTE: when reading this code, note that .l $0180 is bank 0 (I-RAM), but .w $0180 is bank $40 (same as $6180, BW-RAM)
 		LDA !AnimToggle
 		AND #$0004 : BNE .NoExAnimation
+		%videoport($80)					; always use video port $80 for these
 		LDA.w #FetchExAnim : STA.l $0183		;\
 		LDA.w #FetchExAnim>>8 : STA.l $0184		; |
 		SEP #$20					; |
@@ -1449,15 +1450,34 @@ Build_RAM_Code:
 
 		..upload
 		LDA.w !VRAMtable+$00,x				;\
-		AND #$4000 : STA $04				; |
+		AND #$4000 : STA $04				; | fixed/normal mode
 		BNE ..fixed					; |
-		..normal					; |
-		%DMAsettings($1801)				; | fixed/normal mode
-		BRA ..handleupload				; |
-		..fixed						; |
-		%DMAsettings($1809)				; |
-		..handleupload					;/
+		..normal					;/
+		%DMAsettings($1801)				; 2118, 2 regs write once
 		%videoport($80)					; video port: word transfers
+		JMP ..handleupload				;
+		..fixed						;
+		LDA.w !VRAMtable+$04,x				;\
+		AND #$00FF					; |
+		CMP #$007E : BEQ ..fixedvariable		; |
+		CMP #$007F : BEQ ..fixedvariable		; |
+		CMP #$0040 : BEQ ..fixedvariable		; | if from ROM: 2118, 2 regs write once, video port: word transfers
+		CMP #$0041 : BEQ ..fixedvariable		; |
+		..fixednormal					; |
+		%DMAsettings($1809)				; |
+		%videoport($80)					; |
+		JMP ..handleupload				;/
+		..fixedvariable					; if from RAM...
+		LDA.w !VRAMtable+$02,x				;
+		AND #$0001 : BEQ ..fixedlo			; even: lo byte only, odd: hi byte only
+		..fixedhi					;
+		%DMAsettings($1908)				; 2119, 1 reg write once
+		%videoport($80)					; video port: hi byte only
+		BRA ..handleupload				;
+		..fixedlo					;
+		%DMAsettings($1808)				; 2119, 1 reg write once
+		%videoport($00)					; video port: lo byte only
+		..handleupload					;
 		!Temp = 0					; make new RAM code
 		%makecode($00A9)				; LDA #$xxxx
 		!Temp := !Temp+1				; skip hi byte since it will be written by modification
@@ -2289,7 +2309,7 @@ Build_RAM_Code:
 
 		LDA.w !CGRAMtable+$02,x : %writecode(..src)	; source address
 		SEP #$20					;\
-		LDA.w !CGRAMtable+$05,x : %writecode(..cgram)	; > destination CGRAM
+		LDA.w !CGRAMtable+$05,x : %writecode(..cgram)	; | destination CGRAM
 		REP #$20					;/
 		LDA.w !CGRAMtable+$00,x : %writecode(..size)	; upload size
 		LDA $0E						;\
@@ -2427,107 +2447,70 @@ Build_RAM_Code:
 
 
 	.AppendSMW0D7C
-		%DMAsettings($1801)
-		%videoport($80)
+		%DMAsettings($1801)				;\ base settings
+		%videoport($80)					;/
 
-		PHB : PHK : PLB					;\
-		LDA.w #..code : STA $2232			; |
-		LDA.w #..end-..code : STA $2238			; | copy code to RAM with SA-1 DMA
-		TYA						; |
-		CLC : ADC.w #!RAMcode				; |
-		STA $2235					; |
-		SEP #$20					; |
-		LDA #$90 : STA $220A				; > disable DMA IRQ
-		LDA #$C4 : STA $2230				; > DMA settings
-		LDA.b #..code>>16 : STA $2234			; > bank
-		LDA.b #!RAMcode>>16 : STA $2237			; > dest bank (this write starts the DMA)
-		STZ $2230					; |
-		LDA #$F0 : STA $220B				; clear all IRQ flags
-		LDA #$B0 : STA $220A				; enable DMA IRQ
-		PLB						; |
-		REP #$30					;/
-
+		!Temp = 0					; new RAM code
+		%makecode($00A9)				; LDA #$xxxx
+		!Temp := !Temp-1				;\ VRAM address (previous opcode)
+		LDA.l $6D7C : STA.w !RAMcode+!Temp,y		;/
+		!Temp := !Temp+2				; increment index
+		%makecode($168D)				; STA $xx16
+		%makecode($A921)				; $21 (previous opcode) : LDA #$xxxx
+		LDA.l $6D76					;\
+		CLC : ADC.l !FileAddress+0			; | source address (previous opcode)
+		SEC : SBC #$7D00				; |
+		STA.w !RAMcode+!Temp,y				;/
+		!Temp := !Temp+2				; increment index
+		%makecode($0285)				; STA $02
+		%makecode($80A9)				; LDA #$xx80
+		%makecode($8500)				; $00 (previous opcode) : STA $xx
+		%makecode($8C05)				; $05 (previous opcode) : STY $xxxx
+		%makecode($420B)				; $420B (previous opcode)
 		LDA $0E						;\
 		SEC : SBC #$0080				; | update transfer size
 		STA $0E						;/
-		LDA.l $6D76					;\
-		CLC : ADC.l !FileAddress+0			; | source address
-		SEC : SBC #$7D00				; |
-		%writecode(..src1)				;/
-		SEP #$20					;\
-		LDA.l !FileAddress+2 : %writecode(..bnk)	; | source bank
-		REP #$20					;/
-		LDA.l $6D7C : %writecode(..vram1)		; VRAM address
-	;	CMP #$0800 : BEQ ..berry			; check for berry
 		TYA						;\
-		CLC : ADC.w #..end2-..code			; | increment RAM code index
+		CLC : ADC.w #!Temp				; | increment RAM code index
 		TAY						;/
-		RTS
-
-		..berry
-		CLC : ADC #$0100				;\ VRAM address for lower half
-		%writecode(..vram2)				;/
-		LDA.l $6D76					;\
-		CLC : ADC.l !FileAddress+0			; |
-		SEC : SBC #$7D00				; | source address for lower half
-		CLC : ADC #$0040				; |
-		%writecode(..src2)				;/
-		TYA						;\
-		CLC : ADC.w #..end-..code			; | increment RAM code index
-		TAY						;/
-		RTS
+		RTS						; return
 
 		..code
-	..bnk	LDX #$00 : STX $04		; bank
 	..vram1	LDA #$0000 : STA $2116		;\
 	..src1	LDA #$0000 : STA $02		; | 0x80 bytes from $6D76 -> $6D7C
 		LDA #$0080 : STA $05		; |
-		STY $420B			;/
-		..end2
-	..vram2	LDA #$0000 : STA $2116		;\
-	..src2	LDA #$0000 : STA $02		; | special case: when $6D7C = 0x0800, it is split into upper/lower half
-		LDA #$0040 : STA $05		; | when this happens, also update color 0x64
 		STY $420B			;/
 		..end
 
 
 	.AppendSMW0D7E
-		%DMAsettings($1801)
-		%videoport($80)
+		%DMAsettings($1801)				;\ base settings
+		%videoport($80)					;/
 
-		PHB : PHK : PLB					;\
-		LDA.w #..code : STA $2232			; |
-		LDA.w #..end-..code : STA $2238			; | copy code to RAM with SA-1 DMA
-		TYA						; |
-		CLC : ADC.w #!RAMcode				; |
-		STA $2235					; |
-		SEP #$20					; |
-		LDA #$90 : STA $220A				; > disable DMA IRQ
-		LDA #$C4 : STA $2230				; > DMA settings
-		LDA.b #..code>>16 : STA $2234			; > bank
-		LDA.b #!RAMcode>>16 : STA $2237			; > dest bank (this write starts the DMA)
-		STZ $2230					; |
-		LDA #$F0 : STA $220B				; clear all IRQ flags
-		LDA #$B0 : STA $220A				; enable DMA IRQ
-		PLB						; |
-		REP #$30					;/
-
+		!Temp = 0					; new RAM code
+		%makecode($00A9)				; LDA #$xxxx
+		!Temp := !Temp-1				;\ VRAM address (previous opcode)
+		LDA.l $6D7E : STA.w !RAMcode+!Temp,y		;/
+		!Temp := !Temp+2				; increment index
+		%makecode($168D)				; STA $xx16
+		%makecode($A921)				; $21 (previous opcode) : LDA #$xxxx
+		LDA.l $6D78					;\
+		CLC : ADC.l !FileAddress+0			; | source address (previous opcode)
+		SEC : SBC #$7D00				; |
+		STA.w !RAMcode+!Temp,y				;/
+		!Temp := !Temp+2				; increment index
+		%makecode($0285)				; STA $02
+		%makecode($80A9)				; LDA #$xx80
+		%makecode($8500)				; $00 (previous opcode) : STA $xx
+		%makecode($8C05)				; $05 (previous opcode) : STY $xxxx
+		%makecode($420B)				; $420B (previous opcode)
 		LDA $0E						;\
 		SEC : SBC #$0080				; | update transfer size
 		STA $0E						;/
-
-		LDA.l $6D78					;\
-		CLC : ADC.l !FileAddress+0			; | source address
-		SEC : SBC #$7D00				; |
-		%writecode(..src)				;/
-		SEP #$20					;\
-		LDA.l !FileAddress+2 : %writecode(..bnk)	; | source bank
-		REP #$20					;/
-		LDA.l $6D7E : %writecode(..vram)		; VRAM address
 		TYA						;\
-		CLC : ADC.w #..end-..code			; | increment RAM code index
+		CLC : ADC.w #!Temp				; | increment RAM code index
 		TAY						;/
-		RTS
+		RTS						; return
 
 		..code
 	..bnk	LDX #$00 : STX $04		; bank
@@ -2539,44 +2522,35 @@ Build_RAM_Code:
 
 
 	.AppendSMW0D80
-		%DMAsettings($1801)
-		%videoport($80)
+		%DMAsettings($1801)				;\ base settings
+		%videoport($80)					;/
 
-		PHB : PHK : PLB					;\
-		LDA.w #..code : STA $2232			; |
-		LDA.w #..end-..code : STA $2238			; | copy code to RAM with SA-1 DMA
-		TYA						; |
-		CLC : ADC.w #!RAMcode				; |
-		STA $2235					; |
-		SEP #$20					; |
-		LDA #$90 : STA $220A				; > disable DMA IRQ
-		LDA #$C4 : STA $2230				; > DMA settings
-		LDA.b #..code>>16 : STA $2234			; > bank
-		LDA.b #!RAMcode>>16 : STA $2237			; > dest bank (this write starts the DMA)
-		STZ $2230					; |
-		LDA #$F0 : STA $220B				; clear all IRQ flags
-		LDA #$B0 : STA $220A				; enable DMA IRQ
-		PLB						; |
-		REP #$30					;/
-
+		!Temp = 0					; new RAM code
+		%makecode($00A9)				; LDA #$xxxx
+		!Temp := !Temp-1				;\ VRAM address (previous opcode)
+		LDA.l $6D80 : STA.w !RAMcode+!Temp,y		;/
+		!Temp := !Temp+2				; increment index
+		%makecode($168D)				; STA $xx16
+		%makecode($A921)				; $21 (previous opcode) : LDA #$xxxx
+		LDA.l $6D7A					;\
+		CLC : ADC.l !FileAddress+0			; | source address (previous opcode)
+		SEC : SBC #$7D00				; |
+		STA.w !RAMcode+!Temp,y				;/
+		!Temp := !Temp+2				; increment index
+		%makecode($0285)				; STA $02
+		%makecode($80A9)				; LDA #$xx80
+		%makecode($8500)				; $00 (previous opcode) : STA $xx
+		%makecode($8C05)				; $05 (previous opcode) : STY $xxxx
+		%makecode($420B)				; $420B (previous opcode)
 		LDA $0E						;\
 		SEC : SBC #$0080				; | update transfer size
 		STA $0E						;/
-		LDA.l $6D7A					;\
-		CLC : ADC.l !FileAddress+0			; | source address
-		SEC : SBC #$7D00				; |
-		%writecode(..src)				;/
-		SEP #$20					;\
-		LDA.l !FileAddress+2 : %writecode(..bnk)	; | source bank
-		REP #$20					;/
-		LDA.l $6D80 : %writecode(..vram)		; VRAM address
 		TYA						;\
-		CLC : ADC.w #..end-..code			; | increment RAM code index
+		CLC : ADC.w #!Temp				; | increment RAM code index
 		TAY						;/
-		RTS
+		RTS						; return
 
 		..code
-	..bnk	LDX #$00 : STX $04		; bank
 	..vram	LDA #$0000 : STA $2116		;\
 	..src	LDA #$0000 : STA $02		; | 0x80 bytes from $6D7A -> $6D80
 		LDA #$0080 : STA $05		; |
@@ -2780,124 +2754,174 @@ Build_RAM_Code:
 
 
 	.AppendExAnimationGFX
-		LDA.w $0182,x : BMI ..square			; check type
+		%DMAsettings($1801)				; DMA settings
+		LDA.w $0186,x : %sourcebankA()			; source bank
 
-	..row
-		PHX						; push RAM code index
-		PHY						; push ExAnimation table index
-		LDX #$0000					;\
-	-	LDA.l ..code,x : STA.w !RAMcode+$00,y		; |
-		INY #2						; | transfer code to RAM
-		INX #2						; |
-		CPX.w #..end-..code : BCC -			;/
-		PLY						; restore ExAnimation table index
-		PLX						; restore RAM code index
-		LDA.w $0180,x : STA.w !RAMcode+$0F,y		;\
-		LDA.w $0182,x : STA.w !RAMcode+$14,y		; |
-		LDA.w $0184,x : STA.w !RAMcode+$06,y		; | insert data to code
-		SEP #$20					; |
-		LDA.w $0186,x : STA.w !RAMcode+$0B,y		; |
-		REP #$20					;/
+		LDA.w $0182,x : BPL ..row			; check type
+		JMP ..square
 
+		..row
+		!Temp = 0					; new RAM code
+		%makecode($00A9)				; LDA #$xxxx
+		!Temp := !Temp-1				;\ source address (previous opcode)
+		LDA.w $0184,x : STA.w !RAMcode+!Temp,y		;/
+		!Temp := !Temp+2				; increase RAM code index
+		%makecode($0285)				; STA $02
+		%makecode($00A9)				; LDA #$xxxx
+		!Temp := !Temp-1				;\ upload size (previous opcode)
+		LDA.w $0180,x : STA.w !RAMcode+!Temp,y		;/
+		!Temp := !Temp+2				; increase RAM code index
+		%makecode($0585)				; STA $05
+		%makecode($00A9)				; LDA #$xxxx
+		!Temp := !Temp-1				;\ VRAM address (previous opcode)
+		LDA.w $0182,x : STA.w !RAMcode+!Temp,y		;/
+		!Temp := !Temp+2				; increase RAM code index
+		%makecode($168D)				; STA $xx16
+		%makecode($8C21)				; $21 (previous opcode) : STY $xxxx
+		%makecode($420B)				; $420B (previous opcode)
+
+		LDA $0E						;\
+		SEC : SBC.w $0180,x				; | update remaining size
+		STA $0E						;/
 		STZ.w $0180,x					; clear exanim slot
-
+		TYA						;\
+		CLC : ADC.w #!Temp				; | increase RAM code index
+		TAY						;/
 		TXA						;\
-		CLC : ADC #$0007				; | add 7 to dynamo table index
+		CLC : ADC #$0007				; | increase exanimation index
 		TAX						;/
+		RTS						; return
+
+
+		..square
+		LDA.w $0186,x : %sourcebankA()			; source bank
+
+		PHB : PHK : PLB					;\
+		LDA.w #..code : STA $2232			; |
+		LDA.w #..end-..code : STA $2238			; | copy code to RAM with SA-1 DMA
+		TYA						; |
+		CLC : ADC.w #!RAMcode				; |
+		STA $2235					; |
+		SEP #$20					; |
+		LDA #$90 : STA $220A				; > disable DMA IRQ
+		LDA #$C4 : STA $2230				; > DMA settings
+		LDA.b #..code>>16 : STA $2234			; > bank
+		LDA.b #!RAMcode>>16 : STA $2237			; > dest bank (this write starts the DMA)
+		STZ $2230					; |
+		LDA #$F0 : STA $220B				; clear all IRQ flags
+		LDA #$B0 : STA $220A				; enable DMA IRQ
+		PLB						; |
+		REP #$30					;/
+
+	;	LDA.w $0180,x
+	;	%writecode(..size1)
+	;	%writecode(..size2)
+		LDA.w $0182,x : %writecode(..vram1)
+		CLC : ADC #$0100
+		%writecode(..vram2)
+		LDA.w $0184,x : %writecode(..src1)
+		CLC : ADC #$0040
+		%writecode(..src2)
+
+		LDA $0E						;\
+		SEC : SBC.w $0180,x				; | update remaining size
+		STA $0E						;/
+		STZ.w $0180,x					; clear exanim slot
 		TYA						;\
 		CLC : ADC.w #..end-..code			; | increase RAM code index
 		TAY						;/
-		RTS
-
-	..square
-		PHX						; push RAM code index
-		PHY						; push ExAnimation table index
-		LDX #$0000					;\
-	-	LDA.l ..code,x : STA.w !RAMcode+$00,y		; |
-		INY #2						; | transfer code to RAM
-		INX #2						; |
-		CPX.w #..end2-..code : BCC -			;/
-		PLY						; restore ExAnimation table index
-		PLX						; restore RAM code index
-		LDA.w $0180,x					;\
-		STA.w !RAMcode+$0F,y				; |
-		STA.w !RAMcode+$22,y				; |
-		LDA.w $0182,x					; |
-		AND #$7FFF					; |
-		STA.w !RAMcode+$14,y				; |
-		CLC : ADC #$0100				; | insert data to code
-		STA.w !RAMcode+$27,y				; |
-		LDA.w $0184,x : STA.w !RAMcode+$06,y		; |
-		CLC : ADC #$0040				; |
-		STA.w !RAMcode+$1D,y				; |
-		SEP #$20					; |
-		LDA.w $0186,x : STA.w !RAMcode+$0B,y		; |
-		REP #$20					;/
-
-		STZ.w $0180,x					; clear exanim slot
-
 		TXA						;\
-		CLC : ADC #$0007				; | add 7 to dynamo table index
+		CLC : ADC #$0007				; | increase exanimation index
 		TAX						;/
-		TYA						;\
-		CLC : ADC.w #..end2-..code			; | increase RAM code index
-		TAY						;/
-		RTS
+		RTS						; return
 
 		..code
-		LDA.w #$1801 : STA $00				; DMA settings
-		LDA.w #$0000 : STA $02				; source address
-		LDX.b #$00 : STX $04				; source bank
-		LDA.w #$0000 : STA $05				; upload size
-		LDA.w #$0000 : STA $2116			; VRAM address
+	..src1	LDA.w #$0000 : STA $02				; source address
+	..size1	LDA.w #$0040 : STA $05				; upload size
+	..vram1	LDA.w #$0000 : STA $2116			; VRAM address
+		STY.w $420B					; DMA toggle
+	..src2	LDA.w #$0000 : STA $02				; address (DMA settings + bank are the same)
+	..size2	LDA.w #$0040 : STA $05				; upload size
+	..vram2	LDA.w #$0000 : STA $2116			; reset address (1 row below so can't use continuous)
 		STY.w $420B					; DMA toggle
 		..end
-	; this section only used for square row 2
-		LDA.w #$0000 : STA $02				; address (DMA settings + bank are the same)
-		LDA.w #$0000 : STA $05				; upload size
-		LDA.w #$0000 : STA $2116			; reset address (1 row below so can't use continuous)
-		STY.w $420B					; DMA toggle
-		..end2
 
 
 	.AppendExAnimationPalette
-		%DMAsettings($2202)
-
-		PHX						; push RAM code index
-		PHY						; push ExAnimation table index
-		LDX #$0000					;\
-	-	LDA.l ..code,x : STA.w !RAMcode+$00,y		; |
-		INY #2						; | transfer code to RAM
-		INX #2						; |
-		CPX.w #..end-..code : BCC -			;/
-		PLY						; restore VRAM table index
-		PLX						; restore RAM code index
-
-		LDA.w $0180,x					;\
+		..feedshader
+		LDA.w $0184,x : STA $00				;\ pointer to color data
+		LDA.w $0185,x : STA $01				;/
+		LDA.w $0180,x : STA $04				; number of colors to transfer
+		PHX						;\ push regs
+		PHY						;/
+		LDA.l !ProcessLight				;\
+		ORA #$0080					; | SA-1 writing to shader input
+		STA.l !ProcessLight				;/
+		LDA.w $0182,x					;\
 		ASL A						; |
-		STA.w !RAMcode+$0A,y				; |
-		LDA.w $0184,x : STA.w !RAMcode+$01,y		; | insert data to code
-		SEP #$20					; |
-		LDA.w $0186,x : STA.w !RAMcode+$06,y		; |
-		LDA.w $0182,x : STA.w !RAMcode+$0F,y		; |
+		TAX						; |
+		LDY #$0000					; | copy colors to shader input
+	-	LDA [$00],y : STA.l !ShaderInput,x		; |
+		INX #2						; |
+		INY #2						; |
+		DEC $04 : BPL -					;/
+		LDA.l !ProcessLight				;\
+		AND.w #$0080^$FFFF				; | SA-1 no longer writing to shader input
+		STA.l !ProcessLight				;/
+		PLY						;\ pull regs
+		PLX						;/
+		LDA #$0100					;\
+		CMP.l !LightR : BNE ..return			; | if no light is enabled, upload colors raw
+		CMP.l !LightG : BNE ..return			; | (never preshade exanimation, just feed it to shader)
+		CMP.l !LightB : BEQ ..upload			;/
+		..return
+		STZ.w $0180,x					; clear exanim slot
+		TXA						;\
+		CLC : ADC #$0007				; | increase exanimation index
+		TAX						;/
+		RTS						; return
+
+		..upload
+		%DMAsettings($2202)				; DMA settings
+		LDA.w $0186,x : %sourcebankA()			; source bank
+		!Temp = 0					; make new RAM code
+		%makecode($00A9)				; LDA #$xxxx
+		!Temp := !Temp+1				; skip hi byte since it will be written by modification
+		%makecode($0285)				; STA $02
+		%makecode($00A9)				; LDA #$xxxx
+		!Temp := !Temp+1				; skip hi byte since it will be written by modification
+		%makecode($0585)				; STA $05
+		%makecode($00A2)				; LDX #$xx
+		%makecode($218E)				; STX $xx21
+		%makecode($8C21)				; $21 (previous opcode) : STY $xxxx
+		%makecode($420B)				; $420B (previous opcode)
+		LDA.w $0184,x : %writecode(..src)		; source address
+		SEP #$20					;\
+		LDA.w $0182,x : %writecode(..cgram)		; | destination CGRAM
 		REP #$20					;/
-
-		TXA
-		CLC : ADC #$0007
-		TAX
-
+		LDA.w $0180,x					;\
+		ASL A						; | upload size
+		%writecode(..size)				;/
+		SEC : SBC $0E					;\
+		EOR #$FFFF : INC A				; | update transfer size
+		STA $0E						;/
 		TYA						;\
 		CLC : ADC.w #..end-..code			; | increase RAM code index
 		TAY						;/
-		RTS
+		STZ.w $0180,x					; clear exanim slot
+		TXA						;\
+		CLC : ADC #$0007				; | increase exanimation index
+		TAX						;/
+		RTS						; return
 
+	; this code is not inserted, just here as reference (read by %writecode macro)
 		..code
-		LDA.w #$0000 : STA $02				; source address
-		LDX.b #$00 : STX $04				; source bank
-		LDA.w #$0000 : STA $05				; upload size
-		LDX.b #$00 : STX $2121				; CGRAM address
-		STY.w $420B					; DMA toggle
+	..src	LDA #$0000 : STA $02
+	..size	LDA #$0000 : STA $05
+	..cgram	LDX #$00 : STX $2121
+		STY $420B
 		..end
+
 
 
 ; LM has:
@@ -3782,7 +3806,7 @@ NMI:		PHP					;\
 
 
 	; direct color update
-		LDA $6701
+		LDA !2132_RGB
 		ASL #3
 		SEP #$21
 		ROR #3

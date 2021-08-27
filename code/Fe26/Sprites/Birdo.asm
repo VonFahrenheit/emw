@@ -1,3 +1,5 @@
+
+
 Birdo:
 
 	namespace Birdo

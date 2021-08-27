@@ -1432,6 +1432,8 @@ levelinit0:
 		STA !LevelTable4,x		; |
 		DEX : BPL -			;/
 
+		LDA #$33 : STA !NPC_Talk+$10
+
 
 		INC !SideExit
 		PHP
@@ -1439,6 +1441,16 @@ levelinit0:
 ;		LDY.w #!File_NPC_Survivor
 ;		LDA #$6C00
 ;		JSL !LoadFile
+
+
+		LDA #$2D : STA !NPC_Talk+0
+		LDA #$2E : STA !NPC_Talk+1
+		LDA #$2F : STA !NPC_Talk+2
+		LDA #$30 : STA !NPC_Talk+3
+		LDA #$31 : STA !NPC_Talk+4
+		LDA #$32 : STA !NPC_Talk+5
+
+
 
 
 		SEP #$20
@@ -1450,8 +1462,12 @@ levelinit0:
 		LDA #$0170 : STA $410000+!BG_object_Y
 
 		PLP
-
 		RTL
+
+
+
+
+
 
 
 
@@ -1496,8 +1512,6 @@ levelinit25:
 		STA !P2XPosLo
 	.L
 
-		LDA #$60 : STA !GFX_Dynamic
-
 		LDA.b #.SA1 : STA $3180
 		LDA.b #.SA1>>8 : STA $3181
 		LDA.b #.SA1>>16 : STA $3182
@@ -1511,16 +1525,7 @@ levelinit25:
 		LDA #$7200 : STA.l $400000+!MsgVRAM3
 
 		SEP #$20
-
-
-		LDA.b #.NPC_table : STA !NPC_ID
-		LDA.b #.NPC_table>>8 : STA !NPC_ID+1
-		LDA.b #.NPC_table>>16 : STA !NPC_ID+2
 		RTL
-
-	.NPC_table
-	db $01
-
 
 
 		.SA1
@@ -1838,8 +1843,6 @@ levelinitC6:
 
 		STZ $24
 		STZ $25
-
-		LDA #$B0 : STA !GFX_Dynamic	; base dynamic tile: 0x160
 
 		RTL
 
@@ -2506,8 +2509,8 @@ level0:
 		STZ $01
 		JSL DisplayYC
 
-		JSL DisplayHitbox1_Main
-		JSL DisplayHitbox2_Main
+	;	JSL DisplayHitbox1_Main
+	;	JSL DisplayHitbox2_Main
 
 	;JSL TriangleProjection
 
@@ -3437,10 +3440,9 @@ levelC5:
 ;
 
 levelC6:
-
-		LDA !P2Character
+		LDA !P2Character-$80
 		CMP #$02 : BEQ +
-	;	LDA !Level+4 : BNE +
+		LDA !Level+4 : BNE +
 		LDA $1B
 		CMP #$0E : BNE +
 		LDX #$0F
@@ -3456,9 +3458,9 @@ levelC6:
 		STA !LevelTable1+$5E			; |
 		LDA !Level : STA !LevelTable2+$5E	;/
 
-	;	LDA #$01 : STA !MsgTrigger
+		LDA #$01 : STA !MsgTrigger
 	++	DEX : BPL -
-	;	LDA #$01 : STA !Level+4
+		LDA #$01 : STA !Level+4
 		+
 
 
@@ -3477,14 +3479,14 @@ levelC6:
 		LDA.b #.HDMA>>16 : STA !HDMAptr+2
 
 	; screen regs
-		LDA #$44 : STA !2131
-		LDA #$13 : STA !SubScreen
-		LDA #$17 : STA !MainScreen
-		LDA #$09 : STA !2105
+	;	LDA #$44 : STA !2131
+	;	LDA #$13 : STA !SubScreen
+	;	LDA #$17 : STA !MainScreen
+	;	LDA #$09 : STA !2105
 
 	; background color
 		REP #$20
-		LDA #$7BDE : STA !PaletteBuffer+0
+		LDA #$7BDE : STA !PaletteCacheRGB+0
 		LDA $1B
 		AND #$00FF
 		CMP #$001F
@@ -3493,7 +3495,7 @@ levelC6:
 		LDX #$00
 		LDY #$01
 		JSL !MixRGB
-		LDA !PaletteBuffer+0 : STA !Color0
+		LDA !PaletteBuffer+0 : STA !2132_RGB	;STA !Color0
 		SEP #$20
 
 
@@ -6123,9 +6125,6 @@ WATER_BOX:
 		REP #$20
 		CMP $0C
 		SEP #$20
-		LDA #$00
-		BCS $01 : INC A
-		STA !MarioExtraWaterJump	;  let mario jump out of water if his hitbox touches the surface
 		RTS
 
 

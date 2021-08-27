@@ -1,3 +1,5 @@
+
+
 KompositeKoopa:
 
 	namespace KompositeKoopa

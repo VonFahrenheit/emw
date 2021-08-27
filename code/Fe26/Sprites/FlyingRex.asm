@@ -33,7 +33,7 @@ FlyingRex:
 		STA !FlyingRexTargetYHi,x
 		LDA #!palset_generic_lightblue : JSL LoadPalset
 		LDX $0F
-		LDA !GFX_status+$180,x
+		LDA !Palset_status,x
 		LDX !SpriteIndex
 		ASL A
 		STA $33C0,x

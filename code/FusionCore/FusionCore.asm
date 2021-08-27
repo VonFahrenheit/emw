@@ -233,7 +233,7 @@ incsrc "../Defines.asm"
 		JML [$3000]
 		.PalsetReturn
 		LDX $0F
-		LDA !GFX_status+$180,x
+		LDA !Palset_status,x
 		ASL A
 		LDX $75E9
 	; this will sometimes store 0xFF!
@@ -708,7 +708,10 @@ incsrc "FusionSprites/CustomShooter.asm"
 ;	$00	number of tiles drawn
 ;	$02	24-bit pointer to start write area
 ; table format:
-;	header (number of per-tile bytes to read, highest bit is p (0 = use $64, 1 = use PP bits))
+;	header: ptttiiii iiiiiiii
+;		p - 0 = use $64, 1 = use PP bits
+;		t - number of tiles to read (read bytes = ttt*4)
+;		i - GFX status index
 ;	GFX status index
 ;	for each tile:
 ;		Xdisp
@@ -729,6 +732,15 @@ incsrc "FusionSprites/CustomShooter.asm"
 ; $0D - 8-bit	hi bit of tile number from GFX status
 ; $0E - 16-bit	working Xpos
 
+	macro TilemapHeader(bytecount, GFX, P)
+	if <P> = 0
+		dw <GFX>|(<bytecount><<12)
+	else
+		dw <GFX>|(<bytecount><<12)|$8000
+	endif
+	endmacro
+
+
 	DisplayGFX:
 		REP #$20				;\
 		LDA $01,s				; |
@@ -738,20 +750,17 @@ incsrc "FusionSprites/CustomShooter.asm"
 		LDA $03,s : STA $06			;/
 		REP #$20				;\
 		LDA [$04]				; |
-		AND #$007F				; |
-		STA $0A					; > save header in RAM
+		AND #$7000				; |
+		XBA					; |
+		LSR #2					; |
+		STA $0A					; > save byte count header in RAM
 		INC #2					; |
 		CLC : ADC $01,s				; > update return address
 		STA $01,s				;/
 		LDA [$04]				;\
-		AND #$0080				; | p flag
-		STA $08					;/
-		INC $04					;\
-		LDA [$04]				; |
-		INC $04					; | read GFX status index and increment past header bytes
-		SEP #$20				; | (now ready to read per-tile data)
-		STA $0F					;/
-
+		AND #$8000				; | p flag
+		STA $08-1				;/
+		SEP #$20
 		PHX					; > push X
 		LDA !Ex_XLo,x : STA $00			;\
 		LDA !Ex_XHi,x : STA $01			; | base coordinates
@@ -760,24 +769,24 @@ incsrc "FusionSprites/CustomShooter.asm"
 		LDA !Ex_Palset,x			;\
 		AND #$0E				; | CCC bits
 		STA $0D					;/
+		STZ $0C					; base tile num
 		BIT $08 : BMI .Skip64			; p bit
-	.Set64	LDA $64					;\
+		.Set64					;\
+		LDA $64					; |
 		AND #$30				; | add PP bits from $64
-		TSB $0D					;/
-	.Skip64	LDX $0F					;\
-		CPX #$FF : BNE +			; | (0xFF means offset 0)
-		STZ $0C					; |
-		BRA ++					; |
-	+	LDA !GFX_status,x : STA $0F		; |
-		AND #$70				; |
-		ASL A					; |
-		STA $0C					; | unpack GFX offset
-		LDA $0F					; |
-		AND #$0F				; |
+		TSB $0D					; |
+		.Skip64					;/
+		REP #$30				;\
+		LDA [$04]				; |
+		AND #$0FFF				; |
+		TAX					; | get GFX offset and increment pointer past header
+		LDA !GFX_status,x			; |
+		CPX #$0FFF				; |
+		BNE $03 : LDA #$0000			; > 0xFFF = offset 0
 		TSB $0C					; |
-		LDA $0F					; |
-		BPL $02 : INC $0D			; |
-		++					;/
+		INC $04					; |
+		INC $04					; |
+		SEP #$30				;/
 
 		LDA $01,s : TAX
 		LDA !Ex_Num,x
@@ -1100,17 +1109,17 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		AND #$0C : BEQ .frame0
 		CMP #$08 : BNE .frame1
 	.frame2	JSL DisplayGFX
-		db $08,$FF
+		%TilemapHeader(2, $FFF, 0)
 		db $04,$00,$57,$00
 		db $04,$08,$57,$80
 		BRA .Return
 	.frame1	JSL DisplayGFX
-		db $08,$FF
+		%TilemapHeader(2, $FFF, 0)
 		db $04,$00,$47,$00
 		db $04,$08,$47,$80
 		BRA .Return
 	.frame0	JSL DisplayGFX
-		db $04,$FF
+		%TilemapHeader(1, $FFF, 0)
 		db $00,$00,$45,$02
 	.Return	REP #$20				;\
 		PLA : STA $1C				; | restore BG1 coords
@@ -1124,7 +1133,7 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 	org $028FCA
 	BrickPiece:
 		JSL DisplayGFX
-		db $04,$FF
+		%TilemapHeader(1, $FFF, 0)
 		db $00,$00,$00,$00
 		LDA $00 : BEQ .Return
 		LDA $14
@@ -1150,7 +1159,7 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 	org $028EE1
 	Sparkles:
 		JSL DisplayGFX
-		db $04,$FF
+		%TilemapHeader(1, $FFF, 0)
 		db $00,$00,$00,$00
 		LDA $00 : BEQ .Return
 		LDA !Ex_Data1,x
@@ -1170,7 +1179,7 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 	org $028F4D
 	FireParticle:
 		JSL DisplayGFX
-		db $04,!GFX_LavaEffects-!GFX_status
+		%TilemapHeader(1, !GFX_LavaEffects_offset, 0)
 		db $00,$00,$00,$00
 		LDA $00 : BEQ .Return
 		LDA !Ex_Data1,x
@@ -1185,7 +1194,7 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 	org $028E20
 	Z:
 		JSL DisplayGFX
-		db $04,!GFX_RipVanFish-!GFX_status
+		%TilemapHeader(1, !GFX_RipVanFish_offset, 0)
 		db $00,$00,$00,$00
 		LDA $00 : BEQ .Return
 		LDA !Ex_Data1,x
@@ -1225,7 +1234,7 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		.Smoke16x16
 		PHA
 		JSL DisplayGFX
-		db $04,$FF
+		%TilemapHeader(1, $FFF, 0)
 		db $00,$00,$00,$02
 		PLA
 		LDY $00 : BEQ .Return
@@ -1234,12 +1243,12 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 	.Return	RTS
 		.Water00
 		JSL DisplayGFX
-		db $04,!GFX_WaterEffects-!GFX_status
+		%TilemapHeader(1, !GFX_WaterEffects_offset, 0)
 		db $00,$00,$00,$02
 		RTS
 		.Water02
 		JSL DisplayGFX
-		db $04,!GFX_WaterEffects-!GFX_status
+		%TilemapHeader(1, !GFX_WaterEffects_offset, 0)
 		db $00,$00,$02,$02
 		RTS
 	warnpc $028DD7
@@ -1247,7 +1256,7 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 	org $028CFF
 	BooStream:
 		JSL DisplayGFX
-		db $04,!GFX_Boo-!GFX_status
+		%TilemapHeader(1, !GFX_Boo_offset, 0)
 		db $00,$00,$00,$02
 		LDA $00 : BEQ .Return
 		PHX
@@ -1280,7 +1289,7 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 	.8	JMP Smoke01_8
 
 	.16	JSL DisplayGFX
-		db $04,$FF
+		%TilemapHeader(1, $FFF, 0)
 		db $00,$00,$00,$02
 		LDA $00 : BEQ .Return
 		LDA !Ex_Data2,x
@@ -1297,7 +1306,7 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		LDA !Ex_Num,x					;\ if num  = extended 02, this looks like mario's fireball
 		CMP #$02+!ExtendedOffset : BEQ MarioFireball	;/ otherwise, it's a big fireball
 		JSL DisplayGFX
-		db $04,!GFX_ReznorFireball-!GFX_status
+		%TilemapHeader(1, !GFX_ReznorFireball_offset, 0)
 		db $00,$00,$00,$02
 		LDA $00 : BEQ .Return
 		LDY #$03
@@ -1313,7 +1322,7 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 	org $02A232
 	TinyFlame:
 		JSL DisplayGFX
-		db $04,!GFX_HoppingFlame
+		%TilemapHeader(1, !GFX_HoppingFlame_offset, 0)
 		db $00,$00,$00,$00
 		LDA $00 : BEQ .Return
 		LDA !Ex_Data1,x
@@ -1338,7 +1347,7 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 	org $02A317
 	Hammer:
 		JSL DisplayGFX
-		db $04,!GFX_Hammer-!GFX_status
+		%TilemapHeader(1, !GFX_Hammer_offset, 0)
 		db $00,$00,$00,$02
 		LDA $00 : BEQ .Return
 		LDY #$03
@@ -1378,12 +1387,12 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		CMP.b #$02+!CustomOffset : BEQ .Luigi
 
 	.Mario	JSL DisplayGFX
-		db $04,!GFX_ReznorFireball-!GFX_status	; changed to reznor fireball
+		%TilemapHeader(1, !GFX_ReznorFireball_offset, 0)
 		db $FC,$F8,$00,$02			; changed coords from 00;00, changed size to 02, removed xflip
 		BRA .Shared
 
 	.Luigi	JSL DisplayGFX
-		db $04,!GFX_LuigiFireball-!GFX_status
+		%TilemapHeader(1, !GFX_LuigiFireball_offset, 0)
 		db $00,$00,$00,$40
 
 	.Shared	LDA $00 : BEQ .Return
@@ -1404,7 +1413,7 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 	org $02A2C3
 	Bone:
 		JSL DisplayGFX
-		db $04,!GFX_Bone-!GFX_status
+		%TilemapHeader(1, !GFX_Bone_offset, 0)
 		db $00,$00,$00,$02
 		LDA $00 : BEQ .Return
 		TXA
@@ -1424,7 +1433,7 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 	org $029E9D
 	LavaSplash:
 		JSL DisplayGFX
-		db $00,!GFX_LavaEffects-!GFX_status
+		%TilemapHeader(1, !GFX_LavaEffects_offset, 0)
 		db $00,$00,$00,$00
 		LDA $00 : BEQ .Return
 		LDA !Ex_Data2,x
@@ -1454,11 +1463,11 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 	.GFX	LDA !Ex_Data2,x
 		CMP #$60 : BCC .Tile08
 	.Tile06	JSL DisplayGFX
-		db $84,!GFX_TorpedoTed-!GFX_status
+		%TilemapHeader(1, !GFX_TorpedoTed_offset, 1)
 		db $00,$00,$06,$12
 		RTS
 	.Tile08	JSL DisplayGFX
-		db $84,!GFX_TorpedoTed-!GFX_status
+		%TilemapHeader(1, !GFX_TorpedoTed_offset, 1)
 		db $00,$00,$08,$12
 		RTS
 	warnpc $029E82
@@ -1476,11 +1485,11 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		LSR #2
 		BCC .Tile10
 	.Tile00	JSL DisplayGFX
-		db $04,!GFX_LotusPollen-!GFX_status
+		%TilemapHeader(1, !GFX_LotusPollen_offset, 0)
 		db $00,$00,$00,$00
 		BRA .Done
 	.Tile10	JSL DisplayGFX
-		db $04,!GFX_LotusPollen-!GFX_status
+		%TilemapHeader(1, !GFX_LotusPollen_offset, 0)
 		db $00,$00,$10,$00
 		BRA .Done
 	warnpc $029BA5
@@ -1490,7 +1499,7 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 	org $02A271
 	Baseball:
 		JSL DisplayGFX
-		db $04,!GFX_Baseball-!GFX_status
+		%TilemapHeader(1, !GFX_Baseball_offset, 0)
 		db $00,$00,$00,$00
 		LDA $00 : BEQ .Return
 		TXA
@@ -1511,7 +1520,7 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 	org $029C88
 	SpinJumpStars:
 		JSL DisplayGFX
-		db $04,$FF
+		%TilemapHeader(1, $FFF, 0)
 		db $00,$00,$48,$00
 		BRA .Done
 	warnpc $029C98
@@ -1528,15 +1537,15 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		BEQ .Disp00
 		BMI .DispFF
 	.Disp01	JSL DisplayGFX
-		db $04,!GFX_WaterEffects-!GFX_status
+		%TilemapHeader(1, !GFX_WaterEffects_offset, 0)
 		db $01,$05,$04,$00
 		RTS
 	.Disp00	JSL DisplayGFX
-		db $04,!GFX_WaterEffects-!GFX_status
+		%TilemapHeader(1, !GFX_WaterEffects_offset, 0)
 		db $00,$05,$04,$00
 		RTS
 	.DispFF	JSL DisplayGFX
-		db $04,!GFX_WaterEffects-!GFX_status
+		%TilemapHeader(1, !GFX_WaterEffects_offset, 0)
 		db $FF,$05,$04,$00
 		RTS
 	warnpc $029F61
@@ -1546,7 +1555,7 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 	org $02999F
 	SmokeGeneric:
 		JSL DisplayGFX
-		db $04,$FF
+		%TilemapHeader(1, $FFF, 0)
 		db $00,$00,$00,$02
 		LDA $00 : BEQ .Return
 		LDA !Ex_Data1,x
@@ -1566,12 +1575,12 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		LDA $96D8,y
 		CMP #$66 : BNE .16
 	.8	JSL DisplayGFX
-		db $04,$FF
+		%TilemapHeader(1, $FFF, 0)
 		db $04,$04,$5E,$00
 		RTS
 
 	.16	JSL DisplayGFX
-		db $04,$FF
+		%TilemapHeader(1, $FFF, 0)
 		db $00,$00,$00,$02
 		LDA $00 : BEQ .Return
 		LDA !Ex_Data1,x
@@ -1588,7 +1597,7 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 	org $0297B2
 	ContactGFX:
 		JSL DisplayGFX
-		db $04,$FF
+		%TilemapHeader(1, $FFF, 0)
 		db $00,$00,$66,$02
 		LDA $00 : BEQ .Return
 		LDY !Ex_Data1,x
@@ -1604,7 +1613,7 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 	org $02996F
 	TurnSmoke:
 		JSL DisplayGFX
-		db $04,$FF
+		%TilemapHeader(1, $FFF, 0)
 		db $00,$00,$00,$00
 		LDA $00 : BEQ .Return
 		PHX
@@ -1632,7 +1641,7 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		LDA $301C,y : STA $1C			; |
 		SEP #$20				;/
 		JSL DisplayGFX
-		db $04,$FF
+		%TilemapHeader(1, $FFF, 0)
 		db $00,$00,$00,$02
 		LDA $00 : BEQ .Return
 		LDA !Ex_Num,x

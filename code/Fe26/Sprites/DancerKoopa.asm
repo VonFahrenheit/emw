@@ -1,3 +1,5 @@
+
+
 DancerKoopa:
 
 	namespace DancerKoopa

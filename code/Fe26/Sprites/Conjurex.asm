@@ -304,7 +304,7 @@ Conjurex:
 		LDA #!palset_special_flash_caster : JSL LoadPalset
 		PLY
 		LDX $0F
-		LDA !GFX_status+$180,x
+		LDA !Palset_status,x
 		ASL A
 		LDX !SpriteIndex
 		STA $33C0,x

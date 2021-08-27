@@ -221,9 +221,7 @@
 		$7FD6-$7FED:	24 B	unused sprite table and misc (water/cape etc) timer
 
 		used like this:
-		$74C8-$74DC:	21 B	tile numbers for some sprite types
-		$74DD-$74F1:	21 B	t bits for some sprite types
-		$74F2-$74FF:	14 B	----
+		$74C8-$74FF:	56 B	----
 		$7500-$75CF:	208 B	PhysicsPlus sprite tables
 		$75D0-$75E8:	25 B	----
 		$75E9:		1 B	sprite index (unchanged)
@@ -266,8 +264,11 @@
 		Bank $41:
 		$0000-$7FFF:	32 KB	super-dynamic GFX area 2
 		$8000-$80FF:	256 B	Map16 remap table (see !Defines for details)
-		$8100-$82FF:	512 B	GFX load status table (256 pseudo-dynamic files, 128 super-dynamic files, 128 sprite palsets)
-		$8300-$87FF:	1.25 KB	----
+		$8100-$84FF:	1 KB	GFX load status table (512 parts, 2 bytes each)
+		$8500-$85FF:	256 B	GFX load status table (128 sets, 2 bytes each)
+		$8600-$867F:	128 B	GFX load status table (64 supersets, 2 bytes each)
+		$8680-$86FF:	128 B	palette load status (128 entries, 1 byte each)
+		$8700-$87FF:	256 B	super-dynamic load WRAM location (256 entries, 1 byte each)
 		$8800-$89FF:	512 B	wiggler data
 		$8A00-$8AFE:	255 B	sprite/shooter load status (00: reload, EE: never reload)
 		$8AFF:		1 B	----

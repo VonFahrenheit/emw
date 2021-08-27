@@ -102,6 +102,7 @@ COLLISION:
 		AND #$04				;\
 		EOR #$04				; | set/clear air flag
 		STA !P2InAir				;/
+		ORA !P2Status				; (also applies when player is dead)
 		BNE +					;\
 		LDA !P2Platform : BNE +			; | base x speed on ground (but not on platform)
 		LDA #$10 : STA !P2YSpeed		;/
@@ -868,14 +869,11 @@ endmacro
 		; 038
 		.Midway
 		SEP #$20
-		LDA !P2Character : BNE +		; check for mario
-		LDA $19 : BNE ++			;\
-		INC $19					; | mario turns big if he's small
-		BRA +++					;/
-	+	LDA !P2HP				;\
-		CMP !P2MaxHP : BEQ ++			; | +1 HP unless at max
-	+++	INC !P2HP				;/
-	++	LDA #$05 : STA !SPC1			; checkpoint SFX
+		LDA #$14 : STA !P2FlashPal		; flash white
+		LDA !P2HP				;\
+		CMP !P2MaxHP : BEQ +			; | +1 HP unless at max
+		INC !P2HP				;/
+	+	LDA #$05 : STA !SPC1			; checkpoint SFX
 		LDA #$01 : STA $73CE			; midway flag
 		LDX !Translevel				;\
 		LDA !LevelTable1,x			; | translevel checkpoint flag
@@ -1710,7 +1708,7 @@ endmacro
 		REP #$20
 		LDA $98
 		SEC : SBC #$0008
-		BRA +
+		BRA ..collect
 		..Lower
 		JSR REMOVE_TILE
 		REP #$20
@@ -1721,14 +1719,122 @@ endmacro
 		REP #$20
 		LDA $98
 		CLC : ADC #$0008
-	+	STA $98
+		..collect
+		STA $98
 		LDA !YoshiCoinCount
 		INC A
 		STA !YoshiCoinCount
 		SEP #$20
 		JSL SET_GLITTER_Map16
+	;	LDA #$B4 : STA !P2FlashPal	; flash gold
 		LDA #$1C : STA !SPC1		; yoshi coin SFX
+	;	RTS
+
+	!CoinSpinTime = $3F
+
+		PHY
+		PHB
+		JSL !GetParticleIndex
+		LDA $9A : STA !Particle_XSpeed,x
+		LDA $98 : STA !Particle_YSpeed,x
+		SEP #$20
+		LDA.l !CurrentPlayer
+		LSR A
+		ROR A
+		STA !Particle_YAcc,x
+		LDA #!CoinSpinTime : STA !Particle_Timer,x
+		LDA #!prt_coinglitter : STA !Particle_Type,x
+		JSL !GetParticleIndex
+		LDA $9A : STA !Particle_XSpeed,x
+		LDA $98 : STA !Particle_YSpeed,x
+		SEP #$20
+		LDA #$08 : STA !Particle_XAcc,x
+		LDA.l !CurrentPlayer
+		LSR A
+		ROR A
+		STA !Particle_YAcc,x
+		LDA #!CoinSpinTime : STA !Particle_Timer,x
+		LDA #!prt_coinglitter : STA !Particle_Type,x
+		JSL !GetParticleIndex
+		LDA $9A : STA !Particle_XSpeed,x
+		LDA $98 : STA !Particle_YSpeed,x
+		SEP #$20
+		LDA #$10 : STA !Particle_XAcc,x
+		LDA.l !CurrentPlayer
+		LSR A
+		ROR A
+		STA !Particle_YAcc,x
+		LDA #!CoinSpinTime : STA !Particle_Timer,x
+		LDA #!prt_coinglitter : STA !Particle_Type,x
+		JSL !GetParticleIndex
+		LDA $9A : STA !Particle_XSpeed,x
+		LDA $98 : STA !Particle_YSpeed,x
+		SEP #$20
+		LDA #$18 : STA !Particle_XAcc,x
+		LDA.l !CurrentPlayer
+		LSR A
+		ROR A
+		STA !Particle_YAcc,x
+		LDA #!CoinSpinTime : STA !Particle_Timer,x
+		LDA #!prt_coinglitter : STA !Particle_Type,x
+		JSL !GetParticleIndex
+		LDA $9A : STA !Particle_XSpeed,x
+		LDA $98 : STA !Particle_YSpeed,x
+		SEP #$20
+		LDA #$20 : STA !Particle_XAcc,x
+		LDA.l !CurrentPlayer
+		LSR A
+		ROR A
+		STA !Particle_YAcc,x
+		LDA #!CoinSpinTime : STA !Particle_Timer,x
+		LDA #!prt_coinglitter : STA !Particle_Type,x
+		JSL !GetParticleIndex
+		LDA $9A : STA !Particle_XSpeed,x
+		LDA $98 : STA !Particle_YSpeed,x
+		SEP #$20
+		LDA #$28 : STA !Particle_XAcc,x
+		LDA.l !CurrentPlayer
+		LSR A
+		ROR A
+		STA !Particle_YAcc,x
+		LDA #!CoinSpinTime : STA !Particle_Timer,x
+		LDA #!prt_coinglitter : STA !Particle_Type,x
+		JSL !GetParticleIndex
+		LDA $9A : STA !Particle_XSpeed,x
+		LDA $98 : STA !Particle_YSpeed,x
+		SEP #$20
+		LDA #$30 : STA !Particle_XAcc,x
+		LDA.l !CurrentPlayer
+		LSR A
+		ROR A
+		STA !Particle_YAcc,x
+		LDA #!CoinSpinTime : STA !Particle_Timer,x
+		LDA #!prt_coinglitter : STA !Particle_Type,x
+		JSL !GetParticleIndex
+		LDA $9A : STA !Particle_XSpeed,x
+		LDA $98 : STA !Particle_YSpeed,x
+		SEP #$20
+		LDA #$38 : STA !Particle_XAcc,x
+		LDA.l !CurrentPlayer
+		LSR A
+		ROR A
+		STA !Particle_YAcc,x
+		LDA #!CoinSpinTime : STA !Particle_Timer,x
+		LDA #!prt_coinglitter : STA !Particle_Type,x
+
+
+
+
+		PLB
+		SEP #$30
+		PLY
 		RTS
+
+
+
+
+
+
 
 		.GreenSwitchBlock
 		.YellowSwitchBlock
@@ -1858,13 +1964,12 @@ endmacro
 		LDA !P2Character : BEQ ..checkspin
 		CMP #$02 : BNE ..solid
 		..checkdrill
-		LDA !P2ShellDrill : BEQ ..solid
-		BRA +
+		LDA !P2DropKick : BNE +
 		..checkspin
 		LDA $19 : BEQ ..solid
 		LDA !MarioSpinJump : BEQ ..solid
-		LDA #$D0 : STA !P2YSpeed
-	+	JSR SHATTER_BLOCK
+	+	LDA #$D0 : STA !P2YSpeed
+		JSR SHATTER_BLOCK
 	..r	RTS
 		..emptyup
 		BIT $0E : BPL ..solid

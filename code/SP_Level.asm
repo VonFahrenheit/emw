@@ -512,6 +512,10 @@ print "Level code handler inserted at $", pc, "."
 		LDA !MarioDirection			;\
 		STA !P2Direction-$80			; | character facing
 		STA !P2Direction			;/
+
+		STZ !P2Init-$80				;\ reset PCE init flags
+		STZ !P2Init				;/
+
 		LDA $741A : BNE +			;\ How many doors have been entered
 
 		REP #$20				;\
@@ -638,14 +642,17 @@ print "Level code handler inserted at $", pc, "."
 		LDA #$40					;\ switch to bank 0x40
 		PHA : PLB					;/
 		STZ.w $4406					; clear !MsgVertOffset
-		STZ.w !NPC_ID+0					;\
-		STZ.w !NPC_ID+1					; | reset NPC ID table
-		STZ.w !NPC_ID+2					;/
-		STZ !VRAMtable+$3FF				; set up wipe
+
+		LDA #$01 : STA !NPC_Talk+$FF			; set up reset (!NPC_Talk)
+		STZ !VRAMtable+$3FF				; set up wipe (!VRAMtable)
 		REP #$30					; all regs 16 bit
 		LDA.w #$03FE					;\
 		LDX.w #!VRAMtable+$3FF				; | wipe VR3 tables
 		LDY.w #!VRAMtable+$3FE				; |
+		MVP $40,$40					;/
+		LDA.w #$00FE					;\
+		LDX.w #!NPC_Talk+$FF				; | reset NPC talk table (all msg 1)
+		LDY.w #!NPC_Talk+$FE				; |
 		MVP $40,$40					;/
 		PLB						; switch to bank 0x41
 		STZ.w !3D_Base+$7FE				; set up wipe for cluster joint data
@@ -1881,7 +1888,7 @@ HandleGraphics:
 		LDA !Palset8,x						; | if palset is non-default AND unused, unload it
 		AND #$7F						; | (unless it is used by msg portraits)
 		TAX							; |
-		LDA #$00 : STA !GFX_status+$180,x			; |
+		LDA #$00 : STA !Palset_status,x				; |
 		PLX							; |
 		LDA #$80 : STA !Palset8,x				; |
 	+	DEX							; |
@@ -1894,7 +1901,7 @@ HandleGraphics:
 		TAX							;\
 		ORA #$80						; | mark palset as loaded
 		STA !Palset8,y						; |
-		TYA : STA !GFX_status+$180,x				;/
+		TYA : STA !Palset_status,x				;/
 
 		TYX							;\ disable this for 1 operation
 		LDA #$01 : STA !ShaderRowDisable+8,x			;/
@@ -1911,30 +1918,24 @@ HandleGraphics:
 	.RotateSimple
 		STZ $2250
 		LDY #$00
-	..Loop	PHY
-		LDA .RotationData,y : TAX
-		LDA !GFX_status,x : BNE ..Process
-		JMP ..Next
-
-		..Process
-		AND #$0F				;\
-		STA $00					; |
-		LDA !GFX_status,x			; |
-		AND #$70				; |
-		ASL A					; |
-		TSB $00					; | $00 = tile number (000-1FF)
-		LDA !GFX_status,x			; |
-		ASL A					; |
-		ROL A					; |
-		AND #$01				; |
-		STA $01					;/
-		LDA .RotationData+1,y : TAX		;\
-		LDA !GFX_status+$100,x : STA $02	; | $02 = SD status
+		..loop
+		PHY
+		REP #$30
+		LDX .RotationData,y
+		LDA !GFX_status,x
+		SEP #$30
+		BNE ..process
+		JMP ..next
+		..process				;\
+		STA $00					; | $00 = tile num (000-1FF)
+		XBA : STA $01				;/
+		LDA .RotationData+2,y : TAX		;\
+		LDA !SD_status,x : STA $02		; | $02 = SD status
 		STZ $03					;/
-		LDA .RotationData+2,y : STA $04		;\ $04 = size
+		LDA .RotationData+3,y : STA $04		;\ $04 = size
 		STZ $05					;/
-		LDA .RotationData+3,y : STA $07		; $06 = animation rate (n/v flag triggers)
-		LDA .RotationData+4,y : STA $08		;\ $08 = rotation direction
+		LDA .RotationData+4,y : STA $07		; $06 = animation rate (n/v flag triggers)
+		LDA .RotationData+5,y : STA $08		;\ $08 = rotation direction
 		STZ $09					;/
 
 		JSL !GetVRAM
@@ -1968,28 +1969,35 @@ HandleGraphics:
 		STA.w !VRAMtable+$09,x
 		LDA $04
 		CMP #$0040 : BCS ..big
-	..8x8	STA.w !VRAMtable+$00,x
-		BRA +
-	..big	LSR A
+		..8x8
+		STA.w !VRAMtable+$00,x : BRA ..shared
+		..big
+		LSR A
 		STA.w !VRAMtable+$00,x
 		STA.w !VRAMtable+$07,x
-	+	SEP #$20
+		..shared
+		SEP #$20
 		LDY #$7E
 		LDA $02
-		AND #$C0 : BEQ +
+		AND #$C0 : BEQ ..writebank
 		LDY #$7F
-		CMP #$40 : BEQ +
+		CMP #$40 : BEQ ..writebank
 		LDY #$40
-		CMP #$80 : BEQ +
+		CMP #$80 : BEQ ..writebank
 		LDY #$41
-	+	TYA
+		..writebank
+		TYA
 		STA.w !VRAMtable+$04,x
 		STA.w !VRAMtable+$0B,x
 		PLB
 
-	..Next	PLY
-		INY #5
-		CPY.b #.RotationData_End-.RotationData : BCS $03 : JMP ..Loop
+		..next
+		PLA
+		CLC : ADC #$06
+		CMP.b #.RotationData_end-.RotationData : BCS ..return
+		TAY
+		JMP ..loop
+		..return
 		RTS
 
 	; format:
@@ -2000,14 +2008,14 @@ HandleGraphics:
 	; - direction (00 = clockwise, 0F = counterclockwise)
 
 	.RotationData
-		db !GFX_Hammer-!GFX_status,$00,$80,$00,$0F
-		db !GFX_Bone-!GFX_status,$02,$80,$40,$0F
-		db !GFX_SmallFireball-!GFX_status,$03,$20,$00,$00
-		db !GFX_ReznorFireball-!GFX_status,$04,$80,$00,$0F
-		db !GFX_Goomba-!GFX_status,$05,$80,$00,$0F
-		db !GFX_LuigiFireball-!GFX_status,$06,$20,$00,$00
-		db !GFX_Baseball-!GFX_status,$07,$20,$40,$0F
-		..End
+		dw !GFX_Hammer_offset		: db $00,$80,$00,$0F
+		dw !GFX_Bone_offset		: db $02,$80,$40,$0F
+		dw !GFX_SmallFireball_offset	: db $03,$20,$00,$00
+		dw !GFX_ReznorFireball_offset	: db $04,$80,$00,$0F
+		dw !GFX_Goomba_offset		: db $05,$80,$00,$0F
+		dw !GFX_LuigiFireball_offset	: db $06,$20,$00,$00
+		dw !GFX_Baseball_offset		: db $07,$20,$40,$0F
+		..end
 
 
 	; handler for player rainbow effect
@@ -2095,33 +2103,33 @@ HandleGraphics:
 
 
 		.SpawnSparkles
-	;	LDA !P2Character-$80,y : BNE ..PCE
-	;	PHP
-	;	SEP #$10
-	;	JSL $02858F
-	;	PLP
-	;	RTS
-
-		..PCE
 		LDA #$1F : STA $0C			;\ AND value for Y coord
 		STZ $0D					;/
 		LDA #$EE : STA $0E			;\ Y offset = -18
 		LDA #$FF : STA $0F			;/
 
-		LDA !P2Character-$80,y : BNE +		;\ Y offset for big Mario = -20
-		LDX #$EC : STX $0E			;/
-		LDA !P2HP-$80,y : BNE ++
-		LDA #$0F : STA $0C
-		LDA $0E
-		CLC : ADC #$10
-		STA $0E
-		BRA ++
-
-	+	LDA !P2Hurtbox+5-$80,y
-		CMP #$11 : BCS ++
+		LDA !P2HurtboxH-$80,y
+		CMP #$11 : BCS +
 		LDA #$0F : STA $0C
 		LDA #$FE : STA $0E
-		++
+		+
+
+		LDA #$0F : STA $04			;\ AND value for X coord
+		STZ $05					;/
+		STZ $06					;\ X offset
+		STZ $07					;/
+
+		LDA !P2HurtboxW-$80,y
+		CMP #$11 : BCC +
+		LDA #$1F : STA $04
+		LDA !P2Dashing-$80,y : BEQ +++
+		LDA !P2Direction-$80,y : BNE +
+		BRA ++
+	+++	LDA !P2Direction-$80,y : BEQ +
+	++	LDA #$F0 : STA $06
+		DEC $07
+		+
+
 
 
 		LDA $14
@@ -2129,8 +2137,9 @@ HandleGraphics:
 		TAX
 		REP #$20
 		LDA !RNGtable,x
-		AND #$000F
+		AND $04
 		DEC #2
+		CLC : ADC $06
 		STA $00
 		TXA
 		EOR #$0010
@@ -2169,7 +2178,7 @@ LoadPalset:
 		PHX							; push X
 		STA $0F							; store palset to load in $0F
 		TAX							;\ if palset is already loaded, return
-		LDA !GFX_status+$180,x : BNE .Return			;/
+		LDA !Palset_status,x : BNE .Return			;/
 		LDX #$07						;\
 	-	LDA !Palset8,x						; |
 		AND #$7F						; | if palset is about to be loaded this frame, return
@@ -2191,7 +2200,7 @@ LoadPalset:
 		PHX							;\
 		AND #$7F						; |
 		TAX							; | mark palset as loaded
-		TYA : STA !GFX_status+$180,x				; |
+		TYA : STA !Palset_status,x				; |
 		LDA $0F : PHA						; |
 		TYX							;\ disable this for 1 operation
 		LDA #$01 : STA !ShaderRowDisable+8,x			;/

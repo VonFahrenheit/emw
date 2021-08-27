@@ -4,10 +4,14 @@
 		AND #$1F : BNE .Flash
 
 		.Reset
+		STZ !P2FlashPal
 		STZ !P2LockPalset
 		RTL
 
 		.Flash
+		CMP #$08 : BCS ..go
+		LDY !StarTimer : BNE .Reset
+		..go
 		DEC A
 		STA $00
 		LDA !P2FlashPal
@@ -24,7 +28,6 @@
 		AND #$00FF
 		BEQ $03 : LDA #$0020
 		TAX
-
 		LDA $00
 		STA.l !PaletteCacheRGB+$102,x
 		STA.l !PaletteCacheRGB+$104,x
@@ -42,7 +45,6 @@
 		STA.l !PaletteCacheRGB+$11C,x
 		STA.l !PaletteCacheRGB+$11E,x
 		SEP #$20
-
 		LDA !CurrentPlayer
 		BEQ $02 : LDA #$10
 		CLC : ADC #$81

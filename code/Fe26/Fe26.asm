@@ -631,7 +631,7 @@ incsrc "SpriteData.asm"
 		STA $00				; |
 		PHX				; | get palset for vanilla sprites
 		LDX $0F				; |
-		LDA !GFX_status+$180,x		; |
+		LDA !Palset_status,x		; |
 		PLX				; |
 		ASL A				; |
 		ORA $00				; |
@@ -1406,38 +1406,87 @@ endmacro
 
 
 	HandleStatus:
-		SEP #$20				; A 8-bit
-		LDA #$01 : PHA : PLB			; bank = 0x01
-		LDA !GameMode				;\
-		CMP #$14 : BNE .DizzyDone		; | check for dizzy effect
-		LDA $3230,x : BEQ .DizzyDone		; |
-		LDA !DizzyEffect : BEQ .DizzyDone	;/
-		REP #$20				;\
-		LDA !CameraBackupY : STA $1C		; |
-		SEP #$20				; |
-		LDA $3250,x : XBA			; |
-		LDA $3220,x				; |
-		REP #$20				; |
-		SEC : SBC $1A				; |
-		AND #$00FF				; |
-		LSR #3					; |
-		ASL A					; | apply dizzy offset
-		PHX					; |
-		TAX					; |
-		LDA !DecompBuffer+$1040,x		; |
-		AND #$01FF				; |
-		CMP #$0100				; |
-		BCC $03 : ORA #$FE00			; |
-		STA $1C					; |
-		PLX					; |
-		SEP #$20				; |
-		.DizzyDone				;/
+		SEP #$20					; A 8-bit
+		LDA #$01 : PHA : PLB				; bank = 0x01
 
-		JSR UpdateTile				; update VR3 tile claim
+		.Dizzy
+		LDA !GameMode					;\
+		CMP #$14 : BNE ..done				; | check for dizzy effect
+		LDA $3230,x : BEQ ..done			; |
+		LDA !DizzyEffect : BEQ ..done			;/
+		REP #$20					;\
+		LDA !CameraBackupY : STA $1C			; |
+		SEP #$20					; |
+		LDA $3250,x : XBA				; |
+		LDA $3220,x					; |
+		REP #$20					; |
+		SEC : SBC $1A					; |
+		AND #$00FF					; |
+		LSR #3						; |
+		ASL A						; | apply dizzy offset
+		PHX						; |
+		TAX						; |
+		LDA !DecompBuffer+$1040,x			; |
+		AND #$01FF					; |
+		CMP #$0100					; |
+		BCC $03 : ORA #$FE00				; |
+		STA $1C						; |
+		PLX						; |
+		SEP #$20					; |
+		..done						;/
+
+		.UpdateTile					;\
+		LDA !ExtraBits,x				; | vanilla/custom check
+		AND #!CustomBit : BNE ..custom			; |
+		..vanilla					;/
+		LDY $3230,x					; get status
+		PHX						;\
+		REP #$30					; |
+		LDA $3200,x					; |
+		AND #$00FF : STA $00				; > save sprite number here
+		ASL A						; |
+		TAX						; |
+		LDA $188450,x					; | (don't update if = 0xFFFF)
+		CMP #$FFFF : BNE ..updatevanilla		;/
+		..dontupdate					;\
+		SEP #$30					; |
+		PLX						; | restore X and default to 0
+		STZ !SpriteTile,x				; |
+		STZ !SpriteProp,x				; |
+		BRA ..done					;/
+		..updatevanilla					;\
+		TAX						; |
+		LDA $00						; |
+		CMP #$007E : BEQ ..dontupdate			; |
+		CMP #$007F : BEQ ..dontupdate			; > flying rainbow shroom and flying red coin should use 0
+		CMP #$000D : BCS ..update			; |
+		CMP #$0004 : BCC ..update			; | get sprite's load status
+		CPY #$0002 : BEQ ..shell			; |
+		CPY #$0009 : BCC ..update			; | (special case for koopa shell)
+		CPY #$000C : BCS ..update			; |
+	..shell	LDX.w #!GFX_Shell_offset : BRA ..update		;/
+		..custom					;\
+		PHX						; |
+		REP #$30					; |
+		LDA !NewSpriteNum,x				; |
+		AND #$00FF					; | get sprite's load status
+		ASL A						; |
+		TAX						; |
+		LDA $188650,x : BMI ..dontupdate		;/ (don't update if negative)
+		TAX						; X = index
+		..update					;\
+		LDA !GFX_status,x				; |
+		SEP #$30					; |
+		PLX						; | get tile + prop
+		STA !SpriteTile,x				; |
+		XBA : STA !SpriteProp,x				; |
+		..done						;/
+
 		LDA $3230,x
 		CMP #$02 : BCC .CallDefault
+		CMP #$04 : BEQ .Puff
 		CMP #$08 : BNE .NoMainRoutine
-	;	JMP Main				; we need to take the roundabout way due to stack order
+	;	JMP Main					; we need to take the roundabout way due to stack order
 		JML $0185C3
 
 		.NoMainRoutine
@@ -1445,9 +1494,20 @@ endmacro
 		LDA !ExtraBits,x
 		AND #!CustomBit : BNE .Custom
 		PLA
-
 		.CallDefault
 		JML $018133
+
+		.Puff						;\
+		REP #$20					; |
+		PLA						; > pull RTS address
+		STZ $00						; |
+		STZ $02						; | transform into puff particle
+		STZ $04						; |
+		SEP #$20					; |
+		LDA $64 : STA $07				; |
+		LDA #!prt_smoke16x16 : JSL SpawnParticle	; |
+		STZ $3230,x					;/
+		RTL						; return
 
 		.Custom
 		LDA !ExtraProp2,x : BMI .CallMain
@@ -1464,7 +1524,6 @@ endmacro
 
 		.CallMain2
 		PHA
-
 		.CallMain
 		LDA !NewSpriteNum,x
 		JSR GetMainPtr
@@ -1472,75 +1531,6 @@ endmacro
 		LDY #$01 : PHY
 		PEA $85C2-1
 		JML [$3000]
-
-
-	UpdateTile:
-		LDA !ExtraBits,x
-		AND #!CustomBit : BNE .Custom
-
-		.Vanilla
-		LDY $3230,x				; get status
-		PHX					;\
-		LDA $3200,x : TAX			; |
-		STA $00					; > save sprite number here
-		LDA $188450,x				; |
-		CMP #$FF : BNE ..update			; > don't update if = 0xFF
-		PLX					; |
-		RTS					;/
-		..update				;\
-		TAX					; |
-		LDA $00					; |
-		CMP #$7E : BEQ ++			; |
-		CMP #$7F : BNE +++			; > flying rainbow shroom and flying red coin should use index 0xFE
-	++	LDX #$FE				; |
-		BRA +					; |
-	+++	CMP #$0D : BCS +			; |
-		CMP #$04 : BCC +			; | get sprite's load status
-		CPY #$02 : BEQ ++			; |
-		CPY #$09 : BCC +			; | (special case for koopa shell)
-		CPY #$0C : BCS +			; |
-	++	LDX #$5B				;/
-	+	LDA !GFX_status,x : STA $00		;\
-		ASL A					; |
-		ROL A					; |
-		AND #$01				; |
-		STA !BigRAM				; |
-		LDA $00					; |
-		AND #$F0				; | unpack PYYYXXXX format
-		TRB $00					; |
-		ASL A					; |
-		ORA $00					; |
-		STA !BigRAM+1				; |
-		PLX					;/
-		LDA !BigRAM+1 : STA !SpriteTile,x	;\ update VRAM offset
-		LDA !BigRAM : STA !SpriteProp,x		;/
-		RTS
-
-		.Custom
-		PHX					;\
-		LDA !NewSpriteNum,x : TAX		; |
-		LDA $188550,x				; | get sprite's load status
-		CMP #$FF : BNE ..update			; | (don't update if = 0xFF)
-		PLX					; |
-		RTS					;/
-		..update				;\
-		TAX					; |
-		LDA !GFX_status,x			; |
-		ASL A					; |
-		ROL A					; |
-		AND #$01				; |
-		STA !BigRAM				; |
-		LDA !GFX_status,x			; | unpack PYYYXXXX format
-		AND #$70				; |
-		ASL A					; |
-		STA !BigRAM+1				; |
-		LDA !GFX_status,x			; |
-		AND #$0F				; |
-		TSB !BigRAM+1				; |
-		PLX					;/
-		LDA !BigRAM+1 : STA !SpriteTile,x	;\ update VRAM offset
-		LDA !BigRAM : STA !SpriteProp,x		;/
-		RTS
 
 
 
@@ -1811,7 +1801,7 @@ print "-- SPRITE LIST --"
 incsrc "Replace/SP_spring_board.asm"
 incsrc "Replace/SP_Koopa.asm"
 incsrc "Replace/SP_Mole.asm"
-incsrc "Replace/SP_RainbowShroom.asm"
+incsrc "Replace/SP_GoldShroom.asm"
 incsrc "Replace/SP_SpikeTop.asm"
 incsrc "Replace/SP_Spiny.asm"
 incsrc "Replace/SP_Coin.asm"

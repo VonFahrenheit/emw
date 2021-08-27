@@ -524,24 +524,12 @@ pullpc
 		SEC : SBC $1C
 		CLC : ADC.l .WingY,x
 		STA !OAM+$101,y
-		LDA !GFX_Wings				;\
-		ASL A					; |
-		ROL A					; | rotate highest bit into T spot
-		AND #$01				; |
-		STA !BigRAM				;/
-		LDA !GFX_Wings				;\
-		AND #$70				; |
-		ASL A					; |
-		STA !BigRAM+1				; | get tile number
-		LDA !GFX_Wings				; |
-		AND #$0F				; |
-		TSB !BigRAM+1				;/
 		LDA.l .WingTile,x
-		CLC : ADC !BigRAM+1
+		CLC : ADC !GFX_Wings_tile
 		STA !OAM+$102,y
 		LDA !OAM+$107,y				;\
 		AND #$F0				; | same prop as base sprite, but T bit is from GFX status
-		ORA !BigRAM				; |
+		ORA !GFX_Wings_prop			; |
 		ORA #$0A				; > and palette is always D (green)
 		STA !OAM+$103,y				;/
 		TYA
@@ -632,12 +620,7 @@ pullpc
 		.Prop
 		LDA $3320,x
 		LSR A
-		PHP
-		LDA !GFX_Koopa
-		ASL A
-		ROL A
-		AND #$01
-		PLP
+		LDA !GFX_Koopa_prop
 		EOR $33C0,x
 		BCS $02 : ORA #$40
 		ORA $64
@@ -687,27 +670,15 @@ pullpc
 		STA !OAM+$103,y
 
 		PHX
-		LDA !GFX_Shell				;\
-		ASL A					; |
-		ROL A					; | rotate highest bit into T spot
-		AND #$01				; |
-		STA !BigRAM				;/
-		LDA !GFX_Shell				;\
-		AND #$70				; |
-		ASL A					; |
-		STA !BigRAM+1				; | get tile number
-		LDA !GFX_Shell				; |
-		AND #$0F				; |
-		TSB !BigRAM+1				;/
 		LDA $14
 		LSR #2
 		AND #$03
 		TAX
 		LDA.w $9A22,x
-		CLC : ADC !BigRAM+1			; add tile number
+		CLC : ADC !GFX_Shell_tile		; add tile number
 		STA !OAM+$102,y
 		LDA.w $9A26,x
-		ORA !BigRAM				; add highest bit of tile number
+		ORA !GFX_Shell_prop			; add highest bit of tile number
 		EOR !OAM+$103,y
 		STA !OAM+$103,y
 		PLX

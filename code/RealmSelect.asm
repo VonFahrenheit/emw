@@ -194,6 +194,11 @@ print "REALM SELECT INSERTED AT $", pc, "!"
 	-	STZ !LevelSelectBase,x			; | wipe level select data
 		DEX : BPL -				;/
 
+		LDA #$00				;\
+		LDX #$00				; |
+	-	STA $400000+!MsgRAM,x			; | clear MSG RAM
+		INX					; |
+		CPX #$C0 : BCC -			;/
 
 		LDA.b #!SaveGame : STA $3180		;\
 		LDA.b #!SaveGame>>8 : STA $3181		; | call SA-1 to save game when loading realm select

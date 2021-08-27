@@ -1,3 +1,5 @@
+
+
 MiniMole:
 
 	namespace MiniMole
