@@ -1970,7 +1970,7 @@ endmacro
 ; -- super sets -- ;
 ;==================;
 ;===============================================================
-.ParaKoopa	%cmd($F00, $00, $10, ParaKoopa, 2)
+.ParaKoopa	%cmd($F00, $00, $0C, ParaKoopa, 2)
 		%include(Koopa, $00)
 		%include(KoopaBlue, $00)
 		%mark(Wings)
@@ -1979,13 +1979,13 @@ endmacro
 		db $FF
 ;===============================================================
 .Koopa
-		%cmd($F00, $00, $10, Koopa, 2)
+		%cmd($F00, $00, $0C, Koopa, 2)
 		%include(KoopaBlue, $00)
 		%mark(Shell)
 		%mark(ShellessKoopa)
 		db $FF
 ;===============================================================
-.KoopaBlue	%cmd($F00, $00, $10, Koopa, 2)
+.KoopaBlue	%cmd($F00, $00, $0C, Koopa, 2)
 		%mark(Shell)
 		%mark(KickerKoopa)
 		db $FF

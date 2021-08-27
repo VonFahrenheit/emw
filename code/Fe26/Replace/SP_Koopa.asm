@@ -375,14 +375,16 @@ pullpc
 		LDA $0F
 		BEQ $03 : JMP .BodyDone
 
+		LDA #$10 : STA $02
+
 		LDA $33D0,x : BEQ .stand_f
 		CMP #$01 : BEQ .walk_f
 
 		.turn_f
-		LDA #$06
+		LDA #$02
 		CLC : ADC !SpriteTile,x
 		STA !OAM+$102,y
-		LDA #$0E
+		LDA #$0A
 		CLC : ADC !SpriteTile,x
 		STA !OAM+$106,y
 		LDA !KoopaFrame				;\
@@ -394,10 +396,11 @@ pullpc
 		JMP +
 
 		.stand_f
+		DEC $02
 		LDA #$00
 		CLC : ADC !SpriteTile,x
 		STA !OAM+$102,y
-		LDA #$08
+		LDA #$04
 		CLC : ADC !SpriteTile,x
 		STA !OAM+$106,y
 		LDA !KoopaFrame				;\
@@ -412,10 +415,10 @@ pullpc
 		AND #$F2
 		CMP #$10 : BEQ .walk_alt
 		CMP #$02 : BEQ .walk_alt
-		LDA #$02
+		LDA #$00
 		CLC : ADC !SpriteTile,x
 		STA !OAM+$102,y
-		LDA #$0A
+		LDA #$06
 		CLC : ADC !SpriteTile,x
 		STA !OAM+$106,y
 		LDA !KoopaFrame				;\
@@ -428,10 +431,10 @@ pullpc
 		BRA +
 
 		.walk_alt
-		LDA #$04
+		LDA #$00
 		CLC : ADC !SpriteTile,x
 		STA !OAM+$102,y
-		LDA #$0C
+		LDA #$08
 		CLC : ADC !SpriteTile,x
 		STA !OAM+$106,y
 		LDA !KoopaFrame				;\
@@ -452,7 +455,7 @@ pullpc
 
 	+	LDA $01
 		STA !OAM+$101,y
-		CLC : ADC #$10
+		CLC : ADC $02
 		STA !OAM+$105,y
 		LDA $00
 		STA !OAM+$100,y
