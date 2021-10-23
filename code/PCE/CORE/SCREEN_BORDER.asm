@@ -4,11 +4,18 @@
 
 
 	SCREEN_BORDER:
-		LDA !P2Pipe				;\ skip this during pipe animation
-		BEQ $01 : RTL				;/
+		LDA !P2Pipe : BNE .Kill			; skip this during pipe animation
 		LDA !GameMode				;\ skip if not in game mode 14
-		CMP #$14 : BEQ $01 : RTL		;/
+		CMP #$14 : BNE .Kill			;/
+		LDA !Level+1 : BNE .Process		;\
+		LDA !Level				; | no screen limit on level 0x0C7
+		CMP #$C7 : BNE .Process			;/
 
+		.Kill
+		RTL
+
+
+		.Process
 		LDA !SideExit : BNE .NoLevelBorders
 
 		.CheckLeft

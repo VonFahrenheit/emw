@@ -27,7 +27,7 @@
 	print "VRAM map mode data stored at $", pc, "."
 
 	;  xx0 xx1 xx2 xx3 xx4 xx5 xx6 xx7 xx8 xx9 xxA xxB xxC xxD xxE xxF
-	db $01,$00,$00,$00,$02,$00,$00,$01,$00,$00,$00,$00,$00,$00,$00,$00	; 00x
+	db $01,$00,$01,$00,$02,$00,$00,$01,$00,$00,$00,$00,$00,$00,$00,$00	; 00x
 	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 01x
 	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 02x
 	db $00,$00,$02,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 03x
@@ -682,6 +682,10 @@ PalsetDefaults:
 		PHP
 		REP #$20
 		SEP #$10
+		LDX #$1E					;\
+	-	STZ !DynamicList,x				; | clear these regs
+		DEX #2 : BPL -					; |
+		STZ !DynamicTile				;/
 		LDY #$00					; dynamic tile matrix index
 		LDX #$00					; index to row data
 		..loop						;\
@@ -1305,6 +1309,10 @@ File:
 		; player support parts
 		dw .LuigiFireball
 
+		; special particle parts
+		dw .LeafParticle
+
+
 
 	.SetList
 		; vanilla enemies
@@ -1649,7 +1657,7 @@ endmacro
 ;===============================================================
 .SpringBoard	%src($F07, $00, $02, SpringBoard, 0)
 ;===============================================================
-.Bumper		%src($F88, $02, $02, Bumper, 0)		; slime version
+.Bumper		%src($F88, $02, $02, Bumper, 0)			; slime version
 ;===============================================================
 .PBalloon	%src($F11, $00, $02, PBalloon, 0)
 ;===============================================================
@@ -1687,11 +1695,11 @@ endmacro
 ;===============================================================
 .TerrainPlat	%src($F8A, $00, $0E, TerrainPlat, 0)
 ;===============================================================
-.Elevator	;TO DO: ADD ELEVATOR
+.Elevator	%src($F24, $00, $06, Elevator, 0)		; TEMPORARY ELEVATOR GFX
 ;===============================================================
 .Shield		%src($FA3, $00, $04, Shield, 0)
 ;===============================================================
-.Portal		;TO DO: ADD PORTAL
+.Portal								; TO DO: ADD PORTAL
 ;===============================================================
 .Football	%src($F1E, $00, $02, Football, 0)
 ;===============================================================
@@ -1824,6 +1832,10 @@ endmacro
 ;===============================================================
 .LuigiFireball	; no file
 ;===============================================================
+.LeafParticle	%src($FA5, $00, $01, LeafParticle, 0)
+;===============================================================
+
+
 
 
 
@@ -2079,6 +2091,17 @@ ReadLevelData:
 		STA $0F					; |
 		BMI ..40				; |
 	..00	LDY $0E					; | scan map16 data for spawnables
+		CPY.w #$0300*2 : BEQ ..bush
+		CPY.w #$0310*2 : BNE ..noBG_object
+		..window
+		LDA #$02 : BRA ..spawnBG_object
+		..bush
+		LDA #$01 : %filemark(LeafParticle)
+		LDA #$01
+		..spawnBG_object
+		JSR .SpawnBG_object
+		..noBG_object
+
 		LDA [$03],y : BEQ +			; |
 		LDA [$00],y : BRA .Page1		; |
 	+	LDA [$00],y : BRA .Page0		; |
@@ -2184,7 +2207,7 @@ ReadLevelData:
 		LDA [$CE],y				;/
 		REP #$20
 		STA $0E					; save sprite num for later
-		ASL A
+		ASL A					; x2
 		TAX					; X = index to sprite file correspondance table
 
 		.MarkPalette
@@ -2321,6 +2344,81 @@ ReadLevelData:
 
 
 
+	.SpawnBG_object
+		PHY
+		PHX
+		PHA					; BG object num
+
+		REP #$20
+		TXA
+		LDX #$0000				; X = screen num
+	-	CMP.l !LevelHeight : BCC ..thisscreen
+		SBC.l !LevelHeight
+		INX
+		BRA -
+
+		..thisscreen
+		PHA					; push Ypos (hi byte correct, lo byte should have lo nybble cleared)
+		SEP #$30				; all regs 8-bit
+		PHX					; push Xpos hi (8-bit)
+		AND #$0F				;\
+		ASL #4					; | push Xpos lo (8-bit)
+		PHA					;/
+		REP #$10				; index 16-bit
+
+
+
+		LDX #$0000
+		..loop
+		LDA.w !BG_object_Type,x : BEQ ..thisone
+		REP #$20
+		TXA
+		CLC : ADC.w #!BG_object_Size
+		TAX
+		SEP #$20
+		CPX.w #(!BG_object_Size)*(!BG_object_Count) : BCC ..loop
+
+		PLX					;\ pop coords
+		PLX					;/
+		PLA					; pop A
+		PLX					; restore X
+		PLY
+		RTS
+
+		..thisone
+		STZ !BG_object_Timer,x
+		REP #$20
+		PLA : STA !BG_object_X,x
+		PLA
+		AND #$FFF0
+		STA !BG_object_Y,x
+
+		SEP #$20
+		PLA : STA !BG_object_Type,x
+		PHX
+		REP #$20
+		AND #$00FF
+		DEC A
+		ASL A
+		TAX
+		LDA.l ..size,x
+		PLX
+		STA !BG_object_W,x
+		SEP #$20
+		PLX					; restore X
+		PLY
+		RTS
+
+
+		..size
+		db $04,$02	; bush
+		db $04,$04	; window
+
+
+
+
+
+
 ; how does this work?
 ; if a sprite's GFX index is 0xFF (dynamic) this table will be searched for a sprite number match
 ; if one is found, that file is uploaded
@@ -2358,9 +2456,9 @@ ReadLevelData:
 		PHB : PHK : PLB
 		PHP
 		SEP #$30
-		LDX.b #.RAMaddress-.RAMsize-1		;\
-	-	STZ !BigRAM,x				; | mark all RAM areas as free
-		DEX : BPL -				;/
+		LDX.b #.RAMaddress-.RAMsize-1			;\
+	-	STZ !BigRAM,x					; | mark all RAM areas as free
+		DEX : BPL -					;/
 
 		LDX #$00
 	.Next	LDA !SD_Mark,x : BNE .Load
@@ -2861,6 +2959,36 @@ ReadLevelData:
 		dw .EnemyFireball16x16	; 0A
 		..End
 
+
+	.Search
+		PHX
+		PHP
+		REP #$20
+		TXA
+		LSR A
+		LDX #$0000
+		..loop
+		CMP.l .Lookup+0,x : BNE ..next
+		..mark
+		PHA
+		PHX
+		LDA.l .Lookup+2,x
+		AND #$00FF
+		TAX
+		SEP #$20
+		LDA #$01 : STA.w !SD_Mark,x
+		REP #$20
+		PLX
+		PLA
+		..next
+		INX #3
+		CPX.w #.Lookup_End-.Lookup : BCC ..loop
+		..return
+		PLP
+		PLX
+		RTS
+
+
 ; big fat note:
 ; chunk width has to be halved in the file entry due to packed format
 ; for example, a 16px wide chunk is marked as 8
@@ -2986,32 +3114,6 @@ db $00,$00,$01,$20,$0F		; 0A: rotate: chunk 0, iterations 1, angle 20, copies 15
 db $FF				; end file
 
 
-	.Search
-		PHX
-		PHP
-		REP #$20
-		TXA
-		LDX #$0000
-		..loop
-		CMP.l .Lookup+0,x : BNE ..next
-		..mark
-		PHA
-		PHX
-		LDA.l .Lookup+2,x
-		AND #$00FF
-		TAX
-		SEP #$20
-		LDA #$01 : STA.w !SD_Mark,x
-		REP #$20
-		PLX
-		PLA
-		..next
-		INX #3
-		CPX.w #.Lookup_End-.Lookup : BCC ..loop
-		..return
-		PLP
-		PLX
-		RTS
 
 
 

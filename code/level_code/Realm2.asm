@@ -245,7 +245,7 @@ level7:
 		BCC $03
 	+	JML .MountainEnd
 		LDA #$01 : STA !Level+3
-		LDA #$06 : STA !MsgTrigger
+	;	LDA #$06 : STA !MsgTrigger
 		LDX #$00				; reward player with a lot of coins
 		LDA !P2Status-$80 : BEQ +
 		LDX #$02
@@ -267,7 +267,7 @@ level7:
 		.QuestAbandoned
 		JSL .NearMountainKing
 		BCS .MountainEnd
-		LDA #$05 : STA !MsgTrigger
+	;	LDA #$05 : STA !MsgTrigger
 		LDA #$01 : STA !Level+3
 		LDA !StoryFlags+$02
 		AND.b #$07^$FF
@@ -292,7 +292,7 @@ level7:
 		LDX !Translevel
 		LDA !LevelTable1,x
 		AND #$02 : BEQ .MountainEnd
-		LDA #$01 : STA !MsgTrigger
+	;	LDA #$01 : STA !MsgTrigger
 		LDA !StoryFlags+$02
 		AND.b #$07^$FF
 		ORA #$01
@@ -1432,7 +1432,7 @@ level28:
 		LDY !Level+5
 		CPY $00 : BCS $04 : JML .Mole
 		BNE .NoMessage
-		LDA #$02 : STA !MsgTrigger
+	;	LDA #$02 : STA !MsgTrigger
 		JML .End
 
 		.NoMessage
@@ -1545,7 +1545,9 @@ level30:
 		LDA #$0AE8 : JML END_Right		; Exit
 
 level31:
-		LDA !MsgTrigger : BNE .Continue
+		LDA !MsgTrigger
+		ORA !MsgTrigger+1
+		BNE .Continue
 		LDA !Level+4 : BEQ .Continue
 		DEC !Level+4 : BNE .Continue
 		JML END_End

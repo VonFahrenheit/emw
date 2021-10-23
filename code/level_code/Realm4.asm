@@ -84,7 +84,6 @@ levelinit15:
 levelinit35:
 		JSL .Setup
 
-		LDA #$01 : STA !SmoothCamera
 		JSL level35
 		JSL InitCameraBox
 

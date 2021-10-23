@@ -3,7 +3,8 @@
 	-- ROM map --
 		-- MB 1 --
 		Bank $00-$0F	SMW code/data, LM code, music data
-		Bank $10-$11	unknown, but definitely used
+		Bank $10	contains SA-1 patch code, almost full
+		Bank $11	MSG
 	*	Bank $12	SP_Menu, VR3
 		Bank $13	SP_Patch
 		Bank $14	FusionCore (includes particle engine)
@@ -13,7 +14,8 @@
 	*	Bank $18	SP_Level
 		Bank $19	SP_Level
 		Bank $1A	Fe26
-		Bank $1B-$1E	--------
+		Bank $1B	Overworld
+		Bank $1C-$1E	--------
 		Bank $1F	PCE
 		-- MB 2 --
 		Bank $20-$2F	--------
@@ -67,10 +69,10 @@
 	-- WRAM map --
 		LoRAM:
 		$0000-$001F:	32 B	SNES scratch RAM.
-		$0020-$005F:	64 B	Tilemap for top row of dynamic BG3.
-		$0060-$009F:	64 B	Status bar tilemap for dynamic BG3.
+		$0020-$007F:	96 B	----
+		$0080-$009F:	32 B	prop for status bar
 		$00A0-$00B5:	22 B	Colors 0x01-0x0B for dynamic BG3 palette.
-		$00B6-$00CB:	22 B	Status bar palette for dynamic BG3.
+		$00B6-$00CB:	22 B	----
 		$00CC-$00CD:	2 B	Used by VR3.
 		$00CE-$00FF:	20 B	----
 		$0100-$01FF:	256 B	SNES DP for MPU operation
@@ -190,7 +192,8 @@
 					$69E0-$6A5F: 128/80 B, tilemap data for layer 2 row (size varies, always used)
 					$6A60-$6ABF: 96 B, checkpoint level, lo byte (level data byte 2)
 					$6AC0-$6AC9: 10 B, camera box registers
-					$6ACA-$6AF4: 43 B, ----
+					$6ACA:       1 B, status bar X pos
+					$6ACB-$6AF4: 42 B, ----
 
 		$6DDF-$6EF4:	278 B	SMW's overworld sprite data
 					I use it as 3D tilemap cache
@@ -209,7 +212,10 @@
 					$7F49-$7FA8: 96 B, best time per level, minutes (level data byte 5)
 					$7FA9-$7FAF: ----
 					$7FB0-$7FBF: priority data for OAM
-					$7FC0-$7FD5: ----
+					$7FC0-$7FC1: active OAM
+					$7FC2-$7FC7: ----
+					$7FC8-$7FCF: OAM index values from last frame
+					$7FD0-$7FD5: ----
 
 
 		areas free due to moving sprites to I-RAM:
@@ -235,7 +241,8 @@
 		$7692:		1 B	sprite memory setting from header (unchanged)
 		; bunch of other stuff here
 		$786C:		1 B	max HP bonus (calculated from save file)
-		$786D-$7877:	11 B	----
+		$786D:		1 B	mode 7 settings
+		$786E-$7877:	10 B	----
 		$787B-$7886:	12 B	----
 		$790F-$791B:	13 B	----
 		$7FD6-$7FED:	24 B	----
@@ -283,9 +290,10 @@
 		$9000-$99FF:	2.5 KB	OAM mirrors (p0-p3, 4 lo tables followed by 4 hi tables, decompressed)
 		$9A00-$A0A3:	1.7 KB	particle data (17 bytes / particle, total 100 particles)
 		$A0A4-$A0AF:	12 B	reserved for shared particle settings
-		$A0B0: BG object data
+		$A0B0: 		???	BG object data
 
 		$A0B0-$AFFF:	3.8 KB	----
+
 		$B000-$B2FF:	768 B	save file 1
 		$B300-$B5FF:	768 B	save file 2
 		$B600-$B8FF:	768 B	save file 3

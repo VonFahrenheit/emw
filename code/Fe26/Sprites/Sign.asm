@@ -60,6 +60,7 @@ Sign:
 		LSR #2
 		INC A
 		STA !MsgTrigger
+		LDA #$80 : STA !MsgTrigger+1
 		PLB
 		RTL
 

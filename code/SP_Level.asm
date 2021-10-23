@@ -6,6 +6,8 @@ print "-- SP_LEVEL --"
 ; --Defines--
 
 incsrc "Defines.asm"
+	!CompileText = 0
+	incsrc "MSG/TextData.asm"		; get defines from TextData
 
 
 ; --Macros--
@@ -124,6 +126,12 @@ incsrc "Defines.asm"
 		RETURN_SCREEN_MODE:
 	warnpc $058572
 
+
+	org $05D845
+		JML HANDLE_FORCED_NUMBER	; org: BNE $5B ($05D8A2) : REP #$30
+		RETURN_FORCED:
+
+
 	org $05D8B7
 	;	REP #$30			; > All registers 16 bit
 	;	LDA $0E				;\ Set current level
@@ -141,7 +149,6 @@ incsrc "Defines.asm"
 		LDA $E601,y			; |
 		STA $69				;/
 		BRA +				; > Skip a few leftover bytes
-
 	org $05D8E0
 		+				; Execute the rest of the code here
 
@@ -273,7 +280,8 @@ LOAD_VRAM_MAP:
 		LDA $0E
 		RTL
 
-LOAD_SCREEN_MODE:
+
+	LOAD_SCREEN_MODE:
 		PHP
 		REP #$10
 		LDX !Level
@@ -293,6 +301,19 @@ LOAD_SCREEN_MODE:
 
 	.Return	PLP
 		JML RETURN_SCREEN_MODE
+
+
+
+
+	HANDLE_FORCED_NUMBER:
+		BNE .Force
+		.Return
+		REP #$30
+		JML RETURN_FORCED
+		.Force
+		JML $05D8A9				; load this number raw
+
+
 
 
 
@@ -317,6 +338,7 @@ print "Level code handler inserted at $", pc, "."
 		LDX #$00				;\
 	-	STA !Map16Remap,x			; | default map16 remap = 0xFF (disabled)
 		INX : BNE -				;/
+		LDA #$03 : STA !Map16Remap+3		; > exception for page 3, which defaults to GFX page 3
 		LDA #$00 : JSL !ProcessYoshiCoins	; > Load Yoshi Coins (A must be 0x00)
 		LDA.b #.SA1 : STA $3180			;\
 		LDA.b #.SA1>>8 : STA $3181		; | Have SA-1 clear VR2 RAM
@@ -337,7 +359,6 @@ print "Level code handler inserted at $", pc, "."
 		STZ !GlobalPalset1			;\ reset global palset option
 		STZ !GlobalPalset2			;/
 		STZ !Color0				; clear color 0
-		STZ !SmoothCamera			; Clear smooth camera
 		LDA #$0000				; > Set up clear
 		STA !HDMAptr+0				;\ Clear HDMA pointer
 		STA !HDMAptr+1				;/
@@ -467,12 +488,15 @@ print "Level code handler inserted at $", pc, "."
 
 		JSR GFXIndex
 
-		LDA #$7EB0				;\ Default border tiles are $1EB-$1EF, $1FB-$1FF
+		LDA #$7EB0				;\ default border tiles are $1EB-$1EF, $1FB-$1FF
 		STA $400000+!MsgVRAM3			;/
 		LDA #$7C00				;\
-		STA $400000+!MsgVRAM1			; | Default portrait tiles
+		STA $400000+!MsgVRAM1			; | default portrait tiles
 		LDA #$7C80				; |
 		STA $400000+!MsgVRAM2			;/
+
+		STZ !MsgTrigger
+		STZ !MsgTrigger+1
 
 
 		SEP #$30				; all regs 16-bit
@@ -529,6 +553,23 @@ print "Level code handler inserted at $", pc, "."
 		STZ !TimeElapsed+1			; | reset time elapsed (on first sublevel only)
 		SEP #$20				;/
 
+
+		LDA !MegaLevelID : BNE ..megalevel
+		..normallevel
+		LDA #$FC : STA !StatusX
+		LDX #$1F
+	-	LDA .StatusProp_normallevel,x : STA !StatusProp,x
+		DEX : BPL -
+		BRA ..done
+		..megalevel
+		STZ !StatusX
+		LDX #$1F
+	-	LDA .StatusProp_megalevel,x : STA !StatusProp,x
+		DEX : BPL -
+		..done
+		JSL $008E1A				; status bar
+
+
 		LDA #$0F
 		STA !P2HP-$80
 		STA !P2HP
@@ -579,12 +620,32 @@ print "Level code handler inserted at $", pc, "."
 		SEC : SBC #$0008
 		STA !BG2ZipColumnY			; store first value
 
+		JSL $05809E				; move this to here, after the camera has been initialized
+
 
 		SEP #$30				;
 		PLB					; > End of bank wrapper
 		PEA $A5F3-1				;\ Set return address and execute subroutine
 		JML $00919B				;/
 
+
+
+
+	.StatusProp
+		..megalevel
+		db $28,$24,$24,$24,$24			; P1 coins
+		db $20,$20,$20,$20,$20,$20		; P1 hearts
+		db $28,$28,$28,$28,$28			;\ Yoshi coins
+		db $28,$28,$28,$28,$28			;/
+		db $20,$20,$20,$20,$20,$20		; P2 hearts
+		db $28,$24,$24,$24,$24			; P2 coins
+		..normallevel
+		db $28,$24,$24,$24,$24			; P1 coins
+		db $20,$20,$20,$20,$20,$20		; P1 hearts
+		db $28,$28,$28,$28,$28			;\ Yoshi coins
+		db $28,$28,$28,$28,$28			;/
+		db $20,$20,$20,$20,$20			; P2 hearts
+		db $28,$24,$24,$24,$24,$24		; P2 coins
 
 
 
@@ -642,17 +703,16 @@ print "Level code handler inserted at $", pc, "."
 		LDA #$40					;\ switch to bank 0x40
 		PHA : PLB					;/
 		STZ.w $4406					; clear !MsgVertOffset
-
-		LDA #$01 : STA !NPC_Talk+$FF			; set up reset (!NPC_Talk)
+		REP #$30					; all regs 16-bit
+		LDX #$01FE					;\
+		LDA #$8001					; | reset NPC talk tables (all level message 1)
+	-	STA.w !NPC_Talk,x				; | (also set cap to the same thing)
+		STA.w !NPC_TalkCap,x				; |
+		DEX #2 : BPL -					;/
 		STZ !VRAMtable+$3FF				; set up wipe (!VRAMtable)
-		REP #$30					; all regs 16 bit
 		LDA.w #$03FE					;\
 		LDX.w #!VRAMtable+$3FF				; | wipe VR3 tables
 		LDY.w #!VRAMtable+$3FE				; |
-		MVP $40,$40					;/
-		LDA.w #$00FE					;\
-		LDX.w #!NPC_Talk+$FF				; | reset NPC talk table (all msg 1)
-		LDY.w #!NPC_Talk+$FE				; |
 		MVP $40,$40					;/
 		PLB						; switch to bank 0x41
 		STZ.w !3D_Base+$7FE				; set up wipe for cluster joint data
@@ -1870,8 +1930,10 @@ HandleGraphics:
 		LSR #4							; |
 		STA $0E							; |
 		INC A							; |
-		STA $0F							; | mark palsets used by portrait
-		LDA !MsgTrigger : BNE .msg				; |
+		STA $0F							; |
+		LDA !MsgTrigger						; | mark palsets used by portrait
+		ORA !MsgTrigger+1					; |
+		BNE .msg						; |
 		LDA #$FF						; |
 		STA $0E							; |
 		STA $0F							; |

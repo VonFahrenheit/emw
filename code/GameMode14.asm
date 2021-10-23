@@ -5,9 +5,6 @@
 ;
 ; TO DO:
 ; TODO:
-; - PCE
-;	- side exit (remove from layer interaction code?)
-;	- starman sparkles (Leeway crawl X offset)
 ; - generators
 ; - scroll sprites ??
 
@@ -103,8 +100,10 @@ namespace GAMEMODE14
 		.NoFreeze
 
 
-		LDA !MsgTrigger : BEQ .NoMSG		;\
-		JSL read3($00A1DF+1)			; | MSG
+		LDA !MsgTrigger				;\
+		ORA !MsgTrigger+1			; |
+		BEQ .NoMSG				; | MSG
+		JSL read3($00A1DF+1)			; |
 		BRA .RETURN				; |
 		.NoMSG					;/
 
@@ -169,7 +168,7 @@ namespace GAMEMODE14
 		LDA !MsgTrigger : BEQ ++		; > always clear if there's no message box
 		LDA !WindowDir : BNE +			; > don't clear while window is closing
 		LDA.l !MsgMode : BNE +			;\ don't clear OAM during !MsgMode non-zero
-	++	JSL !KillOAM				;/
+	++	;JSL !KillOAM				;/
 		+
 
 
@@ -522,6 +521,7 @@ Camera:
 		STA $0C						; |
 		LDA !P2YPosLo-$80				; |
 		CLC : ADC !P2YPosLo				; |
+		LSR A						; |
 		STA $0E						;/
 		LDA !P2XPosLo-$80				;\
 		SEC : SBC !P2XPosLo				; |
@@ -810,10 +810,18 @@ Camera:
 ;		PLB						;/
 
 
-		JSL BG2Controller
-		LDA !MsgTrigger : BNE .EndBox
-		JSL BG3Controller
-		.EndBox
+		JSL BG2Controller				; scroll BG2
+		LDA !WindowDir					;\
+		AND #$00FF : BEQ .NotClosing			; |
+		.CorrectBG3					; | check for text box closing
+		JSL BG3Controller				; | this is necessary on modes 1 and 2
+		LDA $22 : STA $400000+!MsgBackup22		; | otherwise BG3 can jump when the background is restored
+		LDA $24 : STA $400000+!MsgBackup24		; |
+		BRA .EndBox					;/
+		.NotClosing					;\
+		LDA !MsgTrigger : BNE .EndBox			; | otherwise, ignore BG3 while text box is open
+		JSL BG3Controller				; |
+		.EndBox						;/
 
 
 ; 99% sure this is not needed
@@ -958,7 +966,7 @@ Camera:
 		SEP #$10
 		REP #$20
 
-		JSR .Aim					; get camera target
+	;	JSR .Aim					; get camera target
 		JSR .Forbiddance				; apply forbiddance box
 		JSR .Process					; process movement
 

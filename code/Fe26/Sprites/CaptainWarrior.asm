@@ -202,14 +202,22 @@ CaptainWarrior:
 		LDA #$01 : STA !CW_Phase,x				; next phase
 		LDA !P2Status-$80 : BNE +				;\
 		LDA !P2Character-$80					; |
-		CMP #$03 : BEQ ++					; |
+		CMP #$03 : BEQ ..leeway					; |
 	+	LDA !P2Status : BNE +					; | normal dialogue
 		LDA !P2Character					; |
-		CMP #$03 : BEQ ++					; |
-	+	LDA #$03 : STA !MsgTrigger				; |
+		CMP #$03 : BEQ ..leeway					; |
+	+	REP #$20						; |
+		LDA.w #!MSG_CaptainWarrior_Fight1_Intro			; |
+		STA !MsgTrigger						; |
+		SEP #$20						; |
 		BRA .Return						;/
 
-	++	LDA #$07 : STA !MsgTrigger				; special dialogue with Leeway
+		..leeway						;\
+		REP #$20						; |
+		LDA.w #!MSG_CaptainWarrior_Fight1_Leeway		; | leeway dialogue
+		STA !MsgTrigger						; |
+		SEP #$20						;/
+
 
 		.Return							;\ jump to GRAPHICS
 		JMP GRAPHICS						;/
@@ -217,12 +225,17 @@ CaptainWarrior:
 
 	Battle:
 		LDX !SpriteIndex					; X = sprite index
+		LDA !MsgTrigger
+		ORA !MsgTrigger+1 : BEQ .Process
+		JMP GRAPHICS
+		.Process
+
+
 		LDA !CW_Phase,x : BMI .Main				;\
 		.Init							; |
 		ORA #$80 : STA !CW_Phase,x				; | battle init
 		LDA #$37 : STA !SPC3					; |
-		PLB							; |
-		RTL							;/
+		JMP GRAPHICS						;/
 
 		.Main
 		LDA !CW_HP,x						;\
@@ -363,6 +376,13 @@ CaptainWarrior:
 
 
 	GRAPHICS:
+		LDA !MsgTrigger						;\
+		ORA !MsgTrigger+1					; |
+		BEQ +							; | freeze animation while text box is open
+		DEC !SpriteAnimTimer					; |
+		+							;/
+
+
 		LDA !SpriteAnimIndex : STA $00				;\
 		ASL A							; |
 		ADC $00							; |
@@ -747,6 +767,15 @@ CaptainWarrior:
 		STZ !SpriteAnimTimer					; |
 	+	STZ !CW_Attack,x					; |
 		.Main							;/
+		LDA !MsgTrigger
+		ORA !MsgTrigger+1
+		BEQ +
+		JSL SUB_HORZ_POS
+		TYA : STA $3320,x
+		JMP GRAPHICS
+		+
+
+
 		LDA !CW_Attack,x					;\
 		CMP #$02 : BNE .Wait					; |
 		LDA $3250,x						; |
@@ -780,8 +809,12 @@ CaptainWarrior:
 		BRA .Physics						;/
 
 		.Talk							;\
-		LDA #$01 : STA !CW_Attack,x				; | talk
-		LDA #$06 : STA !MsgTrigger				;/
+		LDA #$01 : STA !CW_Attack,x				; |
+		REP #$20						; | defeat dialogue
+		LDA.w #!MSG_CaptainWarrior_Fight1_Defeated		; |
+		STA !MsgTrigger						; |
+		SEP #$20						;/
+		JMP GRAPHICS
 
 		.Physics
 		JSL !SpriteApplySpeed					; apply speed

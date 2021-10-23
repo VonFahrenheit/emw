@@ -25,11 +25,12 @@ dl GENERATE_BLOCK
 ; 04843D	; |
 ; 048440	;/
 
-org $048443
-dl $000000	;GET_DYNAMIC_TILE
-dl $000000	;UPDATE_CLAIMED_GFX
+; 048443	;\ used by MSG
+; 048446	;/
+
+org $048449
 dl TRANSFORM_GFX
-dl RealmSelect_Portrait_Long
+dl Overworld_Portrait_Long
 dl GET_ROOT
 
 ; 048452	; used by SP_Level
@@ -553,6 +554,108 @@ RETURN_BOUNCE_SPRITE:
 ;YOSHI COINS;
 ;===========;
 incsrc "YoshiCoins.asm"
+
+
+
+
+
+
+;;=============;
+;GET RECIPROCAL;
+;==============;
+
+; FOR NUMBERS 0-256
+; index: number * 2 (starts at 1, if 0 assume 1 because 1/0 nonono)
+; read: 1 / number (8-bit fixed point)
+
+; FOR NUMBERS 257+
+; search table for first value that is smaller than input number
+; output is the index number of that value, so index / 2 since all entries are 16-bit
+
+
+	pushpc
+	org $008AB4
+	GET_RECIPROCAL:
+		PHB : PHK : PLB
+		PHP
+		REP #$30
+		CMP #$0101 : BCC .Read
+
+		.Search
+		LDY #$0000
+		PHA
+		CMP #$1000 : BCS ..go
+		XBA
+		AND #$000F
+		ASL A
+		TAY
+		LDA .Reciprocal+1,y
+		AND #$00FF
+		ASL A
+		TAY
+		..go
+		PLA
+		..loop
+		CMP .Reciprocal,y : BCS ..thisone
+		INY #2
+		CPY #$0200 : BCC ..loop
+		..thisone
+		TYA
+		LSR A
+		INC A
+		PLP
+		PLB
+		RTL
+
+		.Read
+		DEC A
+		BPL $03 : LDA #$0000
+		ASL A
+		TAY
+		LDA .Reciprocal,y
+		PLP
+		PLB
+		RTL
+
+
+		.Reciprocal
+		dw $FFFF,$8000,$5555,$4000,$3333,$2AAA,$2492,$2000
+		dw $1C72,$199A,$1746,$1555,$13B1,$1249,$1111,$1000
+		dw $0F0F,$0E38,$0D79,$0CCC,$0C30,$0BA2,$0B21,$0AAA
+		dw $0A3D,$09D8,$097B,$0924,$08D3,$0888,$0842,$0800
+		dw $07C1,$0787,$0750,$071C,$06EB,$06BC,$0690,$0666
+		dw $063E,$0618,$05F4,$05D1,$05B0,$0590,$0572,$0555
+		dw $0539,$051E,$0505,$04EC,$04D4,$04BD,$04A7,$0492
+		dw $047D,$0469,$0456,$0444,$0432,$0421,$0410,$0400
+		dw $03F0,$03E0,$03D2,$03C3,$03B5,$03A8,$039B,$038E
+		dw $0381,$0375,$0369,$035E,$0353,$0348,$033D,$0333
+		dw $0329,$031F,$0315,$030C,$0303,$02FA,$02F1,$02E8
+		dw $02E0,$02D8,$02D0,$02C8,$02C0,$02B9,$02B1,$02AA
+		dw $02A3,$029C,$0295,$028F,$0288,$0282,$027C,$0276
+		dw $0270,$026A,$0264,$025E,$0259,$0253,$024E,$0249
+		dw $0243,$023E,$0239,$0234,$0230,$022B,$0226,$0222
+		dw $021D,$0219,$0214,$0210,$020C,$0208,$0204,$0200
+		dw $01FC,$01F8,$01F4,$01F0,$01EC,$01E9,$01E5,$01E1
+		dw $01DE,$01DA,$01D7,$01D4,$01D0,$01CD,$01CA,$01C7
+		dw $01C3,$01C0,$01BD,$01BA,$01B7,$01B4,$01B2,$01AF
+		dw $01AC,$01A9,$01A6,$01A4,$01A1,$019E,$019C,$0199
+		dw $0197,$0194,$0192,$018F,$018D,$018A,$0188,$0186
+		dw $0183,$0181,$017F,$017D,$017A,$0178,$0176,$0174
+		dw $0172,$0170,$016E,$016C,$016A,$0168,$0166,$0164
+		dw $0162,$0160,$015E,$015C,$015A,$0158,$0157,$0155
+		dw $0153,$0151,$0150,$014E,$014C,$014A,$0149,$0147
+		dw $0146,$0144,$0142,$0141,$013F,$013E,$013C,$013B
+		dw $0139,$0138,$0136,$0135,$0133,$0132,$0130,$012F
+		dw $012E,$012C,$012B,$0129,$0128,$0127,$0125,$0124
+		dw $0123,$0121,$0120,$011F,$011E,$011C,$011B,$011A
+		dw $0119,$0118,$0116,$0115,$0114,$0113,$0112,$0111
+		dw $010F,$010E,$010D,$010C,$010B,$010A,$0109,$0108
+		dw $0107,$0106,$0105,$0104,$0103,$0102,$0101,$0100
+
+	warnpc $008CFF
+	pullpc
+
+
 
 
 ;========;
@@ -3202,8 +3305,15 @@ SPRITE_HUD:
 		REP #$30
 		LDY #$0000
 		LDA !OAMindex_p3 : TAX
-	.Loop	LDA ($02),y
-		CLC : ADC $00				; this works as long as X doesn't overflow
+
+		.Loop
+		LDA ($02),y
+		CLC : ADC $00				; this works as long as X coord doesn't overflow
+		BCC .Draw				; only draw if there's no overflow on Y
+		INY #4
+		BRA .Next
+
+		.Draw
 		STA !OAM_p3+$000,x
 		INY #2
 		LDA ($02),y : STA !OAM_p3+$002,x
@@ -3217,6 +3327,8 @@ SPRITE_HUD:
 		STA !OAMhi_p3+$00,x
 		PLX
 		INX #4
+
+		.Next
 		CPY $0E : BCC .Loop
 		TXA : STA !OAMindex_p3
 		PLP
@@ -3310,7 +3422,7 @@ KEEP_DATA:
 ;CLEAR PLAYER 2;
 ;==============;
 ;
-; this is called from RealmSelect.asm
+; this is called from Overworld.asm
 ;
 CLEAR_PLAYER2:
 		STZ !BossData+0			;\
@@ -3384,11 +3496,11 @@ CLEAR_MSG:
 		PHB
 		LDA #$40
 		PHA : PLB
-		STZ.w !MsgRAM+$FF
+		STZ.w !MsgRAM+$7F
 		REP #$30
-		LDA.w #$00FE
-		LDX.w #!MsgRAM+$FF
-		LDY.w #!MsgRAM+$FE
+		LDA.w #$007E
+		LDX.w #!MsgRAM+$7F
+		LDY.w #!MsgRAM+$7E
 		MVP $40,$40
 		PLB
 		PLP
@@ -3450,34 +3562,6 @@ EntranceFix:
 ;LOAD HIDEOUT ROUTINE;
 ;====================;
 LOAD_HIDEOUT:
-		LDA $73D2			;\
-		ORA $7B86			; | Don't allow cancelling OW processes
-		ORA $7B87			; |
-		BNE .Return			;/
-		LDA $73C1			; Tile player is standing on
-		CMP #$56			;\ Return if less than 0x56
-		BCC .Return			;/
-		CMP #$87			;\ Return if equal to or greater than 0x86
-		BCS .Return			;/
-		INC $73F2			; Set load hideout flag
-
-	; The following code is the level load init routine from all.log, starting at $04919F.
-
-.Main
-
-		LDY #$10
-		LDA $7F13
-		AND #$08
-		BEQ +
-		LDY #$12
-	+	TYA
-		STA $7F13
-		LDA #$02
-		STA $6DB1
-		LDA #$80
-		STA !SPC3
-		INC !GameMode			; Increment game mode to initiate level load
-.Return		JML HIDEOUT_CHECK_Skip
 
 .Load		LDA $73F2
 		BEQ .NormalLevel
@@ -3545,6 +3629,12 @@ macro oamtablehi(source)
 	?next:
 endmacro
 
+macro clearOAM(tile)
+		..tile_<tile>
+		STA.w !OAM+($<tile>*4)+1
+endmacro
+
+
 
 ;=========;
 ;BUILD OAM;
@@ -3570,56 +3660,335 @@ BUILD_OAM:
 		LDA #$41
 		PHA : PLB
 		REP #$30
-		LDA #$0200 : STA $00			; lo table size
-		LDY.w #!OAM				; dest address (lo table)
-		%oamtable(p3)				;\ prio 3 lo table
-		LDA $00 : BEQ ..hitable			;/
-		%oamtable(p2)				;\ prio 2 lo table
-		LDA $00 : BEQ ..hitable			;/
-		%oamtable(p1)				;\ prio 1 lo table
-		LDA $00 : BEQ ..hitable			;/
-		%oamtable(p0)				; prio 0 lo table
+		LDA #$0200 : STA $00				; lo table size
+		LDY.w #!OAM					; dest address (lo table)
+		%oamtable(p3)					;\ prio 3 lo table
+		LDA $00 : BNE $03 : JMP ..hitable		;/
+		%oamtable(p2)					;\ prio 2 lo table
+		LDA $00 : BEQ ..hitable				;/
+		%oamtable(p1)					;\ prio 1 lo table
+		LDA $00 : BEQ ..hitable				;/
+		%oamtable(p0)					; prio 0 lo table
+
+		LDA $00 : BEQ ..hitable				;\
+		SEC : SBC #$0200				; |
+		EOR #$FFFF : INC A				; |
+		LSR A						; | move unused tiles off-screen
+		TAX						; |
+		PHB : PHK : PLB					; |
+		LDA #$00F0 : JSR (.Clear,x)			; |
+		PLB						;/
 
 		..hitable
-		LDA #$0080 : STA $00			; hi table size
-		LDY.w #!OAMhi				; dest address (hi table)
-	..p3	%oamtablehi(p3)				;\ prio 3 hi table
-		LDA $00 : BEQ ..finish			;/
-	..p2	%oamtablehi(p2)				;\ prio 2 hi table
-		LDA $00 : BEQ ..finish			;/
-	..p1	%oamtablehi(p1)				;\ prio 1 hi table
-		LDA $00 : BEQ ..finish			;/
-	..p0	%oamtablehi(p0)				; prio 0 hi table
+		LDA #$0080 : STA $00				; hi table size
+		LDY.w #!OAMhi					; dest address (hi table)
+	..p3	%oamtablehi(p3)					;\ prio 3 hi table
+		LDA $00 : BEQ ..finish				;/
+	..p2	%oamtablehi(p2)					;\ prio 2 hi table
+		LDA $00 : BEQ ..finish				;/
+	..p1	%oamtablehi(p1)					;\ prio 1 hi table
+		LDA $00 : BEQ ..finish				;/
+	..p0	%oamtablehi(p0)					; prio 0 hi table
 
 		..finish
-		SEP #$30
-		LDA #$00
-		PHA : PLB
-		LDY #$1E				; > Start loop at 0x1E to reach all tiles (32 bytes)
-	-	LDX.w $8475,y				;\
-		LDA.w !OAMhi+3,x			; |
-		ASL #2					; |
-		ORA.w !OAMhi+2,x			; |
-		ASL #2					; |
-		ORA.w !OAMhi+1,x			; |
-		ASL #2					; |
-		ORA.w !OAMhi+0,x			; | Assemble hi OAM table
-		STA.w !OAM+$200,y			; |
-		LDA.w !OAMhi+7,x			; |
-		ASL #2					; |
-		ORA.w !OAMhi+6,x			; |
-		ASL #2					; |
-		ORA.w !OAMhi+5,x			; |
-		ASL #2					; |
-		ORA.w !OAMhi+4,x			; |
-		STA.w !OAM+$201,y			; |
-		DEY #2					; |
-		BPL -					;/
-		PLP
-		PLB
-		RTL					; > Return
+		LDA.l !OAMindex_p0 : STA.l !OAMindex_p0_prev	;\
+		LDA.l !OAMindex_p1 : STA.l !OAMindex_p1_prev	; | store these for next frame
+		LDA.l !OAMindex_p2 : STA.l !OAMindex_p2_prev	; |
+		LDA.l !OAMindex_p3 : STA.l !OAMindex_p3_prev	;/
+		LDA #$0000					;\
+		STA.l !OAMindex					; |
+		STA.l !OAMindex_p0				; | clear indexes
+		STA.l !OAMindex_p1				; |
+		STA.l !OAMindex_p2				; |
+		STA.l !OAMindex_p3				;/
+		SEP #$30					; all regs 8-bit
+		LDA #$00					;\ bank 0x00
+		PHA : PLB					;/
+		LDY #$1E					; > start loop at 0x1E to reach all tiles (32 bytes)
+	-	LDX.w $8475,y					;\
+		LDA.w !OAMhi+3,x				; |
+		ASL #2						; |
+		ORA.w !OAMhi+2,x				; |
+		ASL #2						; |
+		ORA.w !OAMhi+1,x				; |
+		ASL #2						; |
+		ORA.w !OAMhi+0,x				; | assemble hi OAM table
+		STA.w !OAM+$200,y				; |
+		LDA.w !OAMhi+7,x				; |
+		ASL #2						; |
+		ORA.w !OAMhi+6,x				; |
+		ASL #2						; |
+		ORA.w !OAMhi+5,x				; |
+		ASL #2						; |
+		ORA.w !OAMhi+4,x				; |
+		STA.w !OAM+$201,y				; |
+		DEY #2						; |
+		BPL -						;/
+		PLP						;\ pull stuff
+		PLB						;/
+		RTL						; > return
 
 
+	; pointers to optimize OAM clear
+		.Clear
+		dw ..tile_000
+		dw ..tile_001
+		dw ..tile_002
+		dw ..tile_003
+		dw ..tile_004
+		dw ..tile_005
+		dw ..tile_006
+		dw ..tile_007
+		dw ..tile_008
+		dw ..tile_009
+		dw ..tile_00A
+		dw ..tile_00B
+		dw ..tile_00C
+		dw ..tile_00D
+		dw ..tile_00E
+		dw ..tile_00F
+		dw ..tile_010
+		dw ..tile_011
+		dw ..tile_012
+		dw ..tile_013
+		dw ..tile_014
+		dw ..tile_015
+		dw ..tile_016
+		dw ..tile_017
+		dw ..tile_018
+		dw ..tile_019
+		dw ..tile_01A
+		dw ..tile_01B
+		dw ..tile_01C
+		dw ..tile_01D
+		dw ..tile_01E
+		dw ..tile_01F
+		dw ..tile_020
+		dw ..tile_021
+		dw ..tile_022
+		dw ..tile_023
+		dw ..tile_024
+		dw ..tile_025
+		dw ..tile_026
+		dw ..tile_027
+		dw ..tile_028
+		dw ..tile_029
+		dw ..tile_02A
+		dw ..tile_02B
+		dw ..tile_02C
+		dw ..tile_02D
+		dw ..tile_02E
+		dw ..tile_02F
+		dw ..tile_030
+		dw ..tile_031
+		dw ..tile_032
+		dw ..tile_033
+		dw ..tile_034
+		dw ..tile_035
+		dw ..tile_036
+		dw ..tile_037
+		dw ..tile_038
+		dw ..tile_039
+		dw ..tile_03A
+		dw ..tile_03B
+		dw ..tile_03C
+		dw ..tile_03D
+		dw ..tile_03E
+		dw ..tile_03F
+		dw ..tile_040
+		dw ..tile_041
+		dw ..tile_042
+		dw ..tile_043
+		dw ..tile_044
+		dw ..tile_045
+		dw ..tile_046
+		dw ..tile_047
+		dw ..tile_048
+		dw ..tile_049
+		dw ..tile_04A
+		dw ..tile_04B
+		dw ..tile_04C
+		dw ..tile_04D
+		dw ..tile_04E
+		dw ..tile_04F
+		dw ..tile_050
+		dw ..tile_051
+		dw ..tile_052
+		dw ..tile_053
+		dw ..tile_054
+		dw ..tile_055
+		dw ..tile_056
+		dw ..tile_057
+		dw ..tile_058
+		dw ..tile_059
+		dw ..tile_05A
+		dw ..tile_05B
+		dw ..tile_05C
+		dw ..tile_05D
+		dw ..tile_05E
+		dw ..tile_05F
+		dw ..tile_060
+		dw ..tile_061
+		dw ..tile_062
+		dw ..tile_063
+		dw ..tile_064
+		dw ..tile_065
+		dw ..tile_066
+		dw ..tile_067
+		dw ..tile_068
+		dw ..tile_069
+		dw ..tile_06A
+		dw ..tile_06B
+		dw ..tile_06C
+		dw ..tile_06D
+		dw ..tile_06E
+		dw ..tile_06F
+		dw ..tile_070
+		dw ..tile_071
+		dw ..tile_072
+		dw ..tile_073
+		dw ..tile_074
+		dw ..tile_075
+		dw ..tile_076
+		dw ..tile_077
+		dw ..tile_078
+		dw ..tile_079
+		dw ..tile_07A
+		dw ..tile_07B
+		dw ..tile_07C
+		dw ..tile_07D
+		dw ..tile_07E
+		dw ..tile_07F
+
+		%clearOAM(000)
+		%clearOAM(001)
+		%clearOAM(002)
+		%clearOAM(003)
+		%clearOAM(004)
+		%clearOAM(005)
+		%clearOAM(006)
+		%clearOAM(007)
+		%clearOAM(008)
+		%clearOAM(009)
+		%clearOAM(00A)
+		%clearOAM(00B)
+		%clearOAM(00C)
+		%clearOAM(00D)
+		%clearOAM(00E)
+		%clearOAM(00F)
+		%clearOAM(010)
+		%clearOAM(011)
+		%clearOAM(012)
+		%clearOAM(013)
+		%clearOAM(014)
+		%clearOAM(015)
+		%clearOAM(016)
+		%clearOAM(017)
+		%clearOAM(018)
+		%clearOAM(019)
+		%clearOAM(01A)
+		%clearOAM(01B)
+		%clearOAM(01C)
+		%clearOAM(01D)
+		%clearOAM(01E)
+		%clearOAM(01F)
+		%clearOAM(020)
+		%clearOAM(021)
+		%clearOAM(022)
+		%clearOAM(023)
+		%clearOAM(024)
+		%clearOAM(025)
+		%clearOAM(026)
+		%clearOAM(027)
+		%clearOAM(028)
+		%clearOAM(029)
+		%clearOAM(02A)
+		%clearOAM(02B)
+		%clearOAM(02C)
+		%clearOAM(02D)
+		%clearOAM(02E)
+		%clearOAM(02F)
+		%clearOAM(030)
+		%clearOAM(031)
+		%clearOAM(032)
+		%clearOAM(033)
+		%clearOAM(034)
+		%clearOAM(035)
+		%clearOAM(036)
+		%clearOAM(037)
+		%clearOAM(038)
+		%clearOAM(039)
+		%clearOAM(03A)
+		%clearOAM(03B)
+		%clearOAM(03C)
+		%clearOAM(03D)
+		%clearOAM(03E)
+		%clearOAM(03F)
+		%clearOAM(040)
+		%clearOAM(041)
+		%clearOAM(042)
+		%clearOAM(043)
+		%clearOAM(044)
+		%clearOAM(045)
+		%clearOAM(046)
+		%clearOAM(047)
+		%clearOAM(048)
+		%clearOAM(049)
+		%clearOAM(04A)
+		%clearOAM(04B)
+		%clearOAM(04C)
+		%clearOAM(04D)
+		%clearOAM(04E)
+		%clearOAM(04F)
+		%clearOAM(050)
+		%clearOAM(051)
+		%clearOAM(052)
+		%clearOAM(053)
+		%clearOAM(054)
+		%clearOAM(055)
+		%clearOAM(056)
+		%clearOAM(057)
+		%clearOAM(058)
+		%clearOAM(059)
+		%clearOAM(05A)
+		%clearOAM(05B)
+		%clearOAM(05C)
+		%clearOAM(05D)
+		%clearOAM(05E)
+		%clearOAM(05F)
+		%clearOAM(060)
+		%clearOAM(061)
+		%clearOAM(062)
+		%clearOAM(063)
+		%clearOAM(064)
+		%clearOAM(065)
+		%clearOAM(066)
+		%clearOAM(067)
+		%clearOAM(068)
+		%clearOAM(069)
+		%clearOAM(06A)
+		%clearOAM(06B)
+		%clearOAM(06C)
+		%clearOAM(06D)
+		%clearOAM(06E)
+		%clearOAM(06F)
+		%clearOAM(070)
+		%clearOAM(071)
+		%clearOAM(072)
+		%clearOAM(073)
+		%clearOAM(074)
+		%clearOAM(075)
+		%clearOAM(076)
+		%clearOAM(077)
+		%clearOAM(078)
+		%clearOAM(079)
+		%clearOAM(07A)
+		%clearOAM(07B)
+		%clearOAM(07C)
+		%clearOAM(07D)
+		%clearOAM(07E)
+		%clearOAM(07F)
+		RTS
 
 
 
@@ -3646,39 +4015,7 @@ BUILD_OAM:
 		PHB : PHK : PLB
 		PHP
 		SEP #$30
-		LDA #$F0
-		STA !OAM+$001 : STA !OAM+$005 : STA !OAM+$009 : STA !OAM+$00D
-		STA !OAM+$011 : STA !OAM+$015 : STA !OAM+$019 : STA !OAM+$01D
-		STA !OAM+$021 : STA !OAM+$025 : STA !OAM+$029 : STA !OAM+$02D
-		STA !OAM+$031 : STA !OAM+$035 : STA !OAM+$039 : STA !OAM+$03D
-		STA !OAM+$041 : STA !OAM+$045 : STA !OAM+$049 : STA !OAM+$04D
-		STA !OAM+$051 : STA !OAM+$055 : STA !OAM+$059 : STA !OAM+$05D
-		STA !OAM+$061 : STA !OAM+$065 : STA !OAM+$069 : STA !OAM+$06D
-		STA !OAM+$071 : STA !OAM+$075 : STA !OAM+$079 : STA !OAM+$07D
-		STA !OAM+$081 : STA !OAM+$085 : STA !OAM+$089 : STA !OAM+$08D
-		STA !OAM+$091 : STA !OAM+$095 : STA !OAM+$099 : STA !OAM+$09D
-		STA !OAM+$0A1 : STA !OAM+$0A5 : STA !OAM+$0A9 : STA !OAM+$0AD
-		STA !OAM+$0B1 : STA !OAM+$0B5 : STA !OAM+$0B9 : STA !OAM+$0BD
-		STA !OAM+$0C1 : STA !OAM+$0C5 : STA !OAM+$0C9 : STA !OAM+$0CD
-		STA !OAM+$0D1 : STA !OAM+$0D5 : STA !OAM+$0D9 : STA !OAM+$0DD
-		STA !OAM+$0E1 : STA !OAM+$0E5 : STA !OAM+$0E9 : STA !OAM+$0ED
-		STA !OAM+$0F1 : STA !OAM+$0F5 : STA !OAM+$0F9 : STA !OAM+$0FD
-		STA !OAM+$101 : STA !OAM+$105 : STA !OAM+$109 : STA !OAM+$10D
-		STA !OAM+$111 : STA !OAM+$115 : STA !OAM+$119 : STA !OAM+$11D
-		STA !OAM+$121 : STA !OAM+$125 : STA !OAM+$129 : STA !OAM+$12D
-		STA !OAM+$131 : STA !OAM+$135 : STA !OAM+$139 : STA !OAM+$13D
-		STA !OAM+$141 : STA !OAM+$145 : STA !OAM+$149 : STA !OAM+$14D
-		STA !OAM+$151 : STA !OAM+$155 : STA !OAM+$159 : STA !OAM+$15D
-		STA !OAM+$161 : STA !OAM+$165 : STA !OAM+$169 : STA !OAM+$16D
-		STA !OAM+$171 : STA !OAM+$175 : STA !OAM+$179 : STA !OAM+$17D
-		STA !OAM+$181 : STA !OAM+$185 : STA !OAM+$189 : STA !OAM+$18D
-		STA !OAM+$191 : STA !OAM+$195 : STA !OAM+$199 : STA !OAM+$19D
-		STA !OAM+$1A1 : STA !OAM+$1A5 : STA !OAM+$1A9 : STA !OAM+$1AD
-		STA !OAM+$1B1 : STA !OAM+$1B5 : STA !OAM+$1B9 : STA !OAM+$1BD
-		STA !OAM+$1C1 : STA !OAM+$1C5 : STA !OAM+$1C9 : STA !OAM+$1CD
-		STA !OAM+$1D1 : STA !OAM+$1D5 : STA !OAM+$1D9 : STA !OAM+$1DD
-		STA !OAM+$1E1 : STA !OAM+$1E5 : STA !OAM+$1E9 : STA !OAM+$1ED
-		STA !OAM+$1F1 : STA !OAM+$1F5 : STA !OAM+$1F9 : STA !OAM+$1FD
+		LDA #$F0 : JSR BUILD_OAM_Clear_tile_000
 		REP #$20
 		LDA #$0000
 		STA !OAMindex
@@ -3697,11 +4034,16 @@ BUILD_OAM:
 incsrc "Checkpoints.asm"
 
 
-;===============;
-;REALM SELECTION;
-;===============;
-incsrc "RealmSelect.asm"
-
+;=========;
+;OVERWORLD;
+;=========;
+pushpc
+org $1B8000
+db $53,$54,$41,$52		; claim banks $1B and $1C
+dw $FFF7
+dw $0008
+incsrc "Overworld/Overworld.asm"
+pullpc
 
 
 ;=================;
@@ -4075,414 +4417,6 @@ MAP16_EXPAND:
 
 
 
-
-
-
-
-;================;
-;CHARACTER SELECT;
-;================;
-;
-; To do:
-;	- Remap buttons (camera to X, character select to start, close window to B)
-;	- Make it work for one player at a time
-;	- Make sure PCE keeps track of which player/character is being processed
-;
-; Seems to work like this:
-;	- $04828A does a multiplayer check to see if showing the menu is valid
-;	- $04828F does a JSR to a pointer handler
-;	- Pointers 2-4 are used ONLY for lives exchanger (other pointers are for other things)
-;	- Third entry in pointer table goes to lives exchanger
-;	- Lives exchanger JSL's to $009C13, which enables stripe image by jumping to $009D29
-;	- $04F513 is a short routine that checks for any player pushing start.
-;		- Doing so closes the window and stores lives to the current player.
-;	- $04F52B is the bulk of the routine that calculates lives and does stripe image stuff.
-;	- $04F415 is the routine that handles opening/closing the window (pointer 2/4)
-
-
-CHARACTER_SELECT:
-
-
-	PHP				; > Preserve processor
-	LDA $7B8A			;\
-	CMP #$10			; | Reset some stuff (otherwise this starts at 0x40)
-	BCC $03 : STZ $7B8A		;/
-	INC $7B8B			; > Update flash timer
-	LDA !CurrentPlayer : TAX	; > X = Player index
-	LDA !Characters			;\
-	CPX #$00 : BEQ +		; |
-	LSR #4				; | $0D = other player's character
-+	AND #$0F			; |
-	STA $0D				;/
-	LDA $6DA6,x			;\
-	AND #$0C			; |
-	BEQ .ControlInput		; | Process controller input
-	LDY #$23 : STY !SPC4		; > Play SFX
-	STZ $7B8B			; > Reset flash timer
-	CMP #$08 : BEQ .Up		;/
-.Down	INC $7B8A			;\ Move down
-	BRA .ControlInput		;/
-.Up	DEC $7B8A			; > Move up
-	LDA !MultiPlayer		;\ Ignore char checks during singleplayer
-	BEQ .SinglePlayer		;/
-	LDA $7B8A			;\
-	CMP $0D : BNE .SinglePlayer	; | Prevent selecting the same character
-	DEC $7B8A			;/
-
-	.ControlInput
-	LDA !MultiPlayer		;\ Ignore char checks during singleplayer
-	BEQ .SinglePlayer		;/
-	LDA $7B8A			;\
-	CMP $0D : BNE .SinglePlayer	; | Prevent selecting the same character with Mario/down
-	INC $7B8A			;/
-
-	.SinglePlayer
-	LDA #$04 : STA $00		;\
-	INC A : STA $01			; > Set up RAM index for player menu size
-	INC A : STA $02			; |
-	LDA $7B8A			; |
-	BMI .Bottom			; |
-	CMP $01,x : BCC .NoInput	; | Make sure selection stays within limits
-	LDA #$00 : BRA .Write		; |
-.Bottom	LDA $00,x			; |
-.Write	STA $7B8A			; |
-	CMP $0D : BNE .NoInput		; > Make sure you can't choose Mario with both at the same time
-	INC $7B8A			; |
-	.NoInput			;/
-
-	LDA.b #.SNES : STA $0183	;\
-	LDA.b #.SNES>>8 : STA $0184	; |
-	LDA.b #.SNES>>16 : STA $0185	; | Have the SNES do the rest since SA-1 can't access $7E0000-$7FFFFF
-	LDA #$D0 : STA $2209		; |
--	LDA $018A : BEQ -		; |
-	STZ $018A			;/
-	PLP				; > Restore regs
-	RTL				; > Return
-
-
-	.SNES
-	PHP				; > Register backup
-	PHB : PHK : PLB			; > Bank backup
-	LDA !CurrentPlayer
-	REP #$30			; > All regs 16-bit
-	BNE +				;\
-	LDY.w #.EndEarly-.Table		; | "DROP OUT" option doesn't exist for player 1
-	BRA $03				;/
-+	LDY.w #.EndTable-.Table		;\	(0x50)
-	TYA				; |
-	CLC : ADC $7F837B		; |
-	STA $7F837B			; | Write character names
-	TAX				; |
-	SEP #$20			; > A 8-bit
-	LDA #$FF : STA $7F837D,x	; \ Write end of table
-	DEX				; /
-	DEY				; |
--	LDA .Table,y			; |	($04:F4B2)
-	STA $7F837D,x			; |
-	DEX				; |
-	DEY				; |
-	BPL -				;/
-
-	INX				; > Get index to start of upload
-	STX $0E				; > Backup in $0E
-	LDA $7B8B			;\
-	AND #$18			; | Only flash certain frames
-	EOR #$18			; |
-	BEQ .Return			;/
-	LDA #$00 : XBA			;\
-	LDA $7B8A			; | Y = position of selection
-	TAY				;/
--	BEQ .Flash			; > If this is the selection, perform FLASH
-	STX $00				;\
-	LDA $7F8380,x			; |
-	CLC : ADC #$05			; |
-	CLC : ADC $00			; |
-	XBA : ADC $01			; | Find proper stripe location
-	XBA : TAX			; |
-	DEY				; |
-	BMI .Return			; |
-	BRA -				;/
-
-	.Flash
-	REP #$20
-	LDA $7F8380,x			; > Check length
-	AND #$00FF
-	TAY
-	TXA
-	CLC : ADC #$8381
-	STA $00
-	SEP #$20
-	LDA #$7F : STA $02
-	LDA #$3C
--	STA [$00],y
-	DEY #2
-	BPL -
-
-	.Return
-	SEP #$20
-	LDA !CurrentPlayer
-	BEQ .P1
-
-	.P2
-	LDA !Characters			;\
-	LSR #4				; | Visually disable P1's character
-	STA $00				; |
-	JSR .Prevent			;/
-	LDA $7B8A
-	CMP #$01 : BEQ +		;\
-	CMP #$04 : BEQ +		; | Only allow legal characters
-	CMP #$06 : BEQ +		;/
-	AND #$0F : STA $00		;\
-	LDA !Characters			; | Store P2 character
-	AND #$F0 : ORA $00		; |
-	STA !Characters			;/
-	LDA #$01 : STA !MultiPlayer	; > Enable multiplayer
-	BRA +				; > Return
-
-	.P1
-	LDA !MultiPlayer		;\ Ignore P2 if multiplayer is off
-	BEQ ..NoPrevent			;/
-	LDA !Characters			;\
-	AND #$0F			; |
-	STA $00				; | Visually disable P2's character
-	JSR .Prevent			; |
-	..NoPrevent			;/
-	LDA $7B8A
-	CMP #$01 : BEQ +		; < Luigi not inserted
-	CMP #$04 : BEQ +		; < Alter not inserted
-	CMP #$06 : BEQ +		; < Drop out function should not be used by P1
-	ASL #4 : STA $00		;\
-	LDA !Characters			; | Store P1 character
-	AND #$0F : ORA $00		; |
-	STA !Characters			;/
-+	PLB				; > Restore bank
-	PLP				; > Restore processor
-	RTL				; > Return
-
-
-	.Prevent
-	LDX $0E
-	LDA #$00 : XBA			;\ Y = stripe to disable
-	LDA $00 : TAY			;/
--	BEQ ..Prevent			;\
-	STX $00				; |
-	LDA $7F8380,x			; |
-	CLC : ADC #$05			; |
-	CLC : ADC $00			; | Find proper stripe location
-	XBA : ADC $01			; |
-	XBA : TAX			; |
-	DEY				; |
-	BMI ..Return			; |
-	BRA -				;/
-	..Prevent
-	LDA $7F837E,x			;\
-	AND.b #$1F^$FF			; | Move 1 step to the right
-	ORA #$06			; |
-	STA $7F837E,x			;/
-	..Return
-	RTS
-
-
-	.ERASE
-	LDA.b #..SNES : STA $0183	;\
-	LDA.b #..SNES>>8 : STA $0184	; |
-	LDA.b #..SNES>>16 : STA $0185	; | Have the SNES do the rest since SA-1 can't access $7E0000-$7FFFFF
-	LDA #$D0 : STA $2209		; |
--	LDA $018A : BEQ -		; |
-	STZ $018A			;/
-	RTL				; > Return
-
-	..SNES
-	PHP
-	SEP #$30
-	PHB : PHK : PLB
-	LDA $7B87			;\
-	CMP #$02 : BEQ +		; | Only when opening/closing character select menu
-	CMP #$04 : BNE ++		;/
-+	REP #$30
-	LDY.w #.EndClear-.Clear-1
-	TYA
-	CLC : ADC $7F837B
-	STA $7F837B
-	TAX
-	SEP #$20
--	LDA .Clear,y
-	STA $7F837D,x
-	DEX
-	DEY
-	BPL -
-	STZ $7B8A			; > Reset selection
-++	LDX #$00 : LDA $6DB4		; > Restore overwritten code
-	PLB
-	PLP
-	RTL
-
-
-	.REMAP1				; > Choosing a level
-
-;	LDA #$00
-
-	LDA !MultiPlayer
-	BEQ ..P1
-	LDA $6DA7
-	ORA $6DA9
-..P1	ORA $6DA6
-	ORA $6DA8
-	RTL
-
-
-	.REMAP2				; > Choosing a character in the menu
-	LDA !CurrentPlayer
-	BNE ..P2
-	LDA $6DA6			;\ Player 1
-	ORA $6DA8			;/
-	RTL
-..P2	LDA $7B8A
-	CMP #$06 : BNE ++
-	LDA $6DA7			;\
-	ORA $6DA9			; |
-	AND #$80 : BEQ +		; | Player 2 dropping out
-	LDA #$00 : STA !MultiPlayer	; |
-	LDA #$80			;/
-+	RTL
-++	LDA $6DA7			;\ Player 2 not dropping out
-	ORA $6DA9			;/
-	RTL
-
-
-	.REMAP3				; > Enabling free camera
-	LDA $6DA6
-	AND #$10
-	BEQ ..NoP1
-	LDA #$00 : STA !CurrentPlayer
-	LDA #$10
-	RTL
-	..NoP1
-	LDA $6DA7
-	AND #$10
-	BEQ ..Return
-	LDA #$01 : STA !CurrentPlayer
-	LDA #$10
-	..Return
-	RTL
-
-
-	.REMAP4				; > Moving on OW
-
-;	LDA #$00
-
-
-	LDA !MultiPlayer		;\
-	BEQ ..P1			; | Include P2 input during multiplayer
-	LDA $6DA7			;/
-..P1	ORA $6DA6			; > Add P1 input
-	AND #$0F			; > Get directional input
-	RTL				; > Return
-
-
-; E	1:80	0x01	> End flag
-; H	1:40	0x04	\
-; H	1:20	0x02	 | VRAM destination
-; H	1:10	0x01	/
-; Yh	1:08	0x20	> Hi bit of Y
-; Xh	1:04	0x20	> Hi bit of X
-; y	1:02	0x10	\
-; y	1:01	0x08	 |
-; y	2:80	0x04	 | Lo position of y
-; y	2:40	0x02	 |
-; y	2:20	0x01	/
-; xlo	2:1F	0x1F	> lo position of x
-; D	3:80	0x01	> Direction (0 = horizontal, 1 = vertical)
-; R	3:40	0x01	> RLE flag
-; l	3:3F	0x3F	> RLE length
-; L	4:FF	0xFF	> Non-RLE length
-
-
-.Table
-db $51,$85,$00,$09			; < "MARIO"
-db $16,$28,$0A,$28,$1B,$28,$12,$28,$18,$28
-db $51,$A5,$00,$09			; < "LUIGI"
-db $15,$28,$1E,$28,$12,$28,$10,$28,$12,$28
-db $51,$C5,$00,$0B			; < "KADAAL"
-db $14,$28,$0A,$28,$0D,$28,$0A,$28,$0A,$28,$15,$28
-db $51,$E5,$00,$0B			; < "LEEWAY"
-db $15,$28,$0E,$28,$0E,$28,$20,$28,$0A,$28,$22,$28
-db $52,$05,$00,$09			; < "ALTER"
-db $0A,$28,$15,$28,$1D,$28,$0E,$28,$1B,$28
-.EndEarly
-db $52,$45,$00,$0F			; < "DROP OUT"
-db $0D,$28,$1B,$28,$18,$28,$19,$28,$FC,$38,$18,$28,$1E,$28,$1D,$28
-.EndTable
-
-.Clear
-db $51,$85,$40,$10
-db $FC,$38
-db $51,$A5,$40,$10
-db $FC,$38
-db $51,$C5,$40,$10
-db $FC,$38
-db $51,$E5,$40,$10
-db $FC,$38
-db $52,$05,$40,$10
-db $FC,$38
-db $52,$45,$40,$10
-db $FC,$38
-db $FF
-.EndClear
-
-
-
-
-
-; This is actually pretty complicated.
-; Each character has 7 components:
-; - Upload sprite GFX
-; - Upload sprite tilemap
-; - Upload sprite palette
-; - Unpack portrait
-; - Upload portrait GFX
-; - Upload portrait tilemap
-; - Upload portrait palette
-
-.CharacterTable
-	dw ..Mario
-	dw ..Luigi
-	dw ..Kadaal
-	dw ..Leeway
-	;dw ..Alter
-
-..Mario
-
-..Luigi
-
-..Kadaal
-
-..Leeway
-
-..Alter
-
-
-
-..SpritePal
-
-..SpriteOAM
-
-..MarioPortrait
-
-..LuigiPortrait
-
-..KadaalPortrait
-
-..LeewayPortrait
-
-..AlterPortrait
-
-..UploadPortrait
-
-..UploadPalette
-
-..DrawPortrait
-
 ;=========;
 ;BRK RESET;
 ;=========;
@@ -4620,51 +4554,13 @@ org $048086
 		REP #$30
 		STZ $03
 
-org $04824B
-	HIDEOUT_CHECK:
-		BEQ .Skip		; Enable an unused beta routine
-
-		; There's 20 bytes of unused code here, so I'm not overwriting anything important.
-
-		LDA $6DA4
-		ORA $6DA8
-		BNE .Skip
-		JML LOAD_HIDEOUT
-		dl GENERATE_BLOCK	;\ 8 bytes free at $048259, used as vectors
-		NOP #5			;/
-		.Skip
 
 org $04828A
 	BRA $03 : NOP #3		; LDY $6DB2 : BEQ $06, enable character select always
 
-org $048366
-	JSL CHARACTER_SELECT_REMAP3	;\ LDA $6DA8 : ORA $6DA9
-	NOP #2				;/
-	NOP #2				; > AND #$30
-
 org $04837D
 	LDA $18				;\ LDA $16 : AND #$10
 	AND #$40			;/
-
-org $049150
-	JSL CHARACTER_SELECT_REMAP1	;\ LDA $16 : ORA $18
-	AND #$80			;/ AND #$C0
-
-org $04925F
-	JSL CHARACTER_SELECT_REMAP4	; > LDA $16 : AND #$0F
-
-org $04F415
-	JSL CHARACTER_SELECT_ERASE	;\ LDX #$00 : LDA $6DB4
-	NOP				;/
-
-org $04F513
-	JSL CHARACTER_SELECT_REMAP2	;\ LDA $6DA6 : ORA $6DA7
-	NOP #2				;/
-	AND #$80			; > AND #$10
-
-org $04F52B
-	JSL CHARACTER_SELECT		;\ LDA $6DA6 : AND #$C0
-	RTS				;/
 
 org $05B161
 	JML SideExitFix			; STZ $6109 : LDA #$00
@@ -4760,9 +4656,9 @@ org $009888
 	JSL KILL_OAM
 org $009A6F
 	JSL KILL_OAM
-org $009C9F
-	JSL KILL_OAM
-;org $00A1C3				;\ main hijack for realm select
+;org $009C9F				;\ used by main menu
+;	JSL KILL_OAM			;/
+;org $00A1C3				;\ main hijack for overworld
 ;	JSL KILL_OAM			;/
 ;org $00A295				;\ This one is handled by SP_Level
 ;	JSL KILL_OAM_Special		;/

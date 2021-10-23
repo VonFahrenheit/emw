@@ -52,9 +52,6 @@ DRAW_TEXT:
 		LDA #$10 : STA !MainScreen	;\ sprites only
 		STZ !SubScreen			;/
 
-	STZ $7FFF
-
-
 		LDA #$80 : STA $2100
 
 		REP #$20
@@ -66,8 +63,6 @@ DRAW_TEXT:
 		LDA #$1000 : STA $4305
 		SEP #$20
 		LDA #$01 : STA $420B
-
-		LDA !2100 : STA $2100
 
 
 		LDA !MultiPlayer : BEQ .p1
@@ -149,6 +144,17 @@ DRAW_TEXT:
 		STA !OAMindex_p2
 		JSL !BuildOAM
 		PLB
+
+		STZ $4304
+		REP #$20
+		LDA #$0400 : STA $4300
+		LDA #$6200 : STA $4302
+		LDA #$0220 : STA $4305
+		SEP #$20
+		LDA #$01 : STA $420B
+
+		LDA #$0F : STA !2100
+
 		JML $00922E			; > Return to RTS
 
 

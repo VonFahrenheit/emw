@@ -1695,7 +1695,7 @@ SPRITE_OFF_SCREEN:
 ;		c if set, --S bits are used as CCC and lower P bit is used as S, $33C0,x is ignored
 ;	tile num is added to !SpriteTile,x and stored to OAM
 ;
-;	for LOAD_DYNAMIC, prop has the same format as for LOAD_PSUEDO_DYNAMIC, but the T bit comes from the highest bit of !GFX_Dynamic
+;	for LOAD_DYNAMIC, prop has the same format as for LOAD_PSUEDO_DYNAMIC, but the T bit comes from the dynamic tile's allocation, loaded by SETUP_SQUARE
 ;	tile num is used as an index to $F0 to find the appropriate dynamic tile, rather than being written directly to OAM
 ;
 ;

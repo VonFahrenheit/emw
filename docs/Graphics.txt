@@ -25,6 +25,7 @@ To deal with the scope of the hack we have a slightly more complex setup for gra
 
 -- Vanilla GFX --
 While this category is known as vanilla, it actually only stores custom graphics. All the unedited SMW graphics that are still in use must be extracted from an original ROM. Note that GFX01, GFX02 and GFX03 are only used for display purposes in Lunar Magic. GFX00 however, is used in-game and should always be loaded in SP1.
+Slots 20-2F are meant for BG objects and should be loaded in LG3/LG4.
 slots: 00-33 (52)
 
 -- Alt ExGFX --

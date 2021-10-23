@@ -299,7 +299,7 @@ org $058526
 
 	org $0081CE					; unused NMI code
 	MainExpand:
-		JSR $9322				; overwritten code
+		JSR $9322				; overwritten code (GetGameMode)
 		LDA !GameMode
 		CMP #$05 : BCC Return_RAM_Code
 
@@ -317,9 +317,9 @@ org $058526
 
 
 	org $0097C1
-		STA $6DB0				; STA instead of STZ (A is already 0x0F)
+		STA !2106				; STA instead of STZ (A is already 0x0F)
 	org $009F66					; prevent 2106 write
-		LDA #$0F : TSB $6DB0
+		LDA #$0F : TSB !2106
 		RTS
 		NOP
 		RTS
@@ -415,7 +415,7 @@ org $058526
 
 
 
-org $12A000
+org $12B000
 print "-- VR3 --"
 print "VR3 inserted at $", pc, "."
 ;LoadGFX:	LDA #$1801 : STA $4300			;\
@@ -778,6 +778,62 @@ Build_RAM_Code:
 		.NoScrollData
 
 
+; mode 7 matrix math:
+;	A = cos(v) * scale
+;	B = sin(v) * scale
+;	C = -sin(v) * scale
+;	D = cos(v) * scale
+
+		.Mode7
+		LDA !Mode7Settings
+		AND #$08 : BEQ ..done
+		STZ $2250
+		PHP
+		REP #$30
+		LDA !Mode7Scale : STA $2251
+	; cos(v) * scale setup
+		LDA !Mode7Rotation
+		CLC : ADC #$0080
+		AND #$01FF
+		TAY
+		ASL A
+		CMP #$0200
+		BCC $04 : EOR #$FFFF : INC A
+		AND #$01FF
+		TAX
+		LDA.l !TrigTable,x
+		CPY #$0100
+		BCC $04 : EOR #$FFFF : INC A
+		STA $2253
+	; sin(v) setup
+		LDA !Mode7Rotation
+		AND #$01FF
+		TAY
+		ASL A
+		CMP #$0200
+		BCC $04 : EOR #$FFFF : INC A
+		AND #$01FF
+		TAX
+	; A and D = cos(v) * scale
+		LDA $2307				;\
+		STA !Mode7MatrixA			; | write A and D here to save cycles on the math reg
+		STA !Mode7MatrixD			;/
+	; B = sin(v) * scale
+		LDA !Mode7Scale : STA $2251
+		LDA.l !TrigTable,x
+		CPY #$0100
+		BCC $04 : EOR #$FFFF : INC A
+		STA $2253
+		NOP : BRA $00
+		LDA $2307 : STA !Mode7MatrixB
+	; C = -sin(v) * scale
+		EOR #$FFFF : INC A
+		STA !Mode7MatrixC
+		PLP
+		..done
+
+
+
 		.MarioAddress
 		LDA !GameMode					;\ not on the realm select menu
 		CMP #$0F : BCC .NoMarioAddress			;/
@@ -1010,14 +1066,6 @@ Build_RAM_Code:
 		.NoScroll
 
 
-		LDA !AnimToggle					;\
-		AND #$0008 : BNE .NoBlock			; > if bit 3 is set, disable block update
-		LDA.w !TileUpdateTable : BEQ .NoBlock		; | block updates (replaces stripe image)
-		JSR .AppendTile					; |
-		.NoBlock					;/
-		STZ.w !TileUpdateTable				; always clear, even when not uploaded, to prevent overflow
-
-
 ;		SEP #$20					;\
 ;		LDA !CurrentMario : BEQ .NoMario		; | check if mario is in play and who plays him
 ;		XBA						; |
@@ -1062,6 +1110,15 @@ Build_RAM_Code:
 
 
 		.NotLevel
+
+
+		LDA !AnimToggle					;\
+		AND #$0008 : BNE .NoBlock			; > if bit 3 is set, disable block update
+		LDA.w !TileUpdateTable : BEQ .NoBlock		; | block updates (replaces stripe image)
+		JSR .AppendTile					; |
+		.NoBlock					;/
+		STZ.w !TileUpdateTable				; always clear, even when not uploaded, to prevent overflow
+
 
 
 	;
@@ -1323,6 +1380,7 @@ Build_RAM_Code:
 		STA $0E						;/
 		PLY						; restore RAMcode index
 
+
 	;
 	; ExAnimation block
 	; NOTE: when reading this code, note that .l $0180 is bank 0 (I-RAM), but .w $0180 is bank $40 (same as $6180, BW-RAM)
@@ -1403,10 +1461,10 @@ Build_RAM_Code:
 	.AppendVR2
 		LDX.w !VRAMslot					; continue on last transfer
 
-		..loop						;\ check slot
-		LDA.w !VRAMtable+$00,x : BNE ..processslot	;/
-		..next						;\ return if remaining transfer size = 0
-		LDA $0E : BEQ ..return				;/
+		..loop						;\
+		LDA $0E : BEQ ..return				; | check slot
+		LDA.w !VRAMtable+$00,x : BNE ..processslot	; | (always return if no bandwidth remaining)
+		..next						;/
 		TXA						;\
 		CLC : ADC #$0007				; |
 		CMP #$00FC					; | loop through entire table, regardless of entry point
@@ -3745,7 +3803,7 @@ NMI:		PHP					;\
 	; check lag
 		LDA $3010 : BEQ .NoLag			; DP is undefined currently, so we need to use 16-bit address
 		PEA $3000 : PLD				; DP = $3000
-		LDA $3E : STA $2105			;\
+		LDA !2105 : STA $2105			;\
 		LDA !2109 : STA $2109			; |
 		LDA $22 : STA $2111			; |
 		LDA $23 : STA $2111			; |
@@ -3844,13 +3902,41 @@ NMI:		PHP					;\
 		STA $212C				;/
 
 		; S = 212D
-		; 211A-211B: window combination logic, left at 0000 (OR)
+		; 212A-212B: window combination logic, left at 0000 (OR)
 
 
 		LDX #$2125 : TXS			; this is actually faster than LDA dp : STA addr x3
 		LDA $43 : PHA				; $43 -> 2125
 		PEI ($41)				; $41-$42 -> 2123-2124
 
+
+		.Mode7
+		LDA !Mode7Settings			;\ skip mode 7 if disabled
+		BIT #$08 : BEQ ..skip			;/
+		AND #$C3 : STA $211A			; $211A: mode 7 settings (hardware bits only)
+		LDX #$2120 : TXS			; S = $2120
+		LDA !Mode7CenterY : PHA			;\ $2120: mode 7 center Y
+		LDA !Mode7CenterY+1 : STA $2120		;/
+		LDA !Mode7CenterX : PHA			;\ $211F: mode 7 center X
+		LDA !Mode7CenterX+1 : STA $211F		;/
+		LDA !Mode7MatrixD : PHA			;\ $211E: mode 7 matrix D
+		LDA !Mode7MatrixD+1 : STA $211E		;/
+		LDA !Mode7MatrixC : PHA			;\ $211D: mode 7 matrix C
+		LDA !Mode7MatrixC+1 : STA $211D		;/
+		LDA !Mode7MatrixB : PHA			;\ $211C: mode 7 matrix B
+		LDA !Mode7MatrixB+1 : STA $211C		;/
+		LDA !Mode7MatrixA : PHA			;\ $211B: mode 7 matrix A
+		LDA !Mode7MatrixA+1 : STA $211B		;/
+		LDX #$210E : TXS			; S = $210E
+		LDA !Mode7Y : PHA			;\ $210E: mode 7 Y position
+		LDA !Mode7Y+1 : STA $210E		;/
+		LDA !Mode7X : PHA			;\ $210D: mode 7 X position
+		LDA !Mode7X+1 : STA $210D		;/
+		BRA .NormalMode_done			; go to $210C write area (S = $210C after these writes)
+		..skip
+
+
+		.NormalMode
 		LDX #$2114 : TXS			; S = $2114
 		STZ $2114				;\
 		PEA $0000				; | 2113: BG4 horizontal scroll and 2114: BG4 vertical scroll both = 00
@@ -3871,13 +3957,16 @@ NMI:		PHP					;\
 		STA $210E				;/
 		LDA $1A : PHA				;\ 210D: BG1 horizontal scroll
 		LDA $1B : STA $210D			;/
+		..done
+
+
 		LDA !210C : PHA				; 210C: BG3 and BG4 chr address
 		PEA $0000				; 210A: BG4 tilemap address and 210B: BG1 and BG2 chr address both = 00
 		LDA !2109 : PHA				; 2109: BG3 tilemap address
 		LDA !2108 : PHA				; 2108: BG2 tilemap address
 		LDA !2107 : PHA				; 2107: BG1 tilemap address
-		LDA $6DB0 : PHA				; 2106: mosaic
-		LDA $3E : PHA				; 2105: screen mode
+		LDA !2106 : PHA				; 2106: mosaic
+		LDA !2105 : PHA				; 2105: screen mode
 		LDA #$80 : STA $2103			; 2103: OAM priority bit
 		LDA $3F : STA $2102			; 2102: OAM address
 
@@ -4114,8 +4203,8 @@ IRQ:
 		LDX #$80 : STX $2115			; > word uploads (we're kinda cheating but it's ok)
 		PLA : STA $2116				;\
 		LDA #$1900 : STA $00			; |
-		LDA.w #.StatusProp : STA $02		; | upload status bar YXPCCCTT
-		LDX.b #.StatusProp>>16 : STX $04	; |
+		LDA.w #!StatusProp : STA $02		; | upload status bar YXPCCCTT
+		STZ $04					; |
 		LDA #$0020 : STA $05			; |
 		STY $420B				;/
 		LDA #$2202 : STA $00			;\
@@ -4126,7 +4215,7 @@ IRQ:
 		STY $420B				;/
 		LDA #$2100 : TCD			; > DP = 0x2100
 		SEP #$20				; > A 8 bit
-		STZ $11					;\ BG3 Hscroll
+		LDA !StatusX : STA $11			;\ BG3 Hscroll
 		STZ $11					;/
 		LDA #$47 : STA $12			;\ BG3 Vscroll
 		LDA #$FF : STA $12			;/
@@ -4150,13 +4239,6 @@ IRQ:
 		PLP					; |
 		RTI					;/
 
-
-.StatusProp	db $28,$24,$24,$24,$24			; P1 coins
-		db $20,$20,$20,$20,$20,$20		; P1 hearts
-		db $28,$28,$28,$28,$28			;\ Yoshi coins
-		db $28,$28,$28,$28,$28				;/
-		db $20,$20,$20,$20,$20,$20		; P2 hearts
-		db $28,$24,$24,$24,$24
 
 .StatusPal	dw $7FFF,$0CFB,$001F			; Palette 0
 		dw $0000,$0000,$7AAB,$7FFF		; Palette 1

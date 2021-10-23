@@ -86,6 +86,10 @@
 ;	- because of this, only small values should be used normally, but you can use the value $FF to cause the message to scroll the exact distance to be just off-screen
 ;	- because of limited VRAM space, this command should not be used in cinematic mode
 ;
+;	scrollfull()
+;	- takes no input
+;	- scrolls all text off-screen, then clears box
+;
 ;	waitforinput()
 ;	- takes no input
 ;	- this will pause the text engine until a player pushes A/B/X/Y (after that happens the text engine resumes as usual)
@@ -95,14 +99,27 @@
 ;	- will pause the text engine for a number of frames equal to the given value
 ;	- during this time, player input is ignored
 ;
-;	dialogue(X, XX, XX)
+;	dialogue(X, XX)
 ;	- this command allows the player to move a dialogue curser to give a response within the text box
-;	- takes 3 inputs: options (0-3), type (0-63 / $00-$3F) and row (0-255 / $00-$FF)
-;	- options is how many options the player can choose
-;	- type determines what effect the player's choice will have, see below
-;	- row determines which row the dialogue will start at
+;	- takes 2 inputs: options (0-3) and type (0-63 / $00-$3F)
+;	- options is how many options the player can choose, -1 (0 = 1 option, 1 = 2 options, etc, max 4 options)
+;	- type determines what effect the player's choice will have (see below)
 ;	- each option is displayed on its own row
 ;	- note that this command only enables the arrow, the text itself must be written with the arrow in mind for it to look right in-game
+;	  (with most fonts, adding 3 spaces at the start of the line will make enough room for the arrow)
+;	- this command should be entered at the start of the text row holding the first line of dialogue option text
+;	  example:
+;		db "Question?"
+;		%dialogue(2, 0)
+;		db "   Answer 1"
+;		db "   Answer 2"
+;		db "   Answer 3"
+;		%endmessage()
+;
+;	- types:
+;		- 0: next message, player's choice is added to current message ID
+;
+;
 ;
 ;	next(XX)
 ;	- takes a value 0-255 ($00-$FF)
@@ -246,14 +263,19 @@ macro music(song)
 macro portrait(index, xflip)
 		db $F4
 	if <xflip> == 0
-		db <index>
+		db !port_<index>
 	else
-		db <index>|$40
+		db !port_<index>|$40
 		endif
 		endmacro
 
 macro scroll(lines)
 		db $F5,<lines>
+		endmacro
+
+macro scrollfull()
+		db $F5,$FF
+		db $F2
 		endmacro
 
 macro waitforinput()
@@ -264,14 +286,14 @@ macro delay(frames)
 		db $F7,<frames>
 		endmacro
 
-macro dialogue(options, type, row)
+macro dialogue(options, type)
 		db $F8
 		db (<options>&3)|(<type><<2)
-		db <row>
 		endmacro
 
 macro next(message)
-		db $F9,<message>
+		db $F9
+		dw <message>
 		endmacro
 
 macro setexit(lo, hi)
@@ -371,305 +393,5 @@ macro important(setting)
 		db $06,<setting>
 		db $FF
 		endmacro
-
-
-;==========================;
-;MAIN POINTER (DON'T TOUCH);
-;==========================;
-Text:
-.MainPtr
-dw .L000,.L001
-dw .L002,.L003
-dw .L004,.L005
-dw .L006,.L007
-dw .L008,.L009
-dw .L00A,.L00B
-dw .L00C,.L00D
-dw .L00E,.L00F
-dw .L010,.L011
-dw .L012,.L013
-dw .L014,.L015
-dw .L016,.L017
-dw .L018,.L019
-dw .L01A,.L01B
-dw .L01C,.L01D
-dw .L01E,.L01F
-dw .L020,.L021
-dw .L022,.L023
-dw .L024
-
-dw .L101,.L102
-dw .L103,.L104
-dw .L105,.L106
-dw .L107,.L108
-dw .L109,.L10A
-dw .L10B,.L10C
-dw .L10D,.L10E
-dw .L10F,.L110
-dw .L111,.L112
-dw .L113,.L114
-dw .L115,.L116
-dw .L117,.L118
-dw .L119,.L11A
-dw .L11B,.L11C
-dw .L11D,.L11E
-dw .L11F,.L120
-dw .L121,.L122
-dw .L123,.L124
-dw .L125,.L126
-dw .L127,.L128
-dw .L129,.L12A
-dw .L12B,.L12C
-dw .L12D,.L12E
-dw .L12F,.L130
-dw .L131,.L132
-dw .L133,.L134
-dw .L135,.L136
-dw .L137,.L138
-dw .L139,.L13A
-dw .L13B
-
-
-;===================;
-;LEVEL TEXT POINTERS;
-;===================;
-
-.L000	dw .Survivor_Talk_1			; 01
-
-
-	dw .Tinker_Talk_1			; 02
-	dw .Mario_Upgrade_1			; 03
-	dw .Mario_Upgrade_2			; 04
-	dw .Mario_Upgrade_3			; 05
-	dw .Mario_Upgrade_4			; 06
-	dw .Mario_Upgrade_5			; 07
-	dw .Mario_Upgrade_6			; 08
-	dw .Mario_Upgrade_7			; 09
-	dw .Luigi_Upgrade_1			; 0A
-	dw .Luigi_Upgrade_2			; 0B
-	dw .Luigi_Upgrade_3			; 0C
-	dw .Luigi_Upgrade_4			; 0D
-	dw .Luigi_Upgrade_5			; 0E
-	dw .Luigi_Upgrade_6			; 0F
-	dw .Luigi_Upgrade_7			; 10
-	dw .Kadaal_Upgrade_SenkuControl		; 11
-	dw .Kadaal_Upgrade_AirSenku		; 12
-	dw .Kadaal_Upgrade_SenkuSmash		; 13
-	dw .Kadaal_Upgrade_ShellSpin		; 14
-	dw .Kadaal_Upgrade_LandSlide		; 15
-	dw .Kadaal_Upgrade_ShellDrill		; 16
-	dw .Kadaal_Upgrade_SturdyShell		; 17
-	dw .Leeway_Upgrade_ComboSlash		; 18
-	dw .Leeway_Upgrade_AirDash		; 19
-	dw .Leeway_Upgrade_AirDashPlus		; 1A
-	dw .Leeway_Upgrade_ComboAirSlash	; 1B
-	dw .Leeway_Upgrade_HeroicCape		; 1C
-	dw .Leeway_Upgrade_DinoGrip		; 1D
-	dw .Leeway_Upgrade_StarStrike		; 1E
-	dw .Alter_Upgrade_1			; 1F
-	dw .Alter_Upgrade_2			; 20
-	dw .Alter_Upgrade_3			; 21
-	dw .Alter_Upgrade_4			; 22
-	dw .Alter_Upgrade_5			; 23
-	dw .Alter_Upgrade_6			; 24
-	dw .Alter_Upgrade_7			; 25
-	dw .Peach_Upgrade_1			; 26
-	dw .Peach_Upgrade_2			; 27
-	dw .Peach_Upgrade_3			; 28
-	dw .Peach_Upgrade_4			; 29
-	dw .Peach_Upgrade_5			; 2A
-	dw .Peach_Upgrade_6			; 2B
-	dw .Peach_Upgrade_7			; 2C
-
-
-	dw .MarioSwitch				; 2D
-	dw .LuigiSwitch				; 2E
-	dw .KadaalSwitch			; 2F
-	dw .LeewaySwitch			; 30
-	dw .AlterSwitch				; 31
-	dw .PeachSwitch				; 32
-
-	dw .Toad1				; 33
-
-
-
-
-.L001	dw .MushroomGorge_Sign_1		; 01
-
-
-.L002	dw .RexVillage_Sign_1			; 01
-	dw .RexVillage_Sign_2			; 02
-	dw .RexVillage_Rex_1			; 03
-
-
-.L003	dw .DinolordsDomain_Sign_1		; 01
-	dw .DinolordsDomain_Sign_2		; 02
-	dw .CaptainWarrior_Fight1_Intro_1	; 03
-	dw .CaptainWarrior_Fight1_Defeated	; 06
-	dw .CaptainWarrior_Fight1_Leeway	; 07
-
-
-.L004
-.L005	dw .CastleRex_Sign_1			; 01
-	dw .CastleRex_Sign_2			; 02
-	dw .CastleRex_Rex_Warning_1		; 03
-	dw .CastleRex_Rex_Warning_2		; 05
-	dw .CastleRex_Rex_Warning_3		; 06
-	dw .CaptainWarrior_Warning		; 08
-
-.L006
-.L007
-
-;	dw .MountainKingA		; 01
-;	dw .MountainKingB		; 02
-;	dw .MountainKing1		; 03
-;	dw .MountainKing2		; 04
-;	dw .MountainKing3		; 05
-;	dw .MountainKing4		; 06
-;	dw .MountainKing5		; 07
-;	dw .MountainKing6		; 08
-
-.L008
-.L009
-.L00A
-.L00B
-.L00C
-.L00D
-
-
-
-
-.L00E
-
-;	dw .TowerOfStorms_Sign_1	; 01
-;	dw .TowerOfStorms_Sign_2	; 02
-;	dw .LakituLovers_Intro		; 03
-;	dw .LakituLovers_Impress_1	; 04
-;	dw .LakituLovers_Almost_1	; 05
-;	dw .LakituLovers_Enrage_1	; 06
-;	dw .LakituLovers_Respect	; 07
-;	dw .LakituLovers_Impress_2	; 08
-;	dw .LakituLovers_Almost_2	; 09
-;	dw .LakituLovers_Enrage_2	; 0A
-;	dw .LakituLovers_Death		; 0B
-
-
-.L00F
-.L010
-.L011
-.L012
-.L013
-.L014
-.L015
-.L016
-.L017
-.L018
-.L019
-.L01A
-.L01B
-.L01C
-.L01D
-.L01E
-.L01F
-.L020
-.L021
-.L022
-.L023
-.L024
-
-.L101
-.L102
-.L103
-.L104
-.L105
-.L106
-.L107
-.L108
-.L109
-.L10A
-.L10B
-.L10C
-.L10D
-.L10E
-.L10F
-.L110
-.L111
-.L112
-.L113
-.L114
-.L115
-.L116
-.L117
-.L118
-.L119
-.L11A
-.L11B
-.L11C
-.L11D
-.L11E
-.L11F
-.L120
-.L121
-.L122
-.L123
-.L124
-.L125
-.L126
-.L127
-.L128
-.L129
-.L12A
-.L12B
-.L12C
-.L12D
-.L12E
-.L12F
-.L130
-.L131
-.L132
-.L133
-.L134
-.L135
-.L136
-.L137
-.L138
-.L139
-
-
-.L13A	dw .FoundLuigi			; 01
-
-
-
-.L13B	dw .Menu_EasyMode		; 01
-	dw .Menu_NormalMode		; 02
-	dw .Menu_InsaneMode		; 03
-
-	dw .Menu_TimeMode		; 04
-	dw .Menu_RankMode		; 05
-	dw .Menu_CriticalMode		; 06
-	dw .Menu_IronmanMode		; 07
-	dw .Menu_Hardcore		; 08
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 

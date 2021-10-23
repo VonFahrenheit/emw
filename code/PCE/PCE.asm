@@ -284,8 +284,10 @@ sa1rom
 		LDA $6DA6,x : STA $16			; |
 		LDA $6DA8,x : STA $18			; |
 		BRA ..NoMario				;/
-	+	LDA #$09 : STA !MarioAnim		; mario anim = 09 (dead) if he's not in play
-		JSR RunMario				; if no one plays mario, run his anim code right away
+	+	LDA !MarioAnim				;\ don't skip transitions
+		CMP #$06 : BEQ +			;/
+		LDA #$09 : STA !MarioAnim		; mario anim = 09 (dead) if he's not in play
+	+	JSR RunMario				; if no one plays mario, run his anim code right away
 		..NoMario
 
 
@@ -351,7 +353,17 @@ sa1rom
 		STZ !P2Hitbox1+4			; | clear hitbox by setting size to 0
 		STZ !P2Hitbox2+4			; |
 		SEP #$20				;/
-		JSR Stasis
+		JSR Stasis				; stasis
+		LDA !Difficulty				;\
+		AND #$10 : BEQ +			; |
+		LDA $6DA7				; |
+		AND #$20 : BEQ +			; |
+		LDA !P2HP				; | toggle size with select on critical mode
+		CMP #$01 : BEQ ++			; |
+		LDA #$01 : BRA +++			; |
+	++	LDA !P2MaxHP				; |
+	+++	STA !P2HP				; |
+		+					;/
 		JSR (..List,x)				; > run code for player 1
 
 		LDA !P2HurtTimer			;\
@@ -425,7 +437,17 @@ sa1rom
 		STZ !P2Hitbox1+4			; | clear hitbox by setting size to 0
 		STZ !P2Hitbox2+4			; |
 		SEP #$20				;/
-		JSR Stasis
+		JSR Stasis				; stasis
+		LDA !Difficulty				;\
+		AND #$10 : BEQ +			; |
+		LDA $6DA7				; |
+		AND #$20 : BEQ +			; |
+		LDA !P2HP				; | toggle size with select on critical mode
+		CMP #$01 : BEQ ++			; |
+		LDA #$01 : BRA +++			; |
+	++	LDA !P2MaxHP				; |
+	+++	STA !P2HP				; |
+		+					;/
 		JSR (..List,x)				; > run code for player 2
 
 		LDA !P2HurtTimer			;\

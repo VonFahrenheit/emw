@@ -199,47 +199,47 @@ HammerRex:
 
 	.TM_Walk00
 		dw $0010
-		db $32,$00,$F0,$00
-		db $32,$00,$00,$20
-		db $32,$08,$00,$21
-		db $32,$06,$E8,$06
+		db $22,$00,$F0,$00
+		db $22,$00,$00,$20
+		db $22,$08,$00,$21
+		db $22,$06,$E8,$06
 	.TM_Walk01
 		dw $0010
-		db $32,$00,$EF,$00
-		db $32,$00,$FF,$23
-		db $32,$08,$FF,$24
-		db $32,$06,$E7,$06
+		db $22,$00,$EF,$00
+		db $22,$00,$FF,$23
+		db $22,$08,$FF,$24
+		db $22,$06,$E7,$06
 	.TM_Walk02
 		dw $0010
-		db $32,$00,$EF,$00
-		db $32,$00,$FF,$26
-		db $32,$08,$FF,$27
-		db $32,$06,$E7,$06
+		db $22,$00,$EF,$00
+		db $22,$00,$FF,$26
+		db $22,$08,$FF,$27
+		db $22,$06,$E7,$06
 
 	.TM_Throw00
 		dw $0010
-		db $32,$00,$F0,$00
-		db $32,$00,$00,$20
-		db $32,$08,$00,$21
-		db $32,$06,$E8,$06
+		db $22,$00,$F0,$00
+		db $22,$00,$00,$20
+		db $22,$08,$00,$21
+		db $22,$06,$E8,$06
 	.TM_Throw01
 		dw $0010
-		db $32,$F8,$F0,$0A
-		db $32,$F8,$00,$29
-		db $32,$00,$00,$2A
-		db $32,$00,$E7,$06
+		db $22,$F8,$F0,$0A
+		db $22,$F8,$00,$29
+		db $22,$00,$00,$2A
+		db $22,$00,$E7,$06
 	.TM_Throw02
 		dw $0014
-		db $32,$F8,$F0,$0C
-		db $32,$00,$F0,$0D
-		db $32,$F8,$00,$2C
-		db $32,$00,$00,$2D
-		db $32,$00,$EA,$06
+		db $22,$F8,$F0,$0C
+		db $22,$00,$F0,$0D
+		db $22,$F8,$00,$2C
+		db $22,$00,$00,$2D
+		db $22,$00,$EA,$06
 
 
 	.TM_Hammer
 		dw $0004		; should be uploaded before rex during prep00 tilemap
-		db $32,$06,$FA,$08	; hammer tile, should be drawn with palette set to blue $06
+		db $22,$06,$FA,$08	; hammer tile, should be drawn with palette set to blue $06
 
 	.TM_SlashLine
 		dw $000C		; should be uploaded before rex during throw00 tilemap

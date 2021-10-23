@@ -259,6 +259,9 @@ endmacro
 
 		!2102			= $3F		; OAM priority
 		!2105			= $3E		; screen mode
+		!2106			= $6DB0		; mosaic
+		!Mosaic			= !2106		; alt name
+
 
 		!BG1Address		= $3140		;\ tilemap addresses for layers 1/2
 		!BG2Address		= $3142		;/ (based on 2107/2108, meant to be read for VRAM calc)
@@ -271,7 +274,38 @@ endmacro
 		!2124			= $42		; window settings for BG3/BG4
 		!2125			= $43		; window settings for sprite layer and color plane
 		!2130			= $44		; color math settings
-		!2131			= $40		; translucency settings
+		!2131			= $40		; color math designation
+
+
+
+		!Mode7Settings		= $786D		; $211A mirror
+			; rc--emyx (rc----yx are written to $211A, the rest is software side)
+			;
+			; hardware bits:
+			; r - playing field size (0 = 1024x1024, 1 = "much larger", actual size unknown)
+			; c - empty space fill, only used with r = 1 (0 = fill is transparent, 1 = fill is character 0)
+			; y/x - flip for entire screen
+			;
+			; software bits:
+			; e - enable mode 7 (0 = skip mode 7 regs during NMI, 1 = update mode 7 regs during NMI)
+			; m - manual control (0 = use !Mode7Rotation/!Mode7Scaling to feed values to matrix, 1 = use direct writes to matrix)
+
+
+
+		!Mode7X			= $3A		; $210D mirror (kept distinct from camera coords since those interact with gameplay)
+		!Mode7Y			= $3C		; $210E mirror (same thing here, this just moves the mode7 image without affecting the camera)
+		!Mode7MatrixA		= $2E		; $211B mirror
+		!Mode7MatrixB		= $30		; $211C mirror
+		!Mode7MatrixC		= $32		; $211D mirror
+		!Mode7MatrixD		= $34		; $211E mirror
+		!Mode7CenterX		= $2A		; $211F mirror
+		!Mode7CenterY		= $2C		; $2120 mirror
+
+		!Mode7Rotation		= $36
+		!Mode7Scale		= $38
+
+
+
 
 
 
@@ -311,7 +345,8 @@ endmacro
 					; x = number of screens for forbiddance box to span horizontally (0=1)
 					; y = number of screens for forbiddance box to span vertically (0=1)
 
-		!SmoothCamera		= $6AF6			; enables smooth camera (always on with camera box)
+
+	;	!SmoothCamera		= $6AF6			; enables smooth camera (always on with camera box)
 
 
 		!BG1ZipBoxL		= $45
@@ -358,6 +393,7 @@ endmacro
 		!RAMcode		= $404A00
 
 
+		; PROBABLY UNUSED!!!
 		!GlobalPalset1		= $6024			; which sprite palset variation to use
 		!GlobalPalset2		= $6025			; if mixing is used, this is which sprite palset variation to use for mixing
 		!GlobalPalsetMix	= $6026			; balance between palset 1 and palset 2
@@ -531,6 +567,10 @@ endmacro
 		%def_GFX(LuigiFireball)
 
 
+		; special particle parts
+		%def_GFX(LeafParticle)
+
+
 
 	; GFX sets
 		!Temp = $400
@@ -594,17 +634,26 @@ endmacro
 	; start of SP3 is 0x80
 	; start of SP4 is 0xC0
 
-		!SD_Hammer		= !GFX_status+$100
-		!SD_PlantHead		= !GFX_status+$101
-		!SD_Bone		= !GFX_status+$102
-		!SD_Fireball8x8		= !GFX_status+$103
-		!SD_Fireball16x16	= !GFX_status+$104
-		!SD_Goomba		= !GFX_status+$105
-		!SD_LuigiFireball	= !GFX_status+$106
-		!SD_Baseball		= !GFX_status+$107
-		!SD_KadaalLinear	= !GFX_status+$108
-		!SD_Fireball32x32	= !GFX_status+$109
-		!SD_EnemyFireball16x16	= !GFX_status+$10A
+
+		macro def_SD(name)
+			!SD_<name> := !SD_status+!Temp
+			!SD_<name>_offset := !Temp
+			!Temp := !Temp+1
+		endmacro
+
+		!Temp = 0
+		%def_SD(Hammer)
+		%def_SD(PlantHead)
+		%def_SD(Bone)
+		%def_SD(Fireball8x8)
+		%def_SD(Fireball16x16)
+		%def_SD(Goomba)
+		%def_SD(LuigiFIreball)
+		%def_SD(Baseball)
+		%def_SD(KadaalLinear)
+		%def_SD(Fireball32x32)
+		%def_SD(EnemyFireball16x16)
+
 
 	; super dynamic format:
 	; bbpppppp
@@ -663,6 +712,7 @@ endmacro
 
 		%def_file(NPC_Survivor)
 		%def_file(NPC_Tinkerer)
+		%def_file(NPC_OldYoshi)
 		%def_file(NPC_Melody)
 		%def_file(NPC_Toad)
 		%def_file(MiniMech)
@@ -685,6 +735,9 @@ endmacro
 
 		; extra stuff, sprite BG and such
 		%def_file(Sprite_BG_1)
+
+		; overworld
+		%def_file(Overworld_GFX)
 
 
 	; palset list
@@ -736,6 +789,7 @@ endmacro
 		%def_palset(special_kingking_red)
 
 		%def_palset(special_toad)
+		%def_palset(special_melody)
 
 
 
@@ -746,6 +800,7 @@ endmacro
 			; d - disable remap
 			; tt - tt bits to use for remapped pages
 			; if d is clear, the tile's tt bits are replaced by the remap tt bits
+			; by default, page 3 is set to 3, meaning it uses the extra files enabled in map modes 1 and 2
 
 
 		!BigRAM			= $6080			; if this is moved to $3700, !TransformGFX has to be recoded
@@ -774,8 +829,10 @@ endmacro
 
 		; Coin hoard is with SRAM stuff
 
-		!StatusBar		= $6EF9			; 32 bytes, tile numbers for status bar
 
+		!StatusX		= $6ACA			; 1 byte, x position of status bar (0 for mega levels, FC for normal levels)
+		!StatusBar		= $6EF9			; 32 bytes, tile numbers for status bar
+		!StatusProp		= $0080			; 32 bytes, tile prop for status bar
 
 
 
@@ -1298,7 +1355,11 @@ endmacro
 		!PeachDeathCounter	= !SRAM_buffer+$8A	; 2 bytes
 
 
-		!StoryFlags		= !SRAM_buffer+$8C
+		!SRAM_overworldX	= !SRAM_buffer+$8C	; 2 bytes
+		!SRAM_overworldY	= !SRAM_buffer+$8E	; 2 bytes
+
+
+		!StoryFlags		= !SRAM_buffer+$90
 		; +00:	realm unlock state, 1 bit for each realm (if this is zero, load intro instead of realm select)
 		; +01:	reserved for Realm 1
 		; +02:	first 2 bits used by Mountain King
@@ -1538,7 +1599,7 @@ endmacro
 
 		!OAM			= $6200			;\ Main mirror
 		!OAMhi			= $6420			;/
-		!OAMindex		= $7473			; lo byte
+		!OAMindex		= $7473			; lo byte (only used to keep track of how many tiles are in OAM last frame)
 		!OAMindexhi		= $7474			; hi bit
 		; $7474 has been remapped to $7475 to allow oam index to be used in 16-bit mode
 
@@ -1568,6 +1629,11 @@ endmacro
 		!OAMindex_offset	= !PrioData+8
 
 		!ActiveOAM		= $7FC0			; 2 bytes, index to currently used !PrioData
+
+		!OAMindex_p0_prev	= $7FC8
+		!OAMindex_p1_prev	= $7FCA
+		!OAMindex_p2_prev	= $7FCC
+		!OAMindex_p3_prev	= $7FCE
 
 
 		!Particle_Base		= $9A00			; bank $41
@@ -1654,13 +1720,14 @@ endmacro
 	%def_particle_simple(spritepart)
 	%def_particle_simple(coinglitter)
 	%def_particle_simple(sparkle)
+	%def_particle_simple(leaf)
 
 
 
 
 		!BG_object_Base		= $A0B0			; bank $41
 		!BG_object_Count	= 64
-		!BG_object_Size		= 8
+		!BG_object_Size		= 10
 
 		!BG_object_Type		= !BG_object_Base+$00	; which object this is
 		!BG_object_Timer	= !BG_object_Base+$01	; timer
@@ -1672,6 +1739,9 @@ endmacro
 		!BG_object_YHi		= !BG_object_Y+1	;/
 		!BG_object_W		= !BG_object_Base+$06	; how many 8x8 tiles wide this object is
 		!BG_object_H		= !BG_object_Base+$07	; how many 8x8 tiles tall this object is
+		!BG_object_Tile		= !BG_object_Base+$08	; position on page 3
+		!BG_object_Misc		= !BG_object_Base+$09	; reg that can be used for various purposes
+
 
 
 
@@ -1787,11 +1857,13 @@ endmacro
 		!FileAddress		= $405DFB		; 24-bit, scratch pointer to file
 
 
-		!NPC_Talk		= $405DFE		; 256 bytes, 1 for each NPC ID, index with NPC ID to get input for !MsgTrigger
+		!NPC_Talk		= $405DFE		; 256 word entries (512 B), 1 for each NPC ID, index with NPC ID * 2 to get input for !MsgTrigger
+		!NPC_TalkCap		= $405FFE		; same format as previous table, cap for auto-incrementing function
+
 
 
 	
-	; next entry at $405EFE
+	; next entry at $4061FE
 
 
 		; these are values not addresses
@@ -2110,7 +2182,8 @@ endmacro
 		!MsgVertOffset		= !MsgRAM+$06		; 1 byte, number of pixels to move window down (doubled)
 								;	  highest bit toggles portrait to top-right of screen
 								;	  second highest bit disables border and window
-		!MsgSequence		= !MsgRAM+$07		; 15 bytes, read backwards.
+		!MsgSequence		= !MsgRAM+$07		; 14 bytes, read backwards.
+		!MsgCutout		= !MsgRAM+$15		; 1 byte, set if window is currently cut for portrait
 		!MsgScroll		= !MsgRAM+$16		; 1 byte, current scroll value
 		!MsgCounter		= !MsgRAM+$17		; 1 byte
 		!MsgDelay		= !MsgRAM+$18		; 1 byte
@@ -2122,9 +2195,9 @@ endmacro
 		!MsgSpeed		= !MsgRAM+$1E		; 1 byte
 		!MsgEnd			= !MsgRAM+$1F		; 1 byte
 		!MsgFont		= !MsgRAM+$20		; 1 byte
-		!MsgVRAM1		= !MsgRAM+$21		; 2 bytes, portrait (lo plane)
-		!MsgVRAM2		= !MsgRAM+$23		; 2 bytes, portrait (hi plane)
-		!MsgVRAM3		= !MsgRAM+$25		; 2 bytes, border
+		!MsgVRAM1		= !MsgRAM+$21		; 2 bytes, portrait (lo plane, 64x16 px)
+		!MsgVRAM2		= !MsgRAM+$23		; 2 bytes, portrait (hi plane, 64x16 px)
+		!MsgVRAM3		= !MsgRAM+$25		; 2 bytes, border (32x16 px)
 		!MsgBackup41		= !MsgRAM+$27		; 1 byte
 		!MsgBackup42		= !MsgRAM+$28		; 1 byte
 		!MsgBackup43		= !MsgRAM+$29		; 1 byte
@@ -2137,21 +2210,67 @@ endmacro
 		!MsgBackup25		= !MsgRAM+$30		; 1 byte
 		!MsgBackup13D5		= !MsgRAM+$31		; 1 byte, layer 3 scroll setting
 		!MsgBackup3E		= !MsgRAM+$32		; 1 byte
-		!MsgTalk		= !MsgRAM+$33		; 1 byte
+		!MsgTalk		= !MsgRAM+$33		; 1 byte, eaten by NPCs to start reaction animations
 		!MsgCinematic		= !MsgRAM+$34		; 1 byte, enables cinematic mode
 		!MsgX			= !MsgRAM+$35		; 1 byte, X position to start drawing next character at
 		!MsgRow			= !MsgRAM+$36		; 1 byte, current row of text
 		!MsgCurrentArrow	= !MsgRAM+$37		; 1 byte, row of current arrow (used to replace it when it moves)
-		!MsgWordLength		= !MsgRAM+$38		; 1 byte, accumulating word length
-		!MsgCharCount		= !MsgRAM+$39		; 1 byte, accumulating characters
-		!MsgWidth		= !MsgRAM+$3A		; 1 byte, how many 8x8 tiles are reserved on layer 3 for text
-		!MsgInit		= !MsgRAM+$3B		; 1 byte, set to 80 when init code has been run
-		!MsgCachedFont		= !MsgRAM+$3C		; 1 byte
-		!MsgArrowMem		= !MsgRAM+$3D		; 1 byte, keeps track of which rows the dialogue arrow moves across
-		!MsgTerminateRender	= !MsgRAM+$3E		; 1 byte, set by a command when a render should be terminated
-		!MsgImportant		= !MsgRAM+$3F		; 1 byte: 0 = can fast forward with A/B/X/Y and skip with start, 1 = can fast forward with A/B/X/Y but not skip, 2 = can't fast forward or skip, $FF = buffering skip
-		!MsgStartupTimer	= !MsgRAM+$40		; 1 byte: set to 8 when a message box opens, then ticks down: while nonzero, the message box can not be closed
-		!MsgInputBuffer		= !MsgRAM+$41		; 8 bytes: $6DA2-$6DA9 are buffered here, and these are read instead, used to buffer inputs during startup timer
+		!MsgWordLength		= !MsgRAM+$38		; 2 bytes, accumulating word length
+		!MsgCharCount		= !MsgRAM+$3A		; 1 byte, accumulating characters
+		!MsgWidth		= !MsgRAM+$3B		; 1 byte, how many 8x8 tiles are reserved on layer 3 for text
+		!MsgInit		= !MsgRAM+$3C		; 1 byte, set to 01 when init code 1 has been run, set to 80 when init code 2 is done
+		!MsgCachedFont		= !MsgRAM+$3D		; 1 byte
+		!MsgArrowMem		= !MsgRAM+$3E		; 1 byte, keeps track of which rows the dialogue arrow moves across
+		!MsgTerminateRender	= !MsgRAM+$3F		; 1 byte, set by a command when a render should be terminated
+		!MsgImportant		= !MsgRAM+$40		; 1 byte, 0 = can fast forward with A/B/X/Y and skip with start, 1 = can fast forward with A/B/X/Y but not skip, 2 = can't fast forward or skip, $FF = buffering skip
+		!MsgStartupTimer	= !MsgRAM+$41		; 1 byte, set to 8 when a message box opens, then ticks down: while nonzero, the message box can not be closed
+		!MsgInputBuffer		= !MsgRAM+$42		; 8 bytes, $6DA2-$6DA9 are buffered here, and these are read instead, used to buffer inputs during startup timer
+		!MsgInputLock		= !MsgRAM+$4A		; 4 bytes, each bit locks out the corresponding hold bit in input buffer, this is cleared when the input is 0, used to prevent press -> hold
+		!MsgClearBox		= !MsgRAM+$4E		; 1 byte, signals that the message box should be cleared
+
+
+
+
+	macro insertMSG(name)
+	if !CompileText = 0		;\
+		!MSG_<name> := !Temp	; | 0 = just include defines
+		!Temp := !Temp+1	; |
+	endif				;/
+	if !CompileText = 1		;\
+		!MSG_<name> := !Temp	; |
+		!Temp := !Temp+1	; | 1 = compile text data
+		.MSG_<name>		; |
+	endif				;/
+	if !CompileText = 2		;\
+		dw .MSG_<name>		; | 2 = compile pointers
+	endif				;/
+	endmacro
+
+
+
+	macro def_portrait(name)
+		!port_<name> := !Temp
+		!Port_<name> := !Temp
+		!Temp := !Temp+1
+	endmacro
+
+		!Temp = 1	; 0 doesn't count
+		%def_portrait(Mario)
+		%def_portrait(Luigi)
+		%def_portrait(Kadaal)
+		%def_portrait(Leeway)
+		%def_portrait(Alter)
+		%def_portrait(Peach)
+		%def_portrait(Survivor)
+		%def_portrait(Tinkerer)
+		%def_portrait(Rallyoshi)
+		%def_portrait(Rex)
+		%def_portrait(CaptainWarrior)
+		%def_portrait(KingKing)
+
+
+
+
 
 
 	; -- GFX stuff --
@@ -2269,7 +2388,7 @@ endmacro
 		!BG2ModeH		= $7413
 		!BG2ModeV		= $7414
 		!BG2BaseV		= $7417		; 16-bit
-		!MsgTrigger		= $7426
+		!MsgTrigger		= $7426		; 16-bit
 		!DeathTimer		= $743C		; used for death animation
 		!ScrollSpriteNum	= $743E
 		!ScrollSpriteNum_L1	= !ScrollSpriteNum
@@ -2375,11 +2494,18 @@ endmacro
 		!PlayerClipping		= read3($00E3D6)	; pointer is stored with PCE.asm
 
 		!GenerateBlock		= read3($04842E)	; pointer is stored with SP_Patch.asm
-		!GetDynamicTile		= read3($048443)	; pointer is stored with SP_Patch.asm
-		!UpdateClaimedGFX	= read3($048446)	; pointer is stored with SP_Patch.asm
+
+		!TextFontData		= read3($048443)	; pointer is stored with MSG.asm
+		!TextFontGFX		= read3($048446)	; pointer is stored with MSG.asm
+
 		!TransformGFX		= read3($048449)	; pointer is stored with SP_Patch.asm
 		!LoadPortrait		= read3($04844C)	; pointer is stored with SP_Patch.asm
 		!GetRoot		= read3($04844F)	; pointer is stored with SP_Patch.asm
+
+		!GetReciprocal		= $008AB4		; SP_Patch.asm overwrites some unused old mode 7 code to fit this in
+		!1OverX			= !GetReciprocal	; alt name
+		!1OverA			= !GetReciprocal	; alt name
+
 
 		!LoadPalset		= $048452		; pointer to LoadPalset routine, must be manually read to be accessed (this is to avoid repatch problems)
 

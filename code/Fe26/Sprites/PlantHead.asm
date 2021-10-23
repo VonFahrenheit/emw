@@ -108,21 +108,9 @@ PlantHead:
 		STA !PlantHeadMode
 		+
 
-		LDA #$03 : JSL !GetDynamicTile
-		BCC .Erase
-		TYA
-		ORA #$40
-;		STA !ClaimedGFX
-		TXA
-		STA !DynamicTile+0,y
-		STA !DynamicTile+1,y
-		STA !DynamicTile+2,y
-		STA !DynamicTile+3,y
-		BRA .Return
-
+		LDA #$03 : JSL GET_SQUARE : BCC .Return
 		.Erase
 		STZ $3230,x
-
 		.Return
 		PLB
 		RTL
@@ -457,7 +445,6 @@ PlantHead:
 	STA !BigRAM+$0D
 	STA !BigRAM+$14
 	STA !BigRAM+$1B
-	JSL !UpdateClaimedGFX
 
 
 		.GetTilemap

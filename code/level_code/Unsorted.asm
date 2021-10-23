@@ -828,8 +828,6 @@ InitCameraBox:
 
 
 	.Done	PLB
-
-		INC !SmoothCamera
 		PLP
 		RTL
 
@@ -1443,27 +1441,32 @@ levelinit0:
 ;		JSL !LoadFile
 
 
-		LDA #$2D : STA !NPC_Talk+0
-		LDA #$2E : STA !NPC_Talk+1
-		LDA #$2F : STA !NPC_Talk+2
-		LDA #$30 : STA !NPC_Talk+3
-		LDA #$31 : STA !NPC_Talk+4
-		LDA #$32 : STA !NPC_Talk+5
-
-
-
-
-		SEP #$20
-		LDA #$01 : STA $410000+!BG_object_Type
-		LDA #$04 : STA $410000+!BG_object_W
-		LDA #$02 : STA $410000+!BG_object_H
 		REP #$20
-		LDA #$00D0 : STA $410000+!BG_object_X
-		LDA #$0170 : STA $410000+!BG_object_Y
+		LDA.w #!MSG_MarioSwitch : STA !NPC_Talk+(0*2)
+		LDA.w #!MSG_LuigiSwitch : STA !NPC_Talk+(1*2)
+		LDA.w #!MSG_KadaalSwitch : STA !NPC_Talk+(2*2)
+		LDA.w #!MSG_LeewaySwitch : STA !NPC_Talk+(3*2)
+		LDA.w #!MSG_AlterSwitch : STA !NPC_Talk+(4*2)
+		LDA.w #!MSG_PeachSwitch : STA !NPC_Talk+(5*2)
+
+
+		LDA.w #!MSG_Survivor_Talk_1 : STA !NPC_Talk+(6*2)
+
+
+		LDA.w #!MSG_Toad1 : STA !NPC_Talk+($10*2)
+		LDA.w #!MSG_Toad1+1 : STA !NPC_TalkCap+($10*2)
+
+
+;		SEP #$20
+;		LDA #$01 : STA $410000+!BG_object_Type
+;		LDA #$04 : STA $410000+!BG_object_W
+;		LDA #$02 : STA $410000+!BG_object_H
+;		REP #$20
+;		LDA #$00D0 : STA $410000+!BG_object_X
+;		LDA #$0170 : STA $410000+!BG_object_Y
 
 		PLP
 		RTL
-
 
 
 
@@ -1831,11 +1834,21 @@ levelinitC3:
 levelinitC4:
 	RTL
 levelinitC5:
-		LDA #$01			;\ Prevent camera from scrolling
-		STA $5E				;/
-		RTL				; > Return
+		LDA #$01 : STA $5E		; prevent camera scroll
+		RTL				; return
+
+
 
 levelinitC6:
+		LDA.b #999>>8 : STA !TimerSeconds+1
+
+		LDA $95 : BNE +
+		LDA #$FF : STA $97
+		+
+
+
+		LDA #$01 : STA !KadaalStatus			; unlock kadaal
+
 		STZ !P1Dead
 		STZ !MarioAnim
 		STZ !P2Status-$80
@@ -1845,6 +1858,8 @@ levelinitC6:
 		STZ $25
 
 		RTL
+
+
 
 
 levelinitC7:
@@ -2105,8 +2120,39 @@ levelinit139:
 	RTL
 levelinit13A:
 	RTL
+
+
 levelinit13B:
-	RTL
+
+		.BlockExit
+		LDA !LevelTable1+$5E : BMI ..done
+		LDX #$0F
+		..loop
+		LDA $3230,x : BEQ ..thisone
+		DEX : BPL ..loop
+		BRA ..done
+		..thisone
+		LDA #$80 : STA !SpriteXLo,x
+		LDA #$00 : STA !SpriteXHi,x
+		LDA #$60 : STA !SpriteYLo,x
+		LDA #$03 : STA !SpriteYHi,x
+		LDA #$0F : STA !NewSpriteNum,x
+		LDA #$0C : STA !ExtraBits,x
+		LDA #$36 : STA $3200,x
+		LDA #$01 : STA $3230,x
+		JSL !ResetSprite
+		..done
+
+
+
+		REP #$20
+		LDA.w #!MSG_Toad_Guard2 : STA !NPC_Talk+($10*2)
+		SEP #$20
+
+		JSL InitCameraBox
+		RTL
+
+
 levelinit13C:
 	RTL
 levelinit13D:
@@ -2470,19 +2516,88 @@ levelinit1EF:
 levelinit1F0:
 	RTL
 levelinit1F1:
-	RTL
+
+		.BlockExit
+		LDA !LevelTable1+$5E : BMI ..done
+		LDX #$0F
+		..loop
+		LDA $3230,x : BEQ ..thisone
+		DEX : BPL ..loop
+		BRA ..done
+		..thisone
+		LDA #$80 : STA !SpriteXLo,x
+		LDA #$00 : STA !SpriteXHi,x
+		LDA #$10 : STA !SpriteYLo,x
+		LDA #$00 : STA !SpriteYHi,x
+		LDA #$0F : STA !NewSpriteNum,x
+		LDA #$0C : STA !ExtraBits,x
+		LDA #$36 : STA $3200,x
+		LDA #$01 : STA $3230,x
+		JSL !ResetSprite
+		..done
+
+
+		JSL InitCameraBox
+
+
+		REP #$20
+		LDA.w #!MSG_Toad_IntroLevel_1 : STA !NPC_Talk+($10*2)
+		SEP #$20
+
+		RTL
+
+
 levelinit1F2:
 	RTL
 levelinit1F3:
 	RTL
 levelinit1F4:
-	RTL
+		REP #$20
+		LDA.w #!MSG_Toad_Training_1 : STA !NPC_Talk+($10*2)
+		SEP #$20
+
+		RTL
+
+
 levelinit1F5:
 	RTL
 levelinit1F6:
 	RTL
 levelinit1F7:
-	RTL
+
+		LDA #$FF : STA !TimerSeconds+1
+
+		LDA !LevelTable1+$5E : BMI .NotIntro
+		REP #$20
+		LDA.w #!MSG_Toad_Wakeup
+		STA !NPC_Talk+($10*2)
+		STA !NPC_TalkCap+($10*2)
+		SEP #$20
+
+
+	; spawn wakeup toad on intro mode
+		LDA #$0E : STA !NewSpriteNum
+		LDA #$36 : STA $3200
+		LDA #$10 : STA !ExtraProp1
+		LDA #$01 : STA !ExtraProp2
+		LDA #$30 : STA !SpriteXLo
+		STZ !SpriteXHi
+		LDA #$B0 : STA !SpriteYLo
+		STZ !SpriteYHi
+		LDA #$01 : STA $3230
+		LDA #$08 : STA !ExtraBits
+		LDX #$00
+		JSL !ResetSprite
+
+
+		.NotIntro
+
+		JSL InitCameraBox
+
+
+		RTL
+
+
 levelinit1F8:
 	RTL
 levelinit1F9:
@@ -2520,6 +2635,10 @@ level0:
 	DisplayYC:
 		PHB : PHK : PLB
 
+		LDA !LevelTable1+$5E : BMI .Process	; only draw if intro level has been cleared
+		JMP .Return
+
+		.Process
 		LDX !OAMindex				; OAM index
 		LDY #$0C				; loop counter
 	-	LDA .Tilemap+0,y			;\
@@ -2570,6 +2689,7 @@ level0:
 		CLC : ADC #$10
 		STA !OAMindex				; set OAM index
 
+		.Return
 		PLB
 		RTL
 
@@ -2644,16 +2764,15 @@ level25:
 		RTL
 		.PortraitLoaded
 
-		LDA #$B1 : STA $79B8+0			;\
-		LDA #$97 : STA $79D8+0			; |
-		JSL WARP_BOX				; | elevator exit
-		db $02 : dw $0000,$0090 : db $10,$40	; |
+
+		JSL WARP_BOX				;\
+		db $02 : dw $0000,$0090 : db $10,$40	; | elevator exit
+		dw $97B1				; |
 		BCC $01 : RTL				;/
 
-		LDA #$F1 : STA $79B8+0			;\
-		LDA #$05 : STA $79D8+0			; |
-		JSL WARP_BOX				; | command bridge exit
-		db $01 : dw $00F0,$0090 : db $10,$40	; |
+		JSL WARP_BOX				;\
+		db $01 : dw $00F0,$0090 : db $10,$40	; | command bridge exit
+		dw $05F1				; |
 		BCC $01 : RTL				;/
 
 
@@ -2751,11 +2870,14 @@ level25:
 
 	LDA !Characters
 	LSR #4
+	ASL A
 	TAX
-	LDA .CharIndex,x : STA $00
-	CLC : ADC #$03
-	CLC : ADC !Level+5
+	REP #$20
+	LDA !Level+5
+	AND #$00FF
+	CLC : ADC .CharIndex,x : STA $00
 	STA !MsgTrigger
+	SEP #$20
 
 	LDA $6DA6
 	AND #$03 : BEQ .NoInput
@@ -2769,10 +2891,14 @@ level25:
 	CMP #$07
 	BCC $02 : LDA #$00
 	STA !Level+5
-	LDA $00
-	CLC : ADC #$03
-	CLC : ADC !Level+5
+
+	REP #$20
+	LDA !Level+5
+	AND #$00FF
+	CLC : ADC $00
 	STA !MsgTrigger
+	SEP #$20
+
 	LDA #$00
 	STA.l $400000+!MsgRAM+$00
 	STA.l $400000+!MsgRAM+$01
@@ -2944,7 +3070,12 @@ level25:
 
 
 
-.CharIndex	db $00,$07,$0E,$15,$00,$00
+.CharIndex	dw !MSG_Mario_Upgrade_1
+		dw !MSG_Luigi_Upgrade_1
+		dw !MSG_Kadaal_Upgrade_1
+		dw !MSG_Leeway_Upgrade_1
+		dw !MSG_Alter_Upgrade_1
+		dw !MSG_Peach_Upgrade_1
 
 
 .CursorTM	db $2C,$1C,$EC,$3F
@@ -3450,28 +3581,30 @@ levelC6:
 		LDA !NewSpriteNum,x
 		CMP #$0E : BNE ++
 		LDA #$01 : STA $3320,x
-		LDA #$01 : STA !ExtraProp2,x
+		LDA #$3E : STA !ExtraProp2,x
 
-		LDA !Level+1				;\
-		BEQ $02 : LDA #$20			; |
-		ORA #$40				; |
-		STA !LevelTable1+$5E			; |
-		LDA !Level : STA !LevelTable2+$5E	;/
+		LDA !Level+1					;\
+		BEQ $02 : LDA #$20				; |
+		ORA #$40					; |
+		STA !LevelTable1+$5E				; |
+		LDA !Level : STA !LevelTable2+$5E		;/
 
-		LDA #$01 : STA !MsgTrigger
+		REP #$20
+		LDA.w #!MSG_MeetKadaal_1 : STA !MsgTrigger
+		SEP #$20
 	++	DEX : BPL -
 		LDA #$01 : STA !Level+4
 		+
 
 
 	; end level
-		REP #$20				;\ end level at coordinate 0x1FF0
-		LDA #$1FF0 : JSL END_Right		;/
-		LDA !GameMode				;\
-		CMP #$0B : BNE .NotEnded		; |
-		STZ $6109				; | beat intro level when reaching the end
-		LDA #$80 : TSB !LevelTable1		; |
-		.NotEnded				;/
+		REP #$20					;\ end level at coordinate 0x1FF0
+		LDA #$1FF0 : JSL END_Right			;/
+		LDA !GameMode					;\
+		CMP #$0B : BNE .NotEnded			; |
+		STZ $6109					; | beat intro level when reaching the end
+		LDA #$80 : TSB !LevelTable1			; |
+		.NotEnded					;/
 
 	; set HDMA
 		LDA.b #.HDMA : STA !HDMAptr+0
@@ -4164,40 +4297,67 @@ level13B:
 		STZ $01					; | YC count
 		JSL DisplayYC				;/
 
-		LDA #$F9 : STA $79B8+0			;\
-		LDA #$05 : STA $79D8+0			; |
-		JSL WARP_BOX				; | deck exit (right)
-		db $01 : dw $00F0,$0050 : db $10,$40	; |
+		JSL WARP_BOX				;\
+		db $01 : dw $00F0,$0050 : db $10,$40	; | deck exit (right)
+		dw $05F9				; |
 		BCC $01 : RTL				;/
 
-		LDA #$25 : STA $79B8+0			;\
-		LDA #$04 : STA $79D8+0			; |
-		JSL WARP_BOX				; | engine room exit
-		db $01 : dw $00F0,$00F0 : db $10,$40	; |
+		JSL WARP_BOX				;\
+		db $01 : dw $00F0,$00F0 : db $10,$40	; | engine room exit
+		dw $0425				; |
 		BCC $01 : RTL				;/
 
-		LDA #$F9 : STA $79B8+0			;\
-		LDA #$0D : STA $79D8+0			; |
-		JSL WARP_BOX				; | deck exit (left)
-		db $02 : dw $0000,$00F0 : db $10,$40	; |
+		JSL WARP_BOX				;\
+		db $02 : dw $0000,$00F0 : db $10,$40	; | deck exit (left)
+		dw $0DF9				; |
 		BCC $01 : RTL				;/
 
-		LDA #$F4 : STA $79B8+1			;\
-		LDA #$05 : STA $79D8+1			; |
-		JSL WARP_BOX				; | training room exit
-		db $01 : dw $00F0,$0270 : db $10,$40	; |
+		JSL WARP_BOX				;\
+		db $01 : dw $00F0,$0270 : db $10,$40	; | training room exit
+		dw $05F4				; |
 		BCC $01 : RTL				;/
 
-		LDA #$F5 : STA $79B8+1			;\
-		LDA #$05 : STA $79D8+1			; |
-		JSL WARP_BOX				; | corridor exit
-		db $02 : dw $0000,$02F0 : db $10,$40	; |
+		JSL WARP_BOX				;\
+		db $02 : dw $0000,$02F0 : db $10,$40	; | corridor exit
+		dw $05F5				; |
 		BCC $01 : RTL				;/
 
 		REP #$20
-		LDA #$0380 : JSL END_Down
+		LDA.w #.RoomPointers
+		JSL LoadCameraBox
 
+		REP #$20
+		LDA #$0380 : JSL END_Down
 		RTL
+
+
+
+		.RoomPointers
+		dw .ScreenMatrix
+		dw .BoxTable
+		dw .DoorList
+		dw .DoorTable
+
+
+
+
+;	Key ->	   X  Y  W  H  S  FX FY
+;		   |  |  |  |  |  |  |
+;		   V  V  V  V  V  V  V
+;
+.BoxTable
+.Box0	%CameraBox(0, 0, 0, 3, $FF, 0, 0)
+
+.ScreenMatrix	db $00
+		db $00
+		db $00
+		db $00
+		db $00
+
+.DoorList	db $FF			; no doors
+.DoorTable
+
+
 
 level13C:
 	RTL
@@ -4591,19 +4751,39 @@ level1F1:
 		STZ $01					; | YC count
 		JSL DisplayYC				;/
 
-		LDA #$25 : STA $79B8+0			;\
-		LDA #$0C : STA $79D8+0			; |
-		JSL WARP_BOX				; | engine room exit
-		db $02 : dw $0000,$0090 : db $10,$40	; |
+		JSL WARP_BOX				;\
+		db $02 : dw $0000,$0090 : db $10,$40	; | engine room exit
+		dw $0C25				; |
 		BCC $01 : RTL				;/
 
-		LDA #$90 : STA $79B8+0			;\
-		LDA #$F7 : STA $79D8+0			; |
-		JSL WARP_BOX				; | deck exit
-		db $08 : dw $0060,$0000 : db $40,$10	; |
+		JSL WARP_BOX				;\
+		db $08 : dw $0060,$0000 : db $40,$10	; | deck exit
+		dw $F790				; |
 		BCC $01 : RTL				;/
 
-		RTL
+
+		REP #$20
+		LDA.w #.RoomPointers
+		JML LoadCameraBox
+
+		.RoomPointers
+		dw .ScreenMatrix
+		dw .BoxTable
+		dw .DoorList
+		dw .DoorTable
+
+;	Key ->	   X  Y  W  H  S  FX FY
+;		   |  |  |  |  |  |  |
+;		   V  V  V  V  V  V  V
+;
+.BoxTable
+.Box0	%CameraBox(0, 0, 1, 0, $FF, 0, 0)
+
+.ScreenMatrix	db $00,$00,$00
+
+.DoorList	db $FF			; no doors
+.DoorTable
+
 
 
 ; empty room
@@ -4630,10 +4810,9 @@ level1F4:
 		STZ $01					; | YC count
 		JSL DisplayYC				;/
 
-		LDA #$B3 : STA $79B8+0			;\
-		LDA #$97 : STA $79D8+0			; |
-		JSL WARP_BOX				; | elevator exit
-		db $02 : dw $0000,$0170 : db $10,$40	; |
+		JSL WARP_BOX				;\
+		db $02 : dw $0000,$0170 : db $10,$40	; | elevator exit
+		dw $97B3				; |
 		BCC $01 : RTL				;/
 
 		RTL
@@ -4644,16 +4823,14 @@ level1F5:
 		STZ $01					; | YC count
 		JSL DisplayYC				;/
 
-		LDA #$F8 : STA $79B8+0			;\
-		LDA #$05 : STA $79D8+0			; |
-		JSL WARP_BOX				; | coin hoard exit
-		db $02 : dw $0000,$0090 : db $10,$40	; |
+		JSL WARP_BOX				;\
+		db $02 : dw $0000,$0090 : db $10,$40	; | coin hoard exit
+		dw $05F8				; |
 		BCC $01 : RTL				;/
 
-		LDA #$B4 : STA $79B8+2			;\
-		LDA #$97 : STA $79D8+2			; |
-		JSL WARP_BOX				; | elevator exit
-		db $01 : dw $02F0,$0090 : db $10,$40	; |
+		JSL WARP_BOX				;\
+		db $01 : dw $02F0,$0090 : db $10,$40	; | elevator exit
+		dw $97B4				; |
 		BCC $01 : RTL				;/
 
 		RTL
@@ -4669,7 +4846,33 @@ level1F7:
 		STZ $01					; | YC count
 		JSL DisplayYC				;/
 
-		RTL
+		REP #$20
+		LDA.w #.RoomPointers
+		JML LoadCameraBox
+
+		.RoomPointers
+		dw .ScreenMatrix
+		dw .BoxTable
+		dw .DoorList
+		dw .DoorTable
+
+;	Key ->	   X  Y  W  H  S  FX FY
+;		   |  |  |  |  |  |  |
+;		   V  V  V  V  V  V  V
+;
+.BoxTable
+.Box0	%CameraBox(0, 0, 0, 0, $FF, 0, 0)
+.Box1	%CameraBox(1, 0, 0, 0, $FF, 0, 0)
+.Box2	%CameraBox(2, 0, 0, 0, $FF, 0, 0)
+.Box3	%CameraBox(3, 0, 0, 0, $FF, 0, 0)
+
+.ScreenMatrix	db $00,$01,$02,$03
+
+.DoorList	db $FF			; no doors
+.DoorTable
+
+
+
 
 
 ; coin hoard
@@ -4678,10 +4881,9 @@ level1F8:
 		STZ $01					; | YC count
 		JSL DisplayYC				;/
 
-		LDA #$F5 : STA $79B8+0			;\
-		LDA #$0D : STA $79D8+0			; |
-		JSL WARP_BOX				; | corridor exit
-		db $01 : dw $00F0,$0090 : db $10,$40	; |
+		JSL WARP_BOX				;\
+		db $01 : dw $00F0,$0090 : db $10,$40	; | corridor exit
+		dw $0DF5				; |
 		BCC $01 : RTL				;/
 
 		RTL
@@ -4693,22 +4895,19 @@ level1F9:
 		STZ $01					; | YC count
 		JSL DisplayYC				;/
 
-		LDA #$B2 : STA $79B8+3 : STA $79B8+4	;\
-		LDA #$97 : STA $79D8+3 : STA $79D8+4	; |
-		JSL WARP_BOX				; | elevator exit (right)
-		db $01 : dw $0410,$0140 : db $10,$40	; |
+		JSL WARP_BOX				;\
+		db $01 : dw $0410,$0140 : db $10,$40	; | elevator exit (right)
+		dw $97B2				; |
 		BCC $01 : RTL				;/
 
-		LDA #$B0 : STA $79B8+4			;\
-		LDA #$97 : STA $79D8+4			; |
-		JSL WARP_BOX				; | elevator exit (left)
-		db $02 : dw $04E0,$00A0 : db $10,$40	; |
+		JSL WARP_BOX				;\
+		db $02 : dw $04E0,$00A0 : db $10,$40	; | elevator exit (left)
+		dw $97B0				; |
 		BCC $01 : RTL				;/
 
-		LDA #$F1 : STA $79B8+6			;\
-		LDA #$0D : STA $79D8+6			; |
-		JSL WARP_BOX				; | command bridge exit
-		db $04 : dw $0660,$00E0 : db $40,$10	; |
+		JSL WARP_BOX				;\
+		db $04 : dw $0660,$00E0 : db $40,$10	; | command bridge exit
+		dw $0DF1				; |
 		BCC $01 : RTL				;/
 
 		REP #$20
@@ -5633,57 +5832,55 @@ LightningBolt:
 ;
 ; Data format:
 ; 00: ID (bit in RAM table, min 0 max 15) times 2
-; 01: Message number
-; 02-03: Xcoord
-; 04-05: Ycoord
-; 06: Width
-; 07: Height
+; 01-02: Xcoord
+; 03-04: Ycoord
+; 05: Width
+; 06: Height
+; 07-08: MSG number
 TalkOnce:
 		STA $00
-		LDA ($00)
-		TAY			; ID in Y
-		XBA : TAX		; Message number in X
-		LDA.w .Table,y		;\
-		AND $6DF5		; | Only trigger message once
-		BNE .Return		;/
+		LDA ($00) : TAY				; ID in Y
+		LDA.w .Table,y				;\ only trigger message once
+		AND $6DF5 : BNE .Return			;/
 
-		PHY			; ID on stack
+		PHY					; ID on stack
+		INC $00
+		LDA ($00)
+		STA $04					; Xlo in $04
+		STA $09					; Xhi in $0A
 		INC $00
 		INC $00
 		LDA ($00)
-		STA $04			; Xlo in $04
-		STA $09			; Xhi in $0A
+		STA $05					; Ylo in $05
+		XBA : STA $0B				; Yhi in $0B
 		INC $00
 		INC $00
 		LDA ($00)
-		STA $05			; Ylo in $05
-		XBA : STA $0B		; Yhi in $0B
+		STA $06					; dimensions in $06-$07
 		INC $00
 		INC $00
-		LDA ($00)
-		STA $06			; Dimensions in $06-$07
-		INC $00
-		INC $00
-		SEP #$21		; 8-bit, set carry
-		JSL !PlayerClipping	; Check player contact
+		LDA ($00) : PHA				; push message number
+
+		SEP #$21				; 8-bit, set carry
+		JSL !PlayerClipping			; check player contact
 		BCC .ReturnP
-		STZ $00			;\
-		LSR A : BCC +		; |
-		PHA			; |
-		LDA !P2Blocked-$80	; |
-		AND #$04		; |
-		TSB $00			; | Only trigger on a player that's on the ground
-		PLA			; |
-	+	LSR A : BCC +		; |
-		LDA !P2Blocked		; |
-		AND #$04		; |
-		TSB $00			; |
-	+	LDA $00 : BEQ .ReturnP	;/
-		STX !MsgTrigger		; Trigger message
-		PLY
+		STZ $00					;\
+		LSR A : BCC +				; |
+		PHA					; |
+		LDA !P2Blocked-$80			; |
+		AND #$04				; |
+		TSB $00					; | only trigger on a player that's on the ground
+		PLA					; |
+	+	LSR A : BCC +				; |
+		LDA !P2Blocked				; |
+		AND #$04				; |
+		TSB $00					; |
+	+	LDA $00 : BEQ .ReturnP			;/
 		REP #$20
-		LDA.w .Table,y		;\ Mark message as triggered
-		TSB $6DF5		;/
+		PLA : STA !MsgTrigger			; trigger MSG
+		PLY
+		LDA.w .Table,y				;\ mark message as triggered
+		TSB $6DF5				;/
 		RTL
 
 		.ReturnP
@@ -6129,12 +6326,13 @@ WATER_BOX:
 
 
 ; JSL here
-; the JSL should be followed by 7 data bytes (JSL will return to first instruction after data)
+; the JSL should be followed by 9 data bytes (JSL/RTL will return to first instruction after data)
 ; 00:		directional flags (1 = right, 2 = left, 4 = down, 8 = up), 0 will never trigger F will always trigger
 ; 01-02:	16-bit Xpos of box, left border
 ; 03-04:	16-bit Ypos of box, top border
 ; 05:		8-bit width of box
 ; 06:		8-bit height of box
+; 07-08:	entrance link data
 ;
 ; if a player touches the box and is moving in one of the enabled directions, a level->level transition will be triggered
 ;
@@ -6163,9 +6361,11 @@ WARP_BOX:
 		LDA $01,s			;\
 		INC A				; | lo / hi bytes
 		STA $00				;/
-		CLC : ADC #$0006		;\ update stack value (return address)
+		CLC : ADC #$0008		;\ update stack value (return address)
 		STA $01,s			;/
 
+		LDY #$07			;\ entrance link data
+		LDA [$00],y : STA !BigRAM+2	;/
 		LDY #$03			;\
 		LDA [$00],y			; | box Y
 		STA $05				; |
@@ -6179,7 +6379,6 @@ WARP_BOX:
 		STA $04				;/
 		LDY #$00			;\ directional value
 		LDA [$00],y : STA !BigRAM	;/
-
 		LDA !P2Invinc-$80 : PHA		;\ backup invinc regs
 		LDA !P2Invinc : PHA		;/
 		STZ !P2Invinc-$80		;\ temp clear invinc regs
@@ -6190,21 +6389,32 @@ WARP_BOX:
 		BCC .Return
 
 		LDX !BigRAM			;\ don't check directions if all directions are enabled already
-		CPX #$0F : BEQ EXIT_Exit+2	;/
+		CPX #$0F : BEQ .Link		;/
 		LSR A : BCC .P2			;\
 	.P1	PHA				; |
 		LDY #$00			; | check player 1
 		JSR .CheckDirections		; |
 		PLA				; > pull A first
-		BCS EXIT_Exit+2			;/
+		BCS .Link			;/
 		LSR A : BCC .Return		; > return if only player 1 should be checked
 	.P2	LDY #$80			;\
 		JSR .CheckDirections		; | check player 2
-		BCS EXIT_Exit+2			;/
+		BCS .Link			;/
 
 		.Return
 		CLC
 		RTL
+
+		.Link
+		LDX #$1F			;\
+		LDA !BigRAM+2			; | level link data (lo byte)
+	-	STA $79B8,x			; |
+		DEX : BPL -			;/
+		LDX #$1F			;\
+		LDA !BigRAM+3			; | level link data (hi byte)
+	-	STA $79D8,x			; |
+		DEX : BPL -			;/
+		JMP EXIT_Exit+2
 
 
 		.CheckDirections
@@ -6243,7 +6453,7 @@ WARP_BOX:
 
 
 EXIT:
-		.Exit					; Placed here so the WARP_BOX routine can reach
+		.Exit
 		SEP #$20
 		LDA #$06 : STA $71
 		STZ $88

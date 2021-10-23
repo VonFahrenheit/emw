@@ -552,8 +552,8 @@ namespace Mario
 		LDA !P2Carry : BNE ..noflip			; > can't flip while carrying something
 		LDA !P2SpinFlip : BEQ ..noflip			; |
 		DEC !P2SpinFlip					; |
-		BIT $18 : BPL ..nospin				; |
-		LDA #$01 : STA !MarioSpinJump			; | can switch to spin jump during first 3 frames of jump
+		BIT $17 : BPL ..nospin				; |
+		LDA #$01 : STA !MarioSpinJump			; | can switch to spin jump during first 3 frames of jump (use held input to work with buffer)
 		LDA #$04 : STA !SPC4				; > spin jump SFX
 		STZ !P2SpinFlip					; |
 		..nospin					; |
@@ -1116,6 +1116,7 @@ MarioGraphics:
 
 
 	ANIM:
+		; VANILLA STUFF
 		dw .16x32TM,.IdleDyn		; 00
 		dw .16x32TM,.WalkDyn00		; 01
 		dw .16x32TM,.WalkDyn01		; 02
@@ -1187,6 +1188,12 @@ MarioGraphics:
 		dw .16x32TM,.FaceBackDyn	; 44
 		dw .16x32TM,.FaceFrontDyn	; 45
 		dw .16x32TM,.IdleDyn		; 46
+
+		; CUSTOM STUFF
+		dw .16x32TM,.HurtDyn00		; 47
+		dw .24x32TM,.HurtDyn01		; 48
+		dw .16x32TM,.HangDyn		; 49
+
 
 
 

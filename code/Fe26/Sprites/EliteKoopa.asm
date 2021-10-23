@@ -86,26 +86,12 @@ EliteKoopa:
 		TYA : STA $3320,x			;/
 		LDA #$3C : STA !SuperArmor		; > start with one charge of super armor
 
-		LDA #$03 : JSL !GetDynamicTile
-		BCC .Erase
-		TYA
-		ORA #$40
-;		STA !ClaimedGFX
-		TXA
-		STA !DynamicTile+0,y
-		STA !DynamicTile+1,y
-		STA !DynamicTile+2,y
-		STA !DynamicTile+3,y
-
+		LDA #$03 : JSL GET_SQUARE : BCS .Return
+		.Erase
+		STZ $3230,x
 		.Return
 		PLB
 		RTL
-
-		.Erase
-		STZ $3230,x
-		PLB
-		RTL
-
 
 
 	DATA:
@@ -1045,37 +1031,37 @@ EliteKoopa:
 
 	.IdleTM
 	dw $0010
-	db $30,$F8,$F0,$00
-	db $30,$00,$F0,$01
-	db $30,$F8,$00,$03
-	db $30,$00,$00,$04
+	db $20,$F8,$F0,$00
+	db $20,$00,$F0,$01
+	db $20,$F8,$00,$03
+	db $20,$00,$00,$04
 
 	.WalkTM
 	dw $0010
-	db $30,$F8,$EE,$00
-	db $30,$00,$EE,$01
-	db $30,$F8,$FE,$03
-	db $30,$00,$FE,$04
+	db $20,$F8,$EE,$00
+	db $20,$00,$EE,$01
+	db $20,$F8,$FE,$03
+	db $20,$00,$FE,$04
 
 	.ShellTM00
 	dw $0004
-	db $30,$00,$00,$A4
+	db $20,$00,$00,$A4
 
 	.ShellTM01
 	dw $0004
-	db $30,$00,$00,$A6
+	db $20,$00,$00,$A6
 
 	.ShellTM02
 	dw $0004
-	db $70,$00,$00,$A4
+	db $60,$00,$00,$A4
 
 	.ShellTM03
 	dw $0004
-	db $30,$00,$00,$A8
+	db $20,$00,$00,$A8
 
 	.PlumeTM
 	dw $0004
-	db $30,$00,$00,$06
+	db $20,$00,$00,$06
 
 
 

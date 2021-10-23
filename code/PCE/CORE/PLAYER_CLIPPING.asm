@@ -45,10 +45,11 @@
 		LSR A					; |
 		ROR A					; |
 		AND #$80				; |
+		TAY					; |
 		REP #$20				; |
 		LDA !P2Hurtbox-$80+2,y			; |
-		STA $01					; |
-		STA $08					; | otherwise just load hurtbox and return
+		STA $01					; | otherwise just load hurtbox and return
+		STA $08					; |
 		LDA !P2Hurtbox-$80+4,y : STA $02	; |
 		LDA !P2Hurtbox-$80+0,y			; |
 		SEP #$20				; |

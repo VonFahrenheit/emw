@@ -17,8 +17,8 @@ sa1rom
 ; $280-$29F:	cached 8x16 linear arrow GFX (used for dialogue arrow)
 ; $2A0-$2BF:	rendering buffer for dialogue arrow (superimposes arrow on text column), 8x16 linear
 ; $2C0-$2FD:	----
-; $2FC-$2FD:	word to fill layer 3 GFX with when clearing box (0x0000, empty tile)
-; $2FE-$2FF:	word to fill layer 3 tilemap with within text box (0x32FC, empty tile)
+; $2FC-$2FD:	word to fill layer 3 GFX with when clearing box (0x0000 or 0x00FF)
+; $2FE-$2FF:	word to fill layer 3 tilemap with within text box (see CLEAR_BOX, usually tile 0x14 or 0x15)
 ; $300-$3FF:	backup of GFX overwritten by border
 ; $400-$7FF:	backup of GFX overwritten by portrait
 ; $C00-$FFF:	work space for rendering the two lines currently being worked on
@@ -37,9 +37,8 @@ sa1rom
 
 	org $00A1DF
 	print "-- MSG --"
-	print "Inserted hijack at $", pc, "."
 
-		autoclean JML MESSAGE_ENGINE				; hijack message box routine
+		JML MESSAGE_ENGINE					; hijack message box routine
 
 
 ; - Defines:
@@ -50,10 +49,10 @@ sa1rom
 
 ; - Code:
 
-	freecode
-	print "Lunar Magic's message data is located at $", hex(read3($03BC0B)), "."
-	print "Custom code inserted at $", pc, "."
-
+	org $118000
+		db $53,$54,$41,$52	; claim this bank
+		dw $7FF7
+		dw $8008
 
 	; this code is only run if MSG was called with a normal JSL
 	; if it was called with the %CallMSG() macro, this part is skipped
@@ -66,12 +65,19 @@ sa1rom
 		TRB $6DA7						; |
 		.NoSkip							;/
 
+		LDA $400000+!MsgClearBox : BNE .Mode0			; freeze on frames that the box was cleared to prevent tearing on levels with HDMA
 		LDA.l !MsgMode : BEQ .Mode0
 		CMP #$01 : BEQ .Mode1
 		CMP #$02 : BEQ .Mode2
 
 		.Mode0							; full pause mode
-		JML !BuildOAM
+		REP #$20						;\
+		LDA !OAMindex_p0_prev : STA !OAMindex_p0		; |
+		LDA !OAMindex_p1_prev : STA !OAMindex_p1		; |
+		LDA !OAMindex_p2_prev : STA !OAMindex_p2		; | build OAM, but keep _p0-_p2 on screen
+		SEP #$30						; |
+		JSL !BuildOAM						; |
+		RTL							;/
 
 		.Mode1							; run animations but don't let players move
 		LDA #$02
@@ -79,32 +85,29 @@ sa1rom
 		STA !P2Stasis
 
 		.Mode2							; everything moves during message
-;		LDA $400000+!MsgVertOffset
-;		AND #$40 : BEQ ..noborder
-;		LDX #$25						;\
-;		LDA #$02						; |
-;	-	STA !OAMhi_p3,x						; | set proper OAM size
-;		DEX							; |
-;		CPX #$03 : BNE -					;/
-;		LDA #$98 : STA !OAMindex_p3				; > set OAM index to after message tiles
-;		..noborder
 		REP #$20
-		LDA $01,s
-		INC #2
-		STA $01,s
-		SEP #$20
+		PLA
+		INC #2							; +2 to return address, skip BRA .RETURN in GAMEMODE14 code
+		PHA
+		SEP #$30
 		RTL
+
+
 
 
 	MESSAGE_ENGINE:
 		PHK : PEA.w TrueReturn-1				; set proper return address
-
 		%TrackSetup(!TrackMSG)
 
 	; INIT CODE
-		LDA $400000+!MsgInit
+		LDA $400000+!MsgInit : BEQ .Init1
 		CMP #$80 : BEQ .NoInit
+		.Init2
+		JSR MAKE_BACKUP						; will also call ApplyHeader and CLEAR_BOX at the end
 		LDA #$80 : STA $400000+!MsgInit
+		BRA +
+		.Init1
+		LDA #$01 : STA $400000+!MsgInit
 		PHP
 		REP #$10
 		LDX #$01BE
@@ -113,8 +116,8 @@ sa1rom
 		STZ $0201,x
 		DEX #2 : BPL -
 		PLP
-		JSR MAKE_BACKUP						; will also call ApplyHeader and CLEAR_BOX at the end
-		REP #$20						;\
+		RTL
+	+	REP #$20						;\
 		STZ $6DA2						; |
 		STZ $6DA4						; |
 		STZ $6DA6						; | don't buffer inputs on frame 1
@@ -124,35 +127,32 @@ sa1rom
 		.NoInit
 
 	; MAIN CODE
-		LDX #$07						;\
-	-	LDA $6DA2,x						; |
-		ORA $400000+!MsgInputBuffer,x				; | buffer input every frame
-		STA $400000+!MsgInputBuffer,x				; |
+		LDA #$00 : STA $400000+!MsgClearBox			; box has not been cleared on this frame
+
+		LDA $400000+!MsgWaitFlag : BNE .Buffer			; > always buffer if wait flag is set to prevent softlock
+		LDA $400000+!MsgDelay : BEQ .Buffer			;\
+		LDA #$00						; |
+		LDX #$07						; | 0 input during delay
+	-	STA $400000+!MsgInputBuffer+0,x				; |
+		DEX : BPL -						; |
+		BRA .NoBuffer						;/
+
+		.Buffer							;\
+		LDX #$03						; |
+	-	LDA $6DA2,x						; | process input lock
+		AND $400000+!MsgInputLock,x				; |
+		STA $400000+!MsgInputLock,x				;/
+		LDA $6DA2,x						;\
+		EOR $400000+!MsgInputLock,x				; | buffer hold input
+		ORA $400000+!MsgInputBuffer,x				; |
+		STA $400000+!MsgInputBuffer,x				;/
+		LDA $6DA6,x						;\
+		ORA $400000+!MsgInputBuffer+4,x				; |
+		STA $400000+!MsgInputBuffer+4,x				; | buffer press input
 		DEX : BPL -						; |
 		.NoBuffer						;/
 
-		PHB : LDA #$40
-		PHA : PLB
-
-
-		LDA !MsgImportant : BNE .NoSkip
-		JSR CHECK_INPUT_Start
-		BEQ .NoSkip
-		LDA #$FF : STA !MsgImportant				; buffer message skip
-		BRA .Process						; no delay when skipping message
-		.NoSkip
-		LDA !MsgWaitFlag : BEQ .NoWait
-		.SearchInput
-		JSR CHECK_INPUT_Press
-		AND #$C0 : BEQ .Return
-		.InputFound
-		STZ !MsgWaitFlag
-	.Return	PLB
-		RTL
-		.NoWait
-
-		.Process
-		PHK : PLB						; change bank
+		PHB : PHK : PLB						; change bank
 		LDX !WindowDir						; X = Window growing/shrinking flag
 		LDA $400000+!MsgCinematic : BEQ +
 		LDA !WindowSize
@@ -175,7 +175,7 @@ sa1rom
 		LDA $400000+!MsgImportant
 		CMP #$FF : BNE .NoSkipBuffer
 		LDA.l !MsgMode : BNE +
-		JSL !KillOAM
+	;	JSL !KillOAM
 	+	JMP LOAD_MESSAGE_Close
 		.NoSkipBuffer
 		JMP LOAD_MESSAGE
@@ -185,6 +185,7 @@ sa1rom
 		; this code runs on the last frame of the window being open
 		LDA #$04 : TRB !HDMA
 		STZ !MsgTrigger						; otherwise close the message and restore a bunch of regs from backups
+		STZ !MsgTrigger+1					;
 		STZ !WindowDir						;
 		LDA $400000+!MsgBackup41 : STA $41
 		LDA $400000+!MsgBackup42 : STA $42
@@ -218,13 +219,16 @@ sa1rom
 		RTL
 
 
+
+
 	LOAD_MESSAGE:
-		LDA #$1F : STA !MainScreen				;\ everything on main screen, nothing on subscreen
-		STZ !SubScreen						;/
 		LDA #$09 : STA !2105					; > mode 1 with absolute priority for layer 3
 		LDA.l !MsgMode : BEQ .NoClear				;\
-		JSL !KillOAM						; | manually clear OAM during message modes 1 and 2
+	;	JSL !KillOAM						; | manually clear OAM during message modes 1 and 2
 		.NoClear						;/
+
+
+		LDA #$22 : STA $43					; enable window 1 on sprite layer as well
 
 
 		LDA.l $400000+!MsgVertOffset				;\
@@ -234,28 +238,84 @@ sa1rom
 		LDA #$40						;\ Switch to bank 40
 		PHA : PLB						;/
 		LDA !MsgPortrait : BEQ .PortraitDone			;\
-		JSR DRAW_PORTRAIT					; | draw portrait
+		BMI .DrawPortrait					; |
+		JSR DRAW_PORTRAIT					; | when loading a new portrait, return afterwards to prevent lag
+		PLB							; |
+		RTL							;/
+		.DrawPortrait						;\
+		JSR DRAW_PORTRAIT					; | draw portrait if already loaded
 		.PortraitDone						;/
 		LDA !MsgStartupTimer : BEQ .TimerDone			;\
 		DEC !MsgStartupTimer					; | decrement startup timer
 		.TimerDone						;/
 
+
+		LDA #$20						;\
+		LDY !MsgCinematic					; | adjust window on sprite layer
+		BEQ $02 : LDA #$22					; |
+		STA $43							;/
+		LDA #$1F : STA.l !MainScreen				;\ everything on main screen, nothing on subscreen
+		LDA #$00 : STA.l !SubScreen				;/
+
+
+		LDA !MsgImportant : BNE .NoSkip
+		JSR CHECK_INPUT_Start
+		BEQ .NoSkip
+		LDA #$FF : STA !MsgImportant				; buffer message skip
+	;	JSL !KillOAM						; wipe OAM here
+		BRA .NoWait						; no delay when skipping message
+		.NoSkip
+		LDA !MsgWaitFlag : BEQ .NoWait
+		.SearchInput
+		JSR CHECK_INPUT_Press
+		AND #$C0 : BEQ .Delay
+		.InputFound
+		STZ !MsgWaitFlag					; clear wait flag
+		LDA #$FF						;\
+		STA !MsgInputLock+0					; |
+		STA !MsgInputLock+1					; | lock inputs
+		STA !MsgInputLock+2					; |
+		STA !MsgInputLock+3					;/
+		STZ !MsgInputBuffer+0					;\
+		STZ !MsgInputBuffer+1					; | wipe hold inputs
+		STZ !MsgInputBuffer+2					; |
+		STZ !MsgInputBuffer+3					;/
+		BRA .NoDelay
+		.NoWait
+
+
 		LDA !MsgDelay : BEQ .NoDelay				; do nothing during delay (might wanna change this to at least read inputs)
 		DEC !MsgDelay
-		PLB
+	.Delay	PLB
 		RTL
 		.NoDelay
 
 
 
+		.NextMSG
 		LDA !MsgEnd : BEQ .Text					;\
 		LDX !MsgCounter : BEQ .SkipText				; |
-		DEX							; | if message is over, see if another one should be loaded
+		DEX #2							; | if message is over, see if another one should be loaded
 		STX !MsgCounter						; |
-		LDA !MsgSequence,x					; |
-		STA.l !MsgTrigger					;/
+		LDA !MsgSequence,x : STA.l !MsgTrigger			; |
+		LDA !MsgSequence+1,x : STA.l !MsgTrigger+1		;/
 		JSR CLEAR_BOX						; clear previous text
 		STZ !MsgEnd						; reset message
+		LDA #$FF						;\
+		STA !MsgInputLock+0					; |
+		STA !MsgInputLock+1					; |
+		STA !MsgInputLock+2					; |
+		STA !MsgInputLock+3					; |
+		STZ !MsgInputBuffer+0					; | kill input buffer
+		STZ !MsgInputBuffer+1					; |
+		STZ !MsgInputBuffer+2					; |
+		STZ !MsgInputBuffer+3					; |
+		STZ !MsgInputBuffer+4					; |
+		STZ !MsgInputBuffer+5					; |
+		STZ !MsgInputBuffer+6					; |
+		STZ !MsgInputBuffer+7					;/
+
+
 		JSR ApplyHeader						;\
 		PLB							; | load header of next message and return
 		RTL							;/
@@ -264,17 +324,19 @@ sa1rom
 		.Text
 		LDA !MsgScroll						;\ don't upload text during scroll animation
 		CMP !MsgTargScroll : BEQ .Upload			;/
-		JSR CHECK_INPUT_Press					;\
-		AND #$C0 : BEQ .SkipText				; | skip scroll animation on input
-		LDA !MsgTargScroll : STA !MsgScroll			;/
+		STZ !MsgInputBuffer+0					;\
+		STZ !MsgInputBuffer+1					; | clear hold buffer during scroll
+		STZ !MsgInputBuffer+2					; |
+		STZ !MsgInputBuffer+3					;/
+		BRA .SkipText
 		.Upload
 		JSR UPLOAD_TEXT						; upload text
 		.SkipText
 		JSR UPDATE_COORDS					; update coordinates
 
+
 		JSR CHECK_INPUT_Press
 		AND #$F0 : BNE .HandleAction				; if an action button (A/B/X/Y) is pressed, handle that
-
 
 	; this code handles the dialogue arrow
 		LDA !MsgOptions : BEQ .Return				; return if there is no dialogue options
@@ -300,11 +362,15 @@ sa1rom
 
 
 		.HandleAction
+		LDA !MsgOptions : BNE .DialogueFeedback
 		LDA !MsgEnd : BNE .Close				; close message on input if it's done
-		LDA !MsgOptions : BEQ .Return
+		PLB
+		RTL
+
 
 	; dialogue feedback code
-
+		.DialogueFeedback
+		LDA !MsgEnd : BEQ .Return
 		STZ !MsgOptions
 		LDA !MsgArrow
 		INC A
@@ -316,10 +382,13 @@ sa1rom
 	.MSG	LDX !MsgCounter
 		CLC : ADC.l !MsgTrigger
 		STA !MsgSequence,x
-		DEC !MsgCounter
+		LDA.l !MsgTrigger+1
+		ADC #$00
+		STA !MsgSequence+1,x
+		INC !MsgCounter
+		INC !MsgCounter
+		JMP .NextMSG
 
-		PLB
-		RTL
 
 	.Level	STA.l !Level+4
 
@@ -344,12 +413,14 @@ sa1rom
 		LDA !MsgInit : PHA					; > preserve
 		LDA !MsgVertOffset : PHA				; > preserve
 		LDA !MsgCinematic : PHA					; > preserve
+		LDA !MsgTalk : PHA					; > preserve
 		LDX #$7F						; |
 	-	STZ !MsgRAM,x						; |
 		CPX.b #!MsgTalk-!MsgRAM : BNE +				; | clear !MsgRAM, skipping the backup block and preserving the init flag
 		LDX.b #!MsgFont-!MsgRAM					; |
 		BRA -							; |
 	+	DEX : BPL -						;/
+		PLA : STA !MsgTalk					; > don't mess with NPC animations
 		PLA : STA !MsgCinematic					; > don't mess up the window close animation
 		PLA : STA !MsgVertOffset				; > we need to keep this flag for the window closing
 		PLA : STA !MsgInit					; > don't reset init until the last frame
@@ -425,6 +496,8 @@ sa1rom
 		RTL
 
 
+
+
 	CHECK_INPUT:
 		.Press
 		LDA !MsgStartupTimer : BNE .Buffer			; check for startup timer
@@ -433,7 +506,7 @@ sa1rom
 		ORA !MsgInputBuffer+7					; | check press input
 	..1P	ORA !MsgInputBuffer+4					; |
 		ORA !MsgInputBuffer+6					; |
-		AND #$C0						;/
+	;	AND #$C0						;/
 		TRB !MsgInputBuffer+5					;\
 		TRB !MsgInputBuffer+7					; | clear all read inputs
 		TRB !MsgInputBuffer+4					; |
@@ -447,7 +520,7 @@ sa1rom
 		ORA !MsgInputBuffer+3					; | check hold input
 	..1P	ORA !MsgInputBuffer+0					; |
 		ORA !MsgInputBuffer+2					; |
-		AND #$C0						;/
+	;	AND #$C0						;/
 		TRB !MsgInputBuffer+1					;\
 		TRB !MsgInputBuffer+3					; | clear all read inputs
 		TRB !MsgInputBuffer+0					; |
@@ -538,7 +611,7 @@ sa1rom
 		LDA !MsgScroll
 		REP #$20						;\
 		AND #$00FF						; | Ypos
-		SEC : SBC #$0040					; > base Ypos = -0x40 (normal mode)
+		SEC : SBC #$0038					; > base Ypos = -0x40 (normal mode)
 		SEC : SBC $00						; |
 		STA $24							;/
 		LDA #$FFC7 : STA $22					; > Xpos (normal mode)
@@ -660,20 +733,21 @@ sa1rom
 		LDA.w #!ImageCache+$1000>>8 : STA !VRAMtable+$11,x	; |
 		LDA #$0400 : STA !VRAMtable+$0E,x			;/
 
+		JSL ApplyHeader_Main					; (go to SA-1 code) apply header so box can be properly cleared, accounting for borders/size
+
 		LDA #$004F						;\
 		JSR READ_FONT_CHAR					; |
 		LDA $0E							; |
 		AND #$000F						; |
-		ASL #3							; |
+		ASL A							; |
 		STA $00							; | $00 = index to arrow character in cached font
 		LDA $0E							; |
 		AND #$00F0						; |
-		XBA							; |
-		LSR #2							; |
-		TSB $00							;/
+		ASL #4							; |
+		ORA $00							;/
 
 		REP #$10						;\
-		LDX $00							; |
+		TAX							; |
 		LDA.w !ImageCache+$000,x : STA.w !GFX_buffer+$280	; |
 		LDA.w !ImageCache+$020,x : STA.w !GFX_buffer+$282	; |
 		LDA.w !ImageCache+$040,x : STA.w !GFX_buffer+$284	; |
@@ -692,47 +766,49 @@ sa1rom
 		LDA.w !ImageCache+$1E0,x : STA.w !GFX_buffer+$29E	;/
 
 
-		JSL ApplyHeader_Main					; (go to SA-1 code) apply header so box can be properly cleared, accounting for borders/size
-
 		JSR CLEAR_BOX						; wipe box
-
 		PLP
 		PLB
 		RTL
 
 
 
+
+;
+; 14 square from CW (0x700 bytes)
+; 1 KB from player (0x400 bytes)
+; 	/text CCDMA (2 * 0x200 = 0x400 bytes)
+;	/text tilemap (2 * 0x60 = 0x0C0 bytes)
+;	/wipe box GFX (2 * 0x200 = 0x400 bytes)
+;	/wipe box tilemap (0xE00 bytes)
+
 ; wipe message box
 	CLEAR_BOX:
+		PHY
 		PHP
 		SEP #$30
-
-		PHB : PHK : PLB						;\
-		LDA #$04						; |
-		TRB !MainScreen						; | hide BG3 for 1 frame
-		TRB !SubScreen						; |
-		PLB							;/
-
 		STZ !MsgScroll
 		STZ !MsgTargScroll
 		STZ !MsgX
 		STZ !MsgRow
+		LDA #$01 : STA !MsgClearBox
 
 		JSL !GetVRAM
 		REP #$20
 
 		.EmptyTile						;\
-		LDA #$3814						; |
-		BIT !MsgVertOffset-1					; | tile 0x014 if no border, tile 0x015 if border
+		LDA !TextPal-1						; |
+		AND #$FF00						; |
+		ORA #$2014						; | tile 0x014 if no border, tile 0x015 if border
+		BIT !MsgVertOffset-1					; |
 		BVS $01 : INC A						; |
 		STA.w !GFX_buffer+$2FE					;/
 
-
 		LDA.w #!GFX_buffer+$2FE : STA !VRAMtable+$02,x		;\
 		LDA.w #!GFX_buffer+$2FF : STA !VRAMtable+$09,x		; |
-		LDA.w #!GFX_buffer+$2FE>>8				; |
-		STA !VRAMtable+$03,x					; |
-		STA !VRAMtable+$0A,x					; |
+		LDA.w #!GFX_buffer+$2FE>>16				; |
+		STA !VRAMtable+$04,x					; |
+		STA !VRAMtable+$0B,x					; |
 		LDA.l !2109						; |
 		AND #$00FC						; | wipe box tilemap area
 		XBA							; | lo + hi bytes, fixed uploads
@@ -743,15 +819,25 @@ sa1rom
 		STA !VRAMtable+$07,x					;/
 
 
-		LDA.w #.Some00 : STA !VRAMtable+$10,x			;\
-		LDA.w #.Some00>>8 : STA !VRAMtable+$11,x		; |
-		LDA.l !210C						; |
-		AND #$000F						; | queue clear of layer 3 GFX
-		XBA							; | (from ROM, so lo + hi use the same upload)
+		LDA #$0000						;\
+		BIT !MsgVertOffset-1					; |
+		BVS $03 : LDA #$00FF					; |
+		STA.w !GFX_buffer+$2FC					; |
+		LDA.w #!GFX_buffer+$2FC : STA !VRAMtable+$10,x		; |
+		LDA.w #!GFX_buffer+$2FD : STA !VRAMtable+$17,x		; |
+		LDA.w #!GFX_buffer+$2FC>>16				; |
+		STA !VRAMtable+$12,x					; |
+		STA !VRAMtable+$19,x					; |
+		LDA.l !210C						; | queue clear of layer 3 text GFX
+		AND #$000F						; | (fixed from RAM)
+		XBA							; | overwrite with 0000 with no border or 00FF with border (pixel color 01)
 		ASL #4							; |
-		ORA.w #$0018*8						; |
+		ORA #$0018*8						; |
 		STA !VRAMtable+$13,x					; |
-		LDA #$4E00 : STA !VRAMtable+$0E,x			;/
+		STA !VRAMtable+$1A,x					; |
+		LDA #$4700						; |
+		STA !VRAMtable+$0E,x					; |
+		STA !VRAMtable+$15,x					;/
 
 
 		.ClearBuffer
@@ -776,14 +862,13 @@ sa1rom
 
 		..cleardone
 		PLP
+		PLY
 		RTS
 
-		.Some00
-		db $00
+
 
 
 	HANDLE_WINDOWING:
-
 		LDA #$1B : STA !MainScreen				;\ everything except BG3 on main screen, nothing on subscreen
 		STZ !SubScreen						;/
 
@@ -896,7 +981,13 @@ sa1rom
 
 		.ClippingWindow
 		LDA #$22 : STA $41					; enable window 1 for BG1 and BG2
+		LDA $400000+!MsgCinematic : BEQ ..normalwindow
+		..cinematicwindow
+		LDA #$22 : STA $43					; enable window 1 for color AND sprite layer
+		BRA ..shared
+		..normalwindow
 		LDA #$20 : STA $43					; enable window 1 for color but not sprite layer
+		..shared
 		LDA #$20 : STA $44					; color math: backdrop enable
 	+	LDA #$03 : STA $42					; enable inverted layer 3 masking
 		LDX #$04						;\
@@ -961,7 +1052,8 @@ sa1rom
 		PHB : PHK : PLB
 		PHP
 		REP #$30
-		LDA !MsgTrigger
+		LDA !MsgTrigger : BPL ..global
+		..level
 		AND #$00FF
 		DEC A
 		ASL A
@@ -970,8 +1062,13 @@ sa1rom
 		AND #$00FF
 		ASL A
 		TAX
-		LDA Text_MainPtr,x : STA $08
-		LDA ($08),y : STA $08
+		LDA TextData_LevelPtr,x : STA $08
+		LDA ($08),y
+		..global
+		DEC A
+		ASL A
+		TAX
+		LDA TextData_MainPtr,x : STA $08
 		SEP #$20
 		PHK : PLA						;\ bank byte of pointer
 		STA $0A							;/
@@ -1065,25 +1162,35 @@ sa1rom
 		PHA : PLB
 		LDA !MsgRow : PHA					; this needs to be pushed here as it could increase during the .Main call
 		STZ !MsgTerminateRender					; clear terminate flag at the start of each render
-		STZ !MsgWordLength					; treat each render as the start of a new word
+		STZ !MsgWordLength					;\ treat each render as the start of a new word
+		STZ !MsgWordLength+1					;/
 		STZ !MsgCharCount					; number of characters rendered on this frame
 		LDA !MsgImportant
 		CMP #$02 : BEQ +
 		JSR CHECK_INPUT_Hold
 		AND #$C0 : BEQ +
+		LDA !MsgScroll
+		CMP !MsgTargScroll : BNE +				; can't speed up during scroll
 		LDA #$01 : STA !MsgInstantLine
 		+
 
-
-
 		JSR .Main
+
+		SEP #$20
+		LDA !MsgClearBox : BNE .Terminate			;\
+		LDA !MsgCharCount : BNE .NotTerminated			; |
+		.Terminate						; | always terminate if box was cleared on this frame
+		PLA							; > pop !MsgRow
+		PLP							; | if render was terminated by a commmand, don't update tilemap this frame
+		PLB							; |
+		RTL							;/
+		.NotTerminated
 
 
 	; NOTE!
 	; be careful about stack usage here as LDA dp,s is used as an optimization!
 	; make sure they're lined up
 
-		SEP #$20
 		LDA #$00 : STA.l $2250					; prepare multiplication
 		JSL !GetBigCCDMA					; X = index to CCDMA table
 		LDA #$16 : STA !CCDMAtable+$07,x			; > width = 256px, bit depth = 2bpp
@@ -1094,7 +1201,7 @@ sa1rom
 		AND #$00FF						; |
 		STA.l $2251						; |
 		LDA !MsgWidth						; |
-		AND #$00FF						; | write upload size while settup up VRAM calculation
+		AND #$00FF						; | write upload size while setting up VRAM calculation
 		ASL #3							; |
 		STA.l $2253						; |
 		ASL A							; |
@@ -1132,13 +1239,7 @@ sa1rom
 		STA !CCDMAtable+$05,x					;/
 		SEP #$20
 
-		LDA !MsgTerminateRender : BEQ .NotTerminated		;\
-		PLA							; > pop !MsgRow
-		PLP							; | if render was terminated by a commmand, don't update tilemap this frame
-		PLB							; |
-		RTL							;/
 
-		.NotTerminated
 		LDA !MsgImportant					;\
 		CMP #$02 : BEQ +					; | holding A/B/X/Y increases text speed unless fast forward is disabled
 		JSR CHECK_INPUT_Hold					; |
@@ -1196,7 +1297,9 @@ sa1rom
 		AND #$00FC						; |
 		XBA							; |
 		ORA $00
-		STA !VRAMtable+$05,x
+		LDY !MsgCinematic : BNE +
+		CLC : ADC #$0020					; add 1 row in normal mode
+	+	STA !VRAMtable+$05,x
 		CLC : ADC #$0020
 		STA !VRAMtable+$0C,x
 		LDA !MsgWidth
@@ -1218,7 +1321,8 @@ sa1rom
 		PHK : PLA						;\ bank byte of pointer
 		STA $0A							;/
 		REP #$30						; all regs 16-bit
-		LDA.l !MsgTrigger					;\
+		LDA.l !MsgTrigger : BPL ..global			;
+		..level							;\
 		AND #$00FF						; |
 		DEC A							; | Y = index to main pointer table
 		ASL A							; |
@@ -1227,12 +1331,19 @@ sa1rom
 		AND #$00FF						; |
 		ASL A							; | lo/mid bytes of pointer
 		TAX							; |
-		LDA.l Text_MainPtr,x : STA $08				;/
-		LDA [$08],y : STA $08					; get pointer
+		LDA.l TextData_LevelPtr,x : STA $08			; |
+		LDA [$08],y						;/
+		..global
+		DEC A
+		ASL A
+		TAX
+		LDA.l TextData_MainPtr,x : STA $08			; get pointer
 		SEP #$20						; A 8-bit
 	.Process
 		LDY !MsgIndex						; Y = index
-		LDA !MsgWordLength : BNE .Ok				; if we're already processing a word, keep rendering it
+		LDA !MsgWordLength					;\
+		ORA !MsgWordLength+1					; | if we're already processing a word, keep rendering it
+		BEQ $03 : JMP .Ok					;/
 
 	.WordLength
 		XBA							; clear B
@@ -1240,7 +1351,9 @@ sa1rom
 	-	LDA [$08],y						; |
 		INY							; |
 		CMP #$FF : BEQ ..end					; |
-		CMP #$FE : BEQ ..end					; | calculate length of word (defined as a string ended by 7F, FE, or FF, ignoring values of 80-FD)
+		CMP #$FE : BEQ ..end					; | calculate length of word (defined as a string ended by 7F, F2, F5, FE, or FF, ignoring values of 80-FD)
+		CMP #$F5 : BEQ ..end					; |
+		CMP #$F2 : BEQ ..end					; |
 		CMP #$7F : BEQ ..end					; | (commands 80-EF all have a length of 1 byte)
 		BCC ..char						; |
 		CMP #$F0 : BCC -					; |
@@ -1254,24 +1367,37 @@ sa1rom
 		TAX							; |
 		STY $0E							; | read length for commands F1-FD
 		LDA.l HANDLE_COMMANDS_CommandLength,x			; |
+		AND #$00FF						; |
 		CLC : ADC $0E						; |
 		TAY							; |
 		SEP #$20						; |
 		BRA -							;/
 	..char	JSR READ_FONT_CHAR					;\
+		REP #$20						; |
 		LDA $0F							; |
-		CLC : ADC !MsgWordLength				; | read character width
+		AND #$00FF						; | read character width
+		CLC : ADC !MsgWordLength				; |
 		STA !MsgWordLength					; |
+		SEP #$20						; |
 		BRA -							;/
-	..end	PLY							;\
-		LDA !MsgWordLength					; |
-		CLC : ADC !MsgX						; |
-		BCS ..wrap						; > detect wrap
-		STA $0F							; | see if word will fit on the current line
+	..end	PLY							; pull index
+		REP #$20						;\
 		LDA !MsgWidth						; |
-		ASL #3							; |
-		BNE $01 : DEC A						; |
-		CMP $0F : BCS .Ok					;/
+		AND #$00FF						; |
+		ASL #3							; | get width of row
+		CMP #$00FF						; |
+		BCC $03 : LDA #$00FF					; |
+		STA $02							;/
+		LDA !MsgX						;\
+		AND #$00FF						; |
+		STA $00							; |
+		CLC : ADC !MsgWordLength				; | see if X + word length fit on this line
+		CMP $02							; |
+		SEP #$20						; |
+		STA $0F							; > store current Xpos (8-bit)
+		BEQ .Ok							; |
+		BCC .Ok							;/
+
 	..wrap	INC !MsgRow						;\
 		STZ !MsgX						; | if it won't fit, start new line
 		STZ !MsgInstantLine					; > clear instant line flag
@@ -1302,6 +1428,7 @@ sa1rom
 	; code for rendering a space
 		SEP #$20						;\
 		STZ !MsgWordLength					; > new word
+		STZ !MsgWordLength+1					; |
 		LDA !MsgX : BNE ..Space					; |
 
 	; code for starting a new line with a space
@@ -1674,6 +1801,7 @@ endmacro
 		JMP .MAIN
 
 		.INIT
+		AND #$3F
 		DEC A
 		ASL #2
 		TAX
@@ -1743,7 +1871,19 @@ endmacro
 
 		LDA #$80 : TSB !MsgPortrait				; > set portrait init flag
 
-		LDY !MsgCinematic : BEQ .NoCutout
+		BRA .NoCutout						; don't cut on first frame
+
+
+		.MAIN
+		LDA !MsgCutout : BNE .NoCutout
+		LDY !MsgCinematic : BEQ .NoCutout			; Y = cinematic type
+
+		INC !MsgCutout
+		LDA !MsgWidth						;\
+		CMP #$1B						; | cap cinematic width to 27 tiles when portrait is on
+		BCC $02 : LDA #$1B					; |
+		STA !MsgWidth						;/
+
 		LDA !MsgPortrait
 		LDX #$3E
 		PHB : PHK : PLB
@@ -1772,7 +1912,6 @@ endmacro
 		.NoCutout
 
 
-		.MAIN
 		LDA !MsgPal						;\
 		LSR #4							; |
 		TAX							; | keep locking portrait colors out of shader
@@ -1982,43 +2121,41 @@ endmacro
 		PHB
 		PHP
 
-		SEP #$20							;\
-		LDA #$40							; |
-		PHA : PLB							; |
-		REP #$30							; | clear output buffer
-		LDX #$001E							; |
-	-	STZ.w !GFX_buffer+$2A0,x					; |
-		DEX #2 : BPL -							;/
+		SEP #$20							; A 8-bit
+
+		STZ $2250							; prepare multiplication
+		LDA #$60 : PHA							; prepare bank 60
+		LDA #$40							;\ go into bank 40
+		PHA : PLB							;/
+
+		REP #$30							; all regs 16-bit
+		LDA !MsgOptionRow						;\
+		CLC : ADC !MsgArrow						; |
+		AND #$00FF							; |
+		ASL #4								; |
+		TAX								; | copy column segment
+		LDY #$0000							; |
+	-	LDA.w !GFX_buffer,x : STA.w !GFX_buffer+$2A0,y			; |
+		INX #2								; |
+		INY #2								; |
+		CPY #$0020 : BCC -						;/
 
 		LDA !MsgOptionRow						;\
 		CLC : ADC !MsgArrow						; |
 		AND #$00FF							; |
-		ASL A								; |
-		TAY								; | prepare arrow
+		ASL #3								; |
+		TAY								; | superimpose arrow
 		LDX #$0000							; |
-	-	LDA.w !GFX_buffer+$280,x : STA.w !GFX_buffer+$2A0,y		; |
-		INX #2								; |
-		INY #2								; |
-		CPX #$0009*2 : BCC -						;/
+		PLB								; > go into bank 60
+		SEP #$20							; |
+	-	LDA.w (!V_buffer+($280*2))*2,x : BEQ +				; |
+		STA.w (!V_buffer+($2A0*2))*2,y					; |
+	+	INX								; |
+		INY								; |
+		CPY #$0080 : BCC -						;/
 
-		SEP #$20
-		LDA #$00 : STA.l $2250						; prepare multiplication
-		LDA #$60 : PHA							; prepare bank 60
 
-		REP #$30
-		LDA $400000+!MsgOptionRow
-		CLC : ADC $400000+!MsgArrow
-		AND #$00FF
-		ASL #6
-		TAX
-		PLB
-		SEP #$20
-		LDY #$0000
-	-	LDA.w !V_buffer*2,x : BEQ +
-		STA.w (!V_buffer+($2A0*2))*2,y
-	+	INX
-		INY
-		CPY #$0080 : BCC -
+
 
 		PHK : PLB							; generic bank
 		SEP #$30
@@ -2026,7 +2163,6 @@ endmacro
 		CLC : ADC $400000+!MsgArrow
 		STA $2251
 		STZ $2252
-
 
 		JSL !GetSmallCCDMA						; get index
 		LDA #$02 : STA !VRAMbase+!CCDMAtable+$07,x			; mode: 8px 2bpp
@@ -2043,7 +2179,7 @@ endmacro
 		XBA								; |
 		ASL #4								; |
 		ORA $2306							; |
-		CLC : ADC.w #$0015*8						; |
+		CLC : ADC.w #$0019*8						; |
 		STA !VRAMbase+!CCDMAtable+$05,x					;/
 		CLC : ADC $0E							;\ store VRAM address for second upload
 		STA $0E								;/
@@ -2111,7 +2247,7 @@ endmacro
 		XBA								; |
 		ASL #4								; |
 		ORA.l $2306							; |
-		CLC : ADC.w #$0015*8						; |
+		CLC : ADC.w #$0019*8						; |
 		STA !CCDMAtable+$05,x						;/
 
 		TYA								;\
@@ -2261,8 +2397,8 @@ endmacro
 		dw .Scroll		; F5,XX
 		dw .WaitForInput	; F6
 		dw .Delay		; F7,XX
-		dw .Dialogue		; F8,XX,XX
-		dw .Next		; F9,XX
+		dw .Dialogue		; F8,XX
+		dw .Next		; F9,XXXX
 		dw .SetExit		; FA,XX,XX
 		dw .TriggerExit		; FB
 		dw .EndLevel		; FC,XX
@@ -2281,7 +2417,7 @@ endmacro
 		db $00			; F6
 		db $01			; F7
 		db $02			; F8
-		db $01			; F9
+		db $02			; F9
 		db $02			; FA
 		db $00			; FB
 		db $01			; FC
@@ -2380,6 +2516,9 @@ endmacro
 		STA !MsgTargScroll
 		LDA #$01 : STA !MsgTerminateRender
 		STZ !MsgInstantLine
+		LDA !MsgDelay : BNE ..return
+		INC !MsgDelay				; delay for 1 frame if none is set already
+		..return
 		RTS
 
 .WaitForInput	LDA #$01
@@ -2397,13 +2536,13 @@ endmacro
 .Dialogue	INY
 		LDA [$08],y
 		AND #$03
+		INC A
 		STA !MsgOptions
 		LDA [$08],y
 		LSR #2
 		INC A
 		STA !MsgDestination
-		INY
-		LDA [$08],y : STA !MsgOptionRow
+		LDA !MsgRow : STA !MsgOptionRow
 		STZ !MsgArrow
 		RTS
 
@@ -2411,10 +2550,14 @@ endmacro
 		TAX
 		INY
 		LDA [$08],y : STA !MsgSequence,x
+		INY
+		LDA [$08],y : STA !MsgSequence+1,x
+		INC !MsgCounter
 		INC !MsgCounter
 		RTS
 
 .SetExit	PHX
+		PHB : PHK : PLB
 		INY
 		LDA [$08],y
 		LDX #$001F
@@ -2425,6 +2568,7 @@ endmacro
 		LDX #$001F
 	-	STA $79D8,x
 		DEX : BPL -
+		PLB
 		PLX
 		RTS
 
@@ -2471,6 +2615,10 @@ endmacro
 
 .End		LDA #$01 : STA !MsgEnd
 		STZ !MsgInstantLine
+		STZ !MsgInputBuffer+4
+		STZ !MsgInputBuffer+5
+		STZ !MsgInputBuffer+6
+		STZ !MsgInputBuffer+7
 		RTS
 
 
@@ -2482,10 +2630,18 @@ endmacro
 
 cleartable
 table "MessageTable.txt"
-print "Text pointers stored at $", pc, "."
-incsrc "TextPointers.asm"
-print "Text data stored at $", pc, "."
-incsrc "TextData.asm"
+print "Text data:"
+print "    stored at $", pc
+	TextData:
+	incsrc "TextCommands.asm"	; include commands
+	!CompileText	= 1		;\ compile pass 1 (data)
+	incsrc "TextData.asm"		;/
+print "    ", dec(!Temp), " messages registered"
+print "    pointers stored at $", pc
+	!CompileText	= 2		;\ compile pass 2 (pointers)
+	incsrc "TextData.asm"		;/
+	.End
+print "    ", dec((.End-TextData+512)/1024), " KiB"
 
 
 GFX:
@@ -2511,6 +2667,13 @@ macro Char(number, width)
 	db <number>
 	db <width>
 endmacro
+
+	pushpc
+	org $048443
+		dl .FontData
+		dl .FontGFX
+	pullpc
+
 
 
 .FontData
@@ -2644,7 +2807,7 @@ endmacro
 		%Char($05, 7)	; F
 		%Char($06, 7)	; G
 		%Char($07, 7)	; H
-		%Char($08, 7)	; I
+		%Char($08, 5)	; I
 		%Char($09, 7)	; J
 		%Char($0A, 7)	; K
 		%Char($0B, 7)	; L
@@ -2662,13 +2825,13 @@ endmacro
 		%Char($27, 7)	; X
 		%Char($28, 7)	; Y
 		%Char($29, 7)	; Z
-		%Char($2A, 7)	; .
-		%Char($2B, 7)	; ,
-		%Char($2C, 7)	; !
+		%Char($2A, 3)	; .
+		%Char($2B, 4)	; ,
+		%Char($2C, 3)	; !
 		%Char($2D, 7)	; ?
-		%Char($2E, 7)	; :
-		%Char($2F, 7)	; ;
-		%Char($40, 7)	; a
+		%Char($2E, 3)	; :
+		%Char($2F, 4)	; ;
+		%Char($40, 8)	; a
 		%Char($41, 7)	; b
 		%Char($42, 7)	; c
 		%Char($43, 7)	; d
@@ -2676,16 +2839,16 @@ endmacro
 		%Char($45, 7)	; f
 		%Char($46, 7)	; g
 		%Char($47, 7)	; h
-		%Char($48, 7)	; i
-		%Char($49, 7)	; j
+		%Char($48, 3)	; i
+		%Char($49, 4)	; j
 		%Char($4A, 7)	; k
-		%Char($4B, 7)	; l
+		%Char($4B, 3)	; l
 		%Char($4C, 7)	; m
-		%Char($4D, 7)	; n
+		%Char($4D, 6)	; n
 		%Char($4E, 7)	; o
 		%Char($4F, 7)	; p
 		%Char($60, 7)	; q
-		%Char($61, 7)	; r
+		%Char($61, 6)	; r
 		%Char($62, 7)	; s
 		%Char($63, 7)	; t
 		%Char($64, 7)	; u
@@ -2695,13 +2858,13 @@ endmacro
 		%Char($68, 7)	; y
 		%Char($69, 7)	; z
 		%Char($6A, 7)	; +
-		%Char($6B, 7)	; -
-		%Char($6C, 7)	; *
+		%Char($6B, 6)	; -
+		%Char($6C, 3)	; *
 		%Char($6D, 7)	; /
 		%Char($6E, 7)	; \
-		%Char($6F, 7)	; =
+		%Char($6F, 6)	; =
 		%Char($80, 7)	; 0
-		%Char($81, 7)	; 1
+		%Char($81, 4)	; 1
 		%Char($82, 7)	; 2
 		%Char($83, 7)	; 3
 		%Char($84, 7)	; 4
@@ -2710,12 +2873,34 @@ endmacro
 		%Char($87, 7)	; 7
 		%Char($88, 7)	; 8
 		%Char($89, 7)	; 9
-		%Char($8A, 7)	; (
-		%Char($8B, 7)	; )
-		%Char($8C, 7)	; #
-		%Char($8D, 7)	; $
+		%Char($8A, 5)	; (
+		%Char($8B, 5)	; )
+		%Char($8C, 6)	; #
+		%Char($00, 0)	; $ (MISSING)
 		%Char($8E, 7)	; %
-		%Char($8F, 7)	; > (cursor symbol)
+		%Char($8F, 8)	; > (cursor symbol)
+
+		; index 50+
+		%Char($00, 0)	; A button (MISSING)
+		%Char($00, 0)	; B button (MISSING)
+		%Char($00, 0)	; X button (MISSING)
+		%Char($00, 0)	; Y button (MISSING)
+		%Char($00, 0)	; L button (MISSING)
+		%Char($00, 0)	; R button (MISSING)
+		%Char($00, 0)	; start button (MISSING)
+		%Char($00, 0)	; select button (MISSING)
+		%Char($00, 0)	; D-pad right (MISSING)
+		%Char($00, 0)	; D-pad left (MISSING)
+		%Char($00, 0)	; D-pad down (MISSING)
+		%Char($00, 0)	; D-pad up (MISSING)
+
+		%Char($00, 0)	; " (MISSING)
+		%Char($8D, 4)	; '
+		%Char($00, 0)	; ~ (MISSING)
+		%Char($00, 0)	; [ (MISSING)
+		%Char($00, 0)	; ] (MISSING)
+		%Char($00, 0)	; japanese [ (MISSING)
+		%Char($00, 0)	; japanese ] (MISSING)
 
 
 .FontGFX
@@ -2740,5 +2925,5 @@ endmacro
 
 .End
 
-	print "In total this patch takes up ", freespaceuse, " (0x", hex(GFX_End-MESSAGE_ENGINE), ") bytes."
+	print "0x", hex(GFX_End-MESSAGE_ENGINE), " bytes used by MSG."
 	print " "

@@ -24,6 +24,8 @@ endmacro
 	; -- Defines --
 
 	incsrc "../Defines.asm"
+	!CompileText = 0
+	incsrc "../MSG/TextData.asm"
 
 
 
@@ -747,6 +749,22 @@ incsrc "SpriteData.asm"
 
 
 	InitSpriteEngine:
+		STZ $3230+$0				;\
+		STZ $3230+$1				; |
+		STZ $3230+$2				; |
+		STZ $3230+$3				; |
+		STZ $3230+$4				; |
+		STZ $3230+$5				; |
+		STZ $3230+$6				; |
+		STZ $3230+$7				; | kill all sprites
+		STZ $3230+$8				; |
+		STZ $3230+$9				; |
+		STZ $3230+$A				; |
+		STZ $3230+$B				; |
+		STZ $3230+$C				; |
+		STZ $3230+$D				; |
+		STZ $3230+$E				; |
+		STZ $3230+$F				;/
 		LDA $6BF4				; this is set as part of LM's level data
 		AND #$03				;\
 		ASL A					; |
@@ -1472,8 +1490,12 @@ endmacro
 		AND #$00FF					; | get sprite's load status
 		ASL A						; |
 		TAX						; |
-		LDA $188650,x : BMI ..dontupdate		;/ (don't update if negative)
-		TAX						; X = index
+		LDA $188650,x : BPL ..updatecustom		;/ (don't update if negative)
+		SEP #$30					;\
+		PLX						; | just return if negative
+		BRA ..done					;/
+		..updatecustom					;\ X = index
+		TAX						;/
 		..update					;\
 		LDA !GFX_status,x				; |
 		SEP #$30					; |
@@ -1868,7 +1890,6 @@ print "-- BANK $17 --"
 %InsertSprite(MoleWizard)
 %InsertSprite(BooHoo)
 %InsertSprite(GigaThwomp)
-%InsertSprite(MiniMech)
 
 
 
@@ -1893,6 +1914,7 @@ print "-- BANK $1A --"
 %InsertSprite(ShieldBearer)
 %InsertSprite(Elevator)
 %InsertSprite(CaptainWarrior)
+%InsertSprite(MiniMech)
 
 
 BANK1AEnd:

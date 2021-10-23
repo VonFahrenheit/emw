@@ -262,26 +262,29 @@ print "-- SP_MENU --"
 	;	dl !FreeBNK*$10000+!FreeRAM		; Location of 1/2 player select stripe
 
 	org $008C81					; Status bar tilemap
-	CUSTOM_BAR:
-		dw $28FC,$24FC,$24FC,$24FC,$24FC	; > P1 coins
-		dw $20FC,$20FC,$20FC,$20FC,$20FC,$20FC	; > P1 hearts
-		dw $28FC,$28FC,$28FC,$28FC,$28FC	;\ Yoshi coins
-		dw $28FC,$28FC,$28FC,$28FC,$28FC	;/
-		dw $20FC,$20FC,$20FC,$20FC,$20FC,$20FC	; > P2 hearts
-		dw $28FC,$24FC,$24FC,$24FC,$24FC	; > P2 coins
+	;CUSTOM_BAR:
+	;	dw $2814,$2414,$2414,$2414,$2414,$2414	; > P1 coins
+	;	dw $2014,$2014,$2014,$2014,$2014	; > P1 hearts
+	;	dw $2814,$2814,$2814,$2814,$2814	;\ Yoshi coins
+	;	dw $2814,$2814,$2814,$2814,$2814	;/
+	;	dw $2014,$2014,$2014,$2014,$2014	; > P2 hearts
+	;	dw $2814,$2814,$2414,$2414,$2414,$2414	; > P2 coins
 
 ; org $008CC1
-		dw $28FC,$28FC,$28FC,$28FC		; default status bar to empty space
-		dw $28FC,$28FC,$28FC,$28FC
-		dw $28FC,$28FC,$28FC,$28FC
-		dw $28FC,$28FC,$28FC,$28FC
-		dw $28FC,$28FC,$28FC,$28FC
-		dw $28FC,$28FC,$28FC,$28FC
-		dw $28FC,$28FC,$28FC,$28FC
-		dw $28FC,$28FC,$28FC
+	;	dw $2814,$2814,$2814,$2814		; default status bar to empty space
+	;	dw $2814,$2814,$2814,$2814
+	;	dw $2814,$2814,$2814,$2814
+	;	dw $2814,$2814,$2814,$2814
+	;	dw $2814,$2814,$2814,$2814
+	;	dw $2814,$2814,$2814,$2814
+	;	dw $2814,$2814,$2814,$2814
+	;	dw $2814,$2814,$2814
 
 
 ; $0FFE7E
+
+	org $0096CB
+		LDA #$C7				; which level number is used for title screen
 
 
 	org $009CB5					; prevent routine from being called
@@ -365,6 +368,12 @@ print "-- SP_MENU --"
 
 		LDA !TimerSeconds+1 : BMI .NoTimer	; don't process if negative
 
+		LDA !Mosaic				;\ not during level fades
+		AND #$F0 : BNE .NoTimer			;/
+		LDA !MsgTrigger				;\
+		ORA !MsgTrigger+1			; | skip this stuff when a text box is open
+		BNE .NoTimer				;/
+
 		INC !TimeElapsedFrames			; 1 more frame has passed
 		DEC !TimerFrames : BNE .DrawTimer	;\ timer (frames per second)
 		LDA.b #60 : STA !TimerFrames		;/
@@ -418,42 +427,68 @@ print "-- SP_MENU --"
 		JSR CoinSound
 	.Nope	LDA #$270F				;\
 		CMP !P1Coins				; |
-		BCS $03 : STA !P1Coins			; | Cap coins at 9999
+		BCS $03 : STA !P1Coins			; | cap coins at 9999
 		CMP !P2Coins				; |
 		BCS $03 : STA !P2Coins			;/
+
 		LDA !P1Coins				;\
-		JSL Thousands				; |
+		JSR Thousands				; |
 		STY !StatusBar+$01			; |
 		STX !StatusBar+$02			; | Run coin counter for player 1
-		JSL HexToDec				; |
+		JSR HexToDec				; |
 		STX !StatusBar+$03			; |
 		STA !StatusBar+$04			;/
-		LDA !MultiPlayer : BEQ +		;\
+
+		LDA !MultiPlayer : BEQ .SinglePlayer	;\
+		LDA !StatusX				; | see which type of P2 counter should be used (if any)
 		REP #$20				; |
-		LDA !P2Coins				; | Run coin counter for player 2
-		JSL Thousands				; |
+		BEQ ..megalevel				;/
+		..normallevel				;\
+		LDA !P2Coins				; |
+		JSR Thousands				; |
+		STY !StatusBar+$1B			; |
+		STX !StatusBar+$1C			; |
+		JSR HexToDec				; | P2 coin counter on normal levels
+		STX !StatusBar+$1D			; |
+		STA !StatusBar+$1E			; |
+		SEP #$20				; |
+		LDA #$0B : STA !StatusBar+$1A		; > P2 coin symbol
+		BRA .MultiPlayer			;/
+		..megalevel				;\
+		LDA !P2Coins				; |
+		JSR Thousands				; |
 		STY !StatusBar+$1C			; |
 		STX !StatusBar+$1D			; |
-		JSL HexToDec				; |
+		JSR HexToDec				; | P2 coin counter on mega levels
 		STX !StatusBar+$1E			; |
-		STA !StatusBar+$1F			;/
-	+	REP #$20
-		LDA #$FCFC				;\
+		STA !StatusBar+$1F			; |
+		SEP #$20				; |
+		LDA #$14 : STA !StatusBar+$1A		; |
+		LDA #$0B : STA !StatusBar+$1B		; > P2 coin symbol
+		BRA .MultiPlayer			;/
+
+		.SinglePlayer				;\
+		REP #$20				; |
+		LDA #$1414				; | empty space on single player
+		STA !StatusBar+$1A			; |
+		STA !StatusBar+$1C			; |
+		STA !StatusBar+$1E			;/
+
+		.MultiPlayer				;\
+		REP #$20				; |
+		LDA #$1414				; |
 		STA !StatusBar+$05			; |
 		STA !StatusBar+$07			; |
-		STA !StatusBar+$09			; |
+		STA !StatusBar+$09			; | empty space
 		STA !StatusBar+$0B			; |
-		STA !StatusBar+$12			; | Empty space
+		STA !StatusBar+$12			; |
 		STA !StatusBar+$14			; |
 		STA !StatusBar+$16			; |
 		STA !StatusBar+$18			; |
-		SEP #$20				; |
-		STA !StatusBar+$1A			;/
-		LDA #$0B				;\
-		STA !StatusBar+$00			; | Coin symbols
-		STA !StatusBar+$1B			;/
+		SEP #$20				;/
+		LDA #$0B : STA !StatusBar+$00		; P1 coin symbols
 
-.YoshiCoins	LDA !MegaLevelID : BEQ +		; Check for mega level
+.YoshiCoins	LDA !MegaLevelID : BEQ +		; check for mega level
 		TAX
 		LDA #$0A : STA $01
 		LDY #$05
@@ -480,14 +515,6 @@ print "-- SP_MENU --"
 		+
 
 
-		LDA !MultiPlayer : BNE .Player1HP	;\
-		LDA #$FC				; |
-		STA !StatusBar+$1B			; | Wwpe player 2 coin counter during singleplayer
-		STA !StatusBar+$1C			; |
-		STA !StatusBar+$1D			; |
-		STA !StatusBar+$1E			; |
-		STA !StatusBar+$1F			;/
-
 .Player1HP	LDA !P2Status-$80 : BNE .Player2HP	; don't write player 1 HP if player 1 is dead
 
 		LDA !Difficulty				;\
@@ -510,14 +537,21 @@ print "-- SP_MENU --"
 		LDA #$0F : STA !StatusBar+$18		; | skull icon on critical mode
 		BRA .Return				; |
 		..notcrit				;/
+
+		LDY #$18				; > index on normal levels = 0x16
+		LDA !StatusX				;\ index on mega levels = 0x17
+		BNE $02 : LDY #$19			;/
+
 		LDX !P2HP				;\
 		CPX !P2MaxHP				; |
 		BCC $03 : LDX !P2MaxHP			; |
 		BEQ .Return				; | write player 2 HP
 		DEX					; |
 		LDA #$0A				; |
-	-	STA !StatusBar+$17,x			; |
+	-	STA !StatusBar,y			; |
+		DEY					; |
 		DEX : BPL -				;/	
+
 .Return		RTS					; > Return
 
 
@@ -535,7 +569,7 @@ print "-- SP_MENU --"
 		INX
 		BRA .100
 	.10	SEP #$20
-		RTL
+		RTS
 
 	HexToDec:
 		LDX #$00
@@ -543,7 +577,7 @@ print "-- SP_MENU --"
 		INX
 		SBC #$0A
 		BRA .10
-	.1	RTL
+	.1	RTS
 
 	CoinSound:
 		LDX !CoinSound : BNE .ManyCoins
@@ -1096,6 +1130,12 @@ Mode7Presents:
 		SEP #$20
 		REP #$10
 
+		LDX #$00FF						;\
+		LDA #$FF						; | extra clear on map16remap for title screen
+	-	STA !Map16Remap,x					; |
+		DEX : BPL -						;/
+
+
 		LDX #$8000 : STX $4300					;\
 		LDX.w #.MPU_wait : STX $4302				; |
 		LDA.b #.MPU_wait>>16 : STA $4304			; |
@@ -1496,22 +1536,22 @@ DRAW_TIMER:
 		SEP #$20
 		LDA !MegaLevelID : BNE .MegaLevel
 
-		.NormalLevel
-		REP #$20				; A 16-bit
-		LDA #$CE68 : STA !OAM_p3+$00C		;\ timer tile 0
-		LDA #$3453 : STA !OAM_p3+$00E		;/
-		LDA #$CE70 : STA !OAM_p3+$008		;\ timer tile 1
-		LDA #$3442 : STA !OAM_p3+$00A		;/
-		LDA #$CE78 : STA !OAM_p3+$004		;\ timer tile 2
-		LDA #$3443 : STA !OAM_p3+$006		;/
-		LDA #$CE80 : STA !OAM_p3+$000		;\ timer tile 3
-		LDA #$3452 : STA !OAM_p3+$002		;/
-		LDA #$0010 : STA !OAMindex_p3		; OAM index
-		LDA #$0000				;\
-		STA !OAMhi_p3+$000			; | tile size (8x8)
-		STA !OAMhi_p3+$002			;/
-		SEP #$20				; A 8-bit
-		RTL
+	;	.NormalLevel
+	;	REP #$20				; A 16-bit
+	;	LDA #$CE6C : STA !OAM_p3+$00C		;\ timer tile 0
+	;	LDA #$3453 : STA !OAM_p3+$00E		;/
+	;	LDA #$CE74 : STA !OAM_p3+$008		;\ timer tile 1
+	;	LDA #$3442 : STA !OAM_p3+$00A		;/
+	;	LDA #$CE7C : STA !OAM_p3+$004		;\ timer tile 2
+	;	LDA #$3443 : STA !OAM_p3+$006		;/
+	;	LDA #$CE84 : STA !OAM_p3+$000		;\ timer tile 3
+	;	LDA #$3452 : STA !OAM_p3+$002		;/
+	;	LDA #$0010 : STA !OAMindex_p3		; OAM index
+	;	LDA #$0000				;\
+	;	STA !OAMhi_p3+$000			; | tile size (8x8)
+	;	STA !OAMhi_p3+$002			;/
+	;	SEP #$20				; A 8-bit
+	;	RTL
 
 		.MegaLevel
 		REP #$20				; A 16-bit
@@ -1545,24 +1585,269 @@ DRAW_TIMER:
 ;=========;
 MAIN_MENU:
 	pushpc
+	org $00941B
+		JSR $9A74
+		JSR $9CBE
+
+	org $009329+($07*2)
+		dw .Repoint		; i don't care, we're merging game mode 07 into game mode 08
+
+	org $009C64
+		JSR $9A74
+		JSR $9CBE
+
+	org $009C9F
+		NOP #4
 	org $009CA3
-		BRA 16 : NOP #16	; remove some writes to PPU regs when menu is loaded
-	warnpc $009CB5
+		BRA 22 : NOP #22	; remove some writes to PPU regs when menu is loaded
+	warnpc $009CBB
 
 	org $009329+(8*2)
 		dw .Repoint
 	org $009CD1
-		; FUCK YOU LUNAR MAGIC I WIN!!
+		; FUCK YOU LUNAR MAGIC I WIN!! XD
 	org $009CD8
 	.Repoint
 		JML .Main		;\ org: JSR $9D30 : LDY #$02
 		NOP			;/
 	pullpc
 
+
 	.Main
 		PHB : PHK : PLB
 		PHP
 		SEP #$30
+
+
+
+		REP #$30
+		LDA .SkyGradient+0
+		AND #$00FF
+		STA $04
+
+		LDA $1C
+		SEC : SBC #$0400
+		STA $0C
+		BPL $03 : LDA #$0000
+		CMP #$0800
+		BCC $03 : LDA #$0800
+		LSR #2
+		; boundary: 000-200
+
+		LDX #$0000
+	-	BIT .SkyGradient_r,x : BPL +
+		DEX #2 : BRA -
+	+	CMP .SkyGradient_r,x : BCC +
+		SBC .SkyGradient_r,x
+		INC $04
+		BRA -
+
+	+	TXY
+		; Y = source table index
+		STA $0E
+		; $0E = scanline data for first chunk
+		LDA $0C
+		EOR #$FFFF
+		BPL $03 : LDA #$0000
+		LSR #2
+		STA $0C
+		; $0C = scanline boost for first chunk
+
+		LDA .SkyGradient+1
+		AND #$00FF
+		STA $06
+		LDA $04
+		BPL $03 : LDA #$0000
+		CMP $06
+		BCC $02 : LDA $06
+		STA $04
+
+		LDA $13
+		AND #$0001
+		BEQ $03 : LDA #$0080
+		TAX
+		; X = double buffer index
+
+		STZ $02
+	-	LDA .SkyGradient_r,y : BPL +
+		DEY #2 : BRA -
+	+	SEC : SBC $0E
+		STZ $0E
+		CLC : ADC $0C
+		STZ $0C
+		CMP #$0080 : BCC +
+		LSR A
+		STA $0200,x
+		BCC $01 : INC A
+		STA $0202,x
+		LDA $04
+		ORA #$0020
+		SEP #$20
+		STA $0201,x
+		STA $0203,x
+		REP #$20
+		INX #2
+		BRA ++
+
+	+	STA $0200,x
+		LDA $04
+		ORA #$0020
+		STA $0201,x
+	++	AND #$001F
+		CMP $06
+		BEQ $02 : INC $04
+		LDA $02
+		CLC : ADC .SkyGradient_r,y
+		STA $02
+		INX #2
+		INY #2
+		CMP #$0100 : BCC -
+		STZ $0200,x
+
+
+
+		REP #$30
+		LDA .SkyGradient+2
+		AND #$00FF
+		STA $04
+
+		LDA $1C
+		SEC : SBC #$0400
+		STA $0C
+		BPL $03 : LDA #$0000
+		CMP #$0800
+		BCC $03 : LDA #$0800
+		LSR #2
+		; boundary: 000-200
+
+		LDX #$0000
+	-	BIT .SkyGradient_g,x : BPL +
+		DEX #2 : BRA -
+	+	CMP .SkyGradient_g,x : BCC +
+		SBC .SkyGradient_g,x
+		INC $04
+		BRA -
+
+	+	TXY
+		; Y = source table index
+		STA $0E
+		; $0E = scanline data for first chunk
+		LDA $0C
+		EOR #$FFFF
+		BPL $03 : LDA #$0000
+		LSR #2
+		STA $0C
+		; $0C = scanline boost for first chunk
+
+
+		LDA .SkyGradient+3
+		AND #$00FF
+		STA $06
+		LDA $04
+		BPL $03 : LDA #$0000
+		CMP $06
+		BCC $02 : LDA $06
+		STA $04
+
+		LDA $13
+		AND #$0001
+		BEQ $03 : LDA #$0080
+		TAX
+		; X = double buffer index
+
+		STZ $02
+	-	LDA .SkyGradient_g,y : BPL +
+		DEY #2 : BRA -
+	+	SEC : SBC $0E
+		STZ $0E
+		CLC : ADC $0C
+		STZ $0C
+		CMP #$0080 : BCC +
+		LSR A
+		STA $0300,x
+		BCC $01 : INC A
+		STA $0302,x
+		LDA $04
+		ORA #$0040
+		SEP #$20
+		STA $0301,x
+		STA $0303,x
+		REP #$20
+		INX #2
+		BRA ++
+
+	+	STA $0300,x
+		LDA $04
+		ORA #$0040
+		STA $0301,x
+	++	AND #$001F
+		CMP $06
+		BEQ $02 : INC $04
+		LDA $02
+		CLC : ADC .SkyGradient_g,y
+		STA $02
+		INX #2
+		INY #2
+		CMP #$0100 : BCC -
+		STZ $0300,x
+
+
+
+
+
+
+		SEP #$30
+		LDA $13
+		AND #$01
+		BEQ $02 : LDA #$80
+		STA !HDMA6source
+		STA !HDMA7source
+		LDA #$02 : STA !HDMA6source+1
+		LDA #$03 : STA !HDMA7source+1
+		STZ $4364
+		STZ $4374
+		REP #$20
+		LDA #$3200 : STA $4360
+		LDA #$3200 : STA $4370
+		SEP #$20
+
+
+
+
+
+
+		LDA !GameMode
+		CMP #$07 : BNE ..go
+		..pressstart
+		STZ $0D
+		REP #$20
+		LDA.w #.PressAnyButton : STA $02
+		LDA.w #.PressAnyButton_end-.PressAnyButton : STA $0E
+		SEP #$20
+		LDA #$40 : STA $00
+
+		LDA $13
+		LSR #3
+		AND #$07
+		SEC : SBC #$04
+		BPL $03 : EOR #$FF : INC A
+		CLC : ADC #$80
+		STA $01
+		JSL !SpriteHUD
+		..nodraw
+		LDA $16
+		ORA $18
+		AND #$F0 : BEQ ..return
+		LDA #$30 : STA !TimerFrames
+		INC !GameMode
+		..return
+		PLP
+		PLB
+		JML $008494		; this routine is in bank 00 and ends in RTS so this is fine (build OAM btw)
+
+
+		..go
+		STZ $4200					; make sure no sprites get killed by lag frames by disabling NMI
 
 		LDA #$5F : STA !Translevel			; use final slot to index text
 		LDA !MsgTrigger : BEQ .NoText
@@ -1608,19 +1893,60 @@ MAIN_MENU:
 		.NoWindow
 
 
-		LDA !MenuState
-		ASL A
-		CMP.b #.Ptr_End-.Ptr
-		BCC $02 : LDA #$00
-		TAX
-		JSR (.Ptr,x)
 
-		JSL !BuildOAM
+		LDA $6DA2 : PHA					;\
+		LDA $6DA4 : PHA					; | preserve input
+		LDA $6DA6 : PHA					; |
+		LDA $6DA8 : PHA					;/
 
+		LDA !MenuState					;\
+		ASL A						; |
+		CMP.b #.Ptr_end-.Ptr				; | execute menu code
+		BCC $02 : LDA #$00				; |
+		TAX						; |
+		JSR (.Ptr,x)					;/
+
+
+		LDA #$00 : STA !MultiPlayer			;\
+		LDA #$00 : STA !Characters			; |
+		LDA #$02 : STA !MarioBehind			; |
+		LDA !GameMode : PHA				; |
+		LDA !TimerFrames : BNE ..restore		; > for mailbox rise animation
+		LDA #$14 : STA !GameMode			; |
+		LDA #$08 : STA $3180				; |
+		LDA #$80 : STA $3181				; |
+		LDA #$15 : STA $3182				; |
+		LDA !P2ExternalAnimTimer-$80 : BEQ ..noforward	; |
+		LDA !MenuState					; |
+		AND #$7F : BEQ ..noforward			; |
+		CMP #$08 : BEQ ..noforward			; |
+		LDA !MarioXPosLo : PHA				; | scuffed PCE call for mario
+		CLC : ADC #$08					; |
+		STA !MarioXPosLo				; |
+		JSR $1E80					; |
+		PLA : STA !MarioXPosLo				; |
+		BRA ..restore					; |
+		..noforward					; |
+		JSR $1E80					; |
+		..restore					; |
+		PLA : STA !GameMode				;/
+
+		PLA : STA $6DA8					;\
+		PLA : STA $6DA6					; | restore input
+		PLA : STA $6DA4					; |
+		PLA : STA $6DA2					;/
+
+		JSL .Mailbox
+
+		; P unknown here
+		SEP #$20
+		LDA #$81 : STA $4200			; re-enable NMI + auto joypad
 
 		PLP
 		PLB
 		JML $008494		; this routine is in bank 00 and ends in RTS so this is fine (build OAM btw)
+
+
 
 
 		.Ptr
@@ -1631,12 +1957,164 @@ MAIN_MENU:
 		dw .PreviewFile		; 04
 		dw .EraseFile		; 05
 		dw .LoadFile		; 06
-		..End
+		dw .FileAway		; 07
+		dw IntroText		; 08
+		..end
+
+		.Mailbox
+		LDA !TimerFrames : BEQ +
+		DEC !TimerFrames
+		+
+		STZ $00
+		LDA #$02 : STA $0D
+		REP #$20
+		LDA #$0D10
+		LDX $1D
+		CPX #$0D
+		BEQ $03 : LDA #$0C10
+		SEC : SBC $1C
+		CMP #$0050 : BCC ..draw
+		SEP #$20
+		JMP ..done
+		..draw
+		CLC : ADC !TimerFrames
+		STA $01
+		AND #$00FF
+		CMP #$0030 : BCC ..0C
+		CMP #$0040 : BCC ..08
+		..04
+		LDA #$0004 : BRA ..setsize
+		..08
+		LDA #$0008 : BRA ..setsize
+		..0C
+		LDA #$000C
+		..setsize
+		STA $0E
+		..go
+		LDX !P2ExternalAnimTimer-$80 : BEQ ..1closed
+		LDX !P2ExternalAnim-$80
+		CPX #$49 : BNE ..1closed
+		LDX $610A : BNE ..1closed
+		LDA.w #.Mailbox1TilemapOpen : BRA +
+		..1closed
+		LDA.w #.Mailbox1TilemapClosed
+	+	STA $02
+		JSR .DrawMailbox
+		LDX !P2ExternalAnimTimer-$80 : BEQ ..2closed
+		LDX !P2ExternalAnim-$80
+		CPX #$49 : BNE ..2closed
+		LDX $610A
+		CPX #$01 : BNE ..2closed
+		LDA.w #.Mailbox2TilemapOpen : BRA +
+		..2closed
+		LDA.w #.Mailbox2TilemapClosed
+	+	STA $02
+		JSR .DrawMailbox
+		LDX !P2ExternalAnimTimer-$80 : BEQ ..3closed
+		LDX !P2ExternalAnim-$80
+		CPX #$49 : BNE ..3closed
+		LDX $610A
+		CPX #$02 : BNE ..3closed
+		LDA.w #.Mailbox3TilemapOpen : BRA +
+		..3closed
+		LDA.w #.Mailbox3TilemapClosed
+	+	STA $02
+		JSR .DrawMailbox
+		..done
+		RTL
+
+	.DrawMailbox
+		PHP
+		SEP #$20
+		STZ $0F
+		REP #$30
+		LDY #$0000
+		LDA !OAMindex_p0 : TAX
+		..loop
+		LDA ($02),y
+		CLC : ADC $00				; this works as long as X coord doesn't overflow
+		BCC ..draw				; only draw if there's no overflow on Y
+		INY #4
+		BRA ..next
+		..draw
+		STA !OAM_p0+$000,x
+		INY #2
+		LDA ($02),y : STA !OAM_p0+$002,x
+		INY #2
+		PHX
+		TXA
+		LSR #2
+		TAX
+		LDA $0D
+		AND #$0002
+		STA !OAMhi_p0+$00,x
+		PLX
+		INX #4
+		..next
+		CPY $0E : BCC ..loop
+		TXA : STA !OAMindex_p0
+		PLP
+		RTS
+
+
+		.PressAnyButton
+		db $00,$00,$C3,$3D
+		db $08,$00,$C4,$3D
+		db $10,$00,$C5,$3D
+		db $18,$00,$C6,$3D
+		db $20,$00,$C7,$3D
+
+		db $30,$00,$D3,$3D
+		db $38,$00,$D4,$3D
+		db $40,$00,$D5,$3D
+
+		db $50,$00,$E3,$3D
+		db $58,$00,$E4,$3D
+		db $60,$00,$E5,$3D
+		db $68,$00,$E6,$3D
+		db $70,$00,$E7,$3D
+		db $78,$00,$E8,$3D
+		..end
+
+
 
 		.WindowIndex
 		db $00,$03,$06
 		.WindowOffset
-		db $0F,$3F,$6F
+		db $2F,$4F,$6F
+
+
+
+		.SkyGradient
+		; R max and R min
+		db $06
+		db $10
+
+		; G max and G min
+		db $05
+		db $1B
+
+		; B max and B min
+		db $1D
+		db $1F
+
+		..r
+		dw $29
+		dw $FFFF	; repeat last byte
+
+		..g
+		dw $17
+		dw $FFFF	; repeat last byte
+
+
+		..b
+		dw $40
+		dw $FFFF	; repeat last byte
+
+
+
+
+
 
 	.FilesAppear
 	; INIT:
@@ -1645,14 +2123,34 @@ MAIN_MENU:
 	; MAIN:
 	; use HDMA to move each file independently of the others
 	; this state is just here for animation purposes
+
+		LDA !TimerFrames : BEQ ..process
+		RTS
+		..process
+
 		LDA !MenuState : BPL ..init
 		JMP ..main
 		..init
-		ORA #$80
-		STA !MenuState
+		ORA #$80 : STA !MenuState
 		LDX.b #!MenuTemp-2
 	-	STZ !MenuRAM+1,x
 		DEX : BPL -
+
+
+		LDA !MarioXPosLo : BNE +
+		REP #$20
+		LDA #$0110 : STA !MarioXPosLo
+		SEP #$20
+		LDA #$C0
+		STA !MarioYSpeed
+		STA !P2YSpeed-$80
+		LDA #$D0
+		STA !MarioXSpeed
+		STA !P2XSpeed-$80
+		STZ !MarioBlocked
+		STZ !MarioDirection
+		+
+
 
 		LDA #$02 : STA $610A
 	-	JSL IntegrityCheckSRAM
@@ -1704,16 +2202,16 @@ MAIN_MENU:
 		LDA #$58 : STA $0C05 : STA $0C15				; |
 		LDA #$01 : STA $0C0A : STA $0C1A				; |
 		STZ $0C0F : STZ $0C1F						; |
-		LDA #$38 : STA !HDMA						; |
 		REP #$20							; |
 		LDA #$0D03 : STA $4330						; | set up layer 1 HDMA table
 		LDA #$0C00 : STA !HDMA3source					; |
-		STZ $0C01 : STZ $0C11						; |
-		STZ $0C03 : STZ $0C13						; |
+		LDA $1C								; > X = 0
+		STZ $0C01 : STZ $0C11						; > Y = camera Y
+		STA $0C03 : STA $0C13						; |
 		STZ $0C06 : STZ $0C16						; |
-		STZ $0C08 : STZ $0C18						; |
+		STA $0C08 : STA $0C18						; |
 		STZ $0C0B : STZ $0C1B						; |
-		STZ $0C0D : STZ $0C1D						;/
+		STA $0C0D : STA $0C1D						;/
 
 		LDA #$003C : STA $0D00 : STA $0D20				;\
 		LDA #$003C : STA $0D05 : STA $0D25				; |
@@ -1763,6 +2261,17 @@ MAIN_MENU:
 
 
 		..main
+		LDA #$80 : STA $6DA2
+		STZ $6DA4
+		STZ $6DA6
+		STZ $6DA8
+		LDA !MarioYSpeed : BPL +
+		LDA #$02 : STA !P2ExternalAnimTimer-$80
+		LDA #$0B : STA !P2ExternalAnim-$80
+		+
+
+
+		LDA #$38 : STA !HDMA						; |
 
 		REP #$20
 		LDY #$04
@@ -1811,6 +2320,9 @@ MAIN_MENU:
 		..noerase
 
 		LDA $16
+		AND #$03
+		ASL #2
+		ORA $16
 		AND #$0C : BEQ ..noinput
 		CMP #$0C : BEQ ..noinput
 		CMP #$04 : BEQ ..d
@@ -1845,18 +2357,18 @@ MAIN_MENU:
 
 		REP #$20
 		LDA.w #.SmallStarTilemap : STA $02
+		LDA #$0004 : STA $0E
 		SEP #$20
 		STZ $0D
-		LDA #$04 : STA $0E
 		LDA !SRAM_block
 		CMP #$FF : BEQ ..nostar1
-		LDA #$20 : STA $00
+		LDA #$40 : STA $00
 		LDA #$14 : STA $01
 		JSL !SpriteHUD
 		..nostar1
 		LDA !SRAM_block+!SaveFileSize
 		CMP #$FF : BEQ ..nostar2
-		LDA #$50 : STA $00
+		LDA #$60 : STA $00
 		LDA #$44 : STA $01
 		JSL !SpriteHUD
 		..nostar2
@@ -1869,15 +2381,16 @@ MAIN_MENU:
 
 		REP #$20
 		LDA.w #.HackMarkTilemap : STA $02
-		LDA #$0402 : STA $0D
+		LDA #$0002 : STA $0D
+		LDA #$0004 : STA $0E
 		SEP #$20
 		LDA !MenuIntegrity_1 : BEQ ..nohack1
-		LDA #$30 : STA $00
+		LDA #$50 : STA $00
 		LDA #$14 : STA $01
 		JSL !SpriteHUD
 		..nohack1
 		LDA !MenuIntegrity_2 : BEQ ..nohack2
-		LDA #$60 : STA $00
+		LDA #$70 : STA $00
 		LDA #$44 : STA $01
 		JSL !SpriteHUD
 		..nohack2
@@ -1891,29 +2404,58 @@ MAIN_MENU:
 		REP #$20
 		STZ $00
 		LDA.w #.TooltipTilemap : STA $02
+		LDA #$0014 : STA $0E
 		SEP #$20
 		LDA #$02 : STA $0D
-		LDA #$14 : STA $0E
 		JSL !SpriteHUD
+
+
+
+		JSR .MoveMario
+		LDA !MarioBlocked
+		AND #$04 : BNE +
+		STZ !P2Stasis-$80
+		+
+
+
+		LDX $610A
+		LDA $13
+		LSR #3
+		AND #$07
+		SEC : SBC #$04
+		BPL $03 : EOR #$FF : INC A
+		CLC : ADC .OutlineDispX,x
+		SEC : SBC #$20
+		STA $00
+		LDA .OutlineDispY,x
+		CLC : ADC #$08
+		STA $01
+		REP #$20
+		LDA.w #.HandTilemap : STA $02
+		LDA #$0014 : STA $0E
+		SEP #$20
+		LDA #$02 : STA $0D
+		JSL !SpriteHUD
+
 
 
 		LDA $13
 		AND #$18 : BEQ ..blink
-
 		LDX $610A
-
 		LDA .OutlineDispX,x : STA $00
 		LDA .OutlineDispY,x : STA $01
 		REP #$20
 		LDA.w #.OutlineTilemap : STA $02
+		LDA #$0050 : STA $0E
 		SEP #$20
 		LDA #$02 : STA $0D
-		LDA #$50 : STA $0E
 		JSL !SpriteHUD
 
 		..blink
 
 		RTS
+
+
 
 	.ChooseDifficulty
 	; INIT:
@@ -1923,8 +2465,7 @@ MAIN_MENU:
 
 		LDA !MenuState : BMI ..main
 		..init
-		ORA #$80
-		STA !MenuState
+		ORA #$80 : STA !MenuState
 		STZ !MenuBG1_X
 		STZ !MenuBG1_X+1
 		REP #$10
@@ -1932,6 +2473,8 @@ MAIN_MENU:
 
 
 		..main
+		JSR .MoveMario
+
 		REP #$20
 		LDY #$04
 	-	LDA !MenuBG3_Y_1,y
@@ -1954,7 +2497,7 @@ MAIN_MENU:
 	+	LDA !MenuBG1_X
 		STA $0C01,x
 		STA $0C06,x
-		STX !HDMA3source			; always double buffer baby!
+		STX !HDMA3source			; always double buffer, baby!
 		SEP #$20
 
 		LDA $0C02,x : BNE ..choose
@@ -1982,7 +2525,9 @@ MAIN_MENU:
 		RTS
 		..nochoice
 		BVC ..noback
+		LDA !WindowDir : BEQ ..waitfortext
 		STZ !MenuState
+		..waitfortext
 		RTS
 		..noback
 
@@ -1991,6 +2536,7 @@ MAIN_MENU:
 		INC A
 		CMP !MsgTrigger : BEQ ..notextupdate
 		STA !MsgTrigger
+		LDA #$80 : STA !MsgTrigger+1
 		LDA #$00
 		STA $400000+!MsgIndex
 		STA $400000+!MsgIndexHi
@@ -2022,6 +2568,8 @@ MAIN_MENU:
 		JSL !SpriteHUD
 		RTS
 
+
+
 	.ChallengeModes
 	; INIT:
 	; reset cursor
@@ -2029,11 +2577,12 @@ MAIN_MENU:
 	; step 2 of making a new file, the player checks the challenge modes they want, if any
 		LDA !MenuState : BMI ..main
 		..init
-		ORA #$80
-		STA !MenuState
+		ORA #$80 : STA !MenuState
 		STZ !MenuChallengeSelect
 
 		..main
+		JSR .MoveMario
+
 		LDA $16
 		AND #$0C : BEQ ..nochange
 		CMP #$0C : BEQ ..nochange
@@ -2050,6 +2599,7 @@ MAIN_MENU:
 	..w	STA !MenuChallengeSelect
 		LDA #$06 : STA !SPC4
 		..nochange
+
 
 		BIT $16 : BPL ..nochoice
 		LDX !MenuChallengeSelect
@@ -2074,9 +2624,10 @@ MAIN_MENU:
 -	STA !LevelTable4,x			; |
 	DEX : BPL -				;/
 		JSL SaveFileSRAM
-		LDA #$0B : STA !GameMode
-		LDA #$EA : STA $6109
-		STZ !HDMA
+	;	LDA #$0B : STA !GameMode
+	;	LDA #$EA : STA $6109
+		LDA #$07 : STA !MenuState
+		RTS
 		..nostart
 
 
@@ -2084,6 +2635,7 @@ MAIN_MENU:
 		CLC : ADC #$04
 		CMP !MsgTrigger : BEQ ..notextupdate
 		STA !MsgTrigger
+		LDA #$80 : STA !MsgTrigger+1
 		LDA #$00
 		STA $400000+!MsgIndex
 		STA $400000+!MsgIndexHi
@@ -2171,8 +2723,9 @@ MAIN_MENU:
 	; when loading a new file, its stats are previewed for the player to see (A/B confirm, X/Y cancel)
 		LDA !MenuState : BMI ..main
 		..init
-		ORA #$80
-		STA !MenuState
+		ORA #$80 : STA !MenuState
+		STZ !TimerSeconds
+		STZ !P1Coins
 		REP #$30
 		LDA !LevelHeight
 		ASL A
@@ -2181,6 +2734,18 @@ MAIN_MENU:
 		JSR LoadScreen
 
 		..main
+		LDA !P2Stasis-$80 : BEQ +
+		LDA !P1Coins
+		CMP.b #.OpenCoords_end-.OpenCoords-1 : BCS +
+		INC !P1Coins
+	+	JSR .MoveMario
+		LDA !P2Stasis-$80 : BEQ ..noopen
+		STA !P2ExternalAnimTimer-$80
+		LDX !P1Coins
+		LDA .OpenCoords,x : STA !MarioYPosLo
+		LDA .OpenImg,x : STA !P2ExternalAnim-$80
+		..noopen
+
 		REP #$20
 		LDY #$04
 	-	LDA !MenuBG3_Y_1,y
@@ -2191,14 +2756,22 @@ MAIN_MENU:
 		SEP #$20
 		JSR HandleBG3Files
 
-		LDA $13
+
+		LDA !TimerSeconds : BNE +
+		LDA !P2ExternalAnim-$80
+		CMP #$26 : BNE ++
+		INC !TimerSeconds
+		BRA +
+	++	RTS
+
+	+	LDA $13
 		AND #$01
 		BEQ $02 : LDA #$10
 		TAX
 		REP #$20
 		LDA !MenuBG1_X
 		CMP #$0100 : BEQ +
-		CLC : ADC #$0004
+		CLC : ADC #$0008
 		STA !MenuBG1_X
 	+	LDA !MenuBG1_X
 		STA $0C01,x
@@ -2226,10 +2799,49 @@ MAIN_MENU:
 
 
 
+		.OpenCoords
+		db $B0,$AB,$A7,$A3,$9F,$9C,$99,$96
+		db $94,$92,$91,$90,$8F,$8F,$8F,$8F
+		db $90,$91,$93,$95,$97,$9A
+
+		db $9B,$9B,$9B,$9B,$9B,$9B,$9B,$9B
+		db $9B,$9B,$9B,$9B,$9B,$9B,$9B,$9B
+		db $9B,$9B,$9B,$9B,$9B,$9B,$9B,$9B
+		db $9B,$9B,$9B,$9B,$9B,$9B,$9B,$9B
+		db $9B,$9B,$9B,$9B,$9B,$9B,$9B,$9B
+		db $9B,$9B,$9B,$9B,$9B,$9B,$9B,$9B
+
+		db $9C,$9D,$9F,$A0,$A2,$A4,$A7,$A9
+		db $AC,$B0
+		..end
+
+
+
+		.OpenImg
+		db $0B,$0B,$0B,$0B,$0B,$0B,$0B,$0B
+		db $0B,$0B,$0B,$0B,$0B,$24,$24,$24
+		db $24,$24,$24,$24,$24,$24
+
+		db $49,$49,$49,$49,$49,$49,$49,$49
+		db $49,$49,$49,$49,$49,$49,$49,$49
+		db $49,$49,$49,$49,$49,$49,$49,$49
+		db $49,$49,$49,$49,$49,$49,$49,$49
+		db $49,$49,$49,$49,$49,$49,$49,$49
+		db $49,$49,$49,$49,$49,$49,$49,$49
+
+		db $24,$24,$24,$24,$24,$24,$24,$24
+		db $24,$26
+
+
+
 	.EraseFile
 	; MAIN:
 	; ask if player is sure they want to erase the file
 	; if yes, erase it and go back to state 1
+
+
+		LDA #$02 : STA !P2Stasis-$80
+
 		JSL EraseFileSRAM
 		STZ !MenuState
 		RTS
@@ -2238,10 +2850,75 @@ MAIN_MENU:
 	.LoadFile
 	; INIT:
 	; call load SRAM routine, then set game mode to 0B
+
+		LDA #$02 : STA !P2Stasis-$80
+
 		JSL LoadFileSRAM
 		STZ $6109				; go directly to realm select
 		LDA #$0B : STA !GameMode
 		RTS
+
+
+
+
+	.MoveMario
+		LDX $610A
+		LDA !MarioXPosHi : BPL ..process
+		LDA #$C1 : STA $6DA2
+		BRA ..clear
+		..process
+		LDA .MarioX,x
+		CMP !MarioXPosLo : BEQ ..good
+		BCC ..left
+		..right
+		LDA #$41 : STA $6DA2
+		BRA ..clear
+		..left
+		LDA #$42 : STA $6DA2
+		BRA ..clear
+		..good
+		STZ $6DA2
+		LDA #$02 : STA !P2Stasis-$80
+		LDA #$01 : STA !MarioDirection
+		..clear
+		STZ $6DA4
+		STZ $6DA6
+		STZ $6DA8
+		..done
+		RTS
+
+
+
+
+		.Mailbox1TilemapClosed
+		db $30,$90,$60,$0A
+		db $30,$A0,$68,$0A
+		db $30,$B0,$6A,$0A
+		.Mailbox1TilemapOpen
+		db $30,$90,$66,$0A
+		db $30,$A0,$68,$0A
+		db $30,$B0,$6A,$0A
+
+		.Mailbox2TilemapClosed
+		db $70,$90,$62,$0A
+		db $70,$A0,$68,$0A
+		db $70,$B0,$6A,$0A
+		.Mailbox2TilemapOpen
+		db $70,$90,$66,$0A
+		db $70,$A0,$68,$0A
+		db $70,$B0,$6A,$0A
+
+		.Mailbox3TilemapClosed
+		db $B0,$90,$64,$0A
+		db $B0,$A0,$68,$0A
+		db $B0,$B0,$6A,$0A
+		.Mailbox3TilemapOpen
+		db $B0,$90,$66,$0A
+		db $B0,$A0,$68,$0A
+		db $B0,$B0,$6A,$0A
+
+		.MarioX
+		db $20,$60,$A0
 
 
 
@@ -2292,7 +2969,7 @@ MAIN_MENU:
 		db $72,$12,$C0,$DF
 
 		.OutlineDispX
-		db $0F,$3F,$6F
+		db $2F,$4F,$6F
 		.OutlineDispY
 		db $06,$36,$66
 
@@ -2312,6 +2989,763 @@ MAIN_MENU:
 
 		.HackMarkTilemap
 		db $00,$00,$A4,$3F
+
+
+
+
+	.FileAway
+		LDA !MsgTrigger
+		ORA !MsgTrigger+1
+		BEQ ..process
+		RTS
+		..process
+
+		LDA !MenuState : BMI ..main
+		..init
+		ORA #$80 : STA !MenuState
+
+		..main
+		LDA #$41 : STA $6DA2
+		STZ $6DA4
+		STZ $6DA6
+		STZ $6DA8
+		LDA $13
+		AND #$01
+		BEQ $02 : LDA #$10
+		TAX
+		REP #$20
+		LDA !MenuBG1_X : BEQ ..done
+		SEC : SBC #$0002
+		STA !MenuBG1_X
+		STA $0C01,x
+		STA $0C06,x
+		STX !HDMA3source
+		SEP #$20
+		RTS
+
+
+		..done
+		SEP #$20
+		LDA #$08 : STA !MenuState
+		STZ !HDMA
+		RTS
+
+
+
+; cloud sprite data:
+; $3200 - type
+; $3210 - Y
+; $3220 - X
+; $3240 - layer (lo byte of pointer, hi byte is always 30)
+; $3250 - scroll rate
+	IntroText:
+		LDA #$02 : STA !P2Stasis-$80
+		LDA !MenuState : BMI .Main
+
+		.Init
+		ORA #$80 : STA !MenuState
+
+		LDA #$10 : TSB !2131
+		LDA #$C0 : TSB !HDMA
+
+		STZ !AnimToggle			; make sure CCDMA doesn't black bar by putting limit at 2KB/frame
+
+		LDA #$FF
+		STA $20
+		STA $21
+		LDA #$01 : STA !Mode7Scale+1
+		STZ !Mode7Scale
+		LDA #$13
+		TSB !MainScreen
+		TRB !SubScreen
+		STZ !TimerSeconds
+		STZ !TimerSeconds+1
+		LDA #$03
+		TRB !2107
+		TRB !2108
+		LDA #$02
+		TSB !2107
+		TSB !2108
+		LDA #$01 : TRB $1D
+		LDA #$18 : STA $24
+		LDA #$01 : STA $25
+		LDX #$0F
+	-	STZ $3200,x
+		DEX : BPL -
+		LDA.b #.SA1 : STA $3180
+		LDA.b #.SA1>>8 : STA $3181
+		LDA.b #.SA1>>16 : STA $3182
+		JMP $1E80
+
+
+
+		.Main
+		LDA #$02 : STA !P2ExternalAnimTimer-$80
+		LDA #$0C : STA !P2ExternalAnim-$80
+
+		REP #$20
+		INC !TimerSeconds
+		DEC $1C
+		LDA $13
+		LSR A
+		BCC $02 : DEC $20
+
+
+		LDA !MarioYPosLo
+		CMP #$04A0 : BCC +
+		LDA #$04A0 : STA !MarioYPosLo
+		LDA #$0108 : STA !MarioXPosLo
+		+
+
+		LDA $1C
+		CMP #$0400 : BCS ..skipmario
+		SEC : SBC #$0080
+		SEP #$20
+		ASL A
+		ORA #$80
+		STA !MarioYSpeed
+		LDA #$C0 : STA !MarioXSpeed
+		STZ !MarioDirection
+		STZ !P2Stasis-$80
+		REP #$20
+		..skipmario
+
+		LDA $1C
+		CMP #$0380 : BCS ..skipsmall
+		CMP #$0320 : BCC ..skipsmall
+		SEC : SBC #$0040
+		SEP #$20
+		EOR #$FF
+		CLC : ADC #$31
+		STA $01
+		LDA $1C
+		SEC : SBC #$40
+		EOR #$FF
+		SEC : SBC #$5F
+		LSR A
+		STA $00
+		REP #$20
+		LDA.w #.SmallMarioTM : STA $02
+		LDA #$0002 : STA $0D
+		LDA #$0004 : STA $0E
+		SEP #$20
+		JSL !SpriteHUD
+		REP #$20
+		..skipsmall
+
+
+
+
+
+		.HandleClouds
+		SEP #$20
+		LDA.b #.ProcessClouds : STA $3180
+		LDA.b #.ProcessClouds>>8 : STA $3181
+		LDA.b #.ProcessClouds>>16 : STA $3182
+		JSR $1E80
+		REP #$20
+
+		.Layer2
+		LDA $20
+		CMP #$FF20
+		SEP #$20
+		BCS ..done
+		LDA #$02
+		TRB !MainScreen
+		TRB !SubScreen
+		..done
+
+		.Layer1
+		REP #$20
+		LDA $1C
+		CMP #$0BF0 : BEQ ..clear
+		CMP #$0800 : BEQ ..loadairship
+		JMP ..done
+		..clear
+		JSL !GetVRAM
+		LDA #$5000 : STA !VRAMbase+!VRAMtable+$00,x
+		LDA.w #.BG1Clear : STA !VRAMbase+!VRAMtable+$02,x
+		LDA.w #.BG1Clear>>16 : STA !VRAMbase+!VRAMtable+$04,x
+		LDA !2107
+		AND #$00FC
+		XBA
+		STA !VRAMbase+!VRAMtable+$05,x
+		BRA ..done
+		..loadairship
+		REP #$30
+		LDA #$0003 : TRB !2107
+		LDA #$0001 : TSB !2107
+		REP #$20							;\
+		LDA.w #!DecompBuffer : STA $00					; |
+		LDA.w #!DecompBuffer>>8 : STA $01				; |
+		LDA.w #$D03							; |
+		JSL !DecompressFile						; |
+		JSL !GetVRAM							; | decompress file $D03 and upload it to VRAM
+		LDA #$3FFE : STA !VRAMbase+!VRAMtable+$00,x			; |
+		LDA.w #!DecompBuffer : STA !VRAMbase+!VRAMtable+$02,x		; |
+		LDA.w #!DecompBuffer>>8 : STA !VRAMbase+!VRAMtable+$03,x	; |
+		LDA #$0000 : STA !VRAMbase+!VRAMtable+$05,x			; |
+		SEP #$20							;/
+		..done
+		SEP #$30
+
+		.Layer3
+		LDA $13
+		AND #$03 : BNE ..done
+		LDA !MainScreen
+		ORA !SubScreen
+		AND #$02 : BNE ..done
+		REP #$20
+		LDA #$FFF0 : STA $22
+		INC $24
+		SEP #$20
+		..done
+
+		.FinalTimer
+		..doublebuffer
+		REP #$30
+		LDA #$0040
+		STA !Mode7CenterX
+		STA !Mode7CenterY
+		LDA !TimerSeconds
+		CMP #$0980 : BEQ ..kill
+		CMP #$0780 : BCC ..done
+		..move
+		SBC #$0780
+		STA $00
+		LSR #4
+		EOR #$FFFF
+		CLC : ADC #$0010
+		STA !Mode7Rotation
+		LDA $00
+		CMP #$0180 : BCC ..0100
+		AND #$007F
+		EOR #$007F
+		ASL A
+		BRA +
+		..0100
+		LDA #$0100 : BRA +
+	+	STA !Mode7Scale
+		SEP #$20
+		LDA #$07 : STA !2105
+		LDA #$08 : STA !Mode7Settings
+		REP #$20
+		LDA $00
+		CMP #$0180 : BCC ++
+		LDA #$FFC0 : BRA +
+	++	LSR A
+		EOR #$FFFF
+		AND #$01FF
+		CMP #$0100
+		BCC $03 : ORA #$FF00
+		CLC : ADC #$0080
+	+	STA !Mode7X
+		LDA $00
+		CMP #$0180 : BCS +
+		LSR A
+		EOR #$FFFF
+		CLC : ADC #$00A0
+		AND #$01FF
+		CMP #$0100
+		BCC $03 : ORA #$FF00
+		STA !Mode7Y
+	+	BRA ..done
+		..kill
+		SEP #$20
+		LDA #$0B : STA !GameMode
+		STZ !P1Coins
+		..done
+		SEP #$30
+		RTS
+
+
+
+		.BG1Clear
+		dw $38F8
+
+
+
+		.ProcessClouds
+		PHB : PHK : PLB			;\ wrapper start
+		PHP				;/
+
+		STZ $2250				; prepare multiplication
+
+		REP #$30				; all regs 16-bit
+		LDX #$0000				;\ set up loop regs
+		LDY #$0000				;/
+		..spawnloop				;\
+		LDA .CloudData+$04,y			; | check for spawnable cloud
+		CMP !TimerSeconds : BNE ..nospawn	; |
+		..spawn					;/
+
+		LDA .CloudData+$02,y			;\
+		AND #$00FF				; |
+		ORA #$3000				; |
+		STA $00					; |
+		LDA ($00)				; |
+		EOR #$FFFF				; |
+		STA $2251				; |
+		LDA .CloudData+$03,y			; |
+		AND #$00FF				; | calculate initial y offset
+		CMP #$00FF				; |
+		BNE $03 : LDA #$0100			; |
+		ASL A					; |
+		STA $2253				; |
+		SEP #$20				; |
+		LDA #$E0				; |
+		SEC : SBC $2307				; |
+		STA $3210,x				;/
+		LDA .CloudData+$00,y : STA $3200,x	;\
+		LDA .CloudData+$01,y : STA $3220,x	; | get static data
+		LDA .CloudData+$02,y : STA $3240,x	; |
+		LDA .CloudData+$03,y : STA $3250,x	;/
+		REP #$20				; A 16-bit
+		..nospawn				;\
+		INX					; |
+		TYA					; | loop
+		CLC : ADC #$0006			; |
+		TAY					; |
+		CPX #$0006 : BCC ..spawnloop		;/
+		SEP #$30				; all regs 8-bit
+
+		LDX #$0F				; 16 entries
+		..loop					;\ check num
+		LDA $3200,x : BEQ ..next		;/
+		DEC A					;\
+		ASL A					; |
+		TAY					; | tilemap pointer
+		LDA .CloudPtr,y : STA $04		; |
+		LDA .CloudPtr+1,y : STA $05		;/
+		LDA $3240,x : STA $00			;\
+		LDA #$30 : STA $01			; |
+		REP #$20				; |
+		LDA ($00)				; |
+		EOR #$FFFF				; |
+		STA $2251				; | ratio x layer coord
+		LDA $3250,x				; |
+		AND #$00FF				; |
+		CMP #$00FF				; |
+		BNE $03 : LDA #$0100			; > 0xFF = 0x100
+		ASL A					; |
+		STA $2253				;/
+		LDA ($04) : STA $0E			;\
+		INC $04					; | byte count + increment pointer past header
+		INC $04					;/
+		LDA $3220,x				;\
+		AND #$00FF				; | X
+		STA $00					;/
+		LDA $3210,x				;\
+		AND #$00FF				; |
+		CLC : ADC $2307				; |
+		AND #$00FF				; | Y
+		CMP #$00E0				; |
+		BCC $03 : ORA #$FF00			; > loop screen at 224px
+		STA $02					;/
+		SEP #$20				; A 8-bit
+		LDA #$02 : STA $0D			; size bit
+
+		JSR ..scale				; offset caused by mode 7 camera
+
+		PHX					;\
+		JSR ..draw				; | draw cloud
+		PLX					;/
+		..next					;\ loop
+		DEX : BPL ..loop			;/
+
+		PLP					;\ wrapper end
+		PLB					;/
+		RTL					; return
+
+
+		..scale
+		REP #$30
+		LDA $00
+		SEC : SBC !Mode7CenterX
+		CLC : ADC !Mode7X
+		STA $2251
+		LDA !Mode7Scale
+		LSR A
+		CLC : ADC #$0080
+		JSL !GetReciprocal : STA $2253
+		LDA !Mode7CenterX
+		SEC : SBC !Mode7X
+		CLC : ADC $2307
+		STA $00
+		LDA $02
+		SEC : SBC !Mode7CenterY
+		CLC : ADC !Mode7Y
+		STA $2251
+		LDA !Mode7Scale
+		LSR A
+		CLC : ADC #$0080
+		JSL !GetReciprocal : STA $2253
+		LDA !Mode7CenterY
+		SEC : SBC !Mode7Y
+		CLC : ADC $2307
+		STA $02
+		SEP #$30
+		RTS
+
+		..draw
+		PHP
+		SEP #$20
+		STZ $0F
+		REP #$30
+		LDY #$0000
+		LDA !OAMindex_p3 : TAX
+	-	LDA ($04),y
+		AND #$00FF
+		CLC : ADC $00
+		CMP #$FFF0 : BCS +
+		CMP #$0100 : BCC +
+		INY #4
+		BRA ++
+	+	STA !OAM_p3+$000,x
+		STA $06
+		INY
+		LDA ($04),y
+		AND #$00FF
+		CLC : ADC $02
+		CMP #$FFF0 : BCS +
+		CMP #$00E0 : BCC +
+		INY #3
+		BRA ++
+	+	STA !OAM_p3+$001,x
+		INY
+		LDA ($04),y : STA !OAM_p3+$002,x
+		INY #2
+		PHX
+		TXA
+		LSR #2
+		TAX
+		LDA $07
+		AND #$0001
+		ORA $0D
+		STA !OAMhi_p3+$00,x
+		PLX
+		INX #4
+	++	CPY $0E : BCC -
+		TXA : STA !OAMindex_p3
+		PLP
+		RTS
+
+
+
+
+
+		.SmallMarioTM
+		db $00,$00,$8E,$40
+
+
+; format:
+; 00	type
+; 01	X offset
+; 02	layer
+; 03	ratio
+; 04-05	spawn time
+
+		.CloudData
+
+		..0
+		db $04		; type
+		db $70		; x offset
+		db $20		; layer
+		db $60		; ratio
+		dw $0080	; spawn time
+		..1
+		db $01		; type
+		db $10		; x offset
+		db $1C		; layer
+		db $80		; ratio
+		dw $00A0	; spawn time
+		..2
+		db $01		; type
+		db $30		; x offset
+		db $1C		; layer
+		db $60		; ratio
+		dw $00E0	; spawn time
+		..3
+		db $03		; type
+		db $50		; x offset
+		db $20		; layer
+		db $80		; ratio
+		dw $0100	; spawn time
+		..4
+		db $04		; type
+		db $A0		; x offset
+		db $1C		; layer
+		db $60		; ratio
+		dw $0120	; spawn time
+		..5
+		db $03		; type
+		db $D4		; x offset
+		db $1C		; layer
+		db $80		; ratio
+		dw $00C0	; spawn time
+
+
+
+		.CloudPtr
+		dw .CloudTM1
+		dw .CloudTM2
+		dw .CloudTM3
+		dw .CloudTM4
+
+
+
+		.CloudTM1
+		dw $0010
+		db $00,$00,$80,$08
+		db $10,$00,$82,$08
+		db $00,$10,$A0,$08
+		db $10,$10,$A2,$08
+
+		.CloudTM2
+		dw $0020
+		db $00,$00,$84,$08
+		db $10,$00,$86,$08
+		db $00,$10,$A4,$08
+		db $10,$10,$A6,$08
+		db $00,$20,$C4,$08
+		db $10,$20,$C6,$08
+		db $00,$30,$E4,$08
+		db $10,$30,$E6,$08
+
+		.CloudTM3
+		dw $0010
+		db $00,$00,$88,$08
+		db $10,$00,$8A,$08
+		db $00,$10,$A8,$08
+		db $10,$10,$AA,$08
+
+		.CloudTM4
+		dw $0020
+		db $00,$00,$C8,$08
+		db $10,$00,$CA,$08
+		db $20,$00,$CC,$08
+		db $30,$00,$CE,$08
+		db $00,$10,$E8,$08
+		db $10,$10,$EA,$08
+		db $20,$10,$EC,$08
+		db $30,$10,$EE,$08
+
+
+
+;
+; $00 - 24-bit pointer to font GFX
+; $03 - 24-bit pointer to font data
+; $06 - index to source text
+; $08 - index to rendering buffer
+; $0A - loop counter for character cache
+; $0C - used for calculating address for character
+; $0E - holds character data from font
+;
+; $0200 - virtual !BigRAM
+
+
+		.SA1
+		PHB							;\ wrapper start
+		PHP							;/
+		REP #$30						;\
+		LDY.w #read2(!TextFontGFX)				; |
+		JSL !GetFileAddress					; | set up font pointer
+		LDA !FileAddress+0 : STA $00				; |
+		LDA !FileAddress+1 : STA $01				;/
+		SEP #$20						;\
+		LDA.b #!ImageCache>>16					; |
+		PHA : PLB						; |
+		REP #$20						; | clear rendering buffer
+		LDY #$1FFE						; |
+		LDA #$0000						; |
+	-	STA.w !GFX_buffer,y					; |
+		DEY #2 : BPL -						;/
+
+		LDA.w #read2(!TextFontData)				;\
+		CLC : ADC.w #!TextFontData				; | set up pointer to font data
+		STA $03							; |
+		LDA.w #!TextFontData>>16 : STA $05			;/
+		STZ $06							; starting read index
+		STZ $08							; starting rendering index
+		SEP #$20						; A 8-bit
+		LDA #$80 : STA $223F					; 2bpp
+		LDA.b #!V_buffer>>16					;\ go into bank 0x60
+		PHA : PLB						;/
+
+		..loop
+		REP #$20
+		LDX $06
+		..readnext
+		LDA.l ..textdata,x
+		INX
+		AND #$00FF
+		CMP #$007F : BEQ ..space
+		CMP #$00FE : BEQ ..newline
+		CMP #$00FF : BNE ..rendertext
+		JMP ..endmessage
+
+		..newline
+		LDA $08							;\
+		AND #$FF00						; | clear X, then add 16 to Y
+		CLC : ADC #$1000					; |
+		STA $08							;/
+		BRA ..readnext						; go to next
+
+		..space
+		LDA $08							;\
+		CLC : ADC #$0006					; | add 6 to X
+		STA $08							;/
+		BRA ..readnext						; go to next
+
+		..rendertext
+		ASL A							;\
+		TAY							; |
+		LDA [$03],y : STA $0E					; |
+		AND #$000F						; |
+		ASL A							; | Y = index to character in cached font
+		STA $0C							; | ($0F = width of character)
+		LDA $0E							; |
+		AND #$00F0						; |
+		ASL #4							; |
+		TSB $0C							;/
+
+		STX $06							; store source index
+		LDA $0F							;\
+		AND #$00FF						; |
+		LSR #2							; | reg setup for cache
+		STA $0A							; |
+		LDX #$0000						;/
+
+	-	LDY $0C							;\
+		LDA [$00],y : STA.l !BigRAM+$00,x			; |
+		LDA $0C							; |
+		CLC : ADC #$0020					; |
+		TAY							; |
+		LDA [$00],y : STA.l !BigRAM+$08,x			; |
+		LDA $0C							; |
+		CLC : ADC #$0040					; |
+		TAY							; |
+		LDA [$00],y : STA.l !BigRAM+$10,x			; |
+		LDA $0C							; |
+		CLC : ADC #$0060					; |
+		TAY							; |
+		LDA [$00],y : STA.l !BigRAM+$18,x			; |
+		LDA $0C							; |
+		CLC : ADC #$0080					; |
+		TAY							; |
+		LDA [$00],y : STA.l !BigRAM+$20,x			; |
+		LDA $0C							; |
+		CLC : ADC #$00A0					; | cache character
+		TAY							; |
+		LDA [$00],y : STA.l !BigRAM+$28,x			; |
+		LDA $0C							; |
+		CLC : ADC #$00C0					; |
+		TAY							; |
+		LDA [$00],y : STA.l !BigRAM+$30,x			; |
+		LDA $0C							; |
+		CLC : ADC #$00E0					; |
+		TAY							; |
+		LDA [$00],y : STA.l !BigRAM+$38,x			; |
+		LDA $0C							; |
+		CLC : ADC #$0100					; |
+		TAY							; |
+		LDA [$00],y : STA.l !BigRAM+$40,x			; |
+		INC $0C							; |
+		INC $0C							; |
+		INX #2							; |
+		CPX $0A : BCS $03 : JMP -				;/
+
+
+		LDY #$0000						;\
+		LDX $08							; | reg setup for render
+		SEP #$20						;/
+	-	LDA.w $0200,y : STA.w !V_buffer*2+$000,x		;\
+		LDA.w $0220,y : STA.w !V_buffer*2+$100,x		; |
+		LDA.w $0240,y : STA.w !V_buffer*2+$200,x		; |
+		LDA.w $0260,y : STA.w !V_buffer*2+$300,x		; |
+		LDA.w $0280,y : STA.w !V_buffer*2+$400,x		; |
+		LDA.w $02A0,y : STA.w !V_buffer*2+$500,x		; | render character
+		LDA.w $02C0,y : STA.w !V_buffer*2+$600,x		; |
+		LDA.w $02E0,y : STA.w !V_buffer*2+$700,x		; |
+		LDA.w $0300,y : STA.w !V_buffer*2+$800,x		; |
+		INX							; |
+		INY							; |
+		DEC $0F : BNE -						;/
+		STX $08							; store new rendering index
+		JMP ..loop						; go to loop
+
+
+		..endmessage
+		SEP #$30
+		LDA #$40 : PHA : PLB
+		JSL !GetBigCCDMA					; X = index to CCDMA table
+		LDA #$16 : STA !CCDMAtable+$07,x			; > width = 256px, bit depth = 2bpp
+		LDA.b #!GFX_buffer>>16 : STA !CCDMAtable+$04,x		;\
+		REP #$20						; | source adddress
+		LDA.w #!GFX_buffer : STA !CCDMAtable+$02,x		;/
+		LDA #$2000 : STA !CCDMAtable+$00,x			; upload size
+		LDA.l !210C						;\
+		AND #$000F						; |
+		XBA							; | dest VRAM
+		ASL #4							; |
+		STA !CCDMAtable+$05,x					;/
+
+		REP #$30						;\
+		LDX #$0000						; |
+		LDA #$2000						; |
+	-	STA.w !DecompBuffer,x					; |
+		INC A							; |
+		INX #2							; | generate tilemap
+		CPX #$0400 : BCC -					; |
+		LDA #$38FF						; |
+	-	STA.w !DecompBuffer,x					; |
+		INX #2							; |
+		CPX #$0800 : BCC -					;/
+
+
+		SEP #$30						;\
+		JSL !GetVRAM						; |
+		REP #$20						; |
+		LDA #$0800 : STA !VRAMtable+$00,x			; |
+		LDA.w #!DecompBuffer : STA !VRAMtable+$02,x		; |
+		LDA.w #!DecompBuffer>>16 : STA !VRAMtable+$04,x		; | upload tilemap
+		LDA.l !2109						; |
+		AND #$00FC						; |
+		XBA							; |
+		STA !VRAMtable+$05,x					;/
+
+		PLP							;\ wrapper end
+		PLB							;/
+		RTL							; return
+
+
+
+
+	incsrc "MSG/TextCommands.asm"
+	cleartable
+	table "MSG/MessageTable.txt"
+
+		..textdata
+		db "The Mushroom Kingdom is at peace"
+		%linebreak()
+		db "but in the distant Dinosaur Land"
+		%linebreak()
+		db "trouble is brewing!"
+		%linebreak()
+		db "Who could be behind these dastardly deeds?"
+		%linebreak()
+		db "The Mario Bros. set out"
+		%linebreak()
+		db "in order to find the truth."
+		%linebreak()
+		db "What awaits our heroes"
+		%linebreak()
+		db "in this unknown land?"
+		%endmessage()
+
+
+
+
 
 
 
@@ -2688,13 +4122,21 @@ endmacro
 		INY
 		CPY #$003C : BCC .CharacterLoop
 
+
+		; load overworld coords
+		%loadbyte(!SRAM_overworldX)
+		%loadbyte(!SRAM_overworldX+1)
+		%loadbyte(!SRAM_overworldY)
+		%loadbyte(!SRAM_overworldY+1)
+
+
 		; loop to add story flags to file
 		LDY #$0000
 	.StoryFlagsLoop
 		%loadtableW(!StoryFlags)
 		INX
 		INY
-		CPY #$008E : BCC .StoryFlagsLoop
+		CPY #$008A : BCC .StoryFlagsLoop
 
 		PLP							; pull P
 		PLB							; bank wrapper end
@@ -2840,13 +4282,19 @@ endmacro
 		INY
 		CPY #$003C : BCC .CharacterLoop
 
+		; add overworld coords to file
+		%addchecksum(!SRAM_overworldX)
+		%addchecksum(!SRAM_overworldX+1)
+		%addchecksum(!SRAM_overworldY)
+		%addchecksum(!SRAM_overworldY+1)
+
 		; loop to add story flags to file
 		LDY #$0000
 	.StoryFlagsLoop
 		%addtableW(!StoryFlags)
 		INX
 		INY
-		CPY #$008E : BCC .StoryFlagsLoop
+		CPY #$008A : BCC .StoryFlagsLoop
 
 		; finally, perform integrity checks
 		REP #$20					; A 16-bit

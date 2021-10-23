@@ -28,9 +28,6 @@
 	!EnrageTimer		= $3580
 
 
-	!IntroMsg		= 1
-	!DeathMsg		= 2
-
 	!DeathBuffer		= $41D000
 
 
@@ -273,7 +270,9 @@
 		.Main
 		LDA !StunTimer,x
 		CMP #$80 : BNE .NoMsg
-		LDY #!IntroMsg : STY !MsgTrigger
+		REP #$10
+		LDY.w #!MSG_KingKing_Intro : STY !MsgTrigger
+		SEP #$10
 		.NoMsg
 		LDA !StunTimer,x : BEQ .Next
 		.Return
@@ -419,6 +418,64 @@
 		LDA #$F0 : STA $220B				; clear all IRQ flags
 		LDA #$B0 : STA $220A				; enable DMA IRQ
 
+		PHB
+		LDA.b #!VRAMbank
+		PHA : PLB
+		LDA.b #!DeathBuffer>>16
+		STA !CCDMAtable+$80+$04
+		STA !CCDMAtable+$80+$0C
+		STA !CCDMAtable+$80+$14
+		STA !CCDMAtable+$80+$1C
+		STA !CCDMAtable+$80+$24
+		STA !CCDMAtable+$80+$2C
+		STA !CCDMAtable+$80+$34
+		STA !CCDMAtable+$80+$3C
+		STA !CCDMAtable+$80+$44
+		REP #$20
+		LDA #$00C0
+		STA !CCDMAtable+$80+$00
+		STA !CCDMAtable+$80+$08
+		STA !CCDMAtable+$80+$10
+		STA !CCDMAtable+$80+$18
+		STA !CCDMAtable+$80+$20
+		STA !CCDMAtable+$80+$28
+		STA !CCDMAtable+$80+$30
+		STA !CCDMAtable+$80+$38
+		STA !CCDMAtable+$80+$40
+		LDA.w #!DeathBuffer+$000 : STA !CCDMAtable+$80+$02
+		LDA.w #!DeathBuffer+$100 : STA !CCDMAtable+$80+$0A
+		LDA.w #!DeathBuffer+$200 : STA !CCDMAtable+$80+$12
+		LDA.w #!DeathBuffer+$300 : STA !CCDMAtable+$80+$1A
+		LDA.w #!DeathBuffer+$400 : STA !CCDMAtable+$80+$22
+		LDA.w #!DeathBuffer+$500 : STA !CCDMAtable+$80+$2A
+		LDA.w #!DeathBuffer+$600 : STA !CCDMAtable+$80+$32
+		LDA.w #!DeathBuffer+$700 : STA !CCDMAtable+$80+$3A
+		LDA.w #!DeathBuffer+$800 : STA !CCDMAtable+$80+$42
+		LDA #$7000 : STA !CCDMAtable+$80+$05
+		LDA #$7100 : STA !CCDMAtable+$80+$0D
+		LDA #$7200 : STA !CCDMAtable+$80+$15
+		LDA #$7300 : STA !CCDMAtable+$80+$1D
+		LDA #$7400 : STA !CCDMAtable+$80+$25
+		LDA #$7500 : STA !CCDMAtable+$80+$2D
+		LDA #$7600 : STA !CCDMAtable+$80+$35
+		LDA #$7700 : STA !CCDMAtable+$80+$3D
+		LDA #$7800 : STA !CCDMAtable+$80+$45
+		SEP #$20
+		LDA #$0D
+		STA !CCDMAtable+$80+$07
+		STA !CCDMAtable+$80+$0F
+		STA !CCDMAtable+$80+$17
+		STA !CCDMAtable+$80+$1F
+		STA !CCDMAtable+$80+$27
+		STA !CCDMAtable+$80+$2F
+		STA !CCDMAtable+$80+$37
+		STA !CCDMAtable+$80+$3F
+		STA !CCDMAtable+$80+$47
+		PLB
+		JMP .Draw
+
+
+
 		.Main
 		LDA !DissolveCoord,x
 		CMP #$48 : BCC .Process
@@ -440,7 +497,9 @@
 		JMP .Upload
 
 		..talk
-		LDA #!DeathMsg : STA !MsgTrigger
+		REP #$20
+		LDA.w #!MSG_KingKing_Defeated : STA !MsgTrigger
+		SEP #$20
 		LDA #$09 : STA !2105
 		REP #$20
 		LDA.w #.BG3Dynamo : STA $0C
@@ -524,62 +583,19 @@
 		PHB
 		LDA.b #!VRAMbank
 		PHA : PLB
-
-		LDA.b #!DeathBuffer>>16
-		STA !CCDMAtable+$80+$04
-		STA !CCDMAtable+$80+$0C
-		STA !CCDMAtable+$80+$14
-		STA !CCDMAtable+$80+$1C
-		STA !CCDMAtable+$80+$24
-		STA !CCDMAtable+$80+$2C
-		STA !CCDMAtable+$80+$34
-		STA !CCDMAtable+$80+$3C
-		STA !CCDMAtable+$80+$44
-
+		LDA.b #!DeathBuffer>>16 : STA !CCDMAtable+$80+$04
 		REP #$20
-		LDA #$00C0
-		STA !CCDMAtable+$80+$00
-		STA !CCDMAtable+$80+$08
-		STA !CCDMAtable+$80+$10
-		STA !CCDMAtable+$80+$18
-		STA !CCDMAtable+$80+$20
-		STA !CCDMAtable+$80+$28
-		STA !CCDMAtable+$80+$30
-		STA !CCDMAtable+$80+$38
-		STA !CCDMAtable+$80+$40
-
-		LDA.w #!DeathBuffer+$000 : STA !CCDMAtable+$80+$02
-		LDA.w #!DeathBuffer+$100 : STA !CCDMAtable+$80+$0A
-		LDA.w #!DeathBuffer+$200 : STA !CCDMAtable+$80+$12
-		LDA.w #!DeathBuffer+$300 : STA !CCDMAtable+$80+$1A
-		LDA.w #!DeathBuffer+$400 : STA !CCDMAtable+$80+$22
-		LDA.w #!DeathBuffer+$500 : STA !CCDMAtable+$80+$2A
-		LDA.w #!DeathBuffer+$600 : STA !CCDMAtable+$80+$32
-		LDA.w #!DeathBuffer+$700 : STA !CCDMAtable+$80+$3A
-		LDA.w #!DeathBuffer+$800 : STA !CCDMAtable+$80+$42
-
-		LDA #$7000 : STA !CCDMAtable+$80+$05
-		LDA #$7100 : STA !CCDMAtable+$80+$0D
-		LDA #$7200 : STA !CCDMAtable+$80+$15
-		LDA #$7300 : STA !CCDMAtable+$80+$1D
-		LDA #$7400 : STA !CCDMAtable+$80+$25
-		LDA #$7500 : STA !CCDMAtable+$80+$2D
-		LDA #$7600 : STA !CCDMAtable+$80+$35
-		LDA #$7700 : STA !CCDMAtable+$80+$3D
-		LDA #$7800 : STA !CCDMAtable+$80+$45
-
+		LDA #$00C0 : STA !CCDMAtable+$80+$00
+		LDA.l !DissolveCoord,x
+		AND #$00F8
+		XBA
+		LSR #3
+		STA $00
+		CLC : ADC.w #!DeathBuffer : STA !CCDMAtable+$80+$02
+		LDA $00
+		CLC : ADC #$7000 : STA !CCDMAtable+$80+$05
 		SEP #$20
-		LDA #$0D
-		STA !CCDMAtable+$80+$07
-		STA !CCDMAtable+$80+$0F
-		STA !CCDMAtable+$80+$17
-		STA !CCDMAtable+$80+$1F
-		STA !CCDMAtable+$80+$27
-		STA !CCDMAtable+$80+$2F
-		STA !CCDMAtable+$80+$37
-		STA !CCDMAtable+$80+$3F
-		STA !CCDMAtable+$80+$47
-
+		LDA #$0D : STA !CCDMAtable+$80+$07
 		PLB
 
 		.Draw

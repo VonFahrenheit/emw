@@ -4,15 +4,35 @@ NPC:
 
 	namespace NPC
 
-		!TalkAnim	=	$BE
+		;!TalkAnim	=	$BE		; which anim will be started when the NPC starts talking (0 = no anim change)
 		!PrevAnim	=	$3280
+		!ToadCarry	=	$3290
+		!Talking	=	$32A0		; 0 = this NPC is not currently talking, 1 = this NPC is currently talking
 		!TalkTimer	=	$32D0
+
 		!SwapWaitTimer	=	$32F0
 		!SparkleTimer	=	$3300
 
 
+		!TalkAnim1	=	$3500		; triggers once, then eats flag
+		!TalkAnim2	=	$3510		; triggers once, then sets highest bit in talk flag to know it has been triggered
+		!TalkAnim3	=	$3520		; default reaction animation, plays once when NPC is talked to
+		!TalkAnim4	=	$3530		; default talking animation, lowest priority
+
+
+
+
 ; extra prop 1: which NPC this is (see list)
 ; extra prop 2: behavior/command to execute, can be sent by other sprites, players, or level code (or set internally)
+
+
+
+
+; how to feed MSG entries to NPCs?
+; approach 1: commands in MSG (no, either way too many mostly duplicate MSG entries or too many cycles spent looping over NPC_Talk)
+; approach 2: set by level code (this is done already for the base table but requires clunky codes to update tables)
+; approach 3: default is always to increment 1 after each talk, but each NPC_Talk entry also has a "cap" entry that it won't go past (is this the best one?)
+
 
 
 
@@ -34,8 +54,16 @@ NPC:
 ;	0D - reserved for yoshi NPC
 ;	0E - reserved for yoshi NPC
 ;	0F - reserved for yoshi NPC
-;	10 - toad
-;	11 - reserved for captain toad
+;	10 - toad 1
+;	11 - toad 2
+;	12 - toad 3
+;	13 - toad 4
+;	14 - toad 5
+;	15 - toad 7
+;	16 - toad 6
+;	17 - toad 8
+;	18 - reserved for captain toad
+;	19 - melody
 ;
 ;
 
@@ -62,15 +90,15 @@ NPC:
 		dw .Alter		; 04
 		dw .Peach		; 05
 		dw .Survivor		; 06
-		dw .Tinker		; 07
+		dw .Tinkerer		; 07
 		dw .RallyYoshi		; 08
 		dw .BigYoshi		; 09
 		dw .PainterYoshi	; 0A
 		dw .OldYoshi		; 0B
-		dw .Unused		; 0C
-		dw .Unused		; 0D
-		dw .Unused		; 0E
-		dw .Unused		; 0F
+		dw .Unused		; 0C (reserved for yoshi)
+		dw .Unused		; 0D (reserved for yoshi)
+		dw .Unused		; 0E (reserved for yoshi)
+		dw .Unused		; 0F (reserved for yoshi)
 		dw .Toad		; 10 (toad 1)
 		dw .Toad		; 11 (toad 2)
 		dw .Toad		; 12 (toad 3)
@@ -79,6 +107,8 @@ NPC:
 		dw .Toad		; 15 (toad 6)
 		dw .Toad		; 16 (toad 7)
 		dw .Toad		; 17 (toad 8)
+		dw .Unused		; 18 (reserved for captain toad)
+		dw .Melody		; 19
 		..end
 
 
@@ -114,12 +144,31 @@ NPC:
 		LDX !SpriteIndex
 		RTS
 
-		.Survivor
+		.FinishPalset
+		JSL LoadPalset
+		LDX $0F
+		LDA !Palset_status,x
+		ASL A
 		LDX !SpriteIndex
+		STA $33C0,x
 		RTS
 
-		.Tinker
+		.Survivor
 		LDX !SpriteIndex
+		LDA #$03 : JSL GET_SQUARE
+		LDA #$08 : STA $33C0,x
+		LDA #$04
+		STA !TalkAnim1,x
+		STA !TalkAnim2,x
+		RTS
+
+		.Tinkerer
+		LDX !SpriteIndex
+		LDA #$03 : JSL GET_SQUARE
+		LDA #$0A : STA $33C0,x
+		LDA #$08
+		STA !TalkAnim1,x
+		STA !TalkAnim2,x
 		RTS
 
 		.RallyYoshi
@@ -136,6 +185,8 @@ NPC:
 
 		.OldYoshi
 		LDX !SpriteIndex
+		LDA #$03 : JSL GET_SQUARE
+		LDA #$06 : STA $33C0,x
 		RTS
 
 		.Toad
@@ -144,17 +195,15 @@ NPC:
 		LDA.b #!palset_special_toad
 		BRA .FinishPalset
 
+		.Melody
+		LDX !SpriteIndex
+		LDA #$01 : JSL GET_SQUARE
+		LDA.b #!palset_special_melody
+		BRA .FinishPalset
+
+
 		.Unused
 		LDX !SpriteIndex
-		RTS
-
-		.FinishPalset
-		JSL LoadPalset
-		LDX $0F
-		LDA !Palset_status,x
-		ASL A
-		LDX !SpriteIndex
-		STA $33C0,x
 		RTS
 
 
@@ -168,15 +217,67 @@ NPC:
 		RTL
 
 		.Process
+		LDA !MsgTrigger
+		ORA !MsgTrigger+1
+		BNE ..windowopen
+
+		..cantalk
+		STZ !Talking,x					; no one is currently talking
 		LDA !TalkTimer,x
-		CMP #$01 : BNE ..notalk
-		LDA !ExtraProp1,x : TAX
-		LDA !NPC_Talk,x : STA !MsgTrigger
-		LDX !SpriteIndex
-		LDA !TalkAnim,x : BEQ ..notalk
-		STA !SpriteAnimIndex
-		STZ !SpriteAnimTimer
-		..notalk
+		CMP #$01 : BEQ ..starttalk
+		JMP ..talkdone
+
+		..starttalk					;\
+		REP #$30					; |
+		LDA !ExtraProp1,x				; |
+		AND #$00FF					; | get MSG value
+		ASL A						; |
+		TAX						; |
+		LDA !NPC_Talk,x : STA !MsgTrigger		; |
+		BPL ..global					;/
+		..level						;\
+		CMP !NPC_TalkCap,x : BCS ..noincrement		; | check for level message increment
+		BRA ..increment					;/
+		..global					;\
+		STA $00						; |
+		LDA !NPC_TalkCap,x : BMI ..noincrement		; | check for global message increment
+		LDA $00						; |
+		CMP !NPC_TalkCap,x : BCS ..noincrement		;/
+		..increment					;\
+		INC A						; | increment message
+		STA !NPC_Talk,x					; |
+		..noincrement					;/
+
+		SEP #$30					;\ restore regs
+		LDX !SpriteIndex				;/
+		LDA #$01 : STA !Talking,x			; this NPC is currently talking
+		..talkanim3					;\
+		LDA #$00 : STA $400000+!MsgTalk			; | go into talk start animation
+		LDA !TalkAnim3,x : BEQ ..talkdone		; | (eats flag)
+		BRA ..setanim					;/
+		..windowopen					;\
+		LDA !Talking,x : BEQ ..talkdone			; |
+		LDA $400000+!MsgTalk : BEQ ..talkdone		; |
+		CMP #$01 : BEQ ..talkanim1			; | check for talk flags
+		CMP #$02 : BEQ ..talkanim2			; |
+		CMP #$03 : BEQ ..talkanim3			; |
+		CMP #$04 : BNE ..talkdone			;/
+		..talkanim4					;\
+		LDA #$00 : STA $400000+!MsgTalk			; | go into looping talk animation
+		LDA !TalkAnim4,x : BEQ ..talkdone		; | (eats flag)
+		BRA ..setanim					;/
+		..talkanim2					;\
+		ORA #$80 : STA $400000+!MsgTalk			; | go into special reaction animation
+		LDA !TalkAnim2,x : BEQ ..talkdone		; | (sets highest bit of flag)
+		BRA ..setanim					;/
+		..talkanim1					;\
+		LDA #$00 : STA $400000+!MsgTalk			; | go into normal reaction animation
+		LDA !TalkAnim1,x : BEQ ..talkdone		;/ (eats flag)
+		..setanim					;\
+		STA !SpriteAnimIndex				; | set anim reg
+		STZ !SpriteAnimTimer				; |
+		..talkdone					;/
+
 
 		LDY #$00
 		LDA !P2Character-$80,y
@@ -210,7 +311,20 @@ NPC:
 		..nosparkle
 
 
-		JSR CheckPlayer : BEQ .Fail
+		JSR CheckPlayer : BEQ .BadCharacter
+
+		LDA !ExtraProp2,x
+		AND #$3F
+		CMP #$3E							;\ 0x3E -> swap p1
+		BNE $02 : LDA.b #((.CommandPtr_end-.CommandPtr)/2)-2		;/
+		CMP #$3F							;\ 0x3F -> swap p2
+		BNE $02 : LDA.b #((.CommandPtr_end-.CommandPtr)/2)-1		;/
+		ASL A
+		CMP.b #.CommandPtr_end-.CommandPtr : BCS .BadCommand
+		TAX
+		JSR (.CommandPtr,x)
+		JSL !SpriteApplySpeed
+		.BadCommand
 
 		LDA !ExtraProp1,x
 		ASL A
@@ -219,13 +333,6 @@ NPC:
 		JSR (.MainPtr,x)
 		.BadCharacter
 
-		LDA !ExtraProp2,x
-		AND #$3F
-		ASL A
-		CMP.b #.CommandPtr_end-.CommandPtr : BCS .BadCommand
-		TAX
-		JSR (.CommandPtr,x)
-		.BadCommand
 		PLB
 		RTL
 
@@ -238,15 +345,15 @@ NPC:
 		dw Alter		; 04
 		dw Peach		; 05
 		dw Survivor		; 06
-		dw Tinker		; 07
+		dw Tinkerer		; 07
 		dw RallyYoshi		; 08
 		dw BigYoshi		; 09
 		dw PainterYoshi		; 0A
 		dw OldYoshi		; 0B
-		dw Unused		; 0C
-		dw Unused		; 0D
-		dw Unused		; 0E
-		dw Unused		; 0F
+		dw Unused		; 0C (reserved for yoshi)
+		dw Unused		; 0D (reserved for yoshi)
+		dw Unused		; 0E (reserved for yoshi)
+		dw Unused		; 0F (reserved for yoshi)
 		dw Toad			; 10 (toad 1)
 		dw Toad			; 11 (toad 2)
 		dw Toad			; 12 (toad 3)
@@ -255,15 +362,21 @@ NPC:
 		dw Toad			; 15 (toad 6)
 		dw Toad			; 16 (toad 7)
 		dw Toad			; 17 (toad 8)
+		dw Unused		; 18 (reserved for captain toad)
+		dw Melody		; 19
 		..end
 
 
 		.CommandPtr
 		dw FacePlayer		; 00
-		dw SwapP1		; 01
-		dw SwapP2		; 02
-		dw Talkable		; 03
-		dw TalkableSwap		; 04
+		dw Talkable		; 01
+		dw TalkableSwap		; 02
+		dw Follow		; 03
+		dw FollowTalkable	; 04
+		dw Guard		; 05
+		dw IntroGuard		; 06
+		dw SwapP1		; last-1
+		dw SwapP2		; last
 		..end
 
 
@@ -439,13 +552,237 @@ NPC:
 		LDX !SpriteIndex
 		RTS
 
+
 	Survivor:
 		LDX !SpriteIndex
+		LDA !SpriteAnimIndex
+		ASL A
+		ADC !SpriteAnimIndex
+		ASL A
+		TAY
+		LDA !SpriteAnimTimer
+		INC A
+		CMP .AnimTable+4,y : BNE .SameAnim
+
+		.NewAnim
+		LDA .AnimTable+5,y : STA !SpriteAnimIndex
+		ASL A
+		ADC !SpriteAnimIndex
+		ASL A
+		TAY
+		LDA #$00
+
+		.SameAnim
+		STA !SpriteAnimTimer
+		REP #$20
+		LDA .AnimTable+0,y : STA $04
+		LDA .AnimTable+2,y : STA $0C
+		SEP #$20
+		LDA !SpriteAnimIndex
+		CMP !PrevAnim,x : BEQ ..skipupload
+		LDY.b #!File_NPC_Survivor : JSL LOAD_SQUARE_DYNAMO
+		..skipupload
+		JSL SETUP_SQUARE
+		JSL LOAD_DYNAMIC
 		RTS
 
-	Tinker:
+
+		.AnimTable
+		dw Tilemap_24x32,.Idle00 : db $80,$01		; 00
+		dw Tilemap_24x32,.Idle01 : db $08,$02		; 01
+		dw Tilemap_24x32,.Idle02 : db $10,$03		; 02
+		dw Tilemap_24x32,.Idle01 : db $08,$00		; 03
+
+		dw Tilemap_24x32,.Bow00 : db $08,$05		; 04
+		dw Tilemap_32x32forward,.Bow01 : db $10,$06	; 05
+		dw Tilemap_24x32,.Bow00 : db $08,$00		; 06
+
+
+		.Idle00
+		dw ..end-..start
+		..start
+		%SquareDyn($000)
+		%SquareDyn($001)
+		%SquareDyn($020)
+		%SquareDyn($021)
+		..end
+		.Idle01
+		dw ..end-..start
+		..start
+		%SquareDyn($003)
+		%SquareDyn($004)
+		%SquareDyn($023)
+		%SquareDyn($024)
+		..end
+		.Idle02
+		dw ..end-..start
+		..start
+		%SquareDyn($006)
+		%SquareDyn($007)
+		%SquareDyn($026)
+		%SquareDyn($027)
+		..end
+
+		.Bow00
+		dw ..end-..start
+		..start
+		%SquareDyn($009)
+		%SquareDyn($00A)
+		%SquareDyn($029)
+		%SquareDyn($02A)
+		..end
+		.Bow01
+		dw ..end-..start
+		..start
+		%SquareDyn($00C)
+		%SquareDyn($00E)
+		%SquareDyn($02C)
+		%SquareDyn($02E)
+		..end
+
+
+
+
+	Tinkerer:
 		LDX !SpriteIndex
+		LDA !SpriteAnimIndex
+		ASL #2
+		TAY
+		LDA !SpriteAnimTimer
+		INC A
+		CMP .AnimTable+2,y : BNE .SameAnim
+
+		.NewAnim
+		LDA .AnimTable+3,y : STA !SpriteAnimIndex
+		ASL #2
+		TAY
+		LDA #$00
+
+		.SameAnim
+		STA !SpriteAnimTimer
+		REP #$20
+		LDA.w #Tilemap_32x32 : STA $04
+		LDA .AnimTable+0,y : STA $0C
+		SEP #$20
+		LDA !SpriteAnimIndex
+		CMP !PrevAnim,x : BEQ ..skipupload
+		LDY.b #!File_NPC_Tinkerer : JSL LOAD_SQUARE_DYNAMO
+		..skipupload
+		JSL SETUP_SQUARE
+		JSL LOAD_DYNAMIC
 		RTS
+
+
+
+		.AnimTable
+		dw .Idle00 : db $1D,$01		; 00
+		dw .Idle01 : db $05,$02		; 01
+		dw .Idle02 : db $05,$03		; 02
+		dw .Idle03 : db $05,$04		; 03
+		dw .Idle04 : db $05,$05		; 04
+		dw .Idle05 : db $05,$06		; 05
+		dw .Idle06 : db $1D,$07		; 06
+		dw .Idle01 : db $05,$00		; 07
+
+		dw .Laugh00 : db $06,$09	; 08
+		dw .Laugh01 : db $06,$0A	; 09
+		dw .Laugh02 : db $06,$0B	; 0A
+		dw .Laugh03 : db $06,$08	; 0B
+
+
+
+		.Idle00
+		dw ..end-..start
+		..start
+		%SquareDyn($000)
+		%SquareDyn($002)
+		%SquareDyn($020)
+		%SquareDyn($022)
+		..end
+		.Idle01
+		dw ..end-..start
+		..start
+		%SquareDyn($004)
+		%SquareDyn($006)
+		%SquareDyn($024)
+		%SquareDyn($026)
+		..end
+		.Idle02
+		dw ..end-..start
+		..start
+		%SquareDyn($008)
+		%SquareDyn($00A)
+		%SquareDyn($028)
+		%SquareDyn($02A)
+		..end
+		.Idle03
+		dw ..end-..start
+		..start
+		%SquareDyn($00C)
+		%SquareDyn($00E)
+		%SquareDyn($02C)
+		%SquareDyn($02E)
+		..end
+		.Idle04
+		dw ..end-..start
+		..start
+		%SquareDyn($040)
+		%SquareDyn($042)
+		%SquareDyn($060)
+		%SquareDyn($062)
+		..end
+		.Idle05
+		dw ..end-..start
+		..start
+		%SquareDyn($044)
+		%SquareDyn($046)
+		%SquareDyn($064)
+		%SquareDyn($066)
+		..end
+		.Idle06
+		dw ..end-..start
+		..start
+		%SquareDyn($048)
+		%SquareDyn($04A)
+		%SquareDyn($068)
+		%SquareDyn($06A)
+		..end
+
+		.Laugh00
+		dw ..end-..start
+		..start
+		%SquareDyn($04C)
+		%SquareDyn($04E)
+		%SquareDyn($06C)
+		%SquareDyn($06E)
+		..end
+		.Laugh01
+		dw ..end-..start
+		..start
+		%SquareDyn($080)
+		%SquareDyn($082)
+		%SquareDyn($0A0)
+		%SquareDyn($0A2)
+		..end
+		.Laugh02
+		dw ..end-..start
+		..start
+		%SquareDyn($084)
+		%SquareDyn($086)
+		%SquareDyn($0A4)
+		%SquareDyn($0A6)
+		..end
+		.Laugh03
+		dw ..end-..start
+		..start
+		%SquareDyn($088)
+		%SquareDyn($08A)
+		%SquareDyn($0A8)
+		%SquareDyn($0AA)
+		..end
+
+
+
 
 	RallyYoshi:
 		LDX !SpriteIndex
@@ -459,46 +796,281 @@ NPC:
 		LDX !SpriteIndex
 		RTS
 
+
+
+	!Temp = 0
+	%def_anim(OldYoshi_Idle, 4)
+	%def_anim(OldYoshi_Walk, 4)
+	%def_anim(OldYoshi_Shock, 6)
+	%def_anim(OldYoshi_Talk, 2)
+
+
 	OldYoshi:
 		LDX !SpriteIndex
+		LDA #!OldYoshi_Shock
+		STA !TalkAnim1,x
+		STA !TalkAnim2,x
+		LDA #!OldYoshi_Talk : STA !TalkAnim4,x
+
+	.Movement
+		LDA !SpriteAnimIndex
+		CMP #!OldYoshi_Shock : BCC ..walkdone
+
+		..nowalk
+		LDA !SpriteXSpeed,x
+		EOR #$FF : INC A
+		STA !SpriteVectorX,x
+		LDA #$01 : STA !SpriteVectorTimerX,x
+		STZ !SpriteVectorAccX,x
+		..walkdone
+
+	.Animation
+		LDY !SpriteAnimIndex
+
+		LDA !Talking,x : BEQ ..notalk
+		CPY #!OldYoshi_Shock+3 : BNE ..nopop
+		LDA $400000+!MsgTalk : BPL ..nopop
+		DEC !SpriteAnimTimer
+		..nopop
+
+		CPY #!OldYoshi_Shock : BCC +		; yes, shock
+		CPY #!OldYoshi_Talk_over : BCC ..done
+	+	LDA #!OldYoshi_Talk : BRA ..setanim
+		..notalk
+
+		CPY #!OldYoshi_Shock : BCC ..normal
+		CPY #!OldYoshi_Shock_over : BCC ..done
+
+
+	; walk/idle animation
+		..normal
+		LDA !SpriteXSpeed,x : BEQ ..idle
+		..walk
+		CLC : ADC #$11
+		CMP #$22 : BCS +
+		LDA $14
+		LSR A : BCC +
+		DEC !SpriteAnimTimer
+	+	CPY #!OldYoshi_Walk : BCC +
+		CPY #!OldYoshi_Walk_over : BCC ..done
+	+	LDA #!OldYoshi_Walk : BRA ..setanim
+		..idle
+		CPY #!OldYoshi_Idle_over : BCC ..done
+		LDA #!OldYoshi_Idle
+		..setanim
+		STA !SpriteAnimIndex
+		STZ !SpriteAnimTimer
+		..done
+
+	.Graphics
+		LDX !SpriteIndex
+		LDA !SpriteAnimIndex
+		ASL #2
+		TAY
+		LDA !SpriteAnimTimer
+		INC A
+		CMP .AnimTable+2,y : BNE .SameAnim
+
+		.NewAnim
+		LDA .AnimTable+3,y : STA !SpriteAnimIndex
+		ASL #2
+		TAY
+		LDA #$00
+
+		.SameAnim
+		STA !SpriteAnimTimer
+		REP #$20
+		LDA.w #Tilemap_32x32 : STA $04
+		LDA .AnimTable+0,y : STA $0C
+		SEP #$20
+		LDA !SpriteAnimIndex
+		CMP !PrevAnim,x : BEQ ..skipupload
+		LDY.b #!File_NPC_OldYoshi : JSL LOAD_SQUARE_DYNAMO
+		..skipupload
+		JSL SETUP_SQUARE
+		JSL LOAD_DYNAMIC
 		RTS
+
+
+		.AnimTable
+		dw .IdleDyn00 : db $C8,!OldYoshi_Idle+1
+		dw .IdleDyn01 : db $0C,!OldYoshi_Idle+2
+		dw .IdleDyn02 : db $28,!OldYoshi_Idle+3
+		dw .IdleDyn01 : db $0C,!OldYoshi_Idle+0
+
+		dw .WalkDyn00 : db $05,!OldYoshi_Walk+1
+		dw .WalkDyn01 : db $05,!OldYoshi_Walk+2
+		dw .WalkDyn00 : db $05,!OldYoshi_Walk+3
+		dw .WalkDyn02 : db $05,!OldYoshi_Walk+0
+
+		dw .ShockDyn00 : db $0C,!OldYoshi_Shock+1
+		dw .ShockDyn01 : db $0C,!OldYoshi_Shock+2
+		dw .ShockDyn02 : db $04,!OldYoshi_Shock+3
+		dw .ShockDyn03 : db $28,!OldYoshi_Shock+4
+		dw .ShockDyn01 : db $0C,!OldYoshi_Shock+5
+		dw .ShockDyn00 : db $0C,!OldYoshi_Idle
+
+		dw .TalkDyn00 : db $0C,!OldYoshi_Talk+1
+		dw .TalkDyn01 : db $0C,!OldYoshi_Talk+0
+
+
+
+		.TalkDyn00
+		.WalkDyn00
+		.IdleDyn00
+		dw ..end-..start
+		..start
+		%SquareDyn($000)
+		%SquareDyn($002)
+		%SquareDyn($020)
+		%SquareDyn($022)
+		..end
+		.ShockDyn00
+		.IdleDyn01
+		dw ..end-..start
+		..start
+		%SquareDyn($00C)
+		%SquareDyn($00E)
+		%SquareDyn($02C)
+		%SquareDyn($02E)
+		..end
+		.ShockDyn01
+		.IdleDyn02
+		dw ..end-..start
+		..start
+		%SquareDyn($040)
+		%SquareDyn($042)
+		%SquareDyn($04C)
+		%SquareDyn($04E)
+		..end
+
+		.WalkDyn01
+		dw ..end-..start
+		..start
+		%SquareDyn($004)
+		%SquareDyn($006)
+		%SquareDyn($024)
+		%SquareDyn($026)
+		..end
+		.WalkDyn02
+		dw ..end-..start
+		..start
+		%SquareDyn($004)
+		%SquareDyn($006)
+		%SquareDyn($028)
+		%SquareDyn($02A)
+		..end
+
+		.ShockDyn02
+		dw ..end-..start
+		..start
+		%SquareDyn($044)
+		%SquareDyn($046)
+		%SquareDyn($04C)
+		%SquareDyn($04E)
+		..end
+		.ShockDyn03
+		dw ..end-..start
+		..start
+		%SquareDyn($048)
+		%SquareDyn($04A)
+		%SquareDyn($04C)
+		%SquareDyn($04E)
+		..end
+
+		.TalkDyn01
+		dw ..end-..start
+		..start
+		%SquareDyn($008)
+		%SquareDyn($002)
+		%SquareDyn($00A)
+		%SquareDyn($022)
+		..end
+
 
 
 	!Temp = 0
 	%def_anim(Toad_Idle, 1)
-	%def_anim(Toad_Walk, 3)
+	%def_anim(Toad_Walk, 4)
 	%def_anim(Toad_Jump, 1)
 	%def_anim(Toad_Pull, 1)
 	%def_anim(Toad_IdleCarry, 1)
-	%def_anim(Toad_WalkCarry, 3)
+	%def_anim(Toad_WalkCarry, 4)
 	%def_anim(Toad_JumpCarry, 1)
 	%def_anim(Toad_Throw, 1)
+	%def_anim(Toad_Bow, 2)
+	%def_anim(Toad_Cheer, 3)
 	%def_anim(Toad_Cower, 1)
 	%def_anim(Toad_Yell, 4)
-	%def_anim(Toad_Cheer, 3)
-	%def_anim(Toad_Bow, 2)
 	%def_anim(Toad_Dead, 1)
 
 
 
 	Toad:
 		LDX !SpriteIndex
+		LDA #!Toad_Yell
+		STA !TalkAnim1,x
+		STA !TalkAnim3,x
+		LDA #!Toad_Cheer : STA !TalkAnim2,x
+		LDA #!Toad_Bow : STA !TalkAnim4,x
 
-		.Movement
-		JSL !SpriteApplySpeed
+	.Movement
+		LDY !SpriteAnimIndex
+		CPY #!Toad_Pull : BEQ ..nowalk
+		CPY #!Toad_Throw : BCC ..walkdone
+		..nowalk
+		LDA !SpriteXSpeed,x
+		EOR #$FF : INC A
+		STA !SpriteVectorX,x
+		LDA #$01 : STA !SpriteVectorTimerX,x
+		STZ !SpriteVectorAccX,x
+		..walkdone
 		LDA $3330,x
 		AND #$04 : BEQ ..done
-		LDA !SpriteAnimIndex
-		CMP #!Toad_Yell+2 : BEQ ..resetanim
-		CMP #!Toad_Cheer+1 : BNE ..done
+		CPY #!Toad_Yell+2 : BEQ ..resetanim
+		CPY #!Toad_Cheer+1 : BNE ..done
 		..resetanim
 		INC !SpriteAnimIndex
 		STZ !SpriteAnimTimer
 		..done
 
+	.Animation
+		LDA !Talking,x : BEQ ..notalk
+		CPY #!Toad_Throw : BCC ..processtalk
+		CPY #!Toad_Cower : BCS ..done
 
-		LDA #!Toad_Yell : STA !TalkAnim,x
+		..processtalk
+		LDA $400000+!MsgTalk : BMI ..done
+		CPY #!Toad_Cower : BCS ..done
+		CPY #!Toad_Bow : BCC +
+		CPY #!Toad_Bow_over : BCC ..done
+	+	LDA #!Toad_Bow : BRA ..setanim
+		..notalk
 
+		LDA $3330,x
+		AND #$04 : BNE ..ground
+		LDA #!Toad_Jump : BRA ..setanim
+
+		..ground
+		LDA #$10 : STA !SpriteYSpeed,x
+		LDA !SpriteXSpeed,x : BEQ ..idle
+		..walk
+		CLC : ADC #$11
+		CMP #$22 : BCS +
+		LDA $14
+		LSR A : BCC +
+		DEC !SpriteAnimTimer
+	+	CPY #!Toad_Walk : BCC +
+		CPY #!Toad_Walk_over : BCC ..done
+	+	LDA #!Toad_Walk : BRA ..setanim
+		..idle
+		LDA #!Toad_Idle
+		..setanim
+		STA !SpriteAnimIndex
+		STZ !SpriteAnimTimer
+		..done
+
+	.Graphics
 		LDA !SpriteAnimIndex
 		ASL #2
 		TAY
@@ -520,6 +1092,14 @@ NPC:
 
 		.SameAnim
 		STA !SpriteAnimTimer
+		LDA !SpriteAnimIndex
+		CMP #!Toad_Throw : BCS ..nocarry
+		LDA !ToadCarry,x : BEQ ..nocarry
+		TYA
+		CLC : ADC.b #((!Toad_IdleCarry)-(!Toad_Idle))*4
+		TAY
+		..nocarry
+
 		REP #$20
 		LDA.w #Tilemap_16x32 : STA $04
 		LDA .AnimTable+0,y : STA $0C
@@ -539,6 +1119,7 @@ NPC:
 		; walk
 		dw .WalkDyn00 : db $05,!Toad_Walk+1
 		dw .WalkDyn01 : db $05,!Toad_Walk+2
+		dw .WalkDyn00 : db $05,!Toad_Walk+3
 		dw .WalkDyn02 : db $05,!Toad_Walk+0
 		; jump
 		dw .JumpDyn : db $FF,!Toad_Jump
@@ -549,11 +1130,19 @@ NPC:
 		; walk carry
 		dw .WalkCarryDyn00 : db $05,!Toad_Walk+1
 		dw .WalkCarryDyn01 : db $05,!Toad_Walk+2
+		dw .WalkCarryDyn00 : db $05,!Toad_Walk+3
 		dw .WalkCarryDyn02 : db $05,!Toad_Walk+0
 		; jump carry
 		dw .JumpCarryDyn : db $FF,!Toad_Jump
 		; throw
 		dw .ThrowDyn : db $08,!Toad_Idle
+		; bow
+		dw .BowDyn00 : db $07,!Toad_Bow+1
+		dw .BowDyn01 : db $07,!Toad_Bow+0
+		; cheer
+		dw .CheerDyn00 : db $07,!Toad_Cheer+1
+		dw .CheerDyn01 : db $FF,!Toad_Cheer+1
+		dw .CheerDyn00 : db $07,!Toad_Cheer+0
 		; cower
 		dw .CowerDyn : db $FF,!Toad_Cower
 		; yell
@@ -561,13 +1150,6 @@ NPC:
 		dw .YellDyn01 : db $07,!Toad_Yell+2
 		dw .YellDyn02 : db $FF,!Toad_Yell+2
 		dw .YellDyn00 : db $07,!Toad_Idle
-		; cheer
-		dw .CheerDyn00 : db $07,!Toad_Cheer+1
-		dw .CheerDyn01 : db $FF,!Toad_Cheer+1
-		dw .CheerDyn00 : db $07,!Toad_Idle
-		; bow
-		dw .BowDyn00 : db $07,!Toad_Bow+1
-		dw .BowDyn01 : db $07,!Toad_Bow+0
 		; dead
 		dw .DeadDyn : db $FF,!Toad_Dead
 
@@ -684,6 +1266,156 @@ NPC:
 
 
 
+
+	!Temp = 0
+	%def_anim(Melody_Idle, 4)
+	%def_anim(Melody_Walk, 4)
+	%def_anim(Melody_Talk, 3)
+
+	Melody:
+		LDX !SpriteIndex
+		LDA #!Melody_Talk
+		STA !TalkAnim1,x
+		STA !TalkAnim2,x
+
+	.Movement
+		LDA !SpriteAnimIndex
+		CMP #!Melody_Talk : BCC ..walkdone
+
+		..nowalk
+		LDA !SpriteXSpeed,x
+		EOR #$FF : INC A
+		STA !SpriteVectorX,x
+		LDA #$01 : STA !SpriteVectorTimerX,x
+		STZ !SpriteVectorAccX,x
+		..walkdone
+
+	.Animation
+		LDA !SpriteAnimIndex
+		CMP #!Melody_Talk : BCS ..done
+		LDA #$10 : STA !SpriteYSpeed,x
+		LDA !SpriteXSpeed,x : BEQ ..idle
+		..walk
+		CLC : ADC #$11
+		CMP #$22 : BCS +
+		LDA $14
+		LSR A : BCC +
+		DEC !SpriteAnimTimer
+	+	LDA !SpriteAnimIndex
+		CMP #!Melody_Walk : BCC +
+		CMP #!Melody_Walk_over : BCC ..done
+	+	LDA #!Melody_Walk : BRA ..setanim
+		..idle
+		LDA !SpriteAnimIndex
+		CMP #!Melody_Idle_over : BCC ..done
+		LDA #!Melody_Idle
+		..setanim
+		STA !SpriteAnimIndex
+		STZ !SpriteAnimTimer
+		..done
+
+	.Graphics
+		LDX !SpriteIndex
+		LDA !SpriteAnimIndex
+		ASL #2
+		TAY
+		LDA !SpriteAnimTimer
+		INC A
+		CMP .AnimTable+2,y : BNE .SameAnim
+
+		.NewAnim
+		LDA .AnimTable+3,y : STA !SpriteAnimIndex
+		ASL #2
+		TAY
+		LDA #$00
+
+		.SameAnim
+		STA !SpriteAnimTimer
+		REP #$20
+		LDA.w #Tilemap_16x24 : STA $04
+		LDA .AnimTable+0,y : STA $0C
+		SEP #$20
+		LDA !SpriteAnimIndex
+		CMP !PrevAnim,x : BEQ ..skipupload
+		LDY.b #!File_NPC_Melody : JSL LOAD_SQUARE_DYNAMO
+		..skipupload
+		JSL SETUP_SQUARE
+		JSL LOAD_DYNAMIC
+		RTS
+
+
+		.AnimTable
+		dw .IdleDyn00 : db $0C,!Melody_Idle+1
+		dw .IdleDyn01 : db $18,!Melody_Idle+2
+		dw .IdleDyn00 : db $0C,!Melody_Idle+3
+		dw .IdleDyn02 : db $18,!Melody_Idle+0
+
+		dw .WalkDyn00 : db $05,!Melody_Walk+1
+		dw .WalkDyn01 : db $05,!Melody_Walk+2
+		dw .WalkDyn00 : db $05,!Melody_Walk+3
+		dw .WalkDyn02 : db $05,!Melody_Walk+0
+
+		dw .TalkDyn00 : db $08,!Melody_Talk+1
+		dw .TalkDyn01 : db $20,!Melody_Talk+2
+		dw .TalkDyn00 : db $08,!Melody_Idle
+
+
+		.IdleDyn00
+		dw ..end-..start
+		..start
+		%SquareDyn($000)
+		%SquareDyn($010)
+		..end
+		.IdleDyn01
+		dw ..end-..start
+		..start
+		%SquareDyn($002)
+		%SquareDyn($012)
+		..end
+		.IdleDyn02
+		dw ..end-..start
+		..start
+		%SquareDyn($004)
+		%SquareDyn($014)
+		..end
+
+		.WalkDyn00
+		dw ..end-..start
+		..start
+		%SquareDyn($006)
+		%SquareDyn($016)
+		..end
+		.WalkDyn01
+		dw ..end-..start
+		..start
+		%SquareDyn($008)
+		%SquareDyn($018)
+		..end
+		.WalkDyn02
+		dw ..end-..start
+		..start
+		%SquareDyn($00A)
+		%SquareDyn($01A)
+		..end
+
+		.TalkDyn00
+		dw ..end-..start
+		..start
+		%SquareDyn($00C)
+		%SquareDyn($01C)
+		..end
+		.TalkDyn01
+		dw ..end-..start
+		..start
+		%SquareDyn($00E)
+		%SquareDyn($01E)
+		..end
+
+
+
+
+
+
 	Unused:
 		LDX !SpriteIndex
 		RTS
@@ -691,6 +1423,11 @@ NPC:
 
 
 	Tilemap:
+		.16x24
+		dw $0008
+		db $3E,$00,$F8,$00
+		db $3E,$00,$00,$01
+
 		.16x32
 		dw $0008
 		db $3E,$00,$F0,$00
@@ -708,6 +1445,20 @@ NPC:
 		db $3E,$FC,$00,$02
 		db $3E,$04,$00,$03
 
+		.32x32forward
+		dw $0010
+		db $3E,$F4,$F0,$00
+		db $3E,$04,$F0,$01
+		db $3E,$F4,$00,$02
+		db $3E,$04,$00,$03
+
+		.32x32
+		dw $0010
+		db $3E,$F8,$F0,$00
+		db $3E,$08,$F0,$01
+		db $3E,$F8,$00,$02
+		db $3E,$08,$00,$03
+
 		.Leeway
 		dw $0014
 		db $3E,$F1,$08,$03
@@ -717,11 +1468,40 @@ NPC:
 		db $3E,$04,$00,$02
 
 
+	DATA:
+		.XSpeed
+		db $10,$F0
+
+		.Talkbox
+		dw $FFE8,$0000 : db $30,$10
+
+		.FollowBox
+		dw $FFE0,$FFE0 : db $40,$30
+
+		.VictoryPose
+		db $26,!Lui_Victory,!Kad_Victory,!Lee_Victory,$00,$00
+
+
+
 
 
 ; if return with z = 0, this NPC should run
 ; if return with z = 1, this NPC should be disabled
 	CheckPlayer:
+		LDA !ExtraProp1,x
+		CMP #$06 : BCS .Return
+
+		ASL #2
+		ADC !ExtraProp1,x
+		ASL A
+		TAX
+		LDA !CharacterData,x : BNE .Unlocked
+		LDX !SpriteIndex
+		LDA #$00
+		RTS
+
+		.Unlocked
+		LDX !SpriteIndex
 		LDA !MultiPlayer : BEQ .P1
 	.P2	LDA !P2Character
 		CMP !ExtraProp1,x : BEQ .Return
@@ -782,6 +1562,7 @@ NPC:
 		LDA !TalkTimer,x : BEQ .Return
 		LDA $00 : BEQ .Return
 		CMP #$03 : BEQ .Return
+		CLC : ADC.b #((MAIN_CommandPtr_end-MAIN_CommandPtr)/2)-3
 		STA !ExtraProp2,x
 		LDA #$04 : STA !SwapWaitTimer,x
 
@@ -789,10 +1570,95 @@ NPC:
 		RTS
 
 
+
+	FollowTalkable:
+		JSR Talkable
+		BRA Follow_Main
+
+	Follow:
+		JSR FacePlayer
+
+		.Main
+		REP #$20
+		LDA.w #DATA_FollowBox : JSL LOAD_HITBOX
+		SEC : JSL !PlayerClipping
+		BCS .Stop
+
+		LDY $3320,x
+		LDA DATA_XSpeed,y : JSL AccelerateX
+		RTS
+
+		.Stop
+		LDA #$00 : JSL AccelerateX
+		RTS
+
+
+
+	IntroGuard:
+		LDX !SpriteIndex
+		LDA !LevelTable1+$5E : BPL Guard_Main
+
+		.Despawn
+		STZ $3230,x
+		RTS
+
+
+	Guard:
+		LDX !SpriteIndex
+
+		.Main
+		JSR Talkable
+		LDA !SpriteXLo,x : STA $00
+		LDA !SpriteXHi,x : STA $01
+		LDA !SpriteYHi,x : XBA
+		LDA !SpriteYLo,x
+
+		REP #$30
+		SEC : SBC $1C
+		CMP #$0010 : BCC .Air
+		CMP #$00D8 : BCS .Air
+		LDA $00
+		SEC : SBC $1A
+		CMP #$0100 : BCS .Air
+
+		.Solid
+		LDA #$0008
+		LDY #$FFF0
+		JSL !GetMap16Sprite
+		SEP #$30
+		LDY #$10
+		LDA #$01
+		STA [$05]
+		STA [$05],y
+		DEC $07
+		LDA #$30
+		STA [$05]
+		STA [$05],y
+		RTS
+
+		.Air
+		LDA #$0008
+		LDY #$FFF0
+		JSL !GetMap16Sprite
+		SEP #$30
+		LDY #$10
+		LDA #$00
+		STA [$05]
+		STA [$05],y
+		DEC $07
+		LDA #$25
+		STA [$05]
+		STA [$05],y
+		RTS
+
+
+
 	SwapP1:
 		LDX !SpriteIndex
 		LDA !SwapWaitTimer,x : BNE .Return
-	LDA !MsgTrigger : BNE .Return
+		LDA !MsgTrigger
+		ORA !MsgTrigger+1
+		BNE .Return
 
 		LDA !ExtraProp1,x				;\
 		ASL #4						; |
@@ -811,7 +1677,9 @@ NPC:
 	SwapP2:
 		LDX !SpriteIndex
 		LDA !SwapWaitTimer,x : BNE SwapP1_Return
-	LDA !MsgTrigger : BNE SwapP1_Return
+		LDA !MsgTrigger
+		ORA !MsgTrigger+1
+		BNE SwapP1_Return
 		LDA !ExtraProp1,x				;\
 		AND #$0F					; |
 		STA $00						; |
@@ -832,15 +1700,15 @@ NPC:
 		LDA $3210,x : STA !P2YPosLo-$80,y		; |
 		LDA $3240,x : STA !P2YPosHi-$80,y		;/
 
-	PHY
-	LDA !P2Character-$80,y : TAY
-	LDA DATA_VictoryPose,y
-	PLY
-	STA !P2ExternalAnim-$80,y
-	LDA #$20
-	STA !P2ExternalAnimTimer-$80,y
-	STA !P2Stasis-$80,y
-	STA !SparkleTimer,x
+		PHY
+		LDA !P2Character-$80,y : TAY
+		LDA DATA_VictoryPose,y
+		PLY
+		STA !P2ExternalAnim-$80,y
+		LDA #$20
+		STA !P2ExternalAnimTimer-$80,y
+		STA !P2Stasis-$80,y
+		STA !SparkleTimer,x
 
 		LDA !P2Character-$80,y : BNE .NotMario		;\
 		STZ !MarioXSpeed				; |
@@ -912,19 +1780,6 @@ NPC:
 		RTS
 
 
-
-
-
-	DATA:
-		.XSpeed
-		db $10,$F0
-		db $08,$F8
-
-		.Talkbox
-		dw $FFE8,$0000 : db $30,$10
-
-		.VictoryPose
-		db $26,!Lui_Victory,!Kad_Victory,!Lee_Victory,$00,$00
 
 
 	namespace off

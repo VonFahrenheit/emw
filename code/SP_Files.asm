@@ -176,6 +176,7 @@ org $308008
 	dl EliteKoopa
 	dl NPC_Survivor
 	dl NPC_Tinkerer
+	dl NPC_OldYoshi
 	dl NPC_Melody
 	dl NPC_Toad
 	dl MiniMech
@@ -194,6 +195,10 @@ org $308008
 	dl default_border
 
 	dl Sprite_BG_1
+
+
+
+	dl Overworld_GFX
 
 
 
@@ -407,6 +412,10 @@ org $388008
 	incbin ../RawGraphics/DynamicSprites/Tinkerer.bin
 	.End
 
+	%InsertFile(NPC_OldYoshi)
+	incbin ../RawGraphics/DynamicSprites/OldYoshi.bin
+	.End
+
 	%InsertFile(NPC_Melody)
 	incbin ../RawGraphics/DynamicSprites/Melody.bin
 	.End
@@ -436,15 +445,15 @@ org $3B8000
 %BankStart(3B)
 
 	%InsertFile(default_font)
-	incbin ../RawGraphics/Fonts/DefaultFont.bin
+	incbin ../RawGraphics/TextBox/DefaultFont.bin
 	.End
 
 	%InsertFile(classic_font)
-	incbin ../RawGraphics/Fonts/ClassicFont.bin
+	incbin ../RawGraphics/TextBox/ClassicFont.bin
 	.End
 
 	%InsertFile(default_border)
-	incbin ../RawGraphics/TextBoxBorders/DefaultBorder.bin
+	incbin ../RawGraphics/TextBox/DefaultBorder.bin
 	.End
 
 %BankEnd(3B)
@@ -462,7 +471,8 @@ warnpc $3D8000
 org $3D8000
 %BankStart(3D)
 
-	Temp3D:
+	%InsertFile(Overworld_GFX)
+	incbin ../RawGraphics/Overworld/gfx.bin
 	.End
 
 
@@ -521,6 +531,7 @@ PalsetData:
 	%storepal(special_kingking_red)
 
 	%storepal(special_toad)
+	%storepal(special_melody)
 
 
 

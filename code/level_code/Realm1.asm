@@ -36,6 +36,8 @@ levelinit2:
 
 
 levelinit3:
+		LDA #$03*4 : STA !TextPal
+
 		LDA #$02 : STA !BG2ModeH
 		LDA #$04 : STA !BG2ModeV
 		%GradientRGB(HDMA_BlueSky)
@@ -111,7 +113,6 @@ levelinit4:
 
 	.MainStage
 		LDA #$1D : STA $5E
-		LDA #$00 : STA !SmoothCamera
 		RTL
 
 	.Bonus
@@ -394,7 +395,6 @@ levelinitC:
 		JSL levelinit35_Setup
 		JSL levelC
 	;	JSL InitCameraBox
-		LDA #$00 : STA !SmoothCamera
 		LDA #$0D : STA !Level+6
 		STZ !Level+3
 		REP #$20
@@ -484,7 +484,12 @@ levelinit2C:
 
 
 levelinit2D:	STZ !SideExit
-		LDA #$05 : STA !Translevel
+
+		REP #$20
+		LDA #$6800 : STA $400000+!MsgVRAM1
+		LDA #$6880 : STA $400000+!MsgVRAM2
+		LDA #$75C0 : STA $400000+!MsgVRAM3
+		SEP #$20
 		JSL level2D_HDMA
 		RTL
 
@@ -614,9 +619,11 @@ level3:
 		LDA #$15E8				;\
 		LDY #$01				; | Regular exit (screen 0x15)
 		JSL END_Right				;/
-		LDA #$1F				;\ Put everything on mainscreen
-		STA !MainScreen				;/
-		STZ !SubScreen				; > Disable subscreen
+		LDA !MsgTrigger				;\
+		ORA !MsgTrigger+1 : BNE +		; |
+		LDA #$1F : STA !MainScreen		; | everything on main screen
+		STZ !SubScreen				; | nothing on subscreen
+		+					;/
 
 	;	LDA.b #.HDMA : STA !HDMAptr		;\
 	;	LDA.b #.HDMA>>8 : STA !HDMAptr+1	; | Set up pointer
@@ -640,7 +647,6 @@ level3:
 		CMP #$02 : BNE ..Scroll
 		LDA #$01
 		STA !EnableHScroll			; > Enable scrolling
-		STA !SmoothCamera			; enable smooth camera to prevent a glitch later
 		REP #$20
 		LDA #$1400
 		CMP $1A
@@ -2238,12 +2244,10 @@ level2C:
 
 		LDA $1A
 		CMP #$00E0 : BNE +
-		LDA $1C
-		BNE +
+		LDA $1C : BNE +
 		LDA $6DF5
-		AND #$0008
-		BNE +
-		LDX #$08 : STX !MsgTrigger
+		AND #$0008 : BNE +
+		LDA.w #!MSG_CaptainWarrior_Warning : STA !MsgTrigger
 		LDA #$0008
 		TSB $6DF5
 		+
@@ -2293,10 +2297,10 @@ level2C:
 		.Table
 		db $00,$04,$02,$01
 
-		;  ID  MSG      Xpos  Ypos       W   H
-.Table1		db $00,$03 : dw $0150,$0360 : db $70,$30
-.Table2		db $02,$05 : dw $0020,$0280 : db $50,$40
-.Table3		db $04,$06 : dw $0090,$0120 : db $20,$30
+		;   ID       Xpos  Ypos       W   H        MSG
+.Table1		db $00 : dw $0150,$0360 : db $70,$30 : dw !MSG_CastleRex_Rex_Warning_1
+.Table2		db $02 : dw $0020,$0280 : db $50,$40 : dw !MSG_CastleRex_Rex_Warning_2
+.Table3		db $04 : dw $0090,$0120 : db $20,$30 : dw !MSG_CastleRex_Rex_Warning_3
 
 
 

@@ -185,8 +185,8 @@
 		.ClearBG3Tilemap				;\
 		INY #2						; > skip past BG3 tilemap (LT3)
 		LDA #$1908 : STA $4310				; |
-		LDA.w #.Some00F8+1 : STA $4312			; | if 2, clear displacement map
-		LDA.w #(.Some00F8+1)>>8 : STA $4313		; |
+		LDA.w #.Some0014+1 : STA $4312			; | if 2, clear displacement map
+		LDA.w #(.Some0014+1)>>8 : STA $4313		; |
 		BRA +						;/
 		.CheckBG3Upload					;\
 		ASL A						; | prepare to load BG3 tilemap
@@ -206,8 +206,8 @@
 		BRA .Shared					;/
 		.NoBG3Tilemap					;\
 		LDA #$1808 : STA $4310				; |
-		LDA.w #.Some00F8 : STA $4312			; |
-		LDA.w #.Some00F8>>8 : STA $4313			; |
+		LDA.w #.Some0014 : STA $4312			; |
+		LDA.w #.Some0014>>8 : STA $4313			; |
 		LDA #$1000 : STA $4315				; | wipe even bytes of BG3 tilemap
 		LDA.l .VRAM+8,x : STA $2116			; |
 		SEP #$20					; |
@@ -216,8 +216,8 @@
 		LDA #$80 : STA $2115				;\
 		REP #$20					; |
 		LDA #$1908 : STA $4310				; |
-		LDA.w #.Some00F8+1 : STA $4312			; | set up DMA to wipe odd bytes of BG3 tilemap
-		LDA.w #(.Some00F8+1)>>8 : STA $4313		; |
+		LDA.w #.Some0014+1 : STA $4312			; | set up DMA to wipe odd bytes of BG3 tilemap
+		LDA.w #(.Some0014+1)>>8 : STA $4313		; |
 	+	LDA #$1000 : STA $4315				; |
 		LDA.l .VRAM+8,x : STA $2116			;/
 		.Shared						;\
@@ -254,8 +254,8 @@
 		PLP						; restore P
 		RTL						; return
 
-		.Some00F8
-		dw $00F8
+		.Some0014
+		dw $0014
 
 
 
@@ -265,6 +265,9 @@
 ; FG3: 1800
 ; BG2: 2000
 ; BG3: 2800
+; (if enabled)
+; LG3: 3000
+; LG4: 3800
 
 		.BG3Speed
 		dw $0000		; 0 - no
@@ -337,6 +340,8 @@
 
 	DecompressBackground:
 	pushpc
+	org $00A5AB
+		BRA 2 : NOP #2					; org: JSL $05809E (have tilemaps be loaded AFTER camera has been initialized)
 	org $0580BB
 		JML .UploadGraphics				; org: STA $55 : REP #$30
 	org $058105
@@ -708,13 +713,102 @@
 		JSR ..loop					; |
 		..tilemap2done					;/
 
+	; column complement
+	; 1 column on the left
+	; 2 columns on the right
+		LDA #$C800 : STA $05				; base map16 pointer
+		LDA $94
+		AND #$FF00
+		DEC A
+		AND #$FFF8 : BPL ..complementleft
+		JMP ..leftdone					; don't go outside bounds
+
+		..complementleft
+		STA $00
+		AND #$00FF
+		LSR #4
+		STA $08						; X (map16 index within screen)
+		LDA $1C
+		AND #$FFF0
+		STA $02						; Y (map16 index)
+		LDA $01
+		AND #$00FF
+		TAY
+		LDA #$0000
+		CPY #$0000 : BEQ +
+	-	CLC : ADC !LevelHeight
+		DEY : BNE -
+	+	CLC : ADC $02
+		ORA $08
+		CLC : ADC $05
+		STA $05
+		; start of column
+		LDA $00
+		AND #$0008
+		LSR A
+		STA $00
+		; index to side of map16 block
+		LDA $94
+		AND #$0100
+		EOR #$0100
+		BEQ $03 : LDA #$0800
+		ORA #$003C
+		TAX
+		JSR ..complementcolumn
+		..leftdone
+
+		..complementright
+		LDA #$C800 : STA $05
+		LDA $94
+		AND #$FF00
+		CLC : ADC #$0100
+		STA $00
+		LDA $1C
+		AND #$FFF0
+		STA $02						; Y (map16 index)
+		LDA $01
+		AND #$00FF
+		TAY
+		LDA #$0000
+		CPY #$0000 : BEQ +
+	-	CLC : ADC !LevelHeight
+		DEY : BNE -
+	+	CLC : ADC $02
+		CLC : ADC $05
+		STA $05
+		; start of column
+		STZ $00
+		; index to side of map16 block
+		LDA $94
+		AND #$0100
+		EOR #$0100
+		BEQ $03 : LDA #$0800
+		TAX
+		JSR ..complementcolumn
+		LDA #$0004 : STA $00
+		LDA $94
+		AND #$0100
+		EOR #$0100
+		BEQ $03 : LDA #$0800
+		TAX
+		JSR ..complementcolumn
+
+
+
 		..return
 		PLP						;\ wrapper end
 		PLB						;/
 		RTL						; return
 
 		..loop						;\
-		SEP #$20					; |
+		LDX $00						; |
+		LDA $41C800,x					; |
+		AND #$00FF					; | $04 = remap value
+		TAX						; |
+		LDA.l !Map16Remap-1,x				; |
+		AND #$FF00					; |
+		STA $04						;/
+		SEP #$20					;\
 		LDX $00						; |
 		LDA $41C800,x : XBA				; |
 		LDA $40C800,x					; | get 16-bit map16 tile number
@@ -729,14 +823,38 @@
 		PLX						;/ > pull Y with X to index !DecompBuffer
 		STA $0A						;\ prepare to read pointer
 		LDY #$0000					;/
-		LDA [$0A],y : STA !DecompBuffer+$00,x		;\
+		BIT $04 : BMI ..noremap				;\
+		..remap						; |
+		LDA [$0A],y					; |
+		AND #$FCFF					; |
+		ORA $04						; |
+		STA !DecompBuffer+$00,x				; |
 		LDY #$0002					; |
-		LDA [$0A],y : STA !DecompBuffer+$40,x		; |
-		LDY #$0004					; | get map16 tilemap data
+		LDA [$0A],y					; |
+		AND #$FCFF					; |
+		ORA $04						; | get map16 tilemap data (with remap)
+		STA !DecompBuffer+$40,x				; |
+		LDY #$0004					; |
+		LDA [$0A],y					; |
+		AND #$FCFF					; |
+		ORA $04						; |
+		STA !DecompBuffer+$02,x				; |
+		LDY #$0006					; |
+		LDA [$0A],y					; |
+		AND #$FCFF					; |
+		ORA $04						; |
+		STA !DecompBuffer+$42,x				; |
+		BRA ..next					;/
+		..noremap					;\
+		LDA [$0A],y : STA !DecompBuffer+$00,x		; |
+		LDY #$0002					; |
+		LDA [$0A],y : STA !DecompBuffer+$40,x		; | get map16 tilemap data (no remap)
+		LDY #$0004					; |
 		LDA [$0A],y : STA !DecompBuffer+$02,x		; |
 		LDY #$0006					; |
 		LDA [$0A],y : STA !DecompBuffer+$42,x		;/
-		TXY						;\
+		..next						;\
+		TXY						; |
 		TYA						; |
 		CLC : ADC #$0004				; |
 		AND #$003F : BNE ..same				; | increment !DecompBuffer index
@@ -744,10 +862,80 @@
 		CLC : ADC #$0040				; |
 		TAY						; |
 	..same	INY #4						;/
-		CPY !BigRAM+0 : BCC ..loop			;\ loop
+		CPY !BigRAM+0 : BCS $03 : JMP ..loop		;\ loop
 		RTS						; return
 
 
+
+
+; possible input X (tilemap buffer index)
+; 000
+; 002
+; 800
+; 802
+; 03C
+; 03E
+; 83C
+; 83E
+		..complementcolumn
+		LDA $00
+		BEQ $02 : INX #2
+		LDA $1C
+		AND #$00F0
+		ASL #3
+		STA $0A
+		TXA
+		CLC : ADC $0A
+		TAX
+		LDY #$0000
+	-	SEP #$20
+		LDA #$41 : STA $07
+		PHX
+		LDA #$00 : XBA
+		LDA [$05],y : TAX
+		XBA
+		LDA !Map16Remap,x : STA $03
+		STZ $02
+		DEC $07
+		LDA [$05],y
+		REP #$20
+		ASL A
+		PHY
+		PHP
+		JSL $06F540				; this will store the bank byte to $0C and return with the address in A
+		PLP
+		PLY
+		LDX $00
+		BEQ $04 : CLC : ADC #$0004
+		PLX
+		STA $0A
+		LDA [$0A]
+		BIT $02 : BMI +
+		AND #$0300^$FFFF
+		ORA $02
+	+	STA !DecompBuffer+$00,x
+		INC $0A
+		INC $0A
+		LDA [$0A]
+		BIT $02 : BMI +
+		AND #$0300^$FFFF
+		ORA $02
+	+	STA !DecompBuffer+$40,x
+
+		STX $0A
+		TXA
+		CLC : ADC #$0080
+		TAX
+		EOR $0A
+		AND #$0800 : BEQ +
+		TXA
+		EOR #$0800
+		TAX
+	+	TYA
+		CLC : ADC #$0010
+		TAY
+		CPY #$0100 : BCC -
+		RTS
 
 
 
@@ -796,11 +984,10 @@
 		LDA $5D						; | width * height = size of layer 1 data
 		AND #$00FF					; | (height is in px, so no need for *16)
 		STA $2253					;/
-		LSR A : BCC +					;\
-		LDA !LevelHeight				; | on odd-screened levels, add height (already *16 since it's in px)
-		BRA ++						;/
-	+	LDA #$0000					; on even-screened levels, layer 2 starts at the end of layer 1
-	++	CLC : ADC $2306					;\
+		AND #$0001					;\
+		BEQ +						; | on odd-screened levels, add height (already *16 since it's in px)
+		LDA !LevelHeight				;/ (on even-screened levels, layer 2 data starts right after layer 1 data)
+	+	CLC : ADC $2306					;\
 		CLC : ADC $00					; | starting index for layer 2
 		STA $00						;/
 		PHA						; push (start of snap screen)
