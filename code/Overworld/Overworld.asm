@@ -54,7 +54,10 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 
 	macro MapDef(name, size)
 		!<name>	:= !LevelSelectBase+!Temp
+	print "<name> =$", hex(!LevelSelectBase+!Temp)
 		!Temp	:= !Temp+<size>
+
+
 	endmacro
 
 
@@ -63,40 +66,87 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 	%MapDef(CharMenu,		1)	; 00 = no menu, 01 = opening, 02 = main, 03 = closing
 	%MapDef(CharMenuCursor,		1)	; position
 	%MapDef(SelectingPlayer,	1)	; which player controls the char select (0 = player 1, 1 = player 2)
-	%MapDef(UploadPlayerPal,	1)	; 0 = upload, anything else = don't upload
+	%MapDef(CharMenuTimer,		1)	; decrements
+	%MapDef(CharMenuSpriteX,	6)	;\
+	%MapDef(CharMenuSpriteStatus,	6)	; |
+	%MapDef(CharMenuCurrentPlayerX,	1)	; | controls character select animations and options
+	%MapDef(CharMenuCurrentPlayerY,	1)	; |
+	%MapDef(CharMenuOtherPlayerX,	1)	; |
+	%MapDef(CharMenuOtherPlayerY,	1)	; |
+	%MapDef(CharMenuOtherPlayerP,	1)	; |
+	%MapDef(CharMenuCount,		1)	; |
+	%MapDef(CharMenuBaseX,		1)	;/
+
+	%MapDef(WarpPipe,		1)
+	%MapDef(WarpPipeP2X,		2)
+	%MapDef(WarpPipeP2Y,		2)
+	%MapDef(WarpPipeTimer,		1)
+	%MapDef(CircleRadius,		2)
+	%MapDef(CircleCenterX,		2)
+	%MapDef(CircleCenterY,		2)
+	%MapDef(ButtonTimer,		2)
+	%MapDef(CircleTimer,		1)
+	%MapDef(PrevTranslevel,		2)
+	%MapDef(MapUpdateHUD,		4)
+	%MapDef(MapLevelNameWidth,	2)
 
 	%MapDef(P1MapXFraction,		1)
 	%MapDef(P1MapX,			2)
 	%MapDef(P1MapYFraction,		1)
 	%MapDef(P1MapY,			2)
+	%MapDef(P1MapZFraction,		1)
+	%MapDef(P1MapZ,			2)
 	%MapDef(P1MapXSpeed,		1)
 	%MapDef(P1MapYSpeed,		1)
+	%MapDef(P1MapZSpeed,		1)
 	%MapDef(P1MapAnim,		1)
-	%MapDef(P1MapAnimTimer,		1)
+	%MapDef(P1MapPrevAnim,		1)
 	%MapDef(P1MapDirection,		1)
+	%MapDef(P1MapChar,		1)
 
 	%MapDef(P2MapXFraction,		1)
 	%MapDef(P2MapX,			2)
 	%MapDef(P2MapYFraction,		1)
 	%MapDef(P2MapY,			2)
+	%MapDef(P2MapZFraction,		1)
+	%MapDef(P2MapZ,			2)
 	%MapDef(P2MapXSpeed,		1)
 	%MapDef(P2MapYSpeed,		1)
+	%MapDef(P2MapZSpeed,		1)
 	%MapDef(P2MapAnim,		1)
-	%MapDef(P2MapAnimTimer,		1)
+	%MapDef(P2MapPrevAnim,		1)
 	%MapDef(P2MapDirection,		1)
+	%MapDef(P2MapChar,		1)
 
-	%MapDef(MapLight,		$50)
+	%MapDef(MapLight,		$60)
 	!MapLight_X	= !MapLight+0
 	!MapLight_Y	= !MapLight+2
 	!MapLight_R	= !MapLight+4
 	!MapLight_G	= !MapLight+6
 	!MapLight_B	= !MapLight+8
+	!MapLight_S	= !MapLight+10
 
 	%MapDef(MapOAMindex,		2)	; index to next free area of data
 	%MapDef(MapOAMcount,		2)	; number of tilemaps currently in data
 	%MapDef(MapOAMdata,		$100)	; holds OAM data to be sorted by Y coord
 
 
+	!OW_sprite_Size	:= !Temp
+	%MapDef(OW_sprite_Num,		1)
+	%MapDef(OW_sprite_Timer,	1)
+	%MapDef(OW_sprite_Anim,		1)
+	%MapDef(OW_sprite_AnimTimer,	1)
+	%MapDef(OW_sprite_XFraction,	1)
+	%MapDef(OW_sprite_X,		2)
+	%MapDef(OW_sprite_YFraction,	1)
+	%MapDef(OW_sprite_Y,		2)
+	%MapDef(OW_sprite_ZFraction,	1)
+	%MapDef(OW_sprite_Z,		2)
+	%MapDef(OW_sprite_XSpeed,	1)
+	%MapDef(OW_sprite_YSpeed,	1)
+	%MapDef(OW_sprite_ZSpeed,	1)
+	%MapDef(OW_sprite_Direction,	1)
+	!OW_sprite_Size	:= !Temp-(!OW_sprite_Size)
 
 
 
@@ -117,6 +167,12 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		NOP #3			; org: STA $420B (prevent layer 3 garbage)
 	org $0087A7
 		NOP #3			; org: STA $420B
+
+	org $009329+($0D*2)
+		dw LevelToOverworld	; org: dw $9F6F
+	org $009329+($15*2)
+		dw OverworldToLevel	; org: dw $9F6F
+
 
 	org $009F53
 		JSL SetBrightness		;\ org: STA !2100 : CMP $9F33,y
@@ -141,6 +197,42 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		ReturnLoad:		; | org:; JSR $937D : LDA $7B9C
 		RTS			; |
 		NOP			;/
+
+	LevelToOverworld:
+		LDA #$01 : STA $6DAF
+		LDA #$0F : STA !2100
+		LDA #$0F : STA !Mosaic
+		JSL MAIN
+		INC $14
+		LDA !CircleRadius
+		CMP #$30 : BEQ .Done
+		INC !CircleRadius
+		RTS
+
+		.Done
+		INC !GameMode
+		RTS
+
+	OverworldToLevel:
+		JSL MAIN
+		INC $14
+		LDA !CircleRadius : BEQ .Done
+		DEC !CircleRadius
+		RTS
+
+		.Done
+		LDA #$10 : STA !GameMode
+		STZ $6DAF
+		STZ !2100
+		LDA #$FF : STA !Mosaic
+		RTS
+
+
+
+
+
+	warnpc $00A1A6
+
 
 
 	org $00A1C3
@@ -193,30 +285,35 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		db $01,$01,$01,$01,$01,$01,$01,$01	; 58-5F
 	pullpc
 	incsrc "Zip.asm"
-	incsrc "Player.asm"
-	incsrc "Load.asm"
+	incsrc "RenderHUD.asm"
 	incsrc "RenderName.asm"
-	incsrc "LevelList.asm"
+	incsrc "RenderCircle.asm"
+	incsrc "Load.asm"
+	incsrc "Player.asm"
+	incsrc "CharMenu.asm"
+	incsrc "OverworldSprites.asm"
 	incsrc "Lighting.asm"
 	incsrc "OAM_sort.asm"
 
 
 
+	incsrc "Data/LevelList.asm"
+	incsrc "Data/MapLightPoints.asm"
+
+
+
+
 	SetBrightness:
-		PHA
-		LDA !GameMode
-		CMP #$0D : BNE +
-		JSL MAIN
-	+	LDA $01,s : STA !2100
+		STA !2100
 		LDX !GameMode
-		CPX #$0B : BEQ ++
-		CPX #$0D : BNE +
-	++	AND #$0F
+		CPX #$0B : BNE +
+		PHA
+		AND #$0F
 		EOR #$0F
 		ASL #4
-		STA $6DB0
-	+	PLA
-		CMP $9F33,y
+		STA !Mosaic
+		PLA
+	+	CMP $9F33,y
 		RTL
 
 
@@ -238,26 +335,40 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 ; channel 3 - main screen
 ; channel 4 - BG2 tilemap
 ; channel 5 - BG2 coordinates
-; channel 6 - FREE
+; channel 6 - circle window
 ; channel 7 - FREE
+
+
+; $0200
+;	+0	main screen
+;	+10	BG2 tilemap
+;	+20	BG2 coordinates
+;	+80	double buffer mirrors
+
 
 
 	MAIN:
 		REP #$20					;\
-		LDA #$2C40 : STA $4330				; |
+		LDA #$2C04 : STA $4330				; |
 		LDA #$0800 : STA $4340				; |
-		LDA #$0F43 : STA $4350				; |
-		LDA.w #HDMA_MainScreen : STA !HDMA3source	; |
-		LDA.w #HDMA_Tilemap : STA !HDMA4source		; |
-		LDA.w #HDMA_Coords : STA !HDMA5source		; |
-		SEP #$20					; | set up HUD at top of screen using HDMA
+		LDA #$0F03 : STA $4350				; |
+		LDA #$2641 : STA $4360				; |
+		SEP #$20					; | set up HDMA
+		STZ $4334					; |
+		STZ $4344					; |
+		STZ $4354					; |
 		LDA.b #HDMA>>16					; |
-		STA $4334					; |
-		STA $4337					; |
-		STA $4344					; |
-		STA $4354					; |
-		STA $4357					; |
-		LDA #$38 : STA !HDMA				;/
+		STA $4364					; |
+		STA $4367					; |
+		LDA #$78 : STA !HDMA				;/
+
+		LDA #$33 : STA !2123
+		LDA #$33 : STA !2125
+
+
+		LDA #$40 : STA !AnimToggle
+
+
 		LDA.b #.SA1 : STA $3180
 		LDA.b #.SA1>>8 : STA $3181
 		LDA.b #.SA1>>16 : STA $3182
@@ -271,6 +382,82 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		JSR !MPU_light
 
 		.Shared
+		REP #$30					;\
+		LDX.w #HDMA_Window2				; |
+		LDA !CircleTimer				; | source for window HDMA
+		AND #$0001					; |
+		BNE $03 : LDX.w #HDMA_Window1			; |
+		STX !HDMA6source				;/
+
+; $0200 -> adjust scanline
+; $0210 -> adjust scanline
+; $0220 -> expand
+
+		LDA !CircleTimer
+		AND #$0001
+		BEQ $03 : LDA #$0080
+		TAX
+		SEP #$20
+		LDA !CharMenuTimer : STA $00
+		LDA !CharMenu : BEQ ..20
+		CMP #$01 : BEQ ..dynamic
+		CMP #$05 : BNE ..40
+		..inversedynamic
+		LDA #$20
+		SEC : SBC $00
+		STA $00
+
+		..dynamic
+		LDA #$40
+		SEC : SBC $00
+		STA $0200,x
+		STA $0210,x
+		SBC #$20
+		STA $0225,x
+		LDA #$20 : STA $0220,x
+		LDA #$01 : STA $022A,x
+		STZ $022F,x
+		REP #$20
+		STZ $0226,x
+		LDA $00
+		AND #$00FF
+		DEC A
+		STA $0228,x
+		LDA $1A : STA $022B,x
+		LDA $1C : STA $022D,x
+		BRA ..updatemirrors
+
+		..40						;\
+		LDA #$40					; |
+		STA $0200,x					; | all initial scanline counts 0x40
+		STA $0210,x					; |
+		STA $0220,x					;/
+		BRA ..setmain
+		..20						;\
+		LDA #$20					; |
+		STA $0200,x					; | all initial scanline counts 0x20
+		STA $0210,x					; |
+		STA $0220,x					;/
+		..setmain					;\ set scanline count for BG2 coords (map part of screen)
+		LDA #$01 : STA $0225,x				;/
+		STZ $022A,x					; end BG2 coords table
+		REP #$20					;\
+		LDA $1A : STA $0226,x				; | make sure map part has the correct BG2 coords
+		LDA $1A : STA $0228,x				;/
+
+		..updatemirrors
+		TXA
+		ORA #$0200
+		STA !HDMA3source
+		CLC : ADC #$0010
+		STA !HDMA4source
+		CLC : ADC #$0010
+		STA !HDMA5source
+
+		SEP #$30					; all regs 8-bit
+		INC !CircleTimer				; circle timer +1
+
+
 		JSL !BuildOAM
 		RTL
 
@@ -305,102 +492,226 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 
 
 		PHK : PLB				; get bank
-		JSL Render
+		SEP #$20
+		LDA !WarpPipe : BEQ .RenderName
+		REP #$30
+		%LoadHUD(SelectPressed)
+		JSR RenderHUD
+		SEP #$30
+		BRA .UpdateHUD
 
+		.RenderName
+		JSR RenderName
+
+		.UpdateHUD
+		LDA !MapUpdateHUD+0
+		ORA !MapUpdateHUD+1
+		ORA !MapUpdateHUD+2
+		ORA !MapUpdateHUD+3 : BEQ +
+		JSR ReloadP1Color
+		JSR ReloadP2Color
+		+
+		%UpdateHUD(0)
+		%UpdateHUD(1)
+		%UpdateHUD(2)
+		%UpdateHUD(3)
 		REP #$30
 
-	LDA #$0100 : STA !MapLight_X
-	LDA #$0300 : STA !MapLight_Y
-	LDA #$0120 : STA !MapLight_R
-	LDA #$00E0 : STA !MapLight_G
-	LDA #$00E0 : STA !MapLight_B
 
-	LDA #$0080 : STA !MapLight_X+10
-	LDA #$0300 : STA !MapLight_Y+10
-	LDA #$0100 : STA !MapLight_R+10
-	LDA #$0100 : STA !MapLight_G+10
-	LDA #$0140 : STA !MapLight_B+10
-
-	LDA #$0000 : STA !MapLight_X+20
-	LDA #$0000 : STA !MapLight_Y+20
-	LDA #$0180 : STA !MapLight_R+20
-	LDA #$0040 : STA !MapLight_G+20
-	LDA #$0040 : STA !MapLight_B+20
-
-	LDA #$0000 : STA !MapLight_X+30
-	LDA #$0000 : STA !MapLight_Y+30
-	LDA #$0180 : STA !MapLight_R+30
-	LDA #$0040 : STA !MapLight_G+30
-	LDA #$0040 : STA !MapLight_B+30
 
 
 		JSR CalcLightPoints
-		SEP #$20
-		LDA !ProcessLight			;\
-		CMP #$02 : BNE ..noshade		; | start new shade operation when previous one finishes
-		STZ !ProcessLight			; |
-		..noshade				;/
-		REP #$20
 
 
+	; draw coin hoard counter on HUD
+		.DrawCoinHoardCounter
+		LDA #$0314 : STA $00
+		STZ $0E							; has not yet drawn anything
+
+		LDA !CoinHoard : STA $0A				;\
+		LDA !CoinHoard+2					; | setup
+		AND #$00FF : STA $0C					; |
+		TAY							;/
+		BEQ ..skipfirst						;\
+		LDX #$0000						; |
+		LDA $0A							; |
+	-	CPY #$0002 : BCS +					; |
+		CMP #$86A0 : BCS +					; | calculate 100000s digit
+		CPY #$0001 : BEQ ..draw100000s				; |
+	+	SBC #$86A0						; |
+		INX							; |
+		DEY : BNE -						;/
+		..draw100000s						;\
+		STA $0A							; |
+		STY $0C							; | draw 100000s digit
+		TXA : JSR DrawCoinDigit					; |
+		LDY $0C							; |
+		..skipfirst						;/
+		LDA $00							;\
+		CLC : ADC #$0005					; | X+5
+		STA $00							;/
+
+		LDX #$0000						;\
+		LDA $0A							; |
+		LDY $0C : BNE ..calcsecond				; |
+		BIT $0E : BMI ..calcsecond				; |
+		CMP #$2710 : BCC ..skipsecond				; |
+		..calcsecond						; | calculate 10000s digit
+	-	CMP #$2710 : BCS +					; |
+		CPY #$0001 : BCC ..draw10000s				; |
+	+	SBC #$2710						; |
+		BCS $01 : DEY						; |
+		INX							; |
+		BRA -							;/
+		..draw10000s						;\
+		STA $0A							; | draw 10000s digit
+		TXA : JSR DrawCoinDigit					; |
+		..skipsecond						;/
+		LDA $00							;\
+		CLC : ADC #$0005					; | X+5
+		STA $00							;/
+
+		LDX #$0000						;\
+		LDA $0A							; |
+		BIT $0E : BMI ..calcthird				; |
+		CMP #$03E8 : BCC ..skipthird				; |
+		..calcthird						; | calculate 1000s digit
+	-	CMP #$03E8 : BCC ..draw1000s				; |
+		SBC #$03E8						; |
+		INX							; |
+		BRA -							;/
+		..draw1000s						;\
+		STA $0A							; | draw 1000s digit
+		TXA : JSR DrawCoinDigit					; |
+		..skipthird						;/
+		LDA $00							;\
+		CLC : ADC #$0005					; | X+5
+		STA $00							;/
+
+		LDX #$0000						;\
+		LDA $0A							; |
+		BIT $0E : BMI ..calcfourth				; |
+		CMP #$0064 : BCC ..skipfourth				; |
+		..calcfourth						; | calculate 100s digit
+	-	CMP #$0064 : BCC ..draw100s				; |
+		SBC #$0064						; |
+		INX							; |
+		BRA -							;/
+		..draw100s						;\
+		STA $0A							; | draw 100s digit
+		TXA : JSR DrawCoinDigit					; |
+		..skipfourth						;/
+		LDA $00							;\
+		CLC : ADC #$0005					; | X+5
+		STA $00							;/
+
+		LDX #$0000						;\
+		LDA $0A							; |
+		BIT $0E : BMI ..calcfifth				; |
+		CMP #$000A : BCC ..skipfifth				; |
+		..calcfifth						; | calculate 10s digit
+	-	CMP #$000A : BCC ..draw10s				; |
+		SBC #$000A						; |
+		INX							; |
+		BRA -							;/
+		..draw10s						;\
+		STA $0A							; | draw 10s digit
+		TXA : JSR DrawCoinDigit					; |
+		..skipfifth						;/
+		LDA $00							;\
+		CLC : ADC #$0005					; | X+5
+		STA $00							;/
+		LDA $0A : JSR DrawCoinDigit				; draw 1s digit
 
 
-	; draw character faces on HUD
-		.DrawChar
-		LDA !OAMindex_p3 : TAX
-		LDA #$0880 : STA !OAM_p3+$000,x
-		LDA !Characters
-		AND #$00F0
-		LSR #3
-		CLC : ADC #$3FE4
-		STA !OAM_p3+$002,x
-		TXA
-		LSR #2
-		TAX
-		SEP #$20
-		LDA #$02 : STA !OAMhi_p3,x
-		REP #$20
-		INX
-		TXA
-		ASL #2
-		TAX
-		LDA #$08B0 : STA !OAM_p3+$000,x
-		LDA !MultiPlayer
-		AND #$00FF : BNE +
-		LDA #$3FA0 : BRA ++
-	+	LDA !Characters
-		AND #$000F
-		ASL 	
-		CLC : ADC #$3FE4
-	++	STA !OAM_p3+$002,x
-		TXA
-		LSR #2
-		TAX
-		SEP #$20
-		LDA #$02 : STA !OAMhi_p3,x
-		REP #$20
-		INX
-		TXA
-		ASL #2
-		TAX
-		..done
-		TXA : STA !OAMindex_p3
-
+	; draw yoshi coin counter on HUD
+		.DrawYoshiCoinCounter
+		LDA #$101E : STA $00					;\ setup
+		LDA !YoshiCoinCount : STA $0A				;/
+		STZ $0E
+		LDX #$0000						;\
+		CMP #$03E8 : BCC ..skipfirst				; |
+	-	CMP #$03E8 : BCC ..draw1000s				; |
+		SBC #$03E8 : BRA -					; | 1000s
+		..draw1000s						; |
+		STA $0A							; |
+		TXA : JSR DrawCoinDigit					; |
+		..skipfirst						;/
+		LDA $00							;\
+		CLC : ADC #$0005					; | X+5
+		STA $00							;/
+		LDX #$0000						;\
+		LDA $0A							; |
+		BIT $0E : BMI ..calcsecond				; |
+		CMP #$0064 : BCC ..skipsecond				; |
+		..calcsecond						; |
+	-	CMP #$0064 : BCC ..draw100s				; | 100s
+		SBC #$0064 : BRA -					; |
+		..draw100s						; |
+		STA $0A							; |
+		TXA : JSR DrawCoinDigit					; |
+		..skipsecond						;/
+		LDA $00							;\
+		CLC : ADC #$0005					; | X+5
+		STA $00							;/
+		LDX #$0000						;\
+		LDA $0A							; |
+		BIT $0E : BMI ..calcthird				; |
+		CMP #$000A : BCC ..skipthird				; |
+		..calcthird						; |
+	-	CMP #$000A : BCC ..draw10s				; | 10s
+		SBC #$000A : BRA -					; |
+		..draw10s						; |
+		STA $0A							; |
+		TXA : JSR DrawCoinDigit					; |
+		..skipthird						;/
+		LDA $00							;\
+		CLC : ADC #$0005					; | X+5
+		STA $00							;/
+		LDA $0A : JSR DrawCoinDigit				; 1s
 
 		LDA !CharMenu
 		AND #$00FF : BNE +
 		JSR Player
-		; sprite call
+		JSR OverworldSprites
 		JSR OAM_sort
-
-
 		+
+
+	.CircleTest
+	LDA !P1MapX
+	CLC : ADC #$0008
+	SEC : SBC $1A
+	BPL $03 : LDA #$0000
+	CMP #$00FF
+	BCC $03 : LDA #$00FF
+	STA !CircleCenterX
+	LDA !P1MapY
+	CLC : ADC #$0008
+	SEC : SBC $1C
+	BPL $03 : LDA #$0000
+	CMP #$00FF
+	BCC $03 : LDA #$00FF
+	STA !CircleCenterY
+	LDA !CircleRadius
+	BPL $03 : LDA #$0000
+	CMP #$0030
+	BCC $03 : LDA #$0030
+	STA !CircleRadius
+	PHA
+	STZ $2250
+	STA $2251
+	CLC
+	JSL !GetRoot : STA $2253
+	NOP : BRA $00
+	LDA $2307 : STA !CircleRadius
+	JSR RenderCircle
+	PLA : STA !CircleRadius
+
+
 		SEP #$10				;\ regs: A 16-bit, index 8-bit
 		REP #$20				;/
 		LDA $1A : STA $1E			;\ layer 2 positions
 		LDA $1C : STA $20			;/
-
-		LDA #$7FFF : STA !Color0
 
 		SEP #$20				; 8-bit A
 
@@ -435,317 +746,274 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 
 
 	Controls:
-		LDX !CharMenu : BEQ .NoCharSelect
+		LDA !CharMenu : BEQ .NoCharMenu
+		JMP CharMenu
+		.NoCharMenu
 
-		LDA #$01
-		STA !ShaderRowDisable+$C
-		STA !ShaderRowDisable+$D
-		STA !ShaderRowDisable+$E
-
-		CPX #$01 : BEQ .Opening
-		CPX #$03 : BEQ .Closing
-		JMP .HandleCharSelect
-
-		.Opening
-		LDA !CharMenuSize				; grows by 16px/frame
-		CLC : ADC #$10
-		STA !CharMenuSize : BNE +
-		LDA #$FF : STA !CharMenuSize
-		INC !CharMenu
-		STZ !UploadPlayerPal				; upload player palette
-		LDX #$00 : JSR Portrait_0			; Upload portrait at t = 0xFF
-		+
-		JMP Draw
-
-		.Closing
-		LDA !CharMenuSize
-		SEC : SBC #$10
-		STA !CharMenuSize
-		BCS +
-		STZ !CharMenu
-		STZ !CharMenuSize
-		+
-		JMP Draw
-
-		.NoCharSelect
+		LDA !WarpPipe : BNE ..return
 		LDA $6DA6 : BPL +
 		LDA !Translevel : BEQ +
 		BRA ++
 		+
 		LDA $6DA6
 		AND #$20 : BEQ +
-		STZ !Translevel
-	++	INC !GameMode
+
+		LDA #$03 : STA !SPC4
+
+		REP #$10
+		JSR GetSpriteIndex
+		BCC $03 : LDX #$0000
+		JSR ResetSprite
+		LDA #$01 : STA !OW_sprite_Num,x
+		SEP #$10
+		LDA #$30 : STA !P1MapZSpeed
+		LDA #$38 : STA !P2MapZSpeed
+		LDA !P2MapX : STA !WarpPipeP2X
+		LDA !P2MapX+1 : STA !WarpPipeP2X+1
+		LDA !P2MapY : STA !WarpPipeP2Y
+		LDA !P2MapY+1 : STA !WarpPipeP2Y+1
+		STZ !WarpPipeTimer
+		BRA +
+
+	++	LDA #$15 : STA !GameMode
+		LDA #$02 : STA !SPC1
+		LDA #$80 : STA !SPC3
 		REP #$20
 		LDA !P1MapX : STA !SRAM_overworldX
 		LDA !P1MapY : STA !SRAM_overworldY
 		SEP #$20
 		JSL !SaveGame
+
+		..return
 		PLP
 		PLB
 		RTL
 		+
 
+		.P1OpenMenu
 		LDA $6DA6
-		AND #$10 : BEQ +
-		LDA !CharMenu : BNE +
+		AND #$10 : BEQ ..done
+		LDA !CharMenu : BNE ..done
 		INC !CharMenu
-		STZ !SelectingPlayer
-		+
+		LDX #$00 : BRA .OpenMenu
+		..done
 
+		.P2OpenMenu
 		LDA $6DA7
-		AND #$10 : BEQ +
-		LDA !CharMenu : BNE +
+		AND #$10 : BEQ ..done
+		LDA !CharMenu : BNE ..done
 		INC !CharMenu
-		LDA #$01 : STA !SelectingPlayer
-		+
-		PLP
-		PLB
-		RTL
-
-
-		.HandleCharSelect
-		LDA !CharMenuCursor : STA $00
-
-		LDA !SelectingPlayer				;\
-		CLC : ADC #$05					; |
-		STA $0E						; | Menu size depending on player
-		INC A						; |
-		STA $0F						;/
-		LDY !SelectingPlayer				;\
-		LDA $6DA6,y					; |
-		AND #$0C : BEQ ..NoI				; |
-		LDX #$06 : STX !SPC4				; > SFX
-		CMP #$08 : BCS ..U				; |
-	..D	INC !CharMenuCursor				; |
-		BRA ..NoI					; | Handle character select cursor
-	..U	DEC !CharMenuCursor				; |
-	..NoI	LDA !CharMenuCursor : BPL ..Pos			; |
-		LDA $0E : STA !CharMenuCursor			; |
-		BRA ..Go					; |
-	..Pos	CMP $0F : BCC ..Go				; |
-		STZ !CharMenuCursor				; |
-		..Go						;/
-
-		LDA !CharMenuCursor
-		CMP $00 : BEQ ..NoUpdate
-		STZ !UploadPlayerPal				; upload player pal
-		JSR Portrait
-		..NoUpdate
-
-
-		LDA $6DA6,y
-		CMP #$10 : BCS $03 : JMP Draw
-		INC !CharMenu					; close char menu
-
-		REP #$20					;\
-		LDA #$005E					; |
-		STA.l !VRAMbase+!CGRAMtable+0			; |
-		LDA.w #Portrait_RestorePal			; |
-		STA.l !VRAMbase+!CGRAMtable+2			; | Restore palette
-		SEP #$20					; |
-		LDA.b #Portrait_RestorePal>>16			; |
-		STA.l !VRAMbase+!CGRAMtable+4			; |
-		LDA #$C1					; |
-		STA.l !VRAMbase+!CGRAMtable+5			;/
-		LDA !CharMenuCursor : STA $0F
-		STZ !CharMenuCursor
-		LDA !SelectingPlayer : BNE ..P2
-
-	..P1	LDA !Characters					;\
-		AND #$0F					; |
-		STA $0E						; |
-		LDA $0F : STA !P2Character-$80			; | Set player 1 char
-		ASL #4						; |
-		ORA $0E						; |
-		STA !Characters					; |
-		BRA +						;/
-
-	..P2	LDA $0F						;\
-		CMP #$06 : BNE ...Y				; |
-		LDA #$00 : STA !MultiPlayer			; |
-		BRA +						; |
-	...Y	STA !P2Character				; | Set player 2 char
-		LDA !Characters					; |
-		AND #$F0					; |
-		ORA $0F						; |
-		STA !Characters					; |
-		LDA !MultiPlayer : BNE ++
-		LDA !P1MapX : STA !P2MapX
-		LDA !P1MapX+1 : STA !P2MapX+1
-		LDA !P1MapY : STA !P2MapY
-		LDA !P1MapY+1 : STA !P2MapY+1
-	++	LDA #$01 : STA !MultiPlayer			;/
-
-	+	JMP Draw
-		.NoChar
+		LDX.b #(!P2MapX)-(!P1MapX) : BRA .OpenMenu
+		..done
 
 		PLP
 		PLB
 		RTL
 
 
-
-	Draw:
-		PEA Window-1
-		LDA !CharMenu
-		CMP #$02 : BEQ .Char				; don't draw anything else during char menu
-		JMP .Normal
-
-	.Char	REP #$30
-		LDX.w #CharTilemap_End-CharTilemap
-		LDA !SelectingPlayer : BEQ +
-		LDX.w #CharTilemap_End2-CharTilemap
-		+
-
-		STX $00						;\
-		LDA !OAMindex_p3 : TAX				; |
-		LDY #$0000					; |
-	-	LDA CharTilemap,y : STA !OAM_p3,x		; |
-		LDA CharTilemap+2,y : STA !OAM_p3+2,x		; |
-		TXA						; |
-		LSR #2						; |
-		TAX						; |
-		SEP #$20					; | draw text for character select menu
-		LDA #$00 : STA !OAMhi_p3,x			; |
-		REP #$20					; |
-		INX						; |
-		TXA						; |
-		ASL #2						; |
-		TAX						; |
-		INY #4						; |
-		CPY $00 : BCC -					;/
+		.OpenMenu
+		STX !SelectingPlayer
+		LDA !P1MapX,x
+		SEC : SBC $1A
+		STA !CharMenuCurrentPlayerX
+		LDA !P1MapY,x
+		SEC : SBC $1C
+		STA !CharMenuCurrentPlayerY
+		TXA
+		EOR.b #(!P2MapX)-(!P1MapX)
+		TAY
+		LDA !P1MapX,y
+		SEC : SBC $1A
+		STA !CharMenuOtherPlayerX
+		LDA !P1MapY,y
+		SEC : SBC $1C
+		STA !CharMenuOtherPlayerY
+		LDA !P1MapDirection,y
+		AND #$01
+		BEQ $02 : LDA #$40
+		STA !CharMenuOtherPlayerP
+		LDA !P1MapChar,x : STA !CharMenuCursor
+		JSR ReloadStartButtons
+		JSR InitCharMenu
+		PLP
+		PLB
+		RTL
 
 
-		SEP #$20					;\
-		LDA !CharMenuCursor				; |
-		ASL #3						; |
-		CLC : ADC #$1E					; |
-		CMP #$4E					; |
-		BCC $02 : LDA #$56				; |
-		STA !OAM_p3+$01,x				; |
-		LDA #$10 : STA !OAM_p3+$00,x			; |
-		LDA #$AE : STA !OAM_p3+$02,x			; |
-		LDA #$31 : STA !OAM_p3+$03,x			; |
-		REP #$20					; | draw menu cursor
-		TXA						; |
-		LSR #2						; |
-		TAX						; |
-		SEP #$20					; |
-		LDA #$00 : STA !OAMhi_p3,x			; |
-		REP #$20					; |
-		INX						; |
-		TXA						; |
-		ASL #2						; |
-		TAX						; |
-		STA !OAMindex_p3				;/
 
 
-		LDA !CharMenuCursor				;\
-		AND #$00FF					; |
-		TAY						; |
-		LDA Portrait_Table-1,y : BPL ..drawportrait	; |
-		JMP ..NoPortrait				; |
-		..drawportrait					; |
-		PHY						; |
-		LDY #$0000					; |
-	-	LDA.w Portrait_Tilemap,y : STA !OAM_p3,x	; |
-		LDA.w Portrait_Tilemap+2,y : STA !OAM_p3+2,x	; |
-		TXA						; |
-		LSR #2						; |
-		TAX						; | draw character portrait
-		SEP #$20					; |
-		LDA #$02 : STA !OAMhi_p3,x			; |
-		REP #$20					; |
-		INX						; |
-		TXA						; |
-		ASL #2						; |
-		TAX						; |
-		INY #4						; |
-		CPY #$0020 : BCC -				; |
-		TXA : STA !OAMindex_p3				;/
-
-		PLA						;\
-		ASL #2						; |
-		TAX						; |
-		REP #$20					; | get character data
-		LDA Portrait_CharPtr,x				; |
-		CMP #$FFFF : BNE $03 : JMP ..NoPortrait		; |
-		STA $00						; |
-		LDA Portrait_CharPtr+2,x : STA $0C		;/
-
-
+	RemoveP2:
+		PHP
+		SEP #$20
+		LDA #$00 : STA !MultiPlayer
+		REP #$30
+		%LoadHUD(NameP2)
+		JSR ResetHUD
+		%LoadHUD(PortraitP2)
+		JSR ResetHUD
+		%LoadHUD(SwitchP2)
+		JSR ResetHUD
+		%LoadHUD(JoinP2)
+		JSR RenderHUD
+		PHB
 		SEP #$10
-
-
-		LDA ($0C) : STA $3700+0				;\
-		INC $0C						; | dynamo header
-		INC $0C						;/
-		LDY #$00					; starting index = 00
-	-	TYX						; update $3700 index
-		LDA ($0C),y : STA $3700+2,x			;\ upload size
-		INY #2						;/
-		LDA ($0C),y					;\
-		AND #$00FF					; |
-		PHY						; |
-		TAY						; |
-		JSL !GetFileAddress				; | source address
-		PLY						; |
-		LDA !FileAddress+1 : STA $3700+5,x		; > source bank
-		INY						; |
-		LDA ($0C),y					; |
-		CLC : ADC !FileAddress+0			; |
-		STA $3700+4,x					; |
-		INY #2						;/
-		LDA ($0C),y : STA $3700+7,x			;\ dest VRAM
-		INY #2						;/
-		CPY $3700+0 : BCC -				; loop
-		LDA.w #$3700 : STA $0C				; pointer ($3700)
-		..DynDone
-
-		REP #$30					;\
-		LDA ($00)					; |
-		AND #$00FF					; |
-		STA $02						; |
-		INC $00						; |
-		LDY #$0000					; |
-		LDA !OAMindex_p3 : TAX				; |
-	-	LDA ($00),y : STA !OAM_p3+0,x			; |
-		INY #2						; |
-		LDA ($00),y : STA !OAM_p3+2,x			; |
-		TXA						; |
-		LSR #2						; |
-		TAX						; | draw character
-		SEP #$20					; |
-		LDA #$02 : STA !OAMhi_p3,x			; |
-		REP #$20					; |
-		INX						; |
-		TXA						; |
-		ASL #2						; |
-		TAX						; |
-		INY #2						; |
-		CPY $02 : BCC -					; |
-		TXA : STA !OAMindex_p3				; |
-		SEP #$30					;/
-		CLC : JSL !UpdateGFX				; > load character GFX
-
-		..NoPortrait
-		SEP #$30
+		LDY.b #!VRAMbank
+		PHY : PLB
+		JSL !GetCGRAM
+		LDA #$0002 : STA !CGRAMtable+$00,y
+		LDA.w #Palette+($79*2) : STA !CGRAMtable+$02,y
+		LDA.w #Palette>>16 : STA !CGRAMtable+$04,y
+		SEP #$20
+		LDA #$79 : STA !CGRAMtable+$05,y
+		PLB
+		PLP
 		RTS
 
-
-		.Normal
-		.Full
+	AddP2:
+		PHP
+		SEP #$20
+		LDA #$01 : STA !MultiPlayer
+		REP #$30
+		%LoadHUD(NameP2)
+		LDA !Characters
+		AND #$000F
+		ASL A
+		TAX
+		LDA NameOffset,x : STA $00
+		JSR RenderP2Name
+		%LoadHUD(PortraitP2)
+		LDA !Characters
+		AND #$000F
+		ASL #3
+		ADC $00
+		STA $00
+		JSR RenderHUD
+		%LoadHUD(SwitchP2)
+		JSR RenderHUD
+		JSR ReloadP2Color
+		PLP
 		RTS
+
+	ReloadStartButtons:
+		PHP
+		REP #$20
+		SEP #$10
+		.P1
+		%LoadHUD(StartSolidP1)
+		LDX !CharMenu
+		CPX #$01 : BNE ..load
+		LDX !SelectingPlayer : BNE ..load
+		LDA $00
+		CLC : ADC #$000C
+		STA $00
+		..load
+		JSR RenderHUD
+		.P2
+		%LoadHUD(StartSolidP2)
+		LDX !CharMenu
+		CPX #$01 : BNE ..load
+		LDX !SelectingPlayer : BEQ ..load
+		LDA $00
+		CLC : ADC #$000C
+		STA $00
+		..load
+		JSR RenderHUD
+		PLP
+		RTS
+
+	ReloadSelectArea:
+		%LoadHUD(WarpPipe)
+		JSR RenderHUD
+		%LoadHUD(HomeText)
+		JSR RenderHUD
+		%LoadHUD(SelectSolid)
+		JSR RenderHUD
+		RTS
+
+	ReloadP1Name:
+		%LoadHUD(NameP1)
+		LDA !P1MapChar
+		AND #$000F
+		ASL A
+		TAX
+		LDA NameOffset,x : STA $00
+		JSR RenderHUD
+		RTS
+
+	ReloadP1Color:
+		PHB
+		PHP
+		SEP #$10
+		LDY.b #!VRAMbank
+		PHY : PLB
+		REP #$20
+		JSL !GetCGRAM
+		LDA #$0002 : STA !CGRAMtable+$00,y
+		LDA.l !P1MapChar
+		AND #$000F
+		ASL A
+		ADC.w #Palette_CharName
+		STA !CGRAMtable+$02,y
+		LDA.w #Palette_CharName>>16 : STA !CGRAMtable+$04,y
+		SEP #$20
+		LDA #$78 : STA !CGRAMtable+$05,y
+		REP #$20
+		PLP
+		PLB
+		RTS
+
+	ReloadP1Portrait:
+		%LoadHUD(PortraitP1)
+		LDA !P1MapChar
+		AND #$000F
+		ASL #3
+		ADC $00
+		STA $00
+		JSR RenderHUD
+		RTS
+
+	ReloadP2Color:
+		PHB
+		PHP
+		SEP #$10
+		LDY.b #!VRAMbank
+		PHY : PLB
+		REP #$20
+		JSL !GetCGRAM
+		LDA #$0002 : STA !CGRAMtable+$00,y
+		LDA.l !MultiPlayer
+		AND #$00FF : BNE .CharColor
+		LDA.w #Palette+($79*2) : STA !CGRAMtable+$02,y
+		LDA.w #Palette>>16 : BRA .Write
+
+		.CharColor
+		LDA.l !P2MapChar
+		AND #$000F
+		ASL A
+		ADC.w #Palette_CharName
+		STA !CGRAMtable+$02,y
+		LDA.w #Palette_CharName>>16
+		.Write
+		STA !CGRAMtable+$04,y
+		SEP #$20
+		LDA #$79 : STA !CGRAMtable+$05,y
+		PLP
+		PLB
+		RTS
+
+	NameOffset:
+		dw $0098/2,$00B8/2,$00D8/2
+		dw $0898/2,$08B8/2,$08D8/2
+
 
 
 
 	KillVR3:
-		LDA #$00 : STA !VRAMbase+!VRAMtable+$3FF
+		LDA #$00 : STA !VRAMbase+!VRAMtable+$2FF
 		REP #$30
-		LDA.w #$03FE
-		LDX.w #!VRAMtable+$3FF
-		LDY.w #!VRAMtable+$3FE
+		LDA.w #$02FE
+		LDX.w #!VRAMtable+$2FF
+		LDY.w #!VRAMtable+$2FE
 		MVP $40,$40
 		RTS
 
@@ -823,154 +1091,27 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 
 
 
+	DrawCoinDigit:
+		; A = digit
+		TAY
+		LDA !OAMindex_p3 : TAX
+		TYA
+		CLC : ADC #$3E20
+		STA !OAM_p3+$002,x
+		LDA $00 : STA !OAM_p3+$000,x
+		DEC $0E				; n flag set
 
-
-	Portrait:
-
-		LDX !CharMenuCursor
-	.0	LDA.w .Table,x : BPL .Valid
+		TXA
+		LSR #2
+		TAX
+		LDA #$0000 : STA !OAMhi_p3,x
+		INX
+		TXA
+		ASL #2
+		STA !OAMindex_p3
 		RTS
 
 
-		.Valid
-		TXA								;\
-		ASL A								; |
-		PHA								; |
-		ASL A								; | portrait address
-		TAX								; |
-		LDA.l !PortraitPointers+2,x : STA $00				; |
-		LDA.l !PortraitPointers+3,x : STA $01				; |
-		LDA.l !PortraitPointers+4,x : STA $02				; |
-		LDA #$10 : STA $03						;/
-
-		LDA #$00 : XBA
-		TXA								;\
-		REP #$20							; |
-		ASL #3								; |
-		CLC : ADC.w #!PlayerPalettes					; |
-		STA $0D								; | Player palette in !BigRAM
-		SEP #$20							; |
-		LDA.b #!PlayerPalettes>>16 : STA $0F				; |
-		LDY #$1F							; |
-	-	LDA [$0D],y : STA !BigRAM+$3E,y					; |
-		DEY : BPL -							;/
-
-		PLX								;\
-		LDA.b #!PortraitPointers>>16 : STA $0F				; |
-		LDA #$00							; |
-		STA.l !VRAMbase+!CGRAMtable+4					; |
-		REP #$20							; |
-		LDA.l (!PortraitPointers&$FF0000)+read2(!PortraitPointers)+0,x	; |
-		STA $0D								; |
-		LDY #$3C							; |
-	-	LDA [$0D],y : STA !BigRAM,y					; | upload player and portrait palettes
-		DEY #2 : BPL -							; |
-		LDA.w #!BigRAM							; |
-		STA.l !VRAMbase+!CGRAMtable+2					; |
-		LDA #$005E							; |
-		LDY !UploadPlayerPal						; \ upload player pal clause
-		BEQ $03 : LDA #$003E						; /
-		STA.l !VRAMbase+!CGRAMtable+0					; |
-		SEP #$20							; |
-		LDA #$C1							; |
-		STA.l !VRAMbase+!CGRAMtable+5					;/
-
-		JSL PLANE_SPLIT_SA1						; > unpack 5bpp portrait
-
-		PHB
-		LDA.b #!VRAMbank
-		PHA : PLB
-
-		REP #$20
-		JSL !GetBigCCDMA
-		LDA #$0100 : STA !CCDMAtable+$00,x				; upload size = .5 KB
-		LDA.w #!BufferLo : STA !CCDMAtable+$02,x			; source address = !BufferLo
-		LDA #$7600 : STA !CCDMAtable+$05,x				; dest VRAM = 0x7600
-		SEP #$20
-		LDA.b #!BufferLo>>16 : STA !CCDMAtable+$04,x			; source bank
-		LDA #$09 : STA !CCDMAtable+$07,x				; settings = 4bpp, 32px
-		REP #$20
-		JSL !GetBigCCDMA
-		LDA #$0100 : STA !CCDMAtable+$00,x				; upload size = .5 KB
-		LDA.w #!BufferLo+$100 : STA !CCDMAtable+$02,x			; source address = !BufferLo+$100
-		LDA #$7700 : STA !CCDMAtable+$05,x				; dest VRAM = 0x7700
-		SEP #$20
-		LDA.b #!BufferLo>>16 : STA !CCDMAtable+$04,x			; source bank
-		LDA #$09 : STA !CCDMAtable+$07,x				; settings = 4bpp, 32px
-		REP #$20
-		JSL !GetBigCCDMA
-		LDA #$0100 : STA !CCDMAtable+$00,x				; upload size = .5 KB
-		LDA.w #!BufferHi : STA !CCDMAtable+$02,x			; source address = !BufferHi
-		LDA #$7680 : STA !CCDMAtable+$05,x				; dest VRAM = 0x7680
-		SEP #$20
-		LDA.b #!BufferHi>>16 : STA !CCDMAtable+$04,x			; source bank
-		LDA #$09 : STA !CCDMAtable+$07,x				; settings = 4bpp, 32px
-		REP #$20
-		JSL !GetBigCCDMA
-		LDA #$0100 : STA !CCDMAtable+$00,x				; upload size = .5 KB
-		LDA.w #!BufferHi+$100 : STA !CCDMAtable+$02,x			; source address = !BufferHi+$100
-		LDA #$7780 : STA !CCDMAtable+$05,x				; dest VRAM = 0x7780
-		SEP #$20
-		LDA.b #!BufferHi>>16 : STA !CCDMAtable+$04,x			; source bank
-		LDA #$09 : STA !CCDMAtable+$07,x				; settings = 4bpp, 32px
-
-		PLB
-		RTS
-
-	.Long	PHB : PHK : PLB
-		PHA
-		PHY
-		LDA #$01 : STA !UploadPlayerPal					; don't upload player pal
-		JSR .0
-
-		LDA.b #!VRAMbank						;\
-		PHA : PLB							; |
-		PLA : STA !CGRAMtable+5						; > adjust palette
-		PLA								; |
-		STA !VRAMtable+$06,x						; |
-		STA !VRAMtable+$14,x						; |
-		STA !VRAMtable+$22,x						; | adjust upload destination
-		STA !VRAMtable+$30,x						; |
-		INC A								; |
-		STA !VRAMtable+$0D,x						; |
-		STA !VRAMtable+$1B,x						; |
-		STA !VRAMtable+$29,x						; |
-		STA !VRAMtable+$37,x						;/
-
-		PLB
-		RTL
-
-
-
-		.Table		; portrait index
-		db $00
-		db $01
-		db $02
-		db $03
-		db $FF
-		db $FF
-		db $FF
-		db $07		; special tinker portrait
-
-
-		.Tilemap	; OAM data
-		db $C0,$20,$60,$39
-		db $D0,$20,$62,$39
-		db $C0,$30,$64,$39
-		db $D0,$30,$66,$39
-		db $C0,$20,$68,$3B
-		db $D0,$20,$6A,$3B
-		db $C0,$30,$6C,$3B
-		db $D0,$30,$6E,$3B
-
-
-		.RestorePal
-		dw $7FFF,$0000,$0523,$05E5,$0B0F,$26E0,$1BAE,$054A	; pal 8
-		dw $1E72,$7E69,$0D4E,$11B5,$1E59,$26FA,$0000
-		dw $0000,$0000,$2CE7,$3D6B,$51EF,$6294,$7318,$34E4	; pal 9
-		dw $4DC1,$6D80,$35EC,$3A72,$0523,$1D46,$25C6,$1AC5
-		dw $0000,$0000,$575F,$36BF,$2DD7,$2D52,$28EA,$494D	; pal A
-		dw $55B1,$6253,$5D4A,$7DAA,$7E69,$0523,$05E5,$0B0F
 
 
 macro CharDyn(file, tiles, source, dest)
@@ -980,127 +1121,8 @@ macro CharDyn(file, tiles, source, dest)
 	dw <dest>*$10+$6000
 endmacro
 
-		.CharPtr
-		dw .MarioTM,.MarioDyn
-		dw .LuigiTM,.LuigiDyn
-		dw .KadaalTM,.KadaalDyn
-		dw .LeewayTM,.LeewayDyn
-		dw $FFFF,$FFFF
-		dw $FFFF,$FFFF
-		dw $FFFF,$FFFF
 
-		.MarioTM
-		db $07
-		db $80,$20,$0C,$3D
-		db $80,$30,$0E,$3D
-
-	; tile $004 is the body
-	; tile $0E0 is the head
-
-		.MarioDyn
-		dw ..End-..Start
-		..Start
-		%CharDyn(!File_Mario, 2, $000, $10C)
-		%CharDyn(!File_Mario, 2, $010, $11C)
-		%CharDyn(!File_Mario, 2, $020, $10E)
-		%CharDyn(!File_Mario, 2, $030, $11E)
-		..End
-
-
-		.LuigiTM
-		db $07
-		db $80,$20,$0C,$3D
-		db $80,$30,$0E,$3D
-
-
-		.LuigiDyn
-		dw ..End-..Start
-		..Start
-		%CharDyn(!File_Luigi, 2, $000, $10C)
-		%CharDyn(!File_Luigi, 2, $010, $11C)
-		%CharDyn(!File_Luigi, 2, $020, $10E)
-		%CharDyn(!File_Luigi, 2, $030, $11E)
-		..End
-
-
-		.KadaalTM
-		db $07
-		db $80,$20,$0C,$3D
-		db $80,$30,$0E,$3D
-
-		.KadaalDyn
-		dw ..End-..Start
-		..Start
-		%CharDyn(!File_Kadaal, 2, $000, $10C)
-		%CharDyn(!File_Kadaal, 2, $010, $11C)
-		%CharDyn(!File_Kadaal, 2, $020, $10E)
-		%CharDyn(!File_Kadaal, 2, $030, $11E)
-		..End
-
-
-		.LeewayTM
-		db $13
-		db $75,$38,$4C,$3D		; sword
-		db $7D,$38,$4D,$3D
-		db $80,$20,$0C,$3D		; body
-		db $80,$30,$2C,$3D
-		db $88,$30,$2D,$3D
-
-		.LeewayDyn
-		dw ..End-..Start
-		..Start
-		%CharDyn(!File_Leeway, 2, $000, $10C)
-		%CharDyn(!File_Leeway, 2, $010, $11C)
-		%CharDyn(!File_Leeway, 3, $020, $12C)
-		%CharDyn(!File_Leeway, 3, $030, $13C)
-		%CharDyn(!File_Leeway_Sword, 3, $008, $14C)
-		%CharDyn(!File_Leeway_Sword, 3, $018, $15C)
-		..End
-
-
-
-	CharTilemap:
-		db $20,$1F,$8C,$31	; M
-		db $28,$1F,$80,$31	; A
-		db $30,$1F,$91,$31	; R
-		db $38,$1F,$88,$31	; I
-		db $40,$1F,$8E,$31	; O
-
-		db $20,$27,$8B,$31	; L
-		db $28,$27,$94,$31	; U
-		db $30,$27,$88,$31	; I
-		db $38,$27,$86,$31	; G
-		db $40,$27,$88,$31	; I
-
-		db $20,$2F,$8A,$31	; K
-		db $28,$2F,$80,$31	; A
-		db $30,$2F,$83,$31	; D
-		db $38,$2F,$80,$31	; A
-		db $40,$2F,$80,$31	; A
-		db $48,$2F,$8B,$31	; L
-
-		db $20,$37,$8B,$31	; L
-		db $28,$37,$84,$31	; E
-		db $30,$37,$84,$31	; E
-		db $38,$37,$96,$31	; W
-		db $40,$37,$80,$31	; A
-		db $48,$37,$98,$31	; Y
-
-		db $20,$3F,$80,$31	; A
-		db $28,$3F,$8B,$31	; L
-		db $30,$3F,$93,$31	; T
-		db $38,$3F,$84,$31	; E
-		db $40,$3F,$91,$31	; R
-
-		db $20,$47,$8F,$31	; P
-		db $28,$47,$84,$31	; E
-		db $30,$47,$80,$31	; A
-		db $38,$47,$82,$31	; C
-		db $40,$47,$87,$31	; H
-
-
-		.End
-
+	DropoutTilemap:
 		db $20,$57,$83,$31	; D
 		db $28,$57,$91,$31	; R
 		db $30,$57,$8E,$31	; O
@@ -1108,35 +1130,47 @@ endmacro
 		db $48,$57,$8E,$31	; O
 		db $50,$57,$94,$31	; U
 		db $58,$57,$93,$31	; T
-		.End2
+		.End
 
 
 
 	HDMA:
 	; direct -> 2108
 	.Tilemap
-		db $20 : db $50
+		db $40 : db $50
 		db $01 : db $48
 		db $00
 
 	; indirect -> 210F, B = K
 	.Coords
-		db $20 : dw ..hud
+		db $40 : dw ..hud
 		db $01 : dw $301E
 		db $00
 
 		..hud
 		dw $0000,$FFFF
 
-	; indirect -> 212C, B = K
+	; direct -> 212C
 	.MainScreen
-		db $20 : dw ..hud
-		db $01 : dw !MainScreen
+		db $40 : db $12,$00,$12,$00
+		db $01 : db $13,$00,$13,$00
 		db $00
 
 
-		..hud
-		db $12		; BG2 + sprites only
+	; indirect -> $2126 + $2127, B = K
+	.Window1
+		db $F0 : dw !CircleTable1
+		db $F0 : dw !CircleTable1+$E0
+		db $00
+
+	.Window2
+		db $F0 : dw !CircleTable2
+		db $F0 : dw !CircleTable2+$E0
+		db $00
+
+
 
 
 	namespace off
+
+

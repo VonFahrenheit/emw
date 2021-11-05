@@ -41,129 +41,16 @@
 
 
 
-	Render:
+	RenderName:
 		PHB							;\ wrapper start
 		PHP							;/
 		REP #$30						; all regs 16-bit
 
-		.DrawCoinHoardCounter
-		LDA #$0312 : STA $00
-
-		LDA !CoinHoard : STA $0A				;\
-		LDA !CoinHoard+2					; | setup
-		AND #$00FF : STA $0C					; |
-		TAY							;/
-		BEQ ..skipfirst						;\
-		LDX #$0000						; |
-		LDA $0A							; |
-	-	CPY #$0002 : BCS +					; |
-		CMP #$86A0 : BCS +					; | calculate 100000s digit
-		CPY #$0001 : BEQ ..draw100000s				; |
-	+	SBC #$86A0						; |
-		INX							; |
-		DEY : BNE -						;/
-		..draw100000s						;\
-		STA $0A							; |
-		STY $0C							; | draw 100000s digit
-		TXA : JSR .DrawCoinDigit				; |
-		LDY $0C							; |
-		..skipfirst						;/
-
-		LDX #$0000						;\
-		LDA $0A							; |
-		LDY $0C : BNE ..calcsecond				; |
-		CMP #$2710 : BCC ..skipsecond				; |
-		..calcsecond						; |
-	-	CMP #$2710 : BCS +					; | calculate 10000s digit
-		CPY #$0001 : BCC ..draw10000s				; |
-	+	SBC #$2710						; |
-		BCS $01 : DEY						; |
-		INX							; |
-		BRA -							;/
-		..draw10000s						;\
-		STA $0A							; | draw 10000s digit
-		TXA : JSR .DrawCoinDigit				; |
-		..skipsecond						;/
-
-		LDX #$0000						;\
-		LDA $0A							; |
-		CMP #$03E8 : BCC ..skipthird				; |
-	-	CMP #$03E8 : BCC ..draw1000s				; | calculate 1000s digit
-		SBC #$03E8						; |
-		INX							; |
-		BRA -							;/
-		..draw1000s						;\
-		STA $0A							; | draw 1000s digit
-		TXA : JSR .DrawCoinDigit				; |
-		..skipthird						;/
-
-		LDX #$0000						;\
-		LDA $0A							; |
-		CMP #$0064 : BCC ..skipfourth				; |
-	-	CMP #$0064 : BCC ..draw1000s				; | calculate 100s digit
-		SBC #$0064						; |
-		INX							; |
-		BRA -							;/
-		..draw100s						;\
-		STA $0A							; | draw 100s digit
-		TXA : JSR .DrawCoinDigit				; |
-		..skipfourth						;/
-
-		LDX #$0000						;\
-		LDA $0A							; |
-		CMP #$000A : BCC ..skipfifth				; |
-	-	CMP #$000A : BCC ..draw10s				; | calculate 10s digit
-		SBC #$000A						; |
-		INX							; |
-		BRA -							;/
-		..draw10s						;\
-		STA $0A							; | draw 10s digit
-		TXA : JSR .DrawCoinDigit				; |
-		..skipfifth						;/
-
-		LDA $0A : JSR .DrawCoinDigit				; draw 1s digit
-
-
-		.DrawYoshiCoinCounter
-		LDA #$0F12 : STA $00					;\ setup
-		LDA !YoshiCoinCount : STA $0A				;/
-		LDX #$0000						;\
-		CMP #$03E8 : BCC ..skipfirst				; |
-	-	CMP #$03E8 : BCC ..draw1000s				; |
-		SBC #$03E8 : BRA -					; | 1000s
-		..draw1000s						; |
-		STA $0A							; |
-		TXA : JSR .DrawCoinDigit				; |
-		..skipfirst						;/
-		LDX #$0000						;\
-		LDA $0A							; |
-		CMP #$0064 : BCC ..skipsecond				; |
-	-	CMP #$0064 : BCC ..draw100s				; |
-		SBC #$0064 : BRA -					; | 100s
-		..draw100s						; |
-		STA $0A							; |
-		TXA : JSR .DrawCoinDigit				; |
-		..skipsecond						;/
-		LDX #$0000						;\
-		LDA $0A							; |
-		CMP #$000A : BCC ..skipthird				; |
-	-	CMP #$000A : BCC ..draw10s				; |
-		SBC #$000A : BRA -					; | 10s
-		..draw10s						; |
-		STA $0A							; |
-		TXA : JSR .DrawCoinDigit				; |
-		..skipthird						;/
-
-		LDA $0A : JSR .DrawCoinDigit				; 1s
-
-
-
-
 		.DrawYoshiCoins
-		LDA !Translevel
-		AND #$00FF : BEQ ..nolevel
 		LDA !CharMenu
 		AND #$00FF : BNE ..nolevel
+		LDA !Translevel
+		AND #$00FF : BEQ ..nolevel
 
 		TAY
 		TYX
@@ -324,11 +211,68 @@
 		SEP #$20						; A 8-bit
 		LDA.b #!V_buffer>>16					;\ go into bank 0x60
 		PHA : PLB						;/
-		LDA.l !CharMenu : BNE +
-		LDA.l !Translevel : BNE ..loop				; blank if not on a level
-	+	JMP ..endmessage
+		LDA.l !CharMenu : BNE ..return
+		LDA.l !Translevel : BEQ ..return			; blank if not on a level
+		CMP.l !PrevTranslevel : BEQ ..drawtext
+		STA.l !PrevTranslevel
+		JMP .Render
+
+		..return
+		PLP
+		PLB
+		RTS
 
 
+		..drawtext
+		PHK : PLB
+		REP #$30
+		LDA !OAMindex_p3 : TAX
+		LDA !MapLevelNameWidth
+		LSR A
+		EOR #$FFFF : INC A
+		CLC : ADC #$8C80
+		STA !OAM_p3+$000,x
+		CLC : ADC #$0010
+		STA !OAM_p3+$004,x
+		CLC : ADC #$0010
+		STA !OAM_p3+$008,x
+		CLC : ADC #$0010
+		STA !OAM_p3+$00C,x
+		CLC : ADC #$0010
+		STA !OAM_p3+$010,x
+		CLC : ADC #$0010
+		STA !OAM_p3+$014,x
+		CLC : ADC #$0010
+		STA !OAM_p3+$018,x
+		CLC : ADC #$0010
+		STA !OAM_p3+$01C,x
+
+		LDA #$3E60 : STA !OAM_p3+$002,x
+		LDA #$3E62 : STA !OAM_p3+$006,x
+		LDA #$3E64 : STA !OAM_p3+$00A,x
+		LDA #$3E66 : STA !OAM_p3+$00E,x
+		LDA #$3E68 : STA !OAM_p3+$012,x
+		LDA #$3E6A : STA !OAM_p3+$016,x
+		LDA #$3E6C : STA !OAM_p3+$01A,x
+		LDA #$3E6E : STA !OAM_p3+$01E,x
+
+		TXA
+		LSR #2
+		TAX
+		LDA #$0202
+		STA !OAMhi_p3+$00,x
+		STA !OAMhi_p3+$02,x
+		STA !OAMhi_p3+$04,x
+		STA !OAMhi_p3+$06,x
+		LDA !OAMindex_p3
+		CLC : ADC #$0020
+		STA !OAMindex_p3
+		PLP
+		PLB
+		RTS
+
+
+		.Render
 		..loop
 		REP #$20
 		LDY $06
@@ -343,7 +287,7 @@
 		AND #$00FF
 		CMP #$007F : BEQ ..space
 		CMP #$00FF : BNE ..rendertext
-	+	JMP ..drawtext
+	+	JMP ..endmessage
 
 		..space
 		LDA $08							;\
@@ -389,66 +333,21 @@
 		INY							; |
 		DEC $0F : BEQ $03 : JMP ..nextcolumn			;/
 		STX $08							; store new rendering index
-		CPX #$0080 : BCS ..drawtext				; end at limit
+		CPX #$0080 : BCS ..endmessage				; end at limit
 		JMP ..loop						; go to loop
 
-
-		..drawtext
-		PHK : PLB
-		REP #$30
-		LDA !OAMindex_p3 : TAX
-		LDA $0A
-		LSR A
-		EOR #$FFFF : INC A
-		CLC : ADC #$8C80
-		STA !OAM_p3+$000,x
-		CLC : ADC #$0010
-		STA !OAM_p3+$004,x
-		CLC : ADC #$0010
-		STA !OAM_p3+$008,x
-		CLC : ADC #$0010
-		STA !OAM_p3+$00C,x
-		CLC : ADC #$0010
-		STA !OAM_p3+$010,x
-		CLC : ADC #$0010
-		STA !OAM_p3+$014,x
-		CLC : ADC #$0010
-		STA !OAM_p3+$018,x
-		CLC : ADC #$0010
-		STA !OAM_p3+$01C,x
-
-		LDA #$3E00 : STA !OAM_p3+$002,x
-		LDA #$3E02 : STA !OAM_p3+$006,x
-		LDA #$3E04 : STA !OAM_p3+$00A,x
-		LDA #$3E06 : STA !OAM_p3+$00E,x
-		LDA #$3E08 : STA !OAM_p3+$012,x
-		LDA #$3E0A : STA !OAM_p3+$016,x
-		LDA #$3E0C : STA !OAM_p3+$01A,x
-		LDA #$3E0E : STA !OAM_p3+$01E,x
-
-		TXA
-		LSR #2
-		TAX
-		LDA #$0202
-		STA !OAMhi_p3+$00,x
-		STA !OAMhi_p3+$02,x
-		STA !OAMhi_p3+$04,x
-		STA !OAMhi_p3+$06,x
-		LDA !OAMindex_p3
-		CLC : ADC #$0020
-		STA !OAMindex_p3
-
-
 		..endmessage
+		LDA $0A : STA.l !MapLevelNameWidth
 		SEP #$30
 		LDA #$40 : PHA : PLB
+
 		JSL !GetBigCCDMA					; X = index to CCDMA table
 		LDA #$11 : STA !CCDMAtable+$07,x			; > width = 128px, bit depth = 4bpp
 		LDA.b #!GFX_buffer>>16 : STA !CCDMAtable+$04,x		;\
 		REP #$20						; | source adddress
 		LDA.w #!GFX_buffer+$1800 : STA !CCDMAtable+$02,x	;/
 		LDA #$0200 : STA !CCDMAtable+$00,x			; upload size
-		LDA #$6000 : STA !CCDMAtable+$05,x			; dest VRAM
+		LDA #$6600 : STA !CCDMAtable+$05,x			; dest VRAM
 		SEP #$20
 		JSL !GetBigCCDMA					; X = index to CCDMA table
 		LDA #$11 : STA !CCDMAtable+$07,x			; > width = 128px, bit depth = 4bpp
@@ -456,18 +355,16 @@
 		REP #$20						; | source adddress
 		LDA.w #!GFX_buffer+$1A00 : STA !CCDMAtable+$02,x	;/
 		LDA #$0200 : STA !CCDMAtable+$00,x			; upload size
-		LDA #$6100 : STA !CCDMAtable+$05,x			; dest VRAM
-
-
+		LDA #$6700 : STA !CCDMAtable+$05,x			; dest VRAM
 
 		PLP							;\ wrapper end
 		PLB							;/
-		RTL							; return
+		RTS							; return
 
 
 
 		.Cache
-		PHB							;\ wrapper start
+		PHB : PHK : PLB						;\ wrapper start
 		PHP							;/
 		REP #$30						;\
 		LDY.w #read2(!TextFontGFX+2)				; | get font address
@@ -520,31 +417,6 @@
 		PLP							;\ wrapper end
 		PLB							;/
 		RTL							; return
-
-
-
-	.DrawCoinDigit
-		; A = digit
-		TAY
-		LDA !OAMindex_p3 : TAX
-		TYA
-		CLC : ADC #$3E20
-		STA !OAM_p3+$002,x
-		LDA $00 : STA !OAM_p3+$000,x
-		SEP #$20
-		CLC : ADC Width,y
-		STA $00
-		REP #$20
-
-		TXA
-		LSR #2
-		TAX
-		LDA #$0000 : STA !OAMhi_p3,x
-		INX
-		TXA
-		ASL #2
-		STA !OAMindex_p3
-		RTS
 
 	.DrawTimeDigit
 		; A = digit

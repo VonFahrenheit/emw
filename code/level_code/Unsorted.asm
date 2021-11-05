@@ -1518,7 +1518,7 @@ levelinit25:
 		LDA.b #.SA1 : STA $3180
 		LDA.b #.SA1>>8 : STA $3181
 		LDA.b #.SA1>>16 : STA $3182
-		JSR $1E80
+	;	JSR $1E80
 
 		STZ $43
 
@@ -1539,7 +1539,7 @@ levelinit25:
 		TAX					; portrait
 		LDY #$C1				; palette
 		LDA #$76				; VRAM
-		JSL !LoadPortrait
+	;	JSL !LoadPortrait
 		PLP
 		RTL
 
@@ -2750,7 +2750,7 @@ level25:
 		LDA.b #.SA1>>16 : STA $3182
 		INC !Level+6
 		STZ !RollWidth
-		JSR $1E80
+	;	JSR $1E80
 		RTL
 
 		.SA1
@@ -2759,7 +2759,7 @@ level25:
 		LDX #$07				; special tinker portrait
 		LDY #$A1				; palette
 		LDA #$70				; VRAM
-		JSL !LoadPortrait
+	;	JSL !LoadPortrait
 		PLP
 		RTL
 		.PortraitLoaded

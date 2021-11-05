@@ -30,7 +30,9 @@ dl GENERATE_BLOCK
 
 org $048449
 dl TRANSFORM_GFX
-dl Overworld_Portrait_Long
+; $04844C free!
+;dl Overworld_Portrait_Long
+org $04844F
 dl GET_ROOT
 
 ; 048452	; used by SP_Level
@@ -661,9 +663,13 @@ incsrc "YoshiCoins.asm"
 ;========;
 ;GET ROOT;
 ;========;
-; Load unsigned 17-bit number in A + carry, then JSR here.
-; A returns in same mode as before (PHP : PLP)
-; A holds square root of input number.
+
+; input:
+;	C + A = 17-bit unsigned integer
+;
+; output:
+;	C + A = 9-bit integer + 8-bit fraction, square root of input number
+
 GET_ROOT:	PHB : PHK : PLB
 		JSR .Main
 		PLB
@@ -688,7 +694,7 @@ GET_ROOT:	PHB : PHK : PLB
 .010000		ROR A
 		LSR A
 .4000		XBA
-		AND #$00FE
+		AND #$00FF
 		ASL A
 		TAX
 		LDA.w .Table,x
@@ -701,7 +707,7 @@ GET_ROOT:	PHB : PHK : PLB
 
 .1000		XBA
 		ROL #2
-		AND #$00FE
+		AND #$00FF
 		ASL A
 		TAX
 		LDA.w .Table,x
@@ -711,7 +717,7 @@ GET_ROOT:	PHB : PHK : PLB
 		RTS
 
 .0400		LSR #3
-		AND #$FFFE
+		AND #$01FE
 		TAX
 		LDA.w .Table,x
 		ASL #2
@@ -720,7 +726,7 @@ GET_ROOT:	PHB : PHK : PLB
 		RTS
 
 .0100		LSR A
-		AND #$FFFE
+		AND #$01FE
 		TAX
 		LDA.w .Table,x
 		ASL A
@@ -775,7 +781,7 @@ GET_VRAM:
 ; Caling this routine will set X to the proper VRAM table index.
 ; If this routine returns with a set carry, it means that the table is full.
 
-		PHY : PHP
+		PHP
 		SEP #$30
 		LDA.b #!VRAMbank
 		PHA : PLB
@@ -787,12 +793,12 @@ GET_VRAM:
 		TXA
 		CLC : ADC #$0007
 		TAX
-		BCC .Loop
-		PLP : PLY
+		CMP #$0100 : BCC .Loop
+		PLP
 		SEC
 		RTS
 
-.SlotFound	PLP : PLY
+.SlotFound	PLP
 		CLC
 		RTS
 
@@ -813,7 +819,7 @@ GET_CGRAM:
 		TYA
 		CLC : ADC #$0006
 		TAY
-		BCC .Loop
+		CMP #$0100 : BCC .Loop
 		PLP
 		SEC
 		RTS
@@ -4619,8 +4625,7 @@ org $05CF66
 ;warnpc $008475
 
 
-org $008494
-				; < This is hijacked by SA-1 but WE'RE OVERWRITING IT!! >:D
+org $008494				; < This is hijacked by SA-1 but WE'RE OVERWRITING IT!! >:D
 	LDA.b #BUILD_OAM_Assemble	;\
 	STA $3180			; |
 	LDA.b #BUILD_OAM_Assemble>>8	; |

@@ -3,6 +3,7 @@
 ; light point:
 ;	X Y
 ;	R G B
+;	R (range factor, $0100 default)
 
 ;
 ; $00	center X
@@ -16,12 +17,11 @@
 ;
 
 	CalcLightPoints:
-	STZ $7FFF
 		LDA $1A
 		CLC : ADC #$0080
 		STA $00
 		LDA $1C
-		CLC : ADC #$0078
+		CLC : ADC #$0080
 		STA $02
 		STZ $08
 		STZ $0A
@@ -35,16 +35,16 @@
 		LDA !MapLight_X,x
 		SEC : SBC $00
 		BPL $04 : EOR #$FFFF : INC A
-		CMP #$0100 : BCS .Next
 		STA $04
 		LDA !MapLight_Y,x
 		SEC : SBC $02
 		BPL $04 : EOR #$FFFF : INC A
-		CMP #$0100 : BCS .Next
 		CLC : ADC $04
-		LSR A
-		SEC : SBC #$0100
+		SEC : SBC !MapLight_S,x
+		BPL .Next
 		EOR #$FFFF : INC A
+		CMP #$0100
+		BCC $03 : LDA #$0100
 		STA $2251
 		CLC : ADC $08
 		STA $08
@@ -70,8 +70,8 @@
 
 		.Next
 		TXA
-		CLC : ADC #$000A
-		CMP #$0050 : BCS .Finish
+		CLC : ADC #$000C
+		CMP #$0060 : BCS .Finish
 		TAX
 		JMP .Loop
 

@@ -354,10 +354,41 @@ print "Level code handler inserted at $", pc, "."
 		TAX					; | x3
 		LDA .Table,x : STA $0000		; |
 		LDA .Table+1,x : STA $0001		;/
+
+		.LoadLightPoints					;\
+		STZ !LightPointIndex					; |
+		LDX #$0000						; |
+		LDY !Level						; |
+		..loop							; |
+		TYA							; |
+		CMP LightPoints+$C,x : BNE ..next			; |
+		LDY !LightPointIndex					; |
+		CPY #$006C : BCS ..fail					; |
+		LDA LightPoints+$0,x : STA !LightPointX,y		; |
+		LDA LightPoints+$2,x : STA !LightPointY,y		; |
+		LDA LightPoints+$4,x : STA !LightPointR,y		; | search for and load light points belonging to this level
+		LDA LightPoints+$6,x : STA !LightPointG,y		; |
+		LDA LightPoints+$8,x : STA !LightPointB,y		; |
+		LDA LightPoints+$A,x : STA !LightPointS,y		; |
+		TYA							; |
+		CLC : ADC #$000C					; |
+		STA !LightPointIndex					; |
+		..fail							; |
+		LDY !Level						; |
+		..next							; |
+		TXA							; |
+		CLC : ADC #$000E					; |
+		TAX							; |
+		CPX.w #LightPoints_End-LightPoints : BCC ..loop		;/
+
+
+
 		STZ !Level+2				;\ Clear extra bytes
 		STZ !Level+4				;/
-		STZ !GlobalPalset1			;\ reset global palset option
-		STZ !GlobalPalset2			;/
+		STZ !GlobalLight1			;\
+		STZ !GlobalLight2			; | reset auto light mixer
+		STZ !GlobalLightMix			; |
+		STZ !GlobalLightMixPrev			;/
 		STZ !Color0				; clear color 0
 		LDA #$0000				; > Set up clear
 		STA !HDMAptr+0				;\ Clear HDMA pointer
@@ -1832,7 +1863,7 @@ HandleGraphics:
 
 	; update light RGB
 		LDA !GlobalLightMix					;\
-		CMP !GlobalLightMix+1 : BNE .UpdateLight		; | see if there was a change this frame
+		CMP !GlobalLightMixPrev : BNE .UpdateLight		; | see if there was a change this frame
 		JMP .NoLightUpdate					;/
 		.UpdateLight
 		STZ $2250						; prepare multiplication
@@ -1898,7 +1929,7 @@ HandleGraphics:
 		STA !LightB						; |
 		SEP #$20						;/
 		.NoLightUpdate
-		LDA !GlobalLightMix : STA !GlobalLightMix+1		; update for next frame
+		LDA !GlobalLightMix : STA !GlobalLightMixPrev		; update for next frame
 
 
 
@@ -2391,101 +2422,8 @@ UpdatePalset:
 
 
 
-
-FadePalset:
-
-; $00 = pointer 1
-; $02 = pointer 2
-; $04 = mix value 1
-; $06 = mix value 2
-; $08 = holds palette row index
-; $0A = cache for address
-; $0C = color assembly
-; $0E = color plane assembly
-
-		SEP #$20
-		PHB : LDA.b #!PalsetData>>16
-		PHA : PLB
-		STZ $2250
-		REP #$20
-
-
-		LDA !GlobalPalsetMix
-		AND #$00FF
-		STA $06
-		SEC : SBC #$0020
-		EOR #$FFFF : INC A
-		STA $04
-
-	.Loop	LDA ($00),y						;\
-		AND #$001F						; |
-		STA $2251						; |
-		LDA $04 : STA $2253					; | first half of R
-		NOP : BRA $00						; |
-		LDA $2306						; |
-		STA $0E							;/
-		LDA ($02),y						;\
-		AND #$001F						; |
-		STA $2251						; |
-		LDA $06 : STA $2253					; | second half of R
-		NOP							; |
-		LDA $0E							; |
-		CLC : ADC $2306						; |
-		LSR #5							; | > get final R
-		STA $0C							;/
-
-		LDA ($00),y						;\
-		LSR #5							; |
-		AND #$001F						; |
-		STA $2251						; |
-		LDA $04 : STA $2253					; | first half of G
-		NOP : BRA $00						; |
-		LDA $2306						; |
-		STA $0E							;/
-		LDA ($02),y						;\
-		LSR #5							; |
-		AND #$001F						; |
-		STA $2251						; |
-		LDA $06 : STA $2253					; | second half of G
-		NOP							; |
-		LDA $0E							; |
-		CLC : ADC $2306						; |
-		AND #$03E0						; | > get final G
-		TSB $0C							;/
-
-		LDA ($00),y						;\
-		XBA : LSR #2						; |
-		AND #$001F						; |
-		STA $2251						; |
-		LDA $04 : STA $2253					; | first half of B
-		NOP : BRA $00						; |
-		LDA $2306						; |
-		STA $0E							;/
-		LDA ($02),y						;\
-		XBA : LSR #2						; |
-		AND #$001F						; |
-		STA $2251						; |
-		LDA $06 : STA $2253					; | second half of B
-		NOP							; |
-		LDA $0E							; |
-		CLC : ADC $2306						; |
-		ASL #5							; |
-		AND #$7C00						;/ > get final B
-
-		ORA $0C							;\ store final RGB
-		STA $6703,x						;/
-
-		INX #2
-		INY #2
-		CPY #$001E : BCS .Done
-		JMP .Loop
-
-	.Done
-		PLB
-		RTS
-
-
 incsrc "level_data/TimeLimits.asm"
+incsrc "level_data/LevelLightPoints.asm"
 
 
 print "Unsorted code inserted at $", pc, "."

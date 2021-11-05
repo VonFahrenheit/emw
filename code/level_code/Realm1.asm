@@ -1264,7 +1264,7 @@ level4:
 
 
 level5:
-		LDA #$02 : STA !GlobalPalset1
+		LDA #$02 : STA !GlobalLight1
 
 		LDA #$1F				;\ Put everything on mainscreen
 		STA $6D9D				;/
@@ -1922,15 +1922,20 @@ level27:
 
 
 
-level2A:	LDA $1B
-		CMP #$02 : BEQ .Lava
-		CMP #$06 : BEQ .Lava
-		CMP #$0A : BEQ .Lava
-		CMP #$0B : BEQ .Lava
-		CMP #$0C : BEQ .Lava
-		LDA #$00 : BRA +
-	.Lava	LDA #$04
-	+	STA !GlobalPalset1
+level2A:
+		; LDA #$04 : STA !GlobalLight1
+		; STZ !GlobalLight2
+
+		; REP #$20
+		; LDA $1A
+		; SEC : SBC #$0200
+		; BPL $03 : EOR #$FFFF
+		; LSR #4
+		; CMP #$0020
+		; BCC $03 : LDA #$0020
+		; SEP #$20
+		; STA !GlobalLightMix
+
 
 		REP #$20
 		LDY #$00

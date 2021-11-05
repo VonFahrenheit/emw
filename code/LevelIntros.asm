@@ -21,14 +21,22 @@
 	org $0091D3
 		JMP $8494			;\ Source: INX : CPX #$08 : BNE $07
 		NOP : NOP			;/
-
 	org $0091E9				; This chunk of code is 70 bytes long and writes "MARIO START !" to OAM
 		JML DRAW_TEXT			;\ Source: LDA $9139,x : STA $030B,y
 		NOP : NOP			;/
-
+	org $0093E8
+		LDY #$00			; subscreen (org: LDY #$04)
 	org $0097B1				; Routine that writes "GAME OVER" to OAM
 		JMP $8494			; Source: INX : TYA : SEC
 	pullpc
+
+
+
+;
+; at the point of htis hijack, all interrupts are disabled ($4200 = 0) and f-blank is enabled ($2100 = 0x80)
+;
+;
+
 
 ;==================;
 ;DISPLAYING ROUTINE;
@@ -48,11 +56,28 @@
 DRAW_TEXT:
 
 		PHB : PHK : PLB			; > Bank wrapper
-
-		LDA #$10 : STA !MainScreen	;\ sprites only
+		STZ !HDMA			;\
+		STZ $1F0C			; | no HDMA
+		STZ $420C			;/
+		LDA #$10			;\
+		STA $212C			; |
+		STA !MainScreen			; | sprites only
+		STZ $212D			; |
 		STZ !SubScreen			;/
 
-		LDA #$80 : STA $2100
+		STZ $2123			;\
+		STZ $2124			; |
+		STZ $2125			; |
+		STZ !2123			; | no clipping windows
+		STZ !2124			; |
+		STZ !2125			; |
+		STZ $212E			; |
+		STZ $212F			;/
+
+		STZ $2121
+		STZ $2122
+		STZ $2122
+
 
 		REP #$20
 		LDX #$80 : STX $2115
@@ -137,13 +162,17 @@ DRAW_TEXT:
 		BRA .loop
 
 		.done
+		LDA !Translevel : BEQ +
+
 		TXA : STA !OAMindex_p3
 		LDA #$00
 		STA !OAMindex_p0
 		STA !OAMindex_p1
 		STA !OAMindex_p2
 		JSL !BuildOAM
-		PLB
+		LDA !OAMindex_p3_prev : STA !OAMindex_p3
+	+	PLB
+
 
 		STZ $4304
 		REP #$20
@@ -153,7 +182,12 @@ DRAW_TEXT:
 		SEP #$20
 		LDA #$01 : STA $420B
 
-		LDA #$0F : STA !2100
+		LDA #$E0 : STA $2132
+		LDA #$0F
+		STA !2100
+		STA $2100
+
+		PLA : PLA			; kill first RTS
 
 		JML $00922E			; > Return to RTS
 

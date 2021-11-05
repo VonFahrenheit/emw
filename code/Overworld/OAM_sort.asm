@@ -68,6 +68,7 @@
 		TXA						; |
 		ASL #2						; | increment OAM index and loop
 		TAX						; |
+		CPX #$0200 : BCS ..done				; > break if hitting index 0x200+
 		CPY $06 : BCC ..loop				;/
 
 		DEC !MapOAMcount : BEQ ..done			;\

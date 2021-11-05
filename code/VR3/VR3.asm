@@ -293,6 +293,10 @@ org $058526
 		SEI
 		JML NMI					; PHP : REP #$30 : PHA
 
+
+	org $00806B
+		JMP FinalShade				; org: JMP $1E8F
+
 	org $008070
 		INC $13					;\ source: INC $13 : JSR $9322
 		JSR MainExpand				;/
@@ -302,11 +306,24 @@ org $058526
 		JSR $9322				; overwritten code (GetGameMode)
 		LDA !GameMode
 		CMP #$05 : BCC Return_RAM_Code
-
+		CMP #$11 : BEQ Return_RAM_Code
 		JML Build_RAM_Code
 	Return_RAM_Code:
 		RTS
-	warnpc $0081E7
+	FinalShade:
+		LDA !GameMode
+		CMP #$05 : BCC +
+		LDA.b #.SA1 : STA $3180
+		LDA.b #.SA1>>8 : STA $3181
+		LDA.b #.SA1>>16 : STA $3182
+		LDA #$80 : STA $2200
+		JSR !MPU_light
+	+	JMP $1E8F
+		.SA1
+	-	LDA !MPU_NMI : BEQ -
+		STZ !MPU_NMI
+		RTL
+	warnpc $008217
 
 	org $00838F
 		JML IRQ
@@ -1383,7 +1400,7 @@ Build_RAM_Code:
 
 	;
 	; ExAnimation block
-	; NOTE: when reading this code, note that .l $0180 is bank 0 (I-RAM), but .w $0180 is bank $40 (same as $6180, BW-RAM)
+	; NOTE: when reading this code, note that .l $0080 is bank 0 (I-RAM), but .w $0080 is bank $40 (same as $6080 (!BigRAM), BW-RAM)
 		LDA !AnimToggle
 		AND #$0004 : BNE .NoExAnimation
 		%videoport($80)					; always use video port $80 for these
@@ -1398,7 +1415,7 @@ Build_RAM_Code:
 	.LoopExAnimation
 		CPX #$0031 : BCS .NoExAnimation
 		PEA.w .LoopExAnimation-1
-		LDA.w $0180,x : BEQ .NextExAnimation
+		LDA.w $0080,x : BEQ .NextExAnimation
 		BMI +
 		JMP .AppendExAnimationGFX
 	+	JMP .AppendExAnimationPalette
@@ -2813,35 +2830,35 @@ Build_RAM_Code:
 
 	.AppendExAnimationGFX
 		%DMAsettings($1801)				; DMA settings
-		LDA.w $0186,x : %sourcebankA()			; source bank
+		LDA.w $0086,x : %sourcebankA()			; source bank
 
-		LDA.w $0182,x : BPL ..row			; check type
+		LDA.w $0082,x : BPL ..row			; check type
 		JMP ..square
 
 		..row
 		!Temp = 0					; new RAM code
 		%makecode($00A9)				; LDA #$xxxx
 		!Temp := !Temp-1				;\ source address (previous opcode)
-		LDA.w $0184,x : STA.w !RAMcode+!Temp,y		;/
+		LDA.w $0084,x : STA.w !RAMcode+!Temp,y		;/
 		!Temp := !Temp+2				; increase RAM code index
 		%makecode($0285)				; STA $02
 		%makecode($00A9)				; LDA #$xxxx
 		!Temp := !Temp-1				;\ upload size (previous opcode)
-		LDA.w $0180,x : STA.w !RAMcode+!Temp,y		;/
+		LDA.w $0080,x : STA.w !RAMcode+!Temp,y		;/
 		!Temp := !Temp+2				; increase RAM code index
 		%makecode($0585)				; STA $05
 		%makecode($00A9)				; LDA #$xxxx
 		!Temp := !Temp-1				;\ VRAM address (previous opcode)
-		LDA.w $0182,x : STA.w !RAMcode+!Temp,y		;/
+		LDA.w $0082,x : STA.w !RAMcode+!Temp,y		;/
 		!Temp := !Temp+2				; increase RAM code index
 		%makecode($168D)				; STA $xx16
 		%makecode($8C21)				; $21 (previous opcode) : STY $xxxx
 		%makecode($420B)				; $420B (previous opcode)
 
 		LDA $0E						;\
-		SEC : SBC.w $0180,x				; | update remaining size
+		SEC : SBC.w $0080,x				; | update remaining size
 		STA $0E						;/
-		STZ.w $0180,x					; clear exanim slot
+		STZ.w $0080,x					; clear exanim slot
 		TYA						;\
 		CLC : ADC.w #!Temp				; | increase RAM code index
 		TAY						;/
@@ -2852,7 +2869,7 @@ Build_RAM_Code:
 
 
 		..square
-		LDA.w $0186,x : %sourcebankA()			; source bank
+		LDA.w $0086,x : %sourcebankA()			; source bank
 
 		PHB : PHK : PLB					;\
 		LDA.w #..code : STA $2232			; |
@@ -2871,20 +2888,20 @@ Build_RAM_Code:
 		PLB						; |
 		REP #$30					;/
 
-	;	LDA.w $0180,x
+	;	LDA.w $0080,x
 	;	%writecode(..size1)
 	;	%writecode(..size2)
-		LDA.w $0182,x : %writecode(..vram1)
+		LDA.w $0082,x : %writecode(..vram1)
 		CLC : ADC #$0100
 		%writecode(..vram2)
-		LDA.w $0184,x : %writecode(..src1)
+		LDA.w $0084,x : %writecode(..src1)
 		CLC : ADC #$0040
 		%writecode(..src2)
 
 		LDA $0E						;\
-		SEC : SBC.w $0180,x				; | update remaining size
+		SEC : SBC.w $0080,x				; | update remaining size
 		STA $0E						;/
-		STZ.w $0180,x					; clear exanim slot
+		STZ.w $0080,x					; clear exanim slot
 		TYA						;\
 		CLC : ADC.w #..end-..code			; | increase RAM code index
 		TAY						;/
@@ -2907,15 +2924,15 @@ Build_RAM_Code:
 
 	.AppendExAnimationPalette
 		..feedshader
-		LDA.w $0184,x : STA $00				;\ pointer to color data
-		LDA.w $0185,x : STA $01				;/
-		LDA.w $0180,x : STA $04				; number of colors to transfer
+		LDA.w $0084,x : STA $00				;\ pointer to color data
+		LDA.w $0085,x : STA $01				;/
+		LDA.w $0080,x : STA $04				; number of colors to transfer
 		PHX						;\ push regs
 		PHY						;/
 		LDA.l !ProcessLight				;\
 		ORA #$0080					; | SA-1 writing to shader input
 		STA.l !ProcessLight				;/
-		LDA.w $0182,x					;\
+		LDA.w $0082,x					;\
 		ASL A						; |
 		TAX						; |
 		LDY #$0000					; | copy colors to shader input
@@ -2933,7 +2950,7 @@ Build_RAM_Code:
 		CMP.l !LightG : BNE ..return			; | (never preshade exanimation, just feed it to shader)
 		CMP.l !LightB : BEQ ..upload			;/
 		..return
-		STZ.w $0180,x					; clear exanim slot
+		STZ.w $0080,x					; clear exanim slot
 		TXA						;\
 		CLC : ADC #$0007				; | increase exanimation index
 		TAX						;/
@@ -2941,7 +2958,7 @@ Build_RAM_Code:
 
 		..upload
 		%DMAsettings($2202)				; DMA settings
-		LDA.w $0186,x : %sourcebankA()			; source bank
+		LDA.w $0086,x : %sourcebankA()			; source bank
 		!Temp = 0					; make new RAM code
 		%makecode($00A9)				; LDA #$xxxx
 		!Temp := !Temp+1				; skip hi byte since it will be written by modification
@@ -2953,11 +2970,11 @@ Build_RAM_Code:
 		%makecode($218E)				; STX $xx21
 		%makecode($8C21)				; $21 (previous opcode) : STY $xxxx
 		%makecode($420B)				; $420B (previous opcode)
-		LDA.w $0184,x : %writecode(..src)		; source address
+		LDA.w $0084,x : %writecode(..src)		; source address
 		SEP #$20					;\
-		LDA.w $0182,x : %writecode(..cgram)		; | destination CGRAM
+		LDA.w $0082,x : %writecode(..cgram)		; | destination CGRAM
 		REP #$20					;/
-		LDA.w $0180,x					;\
+		LDA.w $0080,x					;\
 		ASL A						; | upload size
 		%writecode(..size)				;/
 		SEC : SBC $0E					;\
@@ -2966,7 +2983,7 @@ Build_RAM_Code:
 		TYA						;\
 		CLC : ADC.w #..end-..code			; | increase RAM code index
 		TAY						;/
-		STZ.w $0180,x					; clear exanim slot
+		STZ.w $0080,x					; clear exanim slot
 		TXA						;\
 		CLC : ADC #$0007				; | increase exanimation index
 		TAX						;/
@@ -3701,7 +3718,7 @@ FetchExAnim:
 		PHP
 		PHD
 		REP #$20
-		LDA.w #$6100 : TCD		; we're dumping it in $6180 because that can be accessed at $0180 in bank $40 by SA-1
+		LDA.w #$6000 : TCD		; we're dumping it in $6080 because that can be accessed at $0080 in bank $40 by SA-1
 		%movedynamo(0)			; this will make RAM code generation much smoother
 		%movedynamo(1)
 		%movedynamo(2)
@@ -3798,6 +3815,7 @@ NMI:		PHP					;\
 		LDA $4210				; clear NMI flag
 		LDA #$80 : STA $2100			; enable f-blank
 		STZ $420C				; disable HDMA
+		INC !MPU_NMI				; set NMI flag for SA-1
 
 
 	; check lag

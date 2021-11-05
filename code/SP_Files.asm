@@ -501,8 +501,8 @@ PalsetData:
 	%storepal(player_luigi)			; 01, luigi palette
 	%storepal(player_kadaal)		; 02, kadaal palette
 	%storepal(player_leeway)		; 03, leeway palette
-	%storepal(placeholder1)			; 04, placeholder
-	%storepal(placeholder2)			; 05, placeholder
+	%storepal(player_alter)			; 04, alter palette
+	%storepal(player_peach)			; 05, peach palette
 	%storepal(placeholder3)			; 06, placeholder
 	%storepal(placeholder4)			; 07, placeholder
 	%storepal(placeholder5)			; 08, placeholder

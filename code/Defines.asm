@@ -217,6 +217,8 @@ endmacro
 		!LightData_SNES		= $7EFC00	; 2 buffers of 512 bytes each for processing lighting
 
 
+		!MPU_NMI		= $3150		; used to break SA-1 out of final loop to max shader
+
 		!LightBuffer		= $3171		; lowest bit: which buffer SNES is working on (0 = first buffer, 1 = second buffer), highest bit: 0 = not ready for upload, 1 = ready for upload
 		!LightIndexStart	= $3172
 		!LightIndexEnd		= $3174
@@ -234,6 +236,14 @@ endmacro
 		!LightG_SNES		= $1E16
 		!LightB_SNES		= $1E18
 		!LightIndex_SNES	= $1E1A
+
+		!LightPointIndex	= $6180
+		!LightPointX		= $6182
+		!LightPointY		= $6184
+		!LightPointR		= $6186
+		!LightPointG		= $6188
+		!LightPointB		= $618A
+		!LightPointS		= $618C
 
 		!MPU_SNES		= $317D		; SNES status in dual thread operation
 		!MPU_SA1		= $317E		; SA-1 status in dual thread operation
@@ -392,18 +402,11 @@ endmacro
 		!RAMcode_offset		= $6022			; used for RAM code generation
 		!RAMcode		= $404A00
 
+		!GlobalLight1		= $6024			; first set of light RGB to use for auto mixing
+		!GlobalLight2		= $6025			; second set of light RGB to use for auto mixing
+		!GlobalLightMix		= $6026			; balance between global light 1 and global light 2 (0 = all 1, 32 = all 2)
+		!GlobalLightMixPrev	= $6027			; used to keep track of when auto mixer should run (leave both at 0 to not use)
 
-		; PROBABLY UNUSED!!!
-		!GlobalPalset1		= $6024			; which sprite palset variation to use
-		!GlobalPalset2		= $6025			; if mixing is used, this is which sprite palset variation to use for mixing
-		!GlobalPalsetMix	= $6026			; balance between palset 1 and palset 2
-								; 0 = 100% palset 1
-								; 16 = 50% palset 1, 50% palset 2
-								; 32 = 0% palset 1, 100% palset 2
-
-		!GlobalLight1		= !GlobalPalset1	; alt names
-		!GlobalLight2		= !GlobalPalset2
-		!GlobalLightMix		= !GlobalPalsetMix
 
 
 		!GFX_status		= $418100
@@ -2499,7 +2502,7 @@ endmacro
 		!TextFontGFX		= read3($048446)	; pointer is stored with MSG.asm
 
 		!TransformGFX		= read3($048449)	; pointer is stored with SP_Patch.asm
-		!LoadPortrait		= read3($04844C)	; pointer is stored with SP_Patch.asm
+	;	!LoadPortrait		= read3($04844C)	; pointer is stored with SP_Patch.asm
 		!GetRoot		= read3($04844F)	; pointer is stored with SP_Patch.asm
 
 		!GetReciprocal		= $008AB4		; SP_Patch.asm overwrites some unused old mode 7 code to fit this in

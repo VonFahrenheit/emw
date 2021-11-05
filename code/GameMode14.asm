@@ -810,6 +810,92 @@ Camera:
 ;		PLB						;/
 
 
+
+
+
+		.CalcLightPoints				;\
+		LDA !LightPointIndex : BNE ..process		; | if there are light points, process them
+		JMP ..done					; | otherwise skip
+		..process					;/
+		PHP						;\ reg setup
+		REP #$30					;/
+		LDA $1A						;\
+		CLC : ADC #$0080				; |
+		STA $00						; | center coords
+		LDA $1C						; |
+		CLC : ADC #$0070				; |
+		STA $02						;/
+		STZ $08						;\
+		STZ $0A						; | reset counters
+		STZ $0C						; |
+		STZ $0E						;/
+		STZ $2250					; multiplication
+		LDX #$0000					; index = 0
+		..loop						;\
+		LDA !LightPointX,x				; |
+		SEC : SBC $00					; |
+		BPL $04 : EOR #$FFFF : INC A			; |
+		STA $04						; |
+		LDA !LightPointY,x				; | total distance - size
+		SEC : SBC $02					; |
+		BPL $04 : EOR #$FFFF : INC A			; |
+		CLC : ADC $04					; |
+		SEC : SBC !LightPointS,x			; |
+		BPL ..next					;/
+		EOR #$FFFF : INC A				;\
+		CMP #$0100					; |
+		BCC $03 : LDA #$0100				; | strength is size - 256, capped at 256
+		STA $2251					; |
+		CLC : ADC $08					; |
+		STA $08						;/
+		LDA !LightPointR,x : STA $2253			;\
+		NOP : BRA $00					; |
+		LDA $2307 : STA $04				; |
+		LDA !LightPointG,x : STA $2253			; | scale R, G and B based on distance
+		NOP : BRA $00					; |
+		LDA $2307 : STA $06				; |
+		LDA !LightPointB,x : STA $2253			;/
+		LDA $04						;\
+		CLC : ADC $0A					; |
+		STA $0A						; |
+		LDA $06						; |
+		CLC : ADC $0C					; | add scaled RGB values
+		STA $0C						; |
+		LDA $2307					; |
+		CLC : ADC $0E					; |
+		STA $0E						;/
+		..next						;\
+		TXA						; |
+		CLC : ADC #$000C				; | loop through all loaded light points
+		CMP !LightPointIndex : BCS ..finish		; |
+		TAX						; |
+		JMP ..loop					;/
+		..finish					;\
+		LDA $08						; |
+		CMP #$0100 : BCS ..nocomplement			; | make sure at least 100% of light variance is accounted for
+		SBC #$0100					; |
+		EOR #$FFFF					; |
+		STA $08						;/
+		CLC : ADC $0A					;\
+		STA $0A						; |
+		LDA $08						; |
+		CLC : ADC $0C					; |
+		STA $0C						; | complement with white light up to 100%
+		LDA $08						; |	
+		CLC : ADC $0E					; |
+		STA $0E						; |
+		..nocomplement					;/
+		LDA $0A : STA !LightR				;\
+		LDA $0C : STA !LightG				; | update RGB
+		LDA $0E : STA !LightB				;/
+		PLP						;\ restore P
+		..done						;/
+
+
+
+
+
+
 		JSL BG2Controller				; scroll BG2
 		LDA !WindowDir					;\
 		AND #$00FF : BEQ .NotClosing			; |

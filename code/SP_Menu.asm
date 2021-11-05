@@ -1233,20 +1233,22 @@ Mode7Presents:
 		PHP							; |
 		PHD							; |
 		REP #$30						; |
+		LDA #$0000 : TCD					;\
 		LDX !LightIndex_SNES					; |
 		LDA !LightBuffer-1					; |
 		AND #$0100						; |
 		ASL A							; |
-		STA $0122						; > start wrap value
+		STA $22							; > start wrap value
 		ADC #$0200						; |
-		STA $0120						; > end wrap value
+		STA $20							; > end wrap value
 		SEP #$20						; |
+
 	..wait	LDA $3189 : BEQ $03 : BRL ..break			; > detect SA-1 being done with its thread
 		LDA !ProcessLight					; |
 		AND #$03 : BEQ ..init					; | (0 = start new, 1 = continue, 2 = wait for signal)
 		CMP #$02 : BCS ..wait					; |
 		REP #$20						; |
-		BRA ..main						;/
+		BRA ..loop						;/
 
 	..init	BIT !ProcessLight : BMI ..wait				; > if SA-1 is currently writing to !ShaderInput, wait
 		INC !ProcessLight					;\
@@ -1279,7 +1281,7 @@ Mode7Presents:
 		DEX #2 : BPL -						; |
 		LDX !LightIndexStart_SNES				;/
 
-	..main	LDA #$0100 : TCD					;\
+;	..main	LDA #$0000 : TCD					;\
 	..loop	LDA $3189						; > check for SA-1 being done with its thread
 		AND #$00FF : BNE ..break				; | this is the main loop controller
 		CPX !LightIndexEnd_SNES : BNE ..shade			;/
@@ -1382,7 +1384,7 @@ Mode7Presents:
 		CPX #$0218 : BCS ..next					; |
 		STA $FEA0-2,x						; > does this work???
 		BRA ..next						; | it does! it just wraps to the next bank, which is fine with this mirroring (that's probably why STA addr,x and STA long,x both use the same amount of cycles)
-	..BG3	STA $00A0-2,x						;/
+	..BG3	STA $A0-2,x						;/
 	..next	INX #2							;\
 		CPX $20							; | loop
 		BCC $02 : LDX $22					; |
@@ -2619,10 +2621,22 @@ MAIN_MENU:
 		AND #$10 : BEQ ..nostart
 		LDA !Difficulty
 		JSL NewFileSRAM
-	LDX #$0F				;\
-	LDA #$80				; | DEBUG: instantly unlock levels 00-0F
--	STA !LevelTable4,x			; |
-	DEX : BPL -				;/
+		LDA #$01			;\
+		STA !MarioStatus		; | start with mario and luigi
+		STA !LuigiStatus		;/
+		LDA #$01 : STA !SRAM_overworldX+1
+		LDA #$03 : STA !SRAM_overworldY+1
+
+
+	LDA $17					;\
+	AND #$10 : BEQ +			; |
+	LDA #$01				; |
+	STA !KadaalStatus			; |
+	STA !LeewayStatus			; | debug: hold R to start with all chars + skip intro level
+	STA !AlterStatus			; |
+	STA !PeachStatus			; |
+	LDA #$80 : STA !LevelTable1+$5E		; |
+	+					;/
 		JSL SaveFileSRAM
 	;	LDA #$0B : STA !GameMode
 	;	LDA #$EA : STA $6109
@@ -4036,12 +4050,12 @@ endmacro
 		RTL						;/
 
 		.Valid
-		LDA #$AFFF					;\
+		LDA #$AFFE					;\
 		LDX #$0000					; | clear $410000-$41AFFF
 		LDY #$0001					; |
 		MVN $41,$41					;/
 		LDA #$0000 : STA $41C000			;\
-		LDA #$3FFF					; |
+		LDA #$3FFE					; |
 		LDX #$C000					; | clear $41C000-$41FFFF
 		LDY #$C001					; |
 		MVN $41,$41					;/

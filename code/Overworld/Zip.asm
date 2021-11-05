@@ -20,8 +20,7 @@
 ;
 ; decompression map:
 ;
-; $407000	map 15
-; $407800	map 16
+; $407000	HUD GFX composite (4KiB)
 
 ; $408000	map 21
 ; $408800	map 22
@@ -47,6 +46,13 @@
 ; $41D800	map 44
 ; $41E000	map 43
 ; $41E800	map 44
+; $41F000	map 15
+; $41F800	map 16
+
+; $412000	HUD GFX (base layer)
+; $413000	HUD GFX (sprite layer)
+
+
 
 
 
@@ -702,8 +708,8 @@
 		db $EA : dl $40F000
 		db $EB : dl $40F800
 		db $EC : dl $407000
-		db $ED : dl $407800
-		db $EE : dl $408000
+		db $ED : dl $41F800
+		db $EE : dl $41F000
 		db $EF : dl $408800
 		db $F0 : dl $409000
 		db $F1 : dl $409800
