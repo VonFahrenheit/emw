@@ -1,9 +1,27 @@
 
 
-	!32x32	=	0
-	!64x32	=	1
-	!32x64	=	2
-	!64x64	=	3
+; note:
+;	the 32 and 64 sizes are in tiles
+;	since layer 3 uses 8x8 tiles, that means that 32 tiles is equal to 256 pixels, and 64 tiles equal to 512 pixels
+;	because of this, defining a tilemap as 32x32 (tiles) is the same as 256x256 (pixels)
+;	units are not specified in the list, it is simply assumed that the smaller numbers are tiles and the larger numbers are pixels
+
+;	also, before anyone asks...
+;	it's not possible to use any sizes other than these, since this is what the SNES hardware supports
+;	256x256 is the smallest possible layer 3 and 512x512 is the largest possible layer 3
+
+
+	!32x32		=	0
+	!64x32		=	1
+	!32x64		=	2
+	!64x64		=	3
+
+	!256x256	=	0
+	!512x256	=	1
+	!256x512	=	2
+	!512x512	=	3
+
+
 
 	BG3_Resolution:
 	.B00	db $FF		; mode 7 tilemap
