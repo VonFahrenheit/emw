@@ -1041,6 +1041,7 @@ namespace Kadaal
 		LDA !P2SlantPipe : BEQ +
 		LDA #$40 : STA !P2XSpeed
 		LDA #$C0 : STA !P2YSpeed
+		LDA #$01 : STA !P2Dashing
 		+
 
 	.Collisions
@@ -1177,10 +1178,12 @@ namespace Kadaal
 		STZ !P2ExternalAnim
 
 	; pipe check
-		LDA !P2Pipe : BEQ .NoPipe			;\
+		LDA !P2Pipe					;\
+		ORA !P2SlantPipe				; |
+		BEQ .NoPipe					; |
 		LDA !P2Anim					; |
-		CMP #!Kad_Shell : BCC +				; |
-		CMP #!Kad_Shell_over : BCC ++			; | pipe animations
+		CMP #!Kad_Shell : BCC +				; | pipe animations
+		CMP #!Kad_Shell_over : BCC ++			; | (includes slant)
 	+	LDA #!Kad_Shell : STA !P2Anim			; |
 		STZ !P2AnimTimer				; |
 	++	JMP .HandleUpdate				; |

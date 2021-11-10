@@ -104,9 +104,10 @@ namespace Mario
 	org $01AA33
 		JML Mario_Bounce		; hijack the main mario bounce on enemy code (stomp)
 
+
+
+
 ; -- Misc Mario edits --
-
-
 	org $00CD33				; patch out FAIL init code
 		BRA $01 : NOP			; org: JSR $E92B (mario collision)
 
@@ -453,6 +454,20 @@ namespace Mario
 		CLC : ADC #$0010				; | pass coords
 		STA !P2YPosLo					; |
 		SEP #$20					;/
+
+
+		.SlantPipe
+		LDA !P2SlantPipe : BEQ ..done
+		DEC !P2SlantPipe : BNE ..process
+		STZ !MarioBehind
+		BRA ..done
+		..process
+		LDA #$40 : STA !P2XSpeed
+		LDA #$C0 : STA !P2YSpeed
+		LDA #$70 : STA !MarioDashTimer
+		LDA #$0C : STA !MarioInAir
+		..done
+
 
 		JSL CORE_UPDATE_SPEED				; > apply vector speeds (already includes a stasis check)
 		JSL CORE_SCREEN_BORDER				; > screen border

@@ -187,7 +187,7 @@
 		LDA #$1908 : STA $4310				; |
 		LDA.w #.Some0014+1 : STA $4312			; | if 2, clear displacement map
 		LDA.w #(.Some0014+1)>>8 : STA $4313		; |
-		BRA +						;/
+		JMP +						;/
 		.CheckBG3Upload					;\
 		ASL A						; | prepare to load BG3 tilemap
 		TAX						; |
@@ -195,9 +195,17 @@
 		LDA $0C						;\ see if a tilemap should even be loaded (layer 3 bypass)
 		AND #$2000 : BEQ .NoBG3Tilemap			;/
 		LDA [$03],y					;\
-		AND #$0FFF					; | decompress ExGFX
-		CMP #$007F : BEQ .NoBG3Tilemap			; |
-		JSL !DecompressFile				;/
+		AND #$0FFF					; | check for BG3 tilemap
+		CMP #$007F : BEQ .NoBG3Tilemap			;/
+		PHA						;\
+		PHX						; |
+		AND #$00FF : TAX				; |
+		LDA #$0003 : TRB !2109				; | BG3 tilemap resolution
+		LDA.l BG3_Resolution,x				; |
+		AND #$0003 : TSB !2109				; |
+		PLX						; |
+		PLA						;/
+		JSL !DecompressFile				; decompress BG3 tilemap
 		LDA #$1801 : STA $4310				;\
 		LDA.w #!DecompBuffer : STA $4312		; |
 		LDA.w #!DecompBuffer>>8 : STA $4313		; | set up DMA to upload BG3 tilemap
@@ -1085,7 +1093,7 @@
 		RTS						; return
 
 
-
+	incsrc "../level_data/BG3_resolution.asm"
 
 
 

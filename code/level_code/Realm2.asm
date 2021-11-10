@@ -1137,7 +1137,7 @@ db $00,$10,$20,$30,$04,$14,$24,$34,$08,$18,$28,$38,$0C,$1C,$2C,$3C
 	+	DEY #2 : BPL -				; note that this doesn't loop for y = 0
 							; meaning that the next chunk is the below-water section
 	++	LDA #$0001 : STA $40A380,x
-		LDA #$0060 : STA $40A383,x
+		LDA #$0020 : STA $40A383,x
 		LDA #$0000 : STA $40A385,x
 		JMP ..endbg3
 

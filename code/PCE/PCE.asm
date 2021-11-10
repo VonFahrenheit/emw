@@ -110,11 +110,13 @@ sa1rom
 
 
 		.Pipe
-		STX $71				;\ Store P1 animation trigger and pipe timer
+		STX !MarioAnim			;\ Store P1 animation trigger and pipe timer
 	;	STY $88				;/
 		CPX #$07 : BNE ..NoShoot	;\
-		LDA #$18 : STA !P2SlantPipe	; | Slant pipe
+		LDA #$30			; | slant pipe
+		STA !P2SlantPipe		; |
 		STA !P2SlantPipe-$80		;/
+		STZ !MarioAnim
 		JML $00A6CB			; > Return slant pipe
 		..NoShoot
 		LDA $89				;\

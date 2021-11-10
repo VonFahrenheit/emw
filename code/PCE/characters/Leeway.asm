@@ -708,6 +708,9 @@ namespace Leeway
 		LDA !P2SlantPipe : BEQ +
 		LDA #$40 : STA !P2XSpeed
 		LDA #$C0 : STA !P2YSpeed
+		LDA #$01
+		STA !P2Dashing
+		STA !P2DashJump
 		+
 
 		LDA !P2Blocked

@@ -1842,6 +1842,8 @@ levelinitC5:
 levelinitC6:
 		LDA.b #999>>8 : STA !TimerSeconds+1
 
+		LDA #$06 : STA !PalsetStart
+
 		LDA $95 : BNE +
 		LDA #$FF : STA $97
 		+
@@ -3871,108 +3873,108 @@ levelC6:
 
 
 		.Jump
-		db $65,$C2,$87,$3D		; jump
-		db $75,$C2,$89,$3D
-		db $8B,$C0,$82,$3D		; B
+		db $65,$C2,$87,$3F		; jump
+		db $75,$C2,$89,$3F
+		db $8B,$C0,$82,$3F		; B
 		..End
 
 		.Run
-		db $65,$C2,$AC,$3D		; run
-		db $6D,$C2,$AD,$3D
-		db $83,$C0,$A2,$3D		; Y
+		db $65,$C2,$AC,$3F		; run
+		db $6D,$C2,$AD,$3F
+		db $83,$C0,$A2,$3F		; Y
 		..End
 
 		.Fire
-		db $65,$C2,$EC,$3D		; fire
-		db $75,$C2,$EE,$3D
-		db $8B,$C0,$A2,$3D		; Y
+		db $65,$C2,$EC,$3F		; fire
+		db $75,$C2,$EE,$3F
+		db $8B,$C0,$A2,$3F		; Y
 		..End
 
 		.Slide
-		db $60,$C2,$CC,$3D		; slide
-		db $70,$C2,$CE,$3D
-		db $8C,$C8,$E8,$3D		; dpad
-		db $84,$B8,$C4,$3D
-		db $94,$B8,$C6,$3D
-		db $84,$C8,$E4,$3D
-		db $94,$C8,$E6,$3D
+		db $60,$C2,$CC,$3F		; slide
+		db $70,$C2,$CE,$3F
+		db $8C,$C8,$E8,$3F		; dpad
+		db $84,$B8,$C4,$3F
+		db $94,$B8,$C6,$3F
+		db $84,$C8,$E4,$3F
+		db $94,$C8,$E6,$3F
 		..End
 
 		.TapRun1
-		db $5D,$C2,$AC,$3D		; run
-		db $65,$C2,$AD,$3D
-		db $88,$C0,$C8,$3D		; dpad 1
-		db $78,$B8,$C4,$3D
-		db $88,$B8,$C6,$3D
-		db $78,$C8,$E4,$3D
-		db $88,$C8,$E6,$3D
-		db $9C,$C0,$C8,$3D		; dpad 2
-		db $8C,$B8,$C4,$3D
-		db $9C,$B8,$C6,$3D
-		db $8C,$C8,$E4,$3D
-		db $9C,$C8,$E6,$3D
+		db $5D,$C2,$AC,$3F		; run
+		db $65,$C2,$AD,$3F
+		db $88,$C0,$C8,$3F		; dpad 1
+		db $78,$B8,$C4,$3F
+		db $88,$B8,$C6,$3F
+		db $78,$C8,$E4,$3F
+		db $88,$C8,$E6,$3F
+		db $9C,$C0,$C8,$3F		; dpad 2
+		db $8C,$B8,$C4,$3F
+		db $9C,$B8,$C6,$3F
+		db $8C,$C8,$E4,$3F
+		db $9C,$C8,$E6,$3F
 		..End
 		.TapRun2
-		db $5D,$C2,$AC,$3D		; run
-		db $65,$C2,$AD,$3D
-		db $78,$B8,$C4,$3D		; dpad 1
-		db $88,$B8,$C6,$3D
-		db $78,$C8,$E4,$3D
-		db $88,$C8,$E6,$3D
-		db $8C,$B8,$C4,$3D		; dpad 2
-		db $9C,$B8,$C6,$3D
-		db $8C,$C8,$E4,$3D
-		db $9C,$C8,$E6,$3D
+		db $5D,$C2,$AC,$3F		; run
+		db $65,$C2,$AD,$3F
+		db $78,$B8,$C4,$3F		; dpad 1
+		db $88,$B8,$C6,$3F
+		db $78,$C8,$E4,$3F
+		db $88,$C8,$E6,$3F
+		db $8C,$B8,$C4,$3F		; dpad 2
+		db $9C,$B8,$C6,$3F
+		db $8C,$C8,$E4,$3F
+		db $9C,$C8,$E6,$3F
 		..End
 		.TapRun3
-		db $5D,$C2,$AC,$3D		; run
-		db $65,$C2,$AD,$3D
-		db $8C,$C0,$CA,$3D		; dpad 1
-		db $8C,$B8,$C4,$3D
-		db $9C,$B8,$C6,$3D
-		db $8C,$C8,$E4,$3D
-		db $9C,$C8,$E6,$3D
-		db $78,$C0,$CA,$3D		; dpad 2
-		db $78,$B8,$C4,$3D
-		db $88,$B8,$C6,$3D
-		db $78,$C8,$E4,$3D
-		db $88,$C8,$E6,$3D
+		db $5D,$C2,$AC,$3F		; run
+		db $65,$C2,$AD,$3F
+		db $8C,$C0,$CA,$3F		; dpad 1
+		db $8C,$B8,$C4,$3F
+		db $9C,$B8,$C6,$3F
+		db $8C,$C8,$E4,$3F
+		db $9C,$C8,$E6,$3F
+		db $78,$C0,$CA,$3F		; dpad 2
+		db $78,$B8,$C4,$3F
+		db $88,$B8,$C6,$3F
+		db $78,$C8,$E4,$3F
+		db $88,$C8,$E6,$3F
 		..End
 		.TapRun4
-		db $5D,$C2,$AC,$3D		; run
-		db $65,$C2,$AD,$3D
-		db $8C,$B8,$C4,$3D		; dpad 1
-		db $9C,$B8,$C6,$3D
-		db $8C,$C8,$E4,$3D
-		db $9C,$C8,$E6,$3D
-		db $78,$B8,$C4,$3D		; dpad 2
-		db $88,$B8,$C6,$3D
-		db $78,$C8,$E4,$3D
-		db $88,$C8,$E6,$3D
+		db $5D,$C2,$AC,$3F		; run
+		db $65,$C2,$AD,$3F
+		db $8C,$B8,$C4,$3F		; dpad 1
+		db $9C,$B8,$C6,$3F
+		db $8C,$C8,$E4,$3F
+		db $9C,$C8,$E6,$3F
+		db $78,$B8,$C4,$3F		; dpad 2
+		db $88,$B8,$C6,$3F
+		db $78,$C8,$E4,$3F
+		db $88,$C8,$E6,$3F
 		..End
 
 		.Attack
-		db $5D,$C2,$A7,$3D		; attack
-		db $6D,$C2,$A9,$3D
-		db $75,$C2,$AA,$3D
-		db $8B,$C0,$A2,$3D		; Y
+		db $5D,$C2,$A7,$3F		; attack
+		db $6D,$C2,$A9,$3F
+		db $75,$C2,$AA,$3F
+		db $8B,$C0,$A2,$3F		; Y
 		..End
 
 		.Senku
-		db $61,$C2,$8B,$3D		; senku
-		db $71,$C2,$8D,$3D
-		db $79,$C2,$8E,$3D
-		db $91,$C0,$80,$3D		; A
+		db $61,$C2,$8B,$3F		; senku
+		db $71,$C2,$8D,$3F
+		db $79,$C2,$8E,$3F
+		db $91,$C0,$80,$3F		; A
 		..End
 
 		.SenkuJump
-		db $4C,$C2,$8B,$3D		; senku
-		db $5C,$C2,$8D,$3D
-		db $64,$C2,$8E,$3D
-		db $74,$C0,$80,$3D		; A
-		db $88,$C2,$87,$3D		; jump
-		db $98,$C2,$89,$3D
-		db $AE,$C0,$82,$3D		; B
+		db $4C,$C2,$8B,$3F		; senku
+		db $5C,$C2,$8D,$3F
+		db $64,$C2,$8E,$3F
+		db $74,$C0,$80,$3F		; A
+		db $88,$C2,$87,$3F		; jump
+		db $98,$C2,$89,$3F
+		db $AE,$C0,$82,$3F		; B
 		..End
 
 
@@ -6478,8 +6480,10 @@ EXIT:
 
 		.Left
 		LDX !P2Status-$80 : BNE +
+		BIT !P2XPosLo-$80 : BMI .Exit
 		CMP !P2XPosLo-$80 : BCS .Exit
-	+	LDX !P2Status : BNE .Return
+	+	BIT !P2XPosLo : BMI .Exit
+		LDX !P2Status : BNE .Return
 		CMP !P2XPosLo : BCS .Exit
 		SEP #$20
 		RTL
@@ -6500,11 +6504,14 @@ EXIT:
 
 		.Up
 		LDX !P2Status-$80 : BNE +
-		CMP !P2YPosLo-$80
-		BCS .Exit
-	+	LDX !P2Status : BNE .Return
+		BIT !P2YPosLo-$80 : BMI ++
+		CMP !P2YPosLo-$80 : BCS ++
+	+	BIT !P2YPosLo : BMI ++
+		LDX !P2Status : BNE .Return
 		CMP !P2YPosLo
-		BCC $03 : JMP .Exit
+		BCC ..fail
+	++	JMP .Exit
+		..fail
 		SEP #$20
 		RTL
 

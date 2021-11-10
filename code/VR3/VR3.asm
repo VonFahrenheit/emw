@@ -311,18 +311,20 @@ org $058526
 	Return_RAM_Code:
 		RTS
 	FinalShade:
-		LDA !GameMode
-		CMP #$05 : BCC +
-		LDA.b #.SA1 : STA $3180
-		LDA.b #.SA1>>8 : STA $3181
-		LDA.b #.SA1>>16 : STA $3182
-		LDA #$80 : STA $2200
-		JSR !MPU_light
-	+	JMP $1E8F
+		LDA !GameMode				;\ only run final shade on game mode 05+
+		CMP #$05 : BCC +			;/
+		LDA.b #.SA1 : STA $3180			;\
+		LDA.b #.SA1>>8 : STA $3181		; | have SA-1 keep track of when NMI occurs
+		LDA.b #.SA1>>16 : STA $3182		; |
+		LDA #$80 : STA $2200			;/
+		JSR !MPU_light				; have SNES run shading operation
+	+	JMP $1E8F				; go to end of game loop
 		.SA1
-	-	LDA !MPU_NMI : BEQ -
-		STZ !MPU_NMI
-		RTL
+		LDA $10 : BNE +				; skip this if CPU is behind PPU
+	+	STZ !MPU_NMI				;\
+	-	LDA !MPU_NMI : BEQ -			; | otherwise wait for NMI, then clear MPU NMI flag
+	+	STZ !MPU_NMI				;/
+		RTL					; return
 	warnpc $008217
 
 	org $00838F

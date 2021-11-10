@@ -251,7 +251,7 @@ LOAD_VRAM_MAP:
 		SEP #$30				; | - 0x4000: layer 1 tilemap (64x32)
 		LDA #$41 : STA !2107			; | - 0x4800: layer 2 tilemap (64x32)
 		LDA #$49 : STA !2108			; | - 0x5000: used by status bar
-		LDA #$59 : STA !2109			; | - 0x5800: displacement map (64x32 or 32x64)
+		LDA #$59 : STA !2109			; | - 0x5800: displacement map (64x32)
 		LDA #$05 : STA !210C			;/
 		BRA .MapDone
 
@@ -324,6 +324,8 @@ print "Level code handler inserted at $", pc, "."
 		PHP
 		SEP #$30
 
+		LDA #$07 : STA !PalsetStart		; default: all palset rows are dynamic
+
 		LDA !CurrentMario : BNE +		;\
 		LDA #$7F : STA !MarioMaskBits		; | hide mario if he's not in play
 		+					;/
@@ -385,10 +387,8 @@ print "Level code handler inserted at $", pc, "."
 
 		STZ !Level+2				;\ Clear extra bytes
 		STZ !Level+4				;/
-		STZ !GlobalLight1			;\
-		STZ !GlobalLight2			; | reset auto light mixer
-		STZ !GlobalLightMix			; |
-		STZ !GlobalLightMixPrev			;/
+		STZ !GlobalLight1			;\ reset auto light mixer
+		STZ !GlobalLightMix			;/
 		STZ !Color0				; clear color 0
 		LDA #$0000				; > Set up clear
 		STA !HDMAptr+0				;\ Clear HDMA pointer
@@ -1964,13 +1964,15 @@ HandleGraphics:
 		STA $0F							; |
 		LDA !MsgTrigger						; | mark palsets used by portrait
 		ORA !MsgTrigger+1					; |
-		BNE .msg						; |
+		BEQ .nomsg						; |
+		LDA !WindowDir : BEQ .msg				; |
+		.nomsg							; |
 		LDA #$FF						; |
 		STA $0E							; |
 		STA $0F							; |
 		.msg							;/
 
-		LDX #$07						;\
+		LDX !PalsetStart					;\
 	-	CPX $0E : BEQ +						; |
 		CPX $0F : BEQ +						; |
 		LDA !Palset8,x						; |
@@ -1987,8 +1989,8 @@ HandleGraphics:
 	+	DEX							; |
 		CPX #$02 : BCS -					;/
 
+		LDY !PalsetStart					; loop through all sprite palsets
 		REP #$10
-		LDY #$0007						; loop through all sprite palsets
 	.loop	LDA !Palset8,y : BMI .next				; if already loaded, go to next			
 		STA $00 : STZ $01					; $00 = palset to load
 		TAX							;\
@@ -2272,13 +2274,13 @@ LoadPalset:
 		STA $0F							; store palset to load in $0F
 		TAX							;\ if palset is already loaded, return
 		LDA !Palset_status,x : BNE .Return			;/
-		LDX #$07						;\
+		LDX !PalsetStart					;\
 	-	LDA !Palset8,x						; |
 		AND #$7F						; | if palset is about to be loaded this frame, return
 		CMP $0F : BEQ .Return					; | (probably not necessary, just in case there's an error somewhere)
 		DEX : BPL -						;/
 		PLX							; pull X
-		LDY #$07						;\
+		LDY !PalsetStart					;\
 	.Loop	LDA !Palset8,y						; |
 		CMP #$80 : BEQ .Load					; | look for a free row in A-F
 	.Next	DEY							; |

@@ -58,6 +58,7 @@ namespace BG_OBJECTS
 		.Ptr
 		dw Bush
 		dw Window
+		dw Cannon
 		..end
 
 
@@ -76,6 +77,7 @@ incsrc "SpriteSize.asm"
 
 incsrc "BG_objects/Bush.asm"
 incsrc "BG_objects/Window.asm"
+incsrc "BG_objects/Cannon.asm"
 
 
 

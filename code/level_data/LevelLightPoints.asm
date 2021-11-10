@@ -20,8 +20,9 @@
 
 	LightPoints:
 		;	    --X--	--Y--		R     G     B    size  level
-		%LightPoint(43,		24,		$180, $080, $080, $100, $02A)
-		%LightPoint(104,	22,		$180, $080, $080, $180, $02A)
+		%LightPoint(43,		24,		$140, $0C0, $080, $100, $02A)
+		%LightPoint(104,	22,		$140, $0C0, $080, $180, $02A)
+		%LightPoint(183,	17,		$140, $0C0, $080, $280, $02A)
 
 
 

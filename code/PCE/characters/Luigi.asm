@@ -820,6 +820,10 @@ namespace Luigi
 		JMP .Ground					;/
 
 		.Air
+		LDA !P2SlantPipe : BEQ ..noslant
+		LDA #$40 : STA !P2Dashing
+		JMP .LongJump
+		..noslant
 		LDA !P2Water
 		AND #$10 : BEQ .NoWater
 		LDA !P2Carry : BNE .FastSwim
@@ -869,6 +873,7 @@ namespace Luigi
 		LDA !P2Carry : BNE .CarryJump			; > carry jump check
 		LDA !P2Dashing					;\
 		CMP #$40 : BNE .NormalJump			; | long jump frame during running jump
+	.LongJump						; |
 		LDA #!Lui_LongJump : STA !P2Anim		; |
 		JMP .HandleUpdate				;/
 

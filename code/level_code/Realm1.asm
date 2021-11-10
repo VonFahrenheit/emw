@@ -146,6 +146,12 @@ levelinit4:
 		RTL
 
 levelinit5:
+		LDA #$06 : STA !PalsetStart
+
+		LDA #$1F : STA !MainScreen
+		STZ !SubScreen
+
+
 	; Upload sun, sample code
 
 		JSL !GetVRAM
@@ -176,10 +182,7 @@ levelinit5:
 		JML level5
 
 
-.HDMA		LDA #$1F			;\ Put everything on mainscreen
-		STA $6D9D			;/
-		STZ $6D9E			; > Disable subscreen
-		REP #$20			; > A 16 bit
+.HDMA		REP #$20			; > A 16 bit
 		LDA $1C				;\
 		LSR #2				; |
 		SEC : SBC $20			; | BG2 base Y position
@@ -208,6 +211,7 @@ levelinit5:
 ; $0A80 - reserved
 
 levelinit6:
+		LDA #$06 : STA !PalsetStart
 		INC !SideExit
 
 	;	STZ $97
@@ -420,7 +424,8 @@ levelinit27:
 		RTL
 
 
-levelinit2A:	JSL !GetVRAM				;\
+levelinit2A:
+		JSL !GetVRAM				;\
 		REP #$20				; |
 		LDA.w #$0C00				; |
 		STA.l !VRAMbase+!VRAMtable+$00,x	; |
@@ -433,7 +438,7 @@ levelinit2A:	JSL !GetVRAM				;\
 		SEP #$20				;/
 		RTL
 
-levelinit2B:	LDA #$3F : STA !Level+2
+levelinit2B:
 		JML levelinit5
 
 levelinit2C:
@@ -1266,10 +1271,6 @@ level4:
 level5:
 		LDA #$02 : STA !GlobalLight1
 
-		LDA #$1F				;\ Put everything on mainscreen
-		STA $6D9D				;/
-		STZ $6D9E				; > Disable subscreen
-
 		REP #$20
 		LDA #$07F8
 		JSL EXIT_Right
@@ -1923,311 +1924,34 @@ level27:
 
 
 level2A:
-		; LDA #$04 : STA !GlobalLight1
-		; STZ !GlobalLight2
-
-		; REP #$20
-		; LDA $1A
-		; SEC : SBC #$0200
-		; BPL $03 : EOR #$FFFF
-		; LSR #4
-		; CMP #$0020
-		; BCC $03 : LDA #$0020
-		; SEP #$20
-		; STA !GlobalLightMix
-
-
 		REP #$20
-		LDY #$00
-		LDA $1A
-		CMP #$0470-$80 : BCC .DisableV
-		CMP #$09E0-$80 : BCC .EnableV
-		CMP #$0D00-$80 : BCS +
-		PEA .DisableV+2
-		LDA #$0080 : JML LOCK_VSCROLL
-
-	+	CMP #$0E80-$80 : BCS .EnableV
-		PEA .DisableV+2
-		LDA #$0050 : JML LOCK_VSCROLL
-.EnableV	STZ !Level+2
-		INY
-.DisableV	STY !EnableVScroll
-
-		LDY $95
-		CPY #$10 : BNE .NoExit
-		LDA $96
-		BPL .NoExit
-		CMP #$FFE0 : BCS .NoExit
-		LDY #$05 : STY $71
-		LDY #$00 : STY $88
-		SEP #$20
+		LDA #$0000 : JSL EXIT_Up
 		RTL
-.NoExit		SEP #$20
-
-
-; $1892+$00:	BA------21
-;		B = P2 ready
-;		A = P1 ready
-;		2 = P2 entering cannon
-;		1 = P1 entering cannon
-;
-; $1892+$01:	Timer
-; $1892+$02:	0 = cannon ready, 1 = cannon has fired
-
-		LDA $7892+$00			;\
-		AND #$03			; |
-		STA $00				; |
-		LDA !P2Status-$80		; |
-		BEQ $04 : LDA #$01 : TSB $00	; | (mark nonexistant players as processed)
-		LDA !P2Status			; |
-		BEQ $04 : LDA #$02 : TSB $00	; | Scroll camera when cannon is ready
-		LDA $00				; |
-		CMP #$03			; |
-		BNE .NoCam			; |
-		REP #$20			; |
-		LDA #$1000			; |
-		JSL LOCK_HSCROLL		; |
-		SEP #$20			; |
-		.NoCam				;/
-
-		LDA $7892+$02			;\ See if cannon has fired already
-		BEQ $04 : JML .PrepShoot	;/
-
-
-		LDY #$00			; Start index
-	-	REP #$20			;\
-		LDA !P2XPosLo-$80,y		; |
-		CMP #$1020 : BCC .Next		; | Must be within bounds (x-axis)
-		CMP #$1030 : BCS .Next		; |
-		SEP #$20			;/
-		LDA !P2Blocked-$80,y : STA $00
-		PHY
-		TYA
-		CLC : ROL #2
-		TAY
-		INC A
-		AND $7892+$00 : BNE .Nope	; Can't enter if already entering
-		LDA $00				;\
-		AND $6DA6,y			; | Must be on top of cannon and push down
-		AND #$04 : BEQ .Nope		;/
-		TYA				;\
-		INC A				; | Mark player as entered
-		TSB $7892+$00			;/
-
-	.Nope	PLY
-	.Next	SEP #$20
-		LDA !MultiPlayer : BEQ .Done
-		CPY #$80 : BEQ .Done
-		LDY #$80 : BRA -
-
-	.Done	LDX #$00
-		LDA #$E0 : STA $0E		;\ $32E0 disables interaction for P1
-		LDA #$32 : STA $0F		;/
-		LDA $7892+$00
-		AND #$03
-		LSR A : BCC .P2
-		PHA
-		JSL .PlayerEntering
-		PLA
-	.P2	LSR A : BCC .Return
-		LDX #$80
-		LDA #$F0 : STA $0E		;\ $35F0 disables interaction for P1
-		LDA #$35 : STA $0F		;/
-.PlayerEntering	LDA !P2Character-$80,x : BNE +	;\
-		PEA.w .PlayerD-1		; | Special code for Mario
-		JML .MarioEntering		;/
-	+	LDA #$DF : STA !P2Pipe-$80,x
-		LDY #$0F			;\
-		LDA #$FF			; | Disable interaction for player
-	-	STA ($0E),y			; |
-		DEY : BPL -			;/
-		LDA !P2XPosLo
-		CMP #$26 : BEQ .PlayerD
-		BCC .PlayerR
-.PlayerL	DEC !P2YPosLo-$80,x
-		DEC !P2XPosLo-$80,x
-		BRA .Return
-.PlayerR	DEC !P2YPosLo-$80,x
-		INC !P2XPosLo-$80,x
-		BRA .Return
-.PlayerD	LDA !P2YPosLo-$80,x
-		CMP #$70 : BNE .Return
-		TXA				;\
-		BNE $02 : LDA #$40		; | Mark player as ready
-		TSB $7892+$00			;/
-		DEC !P2YPosLo-$80,x
-		BRA .PrepShoot
-.Return		SEP #$20
-		RTL
-
-.PrepShoot	LDA $7892+$00
-		STA $00
-		LDA !P1Dead
-		BEQ $04 : LDA #$40 : TSB $00
-		LDA !P2Status
-		BEQ $04 : LDA #$80 : TSB $00
-		BIT $00
-		BPL .Return
-		BVC .Return
-
-		INC $7892+$01
-		LDA $7892+$01
-		CMP #$01 : BEQ ++
-		CMP #$10 : BNE +
-	++	LDY #$01 : STY !SPC1
-	+	CMP #$30 : BNE +
-		LDY #$09 : STY !SPC4
-		PHB
-		REP #$30
-		LDX #$4140				; > This be bank numbers for map16 tables
-		PHX
-		PLB
-		LDX #$2525
-		STX $E303
-		STX $E305
-		STX $E307
-		STX $E309
-		STX $E30B
-		PLB
-		STZ $E303
-		STZ $E305
-		STZ $E307
-		STZ $E309
-		STZ $E30B
-		SEP #$30
-		PLB
-	+	CMP #$34 : BNE +
-		LDA #$01 : STA $7892+$02
-	+	JSL !GetVRAM
-		LDA $7892+$02 : BEQ +
-
-
-		LDA !P1Dead : BNE .NoMario		;\
-		LDA #$07 : STA $71			; |
-		LDA #$0C : STA $73E0			; |
-.NoMario	LDA #$40 : STA $7B			; |
-		STA !P2XSpeed-$80 : STA !P2XSpeed	; |
-		LDA #$C0 : STA $7D			; | Eject players at high velocity
-		STA !P2YSpeed-$80 : STA !P2YSpeed	; |
-		STZ $88					; |
-		STZ !P2Pipe-$80				; |
-		STZ !P2Pipe				; |
-		REP #$20				; |
-		LDY #$08 : BRA ++			;/
-
-
-	+	LDA $7892+$01
-		LSR #4
-		ASL #3
-		REP #$20
-		AND #$001E
-		TAY
-	++	LDA.w .Cannon+0,y : STA $00
-		LDA.w .Cannon+2,y : STA $02
-		LDA.w .Cannon+4,y : STA $04
-		LDA.w .Cannon+6,y : STA $06
-		PHB
-		PEA $7F7F
-		PLB : PLB
-		LDA $00 : STA $A100
-		INC A : STA $A102
-		INC A : STA $A104
-		INC A : STA $A106
-		LDA $02 : STA $A108
-		INC A : STA $A10A
-		INC A : STA $A10C
-		INC A : STA $A10E
-		LDA $04 : STA $A110
-		INC A : STA $A112
-		INC A : STA $A114
-		INC A : STA $A116
-		LDA $06 : STA $A118
-		INC A : STA $A11A
-		INC A : STA $A11C
-		INC A : STA $A11E
-		LDY.b #!VRAMbank
-		PHY : PLB
-		LDA #$0008
-		STA !VRAMtable+$00,x
-		STA !VRAMtable+$07,x
-		STA !VRAMtable+$0E,x
-		STA !VRAMtable+$15,x
-		LDA #$A100 : STA !VRAMtable+$02,x
-		LDA #$A108 : STA !VRAMtable+$09,x
-		LDA #$A110 : STA !VRAMtable+$10,x
-		LDA #$A118 : STA !VRAMtable+$17,x
-		LDA #$7FA1
-		STA !VRAMtable+$03,x
-		STA !VRAMtable+$0A,x
-		STA !VRAMtable+$11,x
-		STA !VRAMtable+$18,x
-		LDA #$3184 : STA !VRAMtable+$05,x
-		LDA #$31A4 : STA !VRAMtable+$0C,x
-		LDA #$31C4 : STA !VRAMtable+$13,x
-		LDA #$31E4 : STA !VRAMtable+$1A,x
-		PLB
-	+	SEP #$20
-		RTL
-
-
-.MarioEntering	LDA #$0F : STA $73E0
-		LDA #$06 : STA $71
-		STA $88
-		LDA $94
-		CMP #$26 : BEQ .MarioD
-		BCC .MarioR
-.MarioL		DEC $94
-		RTL
-.MarioR		INC $94
-		RTL
-.MarioD		LDA $96
-		CLC : ADC #$10
-		STA !P2YPosLo-$80,x
-		CMP #$70 : BEQ +
-		INC $96
-	+	RTL
-
-
-; YXPCCCTT tttttttt
-; $2A
-;
-
-.Cannon
-.CannonAim1	dw $2AE0
-		dw $2AF0
-		dw $2AE4
-		dw $2AF4
-.CannonAim2	dw $2AA4
-		dw $2AB4
-		dw $2AC4
-		dw $2AD4
-.CannonFire1	dw $2AA8
-		dw $2AB8
-		dw $2AC8
-		dw $2AD8
-.CannonFire2	dw $2AAC
-		dw $2ABC
-		dw $2ACC
-		dw $2ADC
 
 
 level2B:
+
+	; WARNING: EXTREMELY SCUFFED
+		.SlantFix
+		LDA !P2SlantPipe-$80 : BNE ..tempslant
+		..normal
+		LDA #$1F : STA !MainScreen
+		STZ !SubScreen
+		BRA ..done
+		..tempslant
+		LDA #$1D : STA !MainScreen
+		LDA #$02 : STA !SubScreen
+		..done
+
 		STZ !SideExit
 		LDA $1B
 		BEQ .NoExit
 		INC !SideExit
 		.NoExit
 
-		LDA !Level+2
-		BEQ +
-		DEC !Level+2
-		LDA #$40 : STA !P2XSpeed
-		LDA #$C0 : STA !P2YSpeed
-		+
-
 		REP #$20
 		LDA #$06F8
-		PEA level5_NoExit-1
+		PHK : PEA level5_NoExit-1
 		JML EXIT_FADE_Right
 
 

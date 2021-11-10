@@ -1252,7 +1252,7 @@ Mode7Presents:
 
 	..init	BIT !ProcessLight : BMI ..wait				; > if SA-1 is currently writing to !ShaderInput, wait
 		INC !ProcessLight					;\
-		REP #$10						; | this code runs once at the start of a new process
+		REP #$10						; | this code runs once at the start of a new shading operation
 		LDX #$8000 : STX $4300					; |
 		LDX.w #!ShaderInput : STX $4302				; | use DMA to copy the data (fuck version 1.1.1)
 		LDA.b #!ShaderInput>>16 : STA $4304			; | (i guess i'm not worried about the DMA + HDMA crash...?)
@@ -1271,9 +1271,8 @@ Mode7Presents:
 		AND #$0100						; > add 512 to access second buffer
 		ASL A							; |
 		TSB !LightIndexStart_SNES				; |
-		TSB !LightIndexEnd_SNES					; |
-		ADC #$0200						; |
-		LDA !LightR : STA !LightR_SNES				; |
+		TSB !LightIndexEnd_SNES					; | copy operation parameters to SNES RAM
+		LDA !LightR : STA !LightR_SNES				; | (this way SA-1 can freely queue new shading ops with different parameters)
 		LDA !LightG : STA !LightG_SNES				; |
 		LDA !LightB : STA !LightB_SNES				; |
 		LDX #$000E						; |
@@ -1281,13 +1280,13 @@ Mode7Presents:
 		DEX #2 : BPL -						; |
 		LDX !LightIndexStart_SNES				;/
 
-;	..main	LDA #$0000 : TCD					;\
-	..loop	LDA $3189						; > check for SA-1 being done with its thread
+		..loop							;\
+		LDA $3189						; > check for SA-1 being done with its thread
 		AND #$00FF : BNE ..break				; | this is the main loop controller
 		CPX !LightIndexEnd_SNES : BNE ..shade			;/
 
-		..done
-		LDA !LightBuffer					;\
+		..done							;\
+		LDA !LightBuffer					; |
 		EOR #$0001						; | flip buffer
 		ORA #$0080						; > mark as finished
 		STA !LightBuffer					;/
@@ -1907,10 +1906,19 @@ MAIN_MENU:
 		BCC $02 : LDA #$00				; |
 		TAX						; |
 		JSR (.Ptr,x)					;/
+		LDA !GameMode
+		CMP #$0B : BNE ..playerstuff
+		REP #$20
+		LDA !OAMindex_p0_prev : STA !OAMindex_p0
+		LDA !OAMindex_p1_prev : STA !OAMindex_p1
+		LDA !OAMindex_p2_prev : STA !OAMindex_p2
+		LDA !OAMindex_p3_prev : STA !OAMindex_p3
+		SEP #$20
+		BRA ..done
 
 
+		..playerstuff
 		LDA #$00 : STA !MultiPlayer			;\
-		LDA #$00 : STA !Characters			; |
 		LDA #$02 : STA !MarioBehind			; |
 		LDA !GameMode : PHA				; |
 		LDA !TimerFrames : BNE ..restore		; > for mailbox rise animation
@@ -1933,15 +1941,16 @@ MAIN_MENU:
 		..restore					; |
 		PLA : STA !GameMode				;/
 
+		JSL .Mailbox
+		; p is unknown here
+		SEP #$20
+
+		..done
 		PLA : STA $6DA8					;\
 		PLA : STA $6DA6					; | restore input
 		PLA : STA $6DA4					; |
 		PLA : STA $6DA2					;/
 
-		JSL .Mailbox
-
-		; P unknown here
-		SEP #$20
 		LDA #$81 : STA $4200			; re-enable NMI + auto joypad
 
 		PLP
@@ -2739,7 +2748,7 @@ MAIN_MENU:
 		..init
 		ORA #$80 : STA !MenuState
 		STZ !TimerSeconds
-		STZ !P1Coins
+		STZ !TimerSeconds+1
 		REP #$30
 		LDA !LevelHeight
 		ASL A
@@ -2749,13 +2758,13 @@ MAIN_MENU:
 
 		..main
 		LDA !P2Stasis-$80 : BEQ +
-		LDA !P1Coins
+		LDA !TimerSeconds+1
 		CMP.b #.OpenCoords_end-.OpenCoords-1 : BCS +
-		INC !P1Coins
+		INC !TimerSeconds+1
 	+	JSR .MoveMario
 		LDA !P2Stasis-$80 : BEQ ..noopen
 		STA !P2ExternalAnimTimer-$80
-		LDX !P1Coins
+		LDX !TimerSeconds+1
 		LDA .OpenCoords,x : STA !MarioYPosLo
 		LDA .OpenImg,x : STA !P2ExternalAnim-$80
 		..noopen
@@ -3267,7 +3276,6 @@ MAIN_MENU:
 		..kill
 		SEP #$20
 		LDA #$0B : STA !GameMode
-		STZ !P1Coins
 		..done
 		SEP #$30
 		RTS

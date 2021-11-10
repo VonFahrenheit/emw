@@ -40,8 +40,16 @@ COLLISION:
 		..done
 
 
-		LDA !P2Pipe				;\ skip this during pipe animation
-		BEQ $02 : PLB : RTL			;/
+		.PipeCheck				;\
+		LDA !P2Pipe				; |
+		ORA !P2SlantPipe			; |
+		BEQ ..done				; | pipe + slant clause
+		LDA #$01 : STA !P2InAir			; |
+		STZ !P2Blocked				; |
+		PLB					; |
+		RTL					;/
+		..done
+
 
 
 		LDA $785F+1				;\
@@ -448,8 +456,9 @@ COLLISION:
 		STA !P2YPosLo				; |
 		SEP #$20				;/
 		.Bonk					;\
+		LDA !P2YSpeed : BPL +			; > don't 0 speed unless moving up
 		STZ !P2YSpeed				; |
-		STZ !P2VectorTimeY			; | bonk code
+	+	STZ !P2VectorTimeY			; | bonk code
 		LDA !SPC1 : BNE .UpDone			; |
 		LDA #$01 : STA !SPC1			; > bonk sfx
 		.UpDone					;/

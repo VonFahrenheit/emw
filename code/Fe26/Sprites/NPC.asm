@@ -311,8 +311,11 @@ NPC:
 		..nosparkle
 
 
-		JSR CheckPlayer : BEQ .BadCharacter
+		JSR CheckPlayer : BNE .RunCharCode
+		STZ $33C0,x							; unload palset if character not visible
+		BRA .BadCharacter
 
+		.RunCharCode
 		LDA !ExtraProp2,x
 		AND #$3F
 		CMP #$3E							;\ 0x3E -> swap p1

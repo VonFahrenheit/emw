@@ -99,6 +99,10 @@ namespace GAMEMODE14
 		JMP .RETURN
 		.NoFreeze
 
+		LDA !ProcessLight			;\
+		CMP #$02 : BNE ..noshade		; | start new shade operation when previous one finishes
+		STZ !ProcessLight			; |
+		..noshade				;/
 
 		LDA !MsgTrigger				;\
 		ORA !MsgTrigger+1			; |
@@ -246,10 +250,6 @@ namespace GAMEMODE14
 		INC $14					; increment frame counter
 		JSL HandleGraphics			; rotate simple + starman handler (part of SP_Level.asm)
 		..noanim
-		LDA !ProcessLight			;\
-		CMP #$02 : BNE ..noshade		; | start new shade operation when previous one finishes
-		STZ !ProcessLight			; |
-		..noshade				;/
 		JSL $05BC00				; scroll sprites (includes LM's hijack for BG3 controller, which i have KILLED >:D)
 		PEI ($1C)				;\
 		REP #$20				; |
@@ -398,7 +398,8 @@ pushpc
 		JSL Camera
 	org $00A01B			;
 		JML Camera_UpdateBG	;
-	org $00A023			; $00A023 is how the code is aligned after LM's edit
+	;org $00A023			; $00A023 is how the code is aligned after LM's edit
+	org $00A044			; actually just skip all of it... we're not gonna use the vanilla layer 3 anyway
 		SkipLM_BG_Setup:	;
 	org $00A299
 		JSL Camera

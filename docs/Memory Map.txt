@@ -68,7 +68,7 @@
 
 	-- WRAM map --
 		LoRAM:
-		$0000-$001F:	32 B	SNES scratch RAM.
+		$0000-$001F:	32 B	SNES scratch RAM (used by shader).
 		$0020-$007F:	96 B	----
 		$0080-$009F:	32 B	prop for status bar
 		$00A0-$00B5:	22 B	Colors 0x01-0x0B for dynamic BG3 palette.
@@ -128,7 +128,8 @@
 		$3100-$313F:	64 B	SA-1 DP for MPU operation
 		$3140-$3147:	8 B	VRAM remap registers, see Defines
 		$3148-$314F:	8 B	camera backup (4 bytes), camera movement (2 slots, 2 bytes each)
-		$3150-$315F:	16 B	----
+		$3150:		1 B	NMI flag for MPU
+		$3151-$315F:	15 B	----
 		$3160-$316F:	16 B	light list, 1 byte for each palette row, determines color handling
 		$3170:		1 B	----
 		$3171:		1 B	which buffer is currently being written to by shader
@@ -161,22 +162,24 @@
 		$6000-$601F:	32 B	scratch
 		$6020-$6021:	2 B	RAMcode flag (0x1234 = go, anything else = disable)
 		$6022-$6023:	2 B	RAMcode offset
-		$6024-$6027:	4 B	----
+		$6024-$6027:	4 B	global light auto-mixing regs
 		$6028-$602F:	8 B	sprite palset options (highest bit = loaded, rest is index to palset data)
 		$6030-$604F:	32 B	sprite tables used for dynamic file loading
 		$6050-$6074:	37 B	palset information for FusionCore sprites
-		$6075-$607F:	11 B	----
+		$6075:		1 B	which palset row to start searching at (default = 0x07, all)
+		$6076-$607F:	10 B	----
 		$6080-$60FF:	128 B	!BigRAM (extended scratch)
 		$6100-$610F:	16 B	SMW's $0100-$010F
 		$6110-$6113:	4 B	Assume that level code uses this
 		$6114-$611F:	12 B	----
 		$6120-$617F:	96 B	best rank score for each level (level data byte 3)
-		$6180-$61EF:	112 B	holds LM dynamo data during RAM code generation
+		$6180-$61EF:	112 B	light point data during levels
 		$61F0-$61FF:	16 B	used during layer tilemap update
 		$6200-$63FF:	512 B	OAM, lo table
 		$6400-$641F:	32 B	OAM, hi table
 		$6420-$649F:	128 B	OAM, hi table buffer
-		$64A0-$667F:	480 B	---- (used as an HDMA table on title screen, otherwise free)
+		$64A0-$665F:	448 B	used as an HDMA table on for message boxes and on title screen
+		$6660-$667F:	32 B	RNG table
 		$6680-$7FFF:	6.4 KB	SMW's $0680-$1FFF
 		-- some info --
 		$6703-$6902:	512 B	entire palette (SNES RGB format), fed into shader

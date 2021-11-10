@@ -679,7 +679,7 @@ endmacro
 		!PalsetE		= $602E
 		!PalsetF		= $602F
 	; index to palset table
-
+		!PalsetStart		= $6075
 
 
 
