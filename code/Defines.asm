@@ -273,6 +273,8 @@ endmacro
 		!Mosaic			= !2106		; alt name
 
 
+		!VRAMmap		= $6076
+
 		!BG1Address		= $3140		;\ tilemap addresses for layers 1/2
 		!BG2Address		= $3142		;/ (based on 2107/2108, meant to be read for VRAM calc)
 		!2107			= $3144		; $2107 mirror, BG1 tilemap address control
@@ -840,16 +842,21 @@ endmacro
 
 
 	; --P2 DATA --
-		!PlayerBonusHP		= $786C			; added to !P2MaxHP, calculated from file at level init
+		!PlayerBonusHP		= $786C				; added to !P2MaxHP, calculated from file at level init
+
+		!ApexTimerP1		= $611A				;\ resets apex 8 frames after landing
+		!ApexTimerP2		= $611B				;/
+		!ApexP1			= $611C				;\ highest point of current jump
+		!ApexP2			= $611E				;/ only really used by cables
 
 
 		!P1Base			= $3600
 		!P2Base			= $3680
 
 		!P2Basics		= !P2Base+$00
-		!P2Physics		= !P2Base+$1F
-		!P2Hitbox		= !P2Base+$3F
-		!P2Custom		= !P2Base+$5F
+		!P2Physics		= !P2Base+$20
+		!P2Hitbox		= !P2Base+$40
+		!P2Custom		= !P2Base+$60
 
 
 	; --BASICS--
@@ -902,7 +909,7 @@ endmacro
 			;		6 = cyan
 			;		7 = purple
 			;	t = timer
-
+		!P2Entrance		= !P2Basics+$1F
 
 
 	; --PHYSICS--
@@ -1417,6 +1424,28 @@ endmacro
 
 
 
+
+
+
+		!LockROM		= 0			; 0 = lock ROM and finalize header
+								; 1 = do no lock ROM
+
+
+	macro LockROM(read, condition)
+	if !LockROM != 0
+		PHP
+		SEP #$20
+		LDA <read>
+		CMP <condition> : BEQ ?Ok
+	?LockROM:
+		db $00
+	?Ok:
+		PLP
+	endif
+	endmacro
+
+
+
 		!Debug			= 1			; 0 = do not insert debug code
 								; 1 = insert debug code
 
@@ -1727,7 +1756,7 @@ endmacro
 
 
 
-
+	; BG_object regs
 		!BG_object_Base		= $A0B0			; bank $41
 		!BG_object_Count	= 64
 		!BG_object_Size		= 10
@@ -1746,9 +1775,35 @@ endmacro
 		!BG_object_Misc		= !BG_object_Base+$09	; reg that can be used for various purposes
 
 
+	; cable regs
+		!CableRenderBuffer	= !V_buffer
+
+		!CableRAM		= !GFX_buffer+$1000	; starts right after buffer
+
+		!CableCacheX		= !CableRAM+$000	; carried between renders, cleared at the start of each frame
+		!CableTilemapLookup	= !CableRAM+$002	; 16 bytes marking whether each tilemap buffer is used (indexed by $51, can be reordered each frame)
+		!CableTilemapBuffer	= !CableRAM+$012	; $C0 * 16 bytes = $C00 bytes (3 KiB) total
+
+		!CableTileOverflow	= !CableRAM+$C12	; up to 128 bytes, used internally in renderer, can be shared
+		!CablePrevHash		= !CableRAM+$C92	; 2 bytes, used internally in renderer, can be shared
+		!CableConnectionHash	= !CableRAM+$C94	; 2 bytes, hash of last tile used for middle line
+		!CableConnectionIndex	= !CableRAM+$C96	; 2 bytes, render index to the last tile used for middle line
+		!CableRenderLineTemp	= !CableRAM+$C98	; 3 bytes, used internally in renderer, can be shared
+
+		; these 5 are the cache used for tilemap updates, true mirrors below
+		!CableUpdateMinus2	= !CableRAM+$C9B
+		!CableUpdateMinus1	= !CableRAM+$C9C
+		!CableUpdate0		= !CableRAM+$C9D
+		!CableUpdatePlus1	= !CableRAM+$C9E
+		!CableUpdatePlus2	= !CableRAM+$C9F
+
+		; each cable needs its own set of these 5 bytes... so there are 64 structs of this type here
+		!CableUpdateData	= !CableRAM+$CA0
+
+		!CableTilemapIndex	= !CableRAM+$DE0	; 2 bytes, carried between renders, cleared at the start of each frame
 
 
-
+		!CableTexture		= !CableRAM+$E00
 
 
 
@@ -1865,8 +1920,11 @@ endmacro
 
 
 
-	
-	; next entry at $4061FE
+		!LoadCheckpoint		= $4061FE		; 00 = don't load checkpoint, 01 = load checkpoint
+		!ShakeBG3		= $4061FF		; same as !ShakeTimer but for BG3
+
+
+	; next entry at $406200
 
 
 		; these are values not addresses

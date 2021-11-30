@@ -238,20 +238,27 @@ sa1rom
 
 print "-- SP_MENU --"
 
-
-
-; legacy stuff
-;	!FreeRAM		= $4100			; Assume !FreeBNK (Indexed by Y so it has to be 16-bit)
-;	!FreeBNK		= $40
-;	!DataLength		= DataEnd-DataStart
-;	!RAM_buffer		= $4000			; Same thing here, assume !FreeBNK so I can index with Y
-;	!FreeSRAM		= $41C400
-;	!DifficultySize		= DataEnd-Difficulty
-;	!CustomSize		= CustomStripeEnd-CustomStripe
-;	!Permanent		= $41C7FC
-
-
 	incsrc "Defines.asm"				; Include standard defines
+
+if !LockROM = 0
+print "ROM NAME: SUPER MARIOWORLD     "
+print "ROM has not been locked"
+	org $00FFC0
+	ROMNAME:
+	db "SUPER MARIOWORLD     "
+	warnpc $00FFD5
+else
+print "ROM NAME: Extra Mario World    "
+print "ROM has been locked"
+	org $00FFC0
+	ROMNAME:
+	db "Extra Mario World    "
+	warnpc $00FFD5
+endif
+
+
+
+
 
 
 ;==========;
@@ -1103,12 +1110,12 @@ db $53,$54,$41,$52		;\
 dw $7FF7			; | Claim this bank
 dw $8008			;/
 
-
 ;===============;
 ;PRESENTS SCREEN;
 ;===============;
 ; hijacked below, just search for the label
 Mode7Presents:
+		%LockROM(ROMNAME, #$45)
 		%ResetTracker()
 
 		PHP
@@ -1184,11 +1191,17 @@ Mode7Presents:
 		LDA #$2202 : STA $4300			; 2122 write twice
 		LDA.w #.SourcePal : STA $4302
 		LDA.w #.SourcePal>>8 : STA $4303
-		LDA #$003E : STA $4305
-		LDX #$01 : STX $420B	
+		LDA #$0050 : STA $4305
+		LDX #$01 : STX $420B
+		LDA.l .SourcePal+$40 : STA !Color0
 
 		LDX #$07 : STX $2105			; mode 7
 		STX $3E
+
+		LDA #$FFC0
+		STA $1A
+		STA $1C
+
 		LDX #$00 : STX $211B
 		LDX #$01 : STX $211B
 		LDX #$00 : STX $211C
@@ -1197,7 +1210,9 @@ Mode7Presents:
 		LDX #$00 : STX $211D
 		LDX #$00 : STX $211E
 		LDX #$01 : STX $211E
+
 		LDX #$C0 : STX $211A			; mode 7 settings: large playfield, char 0 fill, no mirroring
+
 
 		SEP #$20
 		LDA #$01 : STA $212C
@@ -1410,15 +1425,25 @@ incbin "PresentsScreenPalette.mw3"
 		LDA #$01 : STA $7DF5			;/
 	+	DEC $7DF5				; decrement timer
 	-	BIT $4212 : BPL -			; somehow doing this during h-blank makes snes9x go absolutely crazy... so we're waiting for v-blank
-		LDA $7DF5 : STA $211B
-		LDA #$01 : STA $211B
-		LDA $7DF5 : STA $211E
-		LDA #$01 : STA $211E
-		LDA #$80 : STA $211F
+		LDA $7DF5
+		ASL A
+		STA $211B
+		LDA #$00
+		ROL A
+		STA $211B
+		LDA $7DF5
+		ASL A
+		STA $211E
+		LDA #$00
+		ROL A
+		STA $211E
+		LDA #$40 : STA $211F
 		STZ $211F
-		LDA #$70 : STA $2120
+		LDA #$40 : STA $2120
 		STZ $2120
 		LDA $7DF5 : BEQ .NextGameMode
+		LDA.l Mode7Presents_SourcePal+$40 : STA !Color0
+		LDA.l Mode7Presents_SourcePal+$41 : STA !Color0+1
 		JML $00941A
 
 		.NextGameMode
@@ -1474,7 +1499,7 @@ endmacro
 ;================;
 ;UPDATE TIMER GFX;
 ;================;
-UPDATE_TIMER:
+	UPDATE_TIMER:
 		REP #$20				; A 16-bit
 		STZ $00					; 100s
 		STZ $02					; 10s
@@ -1533,7 +1558,7 @@ UPDATE_TIMER:
 		PLB					; restore bank
 		RTL					; return
 
-DRAW_TIMER:
+	DRAW_TIMER:
 		SEP #$20
 		LDA !MegaLevelID : BNE .MegaLevel
 
@@ -1918,6 +1943,7 @@ MAIN_MENU:
 
 
 		..playerstuff
+		STZ !P2Entrance-$80				; > no entrance anim
 		LDA #$00 : STA !MultiPlayer			;\
 		LDA #$02 : STA !MarioBehind			; |
 		LDA !GameMode : PHA				; |
@@ -2097,15 +2123,15 @@ MAIN_MENU:
 
 
 		.SkyGradient
-		; R max and R min
+		; R min and R max
 		db $06
 		db $10
 
-		; G max and G min
+		; G min and G max
 		db $05
 		db $1B
 
-		; B max and B min
+		; B min and B max
 		db $1D
 		db $1F
 
@@ -2808,6 +2834,7 @@ MAIN_MENU:
 		BIT $16 : BPL ..nochoice
 		JSL LoadFileSRAM
 		STZ $6109
+		LDA #$80 : STA !SPC3
 		LDA #$0B : STA !GameMode
 		STZ !HDMA
 		RTS
@@ -2878,6 +2905,7 @@ MAIN_MENU:
 
 		JSL LoadFileSRAM
 		STZ $6109				; go directly to realm select
+		LDA #$80 : STA !SPC3
 		LDA #$0B : STA !GameMode
 		RTS
 
@@ -3068,7 +3096,7 @@ MAIN_MENU:
 		.Init
 		ORA #$80 : STA !MenuState
 
-		LDA #$10 : TSB !2131
+	;	LDA #$10 : TSB !2131
 		LDA #$C0 : TSB !HDMA
 
 		STZ !AnimToggle			; make sure CCDMA doesn't black bar by putting limit at 2KB/frame
@@ -3232,7 +3260,10 @@ MAIN_MENU:
 		STA !Mode7CenterY
 		LDA !TimerSeconds
 		CMP #$0980 : BEQ ..kill
-		CMP #$0780 : BCC ..done
+		CMP #$0780 : BCS ..move
+		SEP #$30
+		RTS
+
 		..move
 		SBC #$0780
 		STA $00
@@ -3275,6 +3306,7 @@ MAIN_MENU:
 	+	BRA ..done
 		..kill
 		SEP #$20
+		LDA #$80 : STA !SPC3
 		LDA #$0B : STA !GameMode
 		..done
 		SEP #$30
@@ -3564,7 +3596,6 @@ MAIN_MENU:
 ; $0E - holds character data from font
 ;
 ; $0200 - virtual !BigRAM
-
 
 		.SA1
 		PHB							;\ wrapper start

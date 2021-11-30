@@ -85,6 +85,8 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 	%MapDef(CircleCenterX,		2)
 	%MapDef(CircleCenterY,		2)
 	%MapDef(ButtonTimer,		2)
+	%MapDef(MapCheckpointX,		1)
+	%MapDef(MapCheckpointTargetX,	1)
 	%MapDef(CircleTimer,		1)
 	%MapDef(PrevTranslevel,		2)
 	%MapDef(MapUpdateHUD,		4)
@@ -168,15 +170,21 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 	org $0087A7
 		NOP #3			; org: STA $420B
 
+	org $009329+($0B*2)
+		dw LevelFade
 	org $009329+($0D*2)
 		dw LevelToOverworld	; org: dw $9F6F
+	org $009329+($0F*2)
+		dw LevelFade		; org: dw $9F37
+	org $009329+($13*2)
+		dw LevelFade		; org: dw $9F37
 	org $009329+($15*2)
 		dw OverworldToLevel	; org: dw $9F6F
 
+	org $009F37
+		BRA $06 : NOP #6
+	warnpc $009F3F
 
-	org $009F53
-		JSL SetBrightness		;\ org: STA !2100 : CMP $9F33,y
-		NOP #2				;/
 
 	org $00A134
 	;	LDA #$0000		; coords for base OW position
@@ -227,8 +235,47 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		LDA #$FF : STA !Mosaic
 		RTS
 
+	LevelFade:
+		LDY $6DAF
+		LDA !GameMode
+		CMP #$0B : BEQ .Slow
+		LDA $741A : BNE .Quick
 
+		.Slow
+		LDA $13
+		LSR A : BCC .Return
+		LDA !2100
+		CLC : ADC $9F2F,y
+		STA !2100
+		ASL #4
+		EOR #$F0
+		ORA #$0F
+		STA !Mosaic
+		LDA !2100 : BEQ .End
+		BRA +
 
+		.Quick
+		LDA #$0F : STA !Mosaic
+		LDA !2100
+		CLC : ADC .QuickFadeTable,y
+		BPL $02 : LDA #$00
+		CMP #$0F
+		BCC $02 : LDA #$0F
+		STA !2100
+		CMP #$00 : BEQ .End
+	+	CMP #$0F : BCC .Return
+
+		.End
+		INC !GameMode
+		TYA
+		EOR #$01
+		STA $6DAF
+
+		.Return
+		RTS
+
+		.QuickFadeTable
+		db $01,$FE
 
 
 	warnpc $00A1A6
@@ -301,20 +348,6 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 	incsrc "Data/MapLightPoints.asm"
 
 
-
-
-	SetBrightness:
-		STA !2100
-		LDX !GameMode
-		CPX #$0B : BNE +
-		PHA
-		AND #$0F
-		EOR #$0F
-		ASL #4
-		STA !Mosaic
-		PLA
-	+	CMP $9F33,y
-		RTL
 
 
 ; VRAM map:
@@ -443,7 +476,7 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		STZ $022A,x					; end BG2 coords table
 		REP #$20					;\
 		LDA $1A : STA $0226,x				; | make sure map part has the correct BG2 coords
-		LDA $1A : STA $0228,x				;/
+		LDA $1C : STA $0228,x				;/
 
 		..updatemirrors
 		TXA
@@ -677,6 +710,7 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		JSR OAM_sort
 		+
 
+
 	.CircleTest
 	LDA !P1MapX
 	CLC : ADC #$0008
@@ -750,16 +784,41 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		JMP CharMenu
 		.NoCharMenu
 
-		LDA !WarpPipe : BNE ..return
-		LDA $6DA6 : BPL +
-		LDA !Translevel : BEQ +
-		BRA ++
-		+
+		LDA !WarpPipe : BEQ $03 : JMP .Return
+		LDX !Translevel : BNE .Level
+		LDA #$14
+		STA !MapCheckpointX
+		STA !MapCheckpointTargetX
+		BRA .CheckPipe
+
+
+	; X = translevel num / index
+		.Level
+		LDA !MapCheckpointX
+		CMP !MapCheckpointTargetX
+		BEQ ..same
+		BCS ..dec
+	..inc	CLC : ADC #$04
+	..dec	DEC #2
+		STA !MapCheckpointX
+		..same
+
+
+		LDA $6DA8
+		AND #$30 : BEQ ..noLR
+		LDA !MapCheckpointTargetX : BNE ..0
+		LDA #$14 : STA !MapCheckpointTargetX
+		BRA ..noLR
+	..0	STZ !MapCheckpointTargetX
+		..noLR
+
+		LDA $6DA6 : BPL .CheckPipe
+		BRA .LoadLevel
+
+		.CheckPipe
 		LDA $6DA6
-		AND #$20 : BEQ +
-
+		AND #$20 : BNE $03 : JMP .P1OpenMenu
 		LDA #$03 : STA !SPC4
-
 		REP #$10
 		JSR GetSpriteIndex
 		BCC $03 : LDX #$0000
@@ -773,22 +832,34 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		LDA !P2MapY : STA !WarpPipeP2Y
 		LDA !P2MapY+1 : STA !WarpPipeP2Y+1
 		STZ !WarpPipeTimer
-		BRA +
+		BRA .P1OpenMenu
 
-	++	LDA #$15 : STA !GameMode
+	; X still has to be translevel num here
+		.LoadLevel
+		LDA #$15 : STA !GameMode
 		LDA #$02 : STA !SPC1
 		LDA #$80 : STA !SPC3
 		REP #$20
 		LDA !P1MapX : STA !SRAM_overworldX
 		LDA !P1MapY : STA !SRAM_overworldY
 		SEP #$20
+		BIT !LevelTable1,x : BVC ..nocheckpoint
+		LDA !MapCheckpointTargetX : BEQ ..nocheckpoint
+		..checkpoint
+		LDA #$01 : BRA ..w
+		..nocheckpoint
+	;	LDA !LevelTable1,x
+	;	AND.b #$40^$FF : STA !LevelTable1,x
+		LDA #$00
+	..w	STA !LoadCheckpoint
+		STA $73CE
+
 		JSL !SaveGame
 
-		..return
+		.Return
 		PLP
 		PLB
 		RTL
-		+
 
 		.P1OpenMenu
 		LDA $6DA6
@@ -1016,78 +1087,6 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		LDY.w #!VRAMtable+$2FE
 		MVP $40,$40
 		RTS
-
-
-
-
-
-	Window:
-;		LDA.b #.SNES : STA $0183
-;		LDA.b #.SNES>>8 : STA $0184
-;		LDA.b #.SNES>>16 : STA $0185
-;		LDA #$D0 : STA $2209
-;	-	LDA $018A : BEQ -
-;		STZ $018A
-
-		PLP				;\
-		PLB				; | Restore stuff and return
-		RTL				;/
-
-
-
-
-		.SNES
-		PHK : PLB
-		SEP #$30
-
-		LDA #$3F : TRB $40		;\ no color math
-		STZ $44				;/
-		LDA #$22 : STA $41		;\ hide BG1/BG2 inside window, show BG3 ONLY inside window
-		LDA #$03 : STA $42		;/
-		STZ $43				; > enable sprites within window
-		STZ $4324			; bank 0x00 for both channels
-		REP #$20
-		LDA #$2601 : STA $4320		; > regs 2126 and 2127
-		LDA #$0200 : STA !HDMA2source	; > table at $0200
-
-		LDA #$00FF			;\
-		STA $0201			; |
-		STA $0204			; | Default window table (no window)
-		STA $0207			; |
-		STA $020A			;/
-
-		SEP #$20
-		LDA #$04 : TSB !HDMA		; Enable HDMA
-
-		LDA #$07 : STA $0200		;\
-		LDA #$40			; |
-		STA $0203			; | Base windowing table
-		STA $0206			; |
-		LDA #$01 : STA $0209		; |
-		STZ $020C			;/
-
-		LDA !CharMenu : BEQ ..R		;\
-		LDA #$07 : STA $0200		; |
-		LDA #$70			; |
-		STA $0203			; |
-		LDA #$01 : STA $0206		; |
-		STZ $0209			; | Char menu windowing table
-		STZ $0202			; |
-		STZ $0204			; |
-		STZ $0208			; |
-		LDA #$FF			; |
-		STA $0201			; |
-		STA $0207			; |
-		LDA !CharMenuSize		; |
-		STA $0205			; |
-		LDA #$22			; |
-		STA $41				; |
-		STA $42				; |
-		STZ $43				; |
-		LDA !CharMenu			; |
-		LSR A : BCC ..R			; > Disable sprite window when char menu is fully open
-		LDA #$02 : STA $43		; |
-	..R	RTL				;/
 
 
 

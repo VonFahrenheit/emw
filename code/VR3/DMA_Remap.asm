@@ -316,14 +316,15 @@ STA $4315
 org $00A381
 LDY #$02
 
-org $00A39A
-STA $4310
+; these are overwritten by lunar magic and GFX_Loader
+;org $00A39A
+;STA $4310
 
-org $00A39F
-STY $4314
+;org $00A39F
+;STY $4314
 
-org $00A3A2
-LDX #$02
+;org $00A3A2
+;LDX #$02
 
 org $00A3AF
 STA $4312

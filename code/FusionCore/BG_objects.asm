@@ -2,6 +2,18 @@
 
 
 
+; $45	16-bit	left border
+; $47	16-bit	right border
+; $49	16-bit	top border
+; $4B	16-bit	bottom border
+; $4D	16-bit	---- (can be used internally by BG objects)
+; $4F	16-bit	---- (can be used internally by BG objects)
+; $51	8-bit	number of cables that have been rendered
+; $52	8-bit	which cable (from level list) is being processed
+; $53	16-bit	current tile being rendered to (carries across multiple cables)
+
+
+
 BG_OBJECTS:
 namespace BG_OBJECTS
 
@@ -20,9 +32,41 @@ namespace BG_OBJECTS
 		LDA #$41
 		PHA : PLB
 		REP #$30
+
+		LDA $1A						;\
+		AND #$FFF8					; |
+		SEC : SBC #$0010				; | +1
+		BPL $03 : LDA #$0000				; |
+		STA $45						; |
+		LDA $1A						; |
+		AND #$FFF8					; |
+		CLC : ADC #$0118				; | +1
+		STA $47						; |
+		LDA $1C						; |
+		AND #$FFF8					; | zip box border
+		SEC : SBC #$0004				; |
+		BPL $03 : LDA #$0000				; |
+		AND #$FFF8					; |
+		STA $49						; |
+		LDA $1C						; |
+		AND #$FFF8					; |
+		CLC : ADC #$00EC				; |
+		AND #$FFF8					; |
+		STA $4B						;/
+
+		STZ $51						; clear number of cable renders
+		LDA #$FFFE : STA $53				; reset cable tile count
+		LDA #$0000
+		STA !CableCacheX
+		STA !CableTilemapIndex
+
 		LDX #$0000
 	.Loop	LDA !BG_object_Type,x
 		AND #$00FF : BEQ .Next
+		STA $00						; store type num
+		CMP #$0004 : BNE ..notcable
+		INC $52						; +1 cable call
+		..notcable
 		LDA !BG_object_X,x				;\
 		SBC $1A						; |
 		ADC #$0100					; |
@@ -32,12 +76,8 @@ namespace BG_OBJECTS
 		ADC #$0100					; |
 		CMP #$0300 : BCS .Next				;/
 
-		; GET POINTER TO BG_OBJECT CODE HERE
-
-
-		STX $00
-		LDA !BG_object_Type,x
-		AND #$00FF
+		LDA $00						; A = type num
+		STX $00						; $00 = index
 		DEC A
 		ASL A
 		CMP.w #.Ptr_end-.Ptr : BCS .Next
@@ -49,6 +89,27 @@ namespace BG_OBJECTS
 		TAX
 		CPX.w #(!BG_object_Size)*(!BG_object_Count) : BCC .Loop
 
+
+		.CCDMA						;\
+		SEP #$30					; |
+		LDA $53+1 : BMI ..fail				; |
+		LDA.b #!VRAMbank				; |
+		PHA : PLB					; |
+		REP #$30					; |
+		JSL !GetBigCCDMA : BCS ..fail			; |
+		LDA $53						; |
+		INC #2						; | run CCDMA if anything was rendered this frame
+		ASL #4						; |
+		STA !CCDMAtable+$00,x				; |
+		LDA.w #!GFX_buffer : STA !CCDMAtable+$02,x	; |
+		LDA.w #!GFX_buffer>>16 : STA !CCDMAtable+$04,x	; |
+		LDA #$03C0*$10 : STA !CCDMAtable+$05,x		; |
+		SEP #$20					; |
+		LDA #$15 : STA !CCDMAtable+$07,x		; |
+		..fail						;/
+
+
+
 		PLP
 		PLB
 		RTS
@@ -56,9 +117,12 @@ namespace BG_OBJECTS
 
 
 		.Ptr
-		dw Bush
-		dw Window
-		dw Cannon
+		dw Bush			; 01
+		dw Window		; 02
+		dw Cannon		; 03
+		dw Cable		; 04
+		dw Pole			; 05
+		dw Pole			; 06
 		..end
 
 
@@ -78,6 +142,8 @@ incsrc "SpriteSize.asm"
 incsrc "BG_objects/Bush.asm"
 incsrc "BG_objects/Window.asm"
 incsrc "BG_objects/Cannon.asm"
+incsrc "BG_objects/Cable.asm"
+incsrc "BG_objects/Pole.asm"
 
 
 
@@ -90,27 +156,43 @@ incsrc "BG_objects/Cannon.asm"
 ; $04:	starting VRAM X address
 ; $06:	current VRAM X address
 ; $08:	ending VRAM X address
-; $0A:	width
+; $0A:	starting X coordinate
 ; $0C:	ending VRAM Y address
 ; $0E:	location on page 3
 
+; $45:	left border of zip box
+; $47:	right border of zip box
+; $49:	top border of zip box
+; $4B:	bottom border of zip box
+
+
 	TileUpdate:
 
-		.Setup						;\
-		LDA !BG_object_X,x				; |
-		LSR #3						; |
-		AND #$003F					; | base VRAM X address
-		BIT #$0020					; |
+		.Setup
+
+
+
+
+
+		LDA !BG_object_X,x				;\
+		AND #$FFF8					; | base X position
+		STA $9A						;/
+		STA $0A						; > keep this in $0A
+		LSR #3						;\
+		AND #$003F					; |
+		BIT #$0020					; | base VRAM X address
 		BEQ $03 : ORA #$0400				; |
 		AND #$041F					; |
 		STA $04						;/
 		LDA !BG_object_Y,x				;\
-		AND #$00F8					; | base VRAM Y address
-		ASL #2						; |
+		AND #$FFF8					; | base Y position
+		STA $98						;/
+		AND #$00F8					;\
+		ASL #2						; | base VRAM Y address
 		STA $02						;/
-		LDA !BG_object_W,x				;\ W VRAM offset
-		AND #$00FF : STA $0A				;/
-		CLC : ADC $04					;\
+		LDA !BG_object_W,x				;\ ending VRAM address (X + W)
+		AND #$00FF					;/
+		ADC $04						;\
 		LDY $04						; |
 		CPY #$0400 : BCC ..000				; | ending X address
 	..400	CMP #$0420 : BCS ..420				; | (account for double tilemap)
@@ -122,6 +204,7 @@ incsrc "BG_objects/Cannon.asm"
 		AND #$00FF					; |
 		ASL #5						; | ending Y address
 		ADC $02						; |
+		AND #$03E0					; |
 		STA $0C						;/
 
 		LDA !BG_object_Tile,x
@@ -129,7 +212,7 @@ incsrc "BG_objects/Cannon.asm"
 		ORA #$0300
 		STA $0E
 		; HERE: GET LOCATION ON PAGE 3
-		; STORE TO $0E (tttttttt + ------tt)
+		; STORE TO $0E (tttttttt lo + ------TT hi)
 
 
 ; if...
@@ -156,10 +239,25 @@ incsrc "BG_objects/Cannon.asm"
 		LDY #$0000					; Y = source data index
 		LDA $04 : STA $06				; start new row
 		..loop						;\
+		LDA $9A						; |
+		CMP $45 : BCC ..next				; |
+		CMP $47 : BCS ..next				; | check tiles individually
+		LDA $98						; |
+		CMP $49 : BCC ..next				; |
+		CMP $4B : BCS ..next				;/
+		..valid						;\
 		LDA $06						; |
 		ORA $02						; | write VRAM address
 		ORA !BG1Address					; |
 		STA !VRAMbase+!TileUpdateTable+2,x		;/
+		LDA ($00),y					;\
+		CLC : ADC $0E					; | tile number + yxpccctt
+		STA !VRAMbase+!TileUpdateTable+4,x		;/
+		INX #4						; increment write index
+		..next						;\
+		LDA $9A						; | x+8
+		CLC : ADC #$0008				; |
+		STA $9A						;/
 		LDA $06						;\ increment address
 		INC A						;/
 		CMP #$0020 : BEQ ..400				;\
@@ -167,17 +265,17 @@ incsrc "BG_objects/Cannon.asm"
 	..000	LDA #$0000 : BRA +				; |
 	..400	LDA #$0400					;/
 	+	CMP $08 : BNE +					;\
+		LDA $0A : STA $9A				; > reset x
+		LDA $98						;\
+		CLC : ADC #$0008				; > y+8
+		STA $98						; |
 		LDA $02						; |
-		CLC : ADC #$0020				; |
-		AND #$03E0					; | if at the end, start a new row
+		CLC : ADC #$0020				; | if at the end, start a new row
+		AND #$03E0					; |
 		STA $02						; |
 		LDA $04						; |
 	+	STA $06						;/
-		LDA ($00),y					;\
-		CLC : ADC $0E					; | tile number + yxpccctt
-		STA !VRAMbase+!TileUpdateTable+4,x		;/
 		INY #2						; increment read index
-		INX #4						; increment write index
 		LDA $02						;\ if at the end, done
 		CMP $0C : BEQ ..done				;/
 		BRA ..loop					; loop

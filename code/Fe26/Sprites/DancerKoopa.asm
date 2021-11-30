@@ -165,32 +165,26 @@ DancerKoopa:
 
 	Interaction:
 		JSL !GetSpriteClipping04		;\
-		SEC : JSL !PlayerClipping		; |
+		JSL P2Standard				; |
 		BCC .NoContact				; |
+		BEQ .NoContact				; |
 		LSR A : BCC .P2				; |
-	.P1	LDY #$00				; |
-		PHA					; | check for player contact
-		LDA !SpriteDisP1,x : BNE $03		; |
-		JSR Interact				; |
+	.P1	PHA					; | body interaction
+		LDY #$00 : JSR Interact			; |
 		PLA					; |
 	.P2	LSR A : BCC .NoContact			; |
-		LDA !SpriteDisP2,x : BNE .NoContact	; |
-		LDY #$80				; |
-		JSR Interact				; |
+		LDY #$80 : JSR Interact			; |
 		.NoContact				;/
 
-		JSL P2Attack				;\
-		BCC .NoHit				; |
-	;	LSR A : BCC .NoHit			; | Check for hitbox contact
-		JSR Interact_TakeDamage			; |
+		JSL P2Attack : BCC .NoHit		;\
+		JSR Interact_TakeDamage			; | check for hitbox contact
 		.NoHit					;/
 
 		LDA $3200,x				;\
-		CMP #$36 : BEQ +			; |
-		PLB					; | Stop right here if sprite is dead
-		RTL					; |
-		+					;/
-
+		CMP #$36 : BEQ Graphics			; |
+		LDA #$0A : STA !SpriteAnimIndex		; | shell img on last frame before transforming into new sprite
+		STZ !SpriteAnimTimer			; |
+		LDA #$01 : STA $BE,x			;/
 
 
 	Graphics:
@@ -237,19 +231,11 @@ DancerKoopa:
 
 		LDA !SpriteAnimIndex
 		CMP #$05 : BEQ .Shell
-		CMP #$09 : BNE .NotShell
+		CMP #$09 : BCC .NotShell
 
 		.Shell
-		LDA !GFX_Shell : STA $00
-		ASL A
-		ROL A
-		AND #$01
-		STA !SpriteProp,x
-		LDA $00
-		AND #$F0 : TRB $00
-		ASL A
-		ORA $00
-		STA !SpriteTile,x
+		LDA !GFX_Shell_tile : STA !SpriteTile,x
+		LDA !GFX_Shell_prop : STA !SpriteProp,x
 		.NotShell
 
 		JSL LOAD_PSUEDO_DYNAMIC			; Draw GFX
@@ -262,28 +248,6 @@ DancerKoopa:
 
 
 	Interact:
-		LDA #$10 : JSL DontInteract		; set don't interact
-		LDA !SpriteYSpeed,x
-		CMP !P2YSpeed-$80,y : BMI .HurtSprite
-
-		.HurtPlayer
-		TYA
-		CLC : ROL #2
-		INC A
-		JSL !HurtPlayers
-		RTS
-
-		.HurtSprite
-		JSL StompSound
-		JSR .TakeDamage
-		LDA !P2Crush-$80,y : BEQ .Stomp
-		.Crush
-		JSL SPRITE_SPINKILL
-		.Stomp
-		JSL P2Bounce				; bounce
-		.Return
-		RTS
-
 		.TakeDamage
 		PHY
 		LDY #$07				;\
@@ -291,13 +255,10 @@ DancerKoopa:
 		CMP #$13				; |
 		BNE $02 : DEY #2			; |
 		LDA !ExtraBits,x			; |
-		PHA					; |
-		AND #$04				; | Change sprite number to proper koopa color
+		AND #$04				; | change sprite number to proper koopa color
 		BNE $01 : DEY				; |
-		PLA					; |
-		AND.b #$0C^$FF				; |
-		STA !ExtraBits,x			; |
 		TYA : STA $3200,x			; |
+		STZ !ExtraBits,x			; |
 		LDA #$09 : STA $3230,x			; |
 		STZ !NewSpriteNum,x			;/
 		JSL !ResetSprite			;\ Reset stuff
@@ -328,21 +289,23 @@ DancerKoopa:
 		dw .PoseTM1 : db $10,$07		; 08
 	.Dead
 		dw .DeadTM : db $FF,$09			; 09
+	.Hit
+		dw .HitTM : db $FF,$0A			; 0A
 
 
 
 	.ShuffleTM0
 		dw $0008
 		db $22,$00,$F0,$00
-		db $22,$00,$00,$08
+		db $22,$00,$00,$04
 	.ShuffleTM1
 		dw $0008
-		db $22,$00,$F1,$02
-		db $22,$00,$01,$0A
+		db $22,$00,$EF,$00
+		db $22,$00,$FF,$06
 	.ShuffleTM2
 		dw $0008
-		db $22,$00,$F1,$04
-		db $22,$00,$01,$0C
+		db $22,$00,$EF,$00
+		db $22,$00,$FF,$08
 
 	.JumpTM
 		dw $0004
@@ -350,16 +313,20 @@ DancerKoopa:
 
 	.PoseTM0
 		dw $0008
-		db $22,$00,$F0,$06
-		db $22,$00,$00,$0E
+		db $22,$00,$F0,$02
+		db $22,$00,$00,$0A
 	.PoseTM1
 		dw $0008
-		db $62,$00,$F0,$06
-		db $62,$00,$00,$0E
+		db $62,$00,$F0,$02
+		db $62,$00,$00,$0A
 
 	.DeadTM
 		dw $0004
 		db $A2,$00,$01,$00
+
+	.HitTM
+		dw $0004
+		db $22,$00,$00,$02
 
 
 	namespace off

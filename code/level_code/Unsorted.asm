@@ -744,7 +744,7 @@ LoadCameraBox:
 
 
 
-InitCameraBox:
+	InitCameraBox:
 		PHP			; this push order matters, don't change it
 		PHB : PHK : PLB
 		REP #$20
@@ -5063,6 +5063,7 @@ SCROLL_UPRIGHT:	LDY #$00
 		REP #$20
 		LDA !Level+2
 		STA $1C
+		STA $7464
 		LDA #$0000
 		STA !HDMAptr+0
 		STA !HDMAptr+1
@@ -5072,9 +5073,11 @@ SCROLL_UPRIGHT:	LDY #$00
 		.ScrollRight
 		PHP
 		REP #$20
+		STZ $1C
+		STZ $7464
 		LDA !Level+2
 		STA $1A
-
+		STA $7462
 		SEC : SBC !MarioXPosLo
 		CMP #$0004 : BCS +
 		LDA $1A
@@ -5841,24 +5844,22 @@ LightningBolt:
 ; 07-08: MSG number
 TalkOnce:
 		STA $00
-		LDA ($00) : TAY				; ID in Y
-		LDA.w .Table,y				;\ only trigger message once
+		LDA ($00) : TAX				; ID in X
+		LDA.l .BitTable,x			;\ only trigger message once
 		AND $6DF5 : BNE .Return			;/
 
-		PHY					; ID on stack
+		PHX					; ID on stack
 		INC $00
 		LDA ($00)
 		STA $04					; Xlo in $04
 		STA $09					; Xhi in $0A
 		INC $00
 		INC $00
-		LDA ($00)
-		STA $05					; Ylo in $05
+		LDA ($00) : STA $05			; Ylo in $05
 		XBA : STA $0B				; Yhi in $0B
 		INC $00
 		INC $00
-		LDA ($00)
-		STA $06					; dimensions in $06-$07
+		LDA ($00) : STA $06			; dimensions in $06-$07
 		INC $00
 		INC $00
 		LDA ($00) : PHA				; push message number
@@ -5877,23 +5878,24 @@ TalkOnce:
 		LDA !P2Blocked				; |
 		AND #$04				; |
 		TSB $00					; |
-	+	LDA $00 : BEQ .ReturnP			;/
+	+	LDA $00					;/
 		REP #$20
+		BEQ .ReturnP
 		PLA : STA !MsgTrigger			; trigger MSG
-		PLY
-		LDA.w .Table,y				;\ mark message as triggered
-		TSB $6DF5				;/
+		PLX
+		LDA.l .BitTable,x : TSB $6DF5		; mark message as triggered
 		RTL
 
 		.ReturnP
 		REP #$20
-		PLY
+		PLA
+		PLX
 
 		.Return
 		RTL
 		
 
-		.Table
+		.BitTable
 		dw $0001,$0002,$0004,$0008
 		dw $0010,$0020,$0040,$0080
 		dw $0100,$0200,$0400,$0800
@@ -6454,7 +6456,7 @@ WARP_BOX:
 
 
 
-EXIT:
+	EXIT:
 		.Exit
 		SEP #$20
 		LDA #$06 : STA $71
@@ -6517,7 +6519,7 @@ EXIT:
 
 
 ; Same as the normal one, except it fades the music upon exit
-EXIT_FADE:
+	EXIT_FADE:
 		.Right
 		JSL EXIT_Right
 		BRA .Exit
@@ -6543,7 +6545,7 @@ EXIT_FADE:
 
 
 
-END:
+	END:
 		.Right
 		LDX !P2Status-$80 : BNE +
 		BIT !P2XPosLo-$80 : BMI +
@@ -6588,6 +6590,7 @@ END:
 	+	SEP #$20
 		RTL
 
+
 		.End
 		SEP #$20
 		LDA #$02 : STA $73CE			; set this
@@ -6599,12 +6602,11 @@ END:
 		INC $7F2E				; > you've now beaten one more level (only once/level)
 		ORA #$80				; | Set clear, remove midway
 		..beaten				; |
-		AND.b #$60^$FF				; > clear checkpoint
+	;	AND.b #$60^$FF				; > clear checkpoint
 		STA !LevelTable1,x			;/
 		STZ !LevelTable2,x			; > clear checkpoint level
 		STZ $73CE				; > clear midway flag
 		..leveldone
-
 
 		.SaveTime				;\
 		LDA !Difficulty				; | only save time on time mode
@@ -6651,7 +6653,6 @@ END:
 		ORA $02					; |
 		STA !LevelTable5,x			; |
 		..nosave				;/
-
 
 		.UnlockNextLevel			;\
 		REP #$10				; |

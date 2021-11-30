@@ -140,14 +140,10 @@ incsrc "Defines.asm"
 		ASL A				;\
 		CLC : ADC $0E			; | All entries are 24-bit, so multiply by 3
 		TAY				;/
-		LDA $E000,y			;\
-		STA $65				; |
-		LDA $E001,y			; |
-		STA $66				; | 16 bit mode saves a bit of space here
-		LDA $E600,y			; |
-		STA $68				; |
-		LDA $E601,y			; |
-		STA $69				;/
+		LDA $E000,y : STA $65		;\
+		LDA $E001,y : STA $66		; | 16 bit mode saves a bit of space here
+		LDA $E600,y : STA $68		; |
+		LDA $E601,y : STA $69		;/
 		BRA +				; > Skip a few leftover bytes
 	org $05D8E0
 		+				; Execute the rest of the code here
@@ -229,12 +225,13 @@ incsrc "GameMode14.asm"
 
 
 
-LOAD_VRAM_MAP:
+	LOAD_VRAM_MAP:
 		REP #$30
 		PHX
 		LDX $0E
 		LDA.l LEVEL_VRAM_map,x
 		AND #$00FF
+		STA !VRAMmap
 		CMP #$0001 : BEQ .Map01
 		CMP #$0002 : BNE .Map00
 
@@ -279,6 +276,7 @@ LOAD_VRAM_MAP:
 		PLX
 		LDA $0E
 		RTL
+
 
 
 	LOAD_SCREEN_MODE:
@@ -643,40 +641,187 @@ print "Level code handler inserted at $", pc, "."
 		JML [$0000]				; execute pointer
 		.Return
 		PLB
-
 		SEP #$30
-		JSL GAMEMODE14_Camera			; set scroll values for BG2
+		JSL GAMEMODE14_Camera				; set scroll values for BG2
 		REP #$20
 		LDA $20
 		SEC : SBC #$0008
-		STA !BG2ZipColumnY			; store first value
+		STA !BG2ZipColumnY				; store first value
 
-		JSL $05809E				; move this to here, after the camera has been initialized
+		JSL $05809E					; move this to here, after the camera has been initialized
 
 
-		SEP #$30				;
-		PLB					; > End of bank wrapper
-		PEA $A5F3-1				;\ Set return address and execute subroutine
-		JML $00919B				;/
+		SEP #$30					; all regs 8-bit
+		LDA !MarioDirection : PHA			;\
+		LDA !P2Direction-$80 : PHA			; | preserve player directions
+		LDA !P2Direction : PHA				;/
+
+		LDA $741A : BNE +
+		LDA #$3F : STA !P2Entrance-$80
+		LDA #$4F : STA !P2Entrance
+		+
+
+		LDA.b #$08 : STA $3180				;\
+		LDA.b #$80 : STA $3181				; | run PCE
+		LDA.b #$15 : STA $3182				; |
+		JSR $1E80					;/
+		LDA #$01 : STA !ProcessingSprites		;\
+		LDA.b #$00 : STA $3180				; |
+		LDA.b #$80 : STA $3181				; | run Fe26
+		LDA.b #$16 : STA $3182				; |
+		JSR $1E80					; |
+		LDA #$00 : STA !ProcessingSprites		;/
+		PLA : STA !P2Direction				;\
+		PLA : STA !P2Direction-$80			; | restore player directions
+		PLA : STA !MarioDirection			;/
+
+		JSL !BuildOAM					; put tiles on-screen
+
+		REP #$20					;\
+		LDA !OAMindex_p0_prev : STA !OAMindex_p0	; |
+		LDA !OAMindex_p1_prev : STA !OAMindex_p1	; | keep the just-drawn stuff from being cleared
+		LDA !OAMindex_p2_prev : STA !OAMindex_p2	; |
+		LDA !OAMindex_p3_prev : STA !OAMindex_p3	;/
+
+		LDA #$0100
+		CMP !LightR : BNE ..shade
+		CMP !LightG : BNE ..shade
+		CMP !LightB : BEQ ..noshade
+		..shade
+		LDA.w #.PreShade : STA $3180
+		LDA.w #.PreShade>>8 : STA $3181
+		SEP #$20
+		JSR $1E80
+		STZ $2121
+		REP #$30
+		LDA #$2202 : STA $4300
+		LDA.w #!ShaderInput : STA $4302
+		LDA.w #!ShaderInput>>8 : STA $4303
+		LDA #$0200 : STA $4305
+		LDA #$0001 : STA $420B
+		..noshade
+		SEP #$30
+		LDA.b #.InitShader : STA $3180
+		LDA.b #.InitShader>>8 : STA $3181
+		LDA.b #.InitShader>>16 : STA $3182
+		JSR $1E80
+
+		PLB						; > end of bank wrapper
+		PEA $A5F3-1					;\ set return address and execute subroutine
+		JML $00919B					;/
+
+
+
+	.InitShader						;\
+		PHB : PHK : PLB					; |
+		PHP						; |
+		REP #$30					; |
+		LDX.w #!PaletteRGB				; |
+		LDY.w #!ShaderInput				; | copy RGB palette to shader input
+		LDA.w #$01FF					; |
+		MVN !ShaderInput>>16,$00			; |
+		PLP						; |
+		PLB						; |
+		RTL						;/
+
+
+
+	.PreShade
+		PHB : PHK : PLB
+		PHP
+		STZ $2250
+		REP #$30
+		LDX #$FFFE : BRA ..next
+
+		..loop
+		LDA !PaletteRGB,x : STA $04
+		AND #$001F : STA $2251
+		LDA !LightR : STA $2253
+		NOP : BRA $00
+		LDA $2307
+		CMP #$001F
+		BCC $03 : LDA #$001F
+		STA $00
+		LDA $04
+		AND #$001F*$20 : STA $2251
+		LDA !LightG : STA $2253
+		NOP : BRA $00
+		LDA $2307
+		CMP #$001F*$20
+		BCC $03 : LDA #$001F*$20
+		AND #$001F*$20
+		STA $02
+		LDA $04
+		AND #$001F*$20*$20 : STA $2251
+		LDA !LightB : STA $2253
+		NOP : BRA $00
+		LDA $2307
+		CMP #$001F*$20*$20
+		BCC $03 : LDA #$001F*$20*$20
+		AND #$001F*$20*$20
+		ORA $00
+		ORA $02
+		STA !ShaderInput,x
+
+		..next
+		INX #2
+		CPX #$0200 : BCC ..checkdisable
+		PLP
+		PLB
+		RTL
+
+		..checkdisable
+		TXA
+		BIT #$001F : BNE ..loop
+		TXY
+		LSR #5
+		TAX
+		LDA !ShaderRowDisable,x
+		AND #$00FF : BEQ ..ok
+		TYX
+		LDA !PaletteRGB+$00,x : STA !ShaderInput+$00,x
+		LDA !PaletteRGB+$02,x : STA !ShaderInput+$02,x
+		LDA !PaletteRGB+$04,x : STA !ShaderInput+$04,x
+		LDA !PaletteRGB+$06,x : STA !ShaderInput+$06,x
+		LDA !PaletteRGB+$08,x : STA !ShaderInput+$08,x
+		LDA !PaletteRGB+$0A,x : STA !ShaderInput+$0A,x
+		LDA !PaletteRGB+$0C,x : STA !ShaderInput+$0C,x
+		LDA !PaletteRGB+$0E,x : STA !ShaderInput+$0E,x
+		LDA !PaletteRGB+$10,x : STA !ShaderInput+$10,x
+		LDA !PaletteRGB+$12,x : STA !ShaderInput+$12,x
+		LDA !PaletteRGB+$14,x : STA !ShaderInput+$14,x
+		LDA !PaletteRGB+$16,x : STA !ShaderInput+$16,x
+		LDA !PaletteRGB+$18,x : STA !ShaderInput+$18,x
+		LDA !PaletteRGB+$1A,x : STA !ShaderInput+$1A,x
+		LDA !PaletteRGB+$1C,x : STA !ShaderInput+$1C,x
+		LDA !PaletteRGB+$1E,x : STA !ShaderInput+$1E,x
+		TYA
+		CLC : ADC #$0020
+		TAX
+		JMP ..loop
+
+		..ok
+		TYX
+		JMP ..loop
 
 
 
 
 	.StatusProp
 		..megalevel
-		db $28,$24,$24,$24,$24			; P1 coins
-		db $20,$20,$20,$20,$20,$20		; P1 hearts
-		db $28,$28,$28,$28,$28			;\ Yoshi coins
-		db $28,$28,$28,$28,$28			;/
-		db $20,$20,$20,$20,$20,$20		; P2 hearts
-		db $28,$24,$24,$24,$24			; P2 coins
+		db $28,$24,$24,$24,$24				; P1 coins
+		db $20,$20,$20,$20,$20,$20			; P1 hearts
+		db $28,$28,$28,$28,$28				;\ Yoshi coins
+		db $28,$28,$28,$28,$28				;/
+		db $20,$20,$20,$20,$20,$20			; P2 hearts
+		db $28,$24,$24,$24,$24				; P2 coins
 		..normallevel
-		db $28,$24,$24,$24,$24			; P1 coins
-		db $20,$20,$20,$20,$20,$20		; P1 hearts
-		db $28,$28,$28,$28,$28			;\ Yoshi coins
-		db $28,$28,$28,$28,$28			;/
-		db $20,$20,$20,$20,$20			; P2 hearts
-		db $28,$24,$24,$24,$24,$24		; P2 coins
+		db $28,$24,$24,$24,$24				; P1 coins
+		db $20,$20,$20,$20,$20,$20			; P1 hearts
+		db $28,$28,$28,$28,$28				;\ Yoshi coins
+		db $28,$28,$28,$28,$28				;/
+		db $20,$20,$20,$20,$20				; P2 hearts
+		db $28,$24,$24,$24,$24,$24			; P2 coins
 
 
 
@@ -719,13 +864,6 @@ print "Level code handler inserted at $", pc, "."
 		BCC +						; |
 		STZ $3230,x					; |
 	+	DEX : BPL -					;/
-
-		REP #$30					;\
-		LDX.w #!PaletteRGB				; |
-		LDY.w #!ShaderInput				; | copy RGB palette to shader input
-		LDA.w #$01FF					; |
-		MVN !ShaderInput>>16,$00			; |
-		SEP #$30					;/
 
 		LDX #$00					;\
 		LDY #$00					; | get HSL format palette

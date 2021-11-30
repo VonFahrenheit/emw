@@ -615,9 +615,14 @@ namespace Leeway
 		LDA .XAccHi,x				; |
 		ADC !P2XSpeed				;/
 	++	JSL CORE_SET_XSPEED			; update speed
-		LDA .Direction,x : BMI .Return		;\
+		LDA .Direction,x : BMI .Flip		;\
 		CMP !P2Direction : BEQ .Return		; | update direction
 		STA !P2Direction			;/
+		.Flip
+		LDA !P2XSpeed : BNE ..add
+		LDA .DirSpeedOffset,x : STA !P2XSpeed
+		RTS
+		..add
 		LDA .DirSpeedOffset,x			;\
 		CLC : ADC !P2XSpeed			; |
 		TAY					; | speed boost when turning around
@@ -1516,7 +1521,8 @@ namespace Leeway
 
 		.AnyBlock				;\
 		ASL A : TAY				; |
-		PEA .LoopEnd-1				; |
+		PEI ($0E)				; |
+		PEA .CallReturn-1			; |
 		REP #$20				; |
 		LDA HIT_Ptr+0,y				; |
 		DEC A					; | execute pointer
@@ -1526,6 +1532,11 @@ namespace Leeway
 		LDA #$08 : STA !P2ComboDash		; > set combo dash enable for 8 frames
 		.NoHit					; |
 		RTS					;/
+
+		.CallReturn
+		REP #$20
+		PLA : STA $0E
+		SEP #$20
 
 		.LoopEnd				;\ loop
 		DEX : BPL .Loop				;/
@@ -1755,6 +1766,7 @@ namespace Leeway
 		LDA $3240,x : STA $3240,y	;/
 		PHX				;\
 		TYX				; | reset tables for new sprite
+		STZ !ExtraBits,x		; |
 		JSL !ResetSprite		; |
 		LDA.l CORE_BITS,x
 		CPX #$08 : BCS +

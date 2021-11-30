@@ -106,13 +106,13 @@
 		BRA .EndVert
 		..die
 		LDA #$02 : STA !P2Status
-		LDA !CurrentPlayer
-		INC A
-		TSB !P1Dead
-		LDA !P1Dead
-		AND #$03
-		CMP #$03 : BNE .EndVert
-		LDA #$01 : STA !SPC3
+	;	LDA !CurrentPlayer
+	;	INC A
+	;	TSB !P1Dead
+	;	LDA !P1Dead
+	;	AND #$03
+	;	CMP #$03 : BNE .EndVert
+	;	LDA #$01 : STA !SPC3
 
 		.EndVert
 		LDA !P2XPosHi

@@ -10,6 +10,11 @@
 	Cannon:
 		LDX $00						; X = BG object index
 
+		BIT !BG_object_Misc-1,x : BPL .NoShootBlocks
+		JSR .ShootThroughBlocks
+		.NoShootBlocks
+
+
 		LDA !BG_object_Timer,x				;\
 		AND #$00FF					; | see which code to run
 		STA.l !BigRAM					; > save this here for interaction check
@@ -18,6 +23,7 @@
 		SEP #$20
 		PHB : PHK : PLB
 		LDA #$09 : STA !SPC4
+		LDA #$1F : STA !ShakeTimer
 		LDA #$01
 		STA !P2Direction-$80
 		STA !P2Direction
@@ -52,9 +58,10 @@
 
 
 		.Interact
-		LDA !BG_object_Misc,x
-		AND #$00FF
-		CMP #$0080 : BCS .Return
+		BIT !BG_object_Misc-1,x : BPL ..process
+		RTS
+
+		..process
 		STA.l !BigRAM+2
 		LDA #$0000 : STA.l !BigRAM+4
 		LDA !BG_object_Y,x
@@ -233,6 +240,76 @@
 		PLX						; |
 		..done						; |
 		RTS						;/
+
+
+
+		.ShootThroughBlocks
+		PHX
+		PHB : PHK : PLB
+		LDA !P2XPosLo-$80
+		CLC : ADC #$0014
+		STA $9A
+		TAX
+		LDA !P2YPosLo-$80
+		SEC : SBC #$0004
+		STA $98
+		TAY
+		JSL !GetMap16
+		REP #$30
+		CMP #$0130 : BNE ..nobreak
+		LDA #$0025 : JSL !ChangeMap16
+		JSR .ShatterBlock
+		JSL !GetParticleIndex
+		LDA.w #!prt_smoke16x16 : STA !Particle_Type,x
+		LDA $9A : STA !Particle_XLo,x
+		LDA $98 : STA !Particle_YLo,x
+		LDA #$0017 : STA !Particle_Timer,x
+		..nobreak
+		PLB
+		PLX
+		RTS
+
+
+		.ShatterBlock
+		PHK : PLB
+		SEP #$30
+		LDY #$03
+
+	-	%Ex_Index_X()
+		LDA $9A
+		AND #$F0
+		CLC : ADC .XDisp,y
+		STA !Ex_XLo,x
+		LDA $9B
+		ADC #$00
+		STA !Ex_XHi,x
+		LDA $98
+		AND #$F0
+		CLC : ADC .YDisp,y
+		STA !Ex_YLo,x
+		LDA $99
+		ADC #$00
+		STA !Ex_YHi,x
+		LDA.b #$01+!MinorOffset : STA !Ex_Num,x
+		LDA .XSpeed,y : STA !Ex_XSpeed,x
+		LDA .YSpeed,y : STA !Ex_YSpeed,x
+		STZ !Ex_Data1,x
+		STZ !Ex_Data2,x
+		STZ !Ex_Data3,x
+		DEY : BPL -
+
+		LDA #$07 : STA !SPC4			; shatter block SFX
+		RTS
+
+		.XDisp
+		db $00,$08,$00,$08
+		.YDisp
+		db $00,$00,$08,$08
+		.XSpeed
+		db $02,$03,$02,$03
+		.YSpeed
+		db $F9,$F9,$FB,$FB
+
 
 
 

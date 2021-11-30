@@ -232,6 +232,10 @@ incsrc "Transform_GFX.asm"
 GET_MAP16:
 	PHY				; Preserve Y offset (16-bit)
 	PHA				; Preserve X offset (16-bit)
+
+	STY $98
+	STA $9A
+
 	SEP #$30			; All registers 8-bit
 	LDA $3250,x
 	XBA
@@ -301,6 +305,11 @@ GET_MAP16:
 	.ABSOLUTE
 	STY $00
 	STX $02
+
+	STY $98
+	STX $9A
+
+	SEP #$20
 	LDA $00
 	AND #$F0 : STA $06
 	LDA $02
@@ -794,6 +803,7 @@ GET_VRAM:
 		CLC : ADC #$0007
 		TAX
 		CMP #$0100 : BCC .Loop
+		LDX #$00
 		PLP
 		SEC
 		RTS
@@ -1262,7 +1272,7 @@ HurtP1:		LDA !P2Invinc-$80,y			;\
 		BNE .Return				;/
 
 		LDA !Difficulty				;\
-		AND #$10 : BEQ .NotCrit			; | critical mode sets HP to 1 when player gets hit
+		AND #$10 : BEQ .NotCrit			; | critical mode sets HP to 1 when player gets hit, meaning they'll always die from the damage
 		LDA #$01 : STA !P2HP-$80,y		; |
 		.NotCrit				;/
 
@@ -4578,12 +4588,6 @@ org $05D80B
 org $05D89B
 	JSL LOAD_HIDEOUT_Load		; Hijack level load init
 
-org $05D9D7
-;	JML CHECKPOINTS			; Checkpoint check routine
-;	NOP
-
-	LDA !LevelTable1,x
-	AND #$40
 
 
 ;==========;

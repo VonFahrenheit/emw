@@ -180,30 +180,31 @@ YoshiCoin:
 		SEC : JSL !PlayerClipping
 		BCC .NoContact
 		PHA
-		STZ $3230,x
 		JSR Glitter
+		PLA
+		AND #$02
+		BEQ $02 : LDA #$80
+		STA $04
+		.ParticleShared
+		LDA !SpriteXLo,x : STA $00
+		LDA !SpriteXHi,x : STA $01
+		LDA !SpriteYLo,x : STA $02
+		LDA !SpriteYHi,x : STA $03
 		LDA #$1C : STA !SPC1
+		REP #$20
 		LDA !YoshiCoinCount
 		INC A
 		STA !YoshiCoinCount
+		SEP #$20
 		LDY $3280,x
-		PHX
 		LDA $BE,x : TAX
 		TYA
 		ORA !LevelTable1,x
 		STA !LevelTable1,x
-		PLX
-		PLA
-		LSR A : BCC .P2
-	.P1	LDA !P1CoinIncrease
-		CLC : ADC #$C8
-		STA !P1CoinIncrease
-		BRA .NoContact
-	.P2	LDA !P2CoinIncrease
-		CLC : ADC #$C8
-		STA !P1CoinIncrease
+		JSR SpawnGlitterRing
+		LDX !SpriteIndex
+		STZ $3230,x
 		.NoContact
-
 
 		REP #$20
 		LDA.w #ANIM : STA $04
@@ -211,6 +212,80 @@ YoshiCoin:
 		JSL LOAD_PSUEDO_DYNAMIC
 		PLB
 		RTL
+
+
+
+	!CoinSpinTime = $3F
+
+	SpawnGlitterRing:
+		PHB
+		REP #$20
+		JSL !GetParticleIndex
+		LDA $00 : STA !Particle_XSpeed,x
+		LDA $02 : STA !Particle_YSpeed,x
+		SEP #$20
+		LDA $04 : STA !Particle_YAcc,x
+		LDA #!CoinSpinTime : STA !Particle_Timer,x
+		LDA #!prt_coinglitter : STA !Particle_Type,x
+		JSL !GetParticleIndex
+		LDA $00 : STA !Particle_XSpeed,x
+		LDA $02 : STA !Particle_YSpeed,x
+		SEP #$20
+		LDA #$08 : STA !Particle_XAcc,x
+		LDA $04 : STA !Particle_YAcc,x
+		LDA #!CoinSpinTime : STA !Particle_Timer,x
+		LDA #!prt_coinglitter : STA !Particle_Type,x
+		JSL !GetParticleIndex
+		LDA $00 : STA !Particle_XSpeed,x
+		LDA $02 : STA !Particle_YSpeed,x
+		SEP #$20
+		LDA #$10 : STA !Particle_XAcc,x
+		LDA $04 : STA !Particle_YAcc,x
+		LDA #!CoinSpinTime : STA !Particle_Timer,x
+		LDA #!prt_coinglitter : STA !Particle_Type,x
+		JSL !GetParticleIndex
+		LDA $00 : STA !Particle_XSpeed,x
+		LDA $02 : STA !Particle_YSpeed,x
+		SEP #$20
+		LDA #$18 : STA !Particle_XAcc,x
+		LDA $04 : STA !Particle_YAcc,x
+		LDA #!CoinSpinTime : STA !Particle_Timer,x
+		LDA #!prt_coinglitter : STA !Particle_Type,x
+		JSL !GetParticleIndex
+		LDA $00 : STA !Particle_XSpeed,x
+		LDA $02 : STA !Particle_YSpeed,x
+		SEP #$20
+		LDA #$20 : STA !Particle_XAcc,x
+		LDA $04 : STA !Particle_YAcc,x
+		LDA #!CoinSpinTime : STA !Particle_Timer,x
+		LDA #!prt_coinglitter : STA !Particle_Type,x
+		JSL !GetParticleIndex
+		LDA $00 : STA !Particle_XSpeed,x
+		LDA $02 : STA !Particle_YSpeed,x
+		SEP #$20
+		LDA #$28 : STA !Particle_XAcc,x
+		LDA $04 : STA !Particle_YAcc,x
+		LDA #!CoinSpinTime : STA !Particle_Timer,x
+		LDA #!prt_coinglitter : STA !Particle_Type,x
+		JSL !GetParticleIndex
+		LDA $00 : STA !Particle_XSpeed,x
+		LDA $02 : STA !Particle_YSpeed,x
+		SEP #$20
+		LDA #$30 : STA !Particle_XAcc,x
+		LDA $04 : STA !Particle_YAcc,x
+		LDA #!CoinSpinTime : STA !Particle_Timer,x
+		LDA #!prt_coinglitter : STA !Particle_Type,x
+		JSL !GetParticleIndex
+		LDA $00 : STA !Particle_XSpeed,x
+		LDA $02 : STA !Particle_YSpeed,x
+		SEP #$20
+		LDA #$38 : STA !Particle_XAcc,x
+		LDA $04 : STA !Particle_YAcc,x
+		LDA #!CoinSpinTime : STA !Particle_Timer,x
+		LDA #!prt_coinglitter : STA !Particle_Type,x
+		PLB
+		SEP #$30
+		RTS
 
 
 

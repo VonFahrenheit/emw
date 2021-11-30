@@ -79,6 +79,7 @@ NPC:
 		JSR (.InitPtr,x)
 		.Return
 		PLB
+	JMP MAIN
 		RTL
 
 
@@ -210,11 +211,6 @@ NPC:
 
 	MAIN:
 		PHB : PHK : PLB
-		LDA !GameMode
-		CMP #$14 : BEQ .Process
-		.Fail
-		PLB
-		RTL
 
 		.Process
 		LDA !MsgTrigger

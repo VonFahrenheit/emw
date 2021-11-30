@@ -291,16 +291,20 @@
 		LDA !MultiPlayer
 		AND #$00FF : BEQ +
 		LDX.w #(!P2MapX)-(!P1MapX) : JSR DrawPlayer
-	+	LDA !Translevel : BEQ ..done
+	+	LDA !Translevel : BNE ..drawbuttons
+		..return
+		RTS
+
+		..drawbuttons
 		LDA !WarpPipe
-		AND #$00FF : BNE ..done
+		AND #$00FF : BNE ..return
 		LDA !GameMode
 		AND #$00FF
-		CMP #$000E : BCC ..done
+		CMP #$000E : BCC ..return
 		LDA #$0030
 		SEC : SBC !CircleRadius
 		BEQ ..simple
-		BIT #$0004 : BNE ..done
+		BIT #$0004 : BNE ..return
 		LSR #2
 		XBA
 		DEC !ButtonTimer
@@ -309,7 +313,7 @@
 		INC !ButtonTimer
 
 
-
+	; draw b button
 		LDA !OAMindex_p3 : TAX
 		LDA !P1MapX
 		SEC : SBC $1A
@@ -327,6 +331,7 @@
 		SEC : SBC #$1400
 		SEC : SBC $04
 		STA !OAM_p3+$000,x
+		STA $00
 		LDA #$3E2A : STA !OAM_p3+$002,x
 		TXA
 		LSR #2
@@ -336,6 +341,33 @@
 		TXA
 		ASL #2
 		STA !OAMindex_p3
+
+	; draw x button and checkpoint icon
+		LDX !Translevel
+		LDA !LevelTable1,x
+		AND #$0040 : BEQ ..nocheckpoint
+		LDA !MapCheckpointX
+		AND #$00FF : BEQ ..nocheckpoint
+
+		LDA !OAMindex_p1 : TAX
+		CLC : ADC #$0004
+		STA !OAMindex_p1
+
+		LDA !P1MapX
+		CLC : ADC !MapCheckpointX
+		SEC : SBC $1A
+		STA !OAM_p1+$000,x
+		LDA !P1MapY
+		SEC : SBC $1C
+		STA !OAM_p1+$001,x
+		LDA #$342E : STA !OAM_p1+$002,x
+		TXA
+		LSR #2
+		TAX
+		LDA #$0202 : STA !OAMhi_p1,x
+		..nocheckpoint
+
+
 
 
 		..done
@@ -459,12 +491,22 @@
 
 		SEP #$30
 		LDA !P1MapChar,x
-		CMP #$02 : BEQ ++
-		CMP #$03 : BNE +
-	++	LDY $05
-		CPY #$40 : BCC +
+		.Plus1
+		CMP #$01 : BNE ..notluigi
+		LDY !P1MapAnim,x
+		CPY #$04 : BNE ..done
+		BRA ..add
+		..notluigi
+		CMP #$02 : BEQ ..checkxflip
+		CMP #$03 : BNE ..done
+		..checkxflip
+		LDY $05
+		CPY #$40 : BCC ..done
+		..add
 		INC $00
-	+	ASL #3
+		..done
+
+		ASL #3
 		CLC : ADC !P1MapChar,x
 		ASL A
 		CLC : ADC $0E

@@ -15,14 +15,13 @@ sa1rom
 ; PCE FIX MUST BE PATCHED FIRST!!
 ;	...but does it really?
 
-
+	org $00986C				; patch out initial player/sprite engine call to let it be handled by my own code instead
+		BRA $02 : NOP #2		; org: JSL $01808C
 	org $00A6C7
 		JML PLAYER2_Pipe
-
 	org $00F71A
 		JSL PLAYER2_Camera		;\ org: LDA $94 : SEC : SBC $1A
 		NOP				;/
-
 	org $00DC4A
 		JSL PLAYER2_Coordinates		; org: LDA $8A : STA $7D
 
@@ -80,10 +79,29 @@ sa1rom
 		LDA !GameMode
 
 ;	if !TrackCPU == 0
+		CMP #$12 : BEQ .PreProcess
+		CMP #$13 : BNE .NoPreProcess
+		.PreProcess
+		LDA #$04
+		STA !P2Blocked-$80
+		STA !P2Blocked
+		REP #$20
+		STZ $15
+		STZ $17
+		STZ $6DA2
+		STZ $6DA4
+		STZ $6DA6
+		STZ $6DA8
+		SEP #$20
+		BRA .ProcessMain
+		.NoPreProcess
 		CMP #$14 : BNE .Return
 ;	else
 ;		CMP #$14 : BEQ $03 : JMP .Return
 ;	endif
+
+
+		.ProcessMain
 		PHB : PHK : PLB
 
 		JSL .GetCharacter
@@ -102,14 +120,14 @@ sa1rom
 		PLB
 
 		.Return
-
-		LDA #$01 : STA !ProcessingSprites
 	;	JML $1081A6			; new constant (how did i come up with this?????)
 	; note: the "constant" is just the pointer to the SNES -> SA-1 wrapper for the sprite engine
-		RTL				; now called by GameMode14.asm
+		RTL				; but it's now called by GameMode14.asm
 
 
 		.Pipe
+		STZ !P2Entrance
+		STZ !P2Entrance-$80
 		STX !MarioAnim			;\ Store P1 animation trigger and pipe timer
 	;	STY $88				;/
 		CPX #$07 : BNE ..NoShoot	;\
@@ -126,6 +144,7 @@ sa1rom
 		ORA #$0F
 		STA !P2Pipe			; |
 		STA !P2Pipe-$80			;/
+
 
 		STZ !MarioAnim			; clear mario anim
 		REP #$20			;\
@@ -248,6 +267,9 @@ sa1rom
 		.Coordinates
 		LDA !GameMode
 		CMP #$14 : BEQ ..R
+		TSC
+		XBA
+		CMP #$37 : BEQ ..R
 
 		PHX
 		PHP
@@ -259,8 +281,24 @@ sa1rom
 		CLC : ADC #$0010
 		LDX !P2Pipe-$80
 		BNE $03 : STA !P2YPosLo-$80
-		LDX !P2Pipe
-		BNE $03 : STA !P2YPosLo
+		LDX !P2Pipe : BNE +
+		STA !P2YPosLo
+		LDA !MultiPlayer
+		AND #$00FF : BEQ +
+		LDA !P2XPosLo
+		SEC : SBC #$0008
+		STA !P2XPosLo
+		CLC : ADC #$0010
+		STA !P2XPosLo-$80
+		+
+
+		LDA !CurrentMario
+		AND #$00FF : BEQ +
+		DEC A
+		BEQ $03 : LDA #$0080
+		TAX
+		LDA !P2XPosLo-$80,x : STA !MarioXPosLo
+		+
 
 		PLP
 		PLX
@@ -272,6 +310,8 @@ sa1rom
 		.GetCharacter
 		SEP #$30				; all regs 8-bit
 		LDA !CurrentMario : BNE ++		;\
+		LDA !GameMode
+		CMP #$14 : BNE ++
 		REP #$20				; |
 		LDA !P2XPosLo-$80 : STA !MarioXPos	; | mario coords when he's not in play
 		LDA !P2YPosLo-$80 : STA !MarioYPos	; |
@@ -340,7 +380,7 @@ sa1rom
 		REP #$20
 		LDA !PlayerBackupData+$21 : STA !P2XPosLo
 		LDA !PlayerBackupData+$24 : STA !P2YPosLo
-		JMP +++
+		JMP ..p1end
 		+
 
 		LDA !P2ExtraInput1			;\
@@ -351,10 +391,18 @@ sa1rom
 		BEQ $03 : STA $6DA5			; |
 		LDA !P2ExtraInput4			; |
 		BEQ $03 : STA $6DA9			;/
-		REP #$20				;\
-		STZ !P2Hitbox1+4			; | clear hitbox by setting size to 0
-		STZ !P2Hitbox2+4			; |
-		SEP #$20				;/
+
+		LDA !P2Entrance : BEQ +
+		STZ $6DA3
+		STZ $6DA5
+		STZ $6DA7
+		STZ $6DA9
+		+
+
+		REP #$20				; a 16-bit
+		STZ !P2Hitbox1+4			;\ clear hitbox by setting size to 0
+		STZ !P2Hitbox2+4			;/
+		SEP #$20				; a 8-bit
 		JSR Stasis				; stasis
 		LDA !Difficulty				;\
 		AND #$10 : BEQ +			; |
@@ -366,6 +414,12 @@ sa1rom
 	++	LDA !P2MaxHP				; |
 	+++	STA !P2HP				; |
 		+					;/
+		LDA !P2Entrance
+		BEQ $03 : DEC !P2Entrance
+		CMP #$20 : BNE +
+		LDA #$09 : STA !SPC4
+		LDA #$1F : STA !ShakeTimer
+		+
 		JSR (..List,x)				; > run code for player 1
 
 		LDA !P2HurtTimer			;\
@@ -375,14 +429,44 @@ sa1rom
 		JSL CORE_RIPOSTE			; |
 		+					;/
 
-		LDA !Characters
-		AND #$F0
-		BEQ +
-		REP #$20				;\
-		STZ !P2ExtraInput1			; | Clear input overwrite
-		STZ !P2ExtraInput3			; |
-		SEP #$20				;/
+		LDA !ApexTimerP1 : BEQ +
+		DEC !ApexTimerP1
 		+
+
+		REP #$20				; a 16-bit
+		LDA !P2BlockedLayer			;\ instantly kill apex if landing on a layer
+		AND #$0004 : BNE ..killapexp1		;/
+		..apexp1				;\
+		LDA !P2Blocked				; |
+		AND #$0004 : BNE ..resetapexp1		; |
+		LDA !ApexTimerP1			; |
+		AND #$FF00				; |
+		ORA #$001F				; |
+		STA !ApexTimerP1			; |
+		LDA !P2YSpeed-1				; |
+		CLC : ADC !P2VectorY-1			; |
+		BMI ..doneapexp1			; |
+		LDA !P2YPosLo				; | update p1 apex reg
+		BPL $03 : LDA #$0000			; |
+		CMP !ApexP1 : BCS ..doneapexp1		; |
+		STA !ApexP1				; |
+		BRA ..doneapexp1			; |
+		..resetapexp1				; |
+		LDA !ApexTimerP1			; |
+		AND #$00FF : BNE ..doneapexp1		; |
+		..killapexp1				; |
+		LDA #$FFFF : STA !ApexP1		; |
+		..doneapexp1				;/
+
+		LDA !Characters
+		AND #$00F0 : BEQ +
+		STZ !P2ExtraInput1			;\ clear input overwrite
+		STZ !P2ExtraInput3			;/
+	+	SEP #$20				; a 8-bit
+
+
+		LDA !GameMode
+		CMP #$14 : BNE +
 
 		LDA !CurrentMario : BNE +		; > Mario check
 		LDA !Characters				;\
@@ -390,7 +474,8 @@ sa1rom
 		REP #$20				; | Make sure "Mario" tags along even if no one plays him
 		LDA !P2XPosLo : STA $94			; |
 		LDA !P2YPosLo : STA $96			; |
-	+++	SEP #$20				;/
+		..p1end
+		SEP #$20				;/
 	+	PLA : STA $6DA9				;\
 		PLA : STA $6DA7				; | Restore P2 input
 		PLA : STA $6DA5				; |
@@ -435,6 +520,14 @@ sa1rom
 		BEQ $03 : STA $6DA5			; |
 		LDA !P2ExtraInput4			; |
 		BEQ $03 : STA $6DA9			;/
+
+		LDA !P2Entrance : BEQ +
+		STZ $6DA3
+		STZ $6DA5
+		STZ $6DA7
+		STZ $6DA9
+		+
+
 		REP #$20				;\
 		STZ !P2Hitbox1+4			; | clear hitbox by setting size to 0
 		STZ !P2Hitbox2+4			; |
@@ -450,6 +543,13 @@ sa1rom
 	++	LDA !P2MaxHP				; |
 	+++	STA !P2HP				; |
 		+					;/
+		LDA !P2Entrance
+		BEQ $03 : DEC !P2Entrance
+		CMP #$20 : BNE +
+		STA !P2Entrance-$80
+		LDA #$09 : STA !SPC4
+		LDA #$1F : STA !ShakeTimer
+		+
 		JSR (..List,x)				; > run code for player 2
 
 		LDA !P2HurtTimer			;\
@@ -459,13 +559,42 @@ sa1rom
 		JSL CORE_RIPOSTE			; |
 		+					;/
 
+		LDA !ApexTimerP2 : BEQ +
+		DEC !ApexTimerP2
+		+
+
+
+		REP #$20				; a 16-bit
+		LDA !P2BlockedLayer			;\ instantly kill apex if landing on a layer
+		AND #$0004 : BNE ..killapexp2		;/
+		..apexp2				;\
+		LDA !P2Blocked				; |
+		AND #$0004 : BNE ..resetapexp2		; |
+		LDA !ApexTimerP2			; |
+		AND #$FF00				; |
+		ORA #$001F				; |
+		STA !ApexTimerP2			; |
+		LDA !P2YSpeed-1				; |
+		CLC : ADC !P2VectorY-1			; |
+		BMI ..doneapexp2			; |
+		LDA !P2YPosLo				; | update p1 apex reg
+		BPL $03 : LDA #$0000			; |
+		CMP !ApexP2 : BCS ..doneapexp2		; |
+		STA !ApexP2				; |
+		BRA ..doneapexp2			; |
+		..resetapexp2				; |
+		LDA !ApexTimerP2			; |
+		AND #$00FF : BNE ..doneapexp2		; |
+		..killapexp2				; |
+		LDA #$FFFF : STA !ApexP2		; |
+		..doneapexp2				;/
+
 		LDA !Characters
-		AND #$0F
-		BEQ +
-		REP #$20				;\
-		STZ !P2ExtraInput1			; | Clear input overwrite
-		STZ !P2ExtraInput3			; |
-	+	SEP #$30				; > All regs 8-bit
+		AND #$000F : BEQ +
+		STZ !P2ExtraInput1			;\ clear input overwrite
+		STZ !P2ExtraInput3			;/
+	+	SEP #$30				; all regs 8-bit
+
 		RTL					; > Return
 
 

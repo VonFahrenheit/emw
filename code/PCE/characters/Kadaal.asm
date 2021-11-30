@@ -1707,7 +1707,8 @@ namespace Kadaal
 		LDA HIT_TABLE_Custom,y
 		.AnyBlock
 		ASL A : TAY
-		PEA .LoopEnd-1
+		PEI ($0E)
+		PEA .CallReturn-1
 		REP #$20
 		LDA HIT_Ptr+0,y
 		DEC A
@@ -1715,6 +1716,11 @@ namespace Kadaal
 		SEP #$20
 		.ClippingFail
 		RTS
+
+		.CallReturn
+		REP #$20
+		PLA : STA $0E
+		SEP #$20
 
 		.LoopEnd
 		DEX : BPL .Loop
@@ -1907,6 +1913,7 @@ namespace Kadaal
 		LDA $3240,x : STA $3240,y	;/
 		PHX				;\
 		TYX				; | reset tables for new sprite
+		STZ !ExtraBits,x		; |
 		JSL !ResetSprite		; |
 		PLX				;/
 		LDA #$10			;\

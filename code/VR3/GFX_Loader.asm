@@ -22,6 +22,17 @@
 	org $008640
 		+
 
+	org $00A390
+		-
+	org $00A395						; patch out LM's initialization for vanilla animations
+		PHP
+		REP #$20
+		STZ $6D7C
+		STZ $6D7E
+		STZ $6D80
+		PLP
+		BRA -
+	warnpc $00A3F0
 
 	; $05BE8A is called from $00A5BF in all.log
 	; however, LM hijacks $00A5BF and calls $05BE8A from within its own hijack!
@@ -47,6 +58,8 @@
 	warnpc $05DA24						; |
 	org $05DA24						; |
 		+						;/
+
+
 
 	pullpc
 	.Main
@@ -199,11 +212,17 @@
 		CMP #$007F : BEQ .NoBG3Tilemap			;/
 		PHA						;\
 		PHX						; |
-		AND #$00FF : TAX				; |
-		LDA #$0003 : TRB !2109				; | BG3 tilemap resolution
+		AND #$00FF : TAX				; | BG3 tilemap resolution
+		LDA #$0003 : TRB !2109				; |
 		LDA.l BG3_Resolution,x				; |
-		AND #$0003 : TSB !2109				; |
-		PLX						; |
+		AND #$0003 : TSB !2109				;/
+		CMP #$0003 : BNE ..notbiggest			;\
+		LDA !VRAMmap					; |
+		AND #$00FF					; | in map mode 01, 64x64 tilemaps become 64x32 instead
+		CMP #$0001 : BNE ..notbiggest			; |
+		LDA #$0002 : TRB !2109				; |
+		..notbiggest					;/
+		PLX						;\ pull stuff
 		PLA						;/
 		JSL !DecompressFile				; decompress BG3 tilemap
 		LDA #$1801 : STA $4310				;\
@@ -258,6 +277,51 @@
 		CLC : ADC #$0008				; | loop
 		TAX						; |
 		CPX.w #.VRAM-.FileSize : BCC .Loop		;/
+
+
+		.InitAnim
+		STZ $13							; clear both frame counters
+		LDA #$1801 : STA $4310					; DMA mode
+		LDY.w #!File_DynamicVanilla : JSL !GetFileAddress	; get file address
+		LDA !FileAddress+2 : STA $4314				; source bank
+		..loop							;\
+		SEP #$30						; |
+		JSL $05BB39						; | get anim data
+		REP #$20						; |
+		SEP #$10						;/
+		LDX #$02						; > X = DMA bit
+		LDA $6D7C : BEQ ..1done					;\
+		STA $2116						; |
+		LDA $6D76						; |
+		SEC : SBC #$7D00					; |
+		CLC : ADC !FileAddress					; | first block
+		STA $4312						; |
+		LDA #$0080 : STA $4315					; |
+		STX $420B						; |
+		..1done							;/
+		LDA $6D7E : BEQ ..2done					;\
+		STA $2116						; |
+		LDA $6D78						; |
+		SEC : SBC #$7D00					; |
+		CLC : ADC !FileAddress					; | second block
+		STA $4312						; |
+		LDA #$0080 : STA $4315					; |
+		STX $420B						; |
+		..2done							;/
+		LDA $6D80 : BEQ ..3done					;\
+		STA $2116						; |
+		LDA $6D7A						; |
+		SEC : SBC #$7D00					; |
+		CLC : ADC !FileAddress					; | third block
+		STA $4312						; |
+		LDA #$0080 : STA $4315					; |
+		STX $420B						; |
+		..3done							;/
+		LDX $14
+		CPX #$08 : BEQ ..done
+		INC $14
+		BRA ..loop
+		..done
 
 		PLP						; restore P
 		RTL						; return

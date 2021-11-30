@@ -577,6 +577,7 @@ KICK_DISP:	db $10,$F0
 		STA $3240,y			;/
 		PHX				;\
 		TYX				; | Reset tables for new sprite
+		STZ !ExtraBits,x		; |
 		JSL !ResetSprite		; |
 		PLX				;/
 		LDA #$10			;\

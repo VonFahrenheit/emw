@@ -2,8 +2,8 @@
 ;SUPREME TILEMAP LOADER;
 ;======================;
 ;
-;	$00:		sprite Xpos within screen
-;	$02:		sprite Ypos within screen
+;	$00:		player Xpos within screen
+;	$02:		player Ypos within screen
 ;	$04:		pointer to tilemap base
 ;	$06:		tile Xpos within screen
 ;	$08:		tilemap size
@@ -61,6 +61,11 @@ LOAD_TILEMAP:	STZ !BigRAM+$7E				; this reg ACTUALLY controls priority bits duri
 
 
 
+		LDA !P2Entrance : BEQ .NoMax		;\
+		.MaxPrio				; | max prio during entrance animation
+		LDY #$F0 : BRA +			; |
+		.NoMax					;/
+
 
 		LDA !P2Pipe : BNE .LoPrio
 		LDA !P2SlantPipe
@@ -80,12 +85,27 @@ LOAD_TILEMAP:	STZ !BigRAM+$7E				; this reg ACTUALLY controls priority bits duri
 		LDA #$20 : STA $0A			; |
 		LDA #$0E : STA $0B			;/
 	+	REP #$30
-		LDA !P2XPosLo
+		LDA !P2Entrance
+		AND #$00FF : BEQ +
+		SEC : SBC #$0021
+		BPL +
+		JSR .EntranceSmoke
+		LDA #$0000
+	+	ASL #3
+		EOR #$FFFF
+		SEC : ADC !P2XPosLo
 		SEC : SBC $1A
 		STA $00
-		LDA !P2YPosLo
+		LDA !P2Entrance
+		AND #$00FF
+		SEC : SBC #$0021
+		BPL $03 : LDA #$0000
+		ASL #2
+		EOR #$FFFF
+		SEC : ADC !P2YPosLo
 		SEC : SBC $1C
 		STA $02
+
 		LDA ($04)
 		AND #$00FF
 		STA $08
@@ -177,6 +197,53 @@ LOAD_TILEMAP:	STZ !BigRAM+$7E				; this reg ACTUALLY controls priority bits duri
 		RTL
 
 
+
+	.EntranceSmoke
+		PHP
+		PEI ($04)
+		PEI ($06)
+		PEI ($08)
+		PEI ($0A)
+		PEI ($0C)
+		PEI ($0E)
+		SEP #$30
+		LDA !P2Entrance
+		CMP #$10 : BCC ..done
+		CMP #$18 : BCC ..half
+		..full
+		LDA $14
+		BRA ..finish
+		..half
+		LDA $14
+		LSR A : BCC ..done
+		..finish
+		AND #$01
+		BEQ $02 : LDA #$40
+		SBC #$20
+		STA !P2XSpeed
+		JSL CORE_DASH_SMOKE
+		..done
+		STZ !P2XSpeed
+		LDX !P2Character
+		LDA.l ..anim,x : STA !P2ExternalAnim
+		LDA #$02 : STA !P2ExternalAnimTimer
+		REP #$20
+		PLA : STA $0E
+		PLA : STA $0C
+		PLA : STA $0A
+		PLA : STA $08
+		PLA : STA $06
+		PLA : STA $04
+		PLP
+		RTS
+
+		..anim
+		db $26
+		db !Lui_Victory
+		db !Kad_Victory
+		db !Lee_Victory
+		db $00
+		db $00
 
 
 

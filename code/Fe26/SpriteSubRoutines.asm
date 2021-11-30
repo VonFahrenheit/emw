@@ -2321,7 +2321,7 @@ SPRITE_OFF_SCREEN:
 ;	dynamic sprites have to use tile numbers in the $00-$0F range
 ;	this number is which of its claimed tiles to use, not the actual OAM tile
 ;	$00 is the first claimed tile, $01 is the second claimed tile, and so on
-;	most sprites don't use more than a few dynamic tiles, but theoretically one could use up to $0F for a full 128x64 size
+;	most sprites don't use more than a few dynamic tiles, but theoretically one could use up to 0xF for a full 128x64 size
 ; this routine should never mess with $04 since that is used so often in OAM routines
 
 

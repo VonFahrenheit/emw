@@ -10,8 +10,9 @@ DISPLAY_CONTACT:
 		CMP #$02 : BNE .Small
 		LDY !P2ActiveHitbox
 		REP #$20
-		LDA !P2Hitbox1W,y : BEQ .Small
+		LDA !P2Hitbox1W,y
 		SEP #$20
+		BEQ .Small
 		LDA !P2Hitbox1Hitstun,y
 		CMP #$06 : BCC .Small
 		JMP .Big

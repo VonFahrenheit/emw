@@ -10,58 +10,10 @@
 
 
 
-; this table, located at $188250, holds the VRAM mapping for each sublevel
-; the values are the following:
-; 00 - default mapping
-; 01 - expansion mapping:
-;	with this enabled, layer 3 is 512x256 instead of 512,512, and can only use the GFX28/GFX29 slots
-;	GFX2A/GFX2B are instead used for layer1/2, meaning you have 8 4bpp files to use for level objects and backgrounds
-;	note that the level must use map16 remapping in levelcode to be able to make use of these extra graphics
-; 02 - mode 2 map:
-;	mode 2 is enabled
-;	map works the same as map 1, except all layer 3 data is replaced with a 64x64 displacement map
-
-; values 03 and above are currently unused and will default to 00
 
 ; $188250
 	print "VRAM map mode data stored at $", pc, "."
-
-	;  xx0 xx1 xx2 xx3 xx4 xx5 xx6 xx7 xx8 xx9 xxA xxB xxC xxD xxE xxF
-	db $01,$00,$01,$00,$02,$00,$00,$01,$00,$00,$00,$00,$00,$00,$00,$00	; 00x
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 01x
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$01,$00,$00,$00,$00,$00	; 02x
-	db $00,$00,$02,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 03x
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 04x
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 05x
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 06x
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 07x
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 08x
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 09x
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 0Ax
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 0Bx
-	db $00,$00,$00,$00,$00,$00,$01,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 0Cx
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 0Dx
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 0Ex
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 0Fx
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 10x
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 11x
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 12x
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 13x
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 14x
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 15x
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 16x
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 17x
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 18x
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 19x
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 1Ax
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 1Bx
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 1Cx
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 1Dx
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 1Ex
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 1Fx
-
-
-
+	incsrc "level_data/VRAM_map.asm"
 
 	print "Sprite GFX file table stored at $", pc, "."
 ; $188450
@@ -2016,9 +1968,10 @@ ReadLevelData:
 		SEP #$20
 		LDA.b #$41 : PHA			; push DB
 		LDA #$00				;\
-		STA.l !FileMark+0			; | set up clears
-		STA.l !SD_Mark+0			; |
-		STA.l !GFX_status+0			;/
+		STA.l !FileMark+0			; |
+		STA.l !SD_Mark+0			; | set up clears
+		STA.l !GFX_status+0			; |
+		STA.l !CableUpdateData+0		;/
 		REP #$30				; all regs 16-bit
 		LDA #$07FE				;\
 		LDX.w #!FileMark+0			; | wipe file mark
@@ -2032,6 +1985,10 @@ ReadLevelData:
 		LDX.w #!GFX_status+0			; | wipe GFX load status
 		LDY.w #!GFX_status+1			; |
 		MVN !GFX_status>>16,!GFX_status>>16	;/
+		LDA.w #$0005*$0040-2			;\
+		LDX.w #!CableUpdateData+0		; | clear cable data
+		LDY.w #!CableUpdateData+1		; |
+		MVN $40,$40				;/
 		PLB					; set DB
 		LDA.l !Map16ActsLike : STA $00		;\ acts like pointer 00-3F block (lo byte)
 		LDA.l !Map16ActsLike+1 : STA $01	;/
@@ -2063,7 +2020,16 @@ ReadLevelData:
 	..00	LDY $0E					; | scan map16 data for spawnables
 		CPY.w #$0300*2 : BEQ ..bush
 		CPY.w #$0310*2 : BEQ ..window
-		CPY.w #$0330*2 : BNE ..noBG_object
+		CPY.w #$0330*2 : BEQ ..cannon
+		CPY.w #$0350*2 : BEQ ..cable
+		CPY.w #$0360*2 : BEQ ..poleleft
+		CPY.w #$0362*2 : BNE ..noBG_object
+		..poleright
+		LDA #$06 : BRA ..spawnBG_object
+		..poleleft
+		LDA #$05 : BRA ..spawnBG_object
+		..cable
+		LDA #$04 : BRA ..spawnBG_object
 		..cannon
 		LDA #$03 : BRA ..spawnBG_object
 		..window
@@ -2368,13 +2334,13 @@ ReadLevelData:
 
 		SEP #$20
 		PLA : STA !BG_object_Type,x
+		CMP #$04 : BEQ ..cable
 		PHX
 		REP #$20
 		AND #$00FF
-		DEC A
 		ASL A
 		TAX
-		LDA.l ..size,x
+		LDA.l ..size-2,x
 		PLX
 		STA !BG_object_W,x
 		SEP #$20
@@ -2383,10 +2349,76 @@ ReadLevelData:
 		RTS
 
 
+		..cable
+		TXY					; Y = index to BG object
+; ...yeah
+; search all other slots for cables
+; if any existing cable overlaps this spot, this cable can not spawn
+		REP #$20
+		STY $0E					; $0E = slot we're trying to spawn into
+		LDX #$0000
+	-	CPX $0E : BCS ++
+		LDA !BG_object_Type,x			;\
+		AND #$00FF				; | has to be cable
+		CMP #$0004 : BNE +			;/
+		LDA !BG_object_Y,x			;\ has to be on same Y position
+		CMP !BG_object_Y,y : BNE +		;/
+		LDA !BG_object_W,x			;\
+		AND #$00FF				; |
+		ASL #3					; | check for X overlap
+		CLC : ADC !BG_object_X,x		; |
+		CMP !BG_object_X,y : BCS ..cablefail	;/
+	+	TXA
+		CLC : ADC.w #!BG_object_Size
+		TAX
+		CPX.w #(!BG_object_Size)*(!BG_object_Count) : BCC -
+		++
+
+		SEP #$20
+		PLX : PHX				; X = map16 index (but keep it on the stack)
+		STZ $0E
+
+	-	INC $0E
+		INX
+		TXA
+		AND #$0F : BNE +
+		REP #$20
+		TXA
+		SEC : SBC #$0010
+		CLC : ADC.l !LevelHeight
+		TAX
+		SEP #$20
+	+	LDA $C800,x
+		CMP #$03 : BNE ..cutcable
+		LDA $40C800,x
+		CMP #$50 : BEQ -
+		..cutcable
+		LDA $0E
+		CMP #$03 : BCC ..cablefail
+		CMP #$10+1 : BCS ..cablefail
+		ASL A
+		STA !BG_object_W,y
+		PLX					; restore X
+		PLY : STY $0E				; restore Y + $0E
+		RTS
+
+
+		..cablefail
+		SEP #$20
+		TYX
+		STZ !BG_object_Type,x
+		PLX
+		PLY : STY $0E
+		RTS
+
+
 		..size
 		db $04,$02	; bush
 		db $04,$04	; window
 		db $04,$04	; cannon
+		db $10,$04	; cable
+		db $04,$03	; pole, facing left
+		db $04,$03	; pole, facing right
 
 
 

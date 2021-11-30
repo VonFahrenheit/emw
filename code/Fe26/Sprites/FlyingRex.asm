@@ -140,6 +140,11 @@ FlyingRex:
 		JSL !SpriteApplySpeed-$10
 		JSL !SpriteApplySpeed-$08
 		..done
+		LDA !SpriteExtraCollision,x
+		AND #$40
+		BEQ $02 : LDA #$01
+		STA !SpriteWater,x
+		STZ !SpriteExtraCollision,x
 
 
 
@@ -172,11 +177,24 @@ FlyingRex:
 	GRAPHICS:
 
 		.HandleUpdate
+		STZ $00
+		LDA !3DWater : BEQ +
+		LDA !SpriteYHi,x : XBA
+		LDA !SpriteYLo,x
+		REP #$20
+		CMP !Level+2
+		SEP #$20
+		BCC +
+		LDA $14
+		LSR A : BCS ++
+	+	INC $00
+		++
+
 		LDA !SpriteAnimIndex
 		ASL #2
 		TAY
 		LDA !SpriteAnimTimer
-		INC A
+		CLC : ADC $00
 		CMP.w ANIM+2,y : BNE .SameAnim
 		.NewAnim
 		LDA.w ANIM+3,y : STA !SpriteAnimIndex

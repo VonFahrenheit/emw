@@ -1115,6 +1115,7 @@ level35:
 		STA $0D04,x				; |
 		STA $0D08,x				; | recalculate BG1 positions
 		LDA $1C					; |
+		CLC : ADC $7888
 		STA $0D02,x				; |
 		STA $0D06,x				; |
 		INC A					; |

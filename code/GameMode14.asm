@@ -169,10 +169,10 @@ namespace GAMEMODE14
 		BEQ $03 : INC !2100
 
 
-		LDA !MsgTrigger : BEQ ++		; > always clear if there's no message box
-		LDA !WindowDir : BNE +			; > don't clear while window is closing
-		LDA.l !MsgMode : BNE +			;\ don't clear OAM during !MsgMode non-zero
-	++	;JSL !KillOAM				;/
+;		LDA !MsgTrigger : BEQ ++		; > always clear if there's no message box
+;		LDA !WindowDir : BNE +			; > don't clear while window is closing
+;		LDA.l !MsgMode : BNE +			;\ don't clear OAM during !MsgMode non-zero
+;	++	;JSL !KillOAM				;/
 		+
 
 
@@ -246,7 +246,7 @@ namespace GAMEMODE14
 
 	; SA-1 phase 2, executed on DP 0
 		SEP #$30				; all regs 8-bit
-		LDA $9D : BNE ..noanim
+	;	LDA $9D : BNE ..noanim
 		INC $14					; increment frame counter
 		JSL HandleGraphics			; rotate simple + starman handler (part of SP_Level.asm)
 		..noanim
@@ -437,6 +437,8 @@ Camera:
 		RTL						;/
 
 
+	; behold...
+	; the SCUFFEST way to initialize the camera's x position!
 	.PreserveDP
 		PHP
 		PEI ($00)
@@ -448,7 +450,31 @@ Camera:
 		PEI ($0C)
 		PEI ($0E)
 		JSL Camera
+		PEI ($1C)
 		REP #$20
+		LDA !CameraBackupY : PHA
+		LDA $7464 : PHA
+		SEP #$20
+		JSL Camera
+		JSL Camera
+		JSL Camera
+		JSL Camera
+		JSL Camera
+		JSL Camera
+		JSL Camera
+		JSL Camera
+		JSL Camera
+		JSL Camera
+		JSL Camera
+		JSL Camera
+		JSL Camera
+		JSL Camera
+		JSL Camera
+		JSL Camera
+		REP #$20
+		PLA : STA $7464
+		PLA : STA !CameraBackupY
+		PLA : STA $1C
 		PLA : STA $0E
 		PLA : STA $0C
 		PLA : STA $0A
@@ -495,8 +521,10 @@ Camera:
 
 		SEP #$30
 		LDA !MultiPlayer : BEQ .P1
-		LDA !P2Status : BEQ +
-		LDA !P2Status-$80 : BEQ .P1
+		LDA !P2Status
+		CMP #$02 : BNE +
+		LDA !P2Status-$80
+		CMP #$02 : BNE .P1
 		; only P1 alive: P1
 		; both dead: flow to composite
 
@@ -531,18 +559,17 @@ Camera:
 		INC $08						; |
 		BRA ++						;/
 
-	+	LDA !P2Status-$80 : BEQ .Composite
+	+	LDA !P2Status-$80
+		CMP #$02 : BNE .Composite
 		; both alive: composite
 		; only P2 alive: P2
 
 		.P2
-		LDY #$80
-		JSR .GetPlayerCoord
+		LDY #$80 : JSR .GetPlayerCoord
 		BRA ++
 
 		.P1
-		LDY #$00
-		JSR .GetPlayerCoord
+		LDY #$00 : JSR .GetPlayerCoord
 	++	REP #$20
 
 		LDX !GameMode
@@ -1540,9 +1567,9 @@ Camera:
 .AutoXConstant	JSR .AutoX
 		BRA .ConstantHorz
 
-.AutoX		LDX $9D : BEQ ..run
-		LDA !BG3XFraction
-		BRA +
+.AutoX	;	LDX $9D : BEQ ..run
+	;	LDA !BG3XFraction
+	;	BRA +
 	..run	LDA !BG3XSpeed
 		JSR .12percent
 		CLC : ADC !BG3XFraction
@@ -1606,9 +1633,9 @@ Camera:
 .AutoYConstant	JSR .AutoY
 		BRA .ConstantVert
 
-.AutoY		LDX $9D : BEQ ..run
-		LDA !BG3YFraction
-		BRA +
+.AutoY	;	LDX $9D : BEQ ..run
+	;	LDA !BG3YFraction
+	;	BRA +
 	..run	LDA !BG3YSpeed
 		JSR .12percent
 		CLC : ADC !BG3YFraction
@@ -1628,8 +1655,27 @@ Camera:
 		BRA +
 .NoVert		LDA $00
 	+	STA $24
+		LDA !ShakeBG3
+		AND #$00FF : BEQ ..noshake
+		DEC A
+		SEP #$20
+		STA !ShakeBG3
+		REP #$20
+		AND #$0003
+		ASL A
+		TAX
+		LDA.l ..shakeoffset,x
+		CLC : ADC $24
+		STA $24
+
+		..noshake
 		SEP #$20
 		RTL
+
+		..shakeoffset
+		dw $FFFE,$0000,$0002,$0000
+
+
 
 
 .12percent	BPL ..pos

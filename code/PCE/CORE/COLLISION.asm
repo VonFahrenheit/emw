@@ -97,6 +97,13 @@ COLLISION:
 		SEP #$20				;/
 
 		.End
+
+		LDA !P2Entrance
+		CMP #$20 : BCC ..noentrance
+		LDA #$04 : TRB $0F
+		..noentrance
+
+
 		LDA !P2ExtraBlock			;\
 		AND #$1F				; | layer collision flags
 		ORA $0F					; |
@@ -141,7 +148,7 @@ COLLISION:
 		AND #$04 : BEQ .NoDropDown		;/
 		LDA !P2DropDownTimer : BNE +		;\
 		LDA #$0F : BRA ++			; |
-	+	LDA #$85				; | 15 frames to double tap, 5 frames of drop down
+	+	LDA #$89				; | 15 frames to double tap, 5 frames of drop down
 	++	STA !P2DropDownTimer			; |
 		.NoDropDown				;/
 
@@ -2420,6 +2427,7 @@ endmacro
 		BCC $02 : LDA $00			; |
 		STA $9A					;/
 		SEP #$20				; A 8-bit
+		STZ $0F					; layer 1
 
 		%SetMap16Index()
 		%GetActsLike()

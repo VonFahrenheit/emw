@@ -39,6 +39,9 @@
 		STZ !SelectingPlayer
 		STZ !WarpPipe
 		LDA #$FF : STA !PrevTranslevel
+		LDA #$14
+		STA !MapCheckpointX
+		STA !MapCheckpointTargetX
 
 		LDA #$00					;\
 		LDX #$00					; |
@@ -297,17 +300,15 @@
 
 
 	.InitPlayers
-		LDA !SRAM_overworldX
-		STA !P1MapX
+		LDA !SRAM_overworldX : STA !P1MapX
 		DEC #4
 		STA !P2MapX
-		SEC : SBC #$0078
+		SEC : SBC #$0078-4
 		STA $1A
-		LDA !SRAM_overworldY
-		STA !P1MapY
+		LDA !SRAM_overworldY : STA !P1MapY
 		DEC #4
 		STA !P2MapY
-		SEC : SBC #$0078
+		SEC : SBC #$0078-4
 		STA $1C
 		STZ !P1MapXSpeed
 		STZ !P1MapAnim
@@ -526,7 +527,57 @@
 
 
 	.InitWindow
-		JSL Window_SNES						; set up windowing
+		PHK : PLB
+		SEP #$30
+
+		LDA #$3F : TRB $40		;\ no color math
+		STZ $44				;/
+		LDA #$22 : STA $41		;\ hide BG1/BG2 inside window, show BG3 ONLY inside window
+		LDA #$03 : STA $42		;/
+		STZ $43				; > enable sprites within window
+		STZ $4324			; bank 0x00 for both channels
+		REP #$20
+		LDA #$2601 : STA $4320		; > regs 2126 and 2127
+		LDA #$0200 : STA !HDMA2source	; > table at $0200
+
+		LDA #$00FF			;\
+		STA $0201			; |
+		STA $0204			; | Default window table (no window)
+		STA $0207			; |
+		STA $020A			;/
+
+		SEP #$20
+		LDA #$04 : TSB !HDMA		; Enable HDMA
+
+		LDA #$07 : STA $0200		;\
+		LDA #$40			; |
+		STA $0203			; | Base windowing table
+		STA $0206			; |
+		LDA #$01 : STA $0209		; |
+		STZ $020C			;/
+
+		LDA !CharMenu : BEQ ..R		;\
+		LDA #$07 : STA $0200		; |
+		LDA #$70			; |
+		STA $0203			; |
+		LDA #$01 : STA $0206		; |
+		STZ $0209			; | Char menu windowing table
+		STZ $0202			; |
+		STZ $0204			; |
+		STZ $0208			; |
+		LDA #$FF			; |
+		STA $0201			; |
+		STA $0207			; |
+		LDA !CharMenuSize		; |
+		STA $0205			; |
+		LDA #$22			; |
+		STA $41				; |
+		STA $42				; |
+		STZ $43				; |
+		LDA !CharMenu			; |
+		LSR A : BCC ..R			; > Disable sprite window when char menu is fully open
+		LDA #$02 : STA $43		; |
+		..R				;/
 
 
 	.InitRender

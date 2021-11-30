@@ -10,6 +10,11 @@ levelinit1:
 		JML level1
 
 levelinit2:
+		DEC !MarioYPosHi
+		DEC !P2YPosHi-$80
+		DEC !P2YPosHi
+
+
 		INC !SideExit
 		REP #$20			; > A 16 bit
 		LDA.w #$3200			;\
@@ -52,8 +57,8 @@ levelinit3:
 		INC !SideExit
 		LDA #$C1 : STA !MsgPal		; > Portrait CGRAM location
 		LDA #$1F			;\ Put everything on mainscreen
-		STA $6D9D			;/
-		STZ $6D9E			; > Disable subscreen
+		STA !MainScreen			;/
+		STZ !SubScreen			; > Disable subscreen
 		JSL CLEAR_DYNAMIC_BG3		; > Clear the top of BG3
 		JSL !GetVRAM
 		LDA #$31
@@ -87,6 +92,7 @@ levelinit3:
 		JSL level3_HDMA : INC $14	;\ Set up double-buffered HDMA
 		JSL level3_HDMA : DEC $14	;/
 		JML level3
+
 
 levelinit4:
 		INC !SideExit
@@ -144,6 +150,7 @@ levelinit4:
 	..R	STA !CameraBoxD
 		SEP #$30
 		RTL
+
 
 levelinit5:
 		LDA #$06 : STA !PalsetStart
@@ -347,8 +354,8 @@ levelinit6:
 		LDY.b #.ColorMathHDMA>>16 : STY $4374
 
 
-		SEP #$20			; > A 8 bit
-		LDA #$F8 : TSB !HDMA		; > enable HDMA on channels 3 through 7
+		SEP #$20				; > A 8 bit
+		LDA #$F8 : TSB !HDMA			; > enable HDMA on channels 3 through 7
 
 
 		JSL !GetVRAM				;\
@@ -380,11 +387,8 @@ levelinit6:
 
 levelinitC:
 
-		LDA $96 : BEQ +
+		LDA $97 : BEQ +
 		LDA #$C4
-	;	STA !MarioYSpeed
-	;	STA !P2YSpeed-$80
-	;	STA !P2YSpeed
 		STA !P2VectorY-$80
 		STA !P2VectorY
 		LDA #$3C
@@ -439,7 +443,59 @@ levelinit2A:
 		RTL
 
 levelinit2B:
+		LDY #$0F
+
+	-	%Ex_Index_X()
+		LDA $94
+		AND #$F0
+		CLC : ADC .XDisp,y
+		STA !Ex_XLo,x
+		LDA $95
+		ADC #$00
+		STA !Ex_XHi,x
+		LDA $96
+		AND #$F0
+		CLC : ADC .YDisp,y
+		STA !Ex_YLo,x
+		LDA $97
+		ADC #$00
+		STA !Ex_YHi,x
+		LDA.b #$01+!MinorOffset : STA !Ex_Num,x
+		LDA .XSpeed,y : STA !Ex_XSpeed,x
+		LDA .YSpeed,y : STA !Ex_YSpeed,x
+		STZ !Ex_Data1,x
+		STZ !Ex_Data2,x
+		STZ !Ex_Data3,x
+		DEY : BPL -
+
+		LDA #$09 : STA !SPC4
+		LDA #$1F
+		STA !ShakeTimer
+		STA !ShakeBG3
+
 		JML levelinit5
+
+		.XDisp
+		db $00,$08,$00,$08
+		db $00,$08,$00,$08
+		db $00,$08,$00,$08
+		db $00,$08,$00,$08
+		.YDisp
+		db $00,$00,$08,$08
+		db $00,$00,$08,$08
+		db $00,$00,$08,$08
+		db $00,$00,$08,$08
+		.XSpeed
+		db $02,$03,$02,$03
+		db $02,$03,$02,$03
+		db $02,$03,$02,$03
+		db $02,$03,$02,$03
+		.YSpeed
+		db $F9,$F9,$FB,$FB
+		db $FA,$FA,$FD,$FD
+		db $FB,$FB,$FE,$FE
+		db $FC,$FC,$FF,$FF
+
 
 levelinit2C:
 		STZ $6DF5 : STZ $6DF6
@@ -456,8 +512,7 @@ levelinit2C:
 		LDA $1C
 		ASL #2
 		STA $4204
-		LDX #$0A
-		STX $4206
+		LDX #$0A : STX $4206
 		JSL GET_DIVISION
 		LDA $4216
 		CMP #$0005
@@ -467,28 +522,28 @@ levelinit2C:
 		EOR #$FFFF
 		INC A
 		STA !BG2BaseV
-		LDA #$0000
-		STA $4330
-		LDA.w #.Table
-		STA !HDMA3source
-		SEP #$20
-		LDA.b #.Table>>16
-		STA $4334
-		LDA #$08
-		TSB $6D9F
+		LDA #$00A0 : STA !LightR
+		LDA #$00A0 : STA !LightG
+		LDA #$00A0 : STA !LightB
+		SEP #$30
 		RTL
 
 
-		.Table
-		db $90
-		db $08,$08,$08,$08,$08,$08,$08,$08
-		db $08,$08,$08,$08,$08,$08,$08,$08
-		db $60,$08
-		db $70,$08
-		db $00
 
 
-levelinit2D:	STZ !SideExit
+levelinit2D:
+		STZ !SideExit
+		LDX !Translevel
+		LDA !Level : STA !LevelTable2,x
+		LDA !LevelTable1,x
+		AND.b #$60^$FF
+		ORA #$40
+		STA !LevelTable1,x
+		LDA !Level+1
+		BEQ $02 : LDA #$40
+		ORA !LevelTable1,x
+		STA !LevelTable1,x
+
 
 		REP #$20
 		LDA #$6800 : STA $400000+!MsgVRAM1
@@ -509,6 +564,7 @@ levelinit2F:
 
 
 levelinit32:
+		JSL levelinit6
 		LDA #$02 : STA $41				; enable window 1 on layer 1
 
 		STZ $4324
@@ -537,7 +593,7 @@ levelinit32:
 		LDA.w level6_BGColoursEnd		;\ set color 0x02
 		STA $00A2				;/
 		SEP #$20				; A 8-bit
-		LDA #$F4 : TSB !HDMA			; Enable HDMA on channels 2 and 4 through 7
+		LDA #$F4 : STA !HDMA			; Enable HDMA on channels 2 and 4 through 7
 		STZ !SideExit
 		INC $14 : JSL level32_HDMA
 		DEC $14 : JSL level32_HDMA
@@ -617,7 +673,13 @@ level2:
 	;	LDA #$01 : STA !GlobalPalset2
 	;	LDA #$20 : STA !GlobalPalsetMix
 
+	STZ !P2Entrance-$80
+	STZ !P2Entrance
+
 		RTL
+
+
+
 
 level3:
 		REP #$20
@@ -904,9 +966,10 @@ level4:
 		LDA !RNG
 		AND #$F0
 		CLC : ADC $1C
+		CLC : ADC $7888
 		STA $3210,x
 		LDA $1D
-		ADC #$00
+		ADC $7889
 		STA $3240,x
 		LDA !RNG
 		AND #$02
@@ -998,8 +1061,7 @@ level4:
 
 		LDA #$3C : TSB !HDMA
 
-
-		LDA #$1F : STA $6D9D
+		LDA #$1F : STA !MainScreen
 		LDA #$02 : TRB $44
 
 		LDA #$02 : TRB $44
@@ -1023,6 +1085,7 @@ level4:
 		TAX
 		LDA !DecompBuffer+$1040,x
 		SEC : SBC $1C
+		SEC : SBC $7888
 		SEP #$20
 		STA !P2VectorX-$80,y
 		LDA #$00 : STA !P2VectorAccX-$80,y
@@ -1117,6 +1180,7 @@ level4:
 		LSR #4
 		EOR.w !DecompBuffer+$10FE
 		CLC : ADC $1C
+		CLC : ADC.l $7888
 		CLC : ADC.w !DecompBuffer+$10FC
 		AND #$01FF
 		ORA #$2000
@@ -1149,6 +1213,7 @@ level4:
 		LSR #4
 		EOR.w !DecompBuffer+$10FE
 		CLC : ADC $1C
+		CLC : ADC.l $7888
 		CLC : ADC.w !DecompBuffer+$10FC
 		AND #$01FF
 		STA.w !DecompBuffer+$10F1,x			; layer 1 HDMA value
@@ -1272,7 +1337,7 @@ level5:
 		LDA #$02 : STA !GlobalLight1
 
 		REP #$20
-		LDA #$07F8
+		LDA #$07E8
 		JSL EXIT_Right
 
 
@@ -1396,24 +1461,24 @@ level5:
 		LDA !Level
 		CMP #$0003 : BEQ +
 
-		LDA !BG3BaseSettings			;\ > Include LM initial offset
-		AND #$00F8				; |
-		ASL A					; |
-		STA $02					; |
+	;	LDA !BG3BaseSettings			;\ > Include LM initial offset
+	;	AND #$00F8				; |
+	;	ASL A					; |
+	;	STA $02					; |
 		LDA $1A					; |
 		ASL #3					; |
 		CLC : ADC $1A				; |
 		LSR #3					; |
 		STA $22					; | BG3 scroll = 112.5%
-		LDA $1C					; | (this only applies if BG3 scroll is turned off in LM)
-		SEC : SBC #$00C0			; | (used for ramparts in castle rex)
-		STA $00					; |
-		ASL #3					; |
-		CLC : ADC $00				; |
-		LSR #3					; |
-		CLC : ADC #$00C4			; |
-		CLC : ADC $02				; |
-		STA $24					;/
+	;	LDA $1C					; | (this only applies if BG3 scroll is turned off in LM)
+	;	SEC : SBC #$00C0			; | (used for ramparts in castle rex)
+	;	STA $00					; |
+	;	ASL #3					; |
+	;	CLC : ADC $00				; |
+	;	LSR #3					; |
+	;	CLC : ADC #$00C4			; |
+	;	CLC : ADC $02				; |
+	;	STA $24					;/
 	+	PLP
 		RTL
 
@@ -1950,20 +2015,19 @@ level2B:
 		.NoExit
 
 		REP #$20
-		LDA #$06F8
+		LDA #$06E8
 		PHK : PEA level5_NoExit-1
 		JML EXIT_FADE_Right
 
 
 level2C:
-		LDX #$0F
-	-	LDA $3230,x			;\
-		CMP #$02 : BCC +		; | Look for a killed sprite (states 2-7)
+		LDX #$0F			;\
+	-	LDA $3230,x			; | look for a killed sprite (states 2-7)
+		CMP #$02 : BCC +		; |
 		CMP #$08 : BCS +		;/
-		LDY $3240,x			;\ Must be on screen 00-03
+		LDY $3240,x			;\ must be on Y screen 00-03
 		CPY #$04 : BCS +		;/
-		LDA .Table,y			;\ If there's a rex, it can talk
-		TSB $6DF5			;/
+		LDA .Table,y : TSB $6DF5	; if there is a rex, it can talk
 	+	DEX : BPL -			; Loop
 
 		REP #$20
@@ -1971,23 +2035,23 @@ level2C:
 		LDA.w #.Table2 : JSL TalkOnce
 		LDA.w #.Table3 : JSL TalkOnce
 
+
 		LDA $1A
 		CMP #$00E0 : BNE +
 		LDA $1C : BNE +
 		LDA $6DF5
 		AND #$0008 : BNE +
 		LDA.w #!MSG_CaptainWarrior_Warning : STA !MsgTrigger
-		LDA #$0008
-		TSB $6DF5
+		LDA #$0008 : TSB $6DF5
 		+
 
-		LDA $94
+		LDA !P2XPosLo-$80
 		CMP #$0148 : BCC .NoEntry1
 		CMP #$0168 : BCS .NoEntry1
 		SEP #$20
-		LDA $16
+		LDA $6DA6
 		AND #$08 : BEQ .NoEntry1
-		LDA $77
+		LDA !P2Blocked-$80
 		AND #$04 : BNE .Entry
 
 		.NoEntry1
@@ -2002,18 +2066,18 @@ level2C:
 		AND #$04 : BEQ .NoEntry2
 
 		.Entry
-		LDA #$05 : STA $71
+		LDA #$06 : STA $71
 		STZ $88
+		STZ $89
 		LDA #$80 : STA !SPC3
+		RTL
 		.NoEntry2
 
 		REP #$20
-		LDA $96
-		CMP #$0091
-		BCS +
+		LDA !P2YPosLo
+		CMP #$00A1 : BCS +
 		LDA #$00E0 : STA $00
-		LDA #$0000
-		JSL SCROLL_UPRIGHT
+		LDA #$0000 : JSL SCROLL_UPRIGHT
 		SEP #$20
 		RTL
 	+	STZ !Level+2
@@ -2343,6 +2407,9 @@ level32:
 		STZ $0406,x					; | spawn new collapsing column
 		INX #4						; |
 		STX $0402					;/
+		LDA !ShakeTimer
+		ORA #$0010
+		STA !ShakeTimer
 
 		; update map16 to remove interaction
 		; TO DO: non-interaction page without blanking the column upon reload
@@ -2442,13 +2509,14 @@ level32:
 		LDX !HDMA6source				; | layer 1 positions in hdma table
 		LDA $1A : STA $0B01,x				; |
 
-		LDA $14
-		AND #$0003
-		CMP #$0003
-		BNE $03 : LDA #$0001
-		DEC A
-		STA $0E
-		CLC : ADC $1C
+		; LDA $14
+		; AND #$0003
+		; CMP #$0003
+		; BNE $03 : LDA #$0001
+		; DEC A
+		; STA $0E
+		LDA $1C
+		CLC : ADC $7888
 		STA $0B03,x
 
 	;	LDA $1C : STA $0B03,x				;/
@@ -2459,7 +2527,8 @@ level32:
 		ORA #$2000					; |
 		STA $00						; |
 		LDA $1C						; | set up mode 2 table
-	CLC : ADC $0E
+		CLC : ADC $7888
+	;CLC : ADC $0E
 		AND #$01FF					; |
 		ORA #$2000					; |
 		STA $02						; |
@@ -2586,6 +2655,7 @@ level32:
 		DEY #4 : BMI ..finish
 		LDA $0406,y
 		SEC : SBC $040A,y
+		SEC : SBC $7888
 		BPL ..small
 
 		..big
@@ -2622,7 +2692,10 @@ level32:
 
 		..finish
 		LDA $00 : STA $0C01,x
-		LDA $02 : STA $0C02,x : BNE +
+		LDA $02
+		BEQ $01 : DEC A
+		STA $0C02,x
+		BNE +
 		LDA #$FF : STA $0C01,x
 	+	LDA #$01 : STA $0C00,x
 		STZ $0C03,x

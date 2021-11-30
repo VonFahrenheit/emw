@@ -293,7 +293,6 @@ org $058526
 		SEI
 		JML NMI					; PHP : REP #$30 : PHA
 
-
 	org $00806B
 		JMP FinalShade				; org: JMP $1E8F
 

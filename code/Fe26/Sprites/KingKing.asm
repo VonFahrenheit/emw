@@ -2070,7 +2070,6 @@
 		SEP #$20
 		CLC : JSL !UpdateGFX
 
-
 		LDX !SpriteIndex				; X = sprite index
 		STZ !SpriteTile,x				;\ nope
 		STZ !SpriteProp,x				;/

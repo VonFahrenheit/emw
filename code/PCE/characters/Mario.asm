@@ -326,12 +326,15 @@ namespace Mario
 
 
 		.Controls
-		LDA !P2HurtTimer : BEQ ..normal
-		LDA #$0F : TRB $15
+		LDA !P2Entrance : BEQ +
+		LDA #$FF : BRA ++
+	+	LDA !P2HurtTimer : BEQ ..normal
+		LDA #$0F
+	++	TRB $15
+		TRB $6DA3
 		STZ $16
 		STZ $17
 		STZ $18
-		TRB $6DA3
 		STZ $6DA5
 		STZ $6DA7
 		STZ $6DA9
@@ -469,7 +472,7 @@ namespace Mario
 		..done
 
 
-		JSL CORE_UPDATE_SPEED				; > apply vector speeds (already includes a stasis check)
+		JSL CORE_UPDATE_SPEED				; > apply speeds (already includes a stasis check)
 		JSL CORE_SCREEN_BORDER				; > screen border
 
 
@@ -766,6 +769,10 @@ namespace Mario
 		JML $00D5F2					;/
 
 		.CallReturn					; return here
+		LDA !MarioXSpeed : STA !P2XSpeed		;\ pass speeds back again
+		LDA !MarioYSpeed : STA !P2YSpeed		;/
+
+
 		LDA !MarioWater : BEQ +
 		LDA !MarioInAir : BNE ++
 	+	JSL $00CEB1					; mario image update code

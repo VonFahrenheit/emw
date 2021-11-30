@@ -278,7 +278,15 @@ endmacro
 		LDA !OAMindex_p3 : TAX
 		CLC : ADC #$0004
 		STA !OAMindex_p3
-		LDA $00 : STA !OAM_p3+$000,x
+		LDA $00 : STA !OAM_p3+$000,x			;
+		CPY #$0001 : BNE ..notluigi			;\
+		LDA !CharMenu					; |
+		AND #$007F					; |
+		CMP #$0004 : BNE ..notluigi			; | adjust luigi victory pose
+		LDA !OAM_p3+$000,x				; |
+		INC A						; |
+		STA !OAM_p3+$000,x				; |
+		..notluigi					;/
 		LDA !SelectingPlayer
 		AND #$00FF
 		BEQ $03 : LDA #$0202
@@ -299,7 +307,9 @@ endmacro
 
 		..skip
 		INY
-		CPY #$0006 : BCC ..loop
+		CPY #$0006 : BCS ..end
+		JMP ..loop
+		..end
 		TXA : STA !OAMindex_p2
 
 		RTS
@@ -331,11 +341,13 @@ endmacro
 		ORA #$06
 		STA $0F
 		LDA $6DA6,x : BMI ..close
-		BIT #$10 : BEQ ..noclose
+		BIT #$10 : BNE ..close
+		JMP ..noclose
 
 		..close
 		INC !CharMenu
 		LDA !CharMenuCursor : STA !P1MapChar,x
+
 		CPX #$00 : BNE ..closep2
 
 		..closep1
@@ -368,6 +380,17 @@ endmacro
 		..setchar
 		ORA $00
 		STA !Characters
+
+		LDA #$00 : STA !CurrentMario
+		LDA !Characters
+		CMP #$10 : BCS +
+		LDA #$01 : STA !CurrentMario
+		BRA ++
+	+	BIT #$0F : BNE ++
+		LDA !MultiPlayer : BEQ ++
+		LDA #$02 : STA !CurrentMario
+		++
+
 		PHP
 		JSR .UpdatePlayer
 		PLP

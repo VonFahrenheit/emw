@@ -16,23 +16,26 @@
 
 CHECKPOINTS:
 	pushpc
+	org $05D9D7
+		JSL .Entrance		;\ org: LDA !LevelTable1,x : AND #$40
+		NOP			;/
 	org $05DCE7
-		JML .Main		;\ Org: STA $77BB : STA $0E (inserted by Lunar Magic)
+		JML .Main		;\ org: STA $77BB : STA $0E (inserted by Lunar Magic)
 		NOP			;/
 
 	org $0DA691
-		JSL .Load		; Org: LDA.l !LevelTable,x
+		JSL .Load		; org: LDA.l !LevelTable1,x
 	org $0DA699
-		BRA $03 : NOP #3	; Org: LDA $73CE : BNE $12
+		BRA $03 : NOP #3	; org: LDA $73CE : BNE $12
 	pullpc
 	.Main
 		STA $77BB
 		STA $0E
-		TYA
-		STA $0F
+		TYA : STA $0F
 		PHX
 		PHP
 		SEP #$10
+		LDA !LoadCheckpoint : BEQ .Return
 		LDX !Translevel
 		BIT !LevelTable1,x : BVC .Return	; check checkpoint flag
 		LDA !LevelTable2,x : STA $0E		;\
@@ -46,9 +49,19 @@ CHECKPOINTS:
 		RTL
 
 
+	.Entrance
+		LDA !LoadCheckpoint : BEQ ..return
+		LDA !LevelTable1,x
+		AND #$40
+		..return
+		RTL
+
+
+
 	.Load
 		LDA.l !LevelTable1,x
 		AND #$40 : BEQ .R
+		LDA.l !LoadCheckpoint : BEQ .R
 		PEI ($00)
 
 		LDA.l !LevelTable2,x : STA $00

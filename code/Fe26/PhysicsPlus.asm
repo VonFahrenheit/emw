@@ -15,6 +15,11 @@
 								;	STA $7695
 								;	STZ !SpriteWater,x
 
+	org $0191ED						; let Fe26 (main) handle water splash...
+		RTS						;\ org: LDA !SpriteWater,x
+		NOP #2						;/
+
+
 	org $019258
 		STA !SpriteWater,x
 		JML .Phase					;\ org: LDA !SpriteTweaker5,x : BMI $B0 ($019210)
@@ -132,6 +137,10 @@ endmacro
 		PLA : STA !SpriteYSpeed,x			;/
 		.NoVectors
 
+
+
+
+
 		LDA !SpriteStasis,x : BEQ .NoStasis		;\
 		JML $019084					; | just skip the rest of this routine during stasis
 		.NoStasis					;/
@@ -154,8 +163,6 @@ endmacro
 		.UpdateY
 		%UpdateY()
 		JML .ReturnY
-
-
 
 
 .ExtraCollision	STZ $7694					; overwritten code!

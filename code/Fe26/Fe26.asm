@@ -395,6 +395,9 @@ MainSpriteLoop:
 		BEQ .NoLoad				; | (but only if the camera has moved this frame)
 		.Load					; |
 		JSR LoadSpriteFromLevel			; |
+		LDA !ProcessingSprites : BNE .NoLoad
+		PLB
+		RTL
 		.NoLoad					;/
 
 		STZ $7471
@@ -417,14 +420,10 @@ MainSpriteLoop:
 		BNE $03 : STZ $33B0,x					;/
 		LDA $3230,x : BNE .WantToProcess			; check if sprite exists
 		LDA $3200,x						;\
-		CMP #$FF : BEQ .Return					; |
-		JSL Erase						; |
+		CMP #$FF : BEQ +					; |
+		JSL Erase						; | erase if status = 00 (if sprite num = 0xFF, this sprite is already erased)
 		LDA #$FF : STA $3200,x					; |
-		STZ !ExtraBits,x					; |
-		STZ !NewSpriteNum,x					; | if it doesn't, clear these regs
-		STZ !ExtraProp1,x					; |
-		STZ !ExtraProp2,x					; | there might be a bug if a sprite slot is cleared and reused on the same frame
-		BRA .Return						;/
+	+	JMP .Return						;/
 
 	.WantToProcess
 		%decreg($32D0)			; main timer
@@ -438,13 +437,31 @@ MainSpriteLoop:
 		%decreg(!SpriteDisP2)		; P2 interaction disable timer
 
 		.NoDec
-		PHK : PEA.w .Return-1		; RTL address: .Return
+		LDA !SpriteWater,x : PHA
+		PHK : PEA.w .CheckSplash-1	; RTL address: .CheckSplash
 		PEA.w $80CA-1			; RTS address: $80CA ($0180CA points to RTL)
 		JMP HandleStatus
 
+		.CheckSplash						;\
+		PLA							; |
+		CMP !SpriteWater,x : BEQ ..done				; |
+		%Ex_Index_Y()						; |
+		LDA #$07+!MinorOffset : STA !Ex_Num,y			; | splash when entering or exiting water
+		LDA #$00 : STA !Ex_Data1,y				; |
+		LDA !SpriteXLo,x : STA !Ex_XLo,y			; |
+		LDA !SpriteXHi,x : STA !Ex_XHi,y			; |
+		LDA !SpriteYLo,x : STA !Ex_YLo,y			; |
+		LDA !SpriteYHi,x : STA !Ex_YHi,y			;/
+		..done
 
 		.Return
-		LDA $3230,x
+		LDA $3230,x : BNE ..processitem				;\
+		STZ !ExtraBits,x					; |
+		STZ !NewSpriteNum,x					; | if status is 00 after sprite has been processed...
+		STZ !ExtraProp1,x					; | ...clear custom sprite regs
+		STZ !ExtraProp2,x					; | (this fixes a bug if a slot is opened and claimed on the same frame)
+		BRA ..notitem						;/
+		..processitem
 		CMP #$09 : BEQ ..item
 		CMP #$0B : BNE ..notitem
 		..item
@@ -582,8 +599,8 @@ incsrc "SpriteData.asm"
 
 
 	Init:
-		LDA !GameMode
-		CMP #$14 : BEQ $03 : JMP .Return	; don't run until level has started!!
+	;	LDA !GameMode
+	;	CMP #$14 : BEQ $03 : JMP .Return	; don't run until level has started!!
 		LDA #$08 : STA $3230,x			; set status to MAIN
 		LDA !ExtraBits,x
 		AND #!CustomBit : BEQ .Vanilla
@@ -773,6 +790,7 @@ incsrc "SpriteData.asm"
 		LDA.l .min_y_range,x : STA $6BF0	; |
 		LDA.l .max_y_range,x : STA $6BF2	; |
 		SEP #$20				;/
+		LDA #$00 : STA !ProcessingSprites
 		JMP MainSpriteLoop_Main			; go directly to SA-1 hook, ends in RTL so this is fine
 
 	; shoutout to Vitor for straight up giving me these
@@ -815,14 +833,14 @@ endmacro
 ; $51	top border of forbiddance box
 ; $53	bottom border of forbiddance box
 
-		PEI ($45)
-		PEI ($47)
-		PEI ($49)
-		PEI ($4B)
-		PEI ($4D)
-		PEI ($4F)
-		PEI ($51)
-		PEI ($53)
+		; PEI ($45)
+		; PEI ($47)
+		; PEI ($49)
+		; PEI ($4B)
+		; PEI ($4D)
+		; PEI ($4F)
+		; PEI ($51)
+		; PEI ($53)
 		SEP #$30
 		LDA $6BF4
 		AND #$03
@@ -970,9 +988,6 @@ endmacro
 		INY
 		JMP .LoadNewSprite
 	.ThisIndex
-	; TO DO:
-	; - generators
-	; - scroll sprites
 		INY					; get ready to read num byte
 		LDA $08 : STA !ExtraBits,x		; write extra bits
 		AND #$08 : BEQ .NotCustom		; see if custom or vanilla
@@ -1137,6 +1152,14 @@ endmacro
 		LDA $02 : STA $3210,x			; |
 		LDA $03 : STA $3240,x			;/
 		JSL !ResetSprite			; reset/reload tables (this routine shreds $00-$02)
+		LDA !3DWater : BEQ ..no3dwater		;\
+		REP #$20				; |
+		LDA $02					; |
+		CMP !Level+2				; | init in water
+		SEP #$20				; |
+		BCC ..no3dwater				; |
+		LDA #$01 : STA !SpriteWater,x		; |
+		..no3dwater				;/
 		LDA $04 : STA $3230,x			; state
 		LDA $01,s : STA $33F0,x			; sprite index to level table, sprite ID
 		LDA !ExtraBits,x			;\
@@ -1159,15 +1182,15 @@ endmacro
 		JMP .LoadNewSprite			;/
 
 		.Return
-		REP #$20
-		PLA : STA $53
-		PLA : STA $51
-		PLA : STA $4F
-		PLA : STA $4D
-		PLA : STA $4B
-		PLA : STA $49
-		PLA : STA $47
-		PLA : STA $45
+		; REP #$20
+		; PLA : STA $53
+		; PLA : STA $51
+		; PLA : STA $4F
+		; PLA : STA $4D
+		; PLA : STA $4B
+		; PLA : STA $49
+		; PLA : STA $47
+		; PLA : STA $45
 		PLP
 		RTS
 
@@ -1503,6 +1526,20 @@ endmacro
 		STA !SpriteTile,x				; |
 		XBA : STA !SpriteProp,x				; |
 		..done						;/
+
+		LDA !3DWater : BEQ ..no3dwater
+		LDA !SpriteYHi,x : XBA
+		LDA !SpriteYLo,x
+		REP #$20
+		CMP !Level+2
+		SEP #$20
+		BCC ..no3dwater
+		LDA $3230,x
+		CMP #$02 : BNE +
+		LDA #$01 : STA !SpriteWater,x
+	+	LDA !SpriteExtraCollision,x
+		ORA #$40 : STA !SpriteExtraCollision,x
+		..no3dwater
 
 		LDA $3230,x
 		CMP #$02 : BCC .CallDefault
@@ -1889,7 +1926,6 @@ print "-- BANK $17 --"
 %InsertSprite(EliteKoopa)
 %InsertSprite(MoleWizard)
 %InsertSprite(BooHoo)
-%InsertSprite(GigaThwomp)
 
 
 
@@ -1915,6 +1951,7 @@ print "-- BANK $1A --"
 %InsertSprite(Elevator)
 %InsertSprite(CaptainWarrior)
 %InsertSprite(MiniMech)
+%InsertSprite(GigaThwomp)
 
 
 BANK1AEnd:
