@@ -1161,7 +1161,7 @@ endmacro
 		LDA #$01 : STA !SpriteWater,x		; |
 		..no3dwater				;/
 		LDA $04 : STA $3230,x			; state
-		LDA $01,s : STA $33F0,x			; sprite index to level table, sprite ID
+		LDA $01,s : STA $33F0,x			; sprite index to level table, sprite level ID
 		LDA !ExtraBits,x			;\
 		AND #$08 : BEQ .NoInit			; |
 		PHY					; |

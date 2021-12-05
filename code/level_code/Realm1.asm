@@ -676,6 +676,21 @@ level2:
 	STZ !P2Entrance-$80
 	STZ !P2Entrance
 
+		.ReloadSprites
+		LDX #$00
+		..loop
+		LDA !SpriteLoadStatus,x : BEQ ..next
+		STX $00
+		LDY #$0F
+	-	LDA $3230,y : BEQ +
+		LDA $33F0,y
+		CMP $00 : BEQ ..next
+	+	DEY : BPL -
+		..clear
+		LDA #$00 : STA !SpriteLoadStatus,x
+		..next
+		INX : BNE ..loop
+
 		RTL
 
 

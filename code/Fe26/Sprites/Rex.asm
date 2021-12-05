@@ -85,8 +85,11 @@ Rex:
 
 		.Alert
 		LDA !RexChase,x : BNE ..nochase
+		LDA $33C0,x						;\ reverse chase for golden bandit
+		CMP #$04 : BEQ ..chase					;/
 		LDA !ExtraProp1,x
 		CMP #$05 : BNE ..nochase
+		..chase
 		LDA $3220,x
 		SEC : SBC #$80
 		STA $04
@@ -103,6 +106,9 @@ Rex:
 		LDA #$80 : STA $07
 		SEC : JSL !PlayerClipping : BCC ..nochase
 		LDA #$01 : STA !RexChase,x
+		LDA $33C0,x
+		CMP #$04 : BNE ..nochase
+		INC !RexChase,x						; reverse chase flag if gold
 		..nochase
 
 
@@ -110,11 +116,18 @@ Rex:
 		LDA !SpriteAnimIndex
 		CMP #!Rex_Hurt : BCS ..nochase
 		LDA !RexChase,x : BEQ ..nochase
+		CMP #$01 : BEQ ..normal
+		..reverse
+		JSL SUB_HORZ_POS
+		TYA
+		EOR #$01 : STA $3320,x
+		LDA #$02 : BRA +
+		..normal
 		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
 		LDA !Difficulty
 		AND #$03
-		ASL A
+	+	ASL A
 		ADC $3320,x
 		TAY
 		LDA !SpriteXSpeed,x
@@ -176,6 +189,10 @@ Rex:
 		..turn
 		PLA : STA $3250,x
 		PLA : STA $3220,x
+	LDA !RexChase,x				;\
+	CMP #$02 : BNE +			; | golden bandit escape maneuver
+	LDA #$C0 : STA !SpriteYSpeed,x		; |
+	+					;/
 		LDA $3330,x
 		AND #$03 : BEQ ..fullrestore		; don't restore Y coordinate when hitting wall
 		LDA !RexChase,x : BNE ..noturn+2	; when chasing, rex will not flip
@@ -194,6 +211,7 @@ Rex:
 		..noturn
 		PLA : PLA : PLA : PLA
 		..turndone
+
 
 
 	INTERACTION:
@@ -427,41 +445,41 @@ Rex:
 
 	.TM_Walk00
 		dw $0004
-		db $32,$00,$F0,$00
+		db $22,$00,$F0,$00
 		dw $0008
-		db $32,$00,$00,$00
-		db $32,$08,$00,$01
+		db $22,$00,$00,$00
+		db $22,$08,$00,$01
 	.TM_Walk01
 		dw $0004
-		db $32,$00,$EF,$00
+		db $22,$00,$EF,$00
 		dw $0008
-		db $32,$00,$FF,$03
-		db $32,$08,$FF,$04
+		db $22,$00,$FF,$03
+		db $22,$08,$FF,$04
 	.TM_Walk02
 		dw $0004
-		db $32,$00,$EF,$00
+		db $22,$00,$EF,$00
 		dw $0008
-		db $32,$00,$FF,$06
-		db $32,$08,$FF,$07
+		db $22,$00,$FF,$06
+		db $22,$08,$FF,$07
 
 	.TM_Hurt00
 		dw $0008
-		db $32,$00,$F0,$00
-		db $32,$00,$00,$02
+		db $22,$00,$F0,$00
+		db $22,$00,$00,$02
 		dw $FFFF
 
 	.TM_Small00
 		dw $0004
-		db $32,$00,$00,$05
+		db $22,$00,$00,$05
 		dw $FFFF
 	.TM_Small01
 		dw $0004
-		db $32,$00,$00,$07
+		db $22,$00,$00,$07
 		dw $FFFF
 
 	.TM_Dead00
 		dw $0004
-		db $32,$00,$00,$09
+		db $22,$00,$00,$09
 		dw $FFFF
 
 
@@ -510,158 +528,158 @@ Rex:
 
 		.Hat1		; green robin hood hat
 		dw $0004
-		db $3B,$03,$E8,$00
+		db $1B,$03,$E8,$00
 		..tilt
 		dw $0004
-		db $3B,$03,$E7,$00
+		db $1B,$03,$E7,$00
 
 		.Hat2		; red hat with bow
 		dw $0004
-		db $39,$04,$E9,$00
+		db $19,$04,$E9,$00
 		..tilt
 		dw $0004
-		db $39,$04,$E8,$00
+		db $19,$04,$E8,$00
 
 		.Hat3		; straw hat
 		dw $0004
-		db $39,$05,$E8,$00
+		db $19,$05,$E8,$00
 		..tilt
 		dw $0004
-		db $39,$05,$E7,$00
+		db $19,$05,$E7,$00
 
 		.Hat4		; fez
 		dw $0004
-		db $39,$04,$EC,$00
+		db $19,$04,$EC,$00
 		..tilt
 		dw $0004
-		db $39,$04,$EB,$00
+		db $19,$04,$EB,$00
 
 		.Hat5		; bandit bandana
 		dw $0004
-		db $37,$04,$F0,$00
+		db $17,$04,$F0,$00
 		..tilt
 		dw $0004
-		db $37,$04,$EF,$00
+		db $17,$04,$EF,$00
 
 		.Hat6		; top hat and mustache
 		dw $0008
-		db $37,$05,$E4,$00
-		db $39,$FD,$F7,$02
+		db $17,$05,$E4,$00
+		db $19,$FD,$F7,$02
 		..tilt
 		dw $0008
-		db $37,$05,$E3,$00
-		db $39,$FD,$F6,$02
+		db $17,$05,$E3,$00
+		db $19,$FD,$F6,$02
 
 		.Hat7		; sports bandana
 		dw $0004
-		db $37,$06,$EE,$00
+		db $17,$06,$EE,$00
 		..tilt
 		dw $0004
-		db $37,$06,$ED,$00
+		db $17,$06,$ED,$00
 
 		.Helmet		; ...helmet
 		dw $0004
-		db $37,$04,$EB,$00
+		db $17,$04,$EB,$00
 		..tilt
 		dw $0004
-		db $37,$04,$EA,$00
+		db $17,$04,$EA,$00
 
 
 		.Bag1		; coin bag
 		dw $0004
-		db $30,$07,$00,$00
+		db $20,$07,$00,$00
 		dw $0004
-		db $35,$0A,$FB,$01
+		db $15,$0A,$FB,$01
 		..tilt1
 		dw $0004
-		db $30,$08,$FF,$00
+		db $20,$08,$FF,$00
 		dw $0004
-		db $35,$0B,$FA,$01
+		db $15,$0B,$FA,$01
 		..tilt2
 		dw $0004
-		db $30,$06,$FF,$00
+		db $20,$06,$FF,$00
 		dw $0004
-		db $35,$09,$FA,$01
+		db $15,$09,$FA,$01
 
 		.Bag2		; mushroom bindle
 		dw $0004
-		db $30,$07,$FE,$00
+		db $20,$07,$FE,$00
 		dw $0004
-		db $39,$0E,$F7,$01
+		db $19,$0E,$F7,$01
 		..tilt1
 		dw $0004
-		db $30,$07,$FD,$00
+		db $20,$07,$FD,$00
 		dw $0004
-		db $39,$0E,$F6,$01
+		db $19,$0E,$F6,$01
 		..tilt2
 		dw $0004
-		db $30,$08,$FD,$00
+		db $20,$08,$FD,$00
 		dw $0004
-		db $39,$0F,$F6,$01
+		db $19,$0F,$F6,$01
 
 		.Bag3		; backpack
 		dw $0004
-		db $30,$08,$FD,$00
+		db $20,$08,$FD,$00
 		dw $0004
-		db $37,$09,$F8,$01
+		db $17,$09,$F8,$01
 		..tilt1
 		..tilt2
 		dw $0004
-		db $30,$08,$FC,$00
+		db $20,$08,$FC,$00
 		dw $0004
-		db $37,$09,$F7,$01
+		db $17,$09,$F7,$01
 
 
 		.Bag4		; box
 		dw $0008
-		db $30,$03,$FE,$00
-		db $37,$F9,$FB,$01
+		db $20,$03,$FE,$00
+		db $17,$F9,$FB,$01
 		dw $FFFF
 		..tilt1
 		..tilt2
 		dw $0008
-		db $30,$03,$FD,$00
-		db $37,$F9,$FA,$01
+		db $20,$03,$FD,$00
+		db $17,$F9,$FA,$01
 		dw $FFFF
 
 		.Sword		; ...sword
 		dw $0008
-		db $37,$FF,$F8,$00
-		db $30,$0D,$00,$02
+		db $17,$FF,$F8,$00
+		db $20,$0D,$00,$02
 		dw $FFFF
 		..tilt1
 		dw $0008
-		db $37,$00,$F7,$00
-		db $30,$0D,$FF,$12
+		db $17,$00,$F7,$00
+		db $20,$0D,$FF,$12
 		dw $FFFF
 		..tilt2
 		dw $0008
-		db $37,$FF,$F7,$00
-		db $30,$0B,$FF,$12
+		db $17,$FF,$F7,$00
+		db $20,$0B,$FF,$12
 		dw $FFFF
 
 		.SwordHurt	; ...sword
 		..tilt1
 		..tilt2
 		dw $0008
-		db $37,$01,$FA,$00
-		db $30,$0D,$00,$02
+		db $17,$01,$FA,$00
+		db $20,$0D,$00,$02
 		dw $FFFF
 
 		.SwordSmall	; ...sword
 		dw $0008
-		db $37,$01,$00,$00
-		db $30,$0F,$08,$02
+		db $17,$01,$00,$00
+		db $20,$0F,$08,$02
 		dw $FFFF
 		..tilt1
 		dw $0008
-		db $37,$00,$FF,$00
-		db $30,$0D,$07,$12
+		db $17,$00,$FF,$00
+		db $20,$0D,$07,$12
 		dw $FFFF
 		..tilt2
 		dw $0008
-		db $37,$FF,$FF,$00
-		db $30,$0B,$07,$12
+		db $17,$FF,$FF,$00
+		db $20,$0B,$07,$12
 		dw $FFFF
 
 

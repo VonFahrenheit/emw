@@ -915,6 +915,7 @@ SPRITE_OFF_SCREEN:
 		BPL $02 : EOR #$40				; |
 		LSR $07						; | static particle prop
 		BCC $01 : INC A					; |
+		ORA #$20					; |
 		REP #$20					; |
 		STA !41_Particle_Prop,x				; |
 		LDA ($04),y					; |

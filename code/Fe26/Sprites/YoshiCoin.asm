@@ -98,6 +98,8 @@ YoshiCoin:
 		PHB : PHK : PLB
 		BIT !ExtraProp1,x : BPL .NoRex		; check rex flag
 		LDY $3290,x				;\
+		LDA !NewSpriteNum,y
+		CMP #$02 : BNE .Drop
 		LDA $3210,y : STA $3210,x		; |
 		LDA $3220,y : STA $3220,x		; |
 		LDA $3240,y : STA $3240,x		; |
@@ -105,7 +107,18 @@ YoshiCoin:
 	;	LDA #$04 : STA $33C0,y			; |
 		LDA $3230,y				; |
 		CMP #$08 : BNE .Drop			; |
-		LDA.w $BE,y : BNE .Drop			; |
+		LDA.w $BE,y : BEQ .Return		; |
+		LDA !SpriteXLo,y : STA !SpriteXLo,x
+		LDA !SpriteXHi,y : STA !SpriteXHi,x
+		LDA !SpriteYLo,y
+		SEC : SBC #$10
+		STA !SpriteYLo,x
+		LDA !SpriteYHi,y
+		SBC #$00
+		STA !SpriteYHi,x
+		JMP .NoContact
+
+		.Return
 		PLB					; |
 		RTL					;/
 	.Drop	LDA !ExtraProp1,x			;\

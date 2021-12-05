@@ -98,7 +98,9 @@ namespace BG_OBJECTS
 		REP #$30					; |
 		JSL !GetBigCCDMA : BCS ..fail			; |
 		LDA $53						; |
-		INC #2						; | run CCDMA if anything was rendered this frame
+		CMP #$007E					; |
+		BCC $03 : LDA #$007E				; | run CCDMA if anything was rendered this frame
+		INC #2						; |
 		ASL #4						; |
 		STA !CCDMAtable+$00,x				; |
 		LDA.w #!GFX_buffer : STA !CCDMAtable+$02,x	; |

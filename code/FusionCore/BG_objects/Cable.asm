@@ -391,14 +391,18 @@
 
 
 		.Anim
-		LDA !BG_object_Misc,x
+		LDA $53 : BMI +
+		CMP #$0080 : BCS ..justupdateheight
+	+	LDA !BG_object_Misc,x
 		BIT #$0003 : BNE ..render
 		AND #$00FC
 		CMP #$0005*4 : BCS ..render
-		BRA ..norender
+		JMP ..norender
 
 		..render
 		JSR RenderCable
+		LDA $53
+		CMP #$0080 : BCS ..justupdateheight
 
 		PHX
 		LDA !BG_object_H,x
@@ -424,6 +428,7 @@
 		PLX
 
 		JSR .TilemapUpdate
+		..justupdateheight
 		LDA.w #.AnimTable : STA $02
 		LDA.w #.AnimTable>>16 : STA $04
 		LDA !BG_object_Misc,x
@@ -441,7 +446,8 @@
 		BNE $02 : ADC #$04
 		STA !BG_object_H,x
 		REP #$20
-		BRA ..done
+		LDA $53
+		CMP #$0080 : BCC ..done			; if this was set, actually go into ..norender
 
 		..norender
 	; handle bounce animation here
@@ -636,9 +642,11 @@
 		SEC : SBC #$0010				; | base y position (adjusted for minus2 position)
 		CMP $4B : BCS ..fail				; > instant fail if below bottom line
 		STA $98						;/
-		LDA !BG_object_X,x				;\
-		AND #$0100					; |
-		ASL #2						; | tilemap bits of address
+		LDA $4D						;\
+		ASL #2						; | > x offset can change which tilemap this starts on
+		ADC !BG_object_X,x				; |
+		AND #$0100					; | tilemap bits of address
+		ASL #2						; |
 		ORA.l !BG1Address				; |
 		STA $02						;/
 		LDA !BG_object_W,x				;\
@@ -767,12 +775,18 @@
 		STA !VRAMtable+$05,x
 		JSL !GetVRAM
 		LDA $01,s
-		SEC : SBC $08
+		SEC : SBC $06
 		EOR #$FFFF : INC A
+		ORA $0E
 		STA !VRAMtable+$00,x
+		BIT #$4000 : BEQ ..fill
+		..void
+		PLA
+		LDA $0A : BRA +
+		..fill
 		PLA
 		CLC : ADC $0A
-		STA !VRAMtable+$02,x
+	+	STA !VRAMtable+$02,x
 		LDA $0C : STA !VRAMtable+$04,x
 		LDA $02
 		EOR #$0400
@@ -977,6 +991,10 @@ endmacro
 ; $0A	hash of current tile (used to quickly check if a new tile should be initialized)
 ; $0C	latent growth
 ; $0E	Xpos to stop rendering the current line at
+;
+; $4F	safe stack pointer
+; $53	which tile is next to be rendered
+
 
 ; still need:
 ;	thickness / rendering style
@@ -1095,6 +1113,7 @@ endmacro
 		PHX
 		PHP
 		PHB : PHK : PLB
+		TSC : STA $4F				; save stack pointer
 
 		LDA $02					;\
 		SEC : SBC $00				; | push dx for line 3
@@ -1247,6 +1266,13 @@ endmacro
 
 		LDA $0A : STA.w !CableConnectionHash
 		LDX $53
+		CPX #$0080 : BCC +
+		LDA $4F : TCS
+		PLB
+		PLP
+		PLX
+		RTS
+		+
 		LDA.w !CableTileOverflow,x : BEQ ..done
 		INX #2
 		STX $53
@@ -1337,6 +1363,13 @@ endmacro
 		CMP $0E : BCS ..loop
 
 		LDX $53					;\
+		CPX #$0080 : BCC +
+		LDA $4F : TCS
+		PLB
+		PLP
+		PLX
+		RTS
+		+
 		LDA.w !CableTileOverflow,x : BEQ ..end	; |
 		LDA $0A					; |
 		SEC : SBC.w !CablePrevHash		; | if last tile overflowed, make sure it's still appended to CCDMA
@@ -1364,6 +1397,13 @@ endmacro
 		CMP.w !CableConnectionHash : BNE ..normal
 		..finalhash
 		LDX $53					;\
+		CPX #$0080 : BCC +
+		LDA $4F : TCS
+		PLB
+		PLP
+		PLX
+		RTS
+		+
 		LDA.w !CableTileOverflow,x : BEQ +	; | register overflow of penultimate tile
 		INX #2					; |
 		STX $53					;/
@@ -1373,7 +1413,15 @@ endmacro
 
 		..normal
 		TXA
-		LDX $53
+		LDX $53 : BMI +
+		CPX #$0080 : BCC +
+		LDA $4F : TCS
+		PLB
+		PLP
+		PLX
+		RTS
+		+
+
 		EOR $0A
 		AND #$0008 : BNE ..sideways
 		BRA +

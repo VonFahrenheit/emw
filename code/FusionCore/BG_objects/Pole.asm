@@ -51,6 +51,30 @@
 
 
 		PHB : PHK : PLB
+
+		LDX #$0F
+	-	LDA $3230,x
+		CMP #$08 : BCC +
+		CMP #$0C : BCS +
+		LDA !SpriteYSpeed,x
+		CLC : ADC !SpriteVectorY,x
+		BMI +
+		JSL !GetSpriteClipping00
+		LDA $03
+		CLC : ADC #$05
+		STA $03
+		JSL !CheckContact : BCC +
+		LDA #$10 : STA !SpriteYSpeed,x
+		LDA #$04 : STA !SpriteExtraCollision,x
+		LDA $05
+		SEC : SBC #$0F
+		STA !SpriteYLo,x
+		LDA $0B
+		SBC #$00
+		STA !SpriteYHi,x
+	+	DEX : BPL -
+
+
 		SEC : JSL !PlayerClipping
 		PLB
 		PLP
@@ -92,10 +116,13 @@
 ;
 
 		.InteractP1
-		LDA.l !P2XPosLo-$80 : JSR .GetMapIndex		; get height map index
+		LDA.l !P2XPosLo-$80 : JSR .GetMapIndex		; get height map index (also use for bounce, so it has to be before the BCC ..done)
 		LSR $00 : BCC ..done				;\
 		LDA.l !P2DropDownTimer-$80-1 : BMI ..fail	; |
-		LDA.l !P2YSpeed-$80-1				; | has to touch while moving down (no interaction during drop down)
+		LDA.l !P2YPosLo-$80				; |
+		SEC : SBC #$0008				; | has to touch while moving down (no interaction during drop down)
+		CMP !BG_object_Y,x : BPL ..fail			; |
+		LDA.l !P2YSpeed-$80-1				; |
 		CLC : ADC.l !P2VectorY-$80-1			; |
 		BPL ..ontop					;/
 		..fail						;\
@@ -137,6 +164,11 @@
 		CMP #$10 : BCS ..reduce				;/
 		..boost						;\
 		PHP						; |
+		LDA.l !P2Character-$80
+		CMP #$02 : BEQ +
+		CMP #$03 : BNE ++
+	+	LDA #$01 : STA.l !P2Dashing-$80
+		++
 		LDA #$08 : STA.l !SPC4				; |
 		LDA #$17 : JSR .SetAnim				; | anim + sfx
 		PLP						; |
@@ -171,10 +203,13 @@
 		..done						;/
 
 		.InteractP2
-		LDA.l !P2XPosLo : JSR .GetMapIndex		; get height map index
+		LDA.l !P2XPosLo : JSR .GetMapIndex		; get height map index (also use for bounce, so it has to be before the BCC ..done)
 		LSR $00 : BCC ..done				;\
 		LDA.l !P2DropDownTimer-1 : BMI ..fail		; |
-		LDA.l !P2YSpeed-1				; | has to touch while moving down (no interaction during drop down)
+		LDA.l !P2YPosLo					; |
+		SEC : SBC #$0008				; | has to touch while moving down (no interaction during drop down)
+		CMP !BG_object_Y,x : BPL ..fail			; |
+		LDA.l !P2YSpeed-1				; |
 		CLC : ADC.l !P2VectorY-1			; |
 		BPL ..ontop					;/
 		..fail						;\
@@ -218,6 +253,11 @@
 		CMP #$10 : BCS ..reduce				;/
 		..boost						;\
 		PHP						; |
+		LDA.l !P2Character
+		CMP #$02 : BEQ +
+		CMP #$03 : BNE ++
+	+	LDA #$01 : STA.l !P2Dashing
+		++
 		LDA #$08 : STA.l !SPC4				; |
 		LDA #$17 : JSR .SetAnim				; | anim + sfx
 		PLP						; |

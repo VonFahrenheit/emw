@@ -104,9 +104,9 @@ COLLISION:
 		..noentrance
 
 
-		LDA !P2ExtraBlock			;\
-		AND #$1F				; | layer collision flags
-		ORA $0F					; |
+	;	LDA !P2ExtraBlock			;\
+	;	AND #$1F				; | layer collision flags
+		LDA $0F					; |
 		STA !P2BlockedLayer			;/
 		LDA !P2ExtraBlock			;\ extra blocked bits
 		AND #$1F				;/

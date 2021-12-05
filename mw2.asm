@@ -8,9 +8,17 @@ macro sprite(num, ex)
 	db $00,$00
 endmacro
 
+macro extrasprite(num, ex, ext1, ext2)
+	db $89|((<ex>&1)*4)
+	db $70
+	db $<num>
+	db $<ext1>,$<ext2>
+endmacro
+
 ; to use, patch this to your .mw2 file using asar
 ; to use macro, enter sprite number in hex (but without "$") followed by 0 or 1, which is the extra bit status
 ; for example, %sprite(02, 0) adds custom sprite $02 with extra bit clear to the list
+; NOTE: to use extra bytes, use %extrasprite() macro instead! this takes the same input, + the 2 extra bytes after sprite num + extra bit
 ; this list doesn't do anything in-game, but Lunar Magic still needs it to correctly display custom sprites
 ; well, more correctly than just X
 
@@ -23,6 +31,15 @@ db $00
 %sprite(01, 1)		; Goomba Slave
 %sprite(02, 0)		; Smart Rex
 %sprite(02, 1)		; Smart Rex
+
+%extrasprite(02, 0, 01, 01)	; rex: sack + feather hat
+%extrasprite(02, 0, 02, 02)	; rex: mushroom set
+%extrasprite(02, 0, 03, 03)	; rex: backpack + straw hat
+%extrasprite(02, 0, 04, 04)	; rex: courier set
+%extrasprite(02, 0, 00, 06)	; rex: aristocrat
+%extrasprite(02, 0, 01, 07)	; rex: bandit
+%extrasprite(02, 0, 05, 08)	; rex: knight
+
 %sprite(03, 0)		; Hammer Rex
 %sprite(03, 1)		; Hammer Rex
 %sprite(04, 0)		; Aggro Rex
