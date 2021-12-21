@@ -89,11 +89,7 @@ HappySlime:
 		RTL
 
 	MAIN:
-		LDA !GameMode
-		CMP #$14 : BEQ +
-		RTL
-
-	+	PHB : PHK : PLB
+		PHB : PHK : PLB
 		LDA !ExtraBits,x : BMI .Main
 
 		.Init
@@ -105,9 +101,10 @@ HappySlime:
 		PLB
 		RTL
 
-	+	JSL SUB_HORZ_POS
+	+	LDA $3290,x : BMI +
+		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
-		PEA.w RETURN-2			; yes, an extra byte here
+	+	PEA.w RETURN-2			; yes, an extra byte here
 		LDA !ExtraBits,x
 		AND #$04 : BEQ .Follow
 
@@ -591,12 +588,14 @@ HappySlime:
 		JSL !SpriteApplySpeed			; > Apply speed
 		PLA : STA !SpriteYSpeed,x
 
-		LDY $3320,x				;\
-		LDA $32B0,x				; |
-		AND #$F0				; | wall Xpos
-		ORA DATA_WallDisp,y			; |
+		LDA $3330,x				;\
+		AND #$03 : BEQ +			; |
+		TAY					; |
+		LDA $32B0,x				; | wall Xpos
+		AND #$F0				; |
+		ORA DATA_WallDisp-1,y			; |
 		STA !SpriteXLo,x			;/
-		LDA $3330,x				;\ Detect ceiling
+	+	LDA $3330,x				;\ Detect ceiling
 		AND #$08 : BEQ +			; |
 		JMP .CeilingDir				;/
 	+	LDA $3330,x				;\ Detect ground
