@@ -405,6 +405,69 @@ SPRITE_OFF_SCREEN:
 		JML [$3000]
 
 
+
+; input: void
+; output:
+;	A = memory bit (0 if not marked)
+;	Z = 0 if not marked, 1 if marked
+;	$00 = index to item memory table (16-bit), only if valid index
+;	$02 = which bit was checked (8-bit), only if valid index
+
+; note: the !LevelWidth variable is NOT how many screens there can be in this mode, just how many are used
+;	this is NOT a problem, future!Eric
+;	it just means less of the table is used, but everything will still be mapped properly
+
+	GetItemMem:
+		LDA !HeaderItemMem			;\ return if invalid index
+		CMP #$03 : BCC .Search			;/
+		LDA #$00				;\ return with null output
+		RTL					;/
+
+		.Search
+		PHX					; push X
+		STA $00					; $00 = index (will be converted to 00 or 80)
+		LSR A					;\ $01 = -------I
+		STA $01					;/
+		STZ $2250				;\
+		REP #$20				; |
+		LDA !SpriteYHi,x			; | y screen * level width
+		AND #$00FF : STA $2251			; |
+		LDA !LevelWidth				; |
+		AND #$00FF : STA $2253			;/
+		SEP #$20				;\
+		LDA !SpriteXHi,x			; | + x screen
+		CLC : ADC $2306				;/
+		ASL A					; * 2
+		BIT !SpriteXLo,x			;\ +1 on right half
+		BPL $01 : INC A				;/
+		ASL A					;\
+		LSR $00					; | get highest bit from index
+		ROR A					;/
+		STA $00					; $00 = iSSSSSSx
+
+		LDA !SpriteXLo,x			;\
+		AND #$70				; |
+		LSR #4					; | get bit (reverse order because of course it is)
+		TAX					; |
+		LDA.l .Bits,x : STA $02			;/
+		REP #$10				;\
+		LDX $00					; | read item memory bit
+		AND !ItemMem0,x				; |
+		SEP #$10				;/
+
+		.Return
+		PLX					; pull X
+		CMP #$00				; z
+		RTL					; return
+
+		.Bits
+		db $80,$40,$20,$10,$08,$04,$02,$01
+
+
+
+
+
+
 ; normal version just checks for contact
 ; _Destroy version will also destroy the fireball that touches the sprite (only 1 per frame, there is no way that this can cause problems, future Eric, i know what you're thinking!)
 ; input: sprite hurtbox loaded in $04 slot ($04-$07, $0A-$0B)
@@ -809,17 +872,17 @@ SPRITE_OFF_SCREEN:
 		LDA $01 : STA $08				;\
 		STZ $09						; |
 		BPL $02 : DEC $09				; |
-		CLC : ADC $3210,x				; | $08 = 16-bit Ypos
+		CLC : ADC !SpriteYLo,x				; | $08 = 16-bit Ypos
 		STA $08						; |
-		LDA $3240,x					; |
+		LDA !SpriteYHi,x				; |
 		ADC $09						; |
 		STA $09						;/
 		LDA $00						;\
 		STZ $0B						; |
 		BPL $02 : DEC $0B				; |
-		CLC : ADC $3220,x				; | $00 = 16-bit Xpos
+		CLC : ADC !SpriteXLo,x				; | $00 = 16-bit Xpos
 		STA $0A						; |
-		LDA $3250,x					; |
+		LDA !SpriteXHi,x				; |
 		ADC $0B						; |
 		STA $0B						;/
 
@@ -845,14 +908,7 @@ SPRITE_OFF_SCREEN:
 		LDA $05 : STA !Particle_YAcc,x			;/
 		LDA $0E : STA !Particle_Layer,x			; particle size bit
 		LDA $0F : STA !Particle_Type,x			; particle num
-		LDY #$00FF					; default timer = 0xFF
-		CMP #!prt_smoke8x8				;\ timer for 8x8 smoke = 0x13
-		BNE $03 : LDY #$0013				;/
-		CMP #!prt_smoke16x16				;\ timer for 16x16 = 0x17
-		BNE $03 : LDY #$0017				;/
-		CMP #!prt_sparkle				;\ timer for sparkle = 0x20
-		BNE $03 : LDY #$0020				;/
-		TYA : STA !Particle_Timer,x			; store particle timer
+		JSL !InitParticle : STA !Particle_Timer,x	; set timer
 
 		STX $0E						; save this index
 		PLB						; restore bank
@@ -1203,10 +1259,11 @@ SPRITE_OFF_SCREEN:
 ; normal version will not apply knockback
 ; _Knockback version will apply knockback
 	P2Attack:
-		STZ $0F
+	;	STZ $0F
 
 		.Main
 		LDY #$00
+	;	LDA !SpriteDisP1,x : BNE .Player2
 
 	.CheckPlayer
 	;	LDA !P2Status-$80,y : BNE .Player2
@@ -1240,6 +1297,7 @@ SPRITE_OFF_SCREEN:
 	.Player2
 		CPY #$80 : BCS .NoContact
 		LDA !MultiPlayer : BEQ .NoContact
+	;	LDA !SpriteDisP2,x : BNE .NoContact
 		LDY #$80 : BRA .CheckPlayer
 
 		.NoContact
@@ -1446,9 +1504,9 @@ SPRITE_OFF_SCREEN:
 		RTL						; return
 
 		.BounceSpeed
-		db $D0,$E0,$C8,$C8,$00,$00	; Mario, Luigi, Kadaal, Leeway, Alter, Peach
+		db $D0,$D0,$C8,$C8,$00,$00	; Mario, Luigi, Kadaal, Leeway, Alter, Peach
 		.BounceSpeedB
-		db $A8,$C0,$A8,$A8,$00,$00	; Mario, Luigi, Kadaal, Leeway, Alter, Peach (when holding B)
+		db $A8,$A8,$A8,$A8,$00,$00	; Mario, Luigi, Kadaal, Leeway, Alter, Peach (when holding B)
 
 
 ; input: A = number of frames to not interact, Y = player index
@@ -1458,6 +1516,15 @@ SPRITE_OFF_SCREEN:
 	.P1	STA !SpriteDisP1,x
 		RTL
 	.P2	STA !SpriteDisP2,x
+		RTL
+
+; input: Y = player index
+; output: A = interaction disable timer
+	CheckInteract:
+		CPY #$80 : BCS .P2
+	.P1	LDA !SpriteDisP1,x
+		RTL
+	.P2	LDA !SpriteDisP2,x
 		RTL
 
 
@@ -1699,6 +1766,7 @@ SPRITE_OFF_SCREEN:
 ;	for LOAD_DYNAMIC, prop has the same format as for LOAD_PSUEDO_DYNAMIC, but the T bit comes from the dynamic tile's allocation, loaded by SETUP_SQUARE
 ;	tile num is used as an index to $F0 to find the appropriate dynamic tile, rather than being written directly to OAM
 ;
+;	for carryable items, DRAW_CARRIED can be used to detect whether _p1 or _p2 should be used based on the carrying player's animation
 ;
 
 ; recode all to use this memory format:
@@ -1977,6 +2045,56 @@ SPRITE_OFF_SCREEN:
 		CPY $08 : BCS .End
 	.L	JMP .Loop
 	.End	RTS
+
+
+
+	SETUP_CARRIED:
+		LDA $3230,x
+		CMP #$0B : BNE .HandleDir_nodir
+		TXA
+		INC A
+		CMP !P2Carry-$80 : BNE .P2
+	.P1	LDY #$00 : BRA .HandlePrio
+	.P2	LDY #$80
+
+		.HandlePrio
+		LDA !P2Character-$80,y : BEQ ..mario
+		CMP #$01 : BNE ..prio1
+		..luigi
+		LDA !P2Anim-$80,y
+		CMP #!Lui_Turn : BNE ..prio1
+		..prio2
+		LDA #$01
+		RTL
+		..mario
+		LDA !MarioImg
+		CMP #$0F : BEQ ..prio2
+		CMP #$45 : BEQ ..prio2
+		..prio1
+
+		.HandleDir
+		LDA $3230,x
+		CMP #$0B : BNE ..nodir
+		LDA !P2Character-$80,y
+		CMP #$02 : BEQ ..reverse
+		..normal
+		LDA !P2Direction-$80,y
+		EOR #$01 : BRA ..setdir
+		..reverse
+		LDA !P2Direction-$80,y
+		..setdir
+		STA $3320,x
+		..nodir
+		LDA #$00
+		RTL
+
+
+	DRAW_CARRIED:
+		BEQ .Prio1
+		.Prio2
+		JMP LOAD_PSUEDO_DYNAMIC_p2
+		.Prio1
+		JMP LOAD_PSUEDO_DYNAMIC_p1
 
 
 

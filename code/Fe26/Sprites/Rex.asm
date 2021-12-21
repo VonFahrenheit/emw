@@ -8,7 +8,8 @@
 
 
 	!RexChase		= $3280
-
+	!RexConga		= $3290
+	!RexDensity		= $32A0		; 0 = normal rex, 1 = dense rex
 
 
 Rex:
@@ -20,6 +21,24 @@ Rex:
 		TYA : STA $3320,x
 		RTL
 
+	Dense_INIT:
+		LDA #!palset_generic_lightblue : JSL LoadPalset
+		LDX $0F
+		LDA !Palset_status,x
+		LDX !SpriteIndex
+		ASL A
+		STA $33C0,x
+		INC !RexDensity,x
+		LDA #$0C : STA !ExtraBits,x
+		BRA INIT
+
+	Dense_MAIN:
+		LDA !SpriteYSpeed,x : BMI .NormalGravity
+		CMP #$40 : BCC .NormalGravity
+		LDA #$02 : STA !SpriteGravityTimer,x		;\ -2 gravity when falling faster than 0x40
+		LDA #$FF : STA !SpriteGravityMod,x		;/
+		.NormalGravity
+		LDA #$60 : STA !SpriteFallSpeed,x
 
 	MAIN:
 		PHB : PHK : PLB
@@ -72,7 +91,10 @@ Rex:
 		STA !ExtraProp2,x					;/
 		LDA !SpriteTweaker4,x					;\
 		ORA #$04						; | bandit can't despawn
-		STA !SpriteTweaker4,x					; |
+		STA !SpriteTweaker4,x					;/
+		LDA $33F0,x : TAX					;\
+		LDA #$EE : STA !SpriteLoadStatus,x			; | bandit can't respawn
+		LDX !SpriteIndex					; |
 		.NotGolden						;/
 
 		LDA $33C0,x						;\
@@ -85,44 +107,100 @@ Rex:
 
 		.Alert
 		LDA !RexChase,x : BNE ..nochase
-		LDA $33C0,x						;\ reverse chase for golden bandit
-		CMP #$04 : BEQ ..chase					;/
-		LDA !ExtraProp1,x
-		CMP #$05 : BNE ..nochase
+		LDY #$00
+		LDA !RexDensity,x : BNE ..1				; this sight box for dense rex
+		LDA !ExtraProp1,x					;\ chase if carrying sword
+		CMP #$05 : BEQ ..chase					;/
+		CMP #$01 : BNE ..nochase				;\
+		LDA !ExtraProp2,x					; | reverse chase is carrying sack and bandit bandana
+		AND #$3F						; |
+		CMP #$05 : BNE ..nochase				;/
 		..chase
-		LDA $3220,x
-		SEC : SBC #$80
+		LDA !ExtraProp1,x
+		CMP #$05 : BNE ..1
+		LDA !ExtraBits,x
+		AND #$04 : BEQ ..0
+		..1
+		INY
+		..0
+		LDA !SpriteXLo,x
+		SEC : SBC DATA_SightX,y
 		STA $04
-		LDA $3250,x
+		LDA !SpriteXHi,x
 		SBC #$00
 		STA $0A
-		LDA $3210,x
-		SEC : SBC #$40
+		LDA !SpriteYLo,x
+		SEC : SBC #$30
 		STA $05
-		LDA $3240,x
+		LDA !SpriteYHi,x
 		SBC #$00
 		STA $0B
-		LDA #$FF : STA $06
-		LDA #$80 : STA $07
+		LDA DATA_SightW,y : STA $06
+		LDA #$40 : STA $07
 		SEC : JSL !PlayerClipping : BCC ..nochase
 		LDA #$01 : STA !RexChase,x
-		LDA $33C0,x
-		CMP #$04 : BNE ..nochase
-		INC !RexChase,x						; reverse chase flag if gold
+		LDA #$1E : STA !SPC4					; chase SFX
+
+		LDA !ExtraBits,x					;\ clear extra bit
+		AND.b #$04^$FF : STA !ExtraBits,x			;/
+
+		LDA !ExtraProp1,x
+		CMP #$01 : BNE ..nochase
+		INC !RexChase,x						; reverse chase flag if bandit
+		LDA #$26 : STA !SPC4					; flee SFX
 		..nochase
 
 
 		.Speed
+		LDA $3330,x
+		AND #$08 : BEQ +
+		STA !SpriteYSpeed,x
+		+
+
+
+		.HandleGroundYSpeed
+		LDA !RexChase,x
+		CMP #$02 : BCS ..done
+		LDA $3330,x
+		AND #$04 : BEQ ..done
+		LDA !SpriteYSpeed,x : BMI ..alive
+		CMP #$50 : BCC ..alive
+		CMP #$60 : BCC ..hurt
+		..kill
+		LDA #$01 : STA $BE,x
+		..hurt
+		STZ !SpriteYSpeed,x
+		JMP INTERACTION_Body_contact
+		..alive
+		LDA #$10 : STA !SpriteYSpeed,x
+		..done
+
+
 		LDA !SpriteAnimIndex
-		CMP #!Rex_Hurt : BCS ..nochase
-		LDA !RexChase,x : BEQ ..nochase
+		CMP #!Rex_Hurt : BCC ..nothurt
+	-	JMP ..nochase
+		..nothurt
+		LDA !RexChase,x : BEQ -
 		CMP #$01 : BEQ ..normal
+		CMP #$03 : BEQ ..normal
 		..reverse
 		JSL SUB_HORZ_POS
 		TYA
 		EOR #$01 : STA $3320,x
+		LDA $33C0,x
+		CMP #$04 : BEQ ..goldrun
+		LDA #$01 : BRA +
+		..goldrun
 		LDA #$02 : BRA +
 		..normal
+		LDA !RexDensity,x : BEQ ..canturn			; dense rex does not chase player
+		LDA $3330,x
+		AND #$03 : BEQ +
+		LDA $3320,x
+		EOR #$01 : STA $3320,x
+		STZ !SpriteXSpeed,x
+		LDA #$00 : BRA +
+		..canturn
 		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
 		LDA !Difficulty
@@ -178,21 +256,37 @@ Rex:
 		LDA $3250,x : PHA
 		LDA $3330,x
 		AND #$04 : PHA
+
+		LDA !RexDensity,x : BNE ..noconga
+		LDA !RexConga,x
+		AND $14 : BEQ ..noconga
+		LDA !SpriteYSpeed,x : PHA
+		BMI +
+		STZ !SpriteYSpeed,x
+	+	JSL !SpriteApplySpeed
+		PLA : STA !SpriteYSpeed,x
+		..noconga
 		JSL !SpriteApplySpeed
 		PLA : BEQ ..checkwall
 		LDA $3330,x
 		AND #$04 : BNE ..checkwall
+		LDA !RexDensity,x : BEQ +		;\
+		PLA					; | dense rex never turns at ledges
+		PLA					; | (but it always jumps)
+		BRA ++					;/
 		LDA $BE,x : BEQ ..turn
+	+	LDA !RexChase,x
+		CMP #$02 : BCS ..turn
 		..checkwall
 		LDA $3330,x
 		AND #$03 : BEQ ..noturn
 		..turn
 		PLA : STA $3250,x
 		PLA : STA $3220,x
-	LDA !RexChase,x				;\
-	CMP #$02 : BNE +			; | golden bandit escape maneuver
-	LDA #$C0 : STA !SpriteYSpeed,x		; |
-	+					;/
+		LDA !RexChase,x				;\
+		CMP #$02 : BCC +			; | golden bandit escape maneuver (jump)
+	++	LDA #$C0 : STA !SpriteYSpeed,x		; |
+		+					;/
 		LDA $3330,x
 		AND #$03 : BEQ ..fullrestore		; don't restore Y coordinate when hitting wall
 		LDA !RexChase,x : BNE ..noturn+2	; when chasing, rex will not flip
@@ -216,7 +310,7 @@ Rex:
 
 	INTERACTION:
 		LDA !SpriteAnimIndex
-		CMP #!Rex_Dead : BEQ GRAPHICS
+		CMP #!Rex_Dead : BEQ .Done
 		JSL !GetSpriteClipping04
 
 		.Attack
@@ -237,6 +331,7 @@ Rex:
 		JSL P2Standard
 		BCC ..nocontact
 		BEQ ..nocontact
+		..contact
 		LDA $BE,x : BEQ ..hurt
 	..kill	LDA #!Rex_Dead : BRA ..set
 	..hurt	LDA #!Rex_Hurt
@@ -262,7 +357,61 @@ Rex:
 		.Done
 
 
+	AI:
+		STZ !RexConga,x
+
+		LDA !RexChase,x : BEQ .Done
+		.CongaBrain
+		LDA !SpriteXLo,x
+		SEC : SBC #$08
+		STA $04
+		LDA !SpriteXHi,x
+		SBC #$00
+		STA $0A
+		LDA !SpriteYLo,x
+		SEC : SBC #$18
+		STA $05
+		LDA !SpriteYHi,x
+		SBC #$00
+		STA $0B
+		LDA #$20
+		STA $06
+		STA $07
+		LDX #$0F
+
+		..loop
+		CPX !SpriteIndex : BEQ ..next
+		LDA !NewSpriteNum,x
+		CMP #$02 : BNE ..next
+		LDA $3230,x
+		CMP #$08 : BNE ..next
+		LDA !RexChase,x : BEQ ..next
+		LDA !RexConga,x : BNE ..next
+		JSL !GetSpriteClipping00
+		JSL !CheckContact : BCC ..next
+
+		..conga
+		LDX !SpriteIndex
+		LDA #$01 : STA !RexConga,x
+		BRA .Done
+
+		..next
+		DEX : BPL ..loop
+		LDX !SpriteIndex
+
+		.Done
+
+
+
+
 	GRAPHICS:
+		.Palette
+		LDA !RexDensity,x : BNE ..nochange
+		LDY !RexChase,x
+		LDA DATA_Pal,y : BEQ ..nochange
+		STA $33C0,x
+		..nochange
+
 		LDA $BE,x : BEQ .Anim
 
 		LDA !SpriteAnimIndex
@@ -285,7 +434,21 @@ Rex:
 
 		LDA !ExtraProp2,x
 		AND #$3F : BEQ .NoDropHat
-		JSR DropHat
+		LDY !SpriteAnimIndex
+		CPY.b #!Rex_Dead : BEQ +
+
+		CMP #$09 : BEQ .NoDropHat
+		LDY $3230,x
+		CPY #$02 : BEQ +
+		CPY #$04 : BEQ +
+		CMP #$05 : BEQ .NoDropHat
+		CMP #$06 : BNE +
+		LDA !ExtraProp2,x
+		AND #$C0
+		ORA #$09
+		STA !ExtraProp2,x
+		BRA .NoDropHat
+	+	JSR DropHat
 		.NoDropHat
 
 
@@ -308,6 +471,14 @@ Rex:
 		STZ !SpriteAnimTimer
 
 		.HandleUpdate
+		LDA !RexDensity,x : BEQ ..notdense
+		LDA $3330,x
+		AND #$04 : BNE ..notdense
+		LDY $BE,x
+		CPY #$02 : BCS ..notdense
+		LDA ANIM_JumpFrame,y : STA !SpriteAnimIndex
+		STZ !SpriteAnimTimer
+		..notdense
 		LDA !SpriteAnimIndex
 		ASL #2
 		TAY
@@ -374,6 +545,20 @@ Rex:
 		TAY
 		LDA !SpriteTile,x : PHA
 		LDA !SpriteProp,x : PHA
+
+		LDA !SpriteYLo,x : PHA
+		LDA !SpriteYHi,x : PHA
+		LDA !SpriteAnimIndex
+		CMP.b #!Rex_Small : BCC +
+		CMP.b #!Rex_Small_over : BCS +
+		LDA !SpriteYLo,x
+		CLC : ADC #$10
+		STA !SpriteYLo,x
+		LDA !SpriteYHi,x
+		ADC #$00
+		STA !SpriteYHi,x
+		+
+
 		REP #$20
 		LDA ANIM_HatIndex-2,y : JSL LoadGFXIndex
 		LDA !ExtraProp2,x
@@ -393,6 +578,10 @@ Rex:
 		LDA ANIM_HatPtr,y : STA $04
 		SEP #$20
 		JSL LOAD_PSUEDO_DYNAMIC
+
+		PLA : STA !SpriteYHi,x
+		PLA : STA !SpriteYLo,x
+
 		PLA : STA !SpriteProp,x
 		PLA : STA !SpriteTile,x
 		.NoHat
@@ -483,6 +672,11 @@ Rex:
 		dw $FFFF
 
 
+	.JumpFrame
+		db !Rex_Walk+1
+		db !Rex_Small+1
+
+
 
 	; format: GFX index, ccc bits
 	.HatIndex
@@ -494,6 +688,7 @@ Rex:
 		dw !GFX_RexHat6_offset				; 06
 		dw !GFX_RexHat7_offset				; 07
 		dw !GFX_RexHelmet_offset			; 08
+		dw !GFX_RexHat6_offset				; 09
 
 	; format: GFX index, ccc bits
 	.BagIndex
@@ -514,6 +709,7 @@ Rex:
 		dw .Hat6,.Hat6_tilt				; 06
 		dw .Hat7,.Hat7_tilt				; 07
 		dw .Helmet,.Helmet_tilt				; 08
+		dw .SmallHat,.SmallHat_tilt			; 09
 		..End
 
 	.BagPtr
@@ -584,6 +780,16 @@ Rex:
 		dw $0004
 		db $17,$04,$EA,$00
 
+		.SmallHat	; top hat and mustache (small version)
+		dw $0008
+		db $17,$05,$E7,$00
+		db $19,$FD,$F5,$02
+		..tilt
+		dw $0008
+		db $17,$05,$E6,$00
+		db $19,$FD,$F4,$02
+
+
 
 		.Bag1		; coin bag
 		dw $0004
@@ -644,17 +850,17 @@ Rex:
 
 		.Sword		; ...sword
 		dw $0008
-		db $17,$FF,$F8,$00
+		db $16,$FF,$F8,$00
 		db $20,$0D,$00,$02
 		dw $FFFF
 		..tilt1
 		dw $0008
-		db $17,$00,$F7,$00
+		db $16,$00,$F7,$00
 		db $20,$0D,$FF,$12
 		dw $FFFF
 		..tilt2
 		dw $0008
-		db $17,$FF,$F7,$00
+		db $16,$FF,$F7,$00
 		db $20,$0B,$FF,$12
 		dw $FFFF
 
@@ -662,23 +868,23 @@ Rex:
 		..tilt1
 		..tilt2
 		dw $0008
-		db $17,$01,$FA,$00
+		db $16,$01,$FA,$00
 		db $20,$0D,$00,$02
 		dw $FFFF
 
 		.SwordSmall	; ...sword
 		dw $0008
-		db $17,$01,$00,$00
+		db $16,$01,$00,$00
 		db $20,$0F,$08,$02
 		dw $FFFF
 		..tilt1
 		dw $0008
-		db $17,$00,$FF,$00
+		db $16,$00,$FF,$00
 		db $20,$0D,$07,$12
 		dw $FFFF
 		..tilt2
 		dw $0008
-		db $17,$FF,$FF,$00
+		db $16,$FF,$FF,$00
 		db $20,$0B,$07,$12
 		dw $FFFF
 
@@ -748,6 +954,29 @@ Rex:
 		PLX
 		DEC $08
 		LDY $08 : BNE .Again
+
+		LDA !ExtraProp2,x
+		AND #$3F
+		CMP #$05 : BNE ..nobandit
+		LDY #$0F
+	-	PHY
+		STZ $00
+		STZ $01
+		LDA !RNGtable,y
+		AND #$1F
+		SBC #$10
+		STA $02
+		LDA #$E8 : STA $03
+		STZ $04
+		LDA #$18 : STA $05
+		STZ $06
+		STZ $07
+		LDA.b #!prt_tinycoin : JSL SpawnParticle
+		PLY
+		DEY : BPL -
+		..nobandit
+
+
 		RTS
 
 
@@ -773,6 +1002,14 @@ Rex:
 
 		.HatXSpeed
 		db $F8,$08
+
+		.SightX
+		db $80,$50	; subtracted: knight, bandit
+		.SightW
+		db $FF,$A0	; width: knight, bandit
+
+		.Pal
+		db $00,$08,$00,$08	; knight turns red, assassin turns red, otherwise no change
 
 
 	namespace off

@@ -71,10 +71,8 @@
 		$0000-$001F:	32 B	SNES scratch RAM (used by shader).
 		$0020-$007F:	96 B	----
 		$0080-$009F:	32 B	prop for status bar
-		$00A0-$00B5:	22 B	Colors 0x01-0x0B for dynamic BG3 palette.
-		$00B6-$00CB:	22 B	----
-		$00CC-$00CD:	2 B	Used by VR3.
-		$00CE-$00FF:	20 B	----
+		$00A0-$00AD:	14 B	Colors 0x01-0x07 for dynamic BG3 palette.
+		$00AE-$00FF:	52 B	----
 		$0100-$01FF:	256 B	SNES DP for MPU operation
 		$0200-$03FF:	512 B	Table for HDMA channel 2 (message box).
 		$0400-$05FF:	512 B	Table for HDMA channel 3.
@@ -167,11 +165,13 @@
 		$6030-$604F:	32 B	sprite tables used for dynamic file loading
 		$6050-$6074:	37 B	palset information for FusionCore sprites
 		$6075:		1 B	which palset row to start searching at (default = 0x07, all)
-		$6076-$607F:	10 B	----
+		$6076:		1 B	VRAM map mode
+		$6077-$607F:	9 B	----
 		$6080-$60FF:	128 B	!BigRAM (extended scratch)
 		$6100-$610F:	16 B	SMW's $0100-$010F
 		$6110-$6113:	4 B	Assume that level code uses this
-		$6114-$611F:	12 B	----
+		$6114-$611B:	8 B	----
+		$611C-$611F:	4 B	apex of players' jumps (used by cable)
 		$6120-$617F:	96 B	best rank score for each level (level data byte 3)
 		$6180-$61EF:	112 B	light point data during levels
 		$61F0-$61FF:	16 B	used during layer tilemap update
@@ -231,8 +231,8 @@
 
 		used like this:
 		$74C8-$74FF:	56 B	----
-		$7500-$75CF:	208 B	PhysicsPlus sprite tables
-		$75D0-$75E8:	25 B	----
+		$7500-$75DF:	224 B	PhysicsPlus sprite tables
+		$75E0-$75E8:	9 B	----
 		$75E9:		1 B	sprite index (unchanged)
 		$75EA-$75FF:	22 B	----
 		$7600-$761F:	32 B	each sprite's claim to dynamic tiles

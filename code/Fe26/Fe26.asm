@@ -61,16 +61,42 @@ endmacro
 		CMP !P2Carry-$80 : BEQ +
 		CMP !P2Carry : BEQ +
 		LDA #$09 : STA $3230,x
-	+	LDA $64 : PHA
+	+	LDA $3200,x : BMI KEY_REROUTE
+		LDA $64 : PHA
 		JSR $A187
 		PLA : STA $64
 		RTS
+	KEY_REROUTE:
+		JSL KEY_MAIN
+		RTS
 	warnpc $019F99
+	org $07F3FE+$80
+		db $24				; key palset = yellow
 
 
 
-	org $01817D+($9B*2)
-		dw $8171			; point hammer bro init to an RTS since it's unused and we want his space
+	org $01A91C
+		JSL SPINJUMP_FIX		;\ org: LDA !MarioSpinJump : ORA $787A (check mario spin jump + yoshi flag)
+		NOP #2				;/
+
+
+	org $01E1B8
+		JSL KEYHOLE_MAIN
+		RTS
+	warnpc $01E1C8
+
+
+	org $07F335+$80				;\ make key hitbox smaller
+		db $00				;/
+
+	org $0185CC+($80*2)			;\ repoint key MAIN
+		dw KEY_REROUTE			;/
+
+
+	org $01817D+($80*2)			;\ repoint key INIT
+		dw KEY_REROUTE			;/
+	org $01817D+($9B*2)			;\ point hammer bro init to an RTS since it's unused and we want his space
+		dw $8171			;/
 	org $02DB64
 		LDY #$0F			; let hammer bro platform search all sprite slots
 
@@ -326,6 +352,11 @@ macro decreg(reg)
 	DEC <reg>,x
 	?skip:
 endmacro
+
+	JMP MainSpriteLoop
+
+incsrc "SpriteData.asm"
+
 
 
 MainSpriteLoop:
@@ -595,9 +626,6 @@ TileCount:	db $02,$02,$02,$02,$03,$03,$03,$03,$03,$03,$03,$03,$03,$01,$01,$01	; 
 		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; FX
 
 
-incsrc "SpriteData.asm"
-
-
 	Init:
 	;	LDA !GameMode
 	;	CMP #$14 : BEQ $03 : JMP .Return	; don't run until level has started!!
@@ -637,7 +665,12 @@ incsrc "SpriteData.asm"
 		AND #$0E : BEQ .Brown		; |
 		CMP #$02 : BEQ .Grey		; |
 		CMP #$0C : BEQ .Ghost		; |
-		CMP #$0E : BNE .Return		;/
+		CMP #$0E : BEQ .DarkGrey	;/
+		LDY !GameMode			;\ only search for default palset if it was loaded during level
+		CPY #$14 : BNE .Return		;/
+		LSR A				;\
+		ADC #$08			; | default palset
+		BRA .Palset			;/
 
 	.DarkGrey
 		LDA #$0D : BRA .Palset		; dark grey remapped to green
@@ -664,8 +697,11 @@ incsrc "SpriteData.asm"
 
 
 	Main:
-		STZ !SpriteDeltaX,x		; just make sure these are cleared every frame
-		STZ !SpriteDeltaY,x
+		LDA !SpriteStasis,x : BNE .KeepDelta	;\
+		STZ !SpriteDeltaX,x			; | just make sure these are cleared every frame
+		STZ !SpriteDeltaY,x			; | ...except in stasis
+		.KeepDelta				;/
+
 
 		STZ $7491
 		LDA !ExtraBits,x
@@ -782,6 +818,35 @@ incsrc "SpriteData.asm"
 		STZ $3230+$D				; |
 		STZ $3230+$E				; |
 		STZ $3230+$F				;/
+
+
+		.UnmarkP1Item				;\
+		LDA !HeldItemP1_num			; |
+		CMP #$FF : BEQ ..done			; |
+		REP #$20				; |
+		LDA !HeldItemP1_level			; |
+		CMP !Level				; | mark P1 item
+		SEP #$20				; |
+		BNE ..done				; |
+		LDX !HeldItemP1_ID			; |
+		CPX #$FF : BEQ ..done			; |
+		LDA #$EE : STA !SpriteLoadStatus,x	; |
+		..done					;/
+
+		.UnmarkP2Item				;\
+		LDA !HeldItemP2_num			; |
+		CMP #$FF : BEQ ..done			; |
+		REP #$20				; |
+		LDA !HeldItemP2_level			; |
+		CMP !Level				; | mark P2 item
+		SEP #$20				; |
+		BNE ..done				; |
+		LDX !HeldItemP2_ID			; |
+		CPX #$FF : BEQ ..done			; |
+		LDA #$EE : STA !SpriteLoadStatus,x	; |
+		..done					;/
+
+
 		LDA $6BF4				; this is set as part of LM's level data
 		AND #$03				;\
 		ASL A					; |
@@ -1143,7 +1208,7 @@ endmacro
 
 	.Vanilla
 		STA $3200,x				; sprite num
-		LDA #$01 : STA $04
+	;	LDA #$01 : STA $04
 
 	.INIT
 		INY					; increment index
@@ -1160,7 +1225,7 @@ endmacro
 		BCC ..no3dwater				; |
 		LDA #$01 : STA !SpriteWater,x		; |
 		..no3dwater				;/
-		LDA $04 : STA $3230,x			; state
+		LDA #$01 : STA $3230,x			; state
 		LDA $01,s : STA $33F0,x			; sprite index to level table, sprite level ID
 		LDA !ExtraBits,x			;\
 		AND #$08 : BEQ .NoInit			; |
@@ -1344,18 +1409,21 @@ endmacro
 		STZ $35E0,x				; misc (unused by vanilla)
 		STZ $35F0,x				; P2 interaction disable timer
 
-		.BWRAM
-		STZ $74D0,x				; PhysicsPlus: stasis timer
-		STZ $74E0,x				; PhysicsPlus: phase timer
-		STZ $74F0,x				; PhysicsPlus: gravity modifier
-		STZ $7500,x				; PhysicsPlus: gravity timer
-		STZ $7510,x				; PhysicsPlus: vector Y
-		STZ $7520,x				; PhysicsPlus: vector X
-		STZ $7530,x				; PhysicsPlus: vector acceleration Y
-		STZ $7540,x				; PhysicsPlus: vector acceleration X
-		STZ $7550,x				; PhysicsPlus: vector timer Y
-		STZ $7560,x				; PhysicsPlus: vector timer X
-		STZ $7570,x				; PhysicsPlus: extra collision
+		.BWRAM					;\
+		STZ !SpriteStasis,x			; |
+		STZ !SpritePhaseTimer,x			; |
+		STZ !SpriteGravityMod,x			; |
+		STZ !SpriteGravityTimer,x		; |
+		STZ !SpriteVectorY,x			; |
+		STZ !SpriteVectorX,x			; | PhysicsPlus registers
+		STZ !SpriteVectorAccY,x			; |
+		STZ !SpriteVectorAccX,x			; |
+		STZ !SpriteVectorTimerY,x		; |
+		STZ !SpriteVectorTimerX,x		; |
+		STZ !SpriteExtraCollision,x		; |
+		STZ !SpriteDeltaX,x			; |
+		STZ !SpriteDeltaY,x			; |
+		LDA #$40 : STA !SpriteFallSpeed,x	;/
 
 		.DynamicList
 		PHX
@@ -1402,8 +1470,8 @@ endmacro
 		STZ !ExtraProp1,x
 		STZ !ExtraProp2,x
 		STZ !NewSpriteNum,x
-		JSL !LoadTweakers			; load vanilla tweakers
-		JSL Init_Vanilla			; make sure palset is loaded even if sprite was spawned in a state other than 01
+		JSL !LoadTweakers				; load vanilla tweakers
+		JSL Init_Vanilla				; make sure palset is loaded even if sprite was spawned in a state other than 01
 		PLP
 		PLY
 		RTL
@@ -1413,33 +1481,33 @@ endmacro
 		PHY
 		PHP
 		LDA !NewSpriteNum,x
-		STZ $2250				;\
-		REP #$30				; |
-		AND #$00FF				; |
-		STA $2251				; | index = sprite num * 14
-		LDA #$000E : STA $2253			; |
-		NOP					; |
-		SEP #$20				; |
-		LDY $2306				;/
-		LDA SpriteData+$00,y : STA $3200,x	; acts like
-		LDA SpriteData+$01,y : STA $3440,x	;\
-		LDA SpriteData+$02,y : STA $3450,x	; |
-		LDA SpriteData+$03,y : STA $3460,x	; | tweaker bytes
-		AND #$0E : STA $33C0,x			; > CCC bits
-		LDA SpriteData+$04,y : STA $3470,x	; |
-		LDA SpriteData+$05,y : STA $3480,x	; |
-		LDA SpriteData+$06,y : STA $34B0,x	;/
-		REP #$20				;\
-		LDA SpriteData+$07,y : STA $00		; | INIT pointer
-		SEP #$20				; |
-		LDA SpriteData+$09,y : STA $02		;/
-		LDA !ExtraProp2,x			;\
-		AND #$3F				; |
-		STA !ExtraProp2,x			; |
-		LDA SpriteData+$0D,y			; | highest 2 bits of prop2
-		AND #$C0				; |
-		ORA !ExtraProp2,x			; |
-		STA !ExtraProp2,x			;/
+		STZ $2250					;\
+		REP #$30					; |
+		AND #$00FF					; |
+		STA $2251					; | index = sprite num * 14
+		LDA #$000E : STA $2253				; |
+		NOP						; |
+		SEP #$20					; |
+		LDY $2306					;/
+		LDA SpriteData+$00,y : STA $3200,x		; acts like
+		LDA SpriteData+$01,y : STA !SpriteTweaker1,x	;\
+		LDA SpriteData+$02,y : STA !SpriteTweaker2,x	; |
+		LDA SpriteData+$03,y : STA !SpriteTweaker3,x	; | tweaker bytes
+		AND #$0E : STA $33C0,x				; > CCC bits
+		LDA SpriteData+$04,y : STA !SpriteTweaker4,x	; |
+		LDA SpriteData+$05,y : STA !SpriteTweaker5,x	; |
+		LDA SpriteData+$06,y : STA !SpriteTweaker6,x	;/
+		REP #$20					;\
+		LDA SpriteData+$07,y : STA $00			; | INIT pointer
+		SEP #$20					; |
+		LDA SpriteData+$09,y : STA $02			;/
+		LDA !ExtraProp2,x				;\
+		AND #$3F					; |
+		STA !ExtraProp2,x				; |
+		LDA SpriteData+$0D,y				; | highest 2 bits of prop2
+		AND #$C0					; |
+		ORA !ExtraProp2,x				; |
+		STA !ExtraProp2,x				;/
 		PLP
 		PLY
 		PLB
@@ -1624,6 +1692,11 @@ endmacro
 		LDY #$00
 		JML $019F5A
 
+
+
+	SPINJUMP_FIX:
+		LDA #$00			; disable spin jump crush
+		RTL
 
 
 	LakituCloudSync:
@@ -1870,6 +1943,8 @@ incsrc "Replace/SP_Swooper.asm"
 incsrc "Replace/SP_Rip.asm"
 incsrc "Replace/SP_BulletBill.asm"
 incsrc "Replace/SP_Goomba.asm"
+incsrc "Replace/SP_Key.asm"
+incsrc "Replace/SP_Dino.asm"
 
 macro InsertSprite(name)
 	START_<name>:
@@ -1892,6 +1967,10 @@ Bank16Start:
 %InsertSprite(Conjurex)
 %InsertSprite(Wizrex)
 %InsertSprite(Projectile)
+%InsertSprite(Chest)
+%InsertSprite(EpicBlock)
+%InsertSprite(ShopObject)
+%InsertSprite(LifeShroom)
 
 Bank16End:
 

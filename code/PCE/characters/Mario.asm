@@ -62,11 +62,21 @@ namespace Mario
 	;	JML Mario_AirHook		; org: LDA !MarioInAir : BEQ $03 (otherwise JMPs to $00D682)
 		LDA !MarioInAir : BEQ $03
 
+	; cap jump height index
+	org $00D637
+		JSL Mario_JumpHeight		; org: LSR #2 : AND #$FE
+
 	; prevent flight
 	org $00D674
 		BRA $05				;\
 		NOP #2				; | org: BNE $05 : LDA #$50 : STA $749F
 		STZ $749F			;/
+
+	; uncap speed boost
+	org $00D742
+		JML Mario_SpeedBoost		;\ org: LDA.b !MarioXSpeed : SEC : SBC $D535,y
+		NOP #2				;/
+
 
 	; ability to float
 	org $00D8E9
@@ -384,6 +394,8 @@ namespace Mario
 	;	PLB						; |
 	;	BRA .NoBox					;/
 	LDA !MarioAnim : BEQ .NoBox
+	CMP #$09 : BNE .Anim				;\ drop carried item upon death
+	STZ !P2Carry					;/
 
 	.Anim	JSR RunMario					; > animation/status codes
 		.NoBox						;
@@ -426,7 +438,7 @@ namespace Mario
 		STZ $73EE					; reset mario slope status simple
 
 
-		LDA !MarioSpinJump : STA !P2Crush		; pass spin jump
+	;	LDA !MarioSpinJump : STA !P2Crush		; pass spin jump
 		LDA !MarioPickUp : STA !P2PickUp		; pass pickup timer
 		LDA !MarioTurnTimer : STA !P2TurnTimer		; pass turn timer
 		LDA !MarioKickTimer : STA !P2KickTimer		; pass kick timer
@@ -871,10 +883,34 @@ namespace Mario
 
 
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;	MARIO SUBROUTINES	;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+		.JumpHeight
+		LSR #2						;\ original code
+		AND #$FE					;/
+		CMP #$0E					;\ cap at 14
+		BCC $02 : LDA #$0E				;/
+		RTL						; return
+
+		.SpeedBoost
+		LDA !MarioInAir : BNE ..uncap
+		..capspeed
+		LDA !MarioXSpeed
+		SEC : SBC $D535,y
+		JML $00D748
+		..uncap
+		LDA !MarioXSpeed
+		SEC : SBC $D535,y
+		BEQ ..return
+		EOR $D535,y : BMI ..capspeed
+		..return
+		JML $00D7A2
+
+
+
 
 
 		.Cape1

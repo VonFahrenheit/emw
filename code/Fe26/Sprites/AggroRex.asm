@@ -156,8 +156,11 @@ AggroRex:
 
 		.Speed							;\
 		LDA $3330,x						; |
-		AND #$04 : BNE ..ground					; | different speed codes depending on ground/air
+		BIT #$04 : BNE ..ground					; | different speed codes depending on ground/air
 		..air							; |
+		AND #$08 : BEQ ..nobonk
+		STA !SpriteYSpeed,x					; > bonk code 
+		..nobonk
 		JMP ..nospeed						; |
 		..ground						;/
 		JSL GroundSpeed						; Y speed on ground
@@ -169,6 +172,8 @@ AggroRex:
 		LDY !AggroRexTargetPlayer,x				; |
 		LDA #$C0 : JSL SUB_VERT_POS_Target			; |
 		CPY #$01 : BEQ ..forward				; > don't turn on ground if target is more than 64px above
+		LDA #$20 : JSL SUB_VERT_POS_Target			; |
+		CPY #$00 : BEQ ..forward				; > ...or 32px below
 		LDY !AggroRexTargetPlayer,x				; |
 		JSL SUB_HORZ_POS_Target					; |
 		TYA : STA $3320,x					; |

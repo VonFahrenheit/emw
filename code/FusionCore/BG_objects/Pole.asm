@@ -7,6 +7,11 @@
 ;	1 - player 1 on top
 ;
 
+; bounce model:
+;	Yspeed * (16 * Ydisp + 256) / 256
+; delta excluded because it's irrelevant with this discrete step model
+
+
 
 	Pole:
 		LDX $00
@@ -64,7 +69,7 @@
 		CLC : ADC #$05
 		STA $03
 		JSL !CheckContact : BCC +
-		LDA #$10 : STA !SpriteYSpeed,x
+		STZ !SpriteYSpeed,x
 		LDA #$04 : STA !SpriteExtraCollision,x
 		LDA $05
 		SEC : SBC #$0F
@@ -82,24 +87,14 @@
 		STA $00
 		STA $0E
 
+
 		LDA !BG_object_Timer,x
 		AND #$00FC
 		ASL #2
 		ADC.w #.HeightMap : STA $02
-		LDA.w #.HeightMap>>16 : STA $04
+
 		LDA !BG_object_Misc,x : STA $0C
 
-		LDA !BG_object_Type,x
-		AND #$00FF
-		CMP #$0005 : BNE ..faceright
-
-		..faceleft
-		LDA #$FFE8 : STA $0A
-		BRA +
-
-		..faceright
-		LDA #$0018 : STA $0A	
-		+
 
 ; states:
 ;	00 - straight form
@@ -115,181 +110,188 @@
 ;		increases jump height
 ;
 
+		PHB : PHK : PLB
+
 		.InteractP1
-		LDA.l !P2XPosLo-$80 : JSR .GetMapIndex		; get height map index (also use for bounce, so it has to be before the BCC ..done)
+		LDA !P2XPosLo-$80 : JSR .GetMapIndex		; get height map index (also use for bounce, so it has to be before the BCC ..done)
 		LSR $00 : BCC ..done				;\
-		LDA.l !P2DropDownTimer-$80-1 : BMI ..fail	; |
-		LDA.l !P2YPosLo-$80				; |
+		LDA !P2DropDownTimer-$80-1 : BMI ..fail		; |
+		LDA !P2YPosLo-$80				; |
 		SEC : SBC #$0008				; | has to touch while moving down (no interaction during drop down)
-		CMP !BG_object_Y,x : BPL ..fail			; |
-		LDA.l !P2YSpeed-$80-1				; |
-		CLC : ADC.l !P2VectorY-$80-1			; |
+		CMP $410000+!BG_object_Y,x : BPL ..fail		; |
+		LDA !P2YSpeed-$80-1				; |
+		CLC : ADC !P2VectorY-$80-1			; |
 		BPL ..ontop					;/
 		..fail						;\
 		LDA #$0001 : TRB $0E				; | otherwise, clear interaction bit
 		BRA ..done					;/
 		..ontop						;\
 		SEP #$20					; | set platform bit
-		LDA #$04 : STA.l !P2ExtraBlock-$80		; |
+		LDA #$04 : STA !P2ExtraBlock-$80		; |
 		REP #$20					;/
 		CPY #$0004*2 : BCS ..setcoords			; inner half -> no pressure
-		LDA !BG_object_Misc,x				;\
+		LDA $410000+!BG_object_Misc,x			;\
 		AND #$0001 : BNE ..nolanding			; |
-		LDA.l !ApexP1					; |
-		JSR .SetLanding					; | outer half -> set animation
+		LDA !ApexP1 : JSR .SetLanding			; | outer half -> set animation
 		BRA ..setcoords					; |
 		..nolanding					; |
 		LDA #$0007 : JSR .SetAnim			;/
 		..setcoords					;\
-		LDA !BG_object_Y,x				; |
+		LDA $410000+!BG_object_Y,x			; |
 		AND #$FFF0					; |
-		CLC : ADC [$02],y				; |
-		STA.l !P2YPosLo-$80				; |
-		LDA.l !P2Character-$80				; | update player Y coord
+		CLC : ADC ($02),y				; |
+		STA !P2YPosLo-$80				; |
+		LDA !P2Character-$80				; | update player Y coord
 		AND #$00FF : BNE ..done				; |
-		LDA.l !P2YPosLo-$80				; |
+		LDA !P2YPosLo-$80				; |
 		SEC : SBC #$0010				; |
 		STA $96						; |
 		..done						;/
 
-		LDA $0E : TSB $0C
+		LDA $0E : TSB $0C				; update collision flags
+
+		LDA $410000+!BG_object_Type,x			;\
+		AND #$00FF					; |
+		CMP #$0005 : BNE ..faceright			; |
+		..faceleft					; | update x speed bonus
+		LDA #$FFF4 : BRA +				; |
+		..faceright					; |
+		LDA #$000C					; |
+	+	STA $0A						;/
 
 		.BounceP1
-		LSR $0C : BCC ..done				;\
-		CPY #$0004*2 : BCS ..done			; | must be moving down onto the outer half
-		LDA.l !P2YSpeed-$80-1 : BPL ..done		;/
-		SEP #$20					;\
-		LDA !BG_object_Timer,x				; | unless timer is in 8-F range, reduce speed
-		CMP #$08 : BCC ..reduce				; |
-		CMP #$10 : BCS ..reduce				;/
-		..boost						;\
-		PHP						; |
-		LDA.l !P2Character-$80
-		CMP #$02 : BEQ +
-		CMP #$03 : BNE ++
-	+	LDA #$01 : STA.l !P2Dashing-$80
-		++
-		LDA #$08 : STA.l !SPC4				; |
-		LDA #$17 : JSR .SetAnim				; | anim + sfx
-		PLP						; |
-		LDA.l !P2XSpeed-$80				; |
-		CLC : ADC $0A					; | +0x18 X speed
-		STA.l !P2XSpeed-$80				; |
-		XBA						; |
-		EOR #$FF					; |
-		CMP #$54					; | cap speed to prevent overflow (underflow?)
-		BCC $02 : LDA #$54				; |
-		STA $05						; | +50% speed if at the very tip
-		LSR A						; | otherwise +25% speed
-		CPY #$0000					; |
-		BEQ $01 : LSR A					; |
-		ADC $05						; |
-		BRA ..setspeed					;/
-		..reduce					;\
-		XBA						; |
-		EOR #$FF					; |
-		STA $05						; | -25% speed
-		LSR #2						; |
-		SBC $05						; |
-		EOR #$FF					;/
-		..setspeed					;\
-		EOR #$FF					; |
-		STA.l !P2YSpeed-$80				; |
-		LDA.l !P2Character-$80 : BNE ..notmario		; | set speeds
-		LDA.l !P2YSpeed-$80 : STA !MarioYSpeed		; |
-		LDA.l !P2XSpeed-$80 : STA !MarioXSpeed		; |
+		LSR $0C : BCC ..done				;\ must be moving off of pole
+		LDA !P2YSpeed-$80-1 : BPL ..done		;/
+		STZ $2250					;\
+		LDA ($02),y					; |
+		BPL $03 : LDA #$0000				; > negative -> 0
+		AND #$00FF					; |
+		ASL #4						; |
+		ADC #$0100					; |
+		STA $2251					; | y speed calc
+		LDA !P2YSpeed-$80				; |
+		EOR #$FFFF : INC A				; |
+		AND #$00FF					; |
+		STA $2253					; |
+		SEP #$20					;/
+		CPY #$0004*2 : BCS ..nobounce			; check bounce
+		CPY #$0000*2					;\
+		BNE $02 : ASL $0A				; |
+		LDA !P2XSpeed-$80				; | x speed calc
+		CLC : ADC $0A					; |
+		STA !P2XSpeed-$80				;/
+		LDA #$08 : STA !SPC4				; > SFX
+		LDA $410000+!BG_object_Timer,x			;\
+		CMP #$08 : BCS ..bigbounce			; |
+		LDA #$17 : BRA ..setbounce			; |
+		..bigbounce					; |
+		LDA #$1B					; | bounce anim
+		..setbounce					; |
+		JSR .SetAnim					; |
+		SEP #$20					; |
+		..nobounce					;/
+		LDA $2307					;\
+		BPL $02 : LDA #$7F				; |
+		EOR #$FF : INC A				; |
+		STA !P2YSpeed-$80				; |
+		LDA !P2Character-$80 : BNE ..notmario		; | write speeds
+		LDA !P2YSpeed-$80 : STA !MarioYSpeed		; |
+		LDA !P2XSpeed-$80 : STA !MarioXSpeed		; |
 		..notmario					; |
 		REP #$20					; |
 		..done						;/
 
+
 		.InteractP2
-		LDA.l !P2XPosLo : JSR .GetMapIndex		; get height map index (also use for bounce, so it has to be before the BCC ..done)
+		LDA !P2XPosLo : JSR .GetMapIndex		; get height map index (also use for bounce, so it has to be before the BCC ..done)
 		LSR $00 : BCC ..done				;\
-		LDA.l !P2DropDownTimer-1 : BMI ..fail		; |
-		LDA.l !P2YPosLo					; |
+		LDA !P2DropDownTimer-1 : BMI ..fail		; |
+		LDA !P2YPosLo					; |
 		SEC : SBC #$0008				; | has to touch while moving down (no interaction during drop down)
-		CMP !BG_object_Y,x : BPL ..fail			; |
-		LDA.l !P2YSpeed-1				; |
-		CLC : ADC.l !P2VectorY-1			; |
+		CMP $410000+!BG_object_Y,x : BPL ..fail		; |
+		LDA !P2YSpeed-1					; |
+		CLC : ADC !P2VectorY-1				; |
 		BPL ..ontop					;/
 		..fail						;\
-		LDA #$0002 : TRB $0E				; | otherwise, clear interaction bit
+		LDA #$0001 : TRB $0E				; | otherwise, clear interaction bit
 		BRA ..done					;/
 		..ontop						;\
 		SEP #$20					; | set platform bit
-		LDA #$04 : STA.l !P2ExtraBlock			; |
+		LDA #$04 : STA !P2ExtraBlock			; |
 		REP #$20					;/
 		CPY #$0004*2 : BCS ..setcoords			; inner half -> no pressure
-		LDA !BG_object_Misc,x				;\
-		AND #$0002 : BNE ..nolanding			; |
-		LDA.l !ApexP2					; |
-		JSR .SetLanding					; | outer half -> set animation
+		LDA $410000+!BG_object_Misc,x			;\
+		AND #$0001 : BNE ..nolanding			; |
+		LDA !ApexP2 : JSR .SetLanding			; | outer half -> set animation
 		BRA ..setcoords					; |
 		..nolanding					; |
 		LDA #$0007 : JSR .SetAnim			;/
 		..setcoords					;\
-		LDA !BG_object_Y,x				; |
+		LDA $410000+!BG_object_Y,x			; |
 		AND #$FFF0					; |
-		CLC : ADC [$02],y				; |
-		STA.l !P2YPosLo					; |
-		LDA.l !P2Character				; | update player Y coord
+		CLC : ADC ($02),y				; |
+		STA !P2YPosLo					; |
+		LDA !P2Character				; | update player Y coord
 		AND #$00FF : BNE ..done				; |
-		LDA.l !P2YPosLo					; |
+		LDA !P2YPosLo					; |
 		SEC : SBC #$0010				; |
 		STA $96						; |
 		..done						;/
 
-		LDA $0E
-		LSR A
-		TSB $0C
+		LDA $0E : TSB $0C				; update collision flags
+
+		LDA $410000+!BG_object_Type,x			;\
+		AND #$00FF					; |
+		CMP #$0005 : BNE ..faceright			; |
+		..faceleft					; | update x speed bonus
+		LDA #$FFF4 : BRA +				; |
+		..faceright					; |
+		LDA #$000C					; |
+	+	STA $0A						;/
 
 		.BounceP2
-		LSR $0C : BCC ..done				;\
-		CPY #$0004*2 : BCS ..done			; | must be moving down onto the outer half
-		LDA.l !P2YSpeed-1 : BPL ..done			;/
-		SEP #$20					;\
-		LDA !BG_object_Timer,x				; | unless timer is in 8-F range, reduce speed
-		CMP #$08 : BCC ..reduce				; |
-		CMP #$10 : BCS ..reduce				;/
-		..boost						;\
-		PHP						; |
-		LDA.l !P2Character
-		CMP #$02 : BEQ +
-		CMP #$03 : BNE ++
-	+	LDA #$01 : STA.l !P2Dashing
-		++
-		LDA #$08 : STA.l !SPC4				; |
-		LDA #$17 : JSR .SetAnim				; | anim + sfx
-		PLP						; |
-		LDA.l !P2XSpeed					; |
-		CLC : ADC $0A					; | +0x18 X speed
-		STA.l !P2XSpeed					; |
-		XBA						; |
-		EOR #$FF					; |
-		CMP #$54					; | cap speed to prevent overflow (underflow?)
-		BCC $02 : LDA #$54				; |
-		STA $05						; | +50% speed if at the very tip
-		LSR A						; | otherwise +25% speed
-		CPY #$0000					; |
-		BEQ $01 : LSR A					; |
-		ADC $05						; |
-		BRA ..setspeed					;/
-		..reduce					;\
-		XBA						; |
-		EOR #$FF					; |
-		STA $05						; | -25% speed
-		LSR #2						; |
-		SBC $05						; |
-		EOR #$FF					;/
-		..setspeed					;\
-		EOR #$FF					; |
-		STA.l !P2YSpeed					; |
-		LDA.l !P2Character : BNE ..notmario		; | set speeds
-		LDA.l !P2YSpeed : STA !MarioYSpeed		; |
-		LDA.l !P2XSpeed : STA !MarioXSpeed		; |
+		LSR $0C : BCC ..done				;\ must be moving off of pole
+		LDA !P2YSpeed-1 : BPL ..done			;/
+		STZ $2250					;\
+		LDA ($02),y					; |
+		BPL $03 : LDA #$0000				; > negative -> 0
+		AND #$00FF					; |
+		ASL #4						; |
+		ADC #$0100					; |
+		STA $2251					; | y speed calc
+		LDA !P2YSpeed					; |
+		EOR #$FFFF : INC A				; |
+		AND #$00FF					; |
+		STA $2253					; |
+		SEP #$20					;/
+		CPY #$0004*2 : BCS ..nobounce			; check bounce
+		CPY #$0000*2					;\
+		BNE $02 : ASL $0A				; |
+		LDA !P2XSpeed					; | x speed calc
+		CLC : ADC $0A					; |
+		STA !P2XSpeed					;/
+		LDA #$08 : STA !SPC4				; > SFX
+		LDA $410000+!BG_object_Timer,x			;\
+		CMP #$08 : BCS ..bigbounce			; |
+		LDA #$17 : BRA ..setbounce			; |
+		..bigbounce					; |
+		LDA #$1B					; | bounce anim
+		..setbounce					; |
+		JSR .SetAnim					; |
+		SEP #$20					; |
+		..nobounce					;/
+		LDA $2307					;\
+		BPL $02 : LDA #$7F				; |
+		EOR #$FF : INC A				; |
+		STA !P2YSpeed					; |
+		LDA !P2Character : BNE ..notmario		; | write speeds
+		LDA !P2YSpeed : STA !MarioYSpeed		; |
+		LDA !P2XSpeed : STA !MarioXSpeed		; |
 		..notmario					; |
 		REP #$20					; |
 		..done						;/
+
+		PLB
 
 
 
@@ -305,7 +307,6 @@
 
 		.Valid						;\
 		PHX						; |
-
 		LDA !BG_object_Type,x
 		AND #$00FF
 		CMP #$0006 : BEQ ..faceright
@@ -340,6 +341,7 @@
 		dw .Pole3
 		dw .Pole4
 		dw .Pole5
+		dw .Pole6
 
 		.Pole0
 		dw $1410,$1410,$1410,$1410
@@ -355,7 +357,11 @@
 		dw $1408,$1409,$140A,$140B
 		dw $1418,$1419,$141A,$141B
 		.Pole4
+		dw $9414,$9415,$9416,$9417
+		dw $9404,$9405,$9406,$9407
+		dw $1410,$1410,$1410,$1410
 		.Pole5
+		.Pole6
 		dw $9418,$9419,$941A,$941B
 		dw $9408,$9409,$940A,$940B
 		dw $1410,$1410,$1410,$1410
@@ -368,6 +374,7 @@
 		dw .Pole3X
 		dw .Pole4X
 		dw .Pole5X
+		dw .Pole6X
 
 		.Pole0X
 		dw $1410,$1410,$1410,$1410
@@ -383,7 +390,11 @@
 		dw $540B,$540A,$5409,$5408
 		dw $541B,$541A,$5419,$5418
 		.Pole4X
+		dw $D417,$D416,$D415,$D414
+		dw $D407,$D406,$D405,$D404
+		dw $1410,$1410,$1410,$1410
 		.Pole5X
+		.Pole6X
 		dw $D41B,$D41A,$D419,$D418
 		dw $D40B,$D40A,$D409,$D408
 		dw $1410,$1410,$1410,$1410
@@ -404,7 +415,7 @@
 
 		.SetLanding
 		BMI ..return
-		SEC : SBC !BG_object_Y,x : BPL ..return
+		SEC : SBC $410000+!BG_object_Y,x : BPL ..return
 		CMP.w #-$0030 : BCS ..return
 		..set2
 		LDA #$000F : JSR .SetAnim
@@ -417,13 +428,13 @@
 
 		.GetMapIndex
 		CLC : ADC #$0008
-		SEC : SBC !BG_object_X,x
+		SEC : SBC $410000+!BG_object_X,x
 		BPL $03 : LDA #$0000
 		CMP #$001F
 		BCC $03 : LDA #$001F
 		LSR #2
 		PHA
-		LDA !BG_object_Type,x
+		LDA $410000+!BG_object_Type,x
 		AND #$00FF
 		CMP #$0006 : BEQ ..faceright
 		..faceleft
@@ -440,8 +451,8 @@
 
 		.SetAnim
 		SEP #$20
-		CMP !BG_object_Timer,x : BCC ..return
-		STA !BG_object_Timer,x
+		CMP $410000+!BG_object_Timer,x : BCC ..return
+		STA $410000+!BG_object_Timer,x
 		..return
 		REP #$20
 		RTS

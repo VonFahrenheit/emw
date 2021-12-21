@@ -11,20 +11,24 @@ pullpc
 
 
 	Coin:
-		LDA !ExtraBits,x
-		AND #$04 : BEQ .1
-	.100	LDA !CurrentMario
+
+		LDA !CurrentMario
 		TAY
 		DEY
-		LDA !P1CoinIncrease,y
-		CLC : ADC $35D0,x
-		DEC A
+		LDA !ExtraProp1,x
+		SEC : ADC !P1CoinIncrease,y		; extra +1
 		STA !P1CoinIncrease,y
-	.1	JML $05B34A
+		JML $05B34D
 
 	.Init	LDA $3200,x
-		CMP #$21 : BNE .Nope
-		LDA #$64 : STA $35D0,x		; special coin is worth 100 coins
+		CMP #$21 : BEQ ..setcoins
+		CMP #$7E : BNE .Nope
+		LDA #$04 : BRA +
+		..setcoins
+		LDA !ExtraBits,x
+		AND #$04
+		BEQ $02 : LDA #$63
+	+	STA !ExtraProp1,x
 
 	.Nope	JSL SUB_HORZ_POS
 		TYA

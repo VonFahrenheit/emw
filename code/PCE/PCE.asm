@@ -420,7 +420,12 @@ sa1rom
 		LDA #$09 : STA !SPC4
 		LDA #$1F : STA !ShakeTimer
 		+
+
+		LDA !PlayerBonusHP : PHA
+		LDA !P2TempHP
+		BEQ $03 : INC !PlayerBonusHP
 		JSR (..List,x)				; > run code for player 1
+		PLA : STA !PlayerBonusHP
 
 		LDA !P2HurtTimer			;\
 		CMP #$0E : BNE +			; |
@@ -550,7 +555,12 @@ sa1rom
 		LDA #$09 : STA !SPC4
 		LDA #$1F : STA !ShakeTimer
 		+
+
+		LDA !PlayerBonusHP : PHA
+		LDA !P2TempHP
+		BEQ $03 : INC !PlayerBonusHP
 		JSR (..List,x)				; > run code for player 2
+		PLA : STA !PlayerBonusHP
 
 		LDA !P2HurtTimer			;\
 		CMP #$0E : BNE +			; |
@@ -653,6 +663,7 @@ BITS:	db $01,$02,$04,$08,$10,$20,$40,$80
 	incsrc "CORE/OUTPUT_HURTBOX.asm"
 	incsrc "CORE/HURT.asm"
 	incsrc "CORE/ATTACK.asm"
+	incsrc "CORE/ACCEL_X.asm"
 	incsrc "CORE/SET_XSPEED.asm"
 	incsrc "CORE/COYOTE_TIME.asm"
 	incsrc "CORE/SET_GLITTER.asm"

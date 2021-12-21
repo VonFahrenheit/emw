@@ -284,3 +284,28 @@ db $00,$00,$34,$A2,$39,$46
 db $36
 db $00,$1F,$30,$A6,$39,$47
 %AddToList(Elevator, $00)
+
+; -- Sprite 30 --
+db $36
+db $00,$00,$34,$A2,$39,$46
+%AddToList(Chest, $40)
+
+; -- Sprite 31 --
+db $36
+db $00,$00,$32,$A2,$39,$46
+%AddToList(EpicBlock, $00)
+
+; -- Sprite 32 --
+db $36
+db $00,$00,$34,$A2,$39,$46
+%AddToList(ShopObject, $40)
+
+; -- Sprite 33 --
+db $36
+db $00,$00,$3A,$A2,$39,$46
+%AddToList(LifeShroom, $00)
+
+; -- Sprite 34 --
+db $36
+db $10,$2A,$4C,$A1,$18,$00
+%AddToList(Rex_Dense, $00)

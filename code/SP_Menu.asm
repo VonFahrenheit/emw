@@ -459,7 +459,7 @@ endif
 		STX !StatusBar+$1D			; |
 		STA !StatusBar+$1E			; |
 		SEP #$20				; |
-		LDA #$0B : STA !StatusBar+$1A		; > P2 coin symbol
+		LDA #$0A : STA !StatusBar+$1A		; > P2 coin symbol
 		BRA .MultiPlayer			;/
 		..megalevel				;\
 		LDA !P2Coins				; |
@@ -471,7 +471,7 @@ endif
 		STA !StatusBar+$1F			; |
 		SEP #$20				; |
 		LDA #$14 : STA !StatusBar+$1A		; |
-		LDA #$0B : STA !StatusBar+$1B		; > P2 coin symbol
+		LDA #$0A : STA !StatusBar+$1B		; > P2 coin symbol
 		BRA .MultiPlayer			;/
 
 		.SinglePlayer				;\
@@ -493,7 +493,7 @@ endif
 		STA !StatusBar+$16			; |
 		STA !StatusBar+$18			; |
 		SEP #$20				;/
-		LDA #$0B : STA !StatusBar+$00		; P1 coin symbols
+		LDA #$0A : STA !StatusBar+$00		; P1 coin symbols
 
 .YoshiCoins	LDA !MegaLevelID : BEQ +		; check for mega level
 		TAX
@@ -534,9 +534,14 @@ endif
 		BCC $03 : LDX !P2MaxHP-$80		; |
 		BEQ .Player2HP				; | write player 1 HP
 		DEX					; |
-		LDA #$0A				; |
+		PHX					; > push
+		LDA #$0D				; |
 	-	STA !StatusBar+$06,x			; |
 		DEX : BPL -				;/
+		PLX					; > pull
+		LDA !P2TempHP-$80 : BEQ .Player2HP	;\ player 1 temp HP icon
+		LDA #$0E : STA !StatusBar+$06,x		;/
+
 
 .Player2HP	LDA !P2Status : BNE .Return		; don't write player 2 HP if player 2 is dead
 		LDA !Difficulty				;\
@@ -554,10 +559,13 @@ endif
 		BCC $03 : LDX !P2MaxHP			; |
 		BEQ .Return				; | write player 2 HP
 		DEX					; |
-		LDA #$0A				; |
+		LDA #$0D				; |
 	-	STA !StatusBar,y			; |
 		DEY					; |
 		DEX : BPL -				;/	
+		LDA !P2TempHP : BEQ .Return		;\
+		INY					; | player 2 temp HP icon
+		LDA #$0E : STA !StatusBar,y		;/
 
 .Return		RTS					; > Return
 
@@ -592,7 +600,7 @@ endif
 		LDX #$04 : STX !CoinSound
 		.ManyCoins
 		RTS
-warnpc $009045
+warnpc $009078
 
 
 ;=================================;
@@ -679,67 +687,6 @@ warnpc $009045
 
 	org $01C563
 	;	INC $19					; remove grow animation
-
-
-	org $01C538
-	GivePowerup:
-		STZ $3230,x				; despawn sprite
-		LDY #$0A : STY !SPC1			;\ powerup SFX
-		LDY #$0B : STY !SPC4			;/
-		CMP #$76 : BEQ .Star			; star
-		CMP #$78 : BEQ .GoldShroom		; gold shroom
-		CMP #$7F : BEQ .GoldShroom		; winged gold shroom
-
-		.Mushroom				;\
-		PHX					; |
-		LDA !CurrentMario : BEQ ..return	; |
-		DEC A					; |
-		LSR A					; |
-		ROR A					; |
-		TAX					; | flash white + heal
-		LDA #$14 : STA !P2FlashPal-$80,x	; |
-		LDA !P2HP-$80,x				; |
-		CMP !P2MaxHP-$80,x : BCS ..return	; |
-		INC !P2HP-$80,x				; |
-		..return				; |
-		PLX					; |
-		RTS					;/
-
-		.GoldShroom				;\
-		PHX					; |
-		LDA !CurrentMario : BEQ ..return	; |
-		DEC A					; |
-		TAX					; |
-		LDA !P1CoinIncrease,x			; |
-		CLC : ADC #$64				; |
-		STA !P1CoinIncrease,x			; |
-		LDA !CurrentMario			; |
-		DEC A					; | 100 coins + full heal + flash gold
-		LSR A					; |
-		ROL A					; |
-		TAX					; |
-		LDA !P2MaxHP-$80,x : STA !P2HP-$80,x	; |
-		LDA #$B4 : STA !P2FlashPal-$80,x	; |
-		..return				; |
-		PLX					; |
-		RTS					;/
-
-		.Star					;\ set star timer
-		LDA #$FF : STA !StarTimer		;/
-		PHX					;\
-		LDA !CurrentMario : BEQ ..return	; |
-		DEC A					; |
-		LSR A					; |
-		ROR A					; | flash white
-		TAX					; |
-		LDA #$14 : STA !P2FlashPal-$80,x	; |
-		..return				; |
-		PLX					; |
-		RTS					;/
-
-
-	warnpc $01C609
-
 
 	org $01C565
 	;	JSL MarioMushAnim
@@ -1133,7 +1080,6 @@ Mode7Presents:
 		STA !HDMAptr+1
 		%ReloadOAMData()
 
-
 		SEP #$20
 		REP #$10
 
@@ -1393,9 +1339,9 @@ Mode7Presents:
 		ORA $00							; |
 		STA.l !LightData_SNES,x					;/
 		CPX #$0002 : BCC ..next					;\
-		CPX #$0018 : BCC ..BG3					; |
+		CPX #$0010 : BCC ..BG3					; |
 		CPX #$0202 : BCC ..next					; | BG3 palette mirrors
-		CPX #$0218 : BCS ..next					; |
+		CPX #$0210 : BCS ..next					; |
 		STA $FEA0-2,x						; > does this work???
 		BRA ..next						; | it does! it just wraps to the next bank, which is fine with this mirroring (that's probably why STA addr,x and STA long,x both use the same amount of cycles)
 	..BG3	STA $A0-2,x						;/
@@ -2671,6 +2617,7 @@ MAIN_MENU:
 	STA !AlterStatus			; |
 	STA !PeachStatus			; |
 	LDA #$80 : STA !LevelTable1+$5E		; |
+	STZ $6109				; |
 	+					;/
 		JSL SaveFileSRAM
 	;	LDA #$0B : STA !GameMode

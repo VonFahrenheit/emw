@@ -220,6 +220,7 @@
 		dw CoinGlitterParticle
 		dw SparkleParticle
 		dw LeafParticle
+		dw TinyCoin
 
 		dw .ClearParticle		; final index, a particle is set to this when it's erased which makes it clear its data next frame
 
@@ -238,6 +239,7 @@ incsrc "Particles/SpritePart.asm"
 incsrc "Particles/CoinGlitterParticle.asm"
 incsrc "Particles/SparkleParticle.asm"
 incsrc "Particles/LeafParticle.asm"
+incsrc "Particles/TinyCoin.asm"
 
 
 

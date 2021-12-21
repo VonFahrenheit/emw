@@ -162,6 +162,7 @@ GoombaSlave:
 		LDA #$20						;\
 		STA !SpriteDisP1,y					; | don't let sprite be insta-gibbed
 		STA !SpriteDisP2,y					;/
+		STA !SpriteStasis,y
 		TYA							;\
 		INC A							; |
 		ORA #$40						; |
@@ -172,7 +173,6 @@ GoombaSlave:
 
 
 	GRAPHICS:
-
 		LDA $BE,x : BMI .NoSmushCarry
 		CMP #$41 : BCS .Cargo
 		.NoSmushCarry
@@ -287,16 +287,16 @@ GoombaSlave:
 		DEC A
 		TAY
 		LDA $3230,y						;\
-		CMP #$01 : BEQ +					; | state must be 01 or 08
-		CMP #$08 : BNE ++					;/
-	+	LDA.w !SpriteYSpeed,y : BPL +				;\
-		CMP #$FD : BCS +					; |
-	++	LDA $BE,x						; | let it go if invalid state
-		AND.b #$1F^$FF						; |
-		STA $BE,x						; |
-		BRA .NoCarried						;/
+		CMP #$01 : BEQ +					; | state must be 01 or 08+
+		CMP #$08 : BCC .JumpingOff				;/
+	+	LDA.w !SpriteYSpeed,y : BMI .JumpingOff			;\
+;		CMP #$FD : BCS +					; |
+;	++	LDA $BE,x						; | let it go if invalid state
+;		AND.b #$1F^$FF						; |
+;		STA $BE,x						; |
+;		BRA .NoCarried						;/
 
-	+	LDA $3320,x : STA $3320,y				; face same direction
+		LDA $3320,x : STA $3320,y				; face same direction
 
 		LDA.w !SpriteYSpeed,y : BPL .CarrySetCoord		; let carried sprite jump off with upwards speed
 		.JumpingOff						;\
@@ -306,13 +306,16 @@ GoombaSlave:
 		BRA .NoCarried						;/
 
 		.CarrySetCoord
+		LDA #$10 : STA.w !SpriteYSpeed,y
 		LDA #$02 : STA !SpriteStasis,y				; carried sprite has stasis
 		JSL SPRITE_A_SPRITE_B_COORDS				;\
-		LDA #$10 : STA $00					; |
+		LDA !SpriteDeltaX,x : STA !SpriteDeltaX,y		; |
+		LDA !SpriteDeltaY,x : STA !SpriteDeltaY,y		; > also inherit delta
+		LDA #$0E : STA $00					; |
 		LDA !SpriteAnimIndex					; |
 		CMP #$0B : BCC +					; |
-		LDA #$0C : STA $00					; |
-	+	LDA $3210,x						; | coords of carried sprite
+		LDA #$0C : STA $00					; | coords of carried sprite
+	+	LDA $3210,x						; |
 		SEC : SBC $00						; |
 		STA $3210,y						; |
 		LDA $3240,x						; |

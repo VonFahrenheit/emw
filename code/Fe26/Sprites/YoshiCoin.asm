@@ -14,32 +14,6 @@ YoshiCoin:
 
 	INIT:
 		PHB : PHK : PLB
-	;	BIT !ExtraProp1,x : BPL .NoRex		; check rex flag
-	;	JSL !GetSpriteClipping04		; load yoshi coin clipping
-	;	LDY #$0F				;\
-	;-	LDA $3230,y : BEQ +			; |
-	;	LDA !ExtraBits,y			; | search for a rex
-	;	AND #$08 : BEQ +			; |
-	;	LDA !NewSpriteNum,y			; |
-	;	CMP #$02 : BNE +			;/
-	;	PHY					;\
-	;	PHX					; |
-	;	TYX					; |
-	;	JSL !GetSpriteClipping00		; | check for contact
-	;	PLX					; |
-	;	JSL !CheckContact			; |
-	;	PLY					; |
-	;	BCC +					;/
-	;	TYA : STA $3290,x			;\ store rex number, then go on to check ID
-	;	BRA .NoRex				;/
-
-	;+	DEY : BPL -				;\
-	;	STZ $3230,x				; | loop, but despawn if no rex are found
-	;	PLB					; |
-	;	RTL					;/
-	;	.NoRex
-
-
 		LDA !ExtraProp1,x
 		AND #$0F
 		CMP #$0A : BCS .GoCoin_2		; ID 10+ is never allowed
@@ -95,6 +69,7 @@ YoshiCoin:
 
 
 	MAIN:
+		JSL INIT				; make sure despawn conditions are checked every frame
 		PHB : PHK : PLB
 		BIT !ExtraProp1,x : BPL .NoRex		; check rex flag
 		LDY $3290,x				;\
@@ -124,8 +99,8 @@ YoshiCoin:
 	.Drop	LDA !ExtraProp1,x			;\
 		AND #$0F				; |
 		STA !ExtraProp1,x			; |
-		LDA #$E0 : STA $9E,x			; | drop
-		STZ $AE,x				; |
+		LDA #$E0 : STA !SpriteYSpeed,x		; | drop
+		STZ !SpriteXSpeed,x			; |
 		LDA #$40 : STA $32D0,x			; |
 		.NoRex					;/
 
@@ -161,8 +136,8 @@ YoshiCoin:
 	+	LDA #$00 : STA $3230,y			;\
 		.Emerge					; > emerge from broken block
 		LDA #$40 : STA $32D0,x			; |
-		LDA #$D0 : STA $9E,x			; |
-		STZ $AE,x				; | replace powerup sprite
+		LDA #$D0 : STA !SpriteYSpeed,x		; |
+		STZ !SpriteXSpeed,x			; | replace powerup sprite
 		LDA !ExtraProp1,x			; |
 		AND #$0F				; |
 		STA !ExtraProp1,x			;/
@@ -171,8 +146,8 @@ YoshiCoin:
 
 		LDA $3330,x
 		AND #$04 : PHA
-		LDA $9E,x : PHA
-		STZ $AE,x				; no horizontal speed please!
+		LDA !SpriteYSpeed,x : PHA
+		STZ !SpriteXSpeed,x			; no horizontal speed please!
 		JSL !SpriteApplySpeed			; apply speed with gravity
 		PLA : STA $00
 		PLA : BNE .SpeedDone
@@ -184,11 +159,14 @@ YoshiCoin:
 		CMP #$08 : BCC .SpeedDone
 		LSR A
 		EOR #$FF
-		STA $9E,x
+		STA !SpriteYSpeed,x
 		.SpeedDone
 
 
-		LDA $32D0,x : BNE .NoContact		; no player interaction during drop
+		LDA $32D0,x				;\
+		ORA !SpriteDisP1,x			; | no player interaction during drop
+		ORA !SpriteDisP2,x			; | (or when disabled externally)
+		BNE .NoContact				;/
 		JSL !GetSpriteClipping04
 		SEC : JSL !PlayerClipping
 		BCC .NoContact
@@ -222,6 +200,7 @@ YoshiCoin:
 		REP #$20
 		LDA.w #ANIM : STA $04
 		SEP #$20
+		STZ $3320,x
 		JSL LOAD_PSUEDO_DYNAMIC
 		PLB
 		RTL

@@ -3,10 +3,10 @@ SMOKE_AT_FEET:
 		SEP #$30
 		LDA !P2Water : BNE .Return
 		LDA !P2InAir : BNE .Return		; no smoke in midair
-		LDA !P2XSpeed
+	.Speed	LDA !P2XSpeed
 		CLC : ADC #$08
 		CMP #$10 : BCC .Return			; abs speed must be > 16
-		LDA $14
+	.Frame	LDA $14
 		AND #$03 : BEQ .Spawn
 	.Return	PLP
 		RTL
@@ -34,5 +34,8 @@ SMOKE_AT_FEET:
 		PLP
 		RTL
 
+	.Aerial	PHP
+		SEP #$30
+		BRA .Speed
 
 

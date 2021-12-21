@@ -394,7 +394,7 @@ print "Level code handler inserted at $", pc, "."
 		SEP #$10				; > Index 8 bit
 		LDX #$80 : STX $2100			; start f-blank
 
-		LDX #$14				;\
+		LDX #$0E				;\
 	-	LDA $6703+2,x : STA $00A0,x		; | store this palette in SNES WRAM
 		DEX #2 : BPL -				;/
 
@@ -540,7 +540,7 @@ print "Level code handler inserted at $", pc, "."
 		LDX.b #!P2Physics-(!P2Basics)-6		; > keep first 5 bytes of basics
 	-	STZ !P2Basics-$80+$05,x			; |
 		DEX : BPL -				; | reset p1
-		LDX.b #!P2Base+$80-(!P2Physics)-7	; > keep first 6 bytes of physics
+		LDX.b #!P2Base+$80-(!P2Physics)-7-1	; > keep first 6 bytes of physics, keep last byte of custom (temp HP)
 	-	STZ !P2Physics-$80+$06,x		; |
 		DEX : BPL -				; |
 		PLA : STA !P2SlantPipe-$80		; |
@@ -554,7 +554,7 @@ print "Level code handler inserted at $", pc, "."
 		LDX.b #!P2Physics-(!P2Basics)-6		; > keep first 5 bytes of basics
 	-	STZ !P2Basics+$05,x			; |
 		DEX : BPL -				; | reset p1
-		LDX.b #!P2Base+$80-(!P2Physics)-7	; > keep first 6 bytes of physics
+		LDX.b #!P2Base+$80-(!P2Physics)-7-1	; > keep first 6 bytes of physics, keep last byte of custom (temp HP)
 	-	STZ !P2Physics+$06,x			; |
 		DEX : BPL -				; |
 		PLA : STA !P2SlantPipe			; |
@@ -571,6 +571,8 @@ print "Level code handler inserted at $", pc, "."
 
 		LDA $741A : BNE +			;\ How many doors have been entered
 
+		STZ !P2TempHP-$80			;\ clear temp HP
+		STZ !P2TempHP				;/
 		REP #$20				;\
 		LDA !Translevel				; |
 		ASL A					; |
@@ -661,6 +663,62 @@ print "Level code handler inserted at $", pc, "."
 		LDA #$4F : STA !P2Entrance
 		+
 
+
+; ID = 0xFF	-> not native to this level
+
+
+
+		.SpawnHeldItems
+		LDA !HeldItemP1_num
+		CMP #$FF : BEQ ..p1done
+		LDX #$0F
+	-	LDA $3230,x : BEQ ..thisp1
+		DEX : BPL -
+		JMP ..p2done
+		..thisp1
+		LDA #$40 : TSB !P2ExtraInput1-$80
+		LDA !HeldItemP1_num : STA $3200,x
+		LDA !HeldItemP1_customnum : STA !NewSpriteNum,x
+		LDA !HeldItemP1_extra : STA !ExtraBits,x
+		JSL !ResetSprite
+		LDA #$0B : STA $3230,x
+		LDA !HeldItemP1_prop1 : STA !ExtraProp1,x
+		LDA !HeldItemP1_prop2 : STA !ExtraProp2,x
+		LDA !HeldItemP1_ID : STA $33F0,x
+		LDA !P2XPosLo-$80 : STA !SpriteXLo,x
+		LDA !P2XPosHi-$80 : STA !SpriteXHi,x
+		LDA !P2YPosLo-$80 : STA !SpriteYLo,x
+		LDA !P2YPosHi-$80 : STA !SpriteYHi,x
+		INX : STX !P2Carry-$80
+		..p1done
+		LDA #$FF : STA !HeldItemP1_num
+
+		LDA !HeldItemP2_num
+		CMP #$FF : BEQ ..p2done
+		LDX #$0F
+	-	LDA $3230,x : BEQ ..thisp2
+		DEX : BPL -
+		BRA ..p2done
+		..thisp2
+		LDA #$40 : TSB !P2ExtraInput1
+		LDA !HeldItemP2_num : STA $3200,x
+		LDA !HeldItemP2_customnum : STA !NewSpriteNum,x
+		LDA !HeldItemP2_extra : STA !ExtraBits,x
+		JSL !ResetSprite
+		LDA #$0B : STA $3230,x
+		LDA !HeldItemP2_prop1 : STA !ExtraProp1,x
+		LDA !HeldItemP2_prop2 : STA !ExtraProp2,x
+		LDA !HeldItemP1_ID : STA $33F0,x
+		LDA !P2XPosLo : STA !SpriteXLo,x
+		LDA !P2XPosHi : STA !SpriteXHi,x
+		LDA !P2YPosLo : STA !SpriteYLo,x
+		LDA !P2YPosHi : STA !SpriteYHi,x
+		INX : STX !P2Carry
+		..p2done
+		LDA #$FF : STA !HeldItemP2_num
+
+
+
 		LDA.b #$08 : STA $3180				;\
 		LDA.b #$80 : STA $3181				; | run PCE
 		LDA.b #$15 : STA $3182				; |
@@ -686,7 +744,7 @@ print "Level code handler inserted at $", pc, "."
 		LDA #$0100
 		CMP !LightR : BNE ..shade
 		CMP !LightG : BNE ..shade
-		CMP !LightB : BEQ ..noshade
+		CMP !LightB : BEQ ..initpal
 		..shade
 		LDA.w #.PreShade : STA $3180
 		LDA.w #.PreShade>>8 : STA $3181
@@ -699,12 +757,24 @@ print "Level code handler inserted at $", pc, "."
 		LDA.w #!ShaderInput>>8 : STA $4303
 		LDA #$0200 : STA $4305
 		LDA #$0001 : STA $420B
+		BRA ..noshade
+		..initpal
+		SEP #$20
+		STZ $2121
+		REP #$30
+		LDA #$2202 : STA $4300
+		LDA.w #!PaletteRGB : STA $4302
+		LDA.w #!PaletteRGB>>8 : STA $4303
+		LDA #$0200 : STA $4305
+		LDA #$0001 : STA $420B
 		..noshade
 		SEP #$30
 		LDA.b #.InitShader : STA $3180
 		LDA.b #.InitShader>>8 : STA $3181
 		LDA.b #.InitShader>>16 : STA $3182
 		JSR $1E80
+
+
 
 		PLB						; > end of bank wrapper
 		PEA $A5F3-1					;\ set return address and execute subroutine
@@ -809,19 +879,19 @@ print "Level code handler inserted at $", pc, "."
 
 	.StatusProp
 		..megalevel
-		db $28,$24,$24,$24,$24				; P1 coins
+		db $24,$24,$24,$24,$24				; P1 coins
 		db $20,$20,$20,$20,$20,$20			; P1 hearts
-		db $28,$28,$28,$28,$28				;\ Yoshi coins
-		db $28,$28,$28,$28,$28				;/
+		db $24,$24,$24,$24,$24				;\ Yoshi coins
+		db $24,$24,$24,$24,$24				;/
 		db $20,$20,$20,$20,$20,$20			; P2 hearts
-		db $28,$24,$24,$24,$24				; P2 coins
+		db $24,$24,$24,$24,$24				; P2 coins
 		..normallevel
-		db $28,$24,$24,$24,$24				; P1 coins
+		db $24,$24,$24,$24,$24				; P1 coins
 		db $20,$20,$20,$20,$20,$20			; P1 hearts
-		db $28,$28,$28,$28,$28				;\ Yoshi coins
-		db $28,$28,$28,$28,$28				;/
+		db $24,$24,$24,$24,$24				;\ Yoshi coins
+		db $24,$24,$24,$24,$24				;/
 		db $20,$20,$20,$20,$20				; P2 hearts
-		db $28,$24,$24,$24,$24,$24			; P2 coins
+		db $24,$24,$24,$24,$24,$24			; P2 coins
 
 
 
@@ -829,11 +899,6 @@ print "Level code handler inserted at $", pc, "."
 		PHP						;\ wrapper start
 		PHB : PHK : PLB					;/
 		SEP #$30
-
-		LDA !GameMode					;\
-		CMP #$0B : BCC ..nosave				; | save game when loading a new level (but only in game mode 0x0B and up)
-		JSL !SaveGame					; |
-		..nosave					;/
 
 		STZ !PlayerBonusHP				;\
 		LDA !Difficulty					; |
@@ -859,6 +924,10 @@ print "Level code handler inserted at $", pc, "."
 		STA $03						; |
 		LDX #$0F					; |
 	-	LDA $3230,x : BEQ +				; |
+		LDA !NewSpriteNum,x				; |
+		CMP #$11 : BEQ +				; > exception for sign
+		LDA $3200,x					; |
+		CMP #$0E : BEQ +				; > exception for keyhole
 		JSL !GetSpriteClipping04			; |
 		JSL !CheckContact				; |
 		BCC +						; |
@@ -911,14 +980,15 @@ print "Level code handler inserted at $", pc, "."
 pushpc
 org $048452
 dl LoadPalset	; code pointer, should be read manually
+dl BoxTable	; data pointer for camera boxes
 pullpc
 
 
 .Table
-dl levelinit0	
-dl levelinit1	
-dl levelinit2	
-dl levelinit3	
+dl levelinit0
+dl levelinit1
+dl levelinit2
+dl levelinit3
 dl levelinit4
 dl levelinit5
 dl levelinit6
@@ -1456,10 +1526,10 @@ print "Level MAIN inserted at $", pc
 
 
 .Table
-dl level0	
-dl level1	
-dl level2	
-dl level3	
+dl level0
+dl level1
+dl level2
+dl level3
 dl level4
 dl level5
 dl level6
@@ -2561,7 +2631,6 @@ UpdatePalset:
 
 
 
-
 incsrc "level_data/TimeLimits.asm"
 incsrc "level_data/LevelLightPoints.asm"
 
@@ -2575,6 +2644,8 @@ org $198000
 db $53,$54,$41,$52
 dw $FFF7
 dw $0008
+
+incsrc "level_data/CameraBox.asm"
 
 print "Realm 1 code inserted at $", pc, "."
 incsrc "level_code/Realm1.asm"

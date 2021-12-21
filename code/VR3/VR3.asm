@@ -2416,29 +2416,29 @@ Build_RAM_Code:
 		..end
 
 
-	.AppendSMWPalette
-		!Temp = 0					; new RAM code
-		%makecode($64A2)				; LDX #$64
-		%makecode($218E)				; STX $xx21
-		%makecode($A221)				; $21xx : LDX #
-		LDA $14						;\
-		AND #$001C					; |
-		LSR A						; | read color data
-		TAX						; |
-		LDA.l $00B60C,x					;/
-		STA.w !RAMcode+$06,y				; > first half of color (lo byte)
-		STA.w !RAMcode+$0B-1,y				; > second half of color (hi byte)
-		!Temp := !Temp+1				; skip 1 byte (8-bit color value)
-		%makecode($228E)				; STX $xx22
-		%makecode($A221)				; $21xx : LDX #
-		!Temp := !Temp+1				; skip 1 byte (8-bit color value)
-		%makecode($008E)				; STX $xxxx
-		!Temp := !Temp-1				; prevent overflow
-		%makecode($2122)				; $2122
-		TYA						;\
-		CLC : ADC.w #!Temp				; | increment RAM code index
-		TAY						;/
-		RTS
+	; .AppendSMWPalette
+		; !Temp = 0					; new RAM code
+		; %makecode($64A2)				; LDX #$64
+		; %makecode($218E)				; STX $xx21
+		; %makecode($A221)				; $21xx : LDX #
+		; LDA $14						;\
+		; AND #$001C					; |
+		; LSR A						; | read color data
+		; TAX						; |
+		; LDA.l $00B60C,x					;/
+		; STA.w !RAMcode+$06,y				; > first half of color (lo byte)
+		; STA.w !RAMcode+$0B-1,y				; > second half of color (hi byte)
+		; !Temp := !Temp+1				; skip 1 byte (8-bit color value)
+		; %makecode($228E)				; STX $xx22
+		; %makecode($A221)				; $21xx : LDX #
+		; !Temp := !Temp+1				; skip 1 byte (8-bit color value)
+		; %makecode($008E)				; STX $xxxx
+		; !Temp := !Temp-1				; prevent overflow
+		; %makecode($2122)				; $2122
+		; TYA						;\
+		; CLC : ADC.w #!Temp				; | increment RAM code index
+		; TAY						;/
+		; RTS
 
 
 
@@ -3868,7 +3868,7 @@ NMI:		PHP					;\
 		STZ $04					; bank 00
 		LDA #$2202 : STA $00			;\
 		LDA #$00A0 : STA $02			; |
-		LDA #$0016 : STA $05			; | upload dynamic BG3 color
+		LDA #$000E : STA $05			; | upload dynamic BG3 color
 		STY $2121				; |
 		STY $420B				;/
 
@@ -4177,6 +4177,7 @@ ReturnNMI:	REP #$30
 ; regs used:
 ; 2100 - brightness + f-blank
 ; 2105 - screen mode
+; 2106 - mosaic
 ; 2109 - BG3 tilemap address
 ; 2111 - BG3 hscroll
 ; 2112 - BG3 vscroll
@@ -4194,9 +4195,12 @@ IRQ:
 		LDA #$43 : XBA				;\ DP = 0x4300
 		LDA #$00 : TCD				;/
 
-		LDA !GameMode
-		CMP #$14 : BEQ .Level
-		JMP .Return
+		LDX !GameMode
+		LDA.l .GameModeEnable,x : BEQ +		; 00 -> return
+		BPL .Level				; 01 -> level
+		LDA !P2Status-$80 : BEQ +		;\ FF -> return if at least one player alive, otherwise level
+		LDA !P2Status : BNE .Level		;/
+	+	JMP .Return
 
 .Level		BIT $4212 : BVC .Level			; wait for f-blank to prevent tearing
 		LDA #$80 : STA $2100			; enable f-blank
@@ -4229,7 +4233,7 @@ IRQ:
 		LDA #$2202 : STA $00			;\
 		LDA.w #.StatusPal : STA $02		; |
 		LDX.b #.StatusPal>>16 : STX $04		; | upload status bar palette
-		LDA #$0016 : STA $05			; |
+		LDA #$000E : STA $05			; |
 		STY $2121				; |
 		STY $420B				;/
 		LDA #$2100 : TCD			; > DP = 0x2100
@@ -4247,6 +4251,7 @@ IRQ:
 		STZ $22					; | color 0 to black
 		STZ $22					;/
 		LDA #$09 : STA $05			; > GFX mode 1 + Layer 3 priority
+		STZ $06					; > no mosaic
 	-	BIT $4212 : BVC -			;\ wait for h-blank and restore brightness
 		LDA $6DAE : STA $00			;/
 .Return		REP #$30				;\
@@ -4259,10 +4264,17 @@ IRQ:
 		RTI					;/
 
 
-.StatusPal	dw $7FFF,$0CFB,$001F			; Palette 0
-		dw $0000,$0000,$7AAB,$7FFF		; Palette 1
-		dw $0000,$0000,$1E9B,$3B7F		; Palette 2
+.StatusPal
+incbin "../../PaletteData/statusbar.mw3":2-10
 
+
+.GameModeEnable
+		db $00,$00,$00,$00,$00,$00,$00,$00	; 00-07
+		db $00,$00,$00,$FF,$00,$00,$00,$01	; 08-0F
+		db $00,$00,$00,$01,$01,$00,$00,$00	; 10-17
+		db $00,$00,$00,$00,$00,$00,$00,$00	; 18-1F
+		db $00,$00,$00,$00,$00,$00,$00,$00	; 20-27
+		db $00,$00,$00,$00,$00,$00,$00,$00	; 28-2F
 
 
 ;==========;

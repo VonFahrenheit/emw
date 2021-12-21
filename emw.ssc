@@ -142,11 +142,11 @@
 73	0002	0,-2,80BC 16,-2,80BD 0,2,80BC 16,2,80BD -2,0,8080 14,0,8081 2,0,8080 18,0,8081 0,0,080 16,0,081
 73	0102	0,0,080 16,0,081
 74	0002	0,0,071
-75	0002	0,0,072
+75	0002	0,0,*BANNED*
 76	0002	0,0,073
 77	0002	0,0,*BANNED*
-78	0000	This is a rainbow mushroom. It will fully heal a player and give them 100 coins if they collect it. It stands still if placed on the ground but will move right if placed in the air. If Mario's reserve box is empty when he collects this, he will receive an additional mushroom in the reserve box.
-78	0002	0,0,074
+78	0000	This is a golden mushroom. It will fully heal a player and give them 100 coins if they collect it. It stands still if placed on the ground but will move right if placed in the air.
+78	0002	0,0,072
 79	0002	0,0,075
 7A	0002	0,0,*DO NOT USE*
 7B	0002	0,0,*BANNED*
@@ -307,14 +307,14 @@ F1	0002	0,0,420
 00	0030	With the extra bit set, the Happy Slime is stationary. If another sprite is placed on top of it, it will bounce it straight up, then catch it and repeat. The extra bit is cleared if the slime takes damage.\n\nHP: 2\nRank: D\nTraits: None\nType: Dynamic (1 tile)\nExtra bit: Yes
 00	0032	0,16,*Happy\nSlime* 0,0,420
 
-01	0020	This version of the Goomba walks straight ahead, turning at walls but walking off ledges. If another sprite is placed on top of it, the slave will carry it. Placing several Goomba Slaves on top of each other will form a totem. Use with extra bit version to allow totems to carry players.\n\nHP: 1\nRank: E\nTraits: None\nType: Pseudo-dynamic (6 tiles for Goomba, 4 tiles for tray)\nExtra bit: Yes
+01	0020	This version of the Goomba walks straight ahead, turning at walls but walking off ledges. If another sprite is placed on top of it, the slave will carry it. Placing several Goomba Slaves on top of each other will form a totem (note that they should be Z-ordered so that you see the X of only the top sprite). Use with extra bit version to allow totems to carry players.\n\nHP: 1\nRank: E\nTraits: None\nType: Pseudo-dynamic (6 tiles for Goomba, 4 tiles for tray)\nExtra bit: Yes
 01	0022	0,16,*Goomba\nSlave* 0,0,420
 01	0030	With the extra bit set, the Goomba Slave spawns with a tray on its head. The tray can be jumped on to reveal a mushroom, which can then be collected as a normal powerup. The Goomba maintains its empty tray afterward, which can be used as a platform. If the Goomba is placed on the top of a totem, it spawns with an empty tray meant to be used as a platform.\n\nHP: 1\nRank: E\nTraits: None\nType: Pseudo-dynamic (6 tiles for Goomba, 4 tiles for tray)\nExtra bit: Yes
 01	0032	0,16,*Goomba Slave\nwith tray* 0,0,420
 
-02	0020	Rex, EMW version. This one is a lot more complex under the hood, though that is normally not apparent. Turns around at ledges rather than walking off.\nExtra byte 1 gives the Rex a bag.\n01 - sack that drops coins\n02 - bindle with a mushroom\n03 - backpack (??)\n04 - box (??)\n05 - useless sword\nFF - turns the rex into a golden bandit which drops a yoshi coin upon being hit (yoshi coin ID is determined by extra byte 2)\nExtra byte 2 gives the Rex a hat.\n01 - green robin hood hat\n02 - red hat with bow\n03 - straw hat\n04 - red fez-like hat\n05 - bandit bandana\n06 - top hat and mustache\n07 - bandana\n08 - knight helmet\nIf the Rex has both a sword and helmet, it will be able to chase players on sight, similar to Aggro Rex.\n\nHP: 2\nRank: E\nTraits: None\nType: Pseudo-dynamic (1.75-4.00 KB)\nExtra bit: Yes
+02	0020	Rex, EMW version. This one is a lot more complex under the hood, though that is normally not apparent. Turns around at ledges rather than walking off.\nExtra byte 1 gives the Rex a bag.\n01 - sack that drops coins\n02 - bindle with a mushroom\n03 - backpack (??)\n04 - box (??)\n05 - sword (this lets the rex chase players on sight, similar to aggro rex)\nFF - turns the rex into a golden bandit which drops a yoshi coin upon being hit (yoshi coin ID is determined by extra byte 2)\nExtra byte 2 gives the Rex a hat.\n01 - green robin hood hat\n02 - red hat with bow\n03 - straw hat\n04 - red fez-like hat\n05 - bandit bandana (this one increases the values of coins dropped by the sack)\n06 - top hat and mustache\n07 - bandana\n08 - knight helmet\n\nHP: 2\nRank: E\nTraits: None\nType: Pseudo-dynamic (1.75-4.00 KB)\nExtra bit: Yes
 02	0022	0,16,*Rex* 0,0,420
-02	0030	With the extra bit set, this Rex will not move unless it takes damage.\nExtra byte 1 gives the Rex a bag.\n01 - sack that drops coins\n02 - bindle with a mushroom\n03 - backpack (??)\n04 - box (??)\n05 - useless sword\nFF - turns the rex into a golden bandit which drops a yoshi coin upon being hit (yoshi coin ID is determined by extra byte 2)\nExtra byte 2 gives the Rex a hat.\n01 - green robin hood hat\n02 - red hat with bow\n03 - straw hat\n04 - red fez-like hat\n05 - bandit bandana\n06 - top hat and mustache\n07 - bandana\n08 - knight helmet\nIf the Rex has both a sword and helmet, it will be able to chase players on sight, similar to Aggro Rex.\n\nHP: 2\nRank: E\nTraits: None\nType: Pseudo-dynamic (1.75-4.00 KB)\nExtra bit: Yes
+02	0030	With the extra bit set, this Rex will not move unless it takes damage.\nExtra byte 1 gives the Rex a bag.\n01 - sack that drops coins\n02 - bindle with a mushroom\n03 - backpack (??)\n04 - box (??)\n05 - sword (this lets the rex chase players on sight, similar to aggro rex)\nFF - turns the rex into a golden bandit which drops a yoshi coin upon being hit (yoshi coin ID is determined by extra byte 2)\nExtra byte 2 gives the Rex a hat.\n01 - green robin hood hat\n02 - red hat with bow\n03 - straw hat\n04 - red fez-like hat\n05 - bandit bandana (this one increases the values of coins dropped by the sack)\n06 - top hat and mustache\n07 - bandana\n08 - knight helmet\n\nHP: 2\nRank: E\nTraits: None\nType: Pseudo-dynamic (1.75-4.00 KB)\nExtra bit: Yes
 02	0032	0,16,*Rex\nstationary* 0,0,420
 
 03	0020	This Rex will walk, then stop to throw a hammer. The hammer is quite accurate and usually hits stationary players. The sprite always turns to face a player upon throwing a hammer. The sprite loses its ability to throw hammers upon taking damage.\n\nHP: 2\nRank: D\nTraits: None\nType: Pseudo-dynamic (3KB)\nExtra bit: Yes
@@ -451,7 +451,7 @@ F1	0002	0,0,420
 21	0022	0,-8,0B5 0,8,0B4 -8,12,01B 8,12,01B 0,24,01B -8,32,01B -10,40,01B 8,32,01B 10,40,01B -12,20,01B -16,24,01B 12,20,01B 16,24,01B
 
 22	0020	This is a sprite version of a Yoshi Coin. The first extra byte determines which Yoshi Coin this is (0-4 for normal levels, 0-9 for mega levels). Set 0x40 bit to enable block mode. In this mode, the sprite can be placed on a ?-block and will then replace the contents of that block. The purpose of this sprite is to allow for mobile Yoshi Coins, mostly to interact with other sprites. It also serves as the Coin Golem's head.\n\nHP: Invulnerable\nRank: N/A\nTraits: None\nType: Pseudo-dynamic (2 tiles)\nExtra bit: No
-22	0022	0,16,0B4 0,0,0B5
+22	0022	0,0,0B4 0,-16,0B5
 
 23	0020	The Green Elite Koopa is a guard-type enemy that makes areas difficult to access for players. It will patrol an area, stopping to stare down a player when they get close. If a player stays in front of it for too long, the Elite will attempt to tackle the player. If the player tries to jump over the Elite after it has spotted them, it will jump to intercept. If the Elite Koopa is defeated, it gets knocked out of its shell and becomes a normal Green Koopa.\n\nHP: 1\nRank: C\nTraits: Fireproof, Uncrushable, Super Armor\nType: Dynamic (4 tiles)\nExtra bit: No
 23	0022	0,16,*Green\nElite Koopa* 0,0,420
@@ -493,3 +493,21 @@ F1	0002	0,0,420
 2E	0022	-8,-8,0DF 8,-8,0E0 -8,8,0E1 8,8,0E2 -16,-16,0DD -16,0,0DD
 2E	0030	Shield (back)
 2E	0032	-8,-8,0DF 8,-8,0E0 -8,8,0E1 8,8,0E2 16,-16,0DE 16,0,0DE
+
+2F	0020	Elevator
+2F	0022	0,16,*Elevator* 0,0,420
+
+30	0020	Chest\nThis carryable sprite can be opened by breaking it, either by attacking it or throwing it into a solid block. It contains 20 coins by default, but the amount can be specified by extra byte 1. The greatest number of coins it can hold is 223, if you give it more than that it will hold a random number of coins 0-223.\n\nHP: 1\nRank: F\nTraits: None\nType: Pseudo-dynamic (2 tiles)\nExtra bit: No
+30	0022	0,16,*Chest* 0,0,420
+
+31	0020	EXPERIMENTAL OBJECT
+31	0022	0,16,*Experimental object* -8,-16,420 8,-16,420 -8,0,420 8,0,420
+
+32	0020	Shop Object\nPlace on a sprite to make it a carryable object. Extra byte 1 assigns a price tag to that sprite. Meant for use in shops. The text should appear above that sprite's tile, with the little stars appearing on either side. The sprites should be z-ordered so that the sprite that this object is attached to is not obscured by it.
+32	0022	0,-16,*Shop\n    \n  \n  * -8,0,0DC 16,0,0DC
+
+33	0020	Life Mushroom\Collecting this will fully heal a player and increase their maximum life by 1 until they get hit or finish a level.
+33	0022	0,0,074
+
+34	0020	Dense Rex
+34	0022	0,16,*Dense Rex* 0,0,420

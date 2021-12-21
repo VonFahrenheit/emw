@@ -99,7 +99,7 @@
 
 
 		.CarryOffsetX
-		db $F6,$0A
+		db $F6,$0B
 		db $FF,$00
 
 		.CarryOffsetY

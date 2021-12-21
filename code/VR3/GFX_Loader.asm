@@ -34,6 +34,18 @@
 		BRA -
 	warnpc $00A3F0
 
+
+	; patch out vanilla palette loarders
+	org $00ABED			; full loader
+		RTS : RTS		; org: REP #$30
+	org $00ACED			; halfrow loader
+		RTS : RTS : RTS		; org: LDY #$0007
+	org $00ACFF			; row loader
+		RTS : RTS		; org: LDX $04
+
+
+
+
 	; $05BE8A is called from $00A5BF in all.log
 	; however, LM hijacks $00A5BF and calls $05BE8A from within its own hijack!
 	; the hijack at $00A5BF only uploads the level palette, as far as i can tell
@@ -653,14 +665,14 @@
 		BEQ $03 : LDA #$0800				; |
 		CLC : ADC.w #!BG2Tilemap			; |
 		STA $4312					; |
-		LDA #$0400 : STA $4315				; | simple upload to both tilemaps
+		LDA #$0800 : STA $4315				; | simple upload to both tilemaps
 		STX $420B					; |
 		STA $4315					; |
 		LDA $20						; |
 		SEC : SBC #$0010				; |
 		AND #$0100					; |
 		BEQ $03 : LDA #$0800				; |
-		CLC : ADC.w #!BG2Tilemap+$1000			; |
+		CLC : ADC.w #!BG2Tilemap+$800			; |
 		STA $4312					; |
 		STX $420B					;/
 		SEP #$20					;\ return

@@ -418,6 +418,7 @@ LoadCameraBox:
 		JSR $1E80
 		RTL
 
+
 		.SA1
 		PHB
 		PHP
@@ -455,24 +456,38 @@ LoadCameraBox:
 
 
 
+		LDA !P2Status-$80 : BEQ .GetCoords
+		LDA !P2Status : BEQ .GetCoords
+		PLP
+		PLB
+		RTL
 
+		.GetCoords
 		REP #$20
 		LDX #$00
-		LDA !P2XPosLo-$80 : STA $00
-		LDA !P2YPosLo-$80 : STA $02
+		LDY !P2Status-$80
+		BEQ $02 : LDX #$80
+		LDA !P2XPosLo-$80,x : STA $00
+		LDA !P2YPosLo-$80,x : STA $02
+		LDX #$00
 		LDA !MultiPlayer
 		AND #$00FF
 		BEQ $02 : LDX #$80
+		LDY !P2Status-$80,x : BNE .CalcRoom
 		LDA !P2XPosLo-$80,x
 		CLC : ADC $00
-		LSR A
+		ROR A
+		BPL $03 : LDA #$0000
 		XBA
-		AND #$0007
 		STA $00
-
 		LDA !P2YPosLo-$80,x
 		CLC : ADC $02
-		LSR A
+		ROR A
+		BPL $03 : LDA #$0000
+		STA $02
+
+		.CalcRoom
+		LDA $02
 		CMP !LevelHeight
 		BCC $04 : LDA !LevelHeight : DEC A
 		LDX #$00
@@ -486,14 +501,15 @@ LoadCameraBox:
 		EOR #$FFFF : INC A
 	-	CLC : ADC !LevelWidth
 		DEX : BPL -
-		ORA $00
+		CLC : ADC $00
 		TAY
 		LDA ($08),y
 		AND #$00FF
 		STA !BigRAM+0
+		TAY : STY !CameraBoxRoom		; store room index
+
 
 	; door loader
-
 		PEI ($0A)
 		PHP
 		SEP #$20
@@ -501,7 +517,9 @@ LoadCameraBox:
 		STZ $00
 		LDY #$00
 	--	LDA ($0C),y : BPL +
-		JMP .NextIndex
+		CMP #$80 : BNE ++
+		JMP .NoDoor
+	++	JMP .NextIndex
 
 	+
 	-	LDX $00
@@ -556,18 +574,16 @@ LoadCameraBox:
 
 	.NextDoor
 		INY
-		LDA ($0C),y
-		BMI .NextIndex
+		LDA ($0C),y : BMI +
 		JMP -
+	+	CMP #$80 : BEQ .NoDoor
 
 	.NextIndex
 		INY
 		INC $00
 		LDA $00
-		CMP !BigRAM+0
-		BCC +
-		BNE .NoDoor
-	+	JMP --
+		CMP !BigRAM+0 : BCS .NoDoor
+		JMP --
 
 
 	.NoDoor
@@ -576,24 +592,21 @@ LoadCameraBox:
 
 
 	; camera box
-
 		LDA !BigRAM+0
 		ASL A
 		STA $00
 		ASL #2
 		CLC : ADC $00
-		STA $00					; index in $00
-		TAY
-		LDX #$00
-
+		CLC : ADC $0A
+		STA $0A
+		LDY #$00
 		LDA !LevelInitFlag			;\ don't do the update during level init
-		AND #$00FF : BEQ .Old			;/
+		AND #$00FF : BNE .Old			;/
 
 	-	LDA ($0A),y
-		CMP !CameraBoxL,x : BNE .New
-		INX #2
+		CMP !CameraBoxL,y : BNE .New
 		INY #2
-		CPX #$08 : BNE -
+		CPY #$08 : BCC -
 
 	.Old	JSR .Load
 
@@ -602,7 +615,9 @@ LoadCameraBox:
 		RTL
 
 
-	.New	LDY #$0F
+	.New	LDY !GameMode				;\ don't run this until level is properly going
+		CPY #$14 : BNE .Old			;/
+		LDY #$0F
 	-	LDX $3220,y : STX $02
 		LDX $3250,y : STX $03
 		LDX $3210,y : STX $04
@@ -687,13 +702,21 @@ LoadCameraBox:
 
 
 	.Load
-		LDY $00					;\ reset index
-		LDX #$00				;/
-	-	LDA ($0A),y : STA !CameraBoxL,x
-		INX #2
+		LDY #$00				; reset index
+	-	LDA ($0A),y : STA !CameraBoxL,y
 		INY #2
-		CPX #$08 : BNE -
+		CPY #$08 : BCC -
 		LDA ($0A),y : STA !CameraForbiddance
+
+		LDA !LevelHeight
+		SEC : SBC #$0100
+		BPL $03 : LDA #$0000
+		CMP !CameraBoxD : BCS +
+		STA !CameraBoxD
+		CMP !CameraBoxU : BCS +
+		STA !CameraBoxU
+		+
+
 		RTS
 
 
@@ -745,22 +768,38 @@ LoadCameraBox:
 
 
 	InitCameraBox:
-		PHP			; this push order matters, don't change it
 		PHB : PHK : PLB
+		PHP
 		REP #$20
 
+		LDA !CameraBoxL
+		ADC !CameraBoxR
+		ADC #$0100
+		LSR A
+		CMP $94 : BCS .PlayerLeftSide
+
+		.PlayerRightSide
 		LDA $94
-		AND #$FF00
-		BPL $03 : LDA #$0000
+		AND #$FF00 : STA $1A
+		BRA +
+
+		.PlayerLeftSide
+		LDA $94
+		SEC : SBC #$0080
 		STA $1A
-		LDA $96
-		SEC : SBC #$0070
-		BPL $03 : LDA #$0000
-		LDY.b #LoadCameraBox_ScreensEnd-LoadCameraBox_VerticalScreens-2
-	-	CMP LoadCameraBox_VerticalScreens,y : BCS +
-		DEY #2 : BPL -
-		LDY #$00
-	+	LDA LoadCameraBox_VerticalScreens,y : STA $1C
+		LDA !CameraBoxL
+		AND #$FF00 : STA !CameraXMem
+		+
+
+
+		; LDA $96
+		; SEC : SBC #$0070
+		; BPL $03 : LDA #$0000
+		; LDY.b #LoadCameraBox_ScreensEnd-LoadCameraBox_VerticalScreens-2
+	; -	CMP LoadCameraBox_VerticalScreens,y : BCS +
+		; DEY #2 : BPL -
+		; LDY #$00
+	; +	LDA LoadCameraBox_VerticalScreens,y : STA $1C
 
 		LDA !CameraBoxL
 		CMP $1A : BCS .WriteX
@@ -788,48 +827,220 @@ LoadCameraBox:
 		DEY : BNE -
 		+
 
-	;	CLC : ADC $00
-	;	STA $00
-	;	SEP #$20
-	;	LDX $00
-	;	LDY $01
-	;	JSL LoadScreen
-
+		.Done
+		PLP
 		PLB
-		PLP
 		RTL
 
 
-		LDA.b #!VRAMbank
-		PHA : PLB
-
-
-		REP #$20
-		LDA $1C
-		AND #$00FF
-		ASL #2
-		CLC : ADC !VRAMtable+$05,x
-		STA !VRAMtable+$05,x
-		SEC : SBC.l !BG1Address
-		BEQ .Done
-
-		ASL A
-		STA !VRAMtable+$07,x
-		SEC : SBC #$0800
-		EOR #$FFFF : INC A
-		STA !VRAMtable+$00,x
-		CLC : ADC !VRAMtable+$02,x
-		STA !VRAMtable+$09,x
-		LDA !VRAMtable+$04,x : STA !VRAMtable+$0B,x
-		LDA.l !BG1Address
-		CLC : ADC #$0400
-		STA !VRAMtable+$0C,x
 
 
 
-	.Done	PLB
-		PLP
+; input:
+;	A = sprite num / custom sprite num to search
+; output:
+;	all sprites matching the input will be erased
+	KillSprite:
+	.Vanilla
+		STA $00
+		LDX #$0F
+		..loop
+		LDA $3230,x
+		CMP #$01 : BEQ ..ok
+		CMP #$08 : BCC ..next
+		..ok
+		LDA !ExtraBits,x
+		AND #$08 : BNE ..next
+		LDA $3200,x
+		CMP $00 : BNE ..next
+		STZ $3230,x
+		..next
+		DEX : BPL ..loop
 		RTL
+
+	.Custom
+		STA $00
+		LDX #$0F
+		..loop
+		LDA $3230,x
+		CMP #$01 : BEQ ..ok
+		CMP #$08 : BCC ..next
+		..ok
+		LDA !ExtraBits,x
+		AND #$08 : BEQ ..next
+		LDA !NewSpriteNum,x
+		CMP $00 : BNE ..next
+		STZ $3230,x
+		..next
+		DEX : BPL ..loop
+		RTL
+
+; input:
+;	A = sprite num / custom sprite num to search
+; output:
+;	all sprites matching the input will be KO'd
+	KOSprite:
+	.Vanilla
+		STA $00
+		LDX #$0F
+		..loop
+		LDA $3230,x
+		CMP #$01 : BEQ ..ok
+		CMP #$08 : BCC ..next
+		..ok
+		LDA !ExtraBits,x
+		AND #$08 : BNE ..next
+		LDA $3200,x
+		CMP $00 : BNE ..next
+		LDA #$02 : STA $3230,x
+		..next
+		DEX : BPL ..loop
+		RTL
+
+	.Custom
+		STA $00
+		LDX #$0F
+		..loop
+		LDA $3230,x
+		CMP #$01 : BEQ ..ok
+		CMP #$08 : BCC ..next
+		..ok
+		LDA !ExtraBits,x
+		AND #$08 : BEQ ..next
+		LDA !NewSpriteNum,x
+		CMP $00 : BNE ..next
+		LDA #$02 : STA $3230,x
+		..next
+		DEX : BPL ..loop
+		RTL
+
+; input:
+;	A = sprite num / custom sprite num to search
+; output:
+;	A = how many sprites matching the input exist
+;	$00 = A
+	CountSprites:
+	.Vanilla
+		STZ $00
+		STA $01
+		LDX #$0F
+		..loop
+		LDA $3230,x
+		CMP #$01 : BEQ ..ok
+		CMP #$08 : BCC ..next
+		..ok
+		LDA !ExtraBits,x
+		AND #$08 : BNE ..next
+		LDA $3200,x
+		CMP $01 : BNE ..next
+		INC $00
+		..next
+		DEX : BPL ..loop
+		LDA $00
+		RTL
+
+	.Custom
+		STZ $00
+		STA $01
+		LDX #$0F
+		..loop
+		LDA $3230,x
+		CMP #$01 : BEQ ..ok
+		CMP #$08 : BCC ..next
+		..ok
+		LDA !ExtraBits,x
+		AND #$08 : BEQ ..next
+		LDA !NewSpriteNum,x
+		CMP $01 : BNE ..next
+		INC $00
+		..next
+		DEX : BPL ..loop
+		LDA $00
+		RTL
+
+; input:
+;	A = sprite num / custom sprite num to search
+; output:
+;	X = sprite num of matching target (0xFF if none are valid)
+	SearchSprite:
+	.Vanilla
+		STA $00
+		LDX #$0F
+		..loop
+		LDA !ExtraBits,x
+		AND #$08 : BNE ..next
+		LDA $3230,x
+		CMP #$01 : BEQ ..ok
+		CMP #$08 : BCC ..next
+		..ok
+		LDA $3200,x
+		CMP $00 : BEQ ..thisone
+		..next
+		DEX : BPL ..loop
+		..thisone
+		RTL
+
+	.Custom
+		STA $00
+		LDX #$0F
+		..loop
+		LDA !ExtraBits,x
+		AND #$08 : BEQ ..next
+		LDA $3230,x
+		CMP #$01 : BEQ ..ok
+		CMP #$08 : BCC ..next
+		..ok
+		LDA !NewSpriteNum,x
+		CMP $00 : BEQ ..thisone
+		..next
+		DEX : BPL ..loop
+		..thisone
+		RTL
+
+
+; input:
+;	A = sprite num
+;	$00 = 16-bit Xpos
+;	$02 = 16-bit Ypos
+; output:
+;	X = sprite index (0xFF if invalid)
+	SpawnSprite:
+	.Vanilla
+		LDX #$0F
+		..loop
+		LDY $3230,x : BNE ..next
+		STA $3200,x
+		STZ !ExtraBits,x
+		LDA $00 : STA !SpriteXLo,x
+		LDA $01 : STA !SpriteXHi,x
+		LDA $02 : STA !SpriteYLo,x
+		LDA $03 : STA !SpriteYHi,x
+		JSL !ResetSprite
+		INC $3230,x
+		RTL
+		..next
+		DEX : BPL ..loop
+		RTL
+
+	.Custom
+		LDX #$0F
+		..loop
+		LDY $3230,x : BNE ..next
+		STA !NewSpriteNum,x
+		LDA #$08 : STA !ExtraBits,x
+		LDA $00 : STA !SpriteXLo,x
+		LDA $01 : STA !SpriteXHi,x
+		LDA $02 : STA !SpriteYLo,x
+		LDA $03 : STA !SpriteYHi,x
+		PHB
+		JSL !ResetSprite
+		PLB
+		INC $3230,x
+		RTL
+		..next
+		DEX : BPL ..loop
+		RTL
+
 
 
 
@@ -1550,11 +1761,6 @@ levelinit33:
 
 
 
-
-levelinit38:
-	RTL
-
-
 levelinit3A:
 	RTL
 levelinit3B:
@@ -2151,7 +2357,6 @@ levelinit13B:
 		LDA.w #!MSG_Toad_Guard2 : STA !NPC_Talk+($10*2)
 		SEP #$20
 
-		JSL InitCameraBox
 		RTL
 
 
@@ -2538,10 +2743,6 @@ levelinit1F1:
 		JSL !ResetSprite
 		..done
 
-
-		JSL InitCameraBox
-
-
 		REP #$20
 		LDA.w #!MSG_Toad_IntroLevel_1 : STA !NPC_Talk+($10*2)
 		SEP #$20
@@ -2593,9 +2794,6 @@ levelinit1F7:
 
 
 		.NotIntro
-
-		JSL InitCameraBox
-
 
 		RTL
 
@@ -3264,12 +3462,6 @@ LoadScreen:	PHP
 level33:
 	RTL
 
-
-
-
-
-level38:
-	RTL
 
 
 level3A:
@@ -6602,7 +6794,7 @@ WARP_BOX:
 		INC $7F2E				; > you've now beaten one more level (only once/level)
 		ORA #$80				; | Set clear, remove midway
 		..beaten				; |
-	;	AND.b #$60^$FF				; > clear checkpoint
+		AND.b #$60^$FF				; > clear checkpoint
 		STA !LevelTable1,x			;/
 		STZ !LevelTable2,x			; > clear checkpoint level
 		STZ $73CE				; > clear midway flag

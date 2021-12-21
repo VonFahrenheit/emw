@@ -84,8 +84,7 @@ levelinit15:
 levelinit35:
 		JSL .Setup
 
-		JSL level35
-		JSL InitCameraBox
+		JML level35
 
 		INC $14 : JSL level35_HDMA		;\ set up double-buffered HDMA
 		DEC $14 : JSL level35_HDMA		;/

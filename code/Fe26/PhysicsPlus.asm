@@ -146,14 +146,29 @@ endmacro
 		.NoStasis					;/
 
 		%UpdateY()					; overwritten code
-		LDA !SpriteGravityTimer,x : BEQ .NormalGravity	;\
+
+		LDA !SpriteYSpeed,x
+		LDY !SpriteGravityTimer,x : BEQ .NormalGravity	;\
 		DEC !SpriteGravityTimer,x			; |
-		LDA !SpriteGravityMod,x				; | apply gravity modifier
-		CLC : ADC !SpriteYSpeed,x			; |
-		STA !SpriteYSpeed,x				; |
-		.NormalGravity					;/
-		LDY #$00					; overwritten code
-		JML $019037					; return
+		CLC : ADC !SpriteGravityMod,x
+		.NormalGravity
+		INC A
+		LDY !SpriteWater,x : BEQ .Land
+
+		.Water
+		STA !SpriteYSpeed,x : BPL ++
+		CMP #$E8 : BCS +
+		LDA #$E8 : BRA +
+	++	CMP #$10 : BCC +
+		LDA #$10 : BRA +
+
+		.Land
+		INC #2
+		BMI +
+		CMP !SpriteFallSpeed,x : BCC +
+		LDA !SpriteFallSpeed,x
+	+	STA !SpriteYSpeed,x
+		JML $01905D					; return
 
 
 		.UpdateX

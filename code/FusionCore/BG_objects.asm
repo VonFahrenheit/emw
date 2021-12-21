@@ -125,6 +125,8 @@ namespace BG_OBJECTS
 		dw Cable		; 04
 		dw Pole			; 05
 		dw Pole			; 06
+		dw Keyhole		; 07 (invisible BG object spawned by sprite marker)
+		dw TrashCan		; 08
 		..end
 
 
@@ -146,6 +148,8 @@ incsrc "BG_objects/Window.asm"
 incsrc "BG_objects/Cannon.asm"
 incsrc "BG_objects/Cable.asm"
 incsrc "BG_objects/Pole.asm"
+incsrc "BG_objects/Keyhole.asm"
+incsrc "BG_objects/TrashCan.asm"
 
 
 
@@ -171,11 +175,6 @@ incsrc "BG_objects/Pole.asm"
 	TileUpdate:
 
 		.Setup
-
-
-
-
-
 		LDA !BG_object_X,x				;\
 		AND #$FFF8					; | base X position
 		STA $9A						;/
@@ -492,6 +491,70 @@ incsrc "BG_objects/Pole.asm"
 	..10	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
 
 
+
+; input: void
+; output:
+;	carry: 0 = no contact, 1 = contact
+;	Y = index to hitbox (only if contact)
+	CheckHitbox:
+		LDA !BG_object_X,x				;\
+		STA $04						; |
+		STA $09						; |
+		LDA !BG_object_Y,x				; |
+		SEP #$20					; |
+		STA $05						; |
+		XBA : STA $0B					; | clipping
+		LDA !BG_object_W,x				; |
+		ASL #3						; |
+		STA $06						; |
+		LDA !BG_object_H,x				; |
+		ASL #3						; |
+		STA $07						;/
+
+		.Main
+		PHX						;\
+		PHB : PHK : PLB					; | reg/bank setup
+		SEP #$30					;/
+		LDY #$00
+
+	.CheckHitbox
+		LDA !P2Hitbox1Shield-$80,y : BNE .Hitbox2	; no hit if a shield blocks the way
+		LDA !P2Hitbox1W-$80,y
+		ORA !P2Hitbox1H-$80,y
+		BEQ .Hitbox2
+		LDA !P2Hitbox1XLo-$80,y : STA $00
+		LDA !P2Hitbox1XHi-$80,y : STA $08
+		LDA !P2Hitbox1YLo-$80,y : STA $01
+		LDA !P2Hitbox1YHi-$80,y : STA $09
+		LDA !P2Hitbox1W-$80,y : STA $02
+		LDA !P2Hitbox1H-$80,y : STA $03
+		JSL !Contact16 : BCS .YesContact
+
+		.Hitbox2
+		CPY #$81 : BCS .NoContact
+		TYA : BNE .Player2
+		CLC : ADC.b #!P2Hitbox2Offset
+		TAY
+		BRA .CheckHitbox
+
+	.Player2
+		CPY #$80 : BCS .NoContact
+		LDA !MultiPlayer : BEQ .NoContact
+		LDY #$80 : BRA .CheckHitbox
+
+		.NoContact
+		REP #$30
+		PLB
+		PLX
+		CLC
+		RTS
+
+	.YesContact
+		REP #$30
+		PLB
+		PLX
+		SEC
+		RTS
 
 
 namespace off

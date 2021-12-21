@@ -258,41 +258,32 @@ YoshiCoins:
 	JMP .MAIN
 
 
-DestroyCoin:
-	PHA
-	PHP
-	LDA #$02 : STA $9C
-	REP #$20
-	LDA Data+$3,y : BMI .Return
-	AND #$01FF
-	CMP !Level : BNE .Return
-	LDA Data+$0,y
-	ASL #4
-	STA $9A
-	LDA Data+$1,y
-	AND #$FFF0
-	STA $98
-	PHY
-	PHA
-	PEI ($9A)
-	PHP
-	SEP #$30
-	JSL $00BEB0
-	PLP
-	PLA : STA $9A
-	PLA
-	CLC : ADC #$0010
-	STA $98
-	PHP
-	SEP #$30
-	JSL $00BEB0
-	PLP
-	PLY
-
-	.Return
-	PLP
-	PLA
-	RTS
+	DestroyCoin:
+		PHA
+		PHP
+		REP #$20
+		LDA Data+$3,y : BMI .Return
+		AND #$01FF
+		CMP !Level : BNE .Return
+		LDA Data+$0,y
+		ASL #4
+		STA $9A
+		LDA Data+$1,y
+		AND #$FFF0 : STA $98
+		PHY
+		PHP
+		SEP #$10
+		LDA #$0025 : JSL !ChangeMap16			; top tile to empty space (0x025)
+		LDA $98
+		CLC : ADC #$0010
+		STA $98
+		LDA #$002B : JSL !ChangeMap16			; bottom tile to normal coin (0x02B)
+		PLP
+		PLY
+		.Return
+		PLP
+		PLA
+		RTS
 
 ; Returning with clear carry means coin exists on this sublevel
 ; Returning with set carry means coin does not exist on this sublevel

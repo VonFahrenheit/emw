@@ -6,6 +6,9 @@ namespace Luigi
 ; --Build 0.9--
 ;
 
+	!RunThreshold	= $1C
+
+
 
 	MAINCODE:
 		PHB : PHK : PLB
@@ -219,22 +222,23 @@ namespace Luigi
 		JSL CORE_ATTACK_Setup				; |
 		REP #$20					; |
 		LDA.w #.SpinHitbox : JSL CORE_ATTACK_LoadHitbox	; |
-		JSL CORE_ATTACK_ActivateHitbox1			; |
-		JSR Kadaal_HITBOX_GetClipping			; |
-		JSL CORE_ATTACK_ActivateHitbox2			; |
-		JSR Kadaal_HITBOX_GetClipping			; |
+		JSR Kadaal_HITBOX_ExecuteHitboxes		; |
 		.SpinEnd					; |
 		LDA #$01 : STA !P2Invinc			; > invulnerable during spin finisher
 		LDA $6DA7					; > can buffer jump from end lag of spin
 		AND #$80					; |
 		TSB !P2Buffer					; |
-		LDA #$07 : TRB $6DA3				; |
-		LDA #$80 : TSB $6DA3				; |
 		LDA !P2Water					; |
 		AND #$10 : BEQ $03 : JMP .WaterCode		; |
-		JMP .Friction_Skid				;/
+		LDA #$80 : TSB $6DA3				; |
+		LDA !P2InAir : BEQ ..friction
+		JMP .Drift
+		..friction
+		LDA #$07 : TRB $6DA3				; |
+		JMP .Friction					;/
+
 		.CheckSpin
-		LDA !P2FireTimer : BNE .NotSpinning		; can't start spin during fireball animation
+		LDA !P2FireTimer : BEQ $03 : JMP .NotSpinning	; can't start spin during fireball animation
 		LDA !P2SpinAttack : BNE .Spinning
 		BIT $6DA9 : BPL .NotSpinning
 		LDA #$30 : STA !P2SpinAttack
@@ -246,6 +250,7 @@ namespace Luigi
 		STZ !P2AnimTimer
 		STZ !P2Climbing					; drop from climb
 		.Spinning
+		JSL CORE_SMOKE_AT_FEET
 		LDA !P2SpinAttack				;\
 		CMP #$30 : BCS +				; |
 		BIT $6DA9 : BPL +				; > can end spin at will
@@ -256,10 +261,12 @@ namespace Luigi
 	+	STZ !P2Carry					; can't carry something while spinning
 		LDA !P2SpinUsed : BNE +				; can only gain height from spin once per jump
 		BIT $6DA5 : BPL +
-		LDA !P2YSpeed : BPL ..dec
-		CMP #$F4 : BCC ..set
-	..dec	SEC : SBC #$03
-	..set	STA !P2YSpeed
+		LDY !P2YSpeed : BPL ..dec			; > always updraft when moving down
+		LDA !LuigiUpgrades				;\ cyclone upgrade is required to move up with spin
+		LSR A : BCC ..set				;/
+		CPY #$F4 : BCC ..set				; with upgrade, spin can move at 0xF4 speed
+	..dec	DEY #3
+	..set	STY !P2YSpeed
 	+	LDA #$04 : TRB $6DA3
 		LDA #$80 : TSB $6DA3
 		LDA !P2Water					; |
@@ -286,16 +293,13 @@ namespace Luigi
 		LDA #$0A : STA !P2FastSwim			;/
 
 
-
-
-
-		LDA !P2Ducking : BEQ .Drift			;\
-		LDA !P2Blocked					; | when crouching on ground, go to friction (ignore input)
-		AND #$04 : BNE .Friction			;/
+		LDA !P2Ducking : BEQ .Drift			;\ when crouching on ground, go to friction (ignore input)
+		LDA !P2InAir : BEQ .Friction			;/
 
 		.Drift
 		LDA $6DA3					;\
-		AND #$03					; |
+		AND #$03 : BEQ .Friction			; |
+		CMP #$03 : BEQ .Friction			; > go to friction if no direction is held
 		TAX						; |
 		LDA !P2FireTimer : BNE .NoTurn			; > can't turn during fireball attack
 		LDA .Direction,x : BMI .NoTurn			; |
@@ -306,60 +310,69 @@ namespace Luigi
 		STZ !P2PickUp					; > clear pick up
 		.NoTurn						;/
 
+		.SpinAccel					;\
+		LDA !P2Anim					; | check for spin
+		CMP #!Lui_Spin : BCC ..nospin			; |
+		CMP #!Lui_Spin_over : BCS ..nospin		;/
+		LDA !P2InAir : BEQ ..fastspin			; fast spin on ground
+		..slowspin					;\
+		INX #4						; | slow spin (same speed as normal run)
+		BRA +						;/
+		..fastspin					;\
+		TXA						; |
+		ORA #$10					; | fast spin (faster than run)
+		TAX						; |
+		LDY #$02 : BRA ..accel				; > fast accel during spin
+		..nospin					;/
 		BIT $6DA3 : BVC +				;\ increment index while running
 		INX #4						;/
 		LDA !P2Dashing					;\
-		CMP #$40 : BNE +				; | max speed check
+		CMP #$20 : BCC +				; |
+		INX #4						; | run speed thresholds
+		CMP #$40 : BCC +				; |
 		INX #4						;/
-	+	LDA.w .XSpeed,x					;\
-		BEQ .Friction					; | determine target speed
-		BMI .Left					;/
+		+
 
-	.Right	BIT !P2XSpeed : BMI .Friction_R
-		CMP !P2XSpeed : BEQ .SpeedSet
-		LDA !P2InAir : BNE .AirControl
-		BRA .GroundControl
-	.Left	BIT !P2XSpeed : BPL .Friction_L
-		CMP !P2XSpeed : BEQ .SpeedSet
-		LDA !P2InAir : BNE .AirControl
-	.GroundControl
-		LDA !P2XSpeed
-		BCC .Friction_L+4
-		BRA .Friction_R+4
-	.AirControl
-		LDA !P2XSpeed
-		BCC .Friction_L+3
-		BRA .Friction_R+3
+		LDY #$01					; base acceleration: 1
+		LDA !P2InAir : BNE ..doubleaccel		; air acceleration: 2
+		LDA !P2XSpeed					;\
+		ASL A						; |
+		ROL A						; |
+		EOR #$01					; | acceleration when turning around on the ground: 2
+		INC A						; |
+		AND $6DA3 : BEQ ..accel				; |
+		..doubleaccel					; |
+		LDY #$02					;/
+		..accel						;\
+		LDA.w .XSpeed,x : JSL CORE_ACCEL_X		; | accelerate
+		BRA .SpeedDone					;/
 
 	.Friction
-		LDA !P2Slope : BEQ +				; > skip this check if no slope
+		LDA !P2InAir : BNE .SpeedDone			; 0 air friction
+		LDA !P2Slope : BEQ ..skid			; > skip this check if no slope
 		CMP #$FC : BEQ .SpeedDone			;\
 		CMP #$FD : BEQ .SpeedDone			; | no friction on steep to supersteep slopes
 		CMP #$04 : BEQ .SpeedDone			; |
 		CMP #$03 : BEQ .SpeedDone			;/
-		LDA !P2Sliding : BNE .SpeedDone			; > no friction when sliding on any slope
-	+	LDA !P2Blocked
-		AND #$04 : BNE ..Skid
-		LDA !P2XSpeed : BRA .SpeedSet
+		LDA !P2Sliding : BNE .SpeedDone			; > no friction when sliding on any slope (handled by slope code)
 
-		..Skid
+		..skid
+		LDA !P2Anim
+		CMP #!Lui_SpinEnd : BCC ..nospinend
+		CMP #!Lui_SpinEnd_over : BCS ..nospinend
+		..bigfriction
+		LDY #$02 : BRA ..slowdown
+		..nospinend
 		LDY #$00
 		LDA !P2Ducking
 		BEQ $01 : INY
 		LDA $14
 		AND .SlideFriction,y : BNE .SpeedDone
-		LDA !P2XSpeed : BEQ .SpeedSet
-		CMP #$FF : BEQ ..0
-		CMP #$01 : BNE ..Not0
-	..0	LDA #$00 : BRA .SpeedSet
-
-	..Not0	BPL ..L
-	..R	LDA !P2XSpeed : INC #2 : BRA .SpeedSet
-	..L	LDA !P2XSpeed : DEC #2
-
-		.SpeedSet
-		JSL CORE_SET_XSPEED
+		LDY #$01
+		..slowdown
+		LDA #$00 : JSL CORE_ACCEL_X
 		.SpeedDone
+
 
 		LDA !P2Blocked
 		AND #$04 : BNE .Ground
@@ -444,21 +457,10 @@ namespace Luigi
 		BMI +
 		BEQ +
 	++	JSR .JumpCheck
-	+	LDA #$39 : STA !P2FallSpeed		; fall speed is 0x39
-
-		LDA !P2Climbing : BNE .Done		; can't fast fall while climbing
-		BIT !P2YSpeed : BMI .Done
-		LDA $6DA3
-		AND #$04 : BEQ .Done
-		LDA !P2YSpeed
-		CMP #$18
-		BCS $02 : LDA #$18
-		INC A
-		STA !P2YSpeed
-		LDA #$50 : STA !P2FallSpeed		; fast fall speed is 0x50
-
-		.Done
-
+	+	BIT $6DA3 : BMI +
+		LDA #$46 : STA !P2FallSpeed		; fall speed is 0x46 during normal jump
+		RTS
+	+	LDA #$39 : STA !P2FallSpeed		; fall speed is 0x39 during flutter
 		RTS
 
 
@@ -472,9 +474,10 @@ namespace Luigi
 		TSB $6DA7				;/
 
 		BIT $6DA7 : BPL .Return			; no jump unless jump is pressed
+
 		LDA !P2Anim				;\
 		CMP #!Lui_Spin : BCC .Jump		; | can't jump during spin animation
-		CMP #!Lui_Spin_over : BCC .Return	;/
+		CMP #!Lui_SpinEnd_over : BCC .Return	;/
 
 		.Jump
 		LDA #$80 : TRB !P2Buffer		; clear jump from buffer when jump goes through
@@ -482,15 +485,11 @@ namespace Luigi
 		LDA !P2XSpeed
 		CLC : ADC !P2VectorX
 		BPL $03 : EOR #$FF : INC A
-		CMP #$28
-		BCC $02 : LDA #$28
-		LSR A
-		EOR #$FF : INC A
-		CLC : ADC #$C0
-		LDY !P2Sliding : BNE +			; crouch ignored while sliding
-		LDY !P2Ducking : BEQ +			;\ reduced jump speed while crouching
-		CLC : ADC #$10				;/
-	+	STA !P2YSpeed				; set Y speed
+		LSR #3
+		CMP #$05
+		BCC $02 : LDA #$05
+		TAX
+		LDA .JumpHeight,x : STA !P2YSpeed
 		LDA !P2Sliding : BEQ +
 		STZ !P2Sliding				; clear slide when jumping
 		LDA #$04 : TRB $6DA3			; clear crouch when jumping out of slide
@@ -515,12 +514,18 @@ namespace Luigi
 
 
 		.XSpeed
-		db $00,$14,$EC,$00
-		db $00,$20,$E0,$00
-		db $00,$30,$D0,$00
+		db $00,$14,$EC,$00			; walk
+		db $00,!RunThreshold,-!RunThreshold,$00	; run, part 1
+		db $00,$24,$DC,$00			; run, part 2
+		db $00,$28,$D8,$00			; max speed dash
+		db $00,$34,$CC,$00			; luigi cyclone
+
+		.JumpHeight
+		db $B0,$AE,$AC,$A9,$A5,$9F		; +2, +2, +3, +4, +5
+	;	db $B0,$AE,$AB,$A9,$A6,$A4,$A1,$9F	; mario comparison
 
 		.SlideFriction
-		db $01,$03
+		db $00,$03				; reduced friction while crouching, just for the lolz
 
 		.Direction
 		db $FF,$01,$00,$FF
@@ -607,9 +612,8 @@ namespace Luigi
 		BEQ $03 : DEC !P2Dashing		;/
 		..maintain				; 
 		LDA !P2XSpeed				;\
-		CLC : ADC !P2VectorX			; |
-		BPL $03 : EOR #$FF : INC A		; | if |speed| is greater than 32, increment dash timer
-		CMP #$20				; |
+		CLC : ADC.b #!RunThreshold-1		; | increment dash timer if speed is above initial run threshold
+		CMP.b #!RunThreshold*2-1		; |
 		BCC $03 : INC !P2Dashing		;/
 		LDA !P2Dashing				;\
 		CMP #$40				; | cap dash timer at 64
@@ -618,7 +622,13 @@ namespace Luigi
 		BRA .Done				; 
 
 		.Air
+		LDA !P2Dashing : BEQ ..done
+		LDA !P2XSpeed
+		CLC : ADC #$10
+		CMP #$20 : BCS ..done
+		DEC !P2Dashing
 
+		..done
 
 		.Done
 
@@ -637,18 +647,20 @@ namespace Luigi
 		AND #$04
 		ORA !P2Platform
 		ORA !P2Water
-		BNE +
+		BNE .GravityDone
 
-		LDA #$01				; gravity when holding B is 1
-		BIT $6DA3				;\ gravity when not holding B is 2
-		BMI $02 : LDA #$02			;/
-		BIT !P2YSpeed				;\ increase gravity by 1 while ascending
-		BPL $01 : INC A				;/
+
+		LDA #$03				; base gravity when ascending: 3
+		BIT !P2YSpeed				;\ base gravity when descending: 1
+		BMI $02 : LDA #$01			;/
+		BIT $6DA3				;\ +2 to gravity if B is not held
+		BMI $02 : INC #2			;/
 		STA !P2Gravity				; store gravity
-		CMP #$02 : BEQ +
-		BIT !P2YSpeed : BMI +
+
+		CMP #$01 : BNE .GravityDone
+		BIT !P2YSpeed : BMI .GravityDone
 		STZ !P2Ducking				; clear crouch if flutter starts
-		+
+		.GravityDone
 
 		JSL CORE_UPDATE_SPEED
 		LDA !P2Platform : BEQ +

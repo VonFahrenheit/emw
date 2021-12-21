@@ -9,10 +9,17 @@ levelinit1:
 
 		JML level1
 
+
 levelinit2:
+		LDA #$E1 : STA !MsgPal
+
+		STZ !SideExit
+		LDA $741A : STA !Level+4
+		BNE +
 		DEC !MarioYPosHi
 		DEC !P2YPosHi-$80
 		DEC !P2YPosHi
+		+
 
 
 		INC !SideExit
@@ -402,7 +409,6 @@ levelinitC:
 		INC !SideExit
 		JSL levelinit35_Setup
 		JSL levelC
-	;	JSL InitCameraBox
 		LDA #$0D : STA !Level+6
 		STZ !Level+3
 		REP #$20
@@ -425,7 +431,30 @@ levelinit26:
 		JML level26
 
 levelinit27:
-		RTL
+		LDA #$10 : STA !Level+3			; timer
+
+		LDA #$E1 : STA !MsgPal
+
+		STZ !BG2BaseV
+		STZ !BG2BaseV+1
+
+		.DarkLight
+		LDA $97 : BNE ..done
+		LDA $95
+		CMP #$06 : BCC ..done
+		REP #$20
+		LDA #$0700 : STA !LightPointX
+		LDA #$0420 : STA !LightPointY
+		LDA #$0080
+		STA !LightPointR
+		STA !LightPointG
+		STA !LightPointB
+		LDA #$0200 : STA !LightPointS
+		LDA #$000C : STA !LightPointIndex
+		SEP #$20
+		..done
+
+		JML level27
 
 
 levelinit2A:
@@ -557,7 +586,9 @@ levelinit2E:
 		RTL
 
 levelinit2F:
-		JML levelinit2
+		RTL
+
+
 
 
 	!CollapseStart	= $0100
@@ -620,6 +651,17 @@ endmacro
 
 
 
+
+levelinit38:
+		LDA #$E1 : STA !MsgPal
+
+		STZ !BG2BaseV
+		STZ !BG2BaseV+1
+		RTL
+
+
+
+
 levelinit39:
 		LDA #$20
 		STA !MarioYSpeed
@@ -627,8 +669,7 @@ levelinit39:
 		STA !P2YSpeed
 		STZ !P2VectorY-$80
 		STZ !P2VectorY
-		JSL level39
-		JML InitCameraBox
+		JML level39
 
 
 
@@ -673,13 +714,90 @@ level2:
 	;	LDA #$01 : STA !GlobalPalset2
 	;	LDA #$20 : STA !GlobalPalsetMix
 
-	STZ !P2Entrance-$80
-	STZ !P2Entrance
+		.SpecialEntrance
+		LDA !Level+4 : BNE ..done
+		LDA !P2Status-$80 : BNE ..p1done
+		LDA !P2InAir-$80 : BEQ ..ground
+		..p1done
+		LDA !P2Status : BNE ..lock
+		LDA !P2InAir : BEQ ..ground
+		..lock
+		STZ !P2Entrance-$80
+		STZ !P2Entrance
+		STZ $6DA2
+		STZ $6DA3
+		STZ $6DA4
+		STZ $6DA5
+		STZ $6DA6
+		STZ $6DA7
+		STZ $6DA8
+		STZ $6DA9
+		BRA ..done
+		..ground
+		LDA #$20
+		STA !P2Entrance-$80
+		STA !P2Entrance
+		INC !Level+4
+		..done
+
+
+
+	if !Debug = 1					;\
+	LDA $6DA6					; |
+	AND #$20 : BEQ +				; |
+	LDA #$0F : STA !SPC4				; | select to enter doors cheat
+	LDA #$06 : STA $71				; |
+	STZ $88						; |
+	STZ $89						; |
+	+						; |
+	endif						;/
+
+
+		; .Talk
+		; LDA #$01
+		; BIT !Level+2 : BNE ..done
+		; LDX #$0F
+	; -	LDA $3230,x : BEQ +
+		; LDA !NewSpriteNum,x
+		; CMP #$02 : BNE +
+		; LDA !SpriteXLo,x
+		; SEC : SBC #$40
+		; STA $04
+		; LDA !SpriteXHi,x
+		; SBC #$00
+		; STA $0A
+		; LDA !SpriteYLo,x
+		; SEC : SBC #$40
+		; STA $05
+		; LDA !SpriteYHi,x
+		; SBC #$00
+		; STA $0B
+		; LDA #$90
+		; STA $06
+		; STA $07
+		; SEC : JSL !PlayerClipping
+		; BCS ..talk
+
+	; +	DEX : BPL -
+		; BRA  ..done
+
+		; ..talk
+		; LDA #$01 : TSB !Level+2
+		; REP #$20
+		; LDA.w #!MSG_RexVillage_Rex1 : STA !MsgTrigger
+		; SEP #$20
+		; ..done
+
+
+
+		REP #$20
+		LDA #$13E8 : JSL EXIT_Right
 
 		.ReloadSprites
 		LDX #$00
 		..loop
 		LDA !SpriteLoadStatus,x : BEQ ..next
+		CMP #$EE : BEQ ..next
 		STX $00
 		LDY #$0F
 	-	LDA $3230,y : BEQ +
@@ -1999,7 +2117,546 @@ level26:
 
 
 level27:
+		LDA !Level+3 : BEQ +
+		DEC !Level+3
+		+
+
+
+
+	if !Debug = 1					;\
+	LDA $6DA6					; |
+	AND #$20 : BEQ +				; |
+	LDA #$0F : STA !SPC4				; | select to enter doors cheat
+	LDA #$06 : STA $71				; |
+	STZ $88						; |
+	STZ $89						; |
+	+						; |
+	endif						;/
+
+
+		LDA !Room
+		ASL A
+		TAX
+		JSR (.RoomCode,x)
+		REP #$20
+		LDA.w #.RoomPointers : JML LoadCameraBox
+
+
+
+		.RoomCode
+		dw .AristocratHouse		; 00
+		dw .Shop			; 01
+		dw .SwoopoHouse			; 02
+		dw .EmptyPtr			; 03
+		dw .DarkRoom			; 04
+		dw .BigHouse			; 05
+		dw .BigHouse			; 06
+		dw .Negotiator			; 07
+		dw .EmptyPtr			; 08
+		dw .EmptyPtr			; 09
+		dw .DimensionalCatacombs	; 0A
+
+
+	.EmptyPtr
+		RTS
+
+
+	.AristocratHouse
+		LDA #$02 : JSL SearchSprite_Custom
+		BMI ..done
+		LDA $3280,x : BNE ..done
+		LDA $BE,x : BNE ..done
+		LDA #$02 : STA !SpriteStasis,x
+		LDA #$5A : STA !SpriteXLo,x
+		LDA $95 : BEQ ..done
+		LDA !Level+2
+		BIT #$01 : BNE ..nomsg1
+		..msg1
+		ORA #$01 : STA !Level+2
+		REP #$20
+		LDA.w #!MSG_RexVillage_Aristocrat1 : STA !MsgTrigger
+		SEP #$20
+		..nomsg1
+		LDA #$78 : JSL CountSprites_Vanilla
+		BNE ..nomsg2
+		LDA !Level+2
+		BIT #$02 : BNE ..nomsg2
+		..msg2
+		ORA #$02 : STA !Level+2
+		REP #$20
+		LDA.w #!MSG_RexVillage_Aristocrat2 : STA !MsgTrigger
+		SEP #$20
+		LDA #$02 : JSL SearchSprite_Custom
+		BMI ..nomsg2
+		..enrage
+		LDA #$03 : STA $3280,x
+		LDA #$05 : STA !ExtraProp1,x
+		LDA #$01 : JSL KOSprite_Custom
+		..nomsg2
+		..done
+		RTS
+
+
+	.Shop
+		LDA !Level+3
+		CMP #$01 : BNE ..nomsg
+		STZ !Level+2
+		LDA !StoryFlags+1
+		AND #$01
+		REP #$20
+		BEQ ..buy
+		..sins
+		LDA.w #!MSG_RexVillage_ShopRegret : STA !MsgTrigger
+		SEP #$20
+		BRA ..nomsg
+		..buy
+		LDA.w #!MSG_RexVillage_Shop1 : STA !MsgTrigger
+		SEP #$20
+		..nomsg
+
+		STZ $00
+		LDX #$0F					;\
+	-	LDA $3230,x					; |
+		CMP #$0B : BNE +				; |
+		LDA !NewSpriteNum,x				; | look for purchaseable items in shop area
+		CMP #$32 : BNE +				; |
+		LDA !SpriteXHi,x				; |
+		CMP #$03 : BCS +				; |
+		LDA !SpriteXLo,x : BMI +			;/
+
+		LDY #$00					;\
+		TXA						; |
+		INC A						; | index to player coin count
+		CMP !P2Carry-$80				; |
+		BEQ $02 : LDY #$02				;/
+
+		REP #$20
+		LDA !ExtraProp1,x
+		AND #$00FF
+		CMP !P1Coins,y
+		BEQ ++
+		BCC ++
+		SEP #$20
+		INC $00
+		BRA +
+	++	SEC : SBC !P1Coins,y
+		EOR #$FFFF : INC A
+		STA !P1Coins,y
+		LDA.w #!MSG_RexVillage_Shop2 : STA !MsgTrigger
+		SEP #$20
+		LDA #$29 : STA !SPC4
+		STZ $3230,x
+		PHX
+		LDA #$02 : JSL SearchSprite_Custom
+		BMI ++
+		LDA #$C0 : STA !SpriteYSpeed,x
+		STZ $3330,x
+	++	PLX
+	+	DEX : BPL -
+		LDA $00
+		CMP !Level+2 : BEQ ..nobuy
+		STA !Level+2
+		BCC ..nobuy
+		REP #$20
+		LDA !MsgTrigger : BNE +
+		LDA.w #!MSG_RexVillage_Shop3 : STA !MsgTrigger
+	+	SEP #$20
+		LDA !SPC4 : BNE ..nobuy
+		LDA #$2A : STA !SPC4
+		..nobuy
+
+		LDA !StoryFlags+1
+		AND #$01 : BEQ ..nokill
+		LDA #$02 : JSL KillSprite_Custom
+		..nokill
+		LDA #$02 : JSL SearchSprite_Custom
+		BMI ..kill
+		LDA $BE,x : BNE ..assault
+		STZ !SpriteXSpeed,x
+		STZ !SpriteXFraction,x
+		LDA #$65 : STA !SpriteXLo,x
+		LDA $3330,x
+		AND #$04 : BEQ +
+		STZ !SpriteAnimTimer
+		+
+		BRA ..noclear
+		..assault
+		LDA !Level+4 : BNE ..noclear
+		INC !Level+4
+		REP #$20
+		LDA.w #!MSG_RexVillage_ShopHurt : STA !MsgTrigger
+		SEP #$20
+		BRA ..noclear
+		..kill
+		LDA !StoryFlags+1			;\
+		ORA #$01				; | shopkeeper is kill
+		STA !StoryFlags+1			;/
+		LDA #$32 : JSL KillSprite_Custom
+		..noclear
+
+		LDA #$21 : JSL KillSprite_Vanilla
+		..noshop
+		RTS
+
+
+	.BigHouse
+		LDA #$6E : JSL SearchSprite_Vanilla
+		BMI +
+		LDA #$02 : STA !SpriteStasis,x
+		LDA #$04 : STA $3330,x
+		+
+
+		REP #$20
+		LDA.w #..HDMA : STA !HDMAptr+0
+		LDA.w #..HDMA>>8 : STA !HDMAptr+1
+		..done
+		SEP #$20
+		RTS
+
+
+		..HDMA
+		PHP
+		REP #$20
+		SEP #$10
+		LDA #$0000 : STA $4320
+		LDA $14
+		AND #$0001
+		BEQ $03 : LDA #$0010
+		TAX
+		ORA #$0200
+		STA !HDMA2source
+		STZ $4324
+		LDA #$0004 : TSB !HDMA
+
+		STZ $00
+		LDY !P2Status-$80 : BNE +
+		LDA !P2YPosLo-$80 : STA $00
+		+
+		LDY !P2Status : BNE +
+		LDA !P2YPosLo
+		CMP $00 : BCC +
+		STA $00
+		+
+
+		LDA $00
+		CMP #$0690-1
+		SEP #$20
+		BCC +
+		LDA !Level+2
+		CMP #$08 : BEQ ++
+		INC !Level+2
+		BRA ++
+	+	LDA !Level+2 : BEQ ++
+		DEC !Level+2
+		++
+		REP #$20
+
+		LDA $1C
+		CLC : ADC #$00E0
+		CMP #$0690-1 : BCC ..nohide
+
+		..hide
+		LDA #$0690-1
+		SEC : SBC $1C
+		SEP #$20
+		CMP #$80 : BCC ..1chunk
+
+		..2chunks
+		LSR A : STA $0200,x
+		BCC $01 : INC A
+		STA $0202,x
+		LDA !2100
+		STA $0201,x
+		STA $0203,x
+		LDA #$01 : STA $0204,x
+		LDA !Level+2 : STA $0205,x
+		STZ $0206,x
+		PLP
 		RTL
+
+		..1chunk
+		STA $0200,x
+		LDA !2100 : STA $0201,x
+		LDA #$01 : STA $0202,x
+		LDA !Level+2 : STA $0203,x
+		STZ $0204,x
+		PLP
+		RTL
+
+		..nohide
+		SEP #$20
+		LDA #$01 : STA $0200,x
+		LDA !2100 : STA $0201,x
+		STZ $0202,x
+		PLP
+		RTL
+
+
+	.Negotiator
+		LDA #$02 : JSL SearchSprite_Custom
+		BMI ..return
+		LDA $BE,x : BNE ..return
+		STA !SpriteStasis,x
+		LDA #$7A : STA !SpriteXLo,x
+		LDA $95
+		CMP #$05 : BCC ..return
+		LDA !Level+2
+		BIT #$01 : BEQ ..talk1
+		BIT #$02 : BNE ..return
+
+		..talk2
+		LDA #$74 : JSL CountSprites_Vanilla : BNE ..return
+		LDA #$02 : TSB !Level+2
+		REP #$20
+		LDA.w #!MSG_RexVillage_Negotiator2 : STA !MsgTrigger
+		SEP #$20
+		RTS
+
+		..talk1
+		LDA #$01 : TSB !Level+2
+		REP #$20
+		LDA.w #!MSG_RexVillage_Negotiator1 : STA !MsgTrigger
+		SEP #$20
+
+		..return
+		RTS
+
+
+
+	.DarkRoom
+		REP #$20
+		LDA #$0100
+		STA !LightR
+		STA !LightG
+		STA !LightB
+		..darkness
+		LDA #$0080
+		STA !LightR
+		STA !LightG
+		STA !LightB
+		LDA.w #..HDMA : STA !HDMAptr+0
+		LDA.w #..HDMA>>8 : STA !HDMAptr+1
+		..done
+		SEP #$20
+		RTS
+
+		..HDMA
+		PHP
+		REP #$20
+		LDA #$0040 : STA $4320
+		LDA.w #..table : STA !HDMA2source
+		SEP #$30
+		LDA.b #..table>>16
+		STA $4324
+		STA $4327
+		LDA #$04 : TSB !HDMA
+		LDX #$0F
+		LDA !2100
+		AND #$0F
+	-	STA $0200,x
+		DEC A
+		BPL $02 : LDA #$00
+		DEX : BPL -
+		PLP
+		RTL
+
+		..table
+		db $02 : dw $0200
+		db $02 : dw $0201
+		db $02 : dw $0202
+		db $02 : dw $0203
+		db $02 : dw $0204
+		db $02 : dw $0205
+		db $02 : dw $0206
+		db $02 : dw $0207
+		db $02 : dw $0208
+		db $02 : dw $0209
+		db $02 : dw $020A
+		db $02 : dw $020B
+		db $02 : dw $020C
+		db $02 : dw $020D
+		db $02 : dw $020E
+		db $4D : dw $020F
+		db $4D : dw $020F
+		db $02 : dw $020E
+		db $02 : dw $020D
+		db $02 : dw $020C
+		db $02 : dw $020B
+		db $02 : dw $020A
+		db $02 : dw $0209
+		db $02 : dw $0208
+		db $02 : dw $0207
+		db $02 : dw $0206
+		db $02 : dw $0205
+		db $02 : dw $0204
+		db $02 : dw $0203
+		db $02 : dw $0202
+		db $02 : dw $0201
+		db $02 : dw $0200
+		db $00
+
+
+
+	.SwoopoHouse
+		LDA $14
+		AND #$3F : BNE ..done
+		LDX #$0F
+		..loop
+		LDA $3230,x : BEQ ..thisone
+		DEX : BPL ..loop
+		BRA ..done
+		..thisone
+		LDA #$2C : STA !NewSpriteNum,x
+		LDA #$08 : STA !ExtraBits,x
+		LDA #$01 : STA $3230,x
+		STZ !SpriteXLo,x
+		LDA #$06 : STA !SpriteXHi,x
+		LDA $14
+		AND #$40
+		CLC : ADC #$D0
+		STA !SpriteYLo,x
+		LDA #$00
+		ADC #$00
+		STA !SpriteYHi,x
+		JSL !ResetSprite
+		..done
+		SEP #$20
+		RTS
+
+
+	.DimensionalCatacombs
+		JSL level2_ReloadSprites
+		LDA !Level+2
+		BIT #$01 : BNE ..nomsg
+		LDA #$01 : TSB !Level+2
+		REP #$20
+		LDA.w #!MSG_RexVillage_Catacombs : STA !MsgTrigger
+		SEP #$20
+		..nomsg
+
+		JSR .DarkRoom
+
+		LDA !BG1_X_Delta
+		BEQ ..noloop
+		REP #$20
+		BMI ..lowerloop
+
+		..upperloop
+		LDA $1A
+		CMP #$0120 : BCC ..noloop
+		CMP #$0130 : BCS ..noloop
+		LDA #$FFF0 : STA $00
+		LDA !P2YPosLo-$80			;\
+		CMP #$0630 : BCC ..noloop		; | player must be in this range
+		CMP #$0690 : BCC ..loop			;/
+		LDA !P2YPosLo
+		CMP #$0630 : BCC ..noloop
+		CMP #$0690 : BCC ..loop
+		BRA ..noloop
+
+		..lowerloop
+		LDA $1A
+		CMP #$0110 : BCC ..noloop
+		CMP #$0120 : BCS ..noloop
+		LDA #$0010 : STA $00
+		LDA !P2YPosLo-$80			;\
+		CMP #$0690 : BCC ..noloop		; | player must be in this range
+		LDA !P2YPosLo
+		CMP #$0690 : BCC ..noloop
+
+		..loop
+		LDA $1A : JSR .SpaceTimeLoop
+		..noloop
+		SEP #$20
+
+
+		RTS
+
+
+; input:
+;	A = $1A
+;	$00 = loop amount
+	.SpaceTimeLoop
+		CLC : ADC $00
+		STA $1A
+		LDA $7462
+		CLC : ADC $00
+		STA $7462
+		LDA !CameraBackupX
+		CLC : ADC $00
+		STA !CameraBackupX
+		LDA !P2XPosLo-$80
+		CLC : ADC $00
+		STA !P2XPosLo-$80
+		LDA !P2XPosLo
+		CLC : ADC $00
+		STA !P2XPosLo
+		LDA !MarioXPosLo
+		CLC : ADC $00
+		STA !MarioXPosLo
+		SEP #$20
+		LDX #$0F
+	-	LDA $3230,x
+		CMP #$08 : BNE +
+		LDA !SpriteXHi,x : XBA
+		LDA !SpriteXLo,x
+		REP #$20
+		CLC : ADC #$0030
+		CMP $1A : BCC ..spriteout
+		SEC : SBC #$0140
+		BMI ..spriteneg				; if sprite is too close to left border of level to make this calc, just assume it should move
+		CMP $1A : BCS ..spriteout
+		..spriteneg
+		CLC : ADC #$0110
+		CLC : ADC $00
+		SEP #$20
+		STA !SpriteXLo,x
+		XBA : STA !SpriteXHi,x
+		..spriteout
+		SEP #$20
+	+	DEX : BPL -
+		RTS
+
+
+
+		.RoomPointers
+		dw .ScreenMatrix
+		dw .BoxTable
+		dw .DoorList
+		dw .DoorTable
+
+
+
+
+;	Key ->	   X  Y  W  H  S  FX FY
+;		   |  |  |  |  |  |  |
+;		   V  V  V  V  V  V  V
+;
+.BoxTable
+.Box0	%CameraBox(0, 0, 1, 1, $FF, 0, 0)
+.Box1	%CameraBox(2, 0, 1, 0, $FF, 0, 0)
+.Box2	%CameraBox(4, 0, 1, 1, $FF, 0, 0)
+.Box3	%CameraBox(0, 2, 1, 1, $FF, 0, 0)
+.Box4	%CameraBox(2, 2, 0, 0, $FF, 0, 0)
+.Box5	%CameraBox(4, 4, 1, 3, $FF, 0, 0)
+.Box6	%CameraBox(4, 5, 3, 2, $FF, 0, 0)
+.Box7	%CameraBox(4, 2, 1, 0, $FF, 0, 0)
+.Box8	%CameraBox(0, 4, 3, 1, $FF, 0, 0)
+.Box9	%CameraBox(6, 0, 1, 4, $FF, 0, 0)
+.BoxA	%CameraBox(0, 6, 3, 1, $FF, 0, 0)
+
+.ScreenMatrix	db $00,$00,$01,$01,$02,$02,$09,$09
+		db $00,$00,$FF,$FF,$02,$02,$09,$09
+		db $03,$03,$04,$FF,$07,$07,$09,$09
+		db $03,$03,$FF,$FF,$FF,$FF,$09,$09
+		db $08,$08,$08,$08,$05,$05,$09,$09
+		db $08,$08,$08,$08,$05,$05,$06,$06
+		db $0A,$0A,$0A,$0A,$05,$05,$06,$06
+		db $0A,$0A,$0A,$0A,$06,$06,$06,$06
+
+.DoorList	db $80			; no doors at all
+.DoorTable
+
 
 
 
@@ -2131,8 +2788,291 @@ level2D:	LDA.b #.HDMA : STA !HDMAptr+0
 
 level2E:
 	RTL
+
+
+
+
+;
+; level+2
+;	--------
+; level+3
+; level+4
+;
+
+	!StatueX	= 191
+	!StatueY	= 54
+
 level2F:
-	RTL
+		LDX #$0F
+	-	LDA !NewSpriteNum,x
+		CMP #$02 : BNE +
+		LDA !ExtraProp1,x
+		CMP #$04 : BNE +
+		LDA !SpriteXHi,x
+		CMP #$02 : BNE +
+		LDA !SpriteXLo,x
+		CMP #$D8 : BCC +
+		STZ $3230,x
+	+	DEX : BPL -
+
+
+		REP #$20
+		LDA !Level : PHA
+		LDA #$0002 : STA !Level
+		LDA #$1BE8 : JSL END_Right
+		PLA : STA !Level
+		PLA : STA !Level+1
+
+
+		.Brawl
+		LDA !Room
+		CMP #$01 : BEQ $03 : JMP ..done
+
+
+		LDA #$30
+		STA $40C800+($A*$400)+$38B
+		STA $40C800+($A*$400)+$39B
+		STA $40C800+($A*$400)+$3AB
+		STA $40C800+($D*$400)+$385
+		STA $40C800+($D*$400)+$395
+		STA $40C800+($D*$400)+$3A5
+		LDA #$01
+		STA $41C800+($A*$400)+$38B
+		STA $41C800+($A*$400)+$39B
+		STA $41C800+($A*$400)+$3AB
+		STA $41C800+($D*$400)+$385
+		STA $41C800+($D*$400)+$395
+		STA $41C800+($D*$400)+$3A5
+
+		LDX #$0F
+		LDY #$00
+	-	LDA $3230,x : BEQ +
+		LDA !NewSpriteNum,x
+		CMP #$02 : BEQ ++
+		CMP #$03 : BEQ ++
+		CMP #$04 : BEQ ++
+		CMP #$2C : BNE +
+	++	INY
+	+	DEX : BPL -
+		CPY #$02 : BCC ..nextwave
+		JMP ..done
+
+		..nextwave
+		LDX !Level+2
+		CPX.b #..lastwaveindex-..waveindex : BEQ ..aggrowave
+		CPX.b #..lastwaveindex-..waveindex+1 : BCC $03 : JMP ..aggrowavemain
+		INC !Level+2
+		LDY ..waveindex+1,x
+		LDA ..waveindex,x : TAX
+		..nextspawn
+		REP #$20
+		LDA ..wavedata+0,x
+		AND #$00FF
+		ASL #4
+		ADC #$0A00
+		STA $00
+		LDA ..wavedata+1,x
+		AND #$00FF
+		ASL #4
+		ADC #$0200
+		STA $02
+		SEP #$20
+		PHX
+		PHY
+		LDA ..wavedata+2,x : JSL SpawnSprite_Custom
+		CPX #$FF : BEQ +
+		LDA !NewSpriteNum,x
+		CMP #$02 : BNE +
+		LDA #$05 : STA !ExtraProp1,x
+		LDA !ExtraProp2,x
+		AND #$C0
+		ORA #$08 : STA !ExtraProp2,x
+		+
+		PLY : STY $00
+		PLX
+		INX #3
+		CPX $00 : BCC ..nextspawn
+		JMP ..done
+
+		..aggrowave
+		LDA #$80 : STA !Level+3
+		INC !Level+2
+
+		LDX #$02
+	-	LDA #$30
+		STA $40C800+($A*$400)+$38D,x
+		STA $40C800+($A*$400)+$39D,x
+		STA $40C800+($A*$400)+$3AD,x
+		STA $40C800+($D*$400)+$380,x
+		STA $40C800+($D*$400)+$390,x
+		STA $40C800+($D*$400)+$3A0,x
+		LDA #$01
+		STA $41C800+($A*$400)+$38D,x
+		STA $41C800+($A*$400)+$39D,x
+		STA $41C800+($A*$400)+$3AD,x
+		STA $41C800+($D*$400)+$380,x
+		STA $41C800+($D*$400)+$390,x
+		STA $41C800+($D*$400)+$3A0,x
+		DEX : BPL -
+
+		..aggrowavemain
+		LDA !Level+3 : BEQ +
+		DEC !Level+3
+	+	CMP #$01 : BEQ ..spawnaggro
+		CMP #$40 : BEQ $03 : JMP ..noaggro
+		..shake
+		ASL A
+		STA !ShakeTimer
+		JMP ..noaggro
+		..spawnaggro
+		..aggro
+		LDX #$00
+		..loop
+		LDA $3230,x : BEQ ..thisone
+		INX
+		CPX #$10 : BCC ..loop
+		INC !Level+3
+		JMP ..noaggro
+		..thisone
+		INC $3230,x
+		LDA #$04 : STA !NewSpriteNum,x
+		LDA #$08 : STA !ExtraBits,x
+		JSL !ResetSprite
+		LDA.b #!StatueX*16+$10 : STA !SpriteXLo,x
+		LDA.b #!StatueX*16+$10>>8 : STA !SpriteXHi,x
+		LDA.b #!StatueY*16+$20 : STA !SpriteYLo,x
+		LDA.b #!StatueY*16+$20>>8 : STA !SpriteYHi,x
+		LDA #$25 : STA !SPC1					; roar SFX
+		LDA #$01 : STA $3280,x					; start chase
+		LDA #$09 : STA !SpriteAnimIndex				; |
+		LDA #$C0 : STA !SpriteAnimTimer				; | roar animation
+		LDA #$40 : STA $32D0,x					; |
+		STZ !SpriteXSpeed,x					; |
+		REP #$20
+		LDA.w #!StatueX*16+$10 : STA $9A
+		LDA.w #!StatueY*16 : STA $98
+		JSR ..break
+		LDA.w #!StatueX*16 : STA $9A
+		JSR ..break
+		LDA.w #!StatueY*16+$10 : STA $98
+		JSR ..break
+		LDA.w #!StatueX*16+$10 : STA $9A
+		JSR ..break
+		LDA.w #!StatueY*16+$20 : STA $98
+		JSR ..break
+		LDA.w #!StatueX*16 : STA $9A
+		JSR ..break
+		LDA.w #!StatueY*16+$30 : STA $98
+		JSR ..break
+		LDA.w #!StatueX*16+$10 : STA $9A
+		JSR ..break
+		LDA.w #!StatueX*16+$20 : STA $9A
+		JSR ..break
+		LDA.w #!StatueY*16+$20 : STA $98
+		JSR ..break
+		SEP #$20
+		..noaggro
+
+		..nolock
+
+		..done
+
+
+
+
+		REP #$20
+		LDA #$0008 : JSL EXIT_Left
+		JSL level2_ReloadSprites
+
+		LDA #$02 : STA !CameraBoxSpriteErase
+
+		LDA !LevelWidth : PHA
+		LDA #$0E : STA !LevelWidth
+		REP #$20
+		LDA.w #.RoomPointers : JSL LoadCameraBox
+		PLA : STA !LevelWidth
+		LDA !Room : BEQ ..nobox
+		CMP #$01 : BNE ..return
+		REP #$20
+		LDA #$0C00 : STA !CameraBoxR
+		SEP #$20
+		RTL
+
+		..nobox
+		LDA #$FF : STA !CameraBoxU+1			; box 0 = no camera box
+		..return
+		RTL
+
+
+		..break
+		LDA #$0025 : JSL !ChangeMap16
+		LDA #$FF80 : STA $00
+		STZ $02
+		LDA.w #!prt_smoke16x16 : JSL !SpawnParticleBlock
+		RTS
+
+
+	..waveindex
+	db ..wave0-..wavedata
+	db ..wave1-..wavedata
+	db ..wave2-..wavedata
+	db ..wave3-..wavedata
+	db ..waveend-..wavedata
+	..lastwaveindex
+
+; coords relative to 0A00,0200
+	..wavedata
+	..wave0
+	db $30,$1A	: db $02
+	db $31,$1A	: db $02
+	db $32,$1A	: db $02
+	..wave1
+	db $0C,$1A	: db $02
+	db $0D,$1A	: db $02
+	db $0E,$1A	: db $02
+	db $0F,$1A	: db $02
+	..wave2
+	db $0C,$1A	: db $02
+	db $0D,$1A	: db $03
+	db $0E,$1A	: db $03
+	db $0F,$1A	: db $03
+	..wave3
+	db $0C,$12	: db $2C
+	db $0E,$12	: db $2C
+	db $30,$12	: db $2C
+	db $32,$12	: db $2C
+	..waveend
+
+
+
+
+		.RoomPointers
+		dw .ScreenMatrix
+		dw .BoxTable
+		dw .DoorList
+		dw .DoorTable
+
+
+
+
+;	Key ->	   X  Y  W  H  S  FX FY
+;		   |  |  |  |  |  |  |
+;		   V  V  V  V  V  V  V
+;
+.BoxTable
+.Box0	%CameraBox(0, 0, 11, 4, $FF, 0, 0)
+.Box1	%CameraBox(11, 4, 2, 0, $FF, 0, 0)
+.Box2	%CameraBox(0, 0, 9, 0, $FF, 0, 0)
+
+.ScreenMatrix	db $00,$00,$00,$00,$00,$00,$00,$00,$02,$02,$00,$01,$01,$01
+		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$01,$01,$01
+		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$01,$01,$01
+		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$01,$01,$01
+		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$01,$01,$01
+
+.DoorList	db $80			; no doors at all
+.DoorTable
+
 
 level32:
 		LDA.b #.HDMA : STA.l !HDMAptr+0
@@ -2830,6 +3770,597 @@ level32:
 
 
 
+
+
+level38:
+
+
+	.HandleRooms
+		LDA !Level+3 : BEQ ..timerdone
+		DEC !Level+3
+		..timerdone
+
+		LDA !Room
+		ASL A
+		TAX
+		JSR (.RoomCode,x)
+		LDA !Room
+		CMP !Level+4
+		STA !Level+4 : BEQ ..same
+		..newroom
+		LDA #$FF : STA !Level+3
+		..same
+		REP #$20
+		LDA.w #.RoomPointers : JML LoadCameraBox
+
+		.RoomCode
+		dw .TopFloor		; 00
+		dw .Floor6		; 01
+		dw .Floor5		; 02
+		dw .Floor4		; 03
+		dw .Floor3		; 04
+		dw .Floor2		; 05
+		dw .GroundFloor		; 06
+
+		dw .MayorsHouse		; 07
+		dw .MayorsHouse		; 08
+
+		dw .TrashHouse		; 09
+		dw .Prison		; 0A
+		dw .Library		; 0B
+
+
+
+
+	.TopFloor
+		LDA #$32 : JSL KillSprite_Custom
+		RTS
+
+	.Floor6
+		LDA #$10 : JSR .BreakInBox
+		dw $0100,$0200		; trigger X,Y
+		db $FF,$18		; trigger W,H
+		db $08,$02		; sprite data
+		dw $0BCB		; tile
+		dw $01A0,$0210		; coords
+		JSR .SetBandit
+
+		LDA #$20 : JSR .BreakInBox
+		dw $0000,$01C0
+		db $E0,$20
+		db $08,$02
+		dw $0BCB
+		dw $0040,$01C0
+		JSR .SetBandit
+
+		LDA #$40 : JSR .BreakInBox
+		dw $0140,$0150
+		db $C0,$40
+		db $08,$02
+		dw $0BCB
+		dw $01A0,$0160
+		JSR .SetBandit
+
+		LDA #$80 : JSR .BreakInBox
+		dw $0100,$0120
+		db $FF,$20
+		db $08,$02
+		dw $0BCB
+		dw $01A0,$0120
+		JSR .SetBandit
+
+		JSR .SpawnAssassin
+		RTS
+
+	.Floor5
+		JSR .SpawnAssassin
+		RTS
+
+	.Floor4
+		JSR .SpawnAssassin
+		RTS
+
+	.Floor3
+		LDA #$04 : JSR .BreakInBox
+		dw $0100,$0480
+		db $FF,$18
+		db $08,$02
+		dw $0BCB
+		dw $01A0,$0480
+		JSR .SetBandit
+
+		..nobreakin
+		JSR .SpawnAssassin
+		RTS
+
+
+	.Floor2
+		LDA !Level+2
+		AND #$02 : BNE ..spawn
+		LDA $1B : BNE ..return
+		LDA #$02 : TSB !Level+2
+		REP #$20
+		LDA.w #!MSG_RexVillage_SkyScraper3 : STA !MsgTrigger
+		SEP #$20
+		..spawn
+		JSR .SpawnAssassin
+		..return
+
+		RTS
+
+	.GroundFloor
+		LDA #$02 : JSL SearchSprite_Custom
+		BMI ..return
+		LDA $BE,x : BEQ ..normal
+		..hurt
+		LDA !Level+2
+		AND #$01 : BNE ..return
+		LDA #$01 : TSB !Level+2
+		REP #$20
+		LDA.w #!MSG_RexVillage_SkyScraper2 : STA !MsgTrigger
+		SEP #$20
+		RTS
+		..normal
+		LDA #$08 : STA $33C0,x
+		LDA #$2A : STA !SpriteXLo,x
+		LDA !Level+3
+		CMP #$01 : BNE ..return
+		REP #$20
+		LDA.w #!MSG_RexVillage_SkyScraper1 : STA !MsgTrigger
+		SEP #$20
+		..return
+		RTS
+
+
+	.HandleSprites
+		LDA !Room
+		CMP #$01
+		REP #$20
+		BNE ..screen
+		..camerabox
+		LDA !CameraBoxU
+		SEC : SBC #$0018
+		STA $00
+		LDA !CameraBoxD
+		CMP $1C
+		BCS $02 : LDA $1C
+		CLC : ADC #$00F8
+		BRA ..set
+		..screen
+		LDA $1C
+		SEC : SBC #$0018
+		STA $00
+		LDA $1C
+		CLC : ADC #$00F8
+		..set
+		STA $02
+		SEP #$20
+		LDX #$0F
+		..loop
+		LDA !NewSpriteNum,x
+		CMP #$02 : BEQ ..thisnum
+		CMP #$30 : BNE ..next
+		..thisnum
+		LDA !SpriteYHi,x : XBA
+		LDA !SpriteYLo,x
+		REP #$20
+		CMP $00 : BCC ..kill
+		CMP $02 : BCC ..next
+		..kill
+		SEP #$20
+		STZ $3230,x
+		..next
+		SEP #$20
+		DEX : BPL ..loop
+		..return
+		RTS
+
+
+	.SpawnAssassin
+		JSR .HandleSprites
+		REP #$20
+		LDA $1C
+		CMP !CameraBoxU : BCC ..return16
+		CMP !CameraBoxD
+		SEP #$20
+		BEQ ..process
+		BCC ..process
+		..return16
+		SEP #$20
+		RTS
+		..process
+		LDA $14
+		AND #$1F : BNE ..return
+		LDA #$02 : JSL CountSprites_Custom
+	;	LDY !Room
+	;	CMP ..count,y : BCS ..return
+	CMP #$04 : BCS ..return
+		LDX #$0F
+		..loop
+		LDA $3230,x : BEQ ..thisone
+		DEX : BPL ..loop
+		RTS
+		..thisone
+		LDA #$08 : STA $3230,x
+		LDA #$02 : STA !NewSpriteNum,x
+		LDA #$08 : STA !ExtraBits,x
+		JSL !ResetSprite
+		LDY !Room
+		LDA ..xlo,y : STA !SpriteXLo,x
+		LDA ..xhi,y : STA !SpriteXHi,x
+		LDA ..ylo,y : STA !SpriteYLo,x
+		LDA ..yhi,y : STA !SpriteYHi,x
+		LDA #$05 : STA !ExtraProp1,x
+		LDA !ExtraProp2,x
+		AND #$C0
+		ORA #$05
+		STA !ExtraProp2,x
+		LDA #$03 : STA $3280,x
+		LDA #$C0 : STA !SpriteYSpeed,x
+		..return
+		RTS
+
+		..count
+		db $00,$09,$07,$06,$05,$04,$00
+		..xlo
+		db $FF,$F8,$80,$70,$70,$80,$FF
+		..xhi
+		db $FF,$00,$01,$00,$00,$01,$FF
+		..ylo
+		db $FF,$A0,$80,$60,$40,$20,$FF
+		..yhi
+		db $FF,$02,$03,$04,$05,$06,$FF
+
+
+
+
+		.SetBandit
+		CPX #$10 : BCS ..return
+		LDA #$03 : STA $3280,x
+		LDA #$05 : STA !ExtraProp1,x
+		LDA !ExtraProp2,x
+		AND #$C0
+		ORA #$05 : STA !ExtraProp2,x
+		..return
+		RTS
+
+
+
+	.BreakInBox
+		BIT !Level+2 : BEQ ..ok					; check bit key
+		LDX #$FF						; return X = invalid
+		..return						;\
+		REP #$20						; |
+		LDA $01,s						; |
+		CLC : ADC #$000E					; | +14 to return address, then return
+		STA $01,s						; |
+		SEP #$20						; |
+		RTS							;/
+
+		..ok							;\
+		STA !BigRAM						; > preserve bit key
+		REP #$20						; |
+		LDA $01,s						; |
+		INC A							; | $0E = pointer
+		STA $0E							; | return address +6
+		CLC : ADC #$0005					; |
+		STA $01,s						;/
+
+		LDY #$02						;\
+		LDA ($0E),y						; |
+		STA $05							; |
+		STA $0A							; |
+		LDY #$04						; |
+		LDA ($0E),y : STA $06					; |
+		LDA ($0E)						; | check trigger box, then let .BreakIn code take over
+		SEP #$20						; |
+		STA $04							; |
+		XBA : STA $0A						; |
+		SEC : JSL !PlayerClipping				; |
+		BCC .BreakIn_fail					; |
+		LDA !BigRAM						; > A = bit key
+		BCS .BreakIn_spawn					; |
+		BRA .BreakIn_return					;/
+
+
+
+
+; input:
+;	A = bit key
+;	8 bytes after JSR = input for !ChangeMap16 (sprite extra bits, sprite num, map16 tile num, x coord, y coord)
+; output:
+;	X = sprite index (0xFF if spawn failed)
+
+; example:
+;	JSR .BreakIn
+;	db $08,$02		; rex
+;	dw $0B70		; tile
+;	dw $0080,$0480		; coords
+
+	.BreakIn
+		BIT !Level+2 : BEQ ..spawn				; check bit key
+		..fail							;\ return X = invalid
+		LDX #$FF						;/
+		..return						;\
+		REP #$20						; |
+		LDA $01,s						; |
+		CLC : ADC #$0008					; | +8 to return address, then return
+		STA $01,s						; |
+		SEP #$20						; |
+		RTS							;/
+
+		..spawn							;\ set bit key
+		TSB !Level+2						;/
+		REP #$20						;\
+		LDA $01,s						; |
+		SEC : ADC #$0002					; > +1 +2 to get to map16 part of data
+		STA $00							; |
+		LDY #$02						; |
+		LDA ($00),y : STA $9A					; > X
+		LDY #$04						; |
+		LDA ($00),y : STA $98					; > Y
+		LDA ($00) : PHA						; > tile
+		JSR ..break						; |
+		LDA $9A							; | break + puff blocks
+		CLC : ADC #$0010					; |
+		STA $9A							; |
+		LDA $01,s : JSR ..break					; |
+		LDA $98							; |
+		CLC : ADC #$0010					; |
+		STA $98							; |
+		LDA $01,s : JSR ..break					; |
+		LDA $9A							; |
+		SEC : SBC #$0010					; |
+		STA $9A							; |
+		PLA : JSR ..break					; |
+		SEP #$20						;/
+
+		LDX #$00						;\
+		..loop							; |
+		LDA $3230,x : BEQ ..thisone				; | search for a sprite slot
+		INX							; |
+		CPX #$10 : BCC ..loop					; |
+		BRA ..fail						;/
+		..thisone						;\
+		REP #$20						; |
+		LDA $01,s						; |
+		INC A							; |
+		STA $00							; |
+		SEP #$20						; |
+		LDY #$01						; |
+		LDA ($00) : STA !ExtraBits,x				; | get sprite data
+		BIT #$08 : BNE ..custom					; |
+		..vanilla						; |
+		LDA ($00),y : STA $3200,x				; |
+		BRA ..reset						; |
+		..custom						; |
+		LDA ($00),y : STA !NewSpriteNum,x			; |
+		..reset							;/
+		INC $3230,x						;\
+		JSL !ResetSprite					; |
+		LDA $9A							; |
+		ORA #$08 : STA !SpriteXLo,x				; | spawn sprite
+		LDA $9B : STA !SpriteXHi,x				; | (NOTE: block coords are at +0,+10 after block update, so this is perfect)
+		LDA $98 : STA !SpriteYLo,x				; |
+		LDA $99 : STA !SpriteYHi,x				;/
+		LDA #$3F : STA !ShakeTimer				; shake timer
+		JMP ..return
+
+		..break
+		JSL !ChangeMap16
+		LDA #$FF80 : STA $00
+		STZ $02
+		LDA.w #!prt_smoke16x16 : JSL !SpawnParticleBlock
+		RTS
+
+
+
+
+	.MayorsHouse
+		LDA !Level+2
+		AND #$02 : BEQ ..normal
+		LDA #$02 : JSL KillSprite_Custom
+		..normal
+
+		LDX #$0F
+	-	LDA !ExtraBits,x
+		AND #$08 : BNE ..custom
+		..vanilla
+		LDA $3200,x
+		CMP #$1D : BNE +
+		LDA #$02
+		STA !SpriteStasis,x
+		STA !SpriteDisP1,x
+		STA !SpriteDisP2,x
+		BRA +
+		..custom
+		LDA !NewSpriteNum,x
+		CMP #$02 : BNE +
+	;	LDA !ExtraProp2,x
+	;	AND #$3F
+	;	CMP #$06 : BNE +
+		..mayor
+		LDA $3230,x
+		CMP #$04 : BEQ ..dead
+		LDA $BE,x : BEQ ..alive
+		CMP #$01 : BEQ +
+		..dead
+		LDA !Level+2
+		AND #$02 : BNE +
+		LDA #$02 : TSB  !Level+2
+		REP #$20
+		LDA.w #!MSG_RexVillage_Mayor2 : STA !MsgTrigger
+		SEP #$20
+		BRA +
+
+		..alive
+		LDA #$02 : STA !SpriteStasis,x
+		LDA #$04 : STA $33C0,x
+		LDA #$1A : STA !SpriteXLo,x
+		LDA !Level+2
+		AND #$01 : BNE +
+		LDA #$01 : TSB !Level+2
+		REP #$20
+		LDA.w #!MSG_RexVillage_Mayor1 : STA !MsgTrigger
+		SEP #$20
+	+	DEX : BPL -
+		RTS
+
+
+	.TrashHouse
+		REP #$20
+		LDA !CameraBoxD
+		ADC #$0100
+		JSL EXIT_Down
+		RTS
+
+	.Prison
+		LDX #$0F
+	-	LDA $3200,x
+		CMP #$1D : BNE +
+		LDA #$02
+		STA !SpriteStasis,x
+		STA !SpriteDisP1,x
+		STA !SpriteDisP2,x
+	+	DEX : BPL -
+
+		LDA #$02 : JSL SearchSprite_Custom
+		BMI ..return
+		LDA $BE,x : BNE ..return
+		STZ $3320,x
+
+		LDA !Level+2
+		BIT #$01 : BNE ..return
+		LDA $95 : BEQ ..return
+		LDA #$01 : TSB !Level+2
+		REP #$20
+		LDA.w #!MSG_RexVillage_BullyGuard : STA !MsgTrigger
+		SEP #$20
+		..return
+		RTS
+
+
+	.Library
+		LDA #$02 : JSL SearchSprite_Custom
+		BMI ..return
+		LDA #$01 : JSR .TalkBox
+		dw $0130,$0F00
+		db $40,$20
+		dw !MSG_RexVillage_Library
+		..return
+		RTS
+
+
+	.TalkBox
+		BIT !Level+2 : BEQ ..process
+		..return
+		REP #$20
+		LDA $01,s
+		CLC : ADC #$0008
+		STA $01,s
+		SEP #$20
+		RTS
+
+		..process
+		STA !BigRAM
+		REP #$20
+		LDA $01,s
+		INC A
+		STA $0E
+		LDY #$02
+		LDA ($0E),y
+		STA $05
+		STA $0A
+		LDY #$04
+		LDA ($0E),y : STA $06
+		LDA ($0E)
+		SEP #$20
+		STA $04
+		XBA : STA $0A
+		SEC : JSL !PlayerClipping
+		BCC ..return
+		LDA !BigRAM : TSB !Level+2
+		REP #$20
+		LDA $01,s
+		SEC : ADC #$0006
+		STA $0E
+		LDA ($0E) : STA !MsgTrigger
+		BRA ..return
+
+
+
+		.RoomPointers
+		dw .ScreenMatrix
+		dw .BoxTable
+		dw .DoorList
+		dw .DoorTable
+
+;	Key ->	   X  Y  W  H  S  FX FY
+;		   |  |  |  |  |  |  |
+;		   V  V  V  V  V  V  V
+;
+.BoxTable
+.Box0	%CameraBox(0, 0, 1, 0, $FF, 0, 0)
+.Box1	%CameraBox(0, 1, 1, 1, $FF, 0, 0)
+.Box2	%CameraBox(0, 3, 1, 0, $FF, 0, 0)
+.Box3	%CameraBox(0, 4, 1, 0, $FF, 0, 0)
+.Box4	%CameraBox(0, 5, 1, 0, $FF, 0, 0)
+.Box5	%CameraBox(0, 6, 1, 0, $FF, 0, 0)
+.Box6	%CameraBox(0, 7, 1, 0, $FF, 0, 0)
+.Box7	%CameraBox(0, 9, 1, 2, $FF, 0, 0)
+.Box8	%CameraBox(0, 8, 1, 0, $FF, 0, 0)
+.Box9	%CameraBox(0, 12, 1, 0, $FF, 0, 0)
+.BoxA	%CameraBox(0, 14, 1, 1, $FF, 0, 0)
+.BoxB	%CameraBox(0, 16, 1, 1, $FF, 0, 0)
+
+.ScreenMatrix	db $00,$00	; top floor
+		db $01,$01	;\ floor 6
+		db $01,$01	;/
+		db $02,$02	; floor 5
+		db $03,$03	; floor 4
+		db $04,$04	; floor 3
+		db $05,$05	; floor 2
+		db $06,$06	; ground floor
+
+		db $08,$08	; mayor's attic
+		db $07,$07	;\ mayor's house
+		db $07,$07	;/
+
+		db $09,$09	;\
+		db $09,$09	; | trash house
+		db $09,$09	;/
+
+		db $0A,$0A	;\ prison
+		db $0A,$0A	;/
+
+		db $0B,$0B	;\ some house
+		db $0B,$0B	;/
+
+		db $06,$06
+		db $06,$06
+		db $06,$06
+		db $06,$06
+		db $06,$06
+		db $06,$06
+		db $06,$06
+		db $06,$06
+		db $06,$06
+		db $06,$06
+		db $06,$06
+		db $06,$06
+		db $06,$06
+		db $06,$06
+
+
+
+
+.DoorList	db $80			; no doors at all
+.DoorTable
+
+
+
+
+
 ;lines	x	w
 ;10	+30	40
 ;50	+30	90
@@ -2874,9 +4405,6 @@ level39:
 		dw .DoorList
 		dw .DoorTable
 
-
-
-
 ;	Key ->	   X  Y  W  H  S  FX FY
 ;		   |  |  |  |  |  |  |
 ;		   V  V  V  V  V  V  V
@@ -2894,7 +4422,8 @@ level39:
 		db $FF,$FF,$FF,$FF,$FF,$FF,$01,$01
 		db $FF,$FF,$FF,$FF,$FF,$FF,$01,$01
 
-.DoorList	db $FF			; no doors
+.DoorList	db $FF			; no doors (room 0)
+		db $FF			; no doors (room 1)
 .DoorTable
 
 

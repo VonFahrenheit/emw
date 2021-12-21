@@ -23,6 +23,7 @@
 		JSR (.Ptr,x)				; |
 		PLX					;/
 
+		STZ !P2TempHP				; remove temp HP
 		LDA #$0F : STA !P2HurtTimer		; set hurt animation timer
 		LDA !P2HP				;\
 		DEC A					; |

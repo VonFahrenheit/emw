@@ -1003,13 +1003,16 @@ incsrc "FusionSprites/CustomShooter.asm"
 ;============;
 
 	HammerSpinJump:
-		JSL !CheckContact
-		BCS .Contact
+		JSL !CheckContact : BCS .Contact
 		JML $02A468				; > return with no contact
 .Contact	LDA !Ex_Num,x
 		CMP #$04+!ExtendedOffset : BNE .NoHammer
 		LDA !Ex_Data3,x
 		LSR A : BCS .Return
+		LDA $01					;\
+		CMP $05					; | the top border of mario's hitbox has to be above the top border of the hammer's hitbox
+		LDA $09					; |
+		SBC $0B : BCS .NoHammer			;/
 		LDA !MarioSpinJump : BNE .SpinHammer
 		BRA .NoHammer
 

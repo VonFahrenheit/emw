@@ -18,7 +18,7 @@
 
 0350	0	Cable\nPlace a number of these blocks in a line to create a cable (minumum 3, maximum 16).
 
-0360	0	Bouncy pole, bounces right\n2 blocks wide, 1 block tall
-0361	0	Bouncy pole, bounces right (place along tile 0360!)
-0362	0	Bouncy pole, bounces left\n2 blocks wide, 1 block tall
-0363	0	Bouncy pole, bounces left (place along tile 0362!)
+0360	0	Bouncy pole, bounces left\n2 blocks wide, 1 block tall
+0361	0	Bouncy pole, bounces left (place along tile 0360!)
+0362	0	Bouncy pole, bounces right\n2 blocks wide, 1 block tall
+0363	0	Bouncy pole, bounces right (place along tile 0362!)

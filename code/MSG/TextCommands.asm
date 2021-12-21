@@ -76,8 +76,8 @@
 ;	- note that any value $80-$FE will fade out the music
 ;	- a value of $FF should not be used
 ;
-;	portrait(XX, X)
-;	- takes a value 0-63 ($00-$3F) and a value 0-1
+;	portrait(name, X)
+;	- takes a character name (starts with upper case) and a value 0-1
 ;	- the first value is the portrait index, the second value is horizontal flip (0 = right side, 1 = left side)
 ;
 ;	scroll(XX)
@@ -184,8 +184,10 @@
 ;	- this command is usually used with border(0)
 ;
 ;	important(X)
-;	- takes a value 0-1
-;	- 0 = player can skip this message with start, 1 = player can not skip this message with start
+;	- takes a value 0-2
+;	- 0 = player can skip this message with start
+;	- 1 = player can not skip this message with start
+;	- 2 = player can not skip this message with start and can not increase text speed with A/B/Y/X
 ;	- this is useful for making some text boxes unskippable, which should only be done if it's necessary
 ;
 ;

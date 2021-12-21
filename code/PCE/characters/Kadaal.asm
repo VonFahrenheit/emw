@@ -226,8 +226,9 @@ namespace Kadaal
 		STZ !P2DashTimerL2				;/
 		STZ !P2ShellSlide				;\ can't shell slide with object
 		STZ !P2ShellSpeed				;/
+		LDA !P2InAir : BNE +
 		STZ !P2Dashing					; end dash state
-		STZ !P2Headbutt					; end headbutt
+	+	STZ !P2Headbutt					; end headbutt
 		STZ !P2Punch					; end punch
 		LDA !P2Ducking : BNE .Throw
 		BIT $6DA9 : BMI .Throw
@@ -238,7 +239,8 @@ namespace Kadaal
 		.Throw
 		DEX
 		LDA #$0A : STA $3230,x
-		LDY !P2Direction
+		LDA !P2Direction : TAY
+		EOR #$01 : STA $3320,x
 		LDA $6DA3
 		AND #$04 : BEQ ..throw
 		..drop
@@ -337,15 +339,9 @@ namespace Kadaal
 		STA !P2XSpeed					; |
 		LDA #$01 : STA !SPC1				; |
 	+	LDY !P2Direction				; |
-		LDA !P2XSpeed					; |
-		SEC : SBC .XSpeedSenku,y			; |
-		INC A						; |
-		CMP #$03 : BCC +				; |
-		LDA !P2XSpeed					; |
-		CLC : ADC .ShellSlideAcc,y			; |
-		BRA ++						; |
-	+	LDA .XSpeedSenku,y				; |
-	++	JSL CORE_SET_XSPEED				; |
+		LDA .XSpeedSenku,y				; |
+		LDY #$02					; |
+		JSL CORE_ACCEL_X				; |
 		LDA #$01 : STA !P2ShellSpeed			; |
 		LDA #$03					; |
 		TRB $6DA3					; |
@@ -382,7 +378,7 @@ namespace Kadaal
 
 
 	.ForceCrouch
-		LDA #$00 : JSL CORE_SET_XSPEED
+		STZ !P2XSpeed
 		LDA #$01 : STA !P2Ducking
 		LDA #$04 : STA !P2JumpLag
 		STZ !P2Punch
@@ -460,7 +456,7 @@ namespace Kadaal
 
 		.ReturnSenku
 		STZ !P2YSpeed
-	..Write	JSL CORE_SET_XSPEED
+	..Write	STA !P2XSpeed
 		STZ !P2JumpLag
 		STZ !P2DashTimerR1
 		STZ !P2DashTimerL1
@@ -802,6 +798,9 @@ namespace Kadaal
 		BPL $03 : EOR #$FF : INC A		; |
 		LDX !P2Dashing				; |
 		BEQ $02 : LDA #$24			; > use 0x24 during dash to prevent jumps from being inconsistent
+		LDX !P2Carry : BEQ ..nocarry		; |
+		LDX #$01 : STX !P2Dashing		; > set dash flag when jumping with object
+		..nocarry				; | (deliberately placed here so you can get a super jump by combining with coyote jump)
 		LDX !P2ShellSlide			; |
 		BEQ $02 : LDA #$10			; > use 0x10 during shell slide for a really big jump
 		STA $00					; | calculate max jump speed based on X speed
@@ -906,66 +905,55 @@ namespace Kadaal
 		ORA !P2Platform
 		STA $00
 		LDA $6DA3
-		LSR A : BCS .Right
-		LSR A : BCS .Left
-		LDA $00
-		BEQ ++
+		AND #$03
+		CMP #$01 : BEQ .Right
+		CMP #$02 : BEQ .Left
+		CMP #$03 : BEQ .Friction
+		LDA !P2InAir : BEQ .Friction	;\
+		LDA !P2XSpeed			; |
+		CMP #$40 : BCC .Friction	; | no air friction if moving faster than 0x40
+		CMP #$C0+1 : BCS .Friction	; |
+		LDA #$03 : TSB $6DA3		;/
 
-		.Friction			; This code definitely only runs on the ground
-		LDA !P2ShellSlide : BNE ++	;\ Clear shell speed upon touching the ground without shell slide
-		STZ !P2ShellSpeed		;/
-		++
-
-
+		.Friction
+		LDA !P2ShellSlide : BEQ +	;\ Clear shell speed upon touching the ground without shell slide
+		RTS
+		+
+		STZ !P2ShellSpeed
 		LDA !P2Slope
 		CLC : ADC #$04
 		TAX
-		LDA !P2XSpeed
-		SEC : SBC .SlopeSpeed,x
-		BEQ +
-		BMI .StopLeft
-		.StopRight
-		DEC A
-		BEQ $01 : DEC A
-		BRA ++
-		.StopLeft
-		INC A
-		BEQ $01 : INC A
-	++	CLC : ADC .SlopeSpeed,x
-		JSL CORE_SET_XSPEED
-	+	RTS
+		LDA .SlopeSpeed,x
+		LDY #$02
+		JSL CORE_ACCEL_X
+		RTS
 
 		.Right
-		LDA !P2ShellSpeed : BNE $07	; shell speed flag has priority over lacking dash flag
-		LDA !P2DashTimerR1
-		BEQ $02 : LDX #$00
-		LDA !P2XSpeed : BMI +
-		LDY $00 : BNE +++		;\ don't turn abruptly in mid-air
-		CMP .XSpeedRight,x : BCC +	;/
-	+++	LDA .XSpeedRight,x
-		BRA ++
-	+	INC #3
-	++	JSL CORE_SET_XSPEED
+		LDA !P2ShellSpeed : BNE ..fast
+		LDA !P2DashTimerR1 : BEQ ..fast
+		LDX #$00
+		..fast
+		LDA .XSpeedRight,x
+		LDY #$03
+		BIT !P2XSpeed
+		BMI $02 : LDY #$06
+		JSL CORE_ACCEL_X
 		LDA #$01 : STA !P2Direction
 		RTS
 
 		.Left
-		LDA !P2ShellSpeed : BNE $07	; shell speed flag has priority over lacking dash flag
-		LDA !P2DashTimerL1
-		BEQ $02 : LDX #$00
-		LDA !P2XSpeed
-		BEQ +
-		BPL +
-	++	LDY $00 : BNE +++		;\
-		CMP .XSpeedLeft,x		; | don't turn abruptly in mid-air
-		BEQ ++				; |
-		BCS +				;/
-	+++	LDA .XSpeedLeft,x
-		BRA ++
-	+	DEC #3
-	++	JSL CORE_SET_XSPEED
+		LDA !P2ShellSpeed : BNE ..fast
+		LDA !P2DashTimerL1 : BEQ ..fast
+		LDX #$00
+		..fast
+		LDA .XSpeedLeft,x
+		LDY #$03
+		BIT !P2XSpeed
+		BPL $02 : LDY #$06
+		JSL CORE_ACCEL_X
 		STZ !P2Direction
 		RTS
+
 
 		.XSpeed
 		.XSpeedLeft
@@ -1551,7 +1539,11 @@ namespace Kadaal
 		LDA !P2Direction
 		BEQ $02 : LDA #$FF
 		STA $00
+		STZ $01
+		BEQ $02 : INC $01
+		ASL $01
 		LDA .XOffset-(!Kad_Carry),y
+		SEC : SBC $01
 		EOR $00
 		STZ $00
 		BPL $02 : DEC $00
@@ -1651,9 +1643,12 @@ namespace Kadaal
 		.Dropkick
 		LDY #$0A
 
+
 		.Load
 		REP #$20
 		LDA HitboxTable,y : JSL CORE_ATTACK_LoadHitbox
+
+		.ExecuteHitboxes
 		JSL CORE_ATTACK_ActivateHitbox1
 		JSR .GetClipping
 		LDA !P2Hitbox2W					;\
@@ -1668,7 +1663,7 @@ namespace Kadaal
 		STA !P2Hitbox1IndexMem1
 		STA !P2Hitbox2IndexMem1
 		SEP #$20
-		JSL CORE_GET_TILE_Attack
+		JSL CORE_GET_TILE_Attack			; terrain collision for attack
 		RTS
 
 
@@ -1695,16 +1690,15 @@ namespace Kadaal
 		JSL !CheckContact				; | check contact
 		PLA : STA $0F					; |
 		BCC .LoopEnd					;/
-
 		LDA !ExtraBits,x
 		AND #$08 : BNE .HiBlock
 		.LoBlock
 		LDY $3200,x
-		LDA HIT_TABLE,y
+		LDA HIT_TABLE,y : BEQ .ClippingFail
 		BRA .AnyBlock
 		.HiBlock
 		LDY !NewSpriteNum,x
-		LDA HIT_TABLE_Custom,y
+		LDA HIT_TABLE_Custom,y : BEQ .ClippingFail
 		.AnyBlock
 		ASL A : TAY
 		PEI ($0E)
@@ -1714,6 +1708,14 @@ namespace Kadaal
 		DEC A
 		PHA
 		SEP #$20
+		LDY !P2ActiveHitbox
+		LDA CORE_BITS,x
+		CPX #$08 : BCS ..8F
+	..07	ORA !P2Hitbox1IndexMem1,y
+		STA !P2Hitbox1IndexMem1,y
+		RTS
+	..8F	ORA !P2Hitbox1IndexMem2,y
+		STA !P2Hitbox1IndexMem2,y
 		.ClippingFail
 		RTS
 
@@ -2126,17 +2128,17 @@ namespace Kadaal
 	HIT_13:
 		; Knock back and damage
 		LDA $3200,x
-		CMP #$6E
-		BEQ .Large
+		CMP #$6E : BEQ .Large
 
 		.Small
 		JMP KNOCKOUT
 
 		.Large
 		LDA #$6F : STA $3200,x		; Sprite num
-		LDA #$01 : STA $3230,x		; Init sprite
-		JSL $07F7D2			; Reset sprite tables
-		LDA #$02 : STA $BE,x		; Action: fire breath up
+		JSL !LoadTweakers		; Reset sprite tables
+		LDA #$01 : STA $BE,x		; Action: fire breath forward
+		LDA #$FF : STA $32D0,x
+		STZ $33D0,x
 		JMP KNOCKBACK
 
 

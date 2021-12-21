@@ -26,7 +26,7 @@
 ; Interaction 09 is for Bouncing Football (#$1B), Bullet Bill (#$1C), Lakitus (#$1E and #$4B), Magikoopa (#$1F), Ninji (#$51),
 ; Hammerbrother (#$9B) and Swooper Bat (#$BE).
 ; Interaction 0A is for completely solid objects.
-; Interaction 0B is for Moving Coin (#$21).
+; Interaction 0B is for Moving Coin (#$21) and Flying Red Coin (#$7E).
 ; Interaction 0C is for Net Koopas (#$22-#$25).
 ; Interaction 0D is for Portable Springboard (#$2F) and POW (#$3E).
 ; Interaction 0E is for Dry Bones (#$30 and #$32) and Bony Beetle (#$31).
@@ -330,8 +330,8 @@ Bounce:
 ++	STZ !P2SpecialUsed		; > reset air Senku
 	RTS
 
-.BounceSpeed	db $D0,$E0,$C8,$C8,$00,$00	; Mario, Luigi, Kadaal, Leeway, Alter, Peach
-.BounceSpeedB	db $A8,$C0,$A8,$A8,$00,$00	; Mario, Luigi, Kadaal, Leeway, Alter, Peach (when holding B)
+.BounceSpeed	db $D0,$D0,$C8,$C8,$00,$00	; Mario, Luigi, Kadaal, Leeway, Alter, Peach
+.BounceSpeedB	db $A8,$A8,$A8,$A8,$00,$00	; Mario, Luigi, Kadaal, Leeway, Alter, Peach (when holding B)
 
 
 StompSFX:
@@ -851,29 +851,12 @@ GOOMBAXSPEED:	db $2C,$D4
 		LDA $3210,x : STA !Ex_YLo,y
 		LDA $3220,x : STA !Ex_XLo,y
 		LDA #$01 : STA !SPC4		; Play "collect coin"-sound
-		LDA $3200,x
-		CMP #$7E : BEQ .5		; check for flying red coin
-		LDA !ExtraBits,x
-		AND #$04 : BEQ .1
 
-	.100	LDA !CurrentPlayer
-		TAX
-		LDA !P1CoinIncrease,x
-		CLC : ADC #$64			; worth 100 coins with extra bit
-		STA !P1CoinIncrease,x
+		LDA !CurrentPlayer : TAY
+		LDA !P1CoinIncrease,y
+		SEC : ADC !ExtraProp1,x		; extra +1
+		STA !P1CoinIncrease,y
 		RTS
-
-	.5	LDA !CurrentPlayer
-		TAX
-		LDA !P1CoinIncrease,x
-		CLC : ADC #$05
-		STA !P1CoinIncrease,x
-		RTS
-
-	.1	LDA !CurrentPlayer		;\
-		TAX				; | Increase coins
-		INC !P1CoinIncrease,x		;/
-		RTS				; > Just return since sprite index will be reloaded anyway
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -1172,9 +1155,10 @@ CHUCK_PUSH:	db $20,$E0
 		BRA .Shared
 
 .Large		LDA #$6F : STA $3200,x		; Sprite num
-		LDA #$01 : STA $3230,x		; Init sprite
-		JSL $07F7D2			; Reset sprite tables
+		JSL !LoadTweakers		; reload tweakers
+		LDA #$FF : STA $32D0,x
 		LDA #$02 : STA $BE,x		; Action: fire breath up
+		STZ $33D0,x
 
 .Shared		STZ $9E,x
 		STZ $AE,x
@@ -1410,7 +1394,68 @@ CHUCK_PUSH:	db $20,$E0
 
 		LDA #$B4 : STA !P2FlashPal	; flash pal
 
+		LDA !HeaderItemMem
+		CMP #$03 : BCS ..nomem
+		JSR GetItemMem
+		REP #$10
+		LDY $00
+		LDA $02
+		ORA !ItemMem0,y
+		STA !ItemMem0,y
+		SEP #$10
+		..nomem
+
+
 		RTS
+
+
+	GetItemMem:
+		LDA !HeaderItemMem			;\ return if invalid index
+		CMP #$03 : BCC .Search			;/
+		LDA #$00				;\ return with null output
+		RTS					;/
+
+		.Search
+		PHX					; push X
+		STA $00					; $00 = index (will be converted to 00 or 80)
+		LSR A					;\ $01 = -------I
+		STA $01					;/
+		STZ $2250				;\
+		REP #$20				; |
+		LDA !SpriteYHi,x			; | y screen * level width
+		AND #$00FF : STA $2251			; |
+		LDA !LevelWidth				; |
+		AND #$00FF : STA $2253			;/
+		SEP #$20				;\
+		LDA !SpriteXHi,x			; | + x screen
+		CLC : ADC $2306				;/
+		ASL A					; * 2
+		BIT !SpriteXLo,x			;\ +1 on right half
+		BPL $01 : INC A				;/
+		ASL A					;\
+		LSR $00					; | get highest bit from index
+		ROR A					;/
+		STA $00					; $00 = iSSSSSSx
+
+		LDA !SpriteXLo,x			;\
+		AND #$70				; |
+		LSR #4					; | get bit (reverse order because of course it is)
+		TAX					; |
+		LDA .Bits,x : STA $02			;/
+		REP #$10				;\
+		LDX $00					; | read item memory bit
+		AND !ItemMem0,x				; |
+		SEP #$10				;/
+
+		.Return
+		PLX					; pull X
+		CMP #$00				; z
+		RTS					; return
+
+		.Bits
+		db $80,$40,$20,$10,$08,$04,$02,$01
+
+
 
 
 

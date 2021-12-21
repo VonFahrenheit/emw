@@ -202,6 +202,14 @@ CODE_1380C8:
 	JSR GET_PARTICLE_INDEX
 	RTL
 
+CODE_1380CC:
+	JSR SPAWN_PARTICLE_BLOCK
+	RTL
+
+CODE_1380D0:
+	JSR INIT_PARTICLE
+	RTL
+
 
 incsrc "5bpp.asm"
 incsrc "Transform_GFX.asm"
@@ -1051,7 +1059,14 @@ CHANGE_MAP16:
 		LDA $0F : STA $410000,x
 		XBA
 		LDA $0E : STA $400000,x
+		REP #$20
+		PHA
+		SEP #$10
+		LDX $0F
+		LDA !Map16Remap-1,x
+		AND #$FF00 : STA $0E					; $0E = remap data
 		REP #$30
+		PLA
 		ASL A
 		PHP
 		JSL $06F540
@@ -1066,6 +1081,18 @@ CHANGE_MAP16:
 		CMP $4B : BCC .WithinScreen
 	.Fail	PLP
 		RTS
+
+
+; $00	X (lo) part of address
+; $02	Y part of address
+; $04	X (hi) part of address
+; $06	tilemap base address
+; $08	assembling tilemap
+; $0A	24-bit tile data pointer
+; $0D	----
+; $0E	remap data
+;
+
 
 	.WithinScreen
 		LDA $98							;\
@@ -1087,15 +1114,37 @@ CHANGE_MAP16:
 		PEA $4040
 		PLB : PLB
 		LDX !TileUpdateTable
-		LDY #$0000						;\
+		LDY #$0000
+
+		BIT $0E : BMI ..noremap
+
+		..remap							;\
+		LDA [$0A],y						; |
+		AND #$0300^$FFFF					; |
+		ORA $0E : STA !TileUpdateTable+$04,x			; |
+		LDY #$0002						; |
+		LDA [$0A],y						; |
+		AND #$0300^$FFFF					; |
+		ORA $0E : STA !TileUpdateTable+$0C,x			; |
+		LDY #$0004						; | tile data
+		LDA [$0A],y						; | (with remap)
+		AND #$0300^$FFFF					; |
+		ORA $0E : STA !TileUpdateTable+$08,x			; |
+		LDY #$0006						; |
+		LDA [$0A],y						; |
+		AND #$0300^$FFFF					; |
+		ORA $0E : STA !TileUpdateTable+$10,x			; |
+		BRA ..next						;/
+
+		..noremap						;\
 		LDA [$0A],y : STA !TileUpdateTable+$04,x		; |
 		LDY #$0002						; |
 		LDA [$0A],y : STA !TileUpdateTable+$0C,x		; | tile data
-		LDY #$0004						; |
+		LDY #$0004						; | (without remap)
 		LDA [$0A],y : STA !TileUpdateTable+$08,x		; |
 		LDY #$0006						; |
 		LDA [$0A],y : STA !TileUpdateTable+$10,x		;/
-
+		..next
 
 		LDA $00							;\
 		ORA $02							; |
@@ -1250,6 +1299,72 @@ GET_PARTICLE_INDEX:
 		RTS
 
 
+; input:
+;	A = particle num
+;	$98 = Y position
+;	$9A = Y position
+;	$00 = X speed (particle format)
+;	$02 = Y speed (particle format)
+;	$04 = X acc
+;	$05 = Y acc
+;	$06 = tile
+;	$07 = prop (S-PPCCCT, S is size bit, PP is mirrored to top 2 bits for layer prio + OAM prio)
+; output:
+;	$0E = index to spawned particle
+;	mirrors the PP bits of $07 to the upper 2 bits, but the rest of $00-$07 remain
+SPAWN_PARTICLE_BLOCK:
+		PHP
+		SEP #$30
+		STA $0F						; $0F = particle num
+		LDA $07						;\
+		ROL #3						; | $0E = size bit
+		AND #$02					; |
+		STA $0E						;/
+		LDA #$C0 : TRB $07				;\
+		LDA $07						; |
+		AND #$30					; | mirror PP bits
+		ASL #2						; |
+		TSB $07						;/
+		PHB						; push bank
+		JSR GET_PARTICLE_INDEX				; X = 16-bit particle index, bank = $41
+		LDA $9A : STA !Particle_XLo,x			;\ particle coords
+		LDA $98 : STA !Particle_YLo,x			;/
+		LDA $06 : STA !Particle_Tile,x			; particle tile/prop
+		LDA $00 : STA !Particle_XSpeed,x		; particle X speed
+		LDA $02 : STA !Particle_YSpeed,x		; particle Y speed
+		SEP #$20					; A 8-bit
+		LDA $04 : STA !Particle_XAcc,x			;\ particle acc
+		LDA $05 : STA !Particle_YAcc,x			;/
+		LDA $0E : STA !Particle_Layer,x			; particle size bit
+		LDA $0F : STA !Particle_Type,x			; particle num
+		JSR INIT_PARTICLE : STA !Particle_Timer,x	; store particle timer
+
+		STX $0E						; save this index
+		PLB						; restore bank
+		PLP
+		RTS						; return
+
+
+; input:
+;	A = particle num
+; output:
+;	particle timer is set to its proper initial value
+INIT_PARTICLE:
+		LDY #$00FF					; default timer = 0xFF
+		CMP #!prt_smoke8x8				;\ timer for 8x8 smoke = 0x13
+		BNE $03 : LDY #$0013				;/
+		CMP #!prt_smoke16x16				;\ timer for 16x16 = 0x17
+		BNE $03 : LDY #$0017				;/
+		CMP #!prt_sparkle				;\ timer for sparkle = 0x20
+		BNE $03 : LDY #$0020				;/
+		CMP #!prt_contact				;\ timer for contact particle = 0x07
+		BNE $03 : LDY #$0007				;/
+		CMP #!prt_tinycoin				;\ timer for tiny coin particle = 0x20
+		BNE $03 : LDY #$0020				;/
+		TYA
+		RTS
+
+
 ;=====================;
 ;HURT PLAYER 2 ROUTINE;
 ;=====================;
@@ -1290,6 +1405,7 @@ HurtP1:		LDA !P2Invinc-$80,y			;\
 		JSR (.Ptr,x)				; |
 		PLX					;/
 
+		LDA #$00 : STA !P2TempHP-$80,y		; remove temp HP
 		LDA #$0F : STA !P2HurtTimer-$80,y	; set hurt animation timer
 		LDA !P2HP-$80,y				;\
 		DEC A					; |
@@ -4430,6 +4546,191 @@ MAP16_EXPAND:
 		LDA #$30 : STA $7693
 		LDY #$01
 		RTL
+
+
+
+
+;===============;
+;ITEM MEM ADJUST;
+;===============;
+; input:
+;	Y = X offset
+;	$57 = combined X+Y position, lo byte (yyyyxxxx)
+;	$6B = map16 page pointer
+; output:
+;	A = memory bit (0 if not marked)
+;	Z = 0 if not marked, 1 if marked
+;	$08 = index to item memory table (16-bit), only if valid index
+;	$0E = index (lowest 7 bits)
+;	$0F = result of bit check (8-bit)
+
+
+; note: the !LevelWidth variable is NOT how many screens there can be in this mode, just how many are used
+;	this is NOT a problem, future!Eric
+;	it just means less of the table is used, but everything will still be mapped properly
+
+; xlo	= $57 & $0F
+; ylo	= $57 & $F0
+
+; xhi	= $6B - $C800 / level height
+; yhi	= rest / $100
+
+
+LOAD_ITEM_MEM:
+pushpc
+	org $0DA5C5
+		CPX #$1B : BEQ .VariableBlock
+		JSL .CheckItem : BNE .CheckMem
+		BRA .WriteMap16
+	warnpc $0DA5D9
+	org $0DA5D9
+		.VariableBlock
+	org $0DA5F0
+		.CheckMem
+
+
+	org $0DA5F4					; ?-block, brick, other similar blocks code
+		JSL .Main				;\ org: LDX $73BE (!HeaderItemMem) : LDA #$F8 : CLC
+		BRA +					;/
+	org $0DA635
+		+
+
+	org $0DA648
+		.WriteMap16
+
+
+	org $0DA8E0					; normal coins code
+		JSL .Main				;\ org: LDX $73BE (!HeaderItemMem) : LDA #$F8 : CLC
+		BRA +					;/
+	org $0DA920
+		+
+
+	org $0DB2E0					; yoshi coins code
+	;	JSL .Main				;\ org: LDX $73BE (!HeaderItemMem) : LDA #$F8 : CLC
+	STZ $0F					;\ always spawn yoshi coins
+	LDA #$00				;/
+		BRA +					;/
+	org $0DB320
+		+
+pullpc
+
+
+
+	.Main
+		REP #$20
+		LDA #$0001 : STA $2250			; prep division
+		LDA $6B
+		SEC : SBC #$C800
+		STA $2251
+		LDA !LevelHeight : STA $2253
+		SEP #$20
+		BRA $00					;
+
+		LDA $2306 : STA $9B			; x hi
+		LDA $2309 : STA $99			; y hi
+
+		LDA !HeaderItemMem			;\ check memory setting
+		CMP #$03 : BCC .Search			;/
+		LDA #$00 : STA $0F			;\ return null if invalid
+		RTL					;/
+
+		.Search
+		PHX					; push X
+		STA $08					; $08 = index (will be converted to 00 or 80)
+		LSR A					;\ $09 = -------I
+		STA $09					;/
+		STZ $2250				;\
+		REP #$20				; |
+		LDA $99					; | y screen * level width
+		AND #$00FF : STA $2251			; |
+		LDA !LevelWidth				; |
+		AND #$00FF : STA $2253			;/
+		SEP #$20				;\
+		LDA $9B					; | + x screen
+		CLC : ADC $2306				;/
+		ASL A					; * 2
+		ASL A					;\
+		LSR $08					; | get highest bit from index
+		ROR A					; |
+		STA $08					;/
+		TYA					;\
+		AND #$08				; | +1 on right half (iSSSSSSx)
+		BEQ $02 : INC $08			;/
+		LDA $08					;\ output 7 lowest bits of index
+		AND #$7F : STA $0E			;/
+		TYA					;\
+		AND #$07 : TAX				; | get bit (reverse order because of course it is)
+		LDA.l .Bits,x				;/
+		REP #$10				;\
+		LDX $08					; | read item memory bit
+		AND !ItemMem0,x				; |
+		SEP #$10				;/
+		STA $0F					; store to output
+
+		PLX					; pull X
+		CMP #$00				; z
+		RTL					; return
+
+		.Bits
+		db $80,$40,$20,$10,$08,$04,$02,$01
+
+
+
+	.CheckItem
+		LDA.l .ExtendedItemMem,x
+		RTL
+
+		.ExtendedItemMem
+		db $00		; 10 - small door
+		db $01		; 11 - invisible 1-up block
+		db $00		; 12 - invisible note block
+		db $00		; 13 - UNKNOWN
+		db $00		; 14 - UNKNOWN
+		db $00		; 15 - small invisible POW door
+		db $01		; 16 - invisible POW ?-block
+		db $01		; 17 - green star block
+		db $00		; 18 - moon
+		db $00		; 19 - invisible 1-up point #1
+		db $00		; 1A - invisible 1-up point #2
+		db $00		; 1B - invisible 1-up point #3
+		db $00		; 1C - invisible 1-up point #4
+		db $00		; 1D - red berry
+		db $00		; 1E - pink berry
+		db $00		; 1F - green berry
+		db $00		; 20 - UNUSED (constantly turning turn block)
+		db $01		; 21 - UNKNOWN
+		db $00		; 22 - UNKNOWN
+		db $00		; 23 - note block with variable item inside
+		db $00		; 24 - ON/OFF block
+		db $01		; 25 - directional coin ?-block
+		db $00		; 26 - note block
+		db $00		; 27 - note block
+		db $01		; 28 - brick with flower
+		db $01		; 29 - brick with feather
+		db $01		; 2A - brick with star
+		db $01		; 2B - brick with variable item
+		db $01		; 2C - brick with multiple coins
+		db $00		; 2D - brick with 1 coin
+		db $01		; 2E - brick with nothing inside
+		db $01		; 2F - brick with POW inside
+		db $01		; 30 - ?-block with flower
+		db $01		; 31 - ?-block with feather
+		db $01		; 32 - ?-block with star
+		db $01		; 33 - ?-block with star 2
+		db $01		; 34 - ?-block with multiple coins
+		db $01		; 35 - ?-block with variable item (key/wing/balloon/shell)
+		db $01		; 36 - ?-block with yoshi/1-up
+		db $01		; 37 - ?-block with green shell
+		db $01		; 38 - ?-block with green shell
+		db $00		; 39 - jank brick
+		db $00		; 3A - UNKNOWN
+		db $00		; 3B - UNKNOWN
+		db $00		; 3C - UNKNOWN
+		db $00		; 3D - UNKNOWN
+		db $00		; 3E - UNKNOWN
+		db $00		; 3F - UNKNOWN
+		db $01		; 40 - translucent block
+		; other extended objects do not run this code
 
 
 

@@ -10,6 +10,10 @@
 	Cannon:
 		LDX $00						; X = BG object index
 
+		SEP #$20
+		LDA #$80 : STA !BG_object_Tile,x
+		REP #$20
+
 		BIT !BG_object_Misc-1,x : BPL .NoShootBlocks
 		JSR .ShootThroughBlocks
 		.NoShootBlocks

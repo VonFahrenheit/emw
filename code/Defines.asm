@@ -335,6 +335,9 @@ endmacro
 
 	!CameraPower	= #$19		; remap to address later, this is how far ahead the camera is allowed to scroll
 
+
+
+
 	!CameraXMem	= $7432		; 16-bit used for PCE camera baybee
 
 
@@ -345,6 +348,8 @@ endmacro
 		!CameraForceDir		= $314E
 
 
+
+		!CameraBoxSpriteErase	= $5C	; 00 = freeze off-screen sprites, 01 = erase off-screen sprites, 02 = ignore off-screen sprites
 
 		!CameraBoxL		= $6AC0
 		!CameraBoxU		= $6AC2
@@ -357,8 +362,12 @@ endmacro
 					; x = number of screens for forbiddance box to span horizontally (0=1)
 					; y = number of screens for forbiddance box to span vertically (0=1)
 
+		!CameraBoxRoom		= $6AF6			; which camera box room the player is in
+		!Room			= !CameraBoxRoom	; alt name
 
-	;	!SmoothCamera		= $6AF6			; enables smooth camera (always on with camera box)
+
+
+
 
 
 		!BG1ZipBoxL		= $45
@@ -492,7 +501,6 @@ endmacro
 
 		; beneficial sprites
 		%def_GFX(Starman)
-		%def_GFX(GoldShroom)
 		%def_GFX(PSwitch)
 		%def_GFX(SpringBoard)
 		%def_GFX(Bumper)
@@ -501,6 +509,7 @@ endmacro
 		%def_GFX(Key)
 		%def_GFX(SmallBird)
 		%def_GFX(YoshiCoin)
+		%def_GFX(Chest)
 
 		; platforms
 		%def_GFX(GrowingPipe)
@@ -574,6 +583,8 @@ endmacro
 
 		; special particle parts
 		%def_GFX(LeafParticle)
+		%def_GFX(TinyCoin)
+		%def_GFX(SmallNumbers)
 
 
 
@@ -849,6 +860,26 @@ endmacro
 		!ApexP1			= $611C				;\ highest point of current jump
 		!ApexP2			= $611E				;/ only really used by cables
 
+		; these are used for transporting held items between sublevels (works will all transition types)
+		!HeldItemP1_num		= $6DB4
+		!HeldItemP1_customnum	= $6DB5
+		!HeldItemP1_extra	= $6DB6
+		!HeldItemP1_prop1	= $6DB7
+		!HeldItemP1_prop2	= $6DB8
+
+		!HeldItemP2_num		= $6DB9
+		!HeldItemP2_customnum	= $6DBA
+		!HeldItemP2_extra	= $6DBB
+		!HeldItemP2_prop1	= $6DBC
+		!HeldItemP2_prop2	= $6DBD
+
+		!HeldItemP1_level	= $6DC7				; 16-bit
+		!HeldItemP1_ID		= $6DC9				; index to !SpriteLoadStatus (value of 0xFF means this was a spawned sprite)
+		!HeldItemP2_level	= $6DCA				; 16-bit
+		!HeldItemP2_ID		= $6DCC
+
+
+
 
 		!P1Base			= $3600
 		!P2Base			= $3680
@@ -1059,6 +1090,8 @@ endmacro
 		!P2Dashing		= !P2Custom+$08			; used by most characters as a timer or flag for dash status
 		!P2KickTimer		= !P2Custom+$09			; timer (decrements) after kicking objects like shells
 		!P2TurnTimer		= !P2Custom+$0A			; timer (decrements) for turning around
+
+		!P2TempHP		= !P2Base+$7F			; last byte = temp HP
 
 	; --MARIO--
 		;!P2Carry		= !P2Custom+$00
@@ -1753,13 +1786,16 @@ endmacro
 	%def_particle_simple(coinglitter)
 	%def_particle_simple(sparkle)
 	%def_particle_simple(leaf)
+	%def_particle_simple(tinycoin)
 
 
 
 	; BG_object regs
 		!BG_object_Base		= $A0B0			; bank $41
-		!BG_object_Count	= 64
+		!BG_object_Count	= 128
 		!BG_object_Size		= 10
+
+		!BG_object_Index	= $57			; 16-bit, holds the index to the next free BG object
 
 		!BG_object_Type		= !BG_object_Base+$00	; which object this is
 		!BG_object_Timer	= !BG_object_Base+$01	; timer
@@ -2130,6 +2166,7 @@ endmacro
 		!SpriteExtraCollision	= $75A0	;$3580		; Applies only on the frame that it's set
 		!SpriteDeltaX		= $75B0
 		!SpriteDeltaY		= $75C0
+		!SpriteFallSpeed	= $75D0
 
 
 
@@ -2377,7 +2414,7 @@ endmacro
 
 
 
-	; -- SMW/LM RAM --			; This is mainly for easier SA-1 compatibility.
+	; -- SMW/LM RAM --
 
 		!RAM_TrueFrameCounter	= $13
 		!RAM_FrameCounter	= $14
@@ -2387,7 +2424,6 @@ endmacro
 		!MarioJoypad2OneF	= $18
 		!MarioPowerUp		= $19
 		!RAM_ScreenMode		= $5B
-		!Palette		= $5C
 		!LevelWidth		= $5E	; in screens
 		!GlobalProperties	= $64
 		!MarioAnim		= $71
@@ -2424,6 +2460,7 @@ endmacro
 		!MarioJoypad2Raw	= $6DA4
 		!MarioJoypad1RawOneF	= $6DA6
 		!ItemBox		= $6DC2
+		!HeaderItemMem		= $73BE		; which of the !ItemMem tables to use (3 = ignore)
 		!Translevel		= $73BF
 		!PauseTimer		= $73D3
 		!Pause			= $73D4
@@ -2497,6 +2534,12 @@ endmacro
 		!SPC4			= $7DFC
 ;		!LevelTable		= $7EA2
 
+
+		!ItemMem0		= $79F8
+		!ItemMem1		= $7A78
+		!ItemMem2		= $7A38
+
+
 		!LevelTable1		= $7EA2		; BCH54321 (beaten, checkpoint flag, checkpoint level number hi bit, yoshi coins 1-5)
 		!LevelTable2		= $6A60		; cccccccc (checkpoint level number lo byte)
 		!LevelTable3		= $6120		; --ffffff (best time frames (0-59))
@@ -2547,6 +2590,8 @@ endmacro
 		!ChangeMap16		= $1380C0
 		!FadeLight		= $1380C4
 		!GetParticleIndex	= $1380C8
+		!SpawnParticleBlock	= $1380CC
+		!InitParticle		= $1380D0
 
 		!PortraitPointers	= $378000		; DATA pointer stored with SP_Files.asm, along with portrait GFX
 		!PalsetData		= $3F8000		; DATA pointer stored with SP_Files.asm, along with palset data
@@ -2569,6 +2614,7 @@ endmacro
 
 
 		!LoadPalset		= $048452		; pointer to LoadPalset routine, must be manually read to be accessed (this is to avoid repatch problems)
+		!BoxPtr			= $048455		; pointer to table that holds pointers to camera boxes (stored with SP_Level.asm)
 
 		!SaveGame		= $009BC9		; rerouted to new code
 

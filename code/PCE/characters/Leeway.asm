@@ -1513,11 +1513,11 @@ namespace Leeway
 		AND #$08 : BNE .HiBlock			; |
 		.LoBlock				; |
 		LDY $3200,x				; |
-		LDA HIT_TABLE,y				; | get interaction type
+		LDA HIT_TABLE,y : BEQ .LoopEnd		; | get interaction type
 		BRA .AnyBlock				; |
 		.HiBlock				; |
 		LDY !NewSpriteNum,x			; |
-		LDA HIT_TABLE_Custom,y			;/
+		LDA HIT_TABLE_Custom,y : BEQ .LoopEnd	;/
 
 		.AnyBlock				;\
 		ASL A : TAY				; |
@@ -1528,8 +1528,15 @@ namespace Leeway
 		DEC A					; | execute pointer
 		PHA					; |
 		SEP #$20				; |
-		CPY #$00 : BEQ .NoHit			; |
 		LDA #$08 : STA !P2ComboDash		; > set combo dash enable for 8 frames
+		LDY !P2ActiveHitbox
+		LDA CORE_BITS,x
+		CPX #$08 : BCS ..8F
+	..07	ORA !P2Hitbox1IndexMem1,y
+		STA !P2Hitbox1IndexMem1,y
+		RTS
+	..8F	ORA !P2Hitbox1IndexMem2,y
+		STA !P2Hitbox1IndexMem2,y
 		.NoHit					; |
 		RTS					;/
 
@@ -1990,9 +1997,10 @@ namespace Leeway
 
 		.Large
 		LDA #$6F : STA $3200,x		; Sprite num
-		LDA #$01 : STA $3230,x		; Init sprite
-		JSL $07F7D2			; Reset sprite tables
-		LDA #$02 : STA $BE,x		; Action: fire breath up
+		JSL !LoadTweakers		; Reset sprite tables
+		LDA #$01 : STA $BE,x		; Action: fire breath forward
+		LDA #$FF : STA $32D0,x
+		STZ $33D0,x
 		JMP KNOCKBACK
 
 

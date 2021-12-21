@@ -8,8 +8,9 @@
 02 x2 Rex (mushroom set)
 02 x2 Rex (backpack + straw hat)
 02 x2 Rex (courier set)
-02 x2 Rex (aristocrat)
 02 x2 Rex (bandit)
+02 x2 Rex (aristocrat)
+02 x2 Rex (bandana)
 02 x2 Rex (knight)
 03 x2 Hammer Rex
 03 x3 Hammer Rex (stationary)
@@ -81,3 +82,9 @@
 2D x2 Ultra Fuzzy
 2E x2 Shield (front)
 2E x3 Shield (back)
+2F x2 Elevator
+30 x2 Chest
+31 x2 Experimental Object
+32 x2 Shop Object
+33 x2 Life Mushroom
+34 x2 Dense Rex

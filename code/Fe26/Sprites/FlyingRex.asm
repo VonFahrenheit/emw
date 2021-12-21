@@ -56,7 +56,7 @@ FlyingRex:
 		LDA #$02 : STA $BE,x
 
 		.Transform
-		LDA #$02 : STA !NewSpriteNum,x
+		LDA #$34 : STA !NewSpriteNum,x
 		LDA #!Rex_Hurt : STA !SpriteAnimIndex
 		STZ !SpriteAnimTimer
 		STZ !ExtraProp1,x

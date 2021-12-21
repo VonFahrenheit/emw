@@ -243,7 +243,7 @@ Thif:
 		PLX					; |
 		LDA $32B0,x				; | coin is worth half the thif's loot
 		LSR A					; |
-		STA $35D0,y				;/
+		STA !ExtraProp1,y			;/
 		.NoAttack
 
 

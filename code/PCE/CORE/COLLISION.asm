@@ -1711,6 +1711,7 @@ endmacro
 		INC !P1CoinIncrease,x
 		JSR REMOVE_TILE
 		JSL SET_GLITTER_Map16
+		JSR SET_ITEM_MEM
 		RTS
 
 		.YoshiCoin
@@ -1901,6 +1902,7 @@ endmacro
 
 		.Brick
 		..MultipleCoins
+		JSR SET_ITEM_MEM
 		..Coin
 		CPY #$06 : BEQ $03
 	-	JMP .SetBlocked
@@ -1961,6 +1963,7 @@ endmacro
 		STZ $05					;/
 
 		..Shared
+		JSR SET_ITEM_MEM
 		CPY #$06 : BEQ ..pop
 	..solid	JMP .SetBlocked
 	..pop	BIT $0E : BPL ..solid
@@ -2006,17 +2009,21 @@ endmacro
 		LDA !PSwitchTimer : BNE .Block_Coin
 		RTS
 		.Invis1UpBlock
+		BIT $78D7+1 : BPL +
 		CPY #$06 : BNE +
+		JSR SET_ITEM_MEM
 		LDA #$78 : STA $04
 		STZ $05
 		JMP .Block_spawn
 		.InvisCoinBlock
+		BIT $78D7+1 : BPL +
 		CPY #$06 : BNE +
 		BIT $0E : BMI .Block_1coin
 	+	RTS
 
 		.Block
 		..MultipleCoins
+		JSR SET_ITEM_MEM
 		..Coin
 		CPY #$06 : BEQ $03
 	-	JMP .SetBlocked
@@ -2081,6 +2088,7 @@ endmacro
 		STZ $05					;/
 
 		..Shared
+		JSR SET_ITEM_MEM
 		CPY #$06 : BEQ ..pop
 	..solid	JMP .SetBlocked
 	..pop	BIT $0E : BPL ..solid
@@ -2536,13 +2544,70 @@ endmacro
 		db $FB,$FB,$FD,$FD
 
 
+; note: the !LevelWidth variable is NOT how many screens there can be in this mode, just how many are used
+;	this is NOT a problem, future!Eric
+;	it just means less of the table is used, but everything will still be mapped properly
+
+	SET_ITEM_MEM:
+		PHX
+		PHP
+		PEI ($00)
+		SEP #$30
+		LDA !HeaderItemMem			;\ return if invalid index
+		CMP #$03 : BCS .Return			;/
+
+		STA $00					; $00 = index (will be converted to 00 or 80)
+		LSR A					;\ $01 = -------I
+		STA $01					;/
+		STZ $2250				;\
+		REP #$20				; |
+		LDA $99					; | y screen * level width
+		AND #$00FF : STA $2251			; |
+		LDA !LevelWidth				; |
+		AND #$00FF : STA $2253			;/
+		SEP #$20				;\
+		LDA $9B					; | + x screen
+		CLC : ADC $2306				;/
+		ASL A					; * 2
+		BIT $9A					;\ +1 on right half
+		BPL $01 : INC A				;/
+		ASL A					;\
+		LSR $00					; | get highest bit from index
+		ROR A					;/
+		STA $00					; $00 = iSSSSSSx
+
+		LDA $9A					;\
+		AND #$70				; |
+		LSR #4					; | get bit (reverse order because of course it is)
+		TAX					; |
+		LDA .Bits,x				;/
+		REP #$10				;\
+		LDX $00					; | set item memory bit
+		ORA !ItemMem0,x				; |
+		STA !ItemMem0,x				;/
+
+		.Return
+		REP #$20
+		PLA : STA $00
+		PLP
+		PLX
+		RTS
+
+		.Bits
+		db $80,$40,$20,$10,$08,$04,$02,$01
+
+
 ; input:
 ; $04 - object (sprite num)
 ; $05 - loop counter
 	SPAWN_OBJECT:
 		PEI ($00)
-		LDA $02 : PHA
-		LDA $0F : PHA
+		PEI ($02)
+		PEI ($06)
+		PEI ($08)
+		PEI ($0A)
+		PEI ($0C)
+		PEI ($0E)
 
 		LDA $04 : BEQ ++			; skip if no sprite
 		CMP #$08 : BCC .Powerup			; koopa shells
@@ -2569,7 +2634,13 @@ endmacro
 	+	LDA $04 : STA $3200,x
 		PLA : STA $04
 		STZ !ExtraBits,x
+		PEI ($04)
 		JSL !InitSpriteTables
+		REP #$20
+		PLA : STA $04
+		SEP #$20
+
+
 		LDA #$08 : STA $3230,x
 		LDA $98
 		AND #$F0
@@ -2581,7 +2652,7 @@ endmacro
 		LDA $9B : STA $3250,x
 
 		LDA #$10 : STA $3360,x
-		LDA #$D0 : STA $9E,x
+		LDA #$D0 : STA !SpriteYSpeed,x
 		LDA $05 : BNE +
 
 		LDA #$3E : STA $32D0,x
@@ -2617,7 +2688,7 @@ endmacro
 		LDA $3200,x
 		CMP #$7D : BEQ .y0
 		CMP #$84 : BNE .SpeedDone
-	.y0	STZ $9E,x
+	.y0	STZ !SpriteYSpeed,x
 		STZ $32D0,x
 		LDA #$01 : STA $3320,x			; make ?block face the right way
 		.SpeedDone
@@ -2627,11 +2698,16 @@ endmacro
 		JMP -
 		+
 
-		PLA : STA $0F
+		REP #$20
+		PLA : STA $0E
+		PLA : STA $0C
+		PLA : STA $0A
+		PLA : STA $08
+		PLA : STA $06
+		; not $04
 		PLA : STA $02
 		PLA : STA $00
-		PLA : STA $01
-
+		SEP #$20
 
 		RTS
 

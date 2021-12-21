@@ -257,31 +257,189 @@ if !CompileText = 1
 	db "UNUSED MESSAGE"
 	%endmessage()
 endif
-;====================================================================================================;
-%insertMSG(MushroomGorge_Sign_1)
-if !CompileText = 1
-	db "This monument marks the highest point on Rex Island."
-	%endmessage()
-endif
+
+
 ;====================================================================================================;
 %insertMSG(RexVillage_Sign_1)
 if !CompileText = 1
-	db "REX VILLAGE"
+	db "Closed due to unexpected appearance of basement."
+	%linebreak()
+	db "Please understand."
 	%endmessage()
 endif
 ;====================================================================================================;
 %insertMSG(RexVillage_Sign_2)
 if !CompileText = 1
-	db "UNUSED MESSAGE"
+	db "Home of the awesome Chilli Pepper Clan. Enter at your own peril... (coward)"
 	%endmessage()
 endif
 ;====================================================================================================;
-%insertMSG(RexVillage_Rex_1)
+%insertMSG(RexVillage_Rex1)
 if !CompileText = 1
-	db "Have I seen you before?"
-	db "I can't remember, non-Rex all look the same to me!"
-	db "Anyways, you shouldn't be here."
-	db "The area above ground is for Rex only!"
+	%portrait(Rex, 0)
+	db "Have I seen you before? I can't remember, non-Rex all look the same to me!"
+	%waitforinput()
+	%scrollfull()
+	db "Anyways, you shouldn't be here. The area above ground is for Rex only!"
+	%endmessage()
+endif
+;====================================================================================================;
+%insertMSG(RexVillage_Aristocrat1)
+if !CompileText = 1
+	%portrait(Rex, 0)
+	db "Fetch me my golden mushrooms! Hurry it up, you fools!"
+	%endmessage()
+endif
+;====================================================================================================;
+%insertMSG(RexVillage_Aristocrat2)
+if !CompileText = 1
+	%important(2)
+	%portrait(Rex, 0)
+	%speed(15)
+	db "YOU THIEF!!!"
+	%linebreak()
+	db "I'LL DESTROY YOU!!!"
+	%endmessage()
+endif
+;====================================================================================================;
+%insertMSG(RexVillage_Shop1)
+if !CompileText = 1
+	%portrait(Rex, 1)
+	db "Buy somethin' will ya!"
+	%endmessage()
+endif
+;====================================================================================================;
+%insertMSG(RexVillage_Shop2)
+if !CompileText = 1
+	%portrait(Rex, 1)
+	%mode(1)
+	db "Thank you for your patronage!"
+	%endmessage()
+endif
+;====================================================================================================;
+%insertMSG(RexVillage_Shop3)
+if !CompileText = 1
+	%portrait(Rex, 1)
+	db "Boy, this is really expensive!"
+	%endmessage()
+endif
+;====================================================================================================;
+%insertMSG(RexVillage_ShopHurt)
+if !CompileText = 1
+	%portrait(Rex, 1)
+	db "Ouch! This is assault!"
+	%endmessage()
+endif
+;====================================================================================================;
+%insertMSG(RexVillage_ShopRegret)
+if !CompileText = 1
+	%important(2)
+	db "Visiting this place reminds you of your terrible deeds..."
+	%endmessage()
+endif
+;====================================================================================================;
+%insertMSG(RexVillage_Mayor1)
+if !CompileText = 1
+	%portrait(Rex, 0)
+	db "Yes, taxes! I love collecting taxes!"
+	%linebreak()
+	db "All for the King, of course..."
+	%endmessage()
+endif
+;====================================================================================================;
+%insertMSG(RexVillage_Catacombs)
+if !CompileText = 1
+	%portrait(Rex, 0)
+	db "I don't recall this place ever being here..."
+	%linebreak()
+	db "Can a basement really appear out of nowhere?"
+	%waitforinput()
+	%scrollfull()
+	%portrait(Rex, 1)
+	db "I don't know. Who knows where basements come from anyway?"
+	%waitforinput()
+	%scrollfull()
+	%portrait(Rex, 0)
+	db "There's something strange going on..."
+	%endmessage()
+endif
+;====================================================================================================;
+%insertMSG(RexVillage_Negotiator1)
+if !CompileText = 1
+	%portrait(Rex, 0)
+	db "You look tough..."
+	%waitforinput()
+	%scrollfull()
+	db "Very well, let's negotiate! You leave me alone and you let me live. Deal?"
+	%endmessage()
+endif
+;====================================================================================================;
+%insertMSG(RexVillage_Negotiator2)
+if !CompileText = 1
+	%portrait(Rex, 0)
+	db "No no, help yourself to my lunch, that's ok..."
+	%endmessage()
+endif
+;====================================================================================================;
+%insertMSG(RexVillage_BullyGuard)
+if !CompileText = 1
+	%portrait(Rex, 1)
+	db "Hey, Goomba! Why don't you try to escape through the window?"
+	%waitforinput()
+	%scrollfull()
+	db "Oh right, you can't reach!"
+	%waitforinput()
+	%scrollfull()
+	db "AHAHAHAHAHAHA!!"
+	%waitforinput()
+	%scrollfull()
+	db "Oh I slay myself!"
+	%waitforinput()
+	%scrollfull()
+	db "..."
+	%waitforinput()
+	%scrollfull()
+	db "(I wish I had a more fulfilling job.)"
+	%endmessage()
+endif
+;====================================================================================================;
+%insertMSG(RexVillage_Mayor2)
+if !CompileText = 1
+	%portrait(Rex, 0)
+	%important(2)
+	%speed(10)
+	db "Bury me with my money..."
+	%endmessage()
+endif
+;====================================================================================================;
+%insertMSG(RexVillage_SkyScraper1)
+if !CompileText = 1
+	%portrait(Rex, 0)
+	db "Go ahead."
+	%waitforinput()
+	%scrollfull()
+	db "Buy it."
+	%endmessage()
+endif
+;====================================================================================================;
+%insertMSG(RexVillage_SkyScraper2)
+if !CompileText = 1
+	%portrait(Rex, 0)
+	db "Aaaagh! You'll regret this!"
+	%endmessage()
+endif
+;====================================================================================================;
+%insertMSG(RexVillage_SkyScraper3)
+if !CompileText = 1
+	%portrait(Rex, 0)
+	db "They tryin to steal our treasure! Get em, boys!"
+	%endmessage()
+endif
+;====================================================================================================;
+%insertMSG(RexVillage_Library)
+if !CompileText = 1
+	%portrait(Rex, 0)
+	db "According to the legends, no Rex has been able to use magic since the times of the Dragon King."
 	%endmessage()
 endif
 ;====================================================================================================;
@@ -381,6 +539,12 @@ if !CompileText = 1
 	db "All troops, "
 	%delay(16)
 	db "attack!"
+	%endmessage()
+endif
+;====================================================================================================;
+%insertMSG(MushroomGorge_Sign_1)
+if !CompileText = 1
+	db "This monument marks the highest point on Rex Island."
 	%endmessage()
 endif
 ;====================================================================================================;

@@ -155,7 +155,7 @@ LoadTable:
 	dw $FFFF			; 075
 	%gfx_index(Starman)		; 076
 	dw $FFFF			; 077
-	%gfx_index(GoldShroom)		; 078
+	dw $FFFF			; 078
 	%gfx_index(PiranhaPlant)	; 079
 	dw $FFFF			; 07A
 	dw $FFFF			; 07B
@@ -349,11 +349,11 @@ LoadTable:
 	%gfx_index(UltraFuzzy)		; 12D
 	%gfx_index(Shield)		; 12E
 	%gfx_index(Elevator)		; 12F
-	dw $FFFF			; 130
-	dw $FFFF			; 131
-	dw $FFFF			; 132
+	%gfx_index(Chest)		; 130
+	%gfx_index(MovingBlock)		; 131
+	%gfx_index(SmallNumbers)	; 132
 	dw $FFFF			; 133
-	dw $FFFF			; 134
+	%gfx_index(Rex)			; 134
 	dw $FFFF			; 135
 	dw $FFFF			; 136
 	dw $FFFF			; 137
@@ -579,11 +579,20 @@ PalsetDefaults:
 	!FileMark	= $410000			; might be overwritten by super-dynamic GFX
 	!SD_Mark	= $418800			; wiggler data, unused during GFX load
 
+	!TempSpriteMark	= $414000			; used to generate sprites that are carried over by players
+
 
 	GFXIndex:
 
 		PHP						; preserve P
 		SEP #$30					; all regs 8-bit
+		LDA $741A : BNE +				;\
+		LDA #$FF					; |
+		STA !HeldItemP1_num				; | reset held items when going into a new level
+		STA !HeldItemP1_level+1				; |
+		STA !HeldItemP2_num				; |
+		STA !HeldItemP2_level+1				; |
+		+						;/
 		STZ !PalsetA					;\
 		STZ !PalsetB					; |
 		STZ !PalsetC					; | clear palset regs
@@ -684,6 +693,32 @@ PalsetDefaults:
 		STA !Palset8,y					; |
 	++	DEY						; |
 		CPY #$02 : BCS -				;/
+
+		REP #$30					; all regs 16-bit
+		LDA.w #!PalsetData>>16 : STA $02		; bank byte
+		LDX #$0005					;\
+	-	LDA !PalsetA,x					; | check which palsets have to be loaded
+		AND #$00FF					; |
+		CMP #$0080 : BEQ +				;/
+		AND #$007F					;\
+		ASL #5						; |
+		ADC.w #!PalsetData				; |
+		STA $00						; |
+		LDY #$0000					; | pointer + indexes
+		PHX						; |
+		TXA						; |
+		INC #2						; > compensate for +2
+		ASL #5						; |
+		TAX						;/
+	--	LDA [$00],y : STA !PaletteRGB+$100,x		;\
+		INX #2						; |
+		INY #2						; | copy palset to palette
+		CPY #$0020 : BCC --				; |
+		PLX						;/
+	+	DEX : BPL -					; loop
+
+
+
 
 		PLP
 		RTS
@@ -856,6 +891,13 @@ GetFiles:
 
 
 
+macro EXTREME_FAIL()
+	if !Debug = 1
+		LDA #$0080 : STA $9D
+	endif
+endmacro
+
+
 ; use of scratch RAM, 16-bit regs
 ; $00: pointer to file information
 ; $02: starting VRAM of file
@@ -865,8 +907,6 @@ GetFiles:
 ; $0A: number of rows needed (used for big files)
 ; $0C: starting tile of tile (PYYYXXXX format)
 ; $0E: size of file information, used for loop
-
-
 
 		.Load						;\ pointer to data
 		STA $00						;/
@@ -887,7 +927,7 @@ GetFiles:
 		LDA ($00),y					; | get file number
 		AND #$0FFF					;/
 		CMP #$0F00 : BCS ..exgfx			;\
-		TAY						; | num < $F00 = decompressed file, num => $F00 = ExGFX
+		TAY						; | num < $F00 = uncompressed file, num => $F00 = ExGFX
 		JSL !GetFileAddress				; |
 		BRA ..addressdone				;/
 		..exgfx						;\ don't decompress if already decompressed
@@ -927,7 +967,10 @@ GetFiles:
 		CMP #$0010 : BEQ ..thisone			; | look for an empty row to start at
 		INX #2						; |
 		CPX #$0018 : BCC ..loop				;/
+		..EXTREME_FAIL_1
+		%EXTREME_FAIL()
 		RTS						; return if there isn't enough space
+
 		..thisone					;\
 		LDA .VRAM,x : STA $02				; | preliminary starting VRAM
 		CPX #$0008 : BCS ..SP34				;/
@@ -945,6 +988,8 @@ GetFiles:
 		EOR #$FFFF : INC A				; |
 		LSR A						;/
 		CMP $0A : BCS .MarkFile				; compare to number of rows required
+		..EXTREME_FAIL_2
+		%EXTREME_FAIL()
 		RTS						; return if there isn't enough space
 
 		.SmallBlock					;\
@@ -954,7 +999,11 @@ GetFiles:
 		BCC ..thisone					; |
 		INX #2						; |
 		CPX #$0018 : BCC ..loop				;/
+		..EXTREME_FAIL_3
+		%EXTREME_FAIL()
 		RTS						; return if there isn't enough space
+
+
 		..thisone					;\
 		LDA #$0010					; |
 		SEC : SBC !BigRAM,x				; |
@@ -1152,7 +1201,6 @@ File:
 
 		; beneficial sprites
 		dw .Starman
-		dw .GoldShroom
 		dw .PSwitch
 		dw .SpringBoard
 		dw .Bumper
@@ -1161,6 +1209,7 @@ File:
 		dw .Key
 		dw .SmallBird
 		dw .YoshiCoin
+		dw .Chest
 
 		; platforms
 		dw .GrowingPipe
@@ -1233,6 +1282,8 @@ File:
 
 		; special particle parts
 		dw .LeafParticle
+		dw .TinyCoin
+		dw .SmallNumbers
 
 
 
@@ -1570,11 +1621,6 @@ endmacro
 		%defaultpal(D)
 		db $FF
 ;===============================================================
-.GoldShroom	%cmd($FFF, $00, $00, GoldShroom, 0)
-		%defaultpal(A)
-		%defaultpal(D)
-		db $FF
-;===============================================================
 .PSwitch	%src($F08, $00, $03, PSwitch, 0)
 ;===============================================================
 .SpringBoard	%src($F07, $00, $02, SpringBoard, 0)
@@ -1590,6 +1636,11 @@ endmacro
 .SmallBird	%src($F3B, $00, $03, SmallBird, 0)
 ;===============================================================
 .YoshiCoin	%src($F8B, $00, $04, YoshiCoin, 0)
+;===============================================================
+.Chest		%cmd($FA5, $02, $04, Chest, 0)
+		%mark(TinyCoin)
+		%defaultpal(A)
+		db $FF
 ;===============================================================
 .GrowingPipe	%src($F0F, $00, $04, GrowingPipe, 0)
 ;===============================================================
@@ -1740,7 +1791,9 @@ endmacro
 ;===============================================================
 .RexHelmet	%src($F4A, $02, $02, RexHelmet, 0)	; helmet
 ;===============================================================
-.RexBag1	%src($F4A, $2D, $03, RexBag1, 0)	; sack
+.RexBag1	%cmd($F4A, $2D, $03, RexBag1, 0)	; sack
+		%defaultpal(A)
+		db $FF
 ;===============================================================
 .RexBag2	%cmd($F4A, $4D, $03, RexBag2, 0)	; food bag on stick
 		%defaultpal(C)
@@ -1756,7 +1809,12 @@ endmacro
 ;===============================================================
 .LeafParticle	%src($FA5, $00, $01, LeafParticle, 0)
 ;===============================================================
-
+.TinyCoin	%cmd($FA5, $01, $01, TinyCoin, 0)
+		%defaultpal(A)
+		db $FF
+;===============================================================
+.SmallNumbers	%src($FA5, $20, $05, SmallNumbers, 0)
+;===============================================================
 
 
 
@@ -1819,7 +1877,7 @@ endmacro
 		%mark(Hammer)
 		db $FF
 ;===============================================================
-.DinoRhino	%cmd($F4E, $00, $2A, DinoRhino, 2)
+.DinoRhino	%cmd($F4E, $00, $1A, DinoRhino, 2)
 		%mark(DinoTorch)
 		%mark(DinoFire)
 		db $FF
@@ -2006,6 +2064,9 @@ ReadLevelData:
 		INC A					; |
 		STA $09					;/
 
+
+		STZ !BG_object_Index			; clear this to start at 0
+
 		SEP #$20
 		LDA #$00 : STA.l !BigRAM		; clear brick flag
 		LDX #$0000
@@ -2023,7 +2084,10 @@ ReadLevelData:
 		CPY.w #$0330*2 : BEQ ..cannon
 		CPY.w #$0350*2 : BEQ ..cable
 		CPY.w #$0360*2 : BEQ ..poleleft
-		CPY.w #$0362*2 : BNE ..noBG_object
+		CPY.w #$0362*2 : BEQ ..poleright
+		CPY.w #$0370*2 : BNE ..noBG_object
+		..trashcan
+		LDA #$08 : BRA ..spawnBG_object
 		..poleright
 		LDA #$06 : BRA ..spawnBG_object
 		..poleleft
@@ -2125,20 +2189,87 @@ ReadLevelData:
 	.Loop	CPY #$0500 : BCS .Done
 		SEP #$20
 		LDA [$CE],y				; get byte
-		CMP #$FF : BNE .Normal			; special code if sprite starts with 0xFF
+		CMP #$FF
+		BEQ $03 : - : JMP .Normal		; special code if sprite starts with 0xFF
 		LDA [$CE]				;\ commands only apply if new sprite system (LM 3.0+) is used
 		AND #$20 : BEQ .Done			;/
 		INY					;\ if next byte is positive, this is a command
 		LDA [$CE],y : BMI +			;/
 		INY : BRA .Loop
-	+	CMP #$FE : BNE .Normal			; if the next byte is 0xFE, there are no more sprites
+	+	CMP #$FE : BNE -			; if the next byte is 0xFE, there are no more sprites
 							; otherwise, the sprite simply started with 0xFF and is 1 byte longer as a result
 	.Done
+		PEI ($CE)
+		LDA $D0 : PHA
+		LDA.b #!TempSpriteMark : STA $CE
+		LDA.b #!TempSpriteMark>>8 : STA $CF
+		LDA.b #!TempSpriteMark>>16 : STA $D0
+
+
+		.P1HeldItem
+		LDA.l !HeldItemP1_num
+		CMP #$FF : BEQ ..done
+		LDA.l !HeldItemP1_extra : STA.w !TempSpriteMark+0
+		AND #$08 : BNE ..custom
+		..vanilla
+		LDA.l !HeldItemP1_num : STA.w !TempSpriteMark+2
+		XBA : LDA #$00
+		BRA ..load
+		..custom
+		LDA.l !HeldItemP1_prop1 : STA.w !TempSpriteMark+3
+		LDA.l !HeldItemP1_prop2 : STA.w !TempSpriteMark+4
+		LDA.l !HeldItemP1_customnum : STA.w !TempSpriteMark+2
+		XBA : LDA #$01
+		..load
+		XBA
+		REP #$20
+		STA $0E
+		ASL A
+		TAX
+		LDY #$0000
+		PEA ..done-1
+		BRA .MarkPalette
+		..done
+
+		.P2HeldItem
+		SEP #$20
+		LDA.l !HeldItemP2_num
+		CMP #$FF : BEQ ..done
+		LDA.l !HeldItemP2_extra : STA.w !TempSpriteMark+0
+		AND #$08 : BNE ..custom
+		..vanilla
+		LDA.l !HeldItemP2_num : STA.w !TempSpriteMark+2
+		XBA : LDA #$00
+		BRA ..load
+		..custom
+		LDA.l !HeldItemP2_prop1 : STA.w !TempSpriteMark+3
+		LDA.l !HeldItemP2_prop2 : STA.w !TempSpriteMark+4
+		LDA.l !HeldItemP2_customnum : STA.w !TempSpriteMark+2
+		XBA : LDA #$01
+		..load
+		XBA
+		REP #$20
+		STA $0E
+		ASL A
+		TAX
+		LDY #$0000
+		PEA ..done-1
+		BRA .MarkPalette
+		..done
+
+
+		SEP #$20
+		PLA : STA $D0
+		REP #$20
+		PLA : STA $CE
+
+
 		PLP
 		PLB
 		RTL
 
 	.Normal
+		PEA .Loop-1
 		AND #$08				;\
 		LSR #3					; | custom bit acts as bit 8 of number
 		XBA					; | (note that extra bits are shifted to 0x0C in level's sprite data)
@@ -2278,8 +2409,8 @@ ReadLevelData:
 		LDX $0E					;\
 		CPX #$0100				; | custom sprites have 2 extra bytes
 		BCC $02 : INY #2			;/
-		JMP .Loop				; loop
-
+		;JMP .Loop				; loop
+		RTS
 
 
 
@@ -2288,35 +2419,35 @@ ReadLevelData:
 		PHX
 		PHA					; BG object num
 
-		REP #$20
-		TXA
-		LDX #$0000				; X = screen num
-	-	CMP.l !LevelHeight : BCC ..thisscreen
-		SBC.l !LevelHeight
-		INX
-		BRA -
+		REP #$20				;\
+		TXA					; |
+		LDX #$0000				; |
+	-	CMP.l !LevelHeight : BCC ..thisscreen	; | X = screen num
+		SBC.l !LevelHeight			; |
+		INX					; |
+		BRA -					;/
 
 		..thisscreen
 		PHA					; push Ypos (hi byte correct, lo byte should have lo nybble cleared)
 		SEP #$30				; all regs 8-bit
 		PHX					; push Xpos hi (8-bit)
-		AND #$0F				;\
+	;	AND #$0F				;\
 		ASL #4					; | push Xpos lo (8-bit)
 		PHA					;/
-		REP #$10				; index 16-bit
+		REP #$30				; all regs 16-bit
 
-
-
-		LDX #$0000
+		LDX !BG_object_Index
+		CPX.w #(!BG_object_Size)*(!BG_object_Count) : BCS ..fail
 		..loop
-		LDA.w !BG_object_Type,x : BEQ ..thisone
-		REP #$20
+		LDA.w !BG_object_Type,x
+		AND #$00FF : BEQ ..thisone
 		TXA
 		CLC : ADC.w #!BG_object_Size
 		TAX
-		SEP #$20
+		STX !BG_object_Index
 		CPX.w #(!BG_object_Size)*(!BG_object_Count) : BCC ..loop
 
+		..fail
 		PLX					;\ pop coords
 		PLX					;/
 		PLA					; pop A
@@ -2326,11 +2457,9 @@ ReadLevelData:
 
 		..thisone
 		STZ !BG_object_Timer,x
-		REP #$20
 		PLA : STA !BG_object_X,x
 		PLA
-		AND #$FFF0
-		STA !BG_object_Y,x
+		AND #$FFF0 : STA !BG_object_Y,x
 
 		SEP #$20
 		PLA : STA !BG_object_Type,x
@@ -2357,7 +2486,7 @@ ReadLevelData:
 		REP #$20
 		STY $0E					; $0E = slot we're trying to spawn into
 		LDX #$0000
-	-	CPX $0E : BCS ++
+	-	CPX !BG_object_Index : BCS ++
 		LDA !BG_object_Type,x			;\
 		AND #$00FF				; | has to be cable
 		CMP #$0004 : BNE +			;/
@@ -2419,6 +2548,8 @@ ReadLevelData:
 		db $10,$04	; cable
 		db $04,$03	; pole, facing left
 		db $04,$03	; pole, facing right
+		db $10,$10	; keyhole (dummy values, actually spawned by sprite)
+		db $02,$04	; trash can
 
 
 

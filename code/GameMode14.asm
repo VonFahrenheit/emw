@@ -73,43 +73,57 @@ namespace GAMEMODE14
 ; phase 1: accelerator mode
 
 
-		.PlayersDead				;\
-		LDA !P2Status-$80 : BEQ ..alive		; |
-		LDA !MultiPlayer : BEQ ..music		; | (ignore p2 on singleplayer)
-		LDA !P2Status : BEQ ..alive		; | if both players are dead, play death music
-		..music					; |
-		LDA #$01 : STA !SPC3			; |
-		LDA #$FF : STA !MusicBackup		;/
-		REP #$20				;\
-		STZ !P1Coins				; | lose coins
-		STZ !P2Coins				; |
-		SEP #$20				;/
-		STZ !EnableHScroll			;\ lock camera
-		STZ !EnableVScroll			;/
-		LDA !DeathTimer : BNE ..noinit		;\
-		LDA #$E0 : STA !DeathTimer		; | timer to let music finish playing
-		..noinit				; |
-		DEC !DeathTimer : BNE ..alive		;/
-		LDA #$0B : STA !GameMode		;\ exit level when timer runs out
-		..alive					;/
+		.PlayersDead					;\
+		LDA !P2Status-$80 : BEQ ..alive			; |
+		LDA !MultiPlayer : BEQ ..music			; | (ignore p2 on singleplayer)
+		LDA !P2Status : BEQ ..alive			; | if both players are dead, play death music
+		..music						; |
+		LDA #$01 : STA !SPC3				; |
+		LDA #$FF : STA !MusicBackup			;/
+		REP #$20					;\
+		STZ !P1Coins					; | lose coins
+		STZ !P2Coins					; |
+		SEP #$20					;/
+		STZ !EnableHScroll				;\ lock camera
+		STZ !EnableVScroll				;/
+		LDA !DeathTimer : BNE ..noinit			;\
+		LDA #$E0 : STA !DeathTimer			; | timer to let music finish playing
+		..noinit					; |
+		DEC !DeathTimer : BNE ..alive			;/
+		LDA #$0B : STA !GameMode			;\ exit level when timer runs out
+		..alive						;/
 
 
-		LDA $9D : BEQ .NoFreeze
-		DEC $9D : BEQ .NoFreeze			; this has to be done to not drop the buffered input
+		LDA $9D : BEQ .NoFreeze				; 0 = no time alteration
+		BPL ..stop					;\
+		INC $9D						; | neg = slow motion (25% speed)
+		AND #$03 : BEQ .NoFreeze			; |
+		JMP .RETURN					;/
+		..stop						; pos = stop
+		DEC $9D : BEQ .NoFreeze				; this has to be done to not drop the buffered input
 		JMP .RETURN
 		.NoFreeze
 
-		LDA !ProcessLight			;\
-		CMP #$02 : BNE ..noshade		; | start new shade operation when previous one finishes
-		STZ !ProcessLight			; |
-		..noshade				;/
+		LDA !ProcessLight				;\
+		CMP #$02 : BNE ..noshade			; |
+		LDA !AnimToggle					; |
+		LSR A : BCS ..noshine				; |
+		LDA $14						; |
+		AND #$1C					; | start new shade operation when previous one finishes
+		LSR A						; | (also pass yoshi coin colors unless vanilla is disabled)
+		TAX						; |
+		LDA.l $B60C,x : STA !ShaderInput+($64*2)+0	; |
+		LDA.l $B60D,x : STA !ShaderInput+($64*2)+1	; |
+		..noshine					; |
+		STZ !ProcessLight				; |
+		..noshade					;/
 
-		LDA !MsgTrigger				;\
-		ORA !MsgTrigger+1			; |
-		BEQ .NoMSG				; | MSG
-		JSL read3($00A1DF+1)			; |
-		BRA .RETURN				; |
-		.NoMSG					;/
+		LDA !MsgTrigger					;\
+		ORA !MsgTrigger+1				; |
+		BEQ .NoMSG					; | MSG
+		JSL read3($00A1DF+1)				; |
+		BRA .RETURN					; |
+		.NoMSG						;/
 
 
 
@@ -411,6 +425,9 @@ pullpc
 ; sending that here is almost certainly fine
 ; $00F6DB (scroll routine)
 Camera:
+		LDA !P2Status : BEQ .Run			;\
+		LDA !P2Status-$80 : BNE .Return			; | disable camera while both players are dead/dying
+		.Run						;/
 		LDA.b #.SA1 : STA $3180				;\
 		LDA.b #.SA1>>8 : STA $3181			; | SA-1 code pointer
 		LDA.b #.SA1>>16 : STA $3182			;/
@@ -449,7 +466,45 @@ Camera:
 		PEI ($0A)
 		PEI ($0C)
 		PEI ($0E)
+	; temp coords
+		REP #$30
+		STZ !CameraForceTimer		; clear forced camera movement
+		LDA $94
+		STA !P2XPosLo-$80
+		STA !P2XPosLo
+		LDA $96
+		CLC : ADC #$0010
+		STA !P2YPosLo-$80
+		STA !P2YPosLo
+		LDA !Level : STA $00
+		ASL A
+		ADC $00
+		TAY
+		LDA.l !BoxPtr : STA $03
+		LDA.l !BoxPtr+1 : STA $04
+		LDA [$03],y : BNE ..box
+		SEP #$30
+		LDA #$FF
+		STA !CameraBoxU+1
+		STA !CameraForbiddance
+		BRA ..nobox
+		..box
+		STA $00
+		INY
+		LDA [$03],y : STA $01
+		SEP #$30
+		XBA
+		PHB : PHA : PLB
+		REP #$20
+		LDA $00 : JSL LoadCameraBox
+		JSL InitCameraBox
+		PLB
+		SEP #$30
+		JSL Camera			; +1 call with camera box
+		..nobox
+
 		JSL Camera
+
 		PEI ($1C)
 		REP #$20
 		LDA !CameraBackupY : PHA
@@ -472,9 +527,17 @@ Camera:
 		JSL Camera
 		JSL Camera
 		REP #$20
+	;	BIT !CameraBoxU : BMI ..restore
+	;	..keep
+	;	PLA
+	;	PLA
+	;	PLA
+	;	BRA ..return
+		..restore
 		PLA : STA $7464
 		PLA : STA !CameraBackupY
 		PLA : STA $1C
+		..return
 		PLA : STA $0E
 		PLA : STA $0C
 		PLA : STA $0A
@@ -758,10 +821,10 @@ Camera:
 
 
 		.FinishCamera
-		LDX !GameMode					;\
-		CPX #$11 : BNE .NoInit				; | check for init
-		JMP .InitCamera					;/
-	.NoInit	CPX #$14 : BNE .NoBox				; if not game mode 0x14, no camera box
+;		LDX !GameMode					;\
+;		CPX #$11 : BNE .NoInit				; | check for init
+;		JMP .InitCamera					;/
+;	.NoInit	CPX #$14 : BNE .NoBox				; if not game mode 0x14, no camera box
 
 		.Expand						;\
 		LDY #$01					; |
@@ -1092,6 +1155,7 @@ Camera:
 		STY $55						; |
 	+	DEX #2 : BPL -					;/
 
+
 		LDA !CameraBoxL					;\
 		SEC : SBC #$0020				; |
 		STA $04						; |
@@ -1111,26 +1175,34 @@ Camera:
 		ORA #$0004					; |
 		STA $3470,x					; |
 		LDY !CameraForceTimer : BNE .Freeze		; |
-		LDY $3220,x : STY $00				; | search for sprites to interact with
-		LDY $3250,x : STY $01				; |
-		LDY $3210,x : STY $02				; |
-		LDY $3240,x : STY $03				; |
+		LDY !SpriteXLo,x : STY $00			; | search for sprites to interact with
+		LDY !SpriteXHi,x : STY $01			; |
+		LDY !SpriteYLo,x : STY $02			; |
+		LDY !SpriteYHi,x : STY $03			; |
 		LDA $00						; |
 		SEC : SBC $04					; |
 		BPL .CheckR					; |
 		CMP #$FF00 : BCC .Delete			; |
 		CMP #$FFE0 : BCC .Freeze			;/
+		BRA .Next
 
 	.Delete	LDA $3230,x					;\
-		AND #$FF00					; |
-		STA $3230,x					; |
-		LDY $33F0,x					; |
-		CPY #$FF : BEQ .Next				; |
-		PHX						; |
-		TYX						; | delete sprite
+		AND #$FF00					; | delete sprite
+		STA $3230,x					;/
+		LDY $33F0,x					;\ if this was a spawned sprite, don't bother with ID
+		CPY #$FF : BEQ .Next				;/
+		LDA !CameraBoxR					;\
+		SEC : SBC !CameraBoxL				; |
+		CMP #$0101 : BCS ..respawn			; |
+		LDA !CameraBoxD					; | if camera box is 2x2 screens or smaller, don't respawn
+		SEC : SBC !CameraBoxU				; |
+		CMP #$00E1 : BCC .Next				; |
+		..respawn					;/
+		PHX						;\
+		TYX						; |
 		LDA $418A00,x					; |
 		AND #$00FF					; |
-		CMP #$00EE : BEQ +				; |
+		CMP #$00EE : BEQ +				; | if camera box is bigger than 2x2 screens, mark for respawn
 		LDA $418A00,x					; |
 		AND #$FF00					; |
 		STA $418A00,x					; |
@@ -1140,11 +1212,18 @@ Camera:
 	.CheckR	LDA $00						;\
 		SEC : SBC $06					; |
 		BMI .GoodX					; | see if fully outside
-		CMP #$0020 : BCC .Delete			; |
+		CMP #$0020 : BCC .Next				; |
 		CMP #$0100 : BCS .Delete			;/
 
-	.Freeze	LDA !SpriteStasis,x				;\
-		ORA #$0002					; | freeze sprite
+	.Freeze	LDY $3230,x					;\ delete if status < 8
+		CPY #$08 : BCC .Delete				;/
+		LDY !CameraBoxSpriteErase			; 00 = freeze, 01 = erase, 02 = ignore
+		CPY #$01 : BEQ .Delete
+		CPY #$02 : BCS .Next
+		..freeze
+
+		LDA !SpriteStasis,x				;\
+		ORA #$0002					; | freeze if status >= 8
 		STA !SpriteStasis,x				; |
 		BRA .Next					;/
 

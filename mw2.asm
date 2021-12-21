@@ -36,8 +36,9 @@ db $00
 %extrasprite(02, 0, 02, 02)	; rex: mushroom set
 %extrasprite(02, 0, 03, 03)	; rex: backpack + straw hat
 %extrasprite(02, 0, 04, 04)	; rex: courier set
+%extrasprite(02, 0, 01, 05)	; rex: bandit
 %extrasprite(02, 0, 00, 06)	; rex: aristocrat
-%extrasprite(02, 0, 01, 07)	; rex: bandit
+%extrasprite(02, 0, 00, 07)	; rex: bandana
 %extrasprite(02, 0, 05, 08)	; rex: knight
 
 %sprite(03, 0)		; Hammer Rex
@@ -110,5 +111,11 @@ db $00
 %sprite(2D, 0)		; Ultra Fuzzy
 %sprite(2E, 0)		; Shield (front)
 %sprite(2E, 1)		; Shield (back)
+%sprite(2F, 0)		; Elevator
+%sprite(30, 0)		; Chest
+%sprite(31, 0)		; Experimental Block
+%sprite(32, 0)		; Shop Object
+%sprite(33, 0)		; Life Shroom
+%extrasprite(34, 0, 00, 07)	; dense rex: bandana
 db $FF
 

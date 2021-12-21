@@ -15,11 +15,11 @@ Data:
 %YC(4, 139, $026)
 
 .002
-%YC(7, 3, $FFFF)		; Mega level 1 (lowest bit of M equals 2)
-%YC(37, 17, $FFFF)
-%YC(107, 3, $FFFF)
-%YC(150, 20, $FFFF)
-%YC(179, 4, $FFFF)
+%YC(0, 0, $FFFF)
+%YC(0, 0, $FFFF)
+%YC(52, 106, $027)
+%YC(120, 62, $027)
+%YC(0, 0, $FFFF)
 
 .003
 %YC(80, 17, $003)
@@ -666,11 +666,11 @@ Data:
 %YC(0, 0, $FFFF)
 
 .13B	; Mega level 1
-%YC(50, 12, $02E)
-%YC(99, 7, $02E)
-%YC(362, 22, $02E)
-%YC(50, 17, $02F)
-%YC(207, 3, $02F)
+%YC(0, 0, $FFFF)
+%YC(0, 0, $FFFF)
+%YC(0, 0, $FFFF)
+%YC(0, 0, $FFFF)
+%YC(0, 0, $FFFF)
 
 
 

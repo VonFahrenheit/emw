@@ -144,8 +144,7 @@ levelinitE:
 		RTL
 
 levelinit14:
-		JSL level14
-		JML InitCameraBox
+		JML level14
 
 
 levelinit28:
@@ -205,8 +204,7 @@ levelinit31:
 		RTL
 
 levelinit34:
-		JSL level34
-		JML InitCameraBox
+		JML level34
 
 
 

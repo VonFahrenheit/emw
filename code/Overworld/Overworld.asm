@@ -171,13 +171,13 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		NOP #3			; org: STA $420B
 
 	org $009329+($0B*2)
-		dw LevelFade
+		dw LevelFade_Main
 	org $009329+($0D*2)
 		dw LevelToOverworld	; org: dw $9F6F
 	org $009329+($0F*2)
-		dw LevelFade		; org: dw $9F37
+		dw LevelFade_Item	; org: dw $9F37
 	org $009329+($13*2)
-		dw LevelFade		; org: dw $9F37
+		dw LevelFade_Main	; org: dw $9F37
 	org $009329+($15*2)
 		dw OverworldToLevel	; org: dw $9F6F
 
@@ -236,6 +236,15 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		RTS
 
 	LevelFade:
+		.Item
+		JSR .Main
+		LDA !GameMode
+		CMP #$10 : BNE .Return
+		JSL SetCarriedItem
+		RTS
+
+
+		.Main
 		LDY $6DAF
 		LDA !GameMode
 		CMP #$0B : BEQ .Slow
@@ -330,6 +339,9 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		db $01,$01,$01,$01,$01,$01,$01,$01	; 48-4F
 		db $01,$01,$01,$01,$01,$01,$01,$01	; 50-57
 		db $01,$01,$01,$01,$01,$01,$01,$01	; 58-5F
+
+
+; insert new code here
 	pullpc
 	incsrc "Zip.asm"
 	incsrc "RenderHUD.asm"
@@ -346,6 +358,64 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 
 	incsrc "Data/LevelList.asm"
 	incsrc "Data/MapLightPoints.asm"
+
+
+	SetCarriedItem:
+		.P1
+		LDY !P2Carry-$80 : BEQ ..nop1
+		DEY
+		LDA $3200,y : STA !HeldItemP1_num
+		LDA !NewSpriteNum,y					;\
+		CMP !HeldItemP1_customnum : BNE ..set			; |
+		LDA !ExtraBits,y					; |
+		CMP !HeldItemP1_extra : BNE ..set			; | if all these are the same, this sprite was carried from a PREVIOUS level
+		LDA $33F0,y						; |
+		CMP #$FF : BEQ ..done					; |
+		CMP !HeldItemP1_ID : BEQ ..done				;/
+		..set
+		LDA !NewSpriteNum,y
+		CMP #$32 : BEQ ..nop1
+		STA !HeldItemP1_customnum
+		LDA !ExtraBits,y : STA !HeldItemP1_extra
+		LDA !ExtraProp1,y : STA !HeldItemP1_prop1
+		LDA !ExtraProp2,y : STA !HeldItemP1_prop2
+		REP #$20
+		LDA !Level : STA !HeldItemP1_level
+		SEP #$20
+		LDA $33F0,y : STA !HeldItemP1_ID
+		BRA ..done
+		..nop1
+		LDA #$FF : STA !HeldItemP1_num
+		..done
+
+		.P2
+		LDY !P2Carry : BEQ ..nop2
+		DEY
+		LDA $3200,y : STA !HeldItemP2_num
+		LDA !NewSpriteNum,y					;\
+		CMP !HeldItemP2_customnum : BNE ..set			; |
+		LDA !ExtraBits,y					; |
+		CMP !HeldItemP2_extra : BNE ..set			; | if all these are the same, this sprite was carried from a PREVIOUS level
+		LDA $33F0,y						; |
+		CMP #$FF : BEQ ..done					; |
+		CMP !HeldItemP2_ID : BEQ ..done				;/
+		..set
+		LDA !NewSpriteNum,y
+		CMP #$32 : BEQ ..nop2
+		STA !HeldItemP2_customnum
+		LDA !ExtraBits,y : STA !HeldItemP2_extra
+		LDA !ExtraProp1,y : STA !HeldItemP2_prop1
+		LDA !ExtraProp2,y : STA !HeldItemP2_prop2
+		REP #$20
+		LDA !Level : STA !HeldItemP2_level
+		SEP #$20
+		LDA $33F0,y : STA !HeldItemP2_ID
+		BRA ..done
+		..nop2
+		LDA #$FF : STA !HeldItemP2_num
+		..done
+
+		RTL
 
 
 
