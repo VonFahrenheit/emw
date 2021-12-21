@@ -195,6 +195,9 @@ Rex:
 		..normal
 		LDA !RexDensity,x : BEQ ..canturn			; dense rex does not chase player
 		LDA $3330,x
+		AND #$04 : BEQ ..nochase
+		..denseaccel
+		LDA $3330,x
 		AND #$03 : BEQ +
 		LDA $3320,x
 		EOR #$01 : STA $3320,x
@@ -225,7 +228,6 @@ Rex:
 		LDA #!prt_smoke8x8 : JSL SpawnParticle
 		PLY
 		..nosmoke
-
 		LDA DATA_XSpeed+4,y : JSL AccelerateX
 		LDA !SpriteAnimIndex
 		CMP #!Rex_Walk_over : BCS ..nospeed

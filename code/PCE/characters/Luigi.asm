@@ -565,12 +565,12 @@ namespace Luigi
 		.SpinHitbox
 		dw $0008,$FFF4 : db $14,$24	; X/Y + W/H
 		db $10,$D8			; speeds
-		db $10				; timer
+		db $20				; timer
 		db $04				; hitstun
 		db $02,$00			; SFX
 		dw $FFF4,$FFF4 : db $14,$24	; X/Y + W/H
 		db $F0,$D8			; speeds
-		db $10				; timer
+		db $20				; timer
 		db $04				; hitstun
 		db $02,$00			; SFX
 

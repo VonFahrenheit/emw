@@ -131,14 +131,13 @@
 		JMP DrawPlayer_Dynamic
 
 
+; macro to simulate gravity
 
 macro JumpOffset()
 	!Temp := !Temp+(!TempSpeed)
 	!TempSpeed := !TempSpeed+6
 	db !Temp/16
 endmacro
-
-
 		.Pose
 		db $00,$02,$00,$20,$20,$02
 
@@ -666,7 +665,7 @@ endmacro
 
 	InitCharMenu:
 		SEP #$30
-		LDA #$20 : STA !CharMenuTimer
+		LDA #$1F : STA !CharMenuTimer
 		STZ !CharMenuCount
 		STZ $00
 
