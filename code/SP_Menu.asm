@@ -2608,8 +2608,8 @@ MAIN_MENU:
 		LDA #$01 : STA !SRAM_overworldX+1
 		LDA #$03 : STA !SRAM_overworldY+1
 
-
-	LDA $17					;\
+	if !Debug = 1				;\
+	LDA $17					; |
 	AND #$10 : BEQ +			; |
 	LDA #$01				; |
 	STA !KadaalStatus			; |
@@ -2618,7 +2618,8 @@ MAIN_MENU:
 	STA !PeachStatus			; |
 	LDA #$80 : STA !LevelTable1+$5E		; |
 	STZ $6109				; |
-	+					;/
+	+					; |
+	endif					;/
 		JSL SaveFileSRAM
 	;	LDA #$0B : STA !GameMode
 	;	LDA #$EA : STA $6109

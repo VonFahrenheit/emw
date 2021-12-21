@@ -126,6 +126,7 @@ HappySlime:
 		BEQ AI
 		JMP GRAPHICS
 
+
 	DATA:
 		.Speed
 		db $1C,$E4
@@ -139,6 +140,9 @@ HappySlime:
 
 		.WallX
 		db $00,$01
+
+		.WallDisp
+		db $03,$0F
 
 		.WallBits
 		db $FE,$FC
@@ -581,14 +585,17 @@ HappySlime:
 
 ..getspeed	LDA DATA_Speed,y : STA !SpriteYSpeed,x
 ..write		LDY $3320,x
-		LDA DATA_Speed,y : STA !SpriteXSpeed,x
+		LDA DATA_Speed+2,y : STA !SpriteXSpeed,x
 
 		LDA !SpriteYSpeed,x : PHA
 		JSL !SpriteApplySpeed			; > Apply speed
 		PLA : STA !SpriteYSpeed,x
 
-		LDA $32B0,x				;\ Xpos
-		STA $3220,x				;/
+		LDY $3320,x				;\
+		LDA $32B0,x				; |
+		AND #$F0				; | wall Xpos
+		ORA DATA_WallDisp,y			; |
+		STA !SpriteXLo,x			;/
 		LDA $3330,x				;\ Detect ceiling
 		AND #$08 : BEQ +			; |
 		JMP .CeilingDir				;/

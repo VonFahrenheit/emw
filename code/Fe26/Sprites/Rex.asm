@@ -239,6 +239,8 @@ Rex:
 		BRA ..nospeed
 		..nochase
 
+
+
 		LDA $3330,x
 		AND #$04 : BEQ ..nospeed
 		STZ !SpriteXSpeed,x
@@ -259,7 +261,6 @@ Rex:
 		LDA $3330,x
 		AND #$04 : PHA
 
-		LDA !RexDensity,x : BNE ..noconga
 		LDA !RexConga,x
 		AND $14 : BEQ ..noconga
 		LDA !SpriteYSpeed,x : PHA
@@ -276,8 +277,8 @@ Rex:
 		PLA					; | dense rex never turns at ledges
 		PLA					; | (but it always jumps)
 		BRA ++					;/
-		LDA $BE,x : BEQ ..turn
-	+	LDA !RexChase,x
+	+	LDA $BE,x : BEQ ..turn
+		LDA !RexChase,x
 		CMP #$02 : BCS ..turn
 		..checkwall
 		LDA $3330,x
@@ -361,6 +362,7 @@ Rex:
 
 	AI:
 		STZ !RexConga,x
+		LDA !RexDensity,x : BNE .Done
 
 		LDA !RexChase,x : BEQ .Done
 		.CongaBrain
