@@ -2,6 +2,7 @@
 
 	!Temp = 0
 	%def_anim(Rex_Walk, 4)
+	%def_anim(Rex_Flutter, 4)
 	%def_anim(Rex_Small, 2)
 	%def_anim(Rex_Hurt, 1)
 	%def_anim(Rex_Dead, 1)
@@ -33,12 +34,21 @@ Rex:
 		BRA INIT
 
 	Dense_MAIN:
-		LDA !SpriteYSpeed,x : BMI .NormalGravity
-		CMP #$40 : BCC .NormalGravity
-		LDA #$02 : STA !SpriteGravityTimer,x		;\ -2 gravity when falling faster than 0x40
-		LDA #$FF : STA !SpriteGravityMod,x		;/
-		.NormalGravity
-		LDA #$60 : STA !SpriteFallSpeed,x
+		LDA !RexChase,x : BNE +
+		JSL SUB_HORZ_POS
+		TYA : STA $3320,x
+		+
+		LDA #$60 : STA !SpriteFallSpeed,x		; max fall speed = 0x60
+		LDA $BE,x : BNE MAIN
+		LDA #$02 : STA !SpriteGravityTimer,x		; gravity timer
+		LDA #$FF : STA !SpriteGravityMod,x		; gravity mod moving up: -1
+		LDA !SpriteYSpeed,x : BMI MAIN
+		DEC !SpriteGravityMod,x				; gravity mod moving down: -2
+		LDA $14
+		LSR A : BCC +
+		JSL AccelerateX_Friction1
+	+	JSL AccelerateX_Friction1
+
 
 	MAIN:
 		PHB : PHK : PLB
@@ -198,11 +208,14 @@ Rex:
 		AND #$04 : BEQ ..nochase
 		..denseaccel
 		LDA $3330,x
-		AND #$03 : BEQ +
+		AND #$03 : BEQ ++
 		LDA $3320,x
 		EOR #$01 : STA $3320,x
 		STZ !SpriteXSpeed,x
-		LDA #$00 : BRA +
+	++	LDA $BE,x
+		EOR #$01
+		ASL A
+		BRA +
 		..canturn
 		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
@@ -467,6 +480,25 @@ Rex:
 		BRA .HandleUpdate
 
 		.Anim
+		LDA !RexDensity,x : BEQ ..notdense
+		LDA $3330,x
+		AND #$04 : BEQ ..flutter
+		..walk
+		LDA !SpriteAnimIndex
+		CMP #!Rex_Walk_over : BCC ..notdense
+		LDA #!Rex_Walk : BRA ++
+		..flutter
+		LDA !SpriteYSpeed,x : BPL +
+		LDA #!Rex_Walk+1 : BRA ++
+	+	LDA !SpriteAnimIndex
+		CMP #!Rex_Flutter : BCC +
+		CMP #!Rex_Flutter_over : BCC ..notdense
+	+	LDA.b #!Rex_Flutter
+	++	STA !SpriteAnimIndex
+		STZ !SpriteAnimTimer
+		..notdense
+
+
 		LDA !ExtraBits,x
 		AND #$04 : BEQ .HandleUpdate
 		LDA !SpriteAnimIndex
@@ -475,14 +507,6 @@ Rex:
 		STZ !SpriteAnimTimer
 
 		.HandleUpdate
-		LDA !RexDensity,x : BEQ ..notdense
-		LDA $3330,x
-		AND #$04 : BNE ..notdense
-		LDY $BE,x
-		CPY #$02 : BCS ..notdense
-		LDA ANIM_JumpFrame,y : STA !SpriteAnimIndex
-		STZ !SpriteAnimTimer
-		..notdense
 		LDA !SpriteAnimIndex
 		ASL #2
 		TAY
@@ -627,6 +651,11 @@ Rex:
 		dw .TM_Walk01 : db $10,!Rex_Walk+2
 		dw .TM_Walk00 : db $10,!Rex_Walk+3
 		dw .TM_Walk02 : db $10,!Rex_Walk+0
+	; flutter
+		dw .TM_Flutter00 : db $02,!Rex_Flutter+1
+		dw .TM_Flutter01 : db $02,!Rex_Flutter+2
+		dw .TM_Flutter00 : db $02,!Rex_Flutter+3
+		dw .TM_Flutter02 : db $02,!Rex_Flutter+0
 	; small
 		dw .TM_Small00 : db $07,!Rex_Small+1
 		dw .TM_Small01 : db $07,!Rex_Small+0
@@ -635,7 +664,7 @@ Rex:
 	; dead
 		dw .TM_Dead00 : db $20,$FF
 
-
+	.TM_Flutter00
 	.TM_Walk00
 		dw $0004
 		db $22,$00,$F0,$00
@@ -654,6 +683,19 @@ Rex:
 		dw $0008
 		db $22,$00,$FF,$06
 		db $22,$08,$FF,$07
+
+	.TM_Flutter01
+		dw $0004
+		db $22,$00,$F0,$00
+		dw $0008
+		db $22,$00,$00,$03
+		db $22,$08,$00,$04
+	.TM_Flutter02
+		dw $0004
+		db $22,$00,$F0,$00
+		dw $0008
+		db $22,$00,$00,$06
+		db $22,$08,$00,$07
 
 	.TM_Hurt00
 		dw $0008
@@ -674,11 +716,6 @@ Rex:
 		dw $0004
 		db $22,$00,$00,$09
 		dw $FFFF
-
-
-	.JumpFrame
-		db !Rex_Walk+1
-		db !Rex_Small+1
 
 
 

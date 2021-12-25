@@ -210,7 +210,7 @@ namespace GAMEMODE14
 	; SNES phase 2, executed on DP $0100
 		PHD					; push DP
 		%MPU_copy()				; set up SNES MPU DP
-		JSL read3($00A2A5+1)			; call routine
+		JSL read3($00A2A5+1)			; call animation setup routine
 		PLD					; restore DP
 		JSR !MPU_light				; SNES will process light shader while SA-1 is running the main game
 		JMP .RETURN
@@ -1170,10 +1170,13 @@ Camera:
 		STA $0A						;/
 
 		LDX #$0F					;\
-	-	LDY $3230,x : BNE $03 : JMP .Next		; |
-		LDA $3470,x					; |
+	-	LDY $3230,x : BNE +				; |
+	--	JMP .Next					; |
+	+	LDY !CameraBoxSpriteErase
+		CPY #$02 : BCS --
+		LDA !SpriteTweaker4,x				; |
 		ORA #$0004					; |
-		STA $3470,x					; |
+		STA !SpriteTweaker4,x				; |
 		LDY !CameraForceTimer : BNE .Freeze		; |
 		LDY !SpriteXLo,x : STY $00			; | search for sprites to interact with
 		LDY !SpriteXHi,x : STY $01			; |
@@ -1219,9 +1222,7 @@ Camera:
 		CPY #$08 : BCC .Delete				;/
 		LDY !CameraBoxSpriteErase			; 00 = freeze, 01 = erase, 02 = ignore
 		CPY #$01 : BEQ .Delete
-		CPY #$02 : BCS .Next
 		..freeze
-
 		LDA !SpriteStasis,x				;\
 		ORA #$0002					; | freeze if status >= 8
 		STA !SpriteStasis,x				; |
@@ -1752,7 +1753,7 @@ Camera:
 		RTL
 
 		..shakeoffset
-		dw $FFFE,$0000,$0002,$0000
+		dw $0000,$0002,$0004,$0002
 
 
 

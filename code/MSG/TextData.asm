@@ -259,6 +259,17 @@ if !CompileText = 1
 endif
 
 
+
+;====================================================================================================;
+%insertMSG(FirstBit)
+if !CompileText = 1
+	db "The First Bit has been attained."
+	%endmessage()
+endif
+;====================================================================================================;
+
+
+
 ;====================================================================================================;
 %insertMSG(RexVillage_Sign_1)
 if !CompileText = 1
@@ -548,60 +559,81 @@ if !CompileText = 1
 	%endmessage()
 endif
 ;====================================================================================================;
-%insertMSG(CastleRex_Sign_1)
+%insertMSG(CastleRex_Villager)
 if !CompileText = 1
-	db "Ahead lies Castle Rex, seat of our power and home to the Great Kingking, Lord of This Island and King of the Rex."
+	%portrait(Rex, 1)
+	db "Ahead lies Castle Rex."
+	%waitforinput()
+	%scrollfull()
+	db "I've been building up my courage to go visit it some day..."
+	%linebreak()
+	%waitforinput()
+	db "But somehow it seems more intimidating than usual today."
 	%endmessage()
 endif
 ;====================================================================================================;
 %insertMSG(CastleRex_Sign_2)
 if !CompileText = 1
-	db "Throne room under renovation."
+	db "Lava reparations underway."
 	%linebreak()
-	db "Visitors may seek the King at the top of the Grand Tower."
+	db "Please refrain from badgering workers."
 	%endmessage()
 endif
 ;====================================================================================================;
 %insertMSG(CastleRex_Rex_Warning_1)
 if !CompileText = 1
+	%portrait(Rex, 0)
 	db "I saw you fight Captain Warrior so I know how strong you are."
-	%delay(24)
-	%linebreak()
+	%waitforinput()
+	%scrollfull()
 	db "But the King is the strongest there is! You can't beat him!"
 	%waitforinput()
+	%scrollfull()
 	db "Well... maybe the Dark Lord is stronger, but he's our ally now."
 	%endmessage()
 endif
 ;====================================================================================================;
 %insertMSG(CastleRex_Rex_Warning_2)
 if !CompileText = 1
+	%portrait(Rex, 1)
 	db "The strongest Rex has always been our leader, but since the pact with the Dark Lord, the King has been stronger than ever before!"
 	%endmessage()
 endif
 ;====================================================================================================;
 %insertMSG(CastleRex_Rex_Warning_3)
 if !CompileText = 1
+	%portrait(Rex, 1)
 	db "Captain Warrior told me I can't beat you, so I won't fight."
 	%waitforinput()
+	%scrollfull()
 	db "Still, I'm not worried, because the King will do what I can not!"
 	%waitforinput()
+	%scrollfull()
 	db "That's what he always does, and it's why we rule this Island today."
 	%endmessage()
 endif
 ;====================================================================================================;
 %insertMSG(CaptainWarrior_Warning)
 if !CompileText = 1
+	%speed(10)
+	%portrait(CaptainWarrior, 0)
 	db "There you are."
 	%waitforinput()
+	%scrollfull()
 	db "The King is on the other side of this door."
 	%waitforinput()
+	%scrollfull()
 	db "No, I won't try to stop you. I already know how that would go."
 	%waitforinput()
+	%scrollfull()
 	db "I have faith in my King. He is far beyond even you."
 	%waitforinput()
-	db "So go!"
+	%scrollfull()
+	db "So go! "
+	%delay(32)
+	db "Go "
 	%delay(16)
-	db "Go and meet your end at the hand of the Dragon King!"
+	db "and meet your end at the hand of the Dragon King!"
 	%endmessage()
 endif
 ;====================================================================================================;
@@ -1109,7 +1141,7 @@ dw .L13B
 .L003	dw !MSG_DinolordsDomain_Sign_1
 	dw !MSG_DinolordsDomain_Sign_2
 .L004
-.L005	dw !MSG_CastleRex_Sign_1
+.L005	dw !MSG_CastleRex_Villager
 	dw !MSG_CastleRex_Sign_2
 .L006
 .L007

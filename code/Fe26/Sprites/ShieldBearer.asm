@@ -54,11 +54,14 @@ ShieldBearer:
 
 	MAIN:
 		PHB : PHK : PLB
+		LDA $9D : BNE +
 		LDA $3230,x
-		SEC : SBC #$08
-		ORA $9D
-		BEQ .CheckSprite
-		JMP .Graphics
+		CMP #$08 : BEQ .CheckSprite
+		CMP #$02 : BNE +
+		LDA $33F0,x : TAX
+		LDA #$00 : STA $418A00,x
+		LDX !SpriteIndex
+	+	JMP .Graphics
 
 
 	.CheckSprite

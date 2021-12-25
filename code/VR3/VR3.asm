@@ -271,7 +271,7 @@ org $058526
 ; - Set BG mode ($2105)
 ; - Run $00A488 (dynamic palette routine)
 ; - Draw status bar
-; - Run $0087AD (level loader)
+; - Run $0087AD (zip loader)
 ; - Update GFX depending on $143A (because of "MARIO START !"
 ; - Run $00A390 (SMW's dynamic sprite routine)
 ; - Run $00A436 (uploads "MARIO START !" if approperiate)
@@ -333,7 +333,6 @@ org $058526
 	org $008293
 		db $D6					; IRQ scanline
 
-
 	org $0097C1
 		STA !2106				; STA instead of STZ (A is already 0x0F)
 	org $009F66					; prevent 2106 write
@@ -363,6 +362,19 @@ org $058526
 		LDA [$00]
 	ReturnGFX:
 		RTS
+
+
+
+	org read3($00A2A5+1)+$97A707-$97A4A0		; lunar magic palette exanimation code
+	print "Lunar Magic palette Exanimation fix at $", pc
+	PaletteExAnimFix:
+	;	RTS					;\
+	;	RTS					; | org: STA.l $6905,x
+	;	RTS					; |
+	;	RTS					;/
+		STA.l !ShaderInput,x
+	warnpc PaletteExAnimFix+4
+
 
 
 ; documentation, $0FFA2B
@@ -1416,10 +1428,11 @@ Build_RAM_Code:
 	.LoopExAnimation
 		CPX #$0031 : BCS .NoExAnimation
 		PEA.w .LoopExAnimation-1
-		LDA.w $0080,x : BEQ .NextExAnimation
-		BMI +
-		JMP .AppendExAnimationGFX
-	+	JMP .AppendExAnimationPalette
+		LDA.w $0080,x
+		BEQ .NextExAnimation
+		BMI ..pal
+	..gfx	JMP .AppendExAnimationGFX
+	..pal	JMP .AppendExAnimationPalette
 	.NextExAnimation
 		TXA
 		CLC : ADC #$0007
@@ -2925,30 +2938,25 @@ Build_RAM_Code:
 
 	.AppendExAnimationPalette
 		..feedshader
-		LDA.w $0084,x : STA $00				;\ pointer to color data
-		LDA.w $0085,x : STA $01				;/
-		LDA.w $0080,x : STA $04				; number of colors to transfer
-		PHX						;\ push regs
-		PHY						;/
-		LDA.l !ProcessLight				;\
-		ORA #$0080					; | SA-1 writing to shader input
-		STA.l !ProcessLight				;/
-		LDA.w $0082,x					;\
-		ASL A						; |
-		TAX						; |
-		LDY #$0000					; | copy colors to shader input
-	-	LDA [$00],y : STA.l !ShaderInput,x		; |
-		INX #2						; |
-		INY #2						; |
-		DEC $04 : BPL -					;/
-		LDA.l !ProcessLight				;\
-		AND.w #$0080^$FFFF				; | SA-1 no longer writing to shader input
-		STA.l !ProcessLight				;/
-		PLY						;\ pull regs
-		PLX						;/
+		; LDA.w $0080,x					;\ number of colors to transfer
+		; AND #$00FF : STA $04				;/
+		; PHX						; push X
+		; LDA.l !ProcessLight				;\
+		; ORA #$0080					; | SA-1 writing to shader input
+		; STA.l !ProcessLight				;/
+		; LDA.w $0084,x					;\
+		; SEC : SBC #$0202				; |
+		; TAX						; | copy color data to shader input
+	; -	LDA.l !PaletteRGB,x : STA.l !ShaderInput,x	; |
+		; INX #2						; |
+		; DEC $04 : BPL -					;/
+		; LDA.l !ProcessLight				;\
+		; AND.w #$0080^$FFFF				; | SA-1 no longer writing to shader input
+		; STA.l !ProcessLight				;/
+		; PLX						; pull X
 		LDA #$0100					;\
 		CMP.l !LightR : BNE ..return			; | if no light is enabled, upload colors raw
-		CMP.l !LightG : BNE ..return			; | (never preshade exanimation, just feed it to shader)
+		CMP.l !LightG : BNE ..return			; | (preshading exanimation is too expensive, just feed it to shader and wait 2-3 frames)
 		CMP.l !LightB : BEQ ..upload			;/
 		..return
 		STZ.w $0080,x					; clear exanim slot
@@ -2971,10 +2979,26 @@ Build_RAM_Code:
 		%makecode($218E)				; STX $xx21
 		%makecode($8C21)				; $21 (previous opcode) : STY $xxxx
 		%makecode($420B)				; $420B (previous opcode)
-		LDA.w $0084,x : %writecode(..src)		; source address
+		LDA.w $0084,x					;\
+		SEC : SBC #$0202				; | source address
+		%writecode(..src)				;/
+
+	if !Debug
+	STA $00
+	STZ $02
+	LDA [$00] : STA.l !P1Coins
+	endif
+
 		SEP #$20					;\
 		LDA.w $0082,x : %writecode(..cgram)		; | destination CGRAM
 		REP #$20					;/
+	PHX
+	LSR #4
+	AND #$000F
+	TAX
+	LDA.l !ShaderRowDisable,x
+	ORA #$0001 : STA.l !ShaderRowDisable,x
+	PLX
 		LDA.w $0080,x					;\
 		ASL A						; | upload size
 		%writecode(..size)				;/
@@ -3060,6 +3084,7 @@ Build_RAM_Code:
 ; if highest bit of size is set, it is a color package
 ; A is then doubled and written to $4315
 ; for color packages, byte 03 is ignored
+; additionally, if a color package contains just 1 color, bytes 04-05 hold the raw color data instead of a pointer, and byte 06 is ignored
 ; if bit 15 of VRAM address is set, this is a square package
 ; in this case, the 2 tiles just after the ones we uploaded should be uploaded to the row below
 
@@ -3705,13 +3730,12 @@ Layer2Level:
 
 
 
-macro movedynamo(num)
-	LDA $C0C0+(<num>*7) : STA $80+(<num>*7)
-	LDA $C0C2+(<num>*7) : STA $82+(<num>*7)
-	LDA $C0C4+(<num>*7) : STA $84+(<num>*7)
-	LDA $C0C5+(<num>*7) : STA $85+(<num>*7)
-	LDA #$0000 : STA $C0C0+(<num>*7)
+macro movedynamo(offset)
+	LDA $C0C0+<offset> : STA $80+<offset>
 endmacro
+
+; data: $C0C0-$C0F7
+;
 
 FetchExAnim:
 		PHB
@@ -3720,14 +3744,42 @@ FetchExAnim:
 		PHD
 		REP #$20
 		LDA.w #$6000 : TCD		; we're dumping it in $6080 because that can be accessed at $0080 in bank $40 by SA-1
-		%movedynamo(0)			; this will make RAM code generation much smoother
-		%movedynamo(1)
-		%movedynamo(2)
-		%movedynamo(3)
-		%movedynamo(4)
-		%movedynamo(5)
-		%movedynamo(6)
-		%movedynamo(7)
+		%movedynamo($00)		; this will make RAM code generation much smoother
+		%movedynamo($02)
+		%movedynamo($04)
+		%movedynamo($06)
+		%movedynamo($08)
+		%movedynamo($0A)
+		%movedynamo($0C)
+		%movedynamo($0E)
+		%movedynamo($10)
+		%movedynamo($12)
+		%movedynamo($14)
+		%movedynamo($16)
+		%movedynamo($18)
+		%movedynamo($1A)
+		%movedynamo($1C)
+		%movedynamo($1E)
+		%movedynamo($20)
+		%movedynamo($22)
+		%movedynamo($24)
+		%movedynamo($26)
+		%movedynamo($28)
+		%movedynamo($2A)
+		%movedynamo($2C)
+		%movedynamo($2E)
+		%movedynamo($30)
+		%movedynamo($32)
+		%movedynamo($34)
+		%movedynamo($36)
+		STZ $C0C0			;\
+		STZ $C0C7			; |
+		STZ $C0CE			; |
+		STZ $C0D5			; | clear exanim slots
+		STZ $C0DC			; |
+		STZ $C0E3			; |
+		STZ $C0EA			; |
+		STZ $C0F1			;/
 		PLD
 		PLP
 		PLB

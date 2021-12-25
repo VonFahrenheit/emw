@@ -149,6 +149,8 @@ ATTACK:
 		LDA.b #!P2Hitbox2Offset : STA !P2ActiveHitbox	; > index = hitbox 2
 
 	.CheckShield
+		LDY !P2ActiveHitbox				;\ reset shield contact
+		LDA #$00 : STA !P2Hitbox1Shield,y		;/
 		LDA !ShieldExists : BEQ ..return		; return if no shields exist
 		LDX #$5A					; loop index
 		REP #$20					; A 16-bit

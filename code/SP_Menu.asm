@@ -2620,6 +2620,20 @@ MAIN_MENU:
 	STZ $6109				; |
 	+					; |
 	endif					;/
+	if !Debug = 1				;\
+	LDA $17					; |
+	AND #$20 : BEQ +			; |
+	LDA #$FF				; |
+	STA !MarioUpgrades			; |
+	STA !LuigiUpgrades			; |
+	STA !KadaalUpgrades			; |
+	STA !LeewayUpgrades			; | debug: hold L to start with all upgrades
+	STA !AlterUpgrades			; |
+	STA !PeachUpgrades			; |
+	LDA #$80 : STA !LevelTable1+$5E		; |
+	STZ $6109				; |
+	+					; |
+	endif					;/
 		JSL SaveFileSRAM
 	;	LDA #$0B : STA !GameMode
 	;	LDA #$EA : STA $6109
@@ -2718,6 +2732,8 @@ MAIN_MENU:
 	; INIT:
 	; load layer 1 tilemap
 	; when loading a new file, its stats are previewed for the player to see (A/B confirm, X/Y cancel)
+
+
 		LDA !MenuState : BMI ..main
 		..init
 		ORA #$80 : STA !MenuState
@@ -2750,6 +2766,7 @@ MAIN_MENU:
 		CLC : ADC #$0004
 		STA !MenuBG3_Y_1,y
 	+	DEY #2 : BPL -
+
 		SEP #$20
 		JSR HandleBG3Files
 
@@ -2780,6 +2797,8 @@ MAIN_MENU:
 
 		..choose
 		BIT $16 : BPL ..nochoice
+
+		..loadfile
 		JSL LoadFileSRAM
 		STZ $6109
 		LDA #$80 : STA !SPC3

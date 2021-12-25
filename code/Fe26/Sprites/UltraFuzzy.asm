@@ -66,11 +66,14 @@ UltraFuzzy:
 		JSL !GetSpriteClipping04
 		SEC : JSL !PlayerClipping
 		BCC .NoContact
+
+		LDA #$04 : STA $3230,x
+		LDA #$1F : STA $32D0,x
+		LDA !StarTimer : BNE .NoContact
+
 		LDA #$0F
 		STA !P2Stasis-$80
 		STA !P2Stasis
-		LDA #$04 : STA $3230,x
-		LDA #$1F : STA $32D0,x
 		STZ !Level+2
 		LDA #$04 : STA !Level+3
 		LDA #$F3 : STA $6DB0

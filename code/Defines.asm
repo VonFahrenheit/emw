@@ -978,7 +978,7 @@ endmacro
 
 		!P2Blocked		= !P2Physics+$14		; bits: 1 = r, 2 = l, 4 = d, 8 = u, 10 = crushed
 		!P2BlockedLayer		= !P2Physics+$15		; same as blocked, but only set by layer collision (not platform)
-		!P2ExtraBlock		= !P2Physics+$16		; same as blocked, but can be modified externally
+		!P2ExtraBlock		= !P2Physics+$16		; wwwcudlr (w = water flags, rest same as blocked) can be modified externally
 		!P2InAir		= !P2Physics+$17		; 0 = on ground, slope or, platform, 4 = in midair
 		!P2Platform		= !P2Physics+$18		; index (+1) of sprite that player is standing on
 

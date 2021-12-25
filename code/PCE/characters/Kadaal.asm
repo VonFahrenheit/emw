@@ -1674,14 +1674,14 @@ namespace Kadaal
 		LDX #$0F
 
 		.Loop
-		TXY
-		LDA ($0E),y : BNE .LoopEnd
 
 		LDY !P2ActiveHitbox				;\
 		CPX #$08 : BCS +				; |
 		LDA !P2Hitbox1IndexMem1,y : BRA ++		; | check index memory
 	+	LDA !P2Hitbox1IndexMem2,y			; |
 	++	AND CORE_BITS,x : BNE .LoopEnd			;/
+		TXY
+		LDA ($0E),y : BNE .LoopEnd
 		LDA $3230,x					;\
 		CMP #$02 : BEQ .Hit				; | check sprite status
 		CMP #$08 : BCC .LoopEnd				;/
@@ -1690,15 +1690,16 @@ namespace Kadaal
 		JSL !CheckContact				; | check contact
 		PLA : STA $0F					; |
 		BCC .LoopEnd					;/
+
 		LDA !ExtraBits,x
 		AND #$08 : BNE .HiBlock
 		.LoBlock
 		LDY $3200,x
-		LDA HIT_TABLE,y : BEQ .ClippingFail
+		LDA HIT_TABLE,y : BEQ .LoopEnd
 		BRA .AnyBlock
 		.HiBlock
 		LDY !NewSpriteNum,x
-		LDA HIT_TABLE_Custom,y : BEQ .ClippingFail
+		LDA HIT_TABLE_Custom,y : BEQ .LoopEnd
 		.AnyBlock
 		ASL A : TAY
 		PEI ($0E)
@@ -2252,7 +2253,6 @@ namespace Kadaal
 		STA !SPC4						; |
 		.SkipSFX2						;/
 
-		JSL CORE_ATTACK_Main
 		JSL CORE_DISPLAYCONTACT
 		RTS
 
@@ -3178,7 +3178,7 @@ HIT_TABLE:		db $01,$01,$01,$01,$02,$02,$02,$02,$03,$03,$03,$03,$03,$04,$00,$05	;
 			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 11X
 			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 12X
 			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 13X
-			db $19,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 14X
+			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 14X
 			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 15X
 			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 16X
 			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 17X

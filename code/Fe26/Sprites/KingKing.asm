@@ -166,6 +166,24 @@
 		SEP #$30
 		LDX !SpriteIndex
 
+		.RedSky
+		PHX
+		LDX #$08*2
+		REP #$20
+	-	LDA !PaletteRGB+($72*2),x : STA $0E
+		AND #$001F : TRB $0E
+		ASL #5
+		STA $00
+		LDA $0E
+		AND #$001F*$20 : TRB $0E
+		LSR #5
+		ORA $00
+		ORA $0E
+		STA !PaletteCacheRGB+($72*2),x
+		DEX #2 : BPL -
+		SEP #$20
+		PLX
+
 		.FindScepter
 		LDY #$0F					;\
 		..loop						; |
@@ -212,7 +230,7 @@
 
 	DATA:
 		.BaseHP
-		db $01,$0C,$10
+		db $08,$0C,$10
 
 		.DelayTable
 		db $3C,$28,$20,$18
@@ -331,6 +349,11 @@
 		LDY #$0F					; |
 		LDA $00						; |
 		LSR A						; |
+		PHA						; |
+		JSL !MixRGB_Upload				;/
+		LDX #$72					;\
+		LDY #$09					; | fade into red sky
+		PLA						; |
 		JSL !MixRGB_Upload				;/
 		LDX !SpriteIndex				; X = sprite index
 		JMP GRAPHICS					; go to GRAPHICS
@@ -699,6 +722,7 @@
 		INC !EnrageTimer,x				; | increment enrage timer until it hits 128
 		INC !EnrageTimer,x				;/
 		..done
+
 
 		.HP						;\
 		LDA !HP,x					; |

@@ -200,7 +200,7 @@
 ; 5 - 4 characters per frame
 ; 6 - 3 characters per frame
 ; 7 - 2 characters per frame
-; 8 - 1 character per frame
+; 8 - 1 character per frame (DEFAULT)
 ; 9 - 1 character every 2 frames
 ; A - 1 character every 3 frames
 ; B - 1 character every 4 frames
@@ -211,6 +211,7 @@
 ; 10+ - invalid, do not use
 ;
 ; NOTE!! If you are using a dialogue pointer, the message must end with $E8,$FF rather than just $FF!
+; (this might be incorrect)
 ;
 ; dialogue type:
 ; 0 - option is used as next(X), allowing it to link to various other messages

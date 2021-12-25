@@ -686,20 +686,20 @@
 		BIT $00 : BMI ..dec
 		CMP $00 : BCS ..dec
 		..inc
-		INC A
+		INC #2
 		CLC : ADC $02
 		BRA ..write
 		..neg
 		BIT $00 : BPL ..inc
 		CMP $00 : BCC ..inc
 		..dec
-		DEC A
+		DEC #2
 		SEC : SBC $02
 		..write
 		STA !P1MapXSpeed,x
 		SEC : SBC $00
-		INC #2
-		CMP #$05 : BCS ..done
+		INC #3
+		CMP #$07 : BCS ..done
 		LDA $00 : STA !P1MapXSpeed,x
 		..done
 
@@ -709,20 +709,20 @@
 		BIT $01 : BMI ..dec
 		CMP $01 : BCS ..dec
 		..inc
-		INC A
+		INC #2
 		CLC : ADC $02
 		BRA ..write
 		..neg
 		BIT $01 : BPL ..inc
 		CMP $01 : BCC ..inc
 		..dec
-		DEC A
+		DEC #2
 		SEC : SBC $02
 		..write
 		STA !P1MapYSpeed,x
 		SEC : SBC $01
-		INC #2
-		CMP #$05 : BCS ..done
+		INC #3
+		CMP #$07 : BCS ..done
 		LDA $01 : STA !P1MapYSpeed,x
 		..done
 

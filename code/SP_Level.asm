@@ -520,7 +520,7 @@ print "Level code handler inserted at $", pc, "."
 		LDA #$7EB0				;\ default border tiles are $1EB-$1EF, $1FB-$1FF
 		STA $400000+!MsgVRAM3			;/
 		LDA #$7C00				;\
-		STA $400000+!MsgVRAM1			; | default portrait tiles
+		STA $400000+!MsgVRAM1			; | default portrait tiles are $1C0-$1DF
 		LDA #$7C80				; |
 		STA $400000+!MsgVRAM2			;/
 

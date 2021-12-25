@@ -6,7 +6,8 @@ namespace Luigi
 ; --Build 0.9--
 ;
 
-	!RunThreshold	= $1C
+	!RunThreshold	= $20
+	!FullRunSpeed	= $2C
 
 
 
@@ -294,12 +295,14 @@ namespace Luigi
 
 
 		LDA !P2Ducking : BEQ .Drift			;\ when crouching on ground, go to friction (ignore input)
-		LDA !P2InAir : BEQ .Friction			;/
+		LDA !P2InAir : BNE .Drift			;/
+	-	JMP .Friction
+
 
 		.Drift
 		LDA $6DA3					;\
-		AND #$03 : BEQ .Friction			; |
-		CMP #$03 : BEQ .Friction			; > go to friction if no direction is held
+		AND #$03 : BEQ -				; |
+		CMP #$03 : BEQ -				; > go to friction if no direction is held
 		TAX						; |
 		LDA !P2FireTimer : BNE .NoTurn			; > can't turn during fireball attack
 		LDA .Direction,x : BMI .NoTurn			; |
@@ -316,25 +319,31 @@ namespace Luigi
 		CMP #!Lui_Spin_over : BCS ..nospin		;/
 		LDA !P2InAir : BEQ ..fastspin			; fast spin on ground
 		..slowspin					;\
-		INX #4						; | slow spin (same speed as normal run)
-		BRA +						;/
+		TXA						; | slow spin (same speed as normal run)
+		ORA #$04 : BRA ..spinaccel			;/
 		..fastspin					;\
 		TXA						; |
 		ORA #$10					; | fast spin (faster than run)
+		..spinaccel					; |
 		TAX						; |
-		LDY #$02 : BRA ..accel				; > fast accel during spin
+		REP #$10					; |
+		LDY #$0255 : BRA ..accel			; > fast accel during spin
 		..nospin					;/
-		BIT $6DA3 : BVC +				;\ increment index while running
-		INX #4						;/
-		LDA !P2Dashing					;\
-		CMP #$20 : BCC +				; |
-		INX #4						; | run speed thresholds
-		CMP #$40 : BCC +				; |
-		INX #4						;/
-		+
+		STX $00
+		LDA !P2Dashing
+		LSR #3
+		AND #$0C
+		BIT $6DA3
+		BVC $03 : CLC : ADC #$04
+		ORA $00
+		TAX
 
-		LDY #$01					; base acceleration: 1
+
+		REP #$10
+		LDY #$0180					; base acceleration: 1
 		LDA !P2InAir : BNE ..doubleaccel		; air acceleration: 2
+		LDA !P2Dashing					;\ acceleration after hitting mid run: 2
+		CMP #$20 : BCS ..doubleaccel			;/
 		LDA !P2XSpeed					;\
 		ASL A						; |
 		ROL A						; |
@@ -342,9 +351,12 @@ namespace Luigi
 		INC A						; |
 		AND $6DA3 : BEQ ..accel				; |
 		..doubleaccel					; |
-		LDY #$02					;/
+		LDY #$0200					;/
 		..accel						;\
-		LDA.w .XSpeed,x : JSL CORE_ACCEL_X		; | accelerate
+		REP #$20
+		LDA.w .XSpeed-1,x
+		AND #$FF00 : JSL CORE_ACCEL_X_16Bit		; | accelerate
+		SEP #$30
 		BRA .SpeedDone					;/
 
 	.Friction
@@ -361,17 +373,20 @@ namespace Luigi
 		CMP #!Lui_SpinEnd : BCC ..nospinend
 		CMP #!Lui_SpinEnd_over : BCS ..nospinend
 		..bigfriction
-		LDY #$02 : BRA ..slowdown
+		REP #$10
+		LDY #$0200 : BRA ..slowdown
 		..nospinend
-		LDY #$00
+		REP #$30
+		LDY #$0000
 		LDA !P2Ducking
-		BEQ $01 : INY
-		LDA $14
-		AND .SlideFriction,y : BNE .SpeedDone
-		LDY #$01
+		AND #$00FF
+		BEQ $02 : INY #2
+		LDA .SlideFriction,y : TAY
 		..slowdown
-		LDA #$00 : JSL CORE_ACCEL_X
+		REP #$20
+		LDA #$0000 : JSL CORE_ACCEL_X_16Bit
 		.SpeedDone
+		SEP #$30
 
 
 		LDA !P2Blocked
@@ -517,7 +532,7 @@ namespace Luigi
 		db $00,$14,$EC,$00			; walk
 		db $00,!RunThreshold,-!RunThreshold,$00	; run, part 1
 		db $00,$24,$DC,$00			; run, part 2
-		db $00,$28,$D8,$00			; max speed dash
+		db $00,!FullRunSpeed,-!FullRunSpeed,$00	; full run
 		db $00,$34,$CC,$00			; luigi cyclone
 
 		.JumpHeight
@@ -525,7 +540,7 @@ namespace Luigi
 	;	db $B0,$AE,$AB,$A9,$A6,$A4,$A1,$9F	; mario comparison
 
 		.SlideFriction
-		db $00,$03				; reduced friction while crouching, just for the lolz
+		dw $00C0,$0040				; reduced friction while crouching, just for the lolz
 
 		.Direction
 		db $FF,$01,$00,$FF

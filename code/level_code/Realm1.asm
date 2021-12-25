@@ -102,6 +102,9 @@ levelinit3:
 
 
 levelinit4:
+		LDA #$04
+		TRB !MainScreen
+		TRB !SubScreen
 		INC !SideExit
 		LDA #$03 : STA !Map16Remap+$0C	; remap page 0x0C to expanded GFX
 
@@ -121,46 +124,49 @@ levelinit4:
 		SEP #$20
 
 
-		LDA $1B
+		LDA $95
 		CMP #$1C : BCS .Bonus
 
 	.MainStage
-		LDA #$1D : STA $5E
+		REP #$20
+		STZ !CameraBoxU
+		STZ !CameraBoxL
+		LDA #$1C00 : STA !CameraBoxR
+		LDA #$00E0 : STA !CameraBoxD
+		SEP #$20
+		LDA #$02 : STA !CameraBoxSpriteErase
 		RTL
 
 	.Bonus
-		BEQ ..1
-		CMP #$1F : BNE ..2
+		CMP #$1E : BEQ ..2
+		CMP #$1F : BEQ ..3
+
+	..1	REP #$20
+		LDA #$0000 : BRA +
+
+	..2	REP #$20
+		LDA #$00E0
+	+	STA !CameraBoxU
+		LDA #$1D00 : STA !CameraBoxL
+		LDA #$1E00 : STA !CameraBoxR
+		LDA !CameraBoxU
+
+	..R	STA !CameraBoxD
+		SEP #$30
+		RTL
 
 	..3	REP #$20
 		LDA #$1F00
 		STA !CameraBoxL
 		STA !CameraBoxR
 		STZ !CameraBoxU
-		LDA #$00E0
-		BRA ..R
-
-
-	..2	REP #$20
-		LDA #$1D00 : STA !CameraBoxL
-		LDA #$1E00 : STA !CameraBoxR
-		STZ !CameraBoxU
-		LDA #$0000
-		BRA ..R
-
-	..1	REP #$20
-		LDA #$1D00 : STA !CameraBoxL
-		LDA #$1E00 : STA !CameraBoxR
-		LDA #$00E0
-		STA !CameraBoxU
-
-	..R	STA !CameraBoxD
-		SEP #$30
-		RTL
+		LDA #$00E0 : BRA ..R
 
 
 levelinit5:
 		LDA #$06 : STA !PalsetStart
+		LDA #$D1 : STA !MsgPal
+
 
 		LDA #$1F : STA !MainScreen
 		STZ !SubScreen
@@ -180,8 +186,8 @@ levelinit5:
 		LDA #$0040
 		STA !VRAMtable+$00,x
 		STA !VRAMtable+$07,x
-		LDA #$6880 : STA !VRAMtable+$05,x
-		LDA #$6980 : STA !VRAMtable+$0C,x
+		LDA #$7E90 : STA !VRAMtable+$05,x
+		LDA #$7F90 : STA !VRAMtable+$0C,x
 		SEP #$20
 		PHK : PLB
 
@@ -663,6 +669,10 @@ levelinit38:
 
 
 levelinit39:
+		LDA $95 : BEQ .Cave
+		.Chasm
+		LDA #$08 : TSB !HDMA
+		.Cave
 		LDA #$20
 		STA !MarioYSpeed
 		STA !P2YSpeed-$80
@@ -990,6 +1000,7 @@ level3:
 		RTL
 
 
+
 level4:
 		LDA #$20 : STA $64
 		LDA $71
@@ -1003,17 +1014,16 @@ level4:
 		LDA !P2XPosHi-$80
 		CMP #$0E : BNE .P2
 		LDA !P2XSpeed-$80 : BPL .P2
-		CMP #$D8 : BCC .Secret
+		CMP #$E8 : BCC .Secret
 	.P2	LDA !P2Status : BNE .Wall
 		LDA !P2XPosHi
 		CMP #$0E : BNE .Wall
 		LDA !P2XSpeed : BPL .Wall
-		CMP #$D8 : BCS .Wall
+		CMP #$E8 : BCS .Wall
 	.Secret	LDA $1C
 		CMP #$B0 : BCC .Wall
 		LDA #$8B
-		LDY #$02
-		BRA .Update
+		LDY #$02 : BRA .Update
 	.Wall	LDA #$A5
 		LDY #$05
 	.Update	STA $40C800+($1C0*$0E)+$15E
@@ -1026,9 +1036,9 @@ level4:
 		LDX #$02
 	-	LDA $3230,y
 		CMP #$08 : BNE +
-		LDA $3590,y
+		LDA !ExtraBits,y
 		AND #$08 : BEQ +
-		LDA $35C0,y
+		LDA !NewSpriteNum,y
 		CMP #$13 : BEQ ++
 		CMP #$14 : BNE +
 	++	LDA #$01+!CustomOffset : STA !Ex_Num,x	;\
@@ -1048,21 +1058,24 @@ level4:
 
 		LDA $1B
 		CMP #$08 : BCC .NoSpawn			; screens 0-7: no fuzzies
-		CMP #$17 : BCS .NoSpawn			; screens 17+: no fuzzies
-		LDX #$00				;\
-		CMP #$10 : BCC .CheckSpawn		; | use index on screens 8-16
-		INX					;/
+		CMP #$1A : BCS .NoSpawn			; screens 1A+: no fuzzies
+		LDY #$00				; use index 00 on screens 08-0F
+		CMP #$10 : BCC .CheckSpawn		;\ use index 01 on screens 10-14
+		INY					;/
+		CMP #$15 : BCC .CheckSpawn		;\ use index 02 on screens 15-19
+		INY					;/
 
 		.CheckSpawn
-		LDA .SpawnRate,x
+		LDA .SpawnRate,y
 		AND $14 : BNE .NoSpawn
-		LDX #$0F
+		LDX #$0E				; DON'T use all slots
 	-	LDA $3230,x : BEQ .TriggerSpawn
 		DEX : BPL -
 		BRA .NoSpawn
 
 		.TriggerSpawn
 		STX $00
+		STY $01
 		LDA.b #.Spawn : STA $3180
 		LDA.b #.Spawn>>8 : STA $3181
 		LDA.b #.Spawn>>16 : STA $3182
@@ -1071,13 +1084,11 @@ level4:
 
 
 		REP #$20
-		LDA.w #.HDMA : STA !HDMAptr+0
-		LDA.w #.HDMA>>8 : STA !HDMAptr+1
-		LDA $1A
-		CMP #$1C40 : BCS .Bonus
-		LDA #$1CF8				;\
-		LDY #$01				; | Regular exit
-		JML END_Right				;/
+		LDA.w #.Mode2 : STA !HDMAptr+0
+		LDA.w #.Mode2>>8 : STA !HDMAptr+1
+		LDA $94
+		CMP #$1D00 : BCS .Bonus
+		LDA #$1CE8 : JML END_Right		; exit
 
 	.Bonus
 		SEP #$30
@@ -1085,29 +1096,31 @@ level4:
 
 
 	.SpawnRate
-	db $9F,$3F					; based on which quarter of the level the camera is on
+	db $9F,$3F,$0F					; based on which part of the level the camera is on
 
 	.SpawnX
-	dw $0120
 	dw $FFE0
+	dw $0120
 
 		.Spawn
 		PHB : PHK : PLB
 		PHP
 		SEP #$30
 		LDX $00
+		LDY $01
 		LDA !RNG
 		AND #$F0
 		CLC : ADC $1C
 		CLC : ADC $7888
-		STA $3210,x
+		STA !SpriteYLo,x
 		LDA $1D
 		ADC $7889
-		STA $3240,x
+		STA !SpriteYHi,x
+		CPY #$02 : BEQ +
 		LDA !RNG
 		AND #$02
 		TAY
-		REP #$20
+	+	REP #$20
 		LDA $1A
 		CLC : ADC .SpawnX,y
 		SEP #$20
@@ -1118,25 +1131,12 @@ level4:
 		LDA #$2D : STA $35C0,x
 		LDA #$08 : STA $3590,x
 		JSL !ResetSprite
+
+	..fail
 		PLP
 		PLB
 		RTL
 
-
-		.HDMA
-		PHB : PHK : PLB
-		PHP
-		REP #$20
-		LDA !P2XPosLo-$80
-		CMP #$1D00 : BCC +
-		LDA #$1D00
-		CMP $1A : BCC +
-		STA $1A
-
-	+	JSL .Mode2
-		PLP
-		PLB
-		RTL
 
 
 ; !Level+2: timer, activates effect
@@ -1146,11 +1146,35 @@ level4:
 		PHB : PHK : PLB
 		PHP
 		SEP #$30
+		LDA $14
+		LSR A : BCC +
+		LDA $6DB0
+		CMP #$10 : BCC +
+		SEC : SBC #$10
+		STA $6DB0
+		+
+		LDA !StarTimer : BEQ ..process
+		STZ !Level+2
+		STZ !Level+3
+		STZ !HDMA
+		LDA #$01 : STA !2105
+		LDA !DizzyEffect : BEQ +
+		LDA #$00 : STA !DizzyEffect
+		LDA #$40 : STA !SPC4			; dizzy OFF!! SFX
+		+
+		PLP
+		PLB
+		RTL
+
+		..process
+		LDA #$02 : STA !2105
 		LDA #$01 : STA !DizzyEffect
 		LDA.b #..SA1 : STA $3180
 		LDA.b #..SA1>>8 : STA $3181
 		LDA.b #..SA1>>16 : STA $3182
 		JSR $1E80
+
+
 
 		LDA !Level+3 : BNE +
 		LDA !Level+2
@@ -1194,7 +1218,7 @@ level4:
 
 		LDA #$3C : TSB !HDMA
 
-		LDA #$1F : STA !MainScreen
+		LDA #$13 : STA !MainScreen
 		LDA #$02 : TRB $44
 
 		LDA #$02 : TRB $44
@@ -1225,14 +1249,6 @@ level4:
 		LDA #$10 : STA !P2VectorTimeX-$80,y
 	+	CPY #$80 : BEQ +
 		LDY #$80 : BRA -
-		+
-
-		LDA $14
-		LSR A : BCC +
-		LDA $6DB0
-		CMP #$10 : BCC +
-		SEC : SBC #$10
-		STA $6DB0
 		+
 
 		PLP
@@ -1469,6 +1485,19 @@ level4:
 level5:
 		LDA #$02 : STA !GlobalLight1
 
+		LDA #$02 : JSL SearchSprite_Custom
+		BMI +
+		LDA !ExtraBits,x
+		AND #$04 : BEQ +
+		LDA !ExtraProp1,x
+		CMP #$02 : BNE +
+		STZ $3320,x
+		REP #$20
+		LDA.w #.Table1 : JSL TalkOnce
+		SEP #$20
+		+
+
+
 		REP #$20
 		LDA #$07E8
 		JSL EXIT_Right
@@ -1501,10 +1530,14 @@ level5:
 		RTL					; > Return
 
 		.SunTilemap
-		db $60,$30,$88,$0E
-		db $68,$30,$88,$4E
-		db $60,$40,$88,$8E
-		db $68,$40,$88,$CE
+		db $60,$30,$E9,$0F
+		db $68,$30,$E9,$4F
+		db $60,$40,$E9,$8F
+		db $68,$40,$E9,$CF
+
+
+		;   ID       Xpos  Ypos       W   H        MSG
+.Table1		db $00 : dw $0070,$00E0 : db $70,$FF : dw !MSG_CastleRex_Villager
 
 
 		.HDMA
@@ -1572,23 +1605,32 @@ level5:
 		STA $0408,x				; |
 		STA $040D,x				;/
 		SEP #$10				; > Index 8 bit
-		LDX #$09				; > X = divisor (9)
-		LDY #$23				; > Y = loop counter and index
-		LDA $20 : STA ($02),y			; > Store Y coord for lowest chunk
-		LDA $1E					; > A = BG2x
-		BRA +					; > Lowest chunk moves at 100%
-	-	ASL #3					;\
-		STA $4204				; | Multiply by 8 and divide by 9 for each step
-		STX $4206				; |
-		LDA $20 : STA ($02),y			; > Store Y coord right away to finish division
-		NOP #4					;/
-		LDA $4216				;\
-		CMP #$0004				; | Round up/down
-		LDA $4214				; |
-		ADC #$0000				;/
-	+	STA ($00),y				; > Store X coord to HDMA table
-		DEY #5					;\ Loop
-		BPL -					;/
+
+
+
+		LDX #$07
+		LDY ..index,x
+		LDA $20 : STA ($02),y
+		LDA $1E : BRA +
+	-	LDY ..multiplier,x : STY $4202
+		LDY $1E : STY $4203
+		NOP #4
+		LDA $4216 : STA $0E
+		LDY $1F : STY $4203
+		NOP #4
+		LDA $4216
+		AND #$00FF : XBA
+		CLC : ADC $0E
+		STA $4204
+		LDY ..divisor,x : STY $4206
+		LDY ..index,x
+		LDA $20 : STA ($02),y
+		NOP #8
+		LDA $4214
+	+	STA ($00),y
+		DEX : BPL -
+
+
 		PLB					; > Restore bank
 
 		LDA !Level
@@ -1603,6 +1645,8 @@ level5:
 		CLC : ADC $1A				; |
 		LSR #3					; |
 		STA $22					; | BG3 scroll = 112.5%
+		LDA #$0008 : TSB $24
+
 	;	LDA $1C					; | (this only applies if BG3 scroll is turned off in LM)
 	;	SEC : SBC #$00C0			; | (used for ramparts in castle rex)
 	;	STA $00					; |
@@ -1614,6 +1658,40 @@ level5:
 	;	STA $24					;/
 	+	PLP
 		RTL
+
+
+	..index
+	db $00,$05,$0A,$0F,$14,$19,$1E,$23
+
+; ideal values:
+; 0.4385
+; 0.4933
+; 0.5549
+; 0.6243
+; 0.7023
+; 0.7901
+; 0.8888
+;
+; must be expressed as a fraction with both numbers <= 20
+	..multiplier
+	db 8		; 0.4385
+	db 1		; 0.4933
+	db 11		; 0.5549
+	db 12		; 0.6243
+	db 7		; 0.7023
+	db 15		; 0.7901
+	db 8		; 0.8888
+
+	..divisor
+	db 19
+	db 2
+	db 20
+	db 19
+	db 10
+	db 19
+	db 9
+
+
 
 
 
@@ -1956,9 +2034,11 @@ levelC:
 
 		JSL WARP_BOX
 		db $04 : dw $12D0,$01F0 : db $50,$10
+		dw $0439
 
 		JSL WARP_BOX
 		db $04 : dw $1910,$01F0 : db $50,$10
+		dw $0C39
 
 
 		LDA $1B					;\
@@ -1993,43 +2073,18 @@ levelC:
 
 		LDA #$DC : STA !Level+2
 
+		LDA #$10 : TRB !HDMA
+
 		JSL level35_Graphics			; returns 16-bit A
 
 		SEP #$30
+
 		RTL
 
 	.FallingHammerData
 		db $D0,$90,$D0,$D0	; X lo byte
 		db $15,$17,$16,$17	; X hi byte
 
-
-	;	REP #$20
-	;	LDA.w #.RoomPointers
-	;	JML LoadCameraBox
-
-
-		.RoomPointers
-		dw .ScreenMatrix
-		dw .BoxTable
-		dw .DoorList
-		dw .DoorTable
-
-
-
-
-;	Key ->	   X  Y  W  H  S  FX FY
-;		   |  |  |  |  |  |  |
-;		   V  V  V  V  V  V  V
-;
-.BoxTable
-.Box0	%CameraBox(0, 0, 27, 1, $FF, 0, 0)
-
-.ScreenMatrix	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-
-.DoorList	db $FF			; no doors
-.DoorTable
 
 
 
@@ -2661,13 +2716,39 @@ level27:
 
 
 level2A:
+		.FirstBit
+		LDA !StoryFlags+1
+		AND #$01 : BNE ..done
+		LDA.b #190*16 : STA $04
+		LDA.b #190*16>>8 : STA $0A
+		LDA #$30 : STA $05
+		STZ $0B
+		LDA #$50
+		STA $06
+		STA $07
+		SEC : JSL !PlayerClipping
+		BCC ..done
+		LSR A : BCC ..p2
+		LDY !P2InAir-$80 : BEQ ..msg
+		..p2
+		LSR A : BCC ..done
+		LDY !P2InAir : BNE ..done
+		..msg
+		REP #$20
+		LDA.w #!MSG_FirstBit : STA !MsgTrigger
+		SEP #$20
+		LDA !StoryFlags+1
+		ORA #$01 : STA !StoryFlags+1
+		..done
+
+
+
 		REP #$20
 		LDA #$0000 : JSL EXIT_Up
 		RTL
 
 
 level2B:
-
 	; WARNING: EXTREMELY SCUFFED
 		.SlantFix
 		LDA !P2SlantPipe-$80 : BNE ..tempslant
@@ -2686,13 +2767,14 @@ level2B:
 		INC !SideExit
 		.NoExit
 
-		REP #$20
-		LDA #$06E8
 		PHK : PEA level5_NoExit-1
-		JML EXIT_FADE_Right
+		REP #$20
+		LDA #$0AE8 : JML EXIT_FADE_Right
 
 
 level2C:
+		LDA #$E1 : STA !MsgPal
+
 		LDX #$0F			;\
 	-	LDA $3230,x			; | look for a killed sprite (states 2-7)
 		CMP #$02 : BCC +		; |
@@ -4373,27 +4455,63 @@ level38:
 ;10	+80	40
 
 level39:
+		LDA.b #.HDMA : STA !HDMAptr+0
+		LDA.b #.HDMA>>8 : STA !HDMAptr+1
+		LDA.b #.HDMA>>16 : STA !HDMAptr+2
+
+
+
+		LDA !Room : BNE .Chasm
+
+		.Cavern
+		JSL WARP_BOX
+		db $08 : dw $0040,$0000 : db $50,$04
+		dw $06C0
 		JSL WARP_BOX
 		db $08 : dw $0100,$0000 : db $50,$04
-
-		JSL WARP_BOX
-		db $08 : dw $0780,$0000 : db $50,$04
-
+		dw $06C1
 		JSL WATER_BOX
 		dw $0000,$0000 : db $FF,$FF
-
 		JSL WATER_BOX
 		dw $0000,$0100 : db $FF,$FF
-
 		JSL WATER_BOX
-		dw $0100,$0190 : db $60,$40
-
+		dw $0100,$01A0 : db $60,$30
 		JSL WATER_BOX
-		dw $0100,$00B0 : db $80,$40
-
+		dw $0100,$00C0 : db $80,$30
 		JSL WATER_BOX
 		dw $0100,$0000 : db $40,$FF
+		BRA .GetCam
 
+		.Chasm
+		JSL WARP_BOX
+		db $08 : dw $0380,$0000 : db $50,$04
+		dw $06C2
+		LDA #$01 : STA !WaterLevel
+		REP #$20
+		LDA $1C
+		CMP #$0100 : BCC ..daylight
+		SBC #$0100
+		LSR #3
+		CMP #$0080
+		BCC $03 : LDA #$0080
+		STA $00
+		LDA #$0100
+		SEC : SBC $00
+		STA !LightR
+		LDA #$0100
+		LSR $00
+		SBC $00
+		BRA +
+
+		..daylight
+		LDA #$0100
+		STA !LightR
+		BRA +
+
+	+	STA !LightG
+		SEP #$20
+
+		.GetCam
 		REP #$20
 		LDA.w #.RoomPointers
 		JML LoadCameraBox
@@ -4411,20 +4529,114 @@ level39:
 ;
 .BoxTable
 .Box0	%CameraBox(0, 0, 1, 2, $FF, 0, 0)
-.Box1	%CameraBox(6, 0, 1, 7, $FF, 0, 0)
+.Box1	%CameraBox(2, 0, 1, 7, $FF, 0, 0)
 
-.ScreenMatrix	db $00,$00,$FF,$FF,$FF,$FF,$01,$01
-		db $00,$00,$FF,$FF,$FF,$FF,$01,$01
-		db $00,$00,$FF,$FF,$FF,$FF,$01,$01
-		db $FF,$FF,$FF,$FF,$FF,$FF,$01,$01
-		db $FF,$FF,$FF,$FF,$FF,$FF,$01,$01
-		db $FF,$FF,$FF,$FF,$FF,$FF,$01,$01
-		db $FF,$FF,$FF,$FF,$FF,$FF,$01,$01
-		db $FF,$FF,$FF,$FF,$FF,$FF,$01,$01
+.ScreenMatrix	db $00,$00,$01,$01
+		db $00,$00,$01,$01
+		db $00,$00,$01,$01
+		db $FF,$FF,$01,$01
+		db $FF,$FF,$01,$01
+		db $FF,$FF,$01,$01
+		db $FF,$FF,$01,$01
+		db $FF,$FF,$01,$01
 
-.DoorList	db $FF			; no doors (room 0)
-		db $FF			; no doors (room 1)
+.DoorList	db $80			; no doors (room 0)
+		db $80			; no doors (room 1)
 .DoorTable
+
+
+
+	.HDMA
+		PHB : PHK : PLB
+		PHP
+	; BG1 wave code
+
+		REP #$20
+		STZ $0E
+		LDA $14
+		AND #$0001
+		BEQ $03 : LDA #$0060
+		TAX
+		CLC : ADC #$0C21+6			; get pointer and index to current tables
+		STA $00
+		SEP #$20
+
+
+		LDA $14					;\
+		LSR #2					; |
+		AND #$0F				; |
+		INC A					; | update scanline count to scroll wave effect
+		STA $0C20+6,x				; |
+		CMP #$01 : BNE .NoUpdate		; |
+		LDA $14					; |
+		AND #$02 : BNE .NoUpdate		;/
+
+		.Update					;\
+		LDY #$30				; |
+	-	LDA ($00),y				; |
+		AND #$F0				; > maintain hi nybble
+		STA $02					; |
+		LDA ($00),y				; |
+		SEC : SBC #$04				; | update pointers for wave effect
+		AND #$0F				; |
+		ORA $02					; |
+		STA ($00),y				; |
+		DEY #3 : BPL -				; |
+		.NoUpdate				;/
+
+		REP #$20				;\
+		LDA $0E					; |
+		BPL $03 : LDA #$0000			; |
+		LDY !IceLevel : BNE +			; > no wave effect when frozen
+		CMP #$00E0				; |
+		BCC $03					; |
+	+	LDA #$00E0				; | distance to hi prio water from top of screen
+		SEP #$20				; |
+		LSR A					; |
+		STA $0C20,x				; |
+		BCC $01 : INC A				; |
+		STA $0C23,x				;/
+		LDA $00					;\ > lo byte of pointer
+		SEC : SBC #$07				; |
+		TAY					; |
+		LDA $0C20,x				; |
+		BNE $03 : INY #3			; | see how many chunks we need
+		LDA $0C23,x				; |
+		BNE $03 : INY #3			;/
+		STY !HDMA3source			; > update source
+
+
+
+	; +0+0
+	; -1+0
+	; -1+1
+	; +0+1
+
+
+		REP #$20				;\
+		LDA $14					; |
+		AND #$0001				; |
+		BEQ $03 : LDA #$0010			; |
+		TAX					; |
+		LDA $1A					; |
+		STA $0D00,x				; |
+		STA $0D0C,x				; |
+		DEC A					; |
+		BPL $03 : LDA #$0000			; > don't allow negative due to clipping errors
+		STA $0D04,x				; |
+		STA $0D08,x				; | recalculate BG1 positions
+		LDA $1C					; |
+		CLC : ADC $7888
+		STA $0D02,x				; |
+		STA $0D06,x				; |
+		INC A					; |
+		STA $0D0A,x				; |
+		STA $0D0E,x				;/
+		PLP
+		PLB
+		RTL
+
+
 
 
 

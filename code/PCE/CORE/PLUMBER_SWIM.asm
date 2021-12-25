@@ -116,7 +116,7 @@
 		.FastSwimRise				;\
 		LDA !P2YSpeed : BPL +			; |
 		CMP #$F0 : BCS +			; |
-		LDA #$F0				; |
+		INC A					; |
 		BRA ++					; |
 	+	LDA $14					; | fast swim neutral/up
 		AND #$01				; |

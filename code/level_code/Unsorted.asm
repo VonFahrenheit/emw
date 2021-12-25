@@ -464,8 +464,7 @@ LoadCameraBox:
 
 		.GetCoords
 		REP #$20
-		LDX #$00
-		LDY !P2Status-$80
+		LDX !P2Status-$80
 		BEQ $02 : LDX #$80
 		LDA !P2XPosLo-$80,x : STA $00
 		LDA !P2YPosLo-$80,x : STA $02
@@ -786,6 +785,7 @@ LoadCameraBox:
 		.PlayerLeftSide
 		LDA $94
 		SEC : SBC #$0080
+		BPL $03 : LDA #$0000
 		STA $1A
 		LDA !CameraBoxL
 		AND #$FF00 : STA !CameraXMem
@@ -4923,7 +4923,7 @@ level1F0:
 ; so, the lo byte is exactly what you'd expect, it's the lo byte of the secondary exit number
 ; hi byte has this format:
 ;	Hhhhwlsh
-;	w - water level flag
+;	w - water level flag (if secondary exit = 0, this is the midway entrance flag)
 ;	l - lunar magic flag (always set)
 ;	s - secondary exit flag (always set)
 ;	H - highest bit of secondary exit
@@ -6470,8 +6470,6 @@ DANCE:
 
 WATER_BOX:
 		REP #$20
-
-		LDA $02,s : STA $01		; bank byte
 		LDA $01,s			;\
 		INC A				; | lo / hi bytes
 		STA $00				;/
@@ -6479,13 +6477,12 @@ WATER_BOX:
 		STA $01,s			;/
 
 		LDY #$02			;\
-		LDA [$00],y			; | box Y
+		LDA ($00),y			; | box Y
 		STA $05				; |
 		STA $0A				;/
 		LDY #$04			;\ box dimensions
-		LDA [$00],y : STA $06		;/
-		LDY #$00			;\
-		LDA [$00],y			; |
+		LDA ($00),y : STA $06		;/
+		LDA ($00)			;\
 		STA $09				; | box X
 		SEP #$20			; |
 		STA $04				;/
@@ -6499,26 +6496,35 @@ WATER_BOX:
 		PLX : STX !P2Invinc-$80		;/
 		LSR A : BCC .P2
 	.P1	PHA
-		LDA #$80 : TSB !P2ExtraBlock-$80
-		LDA !P2Character : BNE +
-		JSR .Mario
+		LDA $0B : XBA
+		LDA $05
+		REP #$20
+		CMP !P2YPosLo-$80
+		SEP #$20
+		BCC ..under
+		..over
+		LDA #$A0 : TSB !P2ExtraBlock-$80
+		BRA +
+		..under
+		LDA #$E0 : TSB !P2ExtraBlock-$80
 	+	PLA
 	.P2	LSR A : BCC .Return
-		LDA #$80 : TSB !P2ExtraBlock
-		JSR .Mario
+		LDA $0B : XBA
+		LDA $05
+		REP #$20
+		CMP !P2YPosLo
+		SEP #$20
+		BCC ..under
+		..over
+		LDA #$A0 : TSB !P2ExtraBlock
+		RTL
+		..under
+		LDA #$E0 : TSB !P2ExtraBlock
 
 		.Return
 		RTL
 
-		.Mario
-		LDA $05 : STA $0C
-		LDA $0B : STA $0D
-		LDA $09 : XBA
-		LDA $01
-		REP #$20
-		CMP $0C
-		SEP #$20
-		RTS
+
 
 
 ; JSL here
@@ -6553,7 +6559,6 @@ WATER_BOX:
 WARP_BOX:
 		REP #$20
 
-		LDA $02,s : STA $01		; bank byte
 		LDA $01,s			;\
 		INC A				; | lo / hi bytes
 		STA $00				;/
@@ -6561,20 +6566,19 @@ WARP_BOX:
 		STA $01,s			;/
 
 		LDY #$07			;\ entrance link data
-		LDA [$00],y : STA !BigRAM+2	;/
+		LDA ($00),y : STA !BigRAM+2	;/
 		LDY #$03			;\
-		LDA [$00],y			; | box Y
+		LDA ($00),y			; | box Y
 		STA $05				; |
 		STA $0A				;/
 		LDY #$05			;\ box dimensions
-		LDA [$00],y : STA $06		;/
+		LDA ($00),y : STA $06		;/
 		LDY #$01			;\
-		LDA [$00],y			; |
+		LDA ($00),y			; |
 		STA $09				; | box X
 		SEP #$20			; |
 		STA $04				;/
-		LDY #$00			;\ directional value
-		LDA [$00],y : STA !BigRAM	;/
+		LDA ($00) : STA !BigRAM		; directional value
 		LDA !P2Invinc-$80 : PHA		;\ backup invinc regs
 		LDA !P2Invinc : PHA		;/
 		STZ !P2Invinc-$80		;\ temp clear invinc regs
@@ -6619,6 +6623,7 @@ WARP_BOX:
 		DEX
 		LDA !SpriteXSpeed,x
 	+	CLC : ADC !P2XSpeed-$80,y
+		CLC : ADC !P2VectorX-$80,y
 		BEQ ..checkY
 		ASL A
 		ROL A
@@ -6631,6 +6636,7 @@ WARP_BOX:
 		DEX
 		LDA !SpriteYSpeed,x
 	+	CLC : ADC !P2YSpeed-$80,y
+		CLC : ADC !P2VectorY-$80,y
 		BEQ ..nomatch
 		ASL A
 		ROL A

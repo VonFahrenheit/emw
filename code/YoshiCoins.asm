@@ -309,27 +309,10 @@ GetPointer:
 	LDA $02
 	LSR #4
 	ORA $06
-	PHA
-	LDA !RAM_ScreenMode
-	LSR A
-	BCC .Horizontal
-
-	.Vertical
-	PLA
-	LDX $01
-	CLC : ADC.l $00BA80,x
-	STA $05
-	LDA.l $00BABC,x
-	ADC $03
-	STA $06
-	BRA .Shared
-
-	.Horizontal
-	PLA
 	LDX $03
-	CLC : ADC.l $006CB6,x
+	CLC : ADC $6CB6,x
 	STA $05
-	LDA.l $006CD6,x
+	LDA $6CD6,x
 	ADC $01
 	STA $06
 

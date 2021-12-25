@@ -103,6 +103,16 @@ COLLISION:
 		LDA #$04 : TRB $0F
 		..noentrance
 
+; extra block:
+;	1 -> 1 (right)
+;	2 -> 2 (left)
+;	4 -> 4 (down)
+;	8 -> 8 (up)
+;	10 -> 10 (crush)
+;	20 -> 4 (water down)
+;	40 -> 8 (water up)
+;	80 -> 10 (water center)
+
 
 	;	LDA !P2ExtraBlock			;\
 	;	AND #$1F				; | layer collision flags
@@ -122,8 +132,9 @@ COLLISION:
 		LDA !P2Platform : BNE +			; | base x speed on ground (but not on platform)
 		LDA #$10 : STA !P2YSpeed		;/
 	+	LDA !P2ExtraBlock			;\
-		LSR A					; | apply extra water
-		AND #$40				; |
+		AND #$E0				; |
+		LSR #3					; | apply extra water
+		BEQ $02 : ORA #$40			; |
 		TSB !P2Water				;/
 		STZ !P2ExtraBlock			; wipe extra collision reg
 
@@ -324,7 +335,7 @@ COLLISION:
 		LDA #$80 : STA $7693			; conveyor disable flag
 
 		LDA !WaterLevel : BEQ .NoWaterLevel
-		LDA #$40 : TSB !P2Water
+		LDA #$5F : TSB !P2Water
 		.NoWaterLevel
 
 		LDA !P2XPosLo				;\
@@ -2626,7 +2637,7 @@ endmacro
 		LDX #$0F
 	-	LDA $3230,x : BEQ +
 		DEX : BPL -
-	++	RTS
+	++	JMP .Return
 
 	+	LDA $04 : PHA
 		LDA $05 : BEQ +
@@ -2698,6 +2709,8 @@ endmacro
 		JMP -
 		+
 
+
+		.Return
 		REP #$20
 		PLA : STA $0E
 		PLA : STA $0C

@@ -210,6 +210,13 @@ namespace Mario
 	warnpc $00F5F3
 
 
+	org $028758
+		BRA +				;\ org: LDA $6DB3 : ASL A
+		NOP #2				;/
+	org $028777
+		+
+
+
 
 	org $02A129
 		LDA #$02 : STA $3230,x		;\ Sprites get knocked out by fireballs

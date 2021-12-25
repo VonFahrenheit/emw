@@ -167,24 +167,27 @@ Conjurex:
 		LDY $3320,x
 		LDA DATA_XSpeed,y : STA !SpriteXSpeed,x
 		..nospeed
-		LDA $3220,x : PHA
-		LDA $3250,x : PHA
-		LDA $3210,x : PHA
-		LDA $3240,x : PHA
+		LDA !SpriteXLo,x : PHA
+		LDA !SpriteXHi,x : PHA
+		LDA !SpriteYLo,x : PHA
+		LDA !SpriteYHi,x : PHA
 		LDA $3330,x
 		AND #$04 : PHA
 		JSL !SpriteApplySpeed
 		PLA : BEQ ..checkwall
 		LDA $3330,x
-		AND #$04 : BEQ ..turn
+		AND #$04 : BNE ..checkwall
+		LDA $3330,x
+		ORA #$04 : STA $3330,x
+		BRA ..turn
 		..checkwall
 		LDA $3330,x
 		AND #$03 : BEQ ..noturn
 		..turn
-		PLA : STA $3240,x
-		PLA : STA $3210,x
-		PLA : STA $3250,x
-		PLA : STA $3220,x
+		PLA : STA !SpriteYHi,x
+		PLA : STA !SpriteYLo,x
+		PLA : STA !SpriteXHi,x
+		PLA : STA !SpriteXLo,x
 		LDA !ConjurexPushback,x : BNE ..turndone
 		LDA $3320,x
 		EOR #$01

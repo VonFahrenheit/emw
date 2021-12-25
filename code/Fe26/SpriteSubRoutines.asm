@@ -33,10 +33,13 @@ SPRITE_OFF_SCREEN:
 	;	STA $3490,x
 	;	BRA .GoodY
 	;	.HorizontalLevel
+
 		LDA $3250,x
 		XBA
+		LDA !CameraBoxSpriteErase			;\ if camera box ignores sprites, sprites ignore camera box
+		CMP #$02 : BCS +				;/
 		BIT !CameraBoxU+1 : BPL .GoodX
-		LDA $3470,x
+	+	LDA !SpriteTweaker4,x
 		AND #$04 : BNE .GoodX
 		LDA $3220,x
 		REP #$20
@@ -53,8 +56,12 @@ SPRITE_OFF_SCREEN:
 		ASL A
 		TAY
 		LDA $3240,x : XBA
+		LDA !CameraBoxSpriteErase
+		CMP #$02					; be careful to keep C flag here
 		LDA $3210,x
 		REP #$20
+		BCS .NoBoxY
+
 		BIT !CameraBoxU : BMI .NoBoxY
 		CMP !CameraBoxU : BCC .NoBoxY
 		SBC #$00E0 : BMI .GoodY
@@ -1254,19 +1261,14 @@ SPRITE_OFF_SCREEN:
 ; output:
 ;	C clear = no contact
 ;	C set = contact
-;	Y = index to hitbox (00, 0A, 80 or 8A)
+;	Y = index to hitbox (00, 0F, 80 or 8F)
 ;
 ; normal version will not apply knockback
 ; _Knockback version will apply knockback
 	P2Attack:
-	;	STZ $0F
-
 		.Main
 		LDY #$00
 	;	LDA !SpriteDisP1,x : BNE .Player2
-
-	.CheckPlayer
-	;	LDA !P2Status-$80,y : BNE .Player2
 
 	.CheckHitbox
 		LDA !P2Hitbox1Shield-$80,y : BNE .Hitbox2		; no hit if a shield blocks the way
@@ -1288,17 +1290,16 @@ SPRITE_OFF_SCREEN:
 		BCS .YesContact
 
 		.Hitbox2
-		CPY #$81 : BCS .NoContact
-		TYA : BNE .Player2
-		CLC : ADC.b #!P2Hitbox2Offset
-		TAY
-		BRA .CheckHitbox
+		CPY #$81 : BCS .NoContact				; if we just checked player 2 hitbox 2, return with no contact
+		CPY.b #!P2Hitbox2Offset : BEQ .Player2			; if we just checked player 1 hitbox 1, go to player 2
+		TYA							;\
+		CLC : ADC.b #!P2Hitbox2Offset				; | add hitbox 2 offset, then loop
+		TAY : BRA .CheckHitbox					;/
 
 	.Player2
-		CPY #$80 : BCS .NoContact
-		LDA !MultiPlayer : BEQ .NoContact
+		LDA !MultiPlayer : BEQ .NoContact			; in singleplayer, return with no contact instead of checking player 2
 	;	LDA !SpriteDisP2,x : BNE .NoContact
-		LDY #$80 : BRA .CheckPlayer
+		LDY #$80 : BRA .CheckHitbox				; get ready to check player 2 hitbox 1, then loop
 
 		.NoContact
 		CLC

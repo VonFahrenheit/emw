@@ -30,6 +30,11 @@ AggroRex:
 
 
 	INIT:
+		LDA !ExtraBits,x					;\
+		AND #$04 : BEQ +					; |
+		LDA !SpriteXLo,x					; | X+8 with ambush
+		ORA #$08 : STA !SpriteXLo,x				; |
+		+							;/
 		INC !AggroRexHasJump,x					; spawn without a jump
 		JSL SUB_HORZ_POS					;\ face player
 		TYA : STA $3320,x					;/

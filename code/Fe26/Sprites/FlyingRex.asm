@@ -93,7 +93,7 @@ FlyingRex:
 		LDA $3210,x : STA $05
 		LDA $3240,x : STA $0B
 		LDA #$20 : STA $06
-		LDA #$FF : STA $07
+		LDA #$80 : STA $07
 		SEC : JSL !PlayerClipping : BCC ..notseen
 		CMP #$02 : BCC +
 		LDA #$80 : STA !FlyingRexTargetPlayer,x		; target player 2

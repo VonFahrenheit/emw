@@ -29,6 +29,7 @@
 		ASL #2
 		AND #$80
 		TAY
+		LDA !StarTimer : BNE .Kill
 		LDA !P2Status-$80,y : BNE .Kill
 		LDA !P2XPosLo-$80,y : STA !Ex_XLo,x
 		LDA !P2XPosHi-$80,y : STA !Ex_XHi,x

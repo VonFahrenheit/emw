@@ -20,12 +20,15 @@
 
 	LightPoints:
 		;	    --X--	--Y--		R     G     B    size  level
-		%LightPoint(43,		24,		$140, $0C0, $080, $100, $02A)
-		%LightPoint(104,	22,		$140, $0C0, $080, $180, $02A)
-		%LightPoint(183,	17,		$140, $0C0, $080, $280, $02A)
+		%LightPoint(43,		34,		$140, $0C0, $080, $100, $02A)
+		%LightPoint(103,	22,		$140, $0C0, $080, $180, $02A)
+		%LightPoint(145,	17,		$140, $0C0, $080, $100, $02A)
+		%LightPoint(200,	19,		$140, $0C0, $080, $360, $02A)
 
 
 
 
 
 		.End
+		; don't mess with this label
+

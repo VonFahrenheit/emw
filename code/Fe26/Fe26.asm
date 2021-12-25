@@ -2004,7 +2004,6 @@ print "-- BANK $17 --"
 %InsertSprite(YoshiCoin)
 %InsertSprite(EliteKoopa)
 %InsertSprite(MoleWizard)
-%InsertSprite(BooHoo)
 
 
 
@@ -2031,6 +2030,7 @@ print "-- BANK $1A --"
 %InsertSprite(CaptainWarrior)
 %InsertSprite(MiniMech)
 %InsertSprite(GigaThwomp)
+%InsertSprite(BooHoo)
 
 
 BANK1AEnd:
