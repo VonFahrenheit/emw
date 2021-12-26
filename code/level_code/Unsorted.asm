@@ -6797,7 +6797,9 @@ WARP_BOX:
 		STA $6DD5				; set exit
 		LDX !Translevel : BEQ ..leveldone	;\ > intro level does not count
 		LDA !LevelTable1,x : BMI ..beaten	; |
-		INC $7F2E				; > you've now beaten one more level (only once/level)
+		LDA !LevelsBeaten			; |
+		INC A					; |
+		STA !LevelsBeaten			; > you've now beaten one more level (only once/level)
 		ORA #$80				; | Set clear, remove midway
 		..beaten				; |
 		AND.b #$60^$FF				; > clear checkpoint

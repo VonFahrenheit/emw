@@ -108,19 +108,19 @@
 		AND #$0004 : BEQ -
 		LDA #$A664 : STA $00
 
-		LDA !OAMindex_p3 : TAX
-		LDA $00
-		SEC : SBC #$0010
-		STA !OAM_p3+$000,x
-		LDA #$3FF3 : STA !OAM_p3+$002,x
-		LDA $00
-		CLC : ADC #$0010
-		STA !OAM_p3+$004,x
-		LDA #$3FAC : STA !OAM_p3+$006,x
-		LDA $00
-		CLC : ADC #$0028
-		STA !OAM_p3+$008,x
-		LDA #$3F9B : STA !OAM_p3+$00A,x
+		LDA !OAMindex_p3 : TAX			; X = OAM index
+		LDA $00					;\
+		SEC : SBC #$0010			; | clock symbol
+		STA !OAM_p3+$000,x			; |
+		LDA #$3E8C : STA !OAM_p3+$002,x		;/
+		LDA $00					;\
+		CLC : ADC #$0010			; | colon
+		STA !OAM_p3+$004,x			; |
+		LDA #$3E8A : STA !OAM_p3+$006,x		;/
+		LDA $00					;\
+		CLC : ADC #$0028			; | period
+		STA !OAM_p3+$008,x			; |
+		LDA #$3E8B : STA !OAM_p3+$00A,x		;/
 		TXA
 		CLC : ADC #$000C
 		STA !OAMindex_p3
@@ -423,7 +423,7 @@
 		PHA
 		LDA !OAMindex_p3 : TAX
 		PLA
-		CLC : ADC #$3FA2
+		CLC : ADC #$3E80
 		STA !OAM_p3+$002,x
 		LDA $00 : STA !OAM_p3+$000,x
 		CLC : ADC #$0008

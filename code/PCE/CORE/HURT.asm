@@ -36,6 +36,18 @@
 
 .Kill		LDA #$01 : STA !P2Status		; > this player dies
 		LDA #$C0 : STA !P2YSpeed		; > set Y speed
+		LDA !CurrentPlayer : BNE ..p2
+		..p1
+		REP #$20
+		LDA !P1DeathCounter
+		INC A : STA !P1DeathCounter
+		SEP #$20
+		RTL
+		..p2
+		REP #$20
+		LDA !P1DeathCounter
+		INC A : STA !P1DeathCounter
+		SEP #$20
 .Return		RTL
 
 

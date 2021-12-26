@@ -1402,7 +1402,9 @@ endmacro
 		!SRAM_overworldY	= !SRAM_buffer+$8E	; 2 bytes
 
 
-		!StoryFlags		= !SRAM_buffer+$90
+		!LevelsBeaten		= !SRAM_buffer+$90
+
+		!StoryFlags		= !SRAM_buffer+$91
 		; +00:	realm unlock state, 1 bit for each realm (if this is zero, load intro instead of realm select)
 		; +01:	reserved for Realm 1
 		; +02:	first 2 bits used by Mountain King

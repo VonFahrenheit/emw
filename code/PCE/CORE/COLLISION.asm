@@ -548,6 +548,18 @@ COLLISION:
 		.BlockCenter				;\
 		LDA #$01 : STA !P2Status		; | player dies instantly if crushed
 		STZ !P2HP				; |
+		LDA !CurrentPlayer : BNE ..p2
+		..p1
+		REP #$20
+		LDA !P1DeathCounter
+		INC A : STA !P1DeathCounter
+		SEP #$20
+		RTS
+		..p2
+		REP #$20
+		LDA !P2DeathCounter
+		INC A : STA !P2DeathCounter
+		SEP #$20
 		.CenterDone				;/
 
 		RTS
@@ -1645,18 +1657,29 @@ endmacro
 		RTS
 
 		.Lava
-		LDA !Difficulty
-		AND #$03 : BNE ..die
-		JSL CORE_HURT
-		LDA !P2Status : BNE ..die
-		LDA #$80
-		LDX !P2Character
-		CPX #$01
-		BNE $02 : LDA #$98
-		STA !P2YSpeed
-		RTS
+		LDA !Difficulty					;\
+		AND #$03 : BNE ..die				; |
+		JSL CORE_HURT					; |
+		LDA !P2Status : BNE ..return			; |
+		LDA #$80					; | easy mode: bounce on lava
+		LDX !P2Character				; | (luigi bounces higher)
+		CPX #$01					; |
+		BNE $02 : LDA #$98				; |
+		STA !P2YSpeed					; |
+		RTS						;/
 		..die
 		LDA #$01 : STA !P2Status
+		LDA !CurrentPlayer : BNE ..p2
+		REP #$20
+		LDA !P1DeathCounter
+		INC A : STA !P1DeathCounter
+		SEP #$20
+		RTS
+		..p2
+		REP #$20
+		LDA !P2DeathCounter
+		INC A : STA !P2DeathCounter
+		SEP #$20
 		..return
 		RTS
 

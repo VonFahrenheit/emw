@@ -1418,6 +1418,18 @@ HurtP1:		LDA !P2Invinc-$80,y			;\
 
 .Kill		LDA #$01 : STA !P2Status-$80,y		; > This player dies
 		LDA #$C0 : STA !P2YSpeed-$80,y
+		CPY #$80 : BEQ ..p2
+		..p1
+		REP #$20
+		LDA !P1DeathCounter
+		INC A : STA !P1DeathCounter
+		SEP #$20
+		RTS
+		..p2
+		REP #$20
+		LDA !P2DeathCounter
+		INC A : STA !P2DeathCounter
+		SEP #$20
 		RTS
 
 
@@ -3448,8 +3460,18 @@ SPRITE_HUD:
 		BRA .Next
 
 		.Draw
+		SEP #$20
+		LDA ($02),y
+		CLC : ADC $00
 		STA !OAM_p3+$000,x
-		INY #2
+		LDA #$01 : TRB $0D
+		BCC $02 : TSB $0D
+		INY
+		LDA ($02),y
+		CLC : ADC $01
+		STA !OAM_p3+$001,x
+		INY
+		REP #$20
 		LDA ($02),y : STA !OAM_p3+$002,x
 		INY #2
 		PHX
@@ -3457,7 +3479,7 @@ SPRITE_HUD:
 		LSR #2
 		TAX
 		LDA $0D
-		AND #$0002
+		AND #$0003
 		STA !OAMhi_p3+$00,x
 		PLX
 		INX #4

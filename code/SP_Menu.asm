@@ -241,6 +241,10 @@ print "-- SP_MENU --"
 	incsrc "Defines.asm"				; Include standard defines
 
 
+	!NumColumnHeight	= $46			; base Y position of numbers column on the right (does not affect %)
+
+
+
 
 if !LockROM = 0
 print "ROM NAME: SUPER MARIOWORLD     "
@@ -2813,17 +2817,28 @@ MAIN_MENU:
 		CLC : ADC #$00E0
 		STA $22
 		STZ $24
-		STX !HDMA3source			; always double buffer baby!
+		STX !HDMA3source			; always double buffer, baby!
+		LDA $0C01,x
+		EOR #$FFFF : INC A
+		EOR #$0100
+		STA !BigRAM
 		SEP #$20
-		LDA $0C02,x : BNE ..choose
-		RTS
-
-		..choose
+		LDA $0C02,x : PHP
+		BEQ ..draw
+		BIT $16 : BMI ..skipdraw		; don't draw if file is selected already (prevent OAM on mosaic)
+		..draw
 		JSR .DrawDifficulty
+		JSR .DrawRealmStars
+		JSR .DrawCounterIcons
 		JSR .DrawPlaytime
 		JSR .DrawCoins
 		JSR .DrawDeaths
+		JSR .DrawPercent
+		..skipdraw
+		PLP : BNE ..choose
+		RTS
 
+		..choose
 		BIT $16 : BPL ..nochoice
 
 		..startgame
@@ -2905,13 +2920,90 @@ MAIN_MENU:
 		dw $0800			; VRAM offset
 
 
+	.DrawRealmStars
+		REP #$20				;\
+		LDA.w #..tilemap : STA $02		; |
+		STZ $0D					; | setup
+		LDA #$0004 : STA $0E			; |
+		SEP #$20				;/
+
+		LDX #$07				;\
+		..loop					; |
+		LDY ..levels,x				; | check if respective levels are beaten
+		CPY #$60 : BCS ..next			; |
+		LDA !LevelTable1,y : BPL ..next		;/
+		TXA					;\
+		ASL A					; |
+		TAY					; | get coords
+		LDA ..coords+0,y : STA $00		; |
+		LDA ..coords+1,y : STA $01		;/
+		PHX					;\
+		JSL !SpriteHUD				; | draw star
+		PLX					;/
+		..next					;\ loop
+		DEX : BPL ..loop			;/
+		RTS					; return
+
+
+		..levels
+		db $05			; realm 1
+		db $FF			; realm 2
+		db $FF			; realm 3
+		db $FF			; realm 4
+		db $FF			; realm 5
+		db $FF			; realm 6
+		db $FF			; realm 7
+		db $FF			; realm 8
+
+		..coords
+		db $46,$84		; realm 1
+		db $00,$00		; realm 2
+		db $00,$00		; realm 3
+		db $00,$00		; realm 4
+		db $00,$00		; realm 5
+		db $00,$00		; realm 6
+		db $00,$00		; realm 7
+		db $00,$00		; realm 8
+
+		..tilemap
+		db $00,$00,$86,$3F
+
+
+	.DrawCounterIcons
+		LDA !BigRAM
+		CMP #$4C : BCS ..fail
+		ADC #$B4
+		STA $00
+		LDA.b #!NumColumnHeight+$00 : STA $01
+		REP #$20
+		LDA.w #..icons : STA $02
+		STZ $0D
+		LDA #$0018 : STA $0E
+		JSL !SpriteHUD
+		SEP #$20
+		..fail
+		RTS
+
+		..icons
+		db $00,$00,$8F,$3F	; clock
+		db $00,$0C-2,$9F,$3F	;\ yoshi coin
+		db $00,$14-2,$AF,$3F	;/
+		db $00,$18,$BF,$3F	; coin
+		db $00,$24-1,$CF,$3F	;\ skull
+		db $00,$2C-1,$DF,$3F	;/
+
+
 	.DrawDifficulty
 		LDA !Difficulty
 		AND #$03
 		ASL A
 		TAX
+		LDA !BigRAM
+		CMP #$E0 : BCS ..fail
+		CLC : ADC #$20
+		STA $00
+		LDA #$4C : STA $01
 		REP #$20
-		LDA #$4C20 : STA $00
 		LDA ..ptr,x : STA $02
 		LDA ($02) : STA $0E
 		INC $02
@@ -2919,6 +3011,7 @@ MAIN_MENU:
 		SEP #$20
 		STZ $0D
 		JSL !SpriteHUD
+		..fail
 		RTS
 
 ; for this, there are not very many words that can be displayed
@@ -2969,31 +3062,14 @@ MAIN_MENU:
 		..ironman
 		dw $0018
 
-	.DrawRealmStars
-		RTS
-
-; the map will be included in the BG1 GFX
-; the stars are just 8x8 sprites with set coordinates based on which levels are completed
-
-		..coords
-		db $00,$00	; realm 1
-		db $00,$00	; realm 2
-		db $00,$00	; realm 3
-		db $00,$00	; realm 4
-		db $00,$00	; realm 5
-		db $00,$00	; realm 6
-		db $00,$00	; realm 7
-		db $00,$00	; realm 8
-
-	.DrawIcon
-		RTS
-
-; for the demo, this can be included in BG1 GFX
 
 	.DrawPlaytime
 	; hours
 		REP #$30
-		LDA #$40B0 : STA $00
+		LDA !BigRAM
+		CLC : ADC #$00C0
+		STA $00
+		LDA.w #!NumColumnHeight+$00 : STA $02
 		STZ $0E
 		LDA !PlaytimeHours : STA $0A
 		LDX #$0000						;\
@@ -3005,9 +3081,6 @@ MAIN_MENU:
 		STA $0A							; |
 		TXA : JSR DrawDigit					; |
 		..skipfirst						;/
-		LDA $00							;\
-		CLC : ADC #$0005					; | X+5
-		STA $00							;/
 		LDX #$0000						;\
 		LDA $0A							; |
 		BIT $0E : BMI ..calcsecond				; |
@@ -3020,9 +3093,6 @@ MAIN_MENU:
 		STA $0A							; |
 		TXA : JSR DrawDigit					; |
 		..skipsecond						;/
-		LDA $00							;\
-		CLC : ADC #$0005					; | X+5
-		STA $00							;/
 		LDX #$0000						;\
 		LDA $0A							; |
 		BIT $0E : BMI ..calcthird				; |
@@ -3035,20 +3105,11 @@ MAIN_MENU:
 		STA $0A							; |
 		TXA : JSR DrawDigit					; |
 		..skipthird						;/
-		LDA $00							;\
-		CLC : ADC #$0005					; | X+5
-		STA $00							;/
 		LDA $0A : JSR DrawDigit					; 1s
 
 	; minutes
 		.DrawMinutes
-		LDA $00
-		CLC : ADC #$0005
-		STA $00
 		LDA #$000B : JSR DrawDigit
-		LDA $00
-		CLC : ADC #$0005
-		STA $00
 
 		LDA !PlaytimeMinutes
 		AND #$00FF : STA $0A
@@ -3059,9 +3120,6 @@ MAIN_MENU:
 		..draw10s						; |
 		STA $0A							; |
 		TXA : JSR DrawDigit					;/
-		LDA $00							;\
-		CLC : ADC #$0005					; | X+5
-		STA $00							;/
 		LDA $0A : JSR DrawDigit					; 1s
 		SEP #$30
 		RTS
@@ -3070,7 +3128,10 @@ MAIN_MENU:
 
 	.DrawCoins
 		REP #$30
-		LDA #$58B0 : STA $00					; initial X/Y pos (coins)
+		LDA !BigRAM
+		CLC : ADC #$00C0
+		STA $00
+		LDA.w #!NumColumnHeight+$18 : STA $02
 		STZ $0E							; has not yet drawn anything
 
 		LDA !CoinHoard : STA $0A				;\
@@ -3092,9 +3153,6 @@ MAIN_MENU:
 		TXA : JSR DrawDigit					; |
 		LDY $0C							; |
 		..skipfirst						;/
-		LDA $00							;\
-		CLC : ADC #$0005					; | X+5
-		STA $00							;/
 
 		LDX #$0000						;\
 		LDA $0A							; |
@@ -3112,9 +3170,6 @@ MAIN_MENU:
 		STA $0A							; | draw 10000s digit
 		TXA : JSR DrawDigit					; |
 		..skipsecond						;/
-		LDA $00							;\
-		CLC : ADC #$0005					; | X+5
-		STA $00							;/
 
 		LDX #$0000						;\
 		LDA $0A							; |
@@ -3129,9 +3184,6 @@ MAIN_MENU:
 		STA $0A							; | draw 1000s digit
 		TXA : JSR DrawDigit					; |
 		..skipthird						;/
-		LDA $00							;\
-		CLC : ADC #$0005					; | X+5
-		STA $00							;/
 
 		LDX #$0000						;\
 		LDA $0A							; |
@@ -3146,9 +3198,6 @@ MAIN_MENU:
 		STA $0A							; | draw 100s digit
 		TXA : JSR DrawDigit					; |
 		..skipfourth						;/
-		LDA $00							;\
-		CLC : ADC #$0005					; | X+5
-		STA $00							;/
 
 		LDX #$0000						;\
 		LDA $0A							; |
@@ -3163,13 +3212,13 @@ MAIN_MENU:
 		STA $0A							; | draw 10s digit
 		TXA : JSR DrawDigit					; |
 		..skipfifth						;/
-		LDA $00							;\
-		CLC : ADC #$0005					; | X+5
-		STA $00							;/
 		LDA $0A : JSR DrawDigit					; draw 1s digit
 
 		.DrawYoshiCoinCounter
-		LDA #$4CB0 : STA $00					;\ setup
+		LDA !BigRAM
+		CLC : ADC #$00C0
+		STA $00
+		LDA.w #!NumColumnHeight+$0C : STA $02
 		LDA !YoshiCoinCount : STA $0A				;/
 		STZ $0E
 		LDX #$0000						;\
@@ -3181,9 +3230,6 @@ MAIN_MENU:
 		STA $0A							; |
 		TXA : JSR DrawDigit					; |
 		..skipfirst						;/
-		LDA $00							;\
-		CLC : ADC #$0005					; | X+5
-		STA $00							;/
 		LDX #$0000						;\
 		LDA $0A							; |
 		BIT $0E : BMI ..calcsecond				; |
@@ -3196,9 +3242,6 @@ MAIN_MENU:
 		STA $0A							; |
 		TXA : JSR DrawDigit					; |
 		..skipsecond						;/
-		LDA $00							;\
-		CLC : ADC #$0005					; | X+5
-		STA $00							;/
 		LDX #$0000						;\
 		LDA $0A							; |
 		BIT $0E : BMI ..calcthird				; |
@@ -3211,9 +3254,6 @@ MAIN_MENU:
 		STA $0A							; |
 		TXA : JSR DrawDigit					; |
 		..skipthird						;/
-		LDA $00							;\
-		CLC : ADC #$0005					; | X+5
-		STA $00							;/
 		LDA $0A : JSR DrawDigit					; 1s
 		SEP #$30
 		RTS
@@ -3221,7 +3261,10 @@ MAIN_MENU:
 
 	.DrawDeaths
 		REP #$30
-		LDA #$64B0 : STA $00
+		LDA !BigRAM
+		CLC : ADC #$00C0
+		STA $00
+		LDA.w #!NumColumnHeight+$24 : STA $02
 		STZ $0E
 		LDA !P1DeathCounter
 		CLC : ADC !P2DeathCounter
@@ -3235,9 +3278,6 @@ MAIN_MENU:
 		STA $0A							; |
 		TXA : JSR DrawDigit					; |
 		..skipfirst						;/
-		LDA $00							;\
-		CLC : ADC #$0005					; | X+5
-		STA $00							;/
 		LDX #$0000						;\
 		LDA $0A							; |
 		BIT $0E : BMI ..calcsecond				; |
@@ -3250,9 +3290,6 @@ MAIN_MENU:
 		STA $0A							; |
 		TXA : JSR DrawDigit					; |
 		..skipsecond						;/
-		LDA $00							;\
-		CLC : ADC #$0005					; | X+5
-		STA $00							;/
 		LDX #$0000						;\
 		LDA $0A							; |
 		BIT $0E : BMI ..calcthird				; |
@@ -3265,9 +3302,6 @@ MAIN_MENU:
 		STA $0A							; |
 		TXA : JSR DrawDigit					; |
 		..skipthird						;/
-		LDA $00							;\
-		CLC : ADC #$0005					; | X+5
-		STA $00							;/
 		LDA $0A : JSR DrawDigit					; 1s
 		SEP #$30
 		RTS
@@ -3275,7 +3309,56 @@ MAIN_MENU:
 ; simple hex -> dec converter (4 digits)
 
 	.DrawPercent
+		REP #$30
+		LDA !BigRAM
+		CLC : ADC #$00C8
+		STA $00
+		LDA #$0080 : STA $02
+		LDA !LevelsBeaten
+		ASL A
+		STA $0A
+		LDA !YoshiCoinCount
+		ASL A
+		ADC $0A
+		AND #$00FF
+		STA $0A
+		CMP #$0064 : BCC ++
+		LDX #$0000
+	-	CMP #$0064 : BCC +
+		SBC #$0064
+		INX : BRA -
+	+	STA $0A
+		TXA : JSR DrawDigit
+	++	LDA $0A
+		LDX #$0000
+	-	CMP #$000A : BCC +
+		SBC #$000A
+		INX : BRA -
+	+	STA $0A
+		TXA : JSR DrawDigit
+		LDA $0A : JSR DrawDigit
+		LDA #$000A : JSR DrawDigit
+
+		LDA !BigRAM
+		AND #$00FF
+		CMP #$003A : BCS ..return
+		ADC #$00C6
+		STA $00
+		LDA #$0089 : STA $01
+		LDA.w #..underscore : STA $02
+		STZ $0D
+		LDA #$000C : STA $0E
+		JSL !SpriteHUD
+		..return
+
+		SEP #$30
 		RTS
+
+		..underscore
+		db $00,$00,$B0,$3F
+		db $08,$00,$B1,$3F
+		db $10,$00,$B0,$7F
+
 
 ; what counts as %?
 ;	- level clears
@@ -3503,19 +3586,29 @@ MAIN_MENU:
 		TYA
 		CLC : ADC #$31F0
 		STA !OAM_p3+$002,x
+		SEP #$20
 		LDA $00 : STA !OAM_p3+$000,x
+		LDA $02 : STA !OAM_p3+$001,x
+		REP #$20
+
 		DEC $0E				; n flag set
-		CPY #$0001			;\ "1" digit 1px slimmer
-		BNE $02 : DEC $00		;/
 
 		TXA
 		LSR #2
 		TAX
-		LDA #$0000 : STA !OAMhi_p3,x
+		LDA $01
+		AND #$0001 : STA !OAMhi_p3,x
 		INX
 		TXA
 		ASL #2
 		STA !OAMindex_p3
+
+		LDA $00
+		CPY #$0001			;\ "1" digit 1px slimmer
+		BNE $01 : DEC A			;/
+		CLC : ADC #$0005
+		STA $00
+
 		RTS
 
 
@@ -4637,6 +4730,8 @@ endmacro
 		%loadbyte(!SRAM_overworldY)
 		%loadbyte(!SRAM_overworldY+1)
 
+		; load levels beaten
+		%loadbyte(!LevelsBeaten)
 
 		; loop to add story flags to file
 		LDY #$0000
@@ -4644,7 +4739,7 @@ endmacro
 		%loadtableW(!StoryFlags)
 		INX
 		INY
-		CPY #$008A : BCC .StoryFlagsLoop
+		CPY #$0089 : BCC .StoryFlagsLoop
 
 		PLP							; pull P
 		PLB							; bank wrapper end
@@ -4803,13 +4898,16 @@ endmacro
 		%addchecksum(!SRAM_overworldY)
 		%addchecksum(!SRAM_overworldY+1)
 
+		; add levels beaten to file
+		%addchecksum(!LevelsBeaten)
+
 		; loop to add story flags to file
 		LDY #$0000
 	.StoryFlagsLoop
 		%addtableW(!StoryFlags)
 		INX
 		INY
-		CPY #$008A : BCC .StoryFlagsLoop
+		CPY #$0089 : BCC .StoryFlagsLoop
 
 		; finally, perform integrity checks
 		REP #$20					; A 16-bit

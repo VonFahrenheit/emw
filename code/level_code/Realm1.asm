@@ -2851,7 +2851,18 @@ level2C:
 
 
 
-level2D:	LDA.b #.HDMA : STA !HDMAptr+0
+level2D:
+		LDA #$10 : JSL CountSprites_Custom	;\ count custom sprite 0x10 (boss + scepter)
+		CMP #$01 : BNE .KeepFighting		;/ if there is 1 (scepter) boss is dead
+		LDA !Level+4 : BEQ .End			;\
+		DEC !Level+4 : BRA .Stall		; | once boss has died, wait 2 seconds then beat the level
+		.End					; |
+		JSL END_End				;/
+		.KeepFighting				;\
+		LDA #$80 : STA !Level+4			; | if boss is alive, keep timer at 2 seconds
+		.Stall					;/
+
+		LDA.b #.HDMA : STA !HDMAptr+0
 		LDA.b #.HDMA>>8 : STA !HDMAptr+1
 		LDA.b #.HDMA>>16 : STA !HDMAptr+2
 		RTL
