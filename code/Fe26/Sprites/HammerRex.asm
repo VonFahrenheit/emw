@@ -239,7 +239,7 @@ HammerRex:
 
 	.TM_Hammer
 		dw $0004		; should be uploaded before rex during prep00 tilemap
-		db $22,$06,$FA,$08	; hammer tile, should be drawn with palette set to blue $06
+		db $22,$08,$F6,$08	; hammer tile, should be drawn with palette set to blue $06
 
 	.TM_SlashLine
 		dw $000C		; should be uploaded before rex during throw00 tilemap

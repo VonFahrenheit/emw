@@ -1383,7 +1383,9 @@ INIT_PARTICLE:
 
 HurtP2:		LDY #$80				; > P2 index
 HurtP1:		LDA !P2Invinc-$80,y			;\
-		ORA !StarTimer				; | don't hurt player while star is active or player is invulnerable
+		ORA !StarTimer				; |
+		ORA !P2Pipe-$80,y			; | gaming
+		ORA !P2SlantPipe-$80,y			; |
 		BNE .Return				;/
 
 		LDA !Difficulty				;\

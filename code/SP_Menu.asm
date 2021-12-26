@@ -240,6 +240,8 @@ print "-- SP_MENU --"
 
 	incsrc "Defines.asm"				; Include standard defines
 
+
+
 if !LockROM = 0
 print "ROM NAME: SUPER MARIOWORLD     "
 print "ROM has not been locked"
@@ -257,6 +259,9 @@ print "ROM has been locked"
 endif
 
 
+	incsrc "MSG/TextCommands.asm"
+	cleartable
+	table "MSG/MessageTable.txt"
 
 
 
@@ -2732,19 +2737,24 @@ MAIN_MENU:
 	; INIT:
 	; load layer 1 tilemap
 	; when loading a new file, its stats are previewed for the player to see (A/B confirm, X/Y cancel)
-
-
 		LDA !MenuState : BMI ..main
 		..init
 		ORA #$80 : STA !MenuState
 		STZ !TimerSeconds
 		STZ !TimerSeconds+1
 		REP #$30
-		LDA !LevelHeight
+		LDA $610A-1
+		AND #$FF00
+		LSR A
+		ADC !LevelHeight
 		ASL A
 		TAX
 		SEP #$20
 		JSR LoadScreen
+		JSL LoadFileSRAM
+		LDA #$00
+		STA !Characters
+		STA !MarioUpgrades
 
 		..main
 		LDA !P2Stasis-$80 : BEQ +
@@ -2767,16 +2777,26 @@ MAIN_MENU:
 		STA !MenuBG3_Y_1,y
 	+	DEY #2 : BPL -
 
+		..rendertext
+		LDA !MenuBG3_Y_1
+		CMP #$00FC : BNE +
+		JSR .DrawChapterTitle
+		LDA #$0100 : STA !MenuBG3_Y_1
+		+
+
+		LDA !MenuBG3_Y_1
+		CMP #$0100
 		SEP #$20
+		BEQ +
+
+
 		JSR HandleBG3Files
-
-
 		LDA !TimerSeconds : BNE +
 		LDA !P2ExternalAnim-$80
-		CMP #$26 : BNE ++
-		INC !TimerSeconds
-		BRA +
-	++	RTS
+		CMP #$26 : BEQ ++
+		RTS
+
+	++	INC !TimerSeconds
 
 	+	LDA $13
 		AND #$01
@@ -2790,15 +2810,23 @@ MAIN_MENU:
 	+	LDA !MenuBG1_X
 		STA $0C01,x
 		STA $0C06,x
+		CLC : ADC #$00E0
+		STA $22
+		STZ $24
 		STX !HDMA3source			; always double buffer baby!
 		SEP #$20
 		LDA $0C02,x : BNE ..choose
 		RTS
 
 		..choose
+		JSR .DrawDifficulty
+		JSR .DrawPlaytime
+		JSR .DrawCoins
+		JSR .DrawDeaths
+
 		BIT $16 : BPL ..nochoice
 
-		..loadfile
+		..startgame
 		JSL LoadFileSRAM
 		STZ $6109
 		LDA #$80 : STA !SPC3
@@ -2848,6 +2876,424 @@ MAIN_MENU:
 
 		db $24,$24,$24,$24,$24,$24,$24,$24
 		db $24,$26
+
+
+
+
+	.DrawChapterTitle
+		PHP
+		; get chapter num here
+		LDX #$00	; placeholder
+		REP #$20
+		LDA.w #IntroText_SA1 : STA $3180
+		LDA ..ptr,x : STA $BE
+		SEP #$20
+		LDA.b #IntroText_SA1>>16 : STA $3182
+		LDA.b #..ptr>>16 : STA $BE+2
+		JSR $1E80
+		LDA #$10 : TRB !HDMA
+		PLP
+		RTS
+
+		..ptr
+		dw ..chapter0
+
+		..chapter0
+		db "An Island's Dark Fate"
+		%endmessage()
+		dw $0100			; size
+		dw $0800			; VRAM offset
+
+
+	.DrawDifficulty
+		LDA !Difficulty
+		AND #$03
+		ASL A
+		TAX
+		REP #$20
+		LDA #$4C20 : STA $00
+		LDA ..ptr,x : STA $02
+		LDA ($02) : STA $0E
+		INC $02
+		INC $02
+		SEP #$20
+		STZ $0D
+		JSL !SpriteHUD
+		RTS
+
+; for this, there are not very many words that can be displayed
+; we'll just include them in the sprite GFX, and use the same ones for file preview and new file
+
+		..ptr
+		dw ..easy
+		dw ..normal
+		dw ..insane
+
+		..easy
+		dw $0010
+		db $00,$00,$88,$31
+		db $08,$00,$89,$31
+		db $10,$00,$8A,$31
+		db $18,$00,$8B,$31
+		..normal
+		dw $0018
+		db $00,$00,$98,$31
+		db $08,$00,$99,$31
+		db $10,$00,$9A,$31
+		db $18,$00,$9B,$31
+		db $20,$00,$9C,$31
+		db $28,$00,$9D,$31
+		..insane
+		dw $0018
+		db $00,$00,$A8,$31
+		db $08,$00,$A9,$31
+		db $10,$00,$AA,$31
+		db $18,$00,$AB,$31
+		db $20,$00,$AC,$31
+		db $28,$00,$AD,$31
+
+	.DrawChallengeModes
+		RTS
+
+; included with difficulty
+
+		..ptr
+		dw ..time
+		dw ..critical
+		dw ..ironman
+
+		..time
+		dw $0010
+		..critical
+		dw $0018
+		..ironman
+		dw $0018
+
+	.DrawRealmStars
+		RTS
+
+; the map will be included in the BG1 GFX
+; the stars are just 8x8 sprites with set coordinates based on which levels are completed
+
+		..coords
+		db $00,$00	; realm 1
+		db $00,$00	; realm 2
+		db $00,$00	; realm 3
+		db $00,$00	; realm 4
+		db $00,$00	; realm 5
+		db $00,$00	; realm 6
+		db $00,$00	; realm 7
+		db $00,$00	; realm 8
+
+	.DrawIcon
+		RTS
+
+; for the demo, this can be included in BG1 GFX
+
+	.DrawPlaytime
+	; hours
+		REP #$30
+		LDA #$40B0 : STA $00
+		STZ $0E
+		LDA !PlaytimeHours : STA $0A
+		LDX #$0000						;\
+		CMP #$03E8 : BCC ..skipfirst				; |
+	-	CMP #$03E8 : BCC ..draw1000s				; |
+		SBC #$03E8						; |
+		INX : BRA -						; | 1000s
+		..draw1000s						; |
+		STA $0A							; |
+		TXA : JSR DrawDigit					; |
+		..skipfirst						;/
+		LDA $00							;\
+		CLC : ADC #$0005					; | X+5
+		STA $00							;/
+		LDX #$0000						;\
+		LDA $0A							; |
+		BIT $0E : BMI ..calcsecond				; |
+		CMP #$0064 : BCC ..skipsecond				; |
+		..calcsecond						; |
+	-	CMP #$0064 : BCC ..draw100s				; | 100s
+		SBC #$0064						; |
+		INX : BRA -						; |
+		..draw100s						; |
+		STA $0A							; |
+		TXA : JSR DrawDigit					; |
+		..skipsecond						;/
+		LDA $00							;\
+		CLC : ADC #$0005					; | X+5
+		STA $00							;/
+		LDX #$0000						;\
+		LDA $0A							; |
+		BIT $0E : BMI ..calcthird				; |
+		CMP #$000A : BCC ..skipthird				; |
+		..calcthird						; |
+	-	CMP #$000A : BCC ..draw10s				; | 10s
+		SBC #$000A						; |
+		INX : BRA -						; |
+		..draw10s						; |
+		STA $0A							; |
+		TXA : JSR DrawDigit					; |
+		..skipthird						;/
+		LDA $00							;\
+		CLC : ADC #$0005					; | X+5
+		STA $00							;/
+		LDA $0A : JSR DrawDigit					; 1s
+
+	; minutes
+		.DrawMinutes
+		LDA $00
+		CLC : ADC #$0005
+		STA $00
+		LDA #$000B : JSR DrawDigit
+		LDA $00
+		CLC : ADC #$0005
+		STA $00
+
+		LDA !PlaytimeMinutes
+		AND #$00FF : STA $0A
+		LDX #$0000						;\
+	-	CMP #$000A : BCC ..draw10s				; |
+		SBC #$000A						; |
+		INX : BRA -						; | 10s
+		..draw10s						; |
+		STA $0A							; |
+		TXA : JSR DrawDigit					;/
+		LDA $00							;\
+		CLC : ADC #$0005					; | X+5
+		STA $00							;/
+		LDA $0A : JSR DrawDigit					; 1s
+		SEP #$30
+		RTS
+
+; simple hex -> dec converter in 2 steps (hours + minutes)
+
+	.DrawCoins
+		REP #$30
+		LDA #$58B0 : STA $00					; initial X/Y pos (coins)
+		STZ $0E							; has not yet drawn anything
+
+		LDA !CoinHoard : STA $0A				;\
+		LDA !CoinHoard+2					; | setup
+		AND #$00FF : STA $0C					; |
+		TAY							;/
+		BEQ ..skipfirst						;\
+		LDX #$0000						; |
+		LDA $0A							; |
+	-	CPY #$0002 : BCS +					; |
+		CMP #$86A0 : BCS +					; | calculate 100000s digit
+		CPY #$0001 : BEQ ..draw100000s				; |
+	+	SBC #$86A0						; |
+		INX							; |
+		DEY : BNE -						;/
+		..draw100000s						;\
+		STA $0A							; |
+		STY $0C							; | draw 100000s digit
+		TXA : JSR DrawDigit					; |
+		LDY $0C							; |
+		..skipfirst						;/
+		LDA $00							;\
+		CLC : ADC #$0005					; | X+5
+		STA $00							;/
+
+		LDX #$0000						;\
+		LDA $0A							; |
+		LDY $0C : BNE ..calcsecond				; |
+		BIT $0E : BMI ..calcsecond				; |
+		CMP #$2710 : BCC ..skipsecond				; |
+		..calcsecond						; | calculate 10000s digit
+	-	CMP #$2710 : BCS +					; |
+		CPY #$0001 : BCC ..draw10000s				; |
+	+	SBC #$2710						; |
+		BCS $01 : DEY						; |
+		INX							; |
+		BRA -							;/
+		..draw10000s						;\
+		STA $0A							; | draw 10000s digit
+		TXA : JSR DrawDigit					; |
+		..skipsecond						;/
+		LDA $00							;\
+		CLC : ADC #$0005					; | X+5
+		STA $00							;/
+
+		LDX #$0000						;\
+		LDA $0A							; |
+		BIT $0E : BMI ..calcthird				; |
+		CMP #$03E8 : BCC ..skipthird				; |
+		..calcthird						; | calculate 1000s digit
+	-	CMP #$03E8 : BCC ..draw1000s				; |
+		SBC #$03E8						; |
+		INX							; |
+		BRA -							;/
+		..draw1000s						;\
+		STA $0A							; | draw 1000s digit
+		TXA : JSR DrawDigit					; |
+		..skipthird						;/
+		LDA $00							;\
+		CLC : ADC #$0005					; | X+5
+		STA $00							;/
+
+		LDX #$0000						;\
+		LDA $0A							; |
+		BIT $0E : BMI ..calcfourth				; |
+		CMP #$0064 : BCC ..skipfourth				; |
+		..calcfourth						; | calculate 100s digit
+	-	CMP #$0064 : BCC ..draw100s				; |
+		SBC #$0064						; |
+		INX							; |
+		BRA -							;/
+		..draw100s						;\
+		STA $0A							; | draw 100s digit
+		TXA : JSR DrawDigit					; |
+		..skipfourth						;/
+		LDA $00							;\
+		CLC : ADC #$0005					; | X+5
+		STA $00							;/
+
+		LDX #$0000						;\
+		LDA $0A							; |
+		BIT $0E : BMI ..calcfifth				; |
+		CMP #$000A : BCC ..skipfifth				; |
+		..calcfifth						; | calculate 10s digit
+	-	CMP #$000A : BCC ..draw10s				; |
+		SBC #$000A						; |
+		INX							; |
+		BRA -							;/
+		..draw10s						;\
+		STA $0A							; | draw 10s digit
+		TXA : JSR DrawDigit					; |
+		..skipfifth						;/
+		LDA $00							;\
+		CLC : ADC #$0005					; | X+5
+		STA $00							;/
+		LDA $0A : JSR DrawDigit					; draw 1s digit
+
+		.DrawYoshiCoinCounter
+		LDA #$4CB0 : STA $00					;\ setup
+		LDA !YoshiCoinCount : STA $0A				;/
+		STZ $0E
+		LDX #$0000						;\
+		CMP #$03E8 : BCC ..skipfirst				; |
+	-	CMP #$03E8 : BCC ..draw1000s				; |
+		SBC #$03E8						; |
+		INX : BRA -						; | 1000s
+		..draw1000s						; |
+		STA $0A							; |
+		TXA : JSR DrawDigit					; |
+		..skipfirst						;/
+		LDA $00							;\
+		CLC : ADC #$0005					; | X+5
+		STA $00							;/
+		LDX #$0000						;\
+		LDA $0A							; |
+		BIT $0E : BMI ..calcsecond				; |
+		CMP #$0064 : BCC ..skipsecond				; |
+		..calcsecond						; |
+	-	CMP #$0064 : BCC ..draw100s				; | 100s
+		SBC #$0064						; |
+		INX : BRA -						; |
+		..draw100s						; |
+		STA $0A							; |
+		TXA : JSR DrawDigit					; |
+		..skipsecond						;/
+		LDA $00							;\
+		CLC : ADC #$0005					; | X+5
+		STA $00							;/
+		LDX #$0000						;\
+		LDA $0A							; |
+		BIT $0E : BMI ..calcthird				; |
+		CMP #$000A : BCC ..skipthird				; |
+		..calcthird						; |
+	-	CMP #$000A : BCC ..draw10s				; | 10s
+		SBC #$000A						; |
+		INX : BRA -						; |
+		..draw10s						; |
+		STA $0A							; |
+		TXA : JSR DrawDigit					; |
+		..skipthird						;/
+		LDA $00							;\
+		CLC : ADC #$0005					; | X+5
+		STA $00							;/
+		LDA $0A : JSR DrawDigit					; 1s
+		SEP #$30
+		RTS
+
+
+	.DrawDeaths
+		REP #$30
+		LDA #$64B0 : STA $00
+		STZ $0E
+		LDA !P1DeathCounter
+		CLC : ADC !P2DeathCounter
+		STA $0A
+		LDX #$0000						;\
+		CMP #$03E8 : BCC ..skipfirst				; |
+	-	CMP #$03E8 : BCC ..draw1000s				; |
+		SBC #$03E8						; |
+		INX : BRA -						; | 1000s
+		..draw1000s						; |
+		STA $0A							; |
+		TXA : JSR DrawDigit					; |
+		..skipfirst						;/
+		LDA $00							;\
+		CLC : ADC #$0005					; | X+5
+		STA $00							;/
+		LDX #$0000						;\
+		LDA $0A							; |
+		BIT $0E : BMI ..calcsecond				; |
+		CMP #$0064 : BCC ..skipsecond				; |
+		..calcsecond						; |
+	-	CMP #$0064 : BCC ..draw100s				; | 100s
+		SBC #$0064						; |
+		INX : BRA -						; |
+		..draw100s						; |
+		STA $0A							; |
+		TXA : JSR DrawDigit					; |
+		..skipsecond						;/
+		LDA $00							;\
+		CLC : ADC #$0005					; | X+5
+		STA $00							;/
+		LDX #$0000						;\
+		LDA $0A							; |
+		BIT $0E : BMI ..calcthird				; |
+		CMP #$000A : BCC ..skipthird				; |
+		..calcthird						; |
+	-	CMP #$000A : BCC ..draw10s				; | 10s
+		SBC #$000A						; |
+		INX : BRA -						; |
+		..draw10s						; |
+		STA $0A							; |
+		TXA : JSR DrawDigit					; |
+		..skipthird						;/
+		LDA $00							;\
+		CLC : ADC #$0005					; | X+5
+		STA $00							;/
+		LDA $0A : JSR DrawDigit					; 1s
+		SEP #$30
+		RTS
+
+; simple hex -> dec converter (4 digits)
+
+	.DrawPercent
+		RTS
+
+; what counts as %?
+;	- level clears
+;	- yoshi coins
+;	- certain story flags
+;
+;	demo:
+;	- total 3 playable characters		4% each, total 12%	sum 12%
+;	- total 8 levels (including intro)	6% each, total 48%	sum 60%
+;	- total 40 yoshi coins			1% each, total 40%	sum 100%
+;
+;	these calculations will be completely different later, but for demo this is fine
+
+;	- 8 levels 2% each total 16
+;	- 40 coins 2% each total 80
+;	- shopkeeper 4%
+
+
 
 
 
@@ -3050,6 +3496,31 @@ MAIN_MENU:
 
 
 
+	DrawDigit:
+		; A = digit
+		TAY
+		LDA !OAMindex_p3 : TAX
+		TYA
+		CLC : ADC #$31F0
+		STA !OAM_p3+$002,x
+		LDA $00 : STA !OAM_p3+$000,x
+		DEC $0E				; n flag set
+		CPY #$0001			;\ "1" digit 1px slimmer
+		BNE $02 : DEC $00		;/
+
+		TXA
+		LSR #2
+		TAX
+		LDA #$0000 : STA !OAMhi_p3,x
+		INX
+		TXA
+		ASL #2
+		STA !OAMindex_p3
+		RTS
+
+
+
+
 ; cloud sprite data:
 ; $3200 - type
 ; $3210 - Y
@@ -3090,6 +3561,9 @@ MAIN_MENU:
 		LDX #$0F
 	-	STZ $3200,x
 		DEX : BPL -
+		LDA.b #.SA1_textdata : STA $BE
+		LDA.b #.SA1_textdata>>8 : STA $BE+1
+		LDA.b #.SA1_textdata>>16 : STA $BE+2
 		LDA.b #.SA1 : STA $3180
 		LDA.b #.SA1>>8 : STA $3181
 		LDA.b #.SA1>>16 : STA $3182
@@ -3572,8 +4046,9 @@ MAIN_MENU:
 		JSL !GetFileAddress					; | set up font pointer
 		LDA !FileAddress+0 : STA $00				; |
 		LDA !FileAddress+1 : STA $01				;/
-		SEP #$20						;\
-		LDA.b #!ImageCache>>16					; |
+		SEP #$20						;\ 2bpp
+		LDA #$80 : STA $223F					;/
+		LDA.b #!ImageCache>>16					;\
 		PHA : PLB						; |
 		REP #$20						; | clear rendering buffer
 		LDY #$1FFE						; |
@@ -3588,15 +4063,16 @@ MAIN_MENU:
 		STZ $06							; starting read index
 		STZ $08							; starting rendering index
 		SEP #$20						; A 8-bit
-		LDA #$80 : STA $223F					; 2bpp
 		LDA.b #!V_buffer>>16					;\ go into bank 0x60
 		PHA : PLB						;/
 
-		..loop
+
+	..loop
 		REP #$20
 		LDX $06
 		..readnext
-		LDA.l ..textdata,x
+		TXY
+		LDA [$BE],y
 		INX
 		AND #$00FF
 		CMP #$007F : BEQ ..space
@@ -3696,6 +4172,9 @@ MAIN_MENU:
 
 
 		..endmessage
+		TYA							;\
+		SEC : ADC $BE						; | get pointer to upload data (SEC : ADC for +1)
+		STA $BE							;/
 		SEP #$30
 		LDA #$40 : PHA : PLB
 		JSL !GetBigCCDMA					; X = index to CCDMA table
@@ -3703,16 +4182,28 @@ MAIN_MENU:
 		LDA.b #!GFX_buffer>>16 : STA !CCDMAtable+$04,x		;\
 		REP #$20						; | source adddress
 		LDA.w #!GFX_buffer : STA !CCDMAtable+$02,x		;/
-		LDA #$2000 : STA !CCDMAtable+$00,x			; upload size
+		LDA [$BE] : STA !CCDMAtable+$00,x			; upload size
+		INC $BE							;\ pointer +2
+		INC $BE							;/
 		LDA.l !210C						;\
 		AND #$000F						; |
 		XBA							; | dest VRAM
 		ASL #4							; |
+		ADC [$BE]						; > +offset
 		STA !CCDMAtable+$05,x					;/
 
-		REP #$30						;\
-		LDX #$0000						; |
-		LDA #$2000						; |
+		REP #$30						; all regs 16-bit
+		LDX #$0000						; X = 0
+		LDA [$BE] : BEQ +					;\
+		LSR #2							; | number of bytes to skip (empty)
+		STA $00							;/
+		LDA #$38FF						;\
+	-	STA.w !DecompBuffer,x					; | skip tiles
+		INX #2							; |
+		CPX $00 : BCC -						;/
+	+	TXA							;\
+		LSR A							; |
+		ORA #$2400						; |
 	-	STA.w !DecompBuffer,x					; |
 		INC A							; |
 		INX #2							; | generate tilemap
@@ -3727,8 +4218,8 @@ MAIN_MENU:
 		JSL !GetVRAM						; |
 		REP #$20						; |
 		LDA #$0800 : STA !VRAMtable+$00,x			; |
-		LDA.w #!DecompBuffer : STA !VRAMtable+$02,x		; |
-		LDA.w #!DecompBuffer>>16 : STA !VRAMtable+$04,x		; | upload tilemap
+		LDA.w #!DecompBuffer : STA !VRAMtable+$02,x		; | upload tilemap
+		LDA.w #!DecompBuffer>>16 : STA !VRAMtable+$04,x		; |
 		LDA.l !2109						; |
 		AND #$00FC						; |
 		XBA							; |
@@ -3738,12 +4229,6 @@ MAIN_MENU:
 		PLB							;/
 		RTL							; return
 
-
-
-
-	incsrc "MSG/TextCommands.asm"
-	cleartable
-	table "MSG/MessageTable.txt"
 
 		..textdata
 		db "The Mushroom Kingdom is at peace"
@@ -3762,7 +4247,8 @@ MAIN_MENU:
 		%linebreak()
 		db "in this unknown land?"
 		%endmessage()
-
+		dw $2000						; size (8KiB)
+		dw $0000						; offset
 
 
 
@@ -4082,7 +4568,9 @@ endmacro
 		PHP							; push P
 		SEP #$30						; all regs 8-bit
 		LDX $610A						;\
-		LDA SaveFileIndexHi,x : XBA				; | get index to file
+		CPX #$03						; |
+		BCC $02 : LDX #$00					; | get index to file (default to file 1 if invalid index)
+		LDA SaveFileIndexHi,x : XBA				; |
 		LDA SaveFileIndexLo,x					;/
 		REP #$30						; all regs 16-bit
 		TAX							; X = file index
@@ -4170,6 +4658,7 @@ endmacro
 		SEP #$30						; all regs 8-bit
 		LDA.b #!SRAM_block>>16 : PHA				; push bank of SRAM area
 		LDX $610A						;\
+		CPX #$03 : BCS .Fail					; > must be valid index (otherwise we won't erase anything)
 		LDA SaveFileIndexHi,x : XBA				; |
 		LDA SaveFileIndexLo,x					; | index 16-bit and get file index
 		REP #$10						; |
@@ -4191,6 +4680,7 @@ endmacro
 		LDA #!ChecksumComplement-$FF : STA.w !SRAM_block+$2FE,x	; complement
 		LDA #$0008 : STA !SRAM_block+$2FA,x			; bit count
 
+		.Fail
 		PLP							; pull P
 		PLB							; bank wrapper end
 		RTL							; return
@@ -4212,6 +4702,7 @@ endmacro
 		DEX : BPL -						;/
 		LDA.b #!SRAM_block>>8 : PHA				; push bank of file
 		LDX $610A						;\
+		CPX #$03 : BCS .Fail					; > do nothing if invalid index
 		LDA SaveFileIndexHi,x : XBA				; | get index to file
 		LDA SaveFileIndexLo,x					;/
 		REP #$10
@@ -4227,6 +4718,8 @@ endmacro
 		LDA $00 : STA.w !SRAM_block,x
 		REP #$20
 		LDA #!ChecksumComplement : STA.w !SRAM_block+$2FE,x
+
+		.Fail
 		PLP							; pull P
 		PLB							; bank wrapper end
 		RTL							; return
@@ -4238,6 +4731,8 @@ endmacro
 		PHP							; push P
 		SEP #$30						; all regs 8-bit
 		LDX $610A						;\
+		CPX #$03						; |
+		BCC $02 : LDX #$00					; > default to file 1 if invalid index
 		LDA SaveFileIndexHi,x : XBA				; | get index to file
 		LDA SaveFileIndexLo,x					;/
 		REP #$30						; all regs 16-bit

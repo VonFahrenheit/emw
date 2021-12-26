@@ -1638,10 +1638,10 @@
 		JSR Wait					;\
 		LDA #!KK_Smack : STA !SpriteAnimIndex		; |
 		STZ !SpriteAnimTimer				; |
-		LDA !SpriteXSpeed,x				; |
-		CLC : ADC #$20					; | init anim
-		CMP #$40 : BCC ..nofast				; | (save 8 frames on startup when moving fast)
-		LDA #$08 : STA !SpriteAnimTimer			; |
+	;	LDA !SpriteXSpeed,x				; |
+	;	CLC : ADC #$20					; | init anim
+	;	CMP #$40 : BCC ..nofast				; | (save 8 frames on startup when moving fast)
+	;	LDA #$08 : STA !SpriteAnimTimer			; |
 		..nofast					; |
 		LDA #!KK_Head_EyesDown : STA !HeadAnim,x	; |
 		LDA #$19 : STA !HeadTimer,x			;/

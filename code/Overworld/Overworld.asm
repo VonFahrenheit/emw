@@ -735,7 +735,8 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		LDX #$0000						;\
 		CMP #$03E8 : BCC ..skipfirst				; |
 	-	CMP #$03E8 : BCC ..draw1000s				; |
-		SBC #$03E8 : BRA -					; | 1000s
+		SBC #$03E8						; |
+		INX : BRA -						; | 1000s
 		..draw1000s						; |
 		STA $0A							; |
 		TXA : JSR DrawCoinDigit					; |
@@ -749,7 +750,8 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		CMP #$0064 : BCC ..skipsecond				; |
 		..calcsecond						; |
 	-	CMP #$0064 : BCC ..draw100s				; | 100s
-		SBC #$0064 : BRA -					; |
+		SBC #$0064						; |
+		INX : BRA -						; |
 		..draw100s						; |
 		STA $0A							; |
 		TXA : JSR DrawCoinDigit					; |
@@ -763,7 +765,8 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		CMP #$000A : BCC ..skipthird				; |
 		..calcthird						; |
 	-	CMP #$000A : BCC ..draw10s				; | 10s
-		SBC #$000A : BRA -					; |
+		SBC #$000A						; |
+		INX : BRA -						; |
 		..draw10s						; |
 		STA $0A							; |
 		TXA : JSR DrawCoinDigit					; |
@@ -1169,6 +1172,8 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		STA !OAM_p3+$002,x
 		LDA $00 : STA !OAM_p3+$000,x
 		DEC $0E				; n flag set
+		CPY #$0001			;\ "1" digit is 1px slimmer
+		BNE $02 : DEC $00		;/
 
 		TXA
 		LSR #2

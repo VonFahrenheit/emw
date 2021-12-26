@@ -2,7 +2,9 @@
 
 	HURT:
 		LDA !P2Invinc				;\
-		ORA !StarTimer				; | don't hurt player while star is active or player is invulnerable
+		ORA !StarTimer				; |
+		ORA !P2Pipe				; | invincibility
+		ORA !P2SlantPipe			; |
 		BNE .Return				;/
 
 		LDA !Difficulty				;\

@@ -2375,8 +2375,8 @@ HandleGraphics:
 		JSR .SpawnSparkles
 		..nosparkle
 		REP #$10
-		LDX #$0080
-		LDY #$0020
+		LDX #$0081
+		LDY #$001F
 		JSL !RGBtoHSL
 		LDX #$009F*3
 	--	LDA $7490
@@ -2388,12 +2388,12 @@ HandleGraphics:
 		LDA #$30 : STA !PaletteHSL+1,x
 		LDA #$20 : STA !PaletteHSL+2,x
 		DEX #3
-		CPX #$0080*3 : BCS --
-		LDX #$0080
-		LDY #$0020
+		CPX #$0081*3 : BCS --
+		LDX #$0081
+		LDY #$001F
 		JSL !HSLtoRGB
-		LDX #$0080
-		LDY #$0020
+		LDX #$0081
+		LDY #$001F
 		LDA $7490
 		CMP #$10
 		BCC $02 : LDA #$10

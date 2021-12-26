@@ -57,7 +57,6 @@
 		TAX						; |
 		LDA.l .TilePointer,x : STA $00			; |
 		PLX						;/
-
 		JMP TileUpdate
 
 
@@ -143,6 +142,8 @@
 		LDA #$FF
 		STA.l !P2Stasis-$80
 		STA.l !P2Stasis
+		STA.l !P2SlantPipe-$80
+		STA.l !P2SlantPipe
 
 		..done
 		REP #$30
@@ -174,6 +175,11 @@
 		SBC $0B : BCC ..nolock
 		..lock
 		LDA #$9F : STA !P2Pipe-$80,y
+		REP #$20
+		LDA !P2YPosLo-$80,y
+		DEC A
+		STA !P2YPosLo-$80,y
+		SEP #$20
 		TYA
 		BEQ $02 : LDA #$01
 		INC A
