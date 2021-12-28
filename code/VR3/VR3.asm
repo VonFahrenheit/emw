@@ -1059,8 +1059,11 @@ Build_RAM_Code:
 
 
 		LDA #$0060 : STA $08				; reset source bank (0x60 will never be used by SNES)
-		STZ $0A						; reset video port
-		STZ $0C						; reset DMA settings
+		LDA #$FFFF
+		STA $0A						; reset video port
+		STA $0C						; reset DMA settings
+
+
 
 		LDA.l !GameMode					;\
 		AND #$00FF					; | some of these only happen during levels
@@ -1560,11 +1563,11 @@ Build_RAM_Code:
 		LDA.w !VRAMtable+$02,x				;
 		AND #$0001 : BEQ ..fixedlo			; even: lo byte only, odd: hi byte only
 		..fixedhi					;
-		%DMAsettings($1908)				; 2119, 1 reg write once
+		%DMAsettings($1908)				; 2119, fixed, 1 reg write once
 		%videoport($80)					; video port: hi byte only
 		BRA ..handleupload				;
 		..fixedlo					;
-		%DMAsettings($1808)				; 2119, 1 reg write once
+		%DMAsettings($1808)				; 2118, fixed, 1 reg write once
 		%videoport($00)					; video port: lo byte only
 		..handleupload					;
 		!Temp = 0					; make new RAM code
@@ -1613,12 +1616,22 @@ Build_RAM_Code:
 		CLC : ADC $0E					; |
 		STA.w !VRAMtable+$02,x				; |
 	+	LDA.w !VRAMtable+$05,x				; | if entire transfer can't fit, transfer as much as possible
-		AND #$7FFF : %writecode(..vram)			; | (then update table to continue next frame)
-		LDA $0E						; |
-		LSR A						; |
-		CLC : ADC.w !VRAMtable+$05,x			; |
+		AND #$7FFF : %writecode(..vram)			;/ (then update table to continue next frame)
+		BIT $04 : BVC ..halve				;\
+		LDA.w !VRAMtable+$04,x				; |
+		AND #$00FF					; |
+		CMP #$007E : BEQ ..addfull			; |
+		CMP #$007F : BEQ ..addfull			; | fixed mode from RAM add the full size to VRAM offset
+		CMP #$0040 : BEQ ..addfull			; |
+		CMP #$0041 : BNE ..halve			; |
+		..addfull					; |
+		LDA $0E : BRA +					;/
+		..halve						;\
+		LDA $0E						; | standard setting: halve VRAM offset addition
+		LSR A						;/
+	+	CLC : ADC.w !VRAMtable+$05,x			;\
 		STA.w !VRAMtable+$05,x				; |
-		STZ.w !VRAMslot					; |
+		STZ.w !VRAMslot					; | store index to continue it next frame
 		BIT $02 : BMI +					; > background mode transfers don't store their index
 		STX.w !VRAMslot					;/
 	+	STZ $0E						; clear remaining bytes allowed
@@ -2982,13 +2995,6 @@ Build_RAM_Code:
 		LDA.w $0084,x					;\
 		SEC : SBC #$0202				; | source address
 		%writecode(..src)				;/
-
-	if !Debug
-	STA $00
-	STZ $02
-	LDA [$00] : STA.l !P1Coins
-	endif
-
 		SEP #$20					;\
 		LDA.w $0082,x : %writecode(..cgram)		; | destination CGRAM
 		REP #$20					;/

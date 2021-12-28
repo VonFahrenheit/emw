@@ -334,7 +334,7 @@ sa1rom
 
 
 		LDA !Difficulty				;\
-		AND #$20 : BEQ .NotIronman		; |
+		AND.b #!IronmanMode : BEQ .NotIronman	; |
 		LDA !MultiPlayer : BEQ .NotIronman	; |
 		LDA !P2Status-$80 : BEQ +		; |
 		LDY !P2Status : BNE +			; | ironman
@@ -405,7 +405,7 @@ sa1rom
 		SEP #$20				; a 8-bit
 		JSR Stasis				; stasis
 		LDA !Difficulty				;\
-		AND #$10 : BEQ +			; |
+		AND.b #!CriticalMode : BEQ +		; |
 		LDA $6DA7				; |
 		AND #$20 : BEQ +			; |
 		LDA !P2HP				; | toggle size with select on critical mode
@@ -539,7 +539,7 @@ sa1rom
 		SEP #$20				;/
 		JSR Stasis				; stasis
 		LDA !Difficulty				;\
-		AND #$10 : BEQ +			; |
+		AND.b #!CriticalMode : BEQ +		; |
 		LDA $6DA7				; |
 		AND #$20 : BEQ +			; |
 		LDA !P2HP				; | toggle size with select on critical mode

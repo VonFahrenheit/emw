@@ -1284,10 +1284,15 @@ endmacro
 
 		!SRAM_block		= $41B000
 		!SaveFileSize		= $300
-		!SaveSharedSize		= $134
+		!SaveSharedSize		= $300
 		!SaveINIT		= !SRAM_block+(!SaveFileSize*3)+!SaveSharedSize-4
 		!ChecksumComplement	= $1337
 		!SRAM_buffer		= $41BC00		; has to be in same bank as !SRAM_block
+
+
+		!TimeMode		= $04
+		!CriticalMode		= $08
+		!IronmanMode		= $10
 
 
 		!Difficulty		= !SRAM_buffer+$00
@@ -2327,6 +2332,7 @@ endmacro
 		!MsgInputBuffer		= !MsgRAM+$42		; 8 bytes, $6DA2-$6DA9 are buffered here, and these are read instead, used to buffer inputs during startup timer
 		!MsgInputLock		= !MsgRAM+$4A		; 4 bytes, each bit locks out the corresponding hold bit in input buffer, this is cleared when the input is 0, used to prevent press -> hold
 		!MsgClearBox		= !MsgRAM+$4E		; 1 byte, signals that the message box should be cleared
+		!MsgBold		= !MsgRAM+$4F		; 1 byte, enthiccens the text
 
 
 

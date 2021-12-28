@@ -892,13 +892,14 @@ endif
 ;====================================================================================================;
 %insertMSG(Menu_EasyMode)
 if !CompileText = 1
-	%border(0)
+;	%border(0)
 	%cinematic(2)
 	%speed(0)
 	%mode(2)
 	%important(2)
 	%color(0)
 	%clearbox()
+	%linebreak()
 	%linebreak()
 	db "A relaxing way to experience the game."
 	%linebreak()
@@ -914,13 +915,14 @@ endif
 ;====================================================================================================;
 %insertMSG(Menu_NormalMode)
 if !CompileText = 1
-	%border(0)
+;	%border(0)
 	%cinematic(2)
 	%speed(0)
 	%mode(2)
 	%important(2)
 	%color(0)
 	%clearbox()
+	%linebreak()
 	%linebreak()
 	db "This is the standard difficulty setting."
 	%linebreak()
@@ -932,13 +934,14 @@ endif
 ;====================================================================================================;
 %insertMSG(Menu_InsaneMode)
 if !CompileText = 1
-	%border(0)
+;	%border(0)
 	%cinematic(2)
 	%speed(0)
 	%mode(2)
 	%important(2)
 	%color(0)
 	%clearbox()
+	%linebreak()
 	%linebreak()
 	db "This is a challenging mode for master gamers!"
 	%linebreak()
@@ -952,21 +955,22 @@ endif
 ;====================================================================================================;
 %insertMSG(Menu_TimeMode)
 if !CompileText = 1
-	%border(0)
+;	%border(0)
 	%cinematic(2)
 	%speed(0)
 	%mode(2)
 	%important(2)
 	%color(0)
 	%clearbox()
+	%linebreak()
 	%linebreak()
 	db "Most levels will have a strict time limit for clearing them. Your fastest clear time for each level will be saved."
 	%endmessage()
 endif
 ;====================================================================================================;
-%insertMSG(Menu_RankMode)
+%insertMSG(Menu_CriticalMode)
 if !CompileText = 1
-	%border(0)
+;	%border(0)
 	%cinematic(2)
 	%speed(0)
 	%mode(2)
@@ -974,19 +978,6 @@ if !CompileText = 1
 	%color(0)
 	%clearbox()
 	%linebreak()
-	db "At the end of each level, you will be given a rank based on how well you did. Your highest rank for each level will be saved."
-	%endmessage()
-endif
-;====================================================================================================;
-%insertMSG(Menu_CriticalMode)
-if !CompileText = 1
-	%border(0)
-	%cinematic(2)
-	%speed(0)
-	%mode(2)
-	%important(2)
-	%color(0)
-	%clearbox()
 	%linebreak()
 	db "Enemies will always kill you in one hit."
 	%endmessage()
@@ -994,13 +985,14 @@ endif
 ;====================================================================================================;
 %insertMSG(Menu_IronmanMode)
 if !CompileText = 1
-	%border(0)
+;	%border(0)
 	%cinematic(2)
 	%speed(0)
 	%mode(2)
 	%important(2)
 	%color(0)
 	%clearbox()
+	%linebreak()
 	%linebreak()
 	db "If one player dies, the other one dies as well. There's no continuing on your own in this mode!"
 	%linebreak()
@@ -1010,13 +1002,14 @@ endif
 ;====================================================================================================;
 %insertMSG(Menu_HardcoreMode)
 if !CompileText = 1
-	%border(0)
+;	%border(0)
 	%cinematic(2)
 	%speed(0)
 	%mode(2)
 	%important(2)
 	%color(0)
 	%clearbox()
+	%linebreak()
 	%linebreak()
 	db "This challenge is reserved for those mad enough to face death. In this mode, there are no continues. Once you die, that's it."
 	%endmessage()
@@ -1238,7 +1231,6 @@ dw .L13B
 	dw !MSG_Menu_NormalMode
 	dw !MSG_Menu_InsaneMode
 	dw !MSG_Menu_TimeMode
-	dw !MSG_Menu_RankMode
 	dw !MSG_Menu_CriticalMode
 	dw !MSG_Menu_IronmanMode
 	dw !MSG_Menu_HardcoreMode

@@ -241,7 +241,7 @@ print "-- SP_MENU --"
 	incsrc "Defines.asm"				; Include standard defines
 
 
-	!NumColumnHeight	= $46			; base Y position of numbers column on the right (does not affect %)
+	!NumColumnHeight	= $4A			; base Y position of numbers column on the right (does not affect %)
 
 
 
@@ -380,7 +380,7 @@ endif
 
 	.Main
 		LDA !Difficulty				;\ see if timer is enabled
-		AND #$04 : BEQ .NoTimer			;/
+		AND.b #!TimeMode : BEQ .NoTimer			;/
 
 		LDA !TimerSeconds+1 : BMI .NoTimer	; don't process if negative
 
@@ -534,7 +534,7 @@ endif
 .Player1HP	LDA !P2Status-$80 : BNE .Player2HP	; don't write player 1 HP if player 1 is dead
 
 		LDA !Difficulty				;\
-		AND #$10 : BEQ ..notcrit		; |
+		AND.b #!CriticalMode : BEQ ..notcrit	; |
 		LDA #$0F : STA !StatusBar+$07		; | skull icon on critical mode
 		BRA .Player2HP				; |
 		..notcrit				;/
@@ -553,8 +553,9 @@ endif
 
 
 .Player2HP	LDA !P2Status : BNE .Return		; don't write player 2 HP if player 2 is dead
+		LDA !MultiPlayer : BEQ .Return		; don't write player 2 HP on singleplayer
 		LDA !Difficulty				;\
-		AND #$10 : BEQ ..notcrit		; |
+		AND.b #!CriticalMode : BEQ ..notcrit	; |
 		LDA #$0F : STA !StatusBar+$18		; | skull icon on critical mode
 		BRA .Return				; |
 		..notcrit				;/
@@ -1554,7 +1555,8 @@ endmacro
 
 ;
 ; RAM usage for menu:
-; $400-$BFF:	buffer for loading layer 1 tilemap from map16
+; $400-$5FF:	scrolling gradient table
+; $600-$BFF:	----
 ; $C00-$C1F:	2 tables for layer 1 HDMA (mode 3)
 ; $D00-$D1F:	2 tables for layer 3 HDMA (mode 3)
 ; $D80-$D9F:	2 tables for window HDMA (mode 1)
@@ -1658,22 +1660,22 @@ MAIN_MENU:
 		STZ $0C
 		CMP #$0080 : BCC +
 		LSR A
-		STA $0200,x
+		STA $0400,x
 		BCC $01 : INC A
-		STA $0202,x
+		STA $0402,x
 		LDA $04
 		ORA #$0020
 		SEP #$20
-		STA $0201,x
-		STA $0203,x
+		STA $0401,x
+		STA $0403,x
 		REP #$20
 		INX #2
 		BRA ++
 
-	+	STA $0200,x
+	+	STA $0400,x
 		LDA $04
 		ORA #$0020
-		STA $0201,x
+		STA $0401,x
 	++	AND #$001F
 		CMP $06
 		BEQ $02 : INC $04
@@ -1683,7 +1685,7 @@ MAIN_MENU:
 		INX #2
 		INY #2
 		CMP #$0100 : BCC -
-		STZ $0200,x
+		STZ $0400,x
 
 
 
@@ -1745,22 +1747,22 @@ MAIN_MENU:
 		STZ $0C
 		CMP #$0080 : BCC +
 		LSR A
-		STA $0300,x
+		STA $0500,x
 		BCC $01 : INC A
-		STA $0302,x
+		STA $0502,x
 		LDA $04
 		ORA #$0040
 		SEP #$20
-		STA $0301,x
-		STA $0303,x
+		STA $0501,x
+		STA $0503,x
 		REP #$20
 		INX #2
 		BRA ++
 
-	+	STA $0300,x
+	+	STA $0500,x
 		LDA $04
 		ORA #$0040
-		STA $0301,x
+		STA $0501,x
 	++	AND #$001F
 		CMP $06
 		BEQ $02 : INC $04
@@ -1770,7 +1772,7 @@ MAIN_MENU:
 		INX #2
 		INY #2
 		CMP #$0100 : BCC -
-		STZ $0300,x
+		STZ $0500,x
 
 
 
@@ -1783,8 +1785,8 @@ MAIN_MENU:
 		BEQ $02 : LDA #$80
 		STA !HDMA6source
 		STA !HDMA7source
-		LDA #$02 : STA !HDMA6source+1
-		LDA #$03 : STA !HDMA7source+1
+		LDA #$04 : STA !HDMA6source+1
+		LDA #$05 : STA !HDMA7source+1
 		STZ $4364
 		STZ $4374
 		REP #$20
@@ -1832,9 +1834,33 @@ MAIN_MENU:
 
 		LDA #$5F : STA !Translevel			; use final slot to index text
 		LDA !MsgTrigger : BEQ .NoText
+
+		REP #$20
+		LDA #$6600 : STA $400000+!MsgVRAM3
+		SEP #$20
 		LDA #$10 : TRB !HDMA				; disable BG3 HDMA
-		%CallMSG()
-		.NoText
+		LDA #$1C : STA !TextPal
+
+
+		STZ $6DA8					;\
+		LDA !MenuState					; |
+		AND #$7F					; |
+		CMP #$03 : BEQ +				; | input hax to prevent MSG from closing the box when it shouldn't
+		LDA #$BF : TRB $6DA6				; |
+		BRA ++						; |
+	+	LDA #$EF : TRB $6DA6				; |
+		++						;/
+
+		%CallMSG()					; full MSG call
+
+		REP #$20					;\
+		LDA #$00FF					; |
+		LDX #$09*2					; | cut out the top of the window
+	-	STA $0336,x					; |
+		DEX #2 : BPL -					; |
+		SEP #$20					;/
+
+		.NoText						;
 
 		JSL !KillOAM
 
@@ -2204,6 +2230,8 @@ MAIN_MENU:
 		STA $0C08 : STA $0C18						; |
 		STZ $0C0B : STZ $0C1B						; |
 		STA $0C0D : STA $0C1D						;/
+		LDA #$000C : STA !MenuBG1_Y
+
 
 		LDA #$003C : STA $0D00 : STA $0D20				;\
 		LDA #$003C : STA $0D05 : STA $0D25				; |
@@ -2344,32 +2372,84 @@ MAIN_MENU:
 		LDA #$04 : STA !MenuState
 		BRA ..nochoice
 		..makenewfile
-		LDA #$02 : STA !MenuState
+		LDA #$02 : STA !MenuState		;\
+		LDA #$00 : STA !Difficulty		; | create a new file
+		JSL NewFileSRAM				;/ (this prevents storage from previews)
 		..nochoice
 
+
+; fetch for each file:
+;	- playtime hours ($009) + playtime minutes ($008)
+;	- completion % ($004 + $270)
+;	- realms beaten (1:$010,5; 2+:----)
+
+		REP #$10
+		LDY #$0002
+	-	SEP #$20
+		LDA SaveFileIndexHi,y : XBA
+		LDA SaveFileIndexLo,y
+		TAX
+		LDA !SRAM_block+$00,x
+		CMP #$FF : BNE ..drawfile
+		..loopfile
+		DEY : BPL -
+		SEP #$30
+		JMP ..filesdone
+
+		..drawfile
+		LDA .OutlineDispX,y
+		CLC : ADC #$3A
+		STA $00
+		STZ $01
+		LDA .OutlineDispY,y
+		CLC : ADC #$14
+		STA $02
 		REP #$20
+		LDA !SRAM_block+$008,x : STA !PlaytimeMinutes
+		LDA !SRAM_block+$009,x : STA !PlaytimeHours
+		LDA !SRAM_block+$004,x
+		CLC : ADC !SRAM_block+$270,x
+		ASL A
+		AND #$00FF : PHA
+		LDA !SRAM_block+$010+$005,x
+		AND #$0080 : STA !BigRAM			; castle rex beaten flag
+		PHY
+		PHP
+		JSR .DrawPlaytime
+		PLP
+		PLY
+		LDA .OutlineDispX,y
+		AND #$00FF
+		CLC : ADC #$003E
+		STA $00
+		LDA .OutlineDispY,y
+		CLC : ADC #$0004
+		AND #$00FF : STA $02
+		PLA
+		PHY
+		PHP
+		JSR .DrawPercent_main
+		PLP
+		PLY
+		LDA !BigRAM : BEQ ..nextfile
+		LDA .OutlineDispX,y
+		CLC : ADC #$0010
+		STA $00
+		LDA .OutlineDispY,y
+		CLC : ADC #$0010
+		STA $01
 		LDA.w #.SmallStarTilemap : STA $02
-		LDA #$0004 : STA $0E
-		SEP #$20
 		STZ $0D
-		LDA !SRAM_block
-		CMP #$FF : BEQ ..nostar1
-		LDA #$40 : STA $00
-		LDA #$14 : STA $01
+		LDA #$0004 : STA $0E
+		PHP
+		PHY
 		JSL !SpriteHUD
-		..nostar1
-		LDA !SRAM_block+!SaveFileSize
-		CMP #$FF : BEQ ..nostar2
-		LDA #$60 : STA $00
-		LDA #$44 : STA $01
-		JSL !SpriteHUD
-		..nostar2
-		LDA !SRAM_block+(!SaveFileSize*2)
-		CMP #$FF : BEQ ..nostar3
-		LDA #$80 : STA $00
-		LDA #$74 : STA $01
-		JSL !SpriteHUD
-		..nostar3
+		PLY
+		PLP
+		..nextfile
+		JMP ..loopfile
+		..filesdone
+
 
 		REP #$20
 		LDA.w #.HackMarkTilemap : STA $02
@@ -2391,16 +2471,6 @@ MAIN_MENU:
 		LDA #$74 : STA $01
 		JSL !SpriteHUD
 		..nohack3
-
-
-		REP #$20
-		STZ $00
-		LDA.w #.TooltipTilemap : STA $02
-		LDA #$0014 : STA $0E
-		SEP #$20
-		LDA #$02 : STA $0D
-		JSL !SpriteHUD
-
 
 
 		JSR .MoveMario
@@ -2431,19 +2501,57 @@ MAIN_MENU:
 
 
 
-		LDA $13
-		AND #$18 : BEQ ..blink
+
 		LDX $610A
 		LDA .OutlineDispX,x : STA $00
 		LDA .OutlineDispY,x : STA $01
+		LDA $13
+		AND #$18 : BEQ ..blink
 		REP #$20
 		LDA.w #.OutlineTilemap : STA $02
 		LDA #$0050 : STA $0E
 		SEP #$20
 		LDA #$02 : STA $0D
+	;	JSL !SpriteHUD
+		..blink
+
+		REP #$20
+		LDA #$C820 : STA $00
+		LDA.w #.ButtonsTilemap : STA $02
+		LDA #$0002 : STA $0D
+		LDA #$0004 : STA $0E
+		SEP #$20
+		JSL !SpriteHUD
+		REP #$20
+		LDA.w #.TooltipsTilemap : STA $02
+		STZ $0D
+		LDA #$0010 : STA $0E
+		SEP #$20
 		JSL !SpriteHUD
 
-		..blink
+
+		LDX $610A
+		LDA SaveFileIndexHi,x : XBA
+		LDA SaveFileIndexLo,x
+		REP #$10
+		TAX
+		LDA !SRAM_block,x
+		SEP #$10
+		CMP #$FF : BEQ +
+		REP #$20
+		LDA #$C570 : STA $00
+		LDA.w #.EraseTilemap1 : STA $02
+		LDA #$0002 : STA $0D
+		LDA #$0010 : STA $0E
+		SEP #$20
+		JSL !SpriteHUD
+		REP #$20
+		LDA.w #.EraseTilemap2 : STA $02
+		STZ $0D
+		LDA #$000C : STA $0E
+		SEP #$20
+		JSL !SpriteHUD
+		+
 
 		RTS
 
@@ -2462,7 +2570,6 @@ MAIN_MENU:
 		STZ !MenuBG1_X+1
 		REP #$10
 		LDX !LevelHeight : JSR LoadScreen
-
 
 		..main
 		JSR .MoveMario
@@ -2489,6 +2596,9 @@ MAIN_MENU:
 	+	LDA !MenuBG1_X
 		STA $0C01,x
 		STA $0C06,x
+		LDA !MenuBG1_Y
+		STA $0C03,x
+		STA $0C08,x
 		STX !HDMA3source			; always double buffer, baby!
 		SEP #$20
 
@@ -2496,13 +2606,13 @@ MAIN_MENU:
 		RTS
 
 		..choose
+		LDA #$30 : TRB !HDMA			; disable BG3 HDMA and window HDMA
 		LDA $16
 		AND #$0C : BEQ ..nochange
 		CMP #$0C : BEQ ..nochange
 		CMP #$04 : BEQ ..d
 	..u	LDA !Difficulty
-		DEC A
-		BPL ..w
+		DEC A : BPL ..w
 		LDA #$02
 		BRA ..w
 	..d	LDA !Difficulty
@@ -2549,14 +2659,30 @@ MAIN_MENU:
 		CLC : ADC #$20
 		STA $00
 		LDA !Difficulty
+		AND #$03
 		ASL #4
-		CLC : ADC #$4C
+		CLC : ADC #$50
 		STA $01
 		LDA #$02 : STA $0D
 		REP #$20
 		LDA.w #.HandTilemap : STA $02
 		SEP #$20
 		LDA #$14 : STA $0E
+		JSL !SpriteHUD
+
+		; tooltips
+		REP #$20
+		LDA #$0128 : STA $00
+		LDA.w #.ButtonsTilemap : STA $02
+		SEP #$20
+		LDA #$02 : STA $0D
+		LDA #$08 : STA $0E
+		JSL !SpriteHUD
+		REP #$20
+		LDA.w #.TooltipsTilemap : STA $02
+		SEP #$20
+		STZ $0D
+		LDA #$1C : STA $0E
 		JSL !SpriteHUD
 		RTS
 
@@ -2580,13 +2706,11 @@ MAIN_MENU:
 		CMP #$0C : BEQ ..nochange
 		CMP #$04 : BEQ ..d
 	..u	LDA !MenuChallengeSelect
-		DEC A
-		BPL ..w
-		LDA #$03
-		BRA ..w
+		DEC A : BPL ..w
+		LDA #$02 : BRA ..w
 	..d	LDA !MenuChallengeSelect
 		INC A
-		CMP #$04
+		CMP #$03
 		BCC $02 : LDA #$00
 	..w	STA !MenuChallengeSelect
 		LDA #$06 : STA !SPC4
@@ -2609,13 +2733,12 @@ MAIN_MENU:
 
 		LDA $16
 		AND #$10 : BEQ ..nostart
-		LDA !Difficulty
-		JSL NewFileSRAM
-		LDA #$01			;\
-		STA !MarioStatus		; | start with mario and luigi
-		STA !LuigiStatus		;/
-		LDA #$01 : STA !SRAM_overworldX+1
-		LDA #$03 : STA !SRAM_overworldY+1
+		LDA !Difficulty : JSL NewFileSRAM
+		LDA #$01 : STA !MarioStatus		; start with mario only
+		REP #$20				;\
+		LDA #$0070 : STA !SRAM_overworldX	; | starting overworld coords
+		LDA #$03A0 : STA !SRAM_overworldY	; |
+		SEP #$20				;/
 
 	if !Debug = 1				;\
 	LDA $17					; |
@@ -2677,7 +2800,7 @@ MAIN_MENU:
 		STA $00
 		LDA !MenuChallengeSelect
 		ASL #4
-		CLC : ADC #$4C
+		CLC : ADC #$50
 		STA $01
 		LDA #$02 : STA $0D
 		REP #$20
@@ -2692,7 +2815,7 @@ MAIN_MENU:
 		STA $08
 		LDX #$05
 		LDA #$9E : STA $00
-		LDA #$2D-$10 : STA $01
+		LDA #$31-$10 : STA $01
 		REP #$20
 		LDA.w #.MarkTilemap : STA $02
 		SEP #$20
@@ -2712,7 +2835,7 @@ MAIN_MENU:
 		LDA !Difficulty
 		AND #$03
 		ASL #4
-		CLC : ADC #$57
+		CLC : ADC #$5B
 		STA $01
 		REP #$20
 		LDA.w #.UnderscoreTilemap : STA $02
@@ -2721,19 +2844,38 @@ MAIN_MENU:
 		LDA #$10 : STA $0E
 		JSL !SpriteHUD
 
-		; start
+		; tooltips
 		REP #$20
-		STZ $00
-		LDA.w #.StartTilemap : STA $02
+		LDA #$0128 : STA $00
+		LDA.w #.ButtonsTilemap : STA $02
 		SEP #$20
 		LDA #$02 : STA $0D
 		LDA #$08 : STA $0E
+		JSL !SpriteHUD
+		REP #$20
+		LDA.w #.TooltipsTilemap : STA $02
+		SEP #$20
+		STZ $0D
+		LDA #$1C : STA $0E
+		JSL !SpriteHUD
+		REP #$20
+		LDA #$01A4 : STA $00
+		LDA.w #.StartTilemap1 : STA $02
+		SEP #$20
+		LDA #$02 : STA $0D
+		LDA #$08 : STA $0E
+		JSL !SpriteHUD
+		REP #$20
+		LDA.w #.StartTilemap2 : STA $02
+		SEP #$20
+		STZ $0D
+		LDA #$0C : STA $0E
 		JSL !SpriteHUD
 
 		RTS
 
 		.ChallengeModeOrder
-		db $04,$08,$10,$20,$40,$80
+		db !TimeMode,!CriticalMode,!IronmanMode
 
 
 
@@ -2816,44 +2958,76 @@ MAIN_MENU:
 		STA $0C06,x
 		CLC : ADC #$00E0
 		STA $22
-		STZ $24
+		LDA !MenuBG1_Y
+		STA $0C03,x
+		STA $0C08,x
+		CLC : ADC #$0010
+		STA $24
 		STX !HDMA3source			; always double buffer, baby!
 		LDA $0C01,x
 		EOR #$FFFF : INC A
 		EOR #$0100
 		STA !BigRAM
 		SEP #$20
-		LDA $0C02,x : PHP
-		BEQ ..draw
-		BIT $16 : BMI ..skipdraw		; don't draw if file is selected already (prevent OAM on mosaic)
+		LDA $0C02,x : BNE ..choose
 		..draw
 		JSR .DrawDifficulty
+		JSR .DrawChallengeModes
 		JSR .DrawRealmStars
 		JSR .DrawCounterIcons
-		JSR .DrawPlaytime
+		REP #$30				;\
+		LDA !BigRAM				; |
+		CLC : ADC #$00C0			; | playtime
+		STA $00					; |
+		LDA.w #!NumColumnHeight+$00 : STA $02	; |
+		JSR .DrawPlaytime			;/
 		JSR .DrawCoins
 		JSR .DrawDeaths
-		JSR .DrawPercent
-		..skipdraw
-		PLP : BNE ..choose
+		REP #$30				;\
+		LDA !BigRAM				; |
+		CLC : ADC #$00C8			; |
+		STA $00					; |
+		LDA #$0084 : STA $02			; |
+		LDA !LevelsBeaten			; |
+		ASL A					; | completion %
+		STA $0A					; |
+		LDA !YoshiCoinCount			; |
+		ASL A					; |
+		ADC $0A					; |
+		AND #$00FF				; |
+		JSR .DrawPercent_main			; |
+		JSR .DrawPercent_underscore		;/
+
+		; tooltips
+		REP #$20
+		LDA #$0128 : STA $00
+		LDA.w #.ButtonsTilemap : STA $02
+		SEP #$20
+		LDA #$02 : STA $0D
+		LDA #$08 : STA $0E
+		JSL !SpriteHUD
+		REP #$20
+		LDA.w #.TooltipsTilemap : STA $02
+		SEP #$20
+		STZ $0D
+		LDA #$1C : STA $0E
+		JSL !SpriteHUD
 		RTS
 
 		..choose
-		BIT $16 : BPL ..nochoice
-
-		..startgame
+		BIT $16
+		BVS ..back
+		BPL ..draw
 		JSL LoadFileSRAM
 		STZ $6109
 		LDA #$80 : STA !SPC3
 		LDA #$0B : STA !GameMode
-		STZ !HDMA
 		RTS
-
-		..nochoice
-		BVC ..noback
+		..back
 		STZ !MenuState
-
-
+		STZ $22
+		LDA #$01 : STA $23
+		STZ !HDMA
 		..noback
 		RTS
 
@@ -2914,9 +3088,11 @@ MAIN_MENU:
 		dw ..chapter0
 
 		..chapter0
-		db "An Island's Dark Fate"
+		db "Chapter 1:"
+		%linebreak()
+		db "  An Island's Dark Fate"
 		%endmessage()
-		dw $0100			; size
+		dw $0800			; size
 		dw $0800			; VRAM offset
 
 
@@ -2934,8 +3110,13 @@ MAIN_MENU:
 		LDA !LevelTable1,y : BPL ..next		;/
 		TXA					;\
 		ASL A					; |
-		TAY					; | get coords
-		LDA ..coords+0,y : STA $00		; |
+		TAY					; |
+		LDA ..coords+0,y			; |
+		EOR #$FF : INC A			; | get coords
+		CMP !BigRAM : BCC ..next		; |
+		LDA ..coords+0,y			; |
+		CLC : ADC !BigRAM			; |
+		STA $00					; |
 		LDA ..coords+1,y : STA $01		;/
 		PHX					;\
 		JSL !SpriteHUD				; | draw star
@@ -3002,7 +3183,7 @@ MAIN_MENU:
 		CMP #$E0 : BCS ..fail
 		CLC : ADC #$20
 		STA $00
-		LDA #$4C : STA $01
+		LDA #$40 : STA $01
 		REP #$20
 		LDA ..ptr,x : STA $02
 		LDA ($02) : STA $0E
@@ -3014,9 +3195,6 @@ MAIN_MENU:
 		..fail
 		RTS
 
-; for this, there are not very many words that can be displayed
-; we'll just include them in the sprite GFX, and use the same ones for file preview and new file
-
 		..ptr
 		dw ..easy
 		dw ..normal
@@ -3024,52 +3202,82 @@ MAIN_MENU:
 
 		..easy
 		dw $0010
-		db $00,$00,$88,$31
-		db $08,$00,$89,$31
-		db $10,$00,$8A,$31
-		db $18,$00,$8B,$31
+		db $00,$00,$88,$3F
+		db $08,$00,$89,$3F
+		db $10,$00,$8A,$3F
+		db $18,$00,$8B,$3F
 		..normal
 		dw $0018
-		db $00,$00,$98,$31
-		db $08,$00,$99,$31
-		db $10,$00,$9A,$31
-		db $18,$00,$9B,$31
-		db $20,$00,$9C,$31
-		db $28,$00,$9D,$31
+		db $00,$00,$98,$3F
+		db $08,$00,$99,$3F
+		db $10,$00,$9A,$3F
+		db $18,$00,$9B,$3F
+		db $20,$00,$9C,$3F
+		db $28,$00,$9D,$3F
 		..insane
 		dw $0018
-		db $00,$00,$A8,$31
-		db $08,$00,$A9,$31
-		db $10,$00,$AA,$31
-		db $18,$00,$AB,$31
-		db $20,$00,$AC,$31
-		db $28,$00,$AD,$31
+		db $00,$00,$A8,$3F
+		db $08,$00,$A9,$3F
+		db $10,$00,$AA,$3F
+		db $18,$00,$AB,$3F
+		db $20,$00,$AC,$3F
+		db $28,$00,$AD,$3F
+
+
 
 	.DrawChallengeModes
+		LDA !Difficulty
+		LSR #2
+		STA $04
+		LDA #$02 : STA $0D
+		LDA #$4C : STA $01
+		LDX.b #..end-..ptr-2
+		..loop
+		REP #$20
+		LSR $04 : BCC ..next
+		LDA ..ptr,x : STA $02
+		LDA ($02) : STA $0E
+		INC $02
+		INC $02
+		SEP #$20
+		LDA ($02)
+		CLC : ADC #$20
+		EOR #$FF : INC A
+		CMP !BigRAM : BCC ..next
+		LDA !BigRAM
+		CLC : ADC #$20
+		STA $00
+		PHX
+		JSL !SpriteHUD
+		PLX
+		..next
+		DEX #2 : BPL ..loop
+		SEP #$20
 		RTS
-
-; included with difficulty
 
 		..ptr
 		dw ..time
 		dw ..critical
 		dw ..ironman
+		..end
 
 		..time
-		dw $0010
+		dw $0004
+		db $00,$00,$B8,$3F
 		..critical
-		dw $0018
+		dw $0008
+		db $14,$00,$BA,$3F
+		db $14,$08,$CA,$3F
 		..ironman
-		dw $0018
+		dw $0004
+		db $28,$00,$BC,$3F
 
 
+; input:
+;	$00 = Xdisp
+;	$02 = Ydisp
 	.DrawPlaytime
 	; hours
-		REP #$30
-		LDA !BigRAM
-		CLC : ADC #$00C0
-		STA $00
-		LDA.w #!NumColumnHeight+$00 : STA $02
 		STZ $0E
 		LDA !PlaytimeHours : STA $0A
 		LDX #$0000						;\
@@ -3306,21 +3514,15 @@ MAIN_MENU:
 		SEP #$30
 		RTS
 
-; simple hex -> dec converter (4 digits)
 
+
+; input:
+;	A = completion %
+;	$00 = Xdisp
+;	$02 = Ydisp
 	.DrawPercent
-		REP #$30
-		LDA !BigRAM
-		CLC : ADC #$00C8
-		STA $00
-		LDA #$0080 : STA $02
-		LDA !LevelsBeaten
-		ASL A
-		STA $0A
-		LDA !YoshiCoinCount
-		ASL A
-		ADC $0A
-		AND #$00FF
+
+		..main
 		STA $0A
 		CMP #$0064 : BCC ++
 		LDX #$0000
@@ -3338,23 +3540,27 @@ MAIN_MENU:
 		TXA : JSR DrawDigit
 		LDA $0A : JSR DrawDigit
 		LDA #$000A : JSR DrawDigit
+		SEP #$30
+		RTS
 
+		..underscore
+		REP #$30
 		LDA !BigRAM
 		AND #$00FF
 		CMP #$003A : BCS ..return
 		ADC #$00C6
 		STA $00
-		LDA #$0089 : STA $01
-		LDA.w #..underscore : STA $02
+		LDA #$008D : STA $01
+		LDA.w #..underscoretilemap : STA $02
 		STZ $0D
 		LDA #$000C : STA $0E
 		JSL !SpriteHUD
 		..return
-
 		SEP #$30
 		RTS
 
-		..underscore
+
+		..underscoretilemap
 		db $00,$00,$B0,$3F
 		db $08,$00,$B1,$3F
 		db $10,$00,$B0,$7F
@@ -3520,16 +3726,37 @@ MAIN_MENU:
 		.OutlineDispY
 		db $06,$36,$66
 
-		.TooltipTilemap
-		db $08,$B0,$00,$3D		; A button
-		db $08,$C0,$40,$3D
-		db $18,$C0,$42,$3D
-		db $28,$C0,$60,$3D
-		db $38,$C0,$62,$3D
+		.EraseTilemap1
+		db $04,$07,$60,$3D
+		db $14,$07,$62,$3D
+		db $00,$00,$40,$3D
+		db $10,$00,$42,$3D
+		.EraseTilemap2
+		db $20,$07,$D6,$3F
+		db $28,$07,$D7,$3F
+		db $30,$07,$D8,$3F
 
-		.StartTilemap
-		db $60,$B8,$04,$3D
-		db $68,$B8,$05,$3D
+		.ButtonsTilemap
+		db $00,$00,$02,$3D
+		db $34,$00,$22,$3D
+
+		.TooltipsTilemap
+		db $14,$04,$FC,$3F
+		db $1C,$04,$FD,$3F
+		db $24,$04,$FE,$3F
+		db $2C,$04,$FF,$3F
+		db $48,$04,$E9,$3F
+		db $50,$04,$EA,$3F
+		db $58,$04,$EB,$3F
+
+		.StartTilemap1
+		db $00,$FE,$04,$3D
+		db $08,$FE,$05,$3D
+		.StartTilemap2
+		db $1C,$04,$EC,$3F
+		db $24,$04,$ED,$3F
+		db $2C,$04,$EE,$3F
+
 
 		.SmallStarTilemap
 		db $00,$00,$86,$3F
@@ -3550,6 +3777,9 @@ MAIN_MENU:
 		LDA !MenuState : BMI ..main
 		..init
 		ORA #$80 : STA !MenuState
+		STZ $41								; disable window 1 on BG1 and BG2
+		STZ $42								; disable window 1 on BG3
+		STZ $43								; disable window 1 on sprites
 
 		..main
 		LDA #$41 : STA $6DA2
@@ -3566,6 +3796,9 @@ MAIN_MENU:
 		STA !MenuBG1_X
 		STA $0C01,x
 		STA $0C06,x
+		LDA !MenuBG1_Y
+		STA $0C03,x
+		STA $0C08,x
 		STX !HDMA3source
 		SEP #$20
 		RTS
@@ -3584,7 +3817,7 @@ MAIN_MENU:
 		TAY
 		LDA !OAMindex_p3 : TAX
 		TYA
-		CLC : ADC #$31F0
+		CLC : ADC #$3FF0
 		STA !OAM_p3+$002,x
 		SEP #$20
 		LDA $00 : STA !OAM_p3+$000,x
@@ -3632,12 +3865,14 @@ MAIN_MENU:
 
 		STZ !AnimToggle			; make sure CCDMA doesn't black bar by putting limit at 2KB/frame
 
-		LDA #$FF
+		REP #$20
+		LDA !BG2BaseV
+		DEC A
 		STA $20
-		STA $21
+		SEP #$20
 		LDA #$01 : STA !Mode7Scale+1
 		STZ !Mode7Scale
-		LDA #$13
+		LDA #$17
 		TSB !MainScreen
 		TRB !SubScreen
 		STZ !TimerSeconds
@@ -4290,7 +4525,7 @@ MAIN_MENU:
 		LDA [$BE] : BEQ +					;\
 		LSR #2							; | number of bytes to skip (empty)
 		STA $00							;/
-		LDA #$38FF						;\
+		LDA #$39FF						;\
 	-	STA.w !DecompBuffer,x					; | skip tiles
 		INX #2							; |
 		CPX $00 : BCC -						;/
@@ -4301,7 +4536,7 @@ MAIN_MENU:
 		INC A							; |
 		INX #2							; | generate tilemap
 		CPX #$0400 : BCC -					; |
-		LDA #$38FF						; |
+		LDA #$39FF						; |
 	-	STA.w !DecompBuffer,x					; |
 		INX #2							; |
 		CPX #$0800 : BCC -					;/
@@ -4364,13 +4599,13 @@ MAIN_MENU:
 		PLX				; get "Y" in X
 		STA $0A
 		LDY #$0000
-		LDA [$0A],y : STA $0400,x
+		LDA [$0A],y : STA $410000,x
 		INY #2
-		LDA [$0A],y : STA $0440,x
+		LDA [$0A],y : STA $410040,x
 		INY #2
-		LDA [$0A],y : STA $0402,x
+		LDA [$0A],y : STA $410002,x
 		INY #2
-		LDA [$0A],y : STA $0442,x
+		LDA [$0A],y : STA $410042,x
 		TXY
 		PLX
 
@@ -4388,8 +4623,8 @@ MAIN_MENU:
 
 	.Done	JSL !GetVRAM
 		REP #$20
-		LDA #$0400 : STA !VRAMbase+!VRAMtable+$02,x
-		LDA #$0000 : STA !VRAMbase+!VRAMtable+$04,x
+		LDA #$0000 : STA !VRAMbase+!VRAMtable+$02,x
+		LDA #$0041 : STA !VRAMbase+!VRAMtable+$04,x
 		LDA #$3400 : STA !VRAMbase+!VRAMtable+$05,x
 		LDA #$0800 : STA !VRAMbase+!VRAMtable+$00,x
 		SEP #$30

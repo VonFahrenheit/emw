@@ -1117,6 +1117,14 @@ level4:
 		ADC $7889
 		STA !SpriteYHi,x
 		CPY #$02 : BEQ +
+
+		LDY #$00
+		LDA !BG1_X_Delta
+		BEQ ..random
+		BMI $02 : LDY #$02
+		BRA +
+
+		..random
 		LDA !RNG
 		AND #$02
 		TAY

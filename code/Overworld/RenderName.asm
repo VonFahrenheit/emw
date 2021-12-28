@@ -105,7 +105,7 @@
 	-	JMP ..notime
 		..time
 		LDA !Difficulty
-		AND #$0004 : BEQ -
+		AND.w #!TimeMode : BEQ -
 		LDA #$A664 : STA $00
 
 		LDA !OAMindex_p3 : TAX			; X = OAM index

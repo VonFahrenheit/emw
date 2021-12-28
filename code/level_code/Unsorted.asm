@@ -1635,11 +1635,8 @@ LoadCameraBox:
 ; --Level INIT--
 
 levelinit0:
-		LDX #$0F			;\
-	-	LDA !LevelTable4,x		; |
-		ORA #$80			; | unlock levels 0-F
-		STA !LevelTable4,x		; |
-		DEX : BPL -			;/
+		LDA #$01 : STA !LuigiStatus		; unlock luigi
+
 
 		LDA #$33 : STA !NPC_Talk+$10
 
@@ -1726,9 +1723,9 @@ levelinit25:
 		STA !P2XPosLo
 	.L
 
-		LDA.b #.SA1 : STA $3180
-		LDA.b #.SA1>>8 : STA $3181
-		LDA.b #.SA1>>16 : STA $3182
+	;	LDA.b #.SA1 : STA $3180
+	;	LDA.b #.SA1>>8 : STA $3181
+	;	LDA.b #.SA1>>16 : STA $3182
 	;	JSR $1E80
 
 		STZ $43
@@ -2071,6 +2068,8 @@ levelinitC6:
 
 
 levelinitC7:
+		LDA #$FC : STA !BG2BaseV
+		LDA #$FF : STA !BG2BaseV+1
 		RTL
 
 
@@ -2945,9 +2944,9 @@ level25:
 
 		LDA !Level+6 : BNE .PortraitLoaded
 
-		LDA.b #.SA1 : STA $3180
-		LDA.b #.SA1>>8 : STA $3181
-		LDA.b #.SA1>>16 : STA $3182
+	;	LDA.b #.SA1 : STA $3180
+	;	LDA.b #.SA1>>8 : STA $3181
+	;	LDA.b #.SA1>>16 : STA $3182
 		INC !Level+6
 		STZ !RollWidth
 	;	JSR $1E80
@@ -4226,7 +4225,6 @@ levelC7:
 	pullpc
 	.Main
 		PHB : PHK : PLB
-
 
 		PLB
 		RTL

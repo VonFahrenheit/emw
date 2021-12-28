@@ -1389,7 +1389,7 @@ HurtP1:		LDA !P2Invinc-$80,y			;\
 		BNE .Return				;/
 
 		LDA !Difficulty				;\
-		AND #$10 : BEQ .NotCrit			; | critical mode sets HP to 1 when player gets hit, meaning they'll always die from the damage
+		AND.b #!CriticalMode : BEQ .NotCrit	; | critical mode sets HP to 1 when player gets hit, meaning they'll always die from the damage
 		LDA #$01 : STA !P2HP-$80,y		; |
 		.NotCrit				;/
 

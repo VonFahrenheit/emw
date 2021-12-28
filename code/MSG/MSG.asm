@@ -779,8 +779,8 @@ sa1rom
 ; 1 KB from player (0x400 bytes)
 ; 	/text CCDMA (2 * 0x200 = 0x400 bytes)
 ;	/text tilemap (2 * 0x60 = 0x0C0 bytes)
-;	/wipe box GFX (2 * 0x200 = 0x400 bytes)
-;	/wipe box tilemap (0xE00 bytes)
+;	/wipe box tilemap (2 * 0x10 * 0x20 = 0x200 bytes)
+;	/wipe box GFX (0xE00 bytes)
 
 ; wipe message box
 	CLEAR_BOX:
@@ -855,7 +855,7 @@ sa1rom
 		..border						;\
 		LDX #$01FE						; |
 		LDA.w #$5555						; |
-	-	STA.w !GFX_buffer+$000,x				; | clear rendering buffers (no border)
+	-	STA.w !GFX_buffer+$000,x				; | clear rendering buffers (with border)
 		STA.w !GFX_buffer+$C00,x				; |
 		STA.w !GFX_buffer+$E00,x				; |
 		DEX #2 : BPL -						;/
@@ -966,11 +966,11 @@ sa1rom
 	..loop1	STA $0300,x
 		INX #2
 		CPX $00 : BCC ..loop1
-		CPX #$B0 : BEQ .SetHDMA
+		CPX #$C0 : BEQ .SetHDMA
 		LDA #$FF00
 	..loop2	STA $0300,x
 		INX #2
-		CPX #$B0 : BCC ..loop2
+		CPX #$C0 : BCC ..loop2
 
 .SetHDMA	SEP #$20						; A 8-bit
 		LDA.l $400000+!MsgVertOffset				;\

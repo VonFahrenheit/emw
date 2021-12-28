@@ -82,19 +82,41 @@ Portal:
 		RTL							; return right away to prevent a bastard sprite
 		.StillActive
 
-		LDA $3220,x : PHA
-		LDA $3210,x : PHA
+		LDA !SpriteXLo,x : PHA
+		LDA !SpriteXHi,x : PHA
+		LDA !SpriteYLo,x : PHA
+		LDA !SpriteYHi,x : PHA
+
+		LDA !PortalDelay
+		DEC A : STA $00
 
 		LDA !PortalTimer
+		CMP $00 : BEQ +
 		CMP #$20 : BCS +
 		AND #$0F
 		TAY
-		LDA $3210,x
-		CLC : ADC .Offset,y
-		STA $3210,x
-		LDA $3220,x
-		CLC : ADC .Offset+4,y
-		STA $3220,x
+		REP #$20
+		LDA .Offset+0,y
+		AND #$00FF
+		CMP #$0080
+		BCC $03 : ORA #$FF00
+		SEP #$20
+		CLC : ADC !SpriteYLo,x
+		STA !SpriteYLo,x
+		XBA
+		ADC !SpriteYHi,x
+		STA !SpriteYHi,x
+		REP #$20
+		LDA .Offset+4,y
+		AND #$00FF
+		CMP #$0080
+		BCC $03 : ORA #$FF00
+		SEP #$20
+		CLC : ADC !SpriteXLo,x
+		STA !SpriteXLo,x
+		XBA
+		ADC !SpriteXHi,x
+		STA !SpriteXHi,x
 		+
 
 
@@ -103,8 +125,10 @@ Portal:
 		SEP #$20
 		JSL LOAD_PSUEDO_DYNAMIC_p0
 
-		PLA : STA $3210,x
-		PLA : STA $3220,x
+		PLA : STA !SpriteYHi,x
+		PLA : STA !SpriteYLo,x
+		PLA : STA !SpriteXHi,x
+		PLA : STA !SpriteXLo,x
 
 
 		LDA !ExtraBits,x					;\ if extra bit is set, spawn endlessly
@@ -158,10 +182,10 @@ Portal:
 
 	.Tilemap
 		dw $0010
-		db $32,$00,$F0,$00
-		db $72,$F0,$F0,$00
-		db $B2,$00,$00,$00
-		db $F2,$F0,$00,$00
+		db $32,$08,$F0,$20
+		db $72,$F8,$F0,$20
+		db $B2,$08,$00,$20
+		db $F2,$F8,$00,$20
 
 	.Offset
 		db $F0,$10
