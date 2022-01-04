@@ -70,6 +70,32 @@ NPC:
 
 
 	INIT:
+		.HandleLock					;\
+		LDA !GameMode					; |
+		CMP #$14 : BEQ ..unlock				; | lock until game mode 0x14 to prevent palset collisions
+		..lock						; |
+		LDA #$01 : STA $3230,x				; |
+		RTL						;/
+		..unlock					; if unlocked...
+		LDA !SparkleTimer,x				;\
+		AND #$01 : BEQ ..nosparkle			; |
+		LDA !RNG					; |
+		AND #$0F					; |
+		ASL A						; |
+		SBC #$0C					; |
+		STA $00						; |
+		LDA #$08 : STA $01				; |
+		STZ $02						; | handle sparkle timer, even when not in play
+		LDA #$F0 : STA $03				; | (the animation plays while the player is in swap stun)
+		STZ $04						; |
+		LDA #$E8 : STA $05				; |
+		LDA !RNG					; |
+		LSR #4						; |
+		STA $06						; |
+		LDA.b #!prt_sparkle : JSL SpawnParticle		; |
+		..nosparkle					;/
+		JSR CheckPlayer : BEQ ..lock			; lock if this character is controlled by a player
+
 		PHB : PHK : PLB
 		LDA #$FF : STA !PrevAnim,x
 		LDA !ExtraProp1,x
@@ -116,26 +142,27 @@ NPC:
 		.Mario
 		LDX !SpriteIndex
 		LDA #$01 : JSL GET_SQUARE
-		LDA.b #!palset_mario
-		BRA .FinishPalset
+		LDA.b #!palset_mario : BRA .FinishPalset
 
 		.Luigi
 		LDX !SpriteIndex
 		LDA #$01 : JSL GET_SQUARE
-		LDA.b #!palset_luigi
-		BRA .FinishPalset
+		LDA.b #!palset_luigi : BRA .FinishPalset
 
 		.Kadaal
 		LDX !SpriteIndex
+		LDA !ExtraProp2,x
+		AND #$3F
+		CMP #$07 : BNE +
+		LDA #$08 : STA !SpriteAnimIndex
+		+
 		LDA #$01 : JSL GET_SQUARE
-		LDA.b #!palset_kadaal
-		BRA .FinishPalset
+		LDA.b #!palset_kadaal : BRA .FinishPalset
 
 		.Leeway
 		LDX !SpriteIndex
 		LDA #$04 : JSL GET_SQUARE
-		LDA.b #!palset_leeway
-		BRA .FinishPalset
+		LDA.b #!palset_leeway : BRA .FinishPalset
 
 		.Alter
 		LDX !SpriteIndex
@@ -288,27 +315,17 @@ NPC:
 		..noleeway
 
 
-		LDA !SparkleTimer,x
-		AND #$01 : BEQ ..nosparkle
-		LDA !RNG
-		AND #$0F
-		ASL A
-		SBC #$0C
-		STA $00
-		LDA #$08 : STA $01
-		STZ $02
-		LDA #$F0 : STA $03
-		STZ $04
-		LDA #$E8 : STA $05
-		LDA !RNG
-		LSR #4
-		STA $06
-		LDA.b #!prt_sparkle : JSL SpawnParticle
-		..nosparkle
-
-
 		JSR CheckPlayer : BNE .RunCharCode
 		STZ $33C0,x							; unload palset if character not visible
+		LDA #$01 : STA $3230,x						; return to INIT
+		TXA								;\
+		ASL A								; |
+		TAX								; |
+		REP #$20							; | release dynamic tiles
+		LDA !DynamicList,x : TRB !DynamicTile				; |
+		STZ !DynamicList,x						; |
+		SEP #$20							; |
+		LDX !SpriteIndex						;/
 		BRA .BadCharacter
 
 		.RunCharCode
@@ -374,6 +391,7 @@ NPC:
 		dw FollowTalkable	; 04
 		dw Guard		; 05
 		dw IntroGuard		; 06
+		dw Spy			; 07
 		dw SwapP1		; last-1
 		dw SwapP2		; last
 		..end
@@ -403,6 +421,29 @@ NPC:
 
 	Luigi:
 		LDX !SpriteIndex				; X = sprite index
+		LDA !LuigiStatus
+		CMP #$01 : BEQ .KnockedOut
+
+		.Idle
+		REP #$30					;\
+		LDY.w #!File_Luigi				; |
+		LDA.w #.IdleDyn : STA $0C			; |
+		JSL LOAD_SQUARE_DYNAMO				; | draw
+		LDA.w #Tilemap_16x32 : STA $04			; |
+		SEP #$30					; |
+		JSL SETUP_SQUARE				; |
+		JSL LOAD_DYNAMIC				;/
+		RTS
+
+		.KnockedOut
+		LDA $400000+!MsgTalk : BEQ +
+		LDA $14
+		AND #$01
+		ASL A
+		DEC A
+		CLC : ADC !SpriteXLo,x
+		STA !SpriteXLo,x
+		+
 		REP #$30					;\
 		LDY.w #!File_Luigi				; |
 		LDA.w #.KnockedOutDyn : STA $0C			; |
@@ -413,6 +454,13 @@ NPC:
 		JSL LOAD_DYNAMIC				;/
 		RTS
 
+
+		.IdleDyn
+		dw ..end-..start
+		..start
+		%SquareDyn($000)
+		%SquareDyn($020)
+		..end
 
 		.KnockedOutDyn
 		dw ..end-..start
@@ -425,32 +473,131 @@ NPC:
 
 	Kadaal:
 		LDX !SpriteIndex				; X = sprite index
+		
+		.HandleModes
+		LDA !Level					;\ bypass talk check on intro level
+		CMP #$C6 : BEQ ..talking			;/
+		LDA !Talking,x : BEQ ..spymode
+		..talking
+		LDA $400000+!MsgTalk
+		CMP #$01 : BEQ ..hiding2
+		CMP #$02 : BEQ ..jumpforth
+		CMP #$03 : BEQ ..idle
+		BRA ..spymode
+
+		..jumpforth
+		INC A : STA $400000+!MsgTalk
+		LDA #$D0 : STA !SpriteYSpeed,x
+		LDA #$E8 : STA !SpriteXSpeed,x
+		BRA +
+
+		..idle
+		LDA $3330,x
+		AND #$04 : BEQ ..done
+		STZ !SpriteXSpeed,x
+		LDA !ExtraProp2,x
+		AND #$3F
+		CMP #$07 : BEQ ..done
+		LDA !SpriteAnimIndex
+		CMP #$04 : BCC ..done
+		LDA #$00 : BRA ++
+		..hiding2
+		JSL SUB_HORZ_POS
+		TYA : STA $3320,x
+		LDA #$11 : BRA ++
+
+		..spymode
+		LDA !ExtraProp2,x
+		AND #$3F
+		CMP #$07 : BEQ ..spying
+		..normal
+		LDA !SpriteXSpeed,x : BEQ ..done
+		ROL #2
+		AND #$01 : STA $3320,x
+		LDA !SpriteAnimIndex
+		CMP #$04 : BCS ..done
+		LDA #$04 : BRA ++
+
+		..spying
+		LDA !SpriteXSpeed,x : BNE ..moving
+		..hiding
+		JSL SUB_HORZ_POS
+		TYA : STA $3320,x
+		LDA !SpriteAnimIndex
+		CMP #$0C : BCS ..done
+		LDA #$0C : BRA ++
+		..moving
+		LDA !SpriteAnimIndex
+		CMP #$08 : BCC +
+		CMP #$0C : BCC ..done
+	+	LDA #$08
+	++	STA !SpriteAnimIndex
+		STZ !SpriteAnimTimer
+		..done
+
+
 		LDA !SpriteAnimIndex				;\
-		ASL #2						; |
-		TAY						; | process anim timer
+		ASL A						; |
+		ADC !SpriteAnimIndex				; |
+		ASL A						; | process anim timer
+		TAY						; |
 		LDA !SpriteAnimTimer				; |
 		INC A						; |
-		CMP .AnimTable+2,y : BNE +			;/
-		LDA .AnimTable+3,y : STA !SpriteAnimIndex	;\
-		REP #$30					; |
-		LDA .AnimTable+0,y : STA $0C			; |
-		LDY.w #!File_Kadaal				; | process dynamic tiles
-		JSL LOAD_SQUARE_DYNAMO				; |
-		SEP #$30					; |
-		LDA #$00					;/
+		CMP .AnimTable+4,y : BNE +			;/
+		LDA .AnimTable+5,y : STA !SpriteAnimIndex	;\
+		LDA !SpriteAnimIndex				; |
+		ASL A						; | reload index
+		ADC !SpriteAnimIndex				; |
+		ASL A						; |
+		TAY						;/
+		LDA #$00					; reset timer
 	+	STA !SpriteAnimTimer				; update anim timer
 		REP #$20					;\
-		LDA.w #Tilemap_16x32 : STA $04			; |	
-		SEP #$20					; | draw to OAM
-		JSL SETUP_SQUARE				; |
+		LDA .AnimTable+0,y : STA $04			; | get tilemap
+		SEP #$20					;/
+		LDA !SpriteAnimIndex				;\
+		CMP !PrevAnim,x : BEQ +				; |
+		REP #$30					; |
+		LDA .AnimTable+2,y : STA $0C			; | process dynamic tiles
+		LDY.w #!File_Kadaal				; |
+		JSL LOAD_SQUARE_DYNAMO				; |
+		SEP #$30					; |
+		+						;/
+		JSL SETUP_SQUARE				;\ draw to OAM
 		JSL LOAD_DYNAMIC				;/
+
+		LDA !SpriteAnimIndex : STA !PrevAnim,x
+
 		RTS
 
 		.AnimTable
-		dw .Idle00 : db $06,$01
-		dw .Idle01 : db $06,$02
-		dw .Idle02 : db $06,$03
-		dw .Idle03 : db $06,$00
+		dw Tilemap_16x32,.Idle00 : db $06,$01
+		dw Tilemap_16x32,.Idle01 : db $06,$02
+		dw Tilemap_16x32,.Idle02 : db $06,$03
+		dw Tilemap_16x32,.Idle03 : db $06,$00
+
+		dw Tilemap_16x32,.Walk00 : db $06,$05
+		dw Tilemap_16x32,.Walk01 : db $06,$06
+		dw Tilemap_16x32U,.Walk02 : db $06,$07
+		dw Tilemap_16x32,.Walk03 : db $06,$04
+
+		dw Tilemap_16x16,.Shell00 : db $04,$09
+		dw Tilemap_16x16,.Shell01 : db $04,$0A
+		dw Tilemap_16x16,.Shell02 : db $04,$0B
+		dw Tilemap_16x16X,.Shell01 : db $04,$08
+
+		dw Tilemap_Peek0,.Idle00 : db $FF,$0D
+		dw Tilemap_Peek1,.Idle00 : db $02,$0E
+		dw Tilemap_Peek2,.Idle00 : db $02,$0F
+		dw Tilemap_Peek3,.Idle00 : db $02,$10
+		dw Tilemap_Peek4,.Idle00 : db $02,$11
+		dw Tilemap_Peek5,.Idle00 : db $20,$12
+		dw Tilemap_Peek6,.Idle00 : db $20,$13
+		dw Tilemap_Peek5,.Idle00 : db $20,$14
+		dw Tilemap_Peek4,.Idle00 : db $02,$15
+		dw Tilemap_Peek3,.Idle00 : db $02,$16
+		dw Tilemap_Peek2,.Idle00 : db $02,$17
+		dw Tilemap_Peek1,.Idle00 : db $02,$0C
 
 
 		.Idle00
@@ -478,6 +625,48 @@ NPC:
 		%SquareDyn($026)
 		..end
 
+
+		.Walk00
+		dw ..end-..start
+		..start
+		%SquareDyn($008)
+		%SquareDyn($028)
+		..end
+		.Walk01
+		dw ..end-..start
+		..start
+		%SquareDyn($00A)
+		%SquareDyn($02A)
+		..end
+		.Walk02
+		dw ..end-..start
+		..start
+		%SquareDyn($00C)
+		%SquareDyn($02C)
+		..end
+		.Walk03
+		dw ..end-..start
+		..start
+		%SquareDyn($00E)
+		%SquareDyn($02E)
+		..end
+
+
+		.Shell00
+		dw ..end-..start
+		..start
+		%SquareDyn($0BA)
+		..end
+		.Shell01
+		dw ..end-..start
+		..start
+		%SquareDyn($0BC)
+		..end
+		.Shell02
+		dw ..end-..start
+		..start
+		%SquareDyn($0BE)
+		..end
 
 
 
@@ -1422,49 +1611,83 @@ NPC:
 
 
 	Tilemap:
+		.16x16
+		dw $0004
+		db $2E,$00,$00,$00
+		.16x16X
+		dw $0004
+		db $6E,$00,$00,$00
+
 		.16x24
 		dw $0008
-		db $3E,$00,$F8,$00
-		db $3E,$00,$00,$01
+		db $2E,$00,$F8,$00
+		db $2E,$00,$00,$01
 
 		.16x32
 		dw $0008
-		db $3E,$00,$F0,$00
-		db $3E,$00,$00,$01
+		db $2E,$00,$F0,$00
+		db $2E,$00,$00,$01
+		.16x32U
+		dw $0008
+		db $2E,$00,$EF,$00
+		db $2E,$00,$FF,$01
 
 		.32x16
 		dw $0008
-		db $3E,$F8,$00,$00
-		db $3E,$08,$00,$01
+		db $2E,$F8,$00,$00
+		db $2E,$08,$00,$01
 
 		.24x32
 		dw $0010
-		db $3E,$FC,$F0,$00
-		db $3E,$04,$F0,$01
-		db $3E,$FC,$00,$02
-		db $3E,$04,$00,$03
+		db $2E,$FC,$F0,$00
+		db $2E,$04,$F0,$01
+		db $2E,$FC,$00,$02
+		db $2E,$04,$00,$03
 
 		.32x32forward
 		dw $0010
-		db $3E,$F4,$F0,$00
-		db $3E,$04,$F0,$01
-		db $3E,$F4,$00,$02
-		db $3E,$04,$00,$03
+		db $2E,$F4,$F0,$00
+		db $2E,$04,$F0,$01
+		db $2E,$F4,$00,$02
+		db $2E,$04,$00,$03
 
 		.32x32
 		dw $0010
-		db $3E,$F8,$F0,$00
-		db $3E,$08,$F0,$01
-		db $3E,$F8,$00,$02
-		db $3E,$08,$00,$03
+		db $2E,$F8,$F0,$00
+		db $2E,$08,$F0,$01
+		db $2E,$F8,$00,$02
+		db $2E,$08,$00,$03
 
 		.Leeway
 		dw $0014
-		db $3E,$F1,$08,$03
-		db $3E,$F9,$08,$04
-		db $3E,$FC,$F0,$00
-		db $3E,$FC,$00,$01
-		db $3E,$04,$00,$02
+		db $2E,$F1,$08,$03
+		db $2E,$F9,$08,$04
+		db $2E,$FC,$F0,$00
+		db $2E,$FC,$00,$01
+		db $2E,$04,$00,$02
+
+
+		.Peek0
+		dw $0004
+		db $2E,$00,$FB,$00
+		.Peek1
+		dw $0004
+		db $2E,$00,$FA,$00
+		.Peek2
+		dw $0004
+		db $2E,$00,$F8,$00
+		.Peek3
+		dw $0004
+		db $2E,$00,$F6,$00
+		.Peek4
+		dw $0004
+		db $2E,$00,$F4,$00
+		.Peek5
+		dw $0004
+		db $2E,$00,$F3,$00
+		.Peek6
+		dw $0004
+		db $6E,$FC,$F3,$00
 
 
 	DATA:
@@ -1488,14 +1711,18 @@ NPC:
 ; if return with z = 1, this NPC should be disabled
 	CheckPlayer:
 		LDA !ExtraProp1,x
-		CMP #$06 : BCS .Return
+		CMP #$06 : BCC .Check
+		LDA #$01
+		RTS
 
+		.Check
 		ASL #2
 		ADC !ExtraProp1,x
 		ASL A
 		TAX
 		LDA !CharacterData,x : BNE .Unlocked
 		LDX !SpriteIndex
+		.Fail
 		LDA #$00
 		RTS
 
@@ -1531,6 +1758,9 @@ NPC:
 
 		.P1
 		PHA
+		JSL SUB_HORZ_POS					;\
+		TYA							; | must be facing NPC
+		CMP !P2Direction-$80 : BNE ..fail			;/
 		LDA !P2Status-$80 : BNE ..fail
 		LDA !P2Blocked-$80
 		AND #$04 : BEQ ..fail
@@ -1541,6 +1771,9 @@ NPC:
 		PLA
 
 		.P2
+		JSL SUB_HORZ_POS					;\
+		TYA							; | must be facing NPC
+		CMP !P2Direction : BNE ..fail				;/
 		LDA !P2Status : BNE ..fail
 		LDA !P2Blocked
 		AND #$04 : BEQ ..fail
@@ -1651,6 +1884,85 @@ NPC:
 		RTS
 
 
+	Spy:
+		LDX !SpriteIndex
+		LDA !SpriteDisP1,x : BNE .Moving
+		LDA !SpriteXLo,x
+		SEC : SBC #$20
+		STA $04
+		LDA !SpriteXHi,x
+		SBC #$00
+		STA $0A
+		LDA !SpriteYLo,x
+		SEC : SBC #$60
+		STA $05
+		LDA !SpriteYHi,x
+		SBC #$00
+		STA $0B
+		LDA #$40 : STA $06
+		LDA #$C0 : STA $07
+		SEC : JSL !PlayerClipping
+		BCC .CheckBush
+
+		LDA #$30 : STA !SpriteDisP1,x
+
+		.Moving
+		LDA #$40 : STA !SpriteXSpeed,x
+		LDA $3330,x
+		AND #$04 : BEQ +
+		STZ !SpriteYSpeed,x
+		LDA !SpriteSlope : BPL +
+		LDA #$C0 : STA !SpriteYSpeed,x
+		+
+		RTS
+
+		.CheckBush
+		JSL !GetSpriteClipping04
+		REP #$30
+		LDX #$0000
+		..loop
+		LDA $410000+!BG_object_Type,x
+		AND #$00FF
+		CMP #$0001 : BNE ..next
+		PHX
+		LDA $410000+!BG_object_Y,x
+		STA $01
+		STA $08
+		LDA $410000+!BG_object_W,x
+		ASL #3
+		STA $02
+		LDA $410000+!BG_object_X,x
+		SEP #$30
+		STA $00
+		XBA : STA $08
+		JSL !CheckContact : BCC ..nocontact
+		..stop
+		PLA : PLA
+		LDX !SpriteIndex
+		LDA $00
+		ORA #$0A : STA !SpriteXLo,x
+		LDA $08 : STA !SpriteXHi,x
+		LDA $01 : STA !SpriteYLo,x
+		LDA $09 : STA !SpriteYHi,x
+		STZ !SpriteXSpeed,x
+		RTS
+		..nocontact
+		REP #$30
+		PLX
+		..next
+		TXA
+		CLC : ADC.w #!BG_object_Size
+		TAX
+		CPX.w #(!BG_object_Size)*(!BG_object_Count) : BCC ..loop
+		..done
+		SEP #$30
+		LDX !SpriteIndex
+
+
+		.Return
+		RTS
+
+
 
 	SwapP1:
 		LDX !SpriteIndex
@@ -1690,10 +2002,10 @@ NPC:
 		LDY #$80
 
 	Unload:
-		LDA #$04 : STA !ExtraProp2,x			; become talkable (swap)
+		LDA #$02 : STA !ExtraProp2,x			; become talkable (swap)
 		LDA !ExtraProp1,x : STA !P2Character-$80,y	; write to PCE reg
 		LDA #$00 : STA !P2Init-$80,y			; init flag
-		LDA #$02 : STA !P2HP-$80,y			; HP
+		LDA #$0F : STA !P2HP-$80,y			; HP
 		LDA $3220,x : STA !P2XPosLo-$80,y		;\
 		LDA $3250,x : STA !P2XPosHi-$80,y		; | set coords
 		LDA $3210,x : STA !P2YPosLo-$80,y		; |

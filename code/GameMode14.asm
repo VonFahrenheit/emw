@@ -138,6 +138,7 @@ namespace GAMEMODE14
 		+
 
 	; optimized pause code
+		LDA !Cutscene : BNE .PauseDone
 		STZ $00
 		LDA !PauseTimer : BEQ .CheckPause
 		DEC !PauseTimer
@@ -153,8 +154,7 @@ namespace GAMEMODE14
 		AND #$10 : BEQ .CheckSelect
 		LDA !MsgTrigger : BNE +
 		LDA !Pause
-		EOR #$01
-		STA !Pause
+		EOR #$01 : STA !Pause
 		EOR #$01
 		CLC : ADC #$11
 		STA !SPC1
@@ -425,6 +425,45 @@ pullpc
 ; sending that here is almost certainly fine
 ; $00F6DB (scroll routine)
 Camera:
+		.EnableHDMA
+		LDA !CutsceneSmoothness : BEQ ..done
+		LDA.b #Cutscene_HDMA>>16 : STA $4374
+		REP #$20
+		STZ $4370
+		LDA !CutsceneSmoothness
+		AND #$00FF
+		ASL A
+		TAX
+		LDA.l Cutscene_HDMA,x : STA !HDMA7source
+		SEP #$20
+		LDA #$80 : TSB !HDMA
+		..done
+
+
+		LDA !Cutscene : BEQ .NoCutscene
+		LDA !MsgTrigger
+		ORA !MsgTrigger+1 : BNE +
+		LDA !CutsceneSmoothness
+		CMP #$08 : BEQ +
+		INC !CutsceneSmoothness
+		+
+
+		LDA.b #Cutscene : STA $3180
+		LDA.b #Cutscene>>8 : STA $3181
+		LDA.b #Cutscene>>16 : STA $3182
+		JSR $1E80
+		RTL
+		.NoCutscene
+
+
+		LDA !MsgTrigger
+		ORA !MsgTrigger+1 : BNE +
+		LDA !CutsceneSmoothness : BEQ +
+		DEC !CutsceneSmoothness : BNE +
+		LDA #$80 : TRB !HDMA
+		+
+
+
 		LDA !P2Status : BEQ .Run			;\
 		LDA !P2Status-$80 : BNE .Return			; | disable camera while both players are dead/dying
 		.Run						;/
@@ -1765,6 +1804,304 @@ Camera:
 		RTS
 	..pos	LSR #3
 		RTS
+
+
+
+
+macro cutscenewait(time)
+		db $00,<time>
+		endmacro
+
+macro cutscenetextbox(msg)
+		db $01
+		dw <msg>
+		endmacro
+
+macro cutscenemusic(song)
+		db $02,<song>
+		endmacro
+
+macro input6DA2(byte)
+		db $03,<byte>
+		endmacro
+macro input6DA3(byte)
+		db $04,<byte>
+		endmacro
+macro input6DA4(byte)
+		db $05,<byte>
+		endmacro
+macro input6DA5(byte)
+		db $06,<byte>
+		endmacro
+macro input6DA6(byte)
+		db $07,<byte>
+		endmacro
+macro input6DA7(byte)
+		db $08,<byte>
+		endmacro
+macro input6DA8(byte)
+		db $09,<byte>
+		endmacro
+macro input6DA9(byte)
+		db $0A,<byte>
+		endmacro
+
+macro endstay()
+		db $0B
+		endmacro
+
+macro endloadlevel(level)
+		db $0C
+		dw <level>
+		endmacro
+
+macro endloadoverworld()
+		db $0D
+		endmacro
+
+
+; cutscene:
+;	- NPC cam (camera controlled by NPC)
+;	- black border on top and bottom (replaces status bar)
+;	- timer used as command index
+;	- commands:
+;		- wait
+;		- text box
+;		- write to NPC
+;		- input byte
+;		- end cutscene (stay in level)
+;		- end cutscene (load new level)
+;		- end cutscene (load overworld)
+	Cutscene:
+		PHB : PHK : PLB
+		PHP
+		SEP #$30
+		JSL Camera_SA1
+		LDA !Cutscene6DA2 : STA $6DA2		;\
+		LDA !Cutscene6DA3 : STA $6DA3		; |
+		LDA !Cutscene6DA4 : STA $6DA4		; |
+		LDA !Cutscene6DA5 : STA $6DA5		; | cutscene input override
+		LDA !Cutscene6DA6 : STA $6DA6		; |
+		LDA !Cutscene6DA7 : STA $6DA7		; |
+		LDA !Cutscene6DA8 : STA $6DA8		; |
+		LDA !Cutscene6DA9 : STA $6DA9		;/
+		LDA !CutsceneWait : BEQ .Process	; if no wait, execute next command
+		LDA !MsgTrigger				;\
+		ORA !MsgTrigger+1			; | if no text box, decrement wait timer
+		BNE .Return				; |
+		DEC !CutsceneWait			;/
+		.Return
+		PLP
+		PLB
+		RTL
+
+		.Process
+		LDA !Cutscene
+		ASL A : TAX
+		REP #$20
+		LDA .CutscenePtr-2,x : STA $00
+		SEP #$20
+		LDY !CutsceneIndex
+		INC !CutsceneIndex
+		LDA ($00),y
+		ASL A
+		TAX
+		JSR (.CutsceneCommand,x)
+		PLP
+		PLB
+		RTL
+
+
+		.CutscenePtr
+		dw .ArriveAtCrashSite
+
+		.ArriveAtCrashSite
+		%cutscenewait(60)
+		%input6DA2($01)
+		%cutscenewait(120)
+		%input6DA2($00)
+		%cutscenewait(16)
+		%cutscenetextbox(!MSG_CrashSite_1)
+		%endstay()
+
+		.CutsceneCommand
+		dw .Wait
+		dw .TextBox
+		dw .Music
+		dw .Input6DA2
+		dw .Input6DA3
+		dw .Input6DA4
+		dw .Input6DA5
+		dw .Input6DA6
+		dw .Input6DA7
+		dw .Input6DA8
+		dw .Input6DA9
+		dw .EndStay
+		dw .EndLoadLevel
+		dw .EndLoadOverworld
+
+	.Wait
+		INY
+		LDA ($00),y : STA !CutsceneWait
+		INC !CutsceneIndex
+		RTS
+	.TextBox
+		INY
+		REP #$20
+		LDA ($00),y : STA !MsgTrigger
+		SEP #$20
+		INC !CutsceneIndex
+		INC !CutsceneIndex
+		RTS
+	.Music
+		INY
+		LDA ($00),y : STA !SPC3
+		INC !CutsceneIndex
+		RTS
+	.Input6DA2
+		INY
+		LDA ($00),y : STA !Cutscene6DA2
+		INC !CutsceneIndex
+		RTS
+	.Input6DA3
+		INY
+		LDA ($00),y : STA !Cutscene6DA3
+		INC !CutsceneIndex
+		RTS
+	.Input6DA4
+		INY
+		LDA ($00),y : STA !Cutscene6DA4
+		INC !CutsceneIndex
+		RTS
+	.Input6DA5
+		INY
+		LDA ($00),y : STA !Cutscene6DA5
+		INC !CutsceneIndex
+		RTS
+	.Input6DA6
+		INY
+		LDA ($00),y : STA !Cutscene6DA6
+		INC !CutsceneIndex
+		RTS
+	.Input6DA7
+		INY
+		LDA ($00),y : STA !Cutscene6DA7
+		INC !CutsceneIndex
+		RTS
+	.Input6DA8
+		INY
+		LDA ($00),y : STA !Cutscene6DA8
+		INC !CutsceneIndex
+		RTS
+	.Input6DA9
+		INY
+		LDA ($00),y : STA !Cutscene6DA9
+		INC !CutsceneIndex
+		RTS
+	.EndStay
+		STZ !Cutscene
+		STZ !CutsceneIndex
+		STZ !CutsceneWait
+		BRA .Clean
+	.EndLoadLevel
+		STZ !Cutscene
+		STZ !CutsceneIndex
+		STZ !CutsceneWait
+		INY
+		REP #$20
+		LDA ($00),y
+		SEP #$20
+		LDX #$1F
+	-	STA $79B8,x
+		DEX : BPL -
+		XBA
+		LDX #$1F
+	-	STA $79D8,x
+		DEX : BPL -
+		LDA #$06 : STA $71
+		STZ $88
+		STZ $89
+		BRA .Clean
+	.EndLoadOverworld
+		STZ !Cutscene
+		STZ !CutsceneIndex
+		STZ !CutsceneWait
+		LDA #$0B : STA !GameMode
+
+	.Clean
+		STZ !Cutscene6DA2			;\
+		STZ !Cutscene6DA3			; |
+		STZ !Cutscene6DA4			; |
+		STZ !Cutscene6DA5			; | kill cutscene input
+		STZ !Cutscene6DA6			; |
+		STZ !Cutscene6DA7			; |
+		STZ !Cutscene6DA8			; |
+		STZ !Cutscene6DA9			;/
+
+		RTS
+
+
+	.HDMA
+		dw ..0
+		dw ..1
+		dw ..2
+		dw ..3
+		dw ..4
+		dw ..5
+		dw ..6
+		dw ..7
+		dw ..8
+
+		..1
+		db $02,$80
+		db $6D,$0F
+		db $6D,$0F
+		db $01,$80
+		..0
+		db $00
+		..2
+		db $04,$80
+		db $6B,$0F
+		db $6B,$0F
+		db $01,$80
+		db $00
+		..3
+		db $06,$80
+		db $69,$0F
+		db $69,$0F
+		db $01,$80
+		db $00
+		..4
+		db $08,$80
+		db $67,$0F
+		db $67,$0F
+		db $01,$80
+		db $00
+		..5
+		db $0A,$80
+		db $65,$0F
+		db $65,$0F
+		db $01,$80
+		db $00
+		..6
+		db $0C,$80
+		db $63,$0F
+		db $63,$0F
+		db $01,$80
+		db $00
+		..7
+		db $0E,$80
+		db $61,$0F
+		db $61,$0F
+		db $01,$80
+		db $00
+		..8
+		db $10,$80
+		db $5F,$0F
+		db $5F,$0F
+		db $01,$80
+		db $00
+
 
 
 

@@ -1,7 +1,7 @@
 
 macro level(X, Y, W, H, num)
-	dw !TempX*256+(<X>&$00FF)&$FFF8
-	dw !TempY*256+(<Y>&$00FF)&$FFF8
+	dw <X>
+	dw <Y>
 	if <W> = 0
 		db 8
 	else
@@ -32,93 +32,104 @@ endmacro
 
 
 LevelList:
-	!TempY = 0
-	!TempX = 0
 	.Screen11
+	; levels here
 	..end
-	!TempX = 1
 	.Screen12
+	; levels here
 	..end
-	!TempX = 2
 	.Screen13
+	; levels here
 	..end
-	!TempX = 3
 	.Screen14
+	; levels here
 	..end
-	!TempX = 4
 	.Screen15
+	; levels here
 	..end
-	!TempX = 5
 	.Screen16
+	; levels here
 	..end
 
-	!TempY = 1
-	!TempX = 0
 	.Screen21
+	; levels here
 	..end
-	!TempX = 1
 	.Screen22
+	; levels here
 	..end
-	!TempX = 2
 	.Screen23
+	; levels here
 	..end
-	!TempX = 3
 	.Screen24
+	; levels here
 	..end
-	!TempX = 4
 	.Screen25
+	; levels here
 	..end
-	!TempX = 5
 	.Screen26
+	; levels here
 	..end
 
-	!TempY = 2
-	!TempX = 0
 	.Screen31
-		%level($F0, $90, 0, 0, 5)	; castle rex
-
-		%level($80, $F0, 0, 0, 1)
-		%level($98, $F0, 0, 0, 2)
-		%level($B0, $F0, 0, 0, 3)
-		%level($C8, $F0, 0, 0, 4)
-		%level($E0, $F0, 0, 0, 6)
-		%level($F8, $F0, 0, 0, $0C)
-
+		%level(208, 760, 32, 32,	$002)	; rex village
+		%level(320, 816, 64, 64,	$00C)	; rex reef beach
+		%level(350, 740, 32, 32, 	$003)	; dinolord's domain
+		%level(296, 688, 32, 32, 	$001)	; mushroom gorge
+		%level(336, 624, 0, 0,		$005)	; castle rex
+		%level(152, 700, 24, 28, 	$004)	; fuzzy's ridge
+		%level(230, 628, 24, 24, 	$006)	; evernight temple
 	..end
-	!TempX = 1
 	.Screen32
+		%level(208, 760, 32, 32,	$002)	; rex village
+		%level(320, 816, 64, 64,	$00C)	; rex reef beach
+		%level(350, 740, 32, 32, 	$003)	; dinolord's domain
+		%level(296, 688, 32, 32, 	$001)	; mushroom gorge
+		%level(336, 624, 0, 0,		$005)	; castle rex
+		%level(152, 700, 24, 28, 	$004)	; fuzzy's ridge
+		%level(230, 628, 24, 24, 	$006)	; evernight temple
 	..end
-	!TempX = 2
 	.Screen33
+	; levels here
 	..end
-	!TempX = 3
 	.Screen34
+	; levels here
 	..end
-	!TempX = 4
 	.Screen35
+	; levels here
 	..end
-	!TempX = 5
 	.Screen36
+	; levels here
 	..end
 
-	!TempY = 3
-	!TempX = 0
 	.Screen41
+		%level(208, 760, 32, 32,	$002)	; rex village
+		%level(320, 816, 64, 64,	$00C)	; rex reef beach
+		%level(350, 740, 32, 32, 	$003)	; dinolord's domain
+		%level(296, 688, 32, 32, 	$001)	; mushroom gorge
+		%level(336, 624, 0, 0,		$005)	; castle rex
+		%level(152, 700, 24, 28, 	$004)	; fuzzy's ridge
+		%level(230, 628, 24, 24, 	$006)	; evernight temple
 	..end
-	!TempX = 1
 	.Screen42
+		%level(208, 760, 32, 32,	$002)	; rex village
+		%level(320, 816, 64, 64,	$00C)	; rex reef beach
+		%level(350, 740, 32, 32, 	$003)	; dinolord's domain
+		%level(296, 688, 32, 32, 	$001)	; mushroom gorge
+		%level(336, 624, 0, 0,		$005)	; castle rex
+		%level(152, 700, 24, 28, 	$004)	; fuzzy's ridge
+		%level(230, 628, 24, 24, 	$006)	; evernight temple
 	..end
-	!TempX = 2
 	.Screen43
+	; levels here
 	..end
-	!TempX = 3
 	.Screen44
+	; levels here
 	..end
-	!TempX = 4
 	.Screen45
+	; levels here
 	..end
-	!TempX = 5
 	.Screen46
+	; levels here
 	..end
 
 

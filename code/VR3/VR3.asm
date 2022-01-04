@@ -4252,6 +4252,10 @@ IRQ:
 		PHD					; > push direct page
 		LDA #$43 : XBA				;\ DP = 0x4300
 		LDA #$00 : TCD				;/
+		LDA !Cutscene : BEQ .NoCutscene		;\
+		LDA #$80 : STA $2100			; | cutscene: turn black
+		JMP .Return				; |
+		.NoCutscene				;/
 
 		LDX !GameMode
 		LDA.l .GameModeEnable,x : BEQ +		; 00 -> return

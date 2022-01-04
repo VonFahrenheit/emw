@@ -29,6 +29,7 @@ CaptainWarrior:
 
 	!CW_AttackTimer		= $32D0
 
+	!CW_Screen		= $34F0
 	!CW_Minion1		= $3500
 	!CW_Minion2		= $3510
 
@@ -37,8 +38,14 @@ CaptainWarrior:
 
 
 	INIT:
-		PHB : PHK : PLB						; bank wrapper start
+		LDY !Translevel						;\
+		LDA !LevelTable1,y : BPL .Go				; | if this level is beaten, despawn
+		STZ $3230,x						; |
+		RTL							;/
 
+		.Go
+		PHB : PHK : PLB						; bank wrapper start
+		LDA !SpriteXHi,x : STA !CW_Screen,x			; save spawn screen
 		REP #$20						;\
 		STZ $3230+$00 : STZ $3230+$02				; |
 		STZ $3230+$04 : STZ $3230+$06				; |
@@ -87,15 +94,15 @@ CaptainWarrior:
 		LDA.b #BodyPal>>16					; |
 		STA.w !CGRAMtable+$04,y					; |
 		STA.w !CGRAMtable+$0A,y					; |
-		LDA #$C1 : STA.w !CGRAMtable+$05,y			; |
+		LDA #$A1 : STA.w !CGRAMtable+$05,y			; |
 		LDA #$D1 : STA.w !CGRAMtable+$0B,y			; |
 		PHK : PLB						;/
 		LDX #$1D						;\
-	-	LDA.w BodyPal,x : STA !ShaderInput+($C1*2),x		; | palette to shader input
+	-	LDA.w BodyPal,x : STA !ShaderInput+($A1*2),x		; | palette to shader input
 		LDA.w AxePal,x : STA !ShaderInput+($D1*2),x		; |
 		DEX : BPL -						;/
 		LDA #$01						;\
-		STA !ShaderRowDisable+$C				; | shader protection
+		STA !ShaderRowDisable+$A				; | shader protection
 		STA !ShaderRowDisable+$D				;/
 
 		LDX !SpriteIndex					; X = sprite index
@@ -184,9 +191,8 @@ CaptainWarrior:
 		AND #$04 : BEQ .Normal					;/
 
 		.NPC							;\
-		JSL SUB_HORZ_POS					; |
-		TYA : STA $3320,x					; | NPC mode code
-		STZ !SpriteAnimTimer					; |
+		JSL SUB_HORZ_POS					; | NPC mode code
+		TYA : STA $3320,x					; |
 		JMP GRAPHICS						;/
 
 		.Normal							;\
@@ -195,17 +201,18 @@ CaptainWarrior:
 		ORA #$80 : STA !CW_Phase,x				; |
 		LDA #$80 : STA !SPC3					; |
 		..main							;/
-		LDA $1A : BNE .Return					;\
-		LDA $1B							; | start at camera = 0x1400
-		CMP #$14 : BNE .Return					;/
-	STZ !EnableHScroll
+		LDA $1B							;\
+		CMP !CW_Screen,x : BCC .Return				; |
+		STZ $1A							; | start at camera >= spawn screen
+		LDA !CW_Screen,x : STA $1B				; |
+		STZ !EnableHScroll					;/
 		LDA #$01 : STA !CW_Phase,x				; next phase
 		LDA !P2Status-$80 : BNE +				;\
 		LDA !P2Character-$80					; |
 		CMP #$03 : BEQ ..leeway					; |
-	+	LDA !P2Status : BNE +					; | normal dialogue
+	+	LDA !P2Status : BNE +					; |
 		LDA !P2Character					; |
-		CMP #$03 : BEQ ..leeway					; |
+		CMP #$03 : BEQ ..leeway					; | normal dialogue
 	+	REP #$20						; |
 		LDA.w #!MSG_CaptainWarrior_Fight1_Intro			; |
 		STA !MsgTrigger						; |
@@ -248,6 +255,7 @@ CaptainWarrior:
 		..alive
 
 
+		LDA !CW_Screen,x : STA !BigRAM
 		.Minion1						;\
 		LDA !CW_Minion1,x : BEQ ..init				; |
 		TAX							; |
@@ -620,16 +628,16 @@ CaptainWarrior:
 		LDA !CW_Attack,x : BMI .Main				;\
 		.Init							; |
 		ORA #$80 : STA !CW_Attack,x				; |
-		LDA #$00						; |
-		LDY $3250,x						; |
-		CPY #$14 : BCC ..right					; |
-		CPY #$15 : BCS ..left					; |
-		BIT $3220,x : BPL ..right				; |
+		LDY #$00						; |
+		LDA !SpriteXHi,x					; |
+		CMP !CW_Screen,x : BCC ..right				; |
+		DEC A							; |
+		CMP !CW_Screen,x : BCS ..left				; |
+		BIT !SpriteXLo,x : BPL ..right				; |
 		..left							; | init dir + speed + anim
-		INC A							; |
+		INY							; |
 		..right							; |
-		STA $3320,x						; |
-		TAY							; |
+		TYA : STA $3320,x					; |
 		LDA DATA_JumpSpeed,y : STA !SpriteXSpeed,x		; |
 		LDA #$C0 : STA !SpriteYSpeed,x				; |
 		LDA #!CW_Jump : STA !SpriteAnimIndex			; |
@@ -754,6 +762,17 @@ CaptainWarrior:
 
 
 	Defeated:
+		LDX #$0F						;\
+		LDA #$FF						; |
+	-	STA !SpriteDisP1,x					; |
+		STA !SpriteDisP2,x					; | no sprites are allowed to interact with players
+		LDA !NewSpriteNum,x					; |
+		CMP #$02 : BNE +					; |
+		STZ $3320,x						; > all rex move right
+		STZ !RexChase,x						; |
+		STZ !ExtraProp1,x					; |
+	+	DEX : BPL -						;/
+
 		LDX !SpriteIndex					; X = sprite index
 		LDA !CW_Phase,x : BMI .Main				;\
 		.Init							; |
@@ -778,11 +797,10 @@ CaptainWarrior:
 
 		LDA !CW_Attack,x					;\
 		CMP #$02 : BNE .Wait					; |
-		LDA $3250,x						; |
-		CMP $5D : BNE .OnScreen					; |
-		LDA $3220,x						; |
-		CMP #$40 : BCC .OnScreen				; | jump away after speech is done
-		STZ $3230,x						; |
+		LDA !SpriteXHi,x					; |
+		CMP !LevelWidth : BCC .OnScreen				; | jump away after speech is done
+		STZ $3230,x						; > despawn
+		LDA #$01 : STA !EnableHScroll				; > restart camera
 		.OnScreen						; |
 		LDA $3330,x						; |
 		AND #$04 : BEQ .Physics					; |
@@ -849,7 +867,9 @@ CaptainWarrior:
 		TYX							;\ index
 		TAY							;/
 		LDA .MinionTable+$00,y : STA !SpriteXLo,x		;\
-		LDA .MinionTable+$04,y : STA !SpriteXHi,x		; | coords
+		LDA .MinionTable+$04,y					; |
+		CLC : ADC !BigRAM					; | coords
+		STA !SpriteXHi,x					; |
 		LDA .MinionTable+$08,y : STA !SpriteYLo,x		; |
 		LDA .MinionTable+$0C,y : STA !SpriteYHi,x		;/
 		LDA .MinionTable+$10,y : STA $3320,x			; dir
@@ -866,7 +886,7 @@ CaptainWarrior:
 
 		.MinionTable
 		db $EC,$EC,$04,$04		; $00, Xlo
-		db $13,$13,$15,$15		; $04, Xhi
+		db $FF,$FF,$01,$01		; $04, Xhi (added to !CW_Screen)
 		db $70,$50,$70,$50		; $08, Ylo
 		db $01,$01,$01,$01		; $0C, Yhi
 		db $00,$00,$01,$01		; $10, Direction
@@ -1127,12 +1147,12 @@ CaptainWarrior:
 		.IdleTM00
 		.IdleTM01
 		dw $0028
-		db $39,$FC,$E0,$00	; body
-		db $39,$04,$E0,$01
-		db $39,$FC,$F0,$02
-		db $39,$04,$F0,$03
-		db $39,$FC,$00,$04
-		db $39,$04,$00,$05
+		db $35,$FC,$E0,$00	; body
+		db $35,$04,$E0,$01
+		db $35,$FC,$F0,$02
+		db $35,$04,$F0,$03
+		db $35,$FC,$00,$04
+		db $35,$04,$00,$05
 		db $3B,$FC,$F0,$06	; axe
 		db $3B,$04,$F0,$07
 		db $3B,$FC,$F8,$08
@@ -1140,12 +1160,12 @@ CaptainWarrior:
 
 		.IdleTM02
 		dw $0028
-		db $39,$FC,$E0,$00	; body
-		db $39,$04,$E0,$01
-		db $39,$FC,$F0,$02
-		db $39,$04,$F0,$03
-		db $39,$FC,$00,$04
-		db $39,$04,$00,$05
+		db $35,$FC,$E0,$00	; body
+		db $35,$04,$E0,$01
+		db $35,$FC,$F0,$02
+		db $35,$04,$F0,$03
+		db $35,$FC,$00,$04
+		db $35,$04,$00,$05
 		db $3B,$FC,$F1,$06	; axe
 		db $3B,$04,$F1,$07
 		db $3B,$FC,$F9,$08
@@ -1154,24 +1174,24 @@ CaptainWarrior:
 		.PrepTM00
 		.PrepTM02
 		dw $0028
-		db $39,$FC,$E8,$00	; body
-		db $39,$04,$E8,$01
-		db $39,$FC,$F0,$02
-		db $39,$04,$F0,$03
-		db $39,$FC,$00,$04
-		db $39,$04,$00,$05
+		db $35,$FC,$E8,$00	; body
+		db $35,$04,$E8,$01
+		db $35,$FC,$F0,$02
+		db $35,$04,$F0,$03
+		db $35,$FC,$00,$04
+		db $35,$04,$00,$05
 		db $3B,$FC,$E0,$06	; axe
 		db $3B,$04,$E0,$07
 		db $3B,$FC,$F0,$08
 		db $3B,$04,$F0,$09
 		.PrepTM01
 		dw $0028
-		db $39,$F9,$E8,$00	; body
-		db $39,$01,$E8,$01
-		db $39,$F9,$F0,$02
-		db $39,$01,$F0,$03
-		db $39,$F9,$00,$04
-		db $39,$01,$00,$05
+		db $35,$F9,$E8,$00	; body
+		db $35,$01,$E8,$01
+		db $35,$F9,$F0,$02
+		db $35,$01,$F0,$03
+		db $35,$F9,$00,$04
+		db $35,$01,$00,$05
 		db $3B,$F9,$E0,$06	; axe
 		db $3B,$01,$E0,$07
 		db $3B,$F9,$F0,$08
@@ -1179,23 +1199,23 @@ CaptainWarrior:
 
 		.ChopTM00
 		dw $0028
-		db $39,$F7,$E0,$00	; body
-		db $39,$07,$E0,$01
-		db $39,$F7,$F0,$02
-		db $39,$07,$F0,$03
-		db $39,$F7,$00,$04
-		db $39,$07,$00,$05
+		db $35,$F7,$E0,$00	; body
+		db $35,$07,$E0,$01
+		db $35,$F7,$F0,$02
+		db $35,$07,$F0,$03
+		db $35,$F7,$00,$04
+		db $35,$07,$00,$05
 		db $3B,$F7,$E8,$06	; axe
 		db $3B,$07,$E8,$07
 		db $3B,$F7,$F8,$08
 		db $3B,$07,$F8,$09
 		.ChopTM01
 		dw $0038
-		db $39,$F7,$E0,$00	; body
-		db $39,$07,$E0,$01
-		db $39,$F7,$F0,$02
-		db $39,$07,$F0,$03
-		db $39,$07,$00,$04
+		db $35,$F7,$E0,$00	; body
+		db $35,$07,$E0,$01
+		db $35,$F7,$F0,$02
+		db $35,$07,$F0,$03
+		db $35,$07,$00,$04
 		db $3B,$E7,$E8,$05	; axe
 		db $3B,$D7,$F0,$06
 		db $3B,$E7,$F0,$07
@@ -1207,12 +1227,12 @@ CaptainWarrior:
 		db $3B,$07,$00,$0D
 		.ChopTM02
 		dw $0030
-		db $39,$F7,$E0,$00	; body
-		db $39,$07,$E0,$01
-		db $39,$F7,$F0,$02
-		db $39,$07,$F0,$03
-		db $39,$F7,$00,$04
-		db $39,$07,$00,$05
+		db $35,$F7,$E0,$00	; body
+		db $35,$07,$E0,$01
+		db $35,$F7,$F0,$02
+		db $35,$07,$F0,$03
+		db $35,$F7,$00,$04
+		db $35,$07,$00,$05
 		db $3B,$E7,$E8,$06	; axe
 		db $3B,$F7,$E8,$07
 		db $3B,$E7,$F0,$08
@@ -1221,23 +1241,23 @@ CaptainWarrior:
 		db $3B,$F7,$00,$0B
 		.ChopTM03
 		dw $0020
-		db $39,$F7,$E0,$00	; body
-		db $39,$07,$E0,$01
-		db $39,$F7,$F0,$02
-		db $39,$07,$F0,$03
-		db $39,$F7,$00,$04
-		db $39,$07,$00,$05
+		db $35,$F7,$E0,$00	; body
+		db $35,$07,$E0,$01
+		db $35,$F7,$F0,$02
+		db $35,$07,$F0,$03
+		db $35,$F7,$00,$04
+		db $35,$07,$00,$05
 		db $3B,$F2,$F0,$06	; axe
 		db $3B,$F2,$F8,$07
 
 		.JumpTM00
 		dw $0028
-		db $39,$F9,$E0,$00	; body
-		db $39,$01,$E0,$01
-		db $39,$F9,$F0,$02
-		db $39,$01,$F0,$03
-		db $39,$F9,$00,$04
-		db $39,$01,$00,$05
+		db $35,$F9,$E0,$00	; body
+		db $35,$01,$E0,$01
+		db $35,$F9,$F0,$02
+		db $35,$01,$F0,$03
+		db $35,$F9,$00,$04
+		db $35,$01,$00,$05
 		db $3B,$01,$E1,$06	; axe
 		db $3B,$09,$E1,$07
 		db $3B,$01,$E9,$08
@@ -1245,12 +1265,12 @@ CaptainWarrior:
 
 		.SpinJumpTM00
 		dw $0028
-		db $39,$F8,$E0,$00	; body
-		db $39,$08,$E0,$01
-		db $39,$F8,$F0,$02
-		db $39,$08,$F0,$03
-		db $39,$F8,$00,$04
-		db $39,$08,$00,$05
+		db $35,$F8,$E0,$00	; body
+		db $35,$08,$E0,$01
+		db $35,$F8,$F0,$02
+		db $35,$08,$F0,$03
+		db $35,$F8,$00,$04
+		db $35,$08,$00,$05
 		db $3B,$09,$EE,$06	; axe
 		db $3B,$11,$EE,$07
 		db $3B,$09,$F6,$08
@@ -1258,20 +1278,20 @@ CaptainWarrior:
 
 		.SpinTM00		; axe connects on top
 		dw $0020
-		db $39,$F8,$F0,$00	; body
-		db $39,$08,$F0,$01
-		db $39,$F8,$00,$02
-		db $39,$08,$00,$03
+		db $35,$F8,$F0,$00	; body
+		db $35,$08,$F0,$01
+		db $35,$F8,$00,$02
+		db $35,$08,$00,$03
 		db $3B,$08,$F0,$04	; axe
 		db $3B,$18,$F0,$05
 		db $3B,$18,$00,$06
 		db $3B,$08,$00,$07
 		.SpinTM01		; axe connects on left side
 		dw $0024
-		db $39,$F8,$F0,$00	; body
-		db $39,$08,$F0,$01
-		db $39,$F8,$00,$02
-		db $39,$08,$00,$03
+		db $35,$F8,$F0,$00	; body
+		db $35,$08,$F0,$01
+		db $35,$F8,$00,$02
+		db $35,$08,$00,$03
 		db $3B,$F8,$F0,$04	; axe
 		db $3B,$F8,$E0,$05
 		db $3B,$08,$E0,$06
@@ -1279,10 +1299,10 @@ CaptainWarrior:
 		db $3B,$10,$F0,$08
 		.SpinTM02		; axe connects on bottom
 		dw $0028
-		db $39,$F8,$F0,$00	; body
-		db $39,$08,$F0,$01
-		db $39,$F8,$00,$02
-		db $39,$08,$00,$03
+		db $35,$F8,$F0,$00	; body
+		db $35,$08,$F0,$01
+		db $35,$F8,$00,$02
+		db $35,$08,$00,$03
 		db $3B,$F8,$00,$04	; axe
 		db $3B,$E8,$00,$05
 		db $3B,$E8,$F0,$06
@@ -1291,10 +1311,10 @@ CaptainWarrior:
 		db $3B,$00,$F8,$09
 		.SpinTM03		; axe connects on right side
 		dw $0024
-		db $39,$F8,$F0,$00	; body
-		db $39,$08,$F0,$01
-		db $39,$F8,$00,$02
-		db $39,$08,$00,$03
+		db $35,$F8,$F0,$00	; body
+		db $35,$08,$F0,$01
+		db $35,$F8,$00,$02
+		db $35,$08,$00,$03
 		db $3B,$08,$00,$04	; axe
 		db $3B,$08,$10,$05
 		db $3B,$F8,$10,$06
@@ -1304,24 +1324,24 @@ CaptainWarrior:
 		.StuckTM00
 		.StuckTM01
 		dw $0024
-		db $39,$F8,$E8,$00	; body
-		db $39,$00,$E8,$01
-		db $39,$F8,$F0,$02
-		db $39,$00,$F0,$03
-		db $39,$F8,$00,$04
-		db $39,$00,$00,$05
+		db $35,$F8,$E8,$00	; body
+		db $35,$00,$E8,$01
+		db $35,$F8,$F0,$02
+		db $35,$00,$F0,$03
+		db $35,$F8,$00,$04
+		db $35,$00,$00,$05
 		db $3B,$F0,$F8,$06	; axe
 		db $3B,$F0,$00,$07
 		db $3B,$00,$00,$08
 
 		.ChannelTM00
 		dw $0028
-		db $39,$F8,$E0,$00	; body
-		db $39,$00,$E0,$01
-		db $39,$F8,$F0,$02
-		db $39,$00,$F0,$03
-		db $39,$F8,$00,$04
-		db $39,$00,$00,$05
+		db $35,$F8,$E0,$00	; body
+		db $35,$00,$E0,$01
+		db $35,$F8,$F0,$02
+		db $35,$00,$F0,$03
+		db $35,$F8,$00,$04
+		db $35,$00,$00,$05
 		db $3B,$F0,$F0,$06	; axe
 		db $3B,$00,$F0,$07
 		db $3B,$F0,$F8,$08
@@ -1329,12 +1349,12 @@ CaptainWarrior:
 
 		.HurtTM00
 		dw $0028
-		db $39,$F8,$E0,$00	; body
-		db $39,$00,$E0,$01
-		db $39,$F8,$F0,$02
-		db $39,$00,$F0,$03
-		db $39,$F8,$00,$04
-		db $39,$00,$00,$05
+		db $35,$F8,$E0,$00	; body
+		db $35,$00,$E0,$01
+		db $35,$F8,$F0,$02
+		db $35,$00,$F0,$03
+		db $35,$F8,$00,$04
+		db $35,$00,$00,$05
 		db $3B,$05,$E0,$06	; axe
 		db $3B,$0D,$E0,$07
 		db $3B,$05,$E8,$08
@@ -1345,21 +1365,21 @@ CaptainWarrior:
 		db $3B,$10,$EF,$07
 		db $3B,$08,$F7,$08
 		db $3B,$10,$F7,$09
-		db $39,$F8,$E0,$00	; body
-		db $39,$08,$E0,$01
-		db $39,$F8,$F0,$02
-		db $39,$08,$F0,$03
-		db $39,$F8,$00,$04
-		db $39,$08,$00,$05
+		db $35,$F8,$E0,$00	; body
+		db $35,$08,$E0,$01
+		db $35,$F8,$F0,$02
+		db $35,$08,$F0,$03
+		db $35,$F8,$00,$04
+		db $35,$08,$00,$05
 
 		.DefeatTM00
 		dw $0028
-		db $39,$F8,$E8,$00	; body
-		db $39,$08,$E8,$01
-		db $39,$F8,$F0,$02
-		db $39,$08,$F0,$03
-		db $39,$F8,$00,$04
-		db $39,$08,$00,$05
+		db $35,$F8,$E8,$00	; body
+		db $35,$08,$E8,$01
+		db $35,$F8,$F0,$02
+		db $35,$08,$F0,$03
+		db $35,$F8,$00,$04
+		db $35,$08,$00,$05
 		db $3B,$F7,$F8,$06	; axe
 		db $3B,$FF,$F8,$07
 		db $3B,$F7,$00,$08

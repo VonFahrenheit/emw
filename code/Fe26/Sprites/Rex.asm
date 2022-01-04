@@ -149,7 +149,9 @@ Rex:
 		LDA #$40 : STA $07
 		SEC : JSL !PlayerClipping : BCC ..nochase
 		LDA #$01 : STA !RexChase,x
+		LDA $BE,x : BNE ..nosfx
 		LDA #$1E : STA !SPC4					; chase SFX
+		..nosfx
 
 		LDA !ExtraBits,x					;\ clear extra bit
 		AND.b #$04^$FF : STA !ExtraBits,x			;/

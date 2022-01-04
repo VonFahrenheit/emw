@@ -1725,6 +1725,12 @@ endmacro
 		LSR #4							; | tile offset
 		SEP #$20						; |
 		STA $01							;/
+		LDA.l $400000+!MsgVRAM3+1				;\
+		AND #$10						; | tile offset (hi bit)
+		BEQ $02 : LDA #$01					; |
+		STA $02							;/
+		LDA !BorderPal : TSB $02				; border ccc bits
+
 	-	LDA.w .TileMap+0,y : STA !OAM_p3+0,x
 		LDA.w .TileMap+1,y
 		CLC : ADC $00
@@ -1732,7 +1738,8 @@ endmacro
 		LDA.w .TileMap+2,y
 		CLC : ADC $01
 		STA !OAM_p3+2,x
-		LDA.w .TileMap+3,y : STA !OAM_p3+3,x
+		LDA.w .TileMap+3,y
+		ORA $02 : STA !OAM_p3+3,x
 		INY #4
 		INX #4
 		CPX.w #.End-.TileMap : BCC -
@@ -1766,32 +1773,32 @@ endmacro
 		; total 26 (0x1A) tiles
 		;  ___ ___ ___ ___
 		; | X | Y | T | P |
-.TileMap	db $31,$37,$00,$25					; > Topleft corner
-		db $41,$37,$01,$25					;\
-		db $51,$37,$01,$25					; |
-		db $61,$37,$01,$25					; |
-		db $71,$37,$01,$25					; | Upper border
-		db $81,$37,$01,$25					; |
-		db $91,$37,$01,$25					; |
-		db $A1,$37,$01,$25					; |
-		db $B1,$37,$01,$25					;/
-		db $C1,$37,$00,$65					; > Topright corner
-		db $31,$47,$03,$25					;\
-		db $C1,$47,$03,$65					; |
-		db $31,$57,$03,$25					; | Side borders
-		db $C1,$57,$03,$65					; |
-		db $31,$67,$03,$25					; |
-		db $C1,$67,$03,$65					;/
-		db $31,$77,$00,$A5					; > Botleft corner
-		db $41,$77,$01,$A5					;\
-		db $51,$77,$01,$A5					; |
-		db $61,$77,$01,$A5					; |
-		db $71,$77,$01,$A5					; | Lower border
-		db $81,$77,$01,$A5					; |
-		db $91,$77,$01,$A5					; |
-		db $A1,$77,$01,$A5					; |
-		db $B1,$77,$01,$A5					;/
-		db $C1,$77,$00,$E5					; > Botright corner
+.TileMap	db $31,$37,$00,$20					; > topleft corner
+		db $41,$37,$01,$20					;\
+		db $51,$37,$01,$20					; |
+		db $61,$37,$01,$20					; |
+		db $71,$37,$01,$20					; | upper border
+		db $81,$37,$01,$20					; |
+		db $91,$37,$01,$20					; |
+		db $A1,$37,$01,$20					; |
+		db $B1,$37,$01,$20					;/
+		db $C1,$37,$00,$60					; > topright corner
+		db $31,$47,$03,$20					;\
+		db $C1,$47,$03,$60					; |
+		db $31,$57,$03,$20					; | side borders
+		db $C1,$57,$03,$60					; |
+		db $31,$67,$03,$20					; |
+		db $C1,$67,$03,$60					;/
+		db $31,$77,$00,$A0					; > botleft corner
+		db $41,$77,$01,$A0					;\
+		db $51,$77,$01,$A0					; |
+		db $61,$77,$01,$A0					; |
+		db $71,$77,$01,$A0					; | lower border
+		db $81,$77,$01,$A0					; |
+		db $91,$77,$01,$A0					; |
+		db $A1,$77,$01,$A0					; |
+		db $B1,$77,$01,$A0					;/
+		db $C1,$77,$00,$E0					; > botright corner
 		.End
 
 

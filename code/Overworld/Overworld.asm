@@ -27,25 +27,11 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 ; $6DDF-$6EE5 is free to be used for this.
 ; The maximum number that can be added to !LevelSelectBase is +$106
 
-; Menu controls:
-;	X/Y:	go back (goes back to base if you push it enough)
-;	A/B:	confirm
-;	L/R:	switch between character select and realm select
-;	Start:	join/drop out (only for player 2!)
-
 
 ; $7EA2:
 ;	this table should be repurposed to determine which areas have been unlocked and beaten.
 ;	use together with level select function.
 
-
-; TO DO:
-;	- OAM sort
-;
-
-
-
-	!IntroLevel		= $1F7;$0C6
 
 
 
@@ -54,7 +40,6 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 
 	macro MapDef(name, size)
 		!<name>	:= !LevelSelectBase+!Temp
-	print "<name> =$", hex(!LevelSelectBase+!Temp)
 		!Temp	:= !Temp+<size>
 
 
@@ -593,6 +578,11 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 
 		JSL HandleZips
 
+	PHP
+	REP #$20
+	LDA.l !P1MapX : STA !CoinHoard
+	LDA.l !P1MapY : STA !YoshiCoinCount
+	PLP
 
 		PHK : PLB				; get bank
 		SEP #$20
@@ -828,9 +818,6 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		STZ !SubScreen
 
 		JSL CLEAR_MSG_SA1
-		JSL CLEAR_PLAYER2
-
-	LDA #$01 : STA !StoryFlags
 
 		LDA !GameMode				;\
 		CMP #$0E : BEQ +			; |
@@ -890,7 +877,9 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 
 		.CheckPipe
 		LDA $6DA6
-		AND #$20 : BNE $03 : JMP .P1OpenMenu
+		AND #$20 : BNE ..openpipe
+		JMP .P1OpenMenu
+		..openpipe
 		LDA #$03 : STA !SPC4
 		REP #$10
 		JSR GetSpriteIndex

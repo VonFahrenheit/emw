@@ -909,10 +909,8 @@ endmacro
 		.Midway
 		SEP #$20
 		LDA #$14 : STA !P2FlashPal		; flash white
-		LDA !P2HP				;\
-		CMP !P2MaxHP : BEQ +			; | +1 HP unless at max
-		INC !P2HP				;/
-	+	LDA #$05 : STA !SPC1			; checkpoint SFX
+		LDA !P2MaxHP : STA !P2HP		; full heal
+		LDA #$05 : STA !SPC1			; checkpoint SFX
 		LDA #$01 : STA $73CE			; midway flag
 		LDX !Translevel				;\
 		LDA !LevelTable1,x			; | translevel checkpoint flag
@@ -1977,12 +1975,13 @@ endmacro
 		BRA ..Shared				;/
 		..VariableItem
 		LDA $9A					;\
-		AND #$30				; | 00/30 = vine, 10 = star2, 20 = 1up
-		CMP #$10 : BEQ ..Star2			; |
-		CMP #$20 : BEQ ..1Up			;/
-		..Vine
-		LDA #$79 : STA $04			;\
-		STZ $05					; | spawn 1 vine
+		LSR #4					; |
+		TAX					; | variable item check
+		LDA ..varitemdata,x : BEQ ..Star2	; |
+		CMP #$01 : BEQ ..1Up			;/
+		..Vine					;\
+		LDA #$79 : STA $04			; | spawn 1 vine
+		STZ $05					; |
 		BRA ..Shared				;/
 		..1Up
 		LDA #$78 : STA $04			;\
@@ -2036,7 +2035,8 @@ endmacro
 		JSR SHATTER_BLOCK
 		BRA ..bonk
 
-
+		..varitemdata
+		db $00,$01,$02,$00,$01,$02,$00,$01,$02,$00,$01,$02,$00,$01,$02,$00
 
 
 		.BluePCoinBlock
@@ -2532,8 +2532,22 @@ endmacro
 		AND #$F0
 		STA !Ex_YLo,x
 		LDA $99 : STA !Ex_YHi,x
-		RTS
+	;	RTS
 
+	BLOCK_HITBOX:
+		%Ex_Index_X_fast()
+		LDA #!QuakeOffset+1 : STA !Ex_Num,x
+		LDA $9A
+		AND #$F0 : STA !Ex_XLo,x
+		LDA $9B : STA !Ex_XHi,x
+		LDA $98
+		SEC : SBC #$10
+		AND #$F0 : STA !Ex_YLo,x
+		LDA $99
+		SBC #$00
+		STA !Ex_YHi,x
+		LDA #$06 : STA !Ex_Data1,x
+		RTS
 
 	SHATTER_BLOCK:
 		LDY #$03
@@ -2560,6 +2574,8 @@ endmacro
 		STZ !Ex_Data2,x
 		STZ !Ex_Data3,x
 		DEY : BPL -
+
+		JSR BLOCK_HITBOX
 
 		LDA #$07 : STA !SPC4			; shatter block SFX
 		JMP REMOVE_TILE

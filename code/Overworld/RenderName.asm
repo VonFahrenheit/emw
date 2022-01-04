@@ -48,19 +48,21 @@
 
 		.DrawYoshiCoins
 		LDA !CharMenu
-		AND #$00FF : BNE ..nolevel
+		AND #$00FF : BNE +
 		LDA !Translevel
-		AND #$00FF : BEQ ..nolevel
+		AND #$00FF : BNE ..draw
+	+	JMP ..nolevel
 
+		..draw
 		TAY
 		TYX
-		LDA #$9C6C : STA $00
+		LDA #$9C6A : STA $00
 		LDA.l $188000,x
 		AND #$00FF
 		STA $06
 		BEQ +
 		LDA $00
-		SEC : SBC #$0014
+		SEC : SBC #$0016
 		STA $00
 	+	LDA !OAMindex_p3 : TAX
 		..megaloop
@@ -69,12 +71,26 @@
 		..loop
 		LSR $02 : BCC ..noYC
 		..YC
-		LDA #$3FF1 : BRA ..shared
+		LDA #$3E8F : STA !OAM_p3+$002,x
+		LDA $00
+		CLC : ADC #$0800
+		STA !OAM_p3+$000,x
+		TXA
+		LSR #2
+		TAX
+		LDA #$0000 : STA !OAMhi_p3,x
+		TXA
+		INC A
+		ASL #2
+		TAX
+		LDA #$3E8E : BRA ..shared
 		..noYC
-		LDA #$3FF0
+		LDA #$3E8D
 		..shared
 		STA !OAM_p3+$002,x
 		LDA $00 : STA !OAM_p3+$000,x
+		CLC : ADC #$0009
+		STA $00
 		TXA
 		LSR #2
 		TAX
@@ -85,9 +101,6 @@
 		TXA
 		ASL #2
 		TAX
-		LDA $00
-		CLC : ADC #$0008
-		STA $00
 		DEY : BPL ..loop
 		LDA $06 : BEQ ..done
 		STZ $06
@@ -99,14 +112,15 @@
 
 
 		.DrawTime
-		LDY !CharMenu : BNE +
+		LDA !CharMenu
+		AND #$00FF : BNE +
 		LDY !Translevel : BNE ..time
 	+
 	-	JMP ..notime
 		..time
 		LDA !Difficulty
 		AND.w #!TimeMode : BEQ -
-		LDA #$A664 : STA $00
+		LDA #$A964 : STA $00
 
 		LDA !OAMindex_p3 : TAX			; X = OAM index
 		LDA $00					;\

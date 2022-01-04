@@ -342,8 +342,8 @@ F1	0002	0,0,420
 
 08	0020	Captain Warrior is the first taste of a boss in the hack. See the dev doc for more info.\n\nHP: 5/5/7\nRank: Boss\nTraits: Boss\nType: Boss\nExtra bit: Yes
 08	0022	0,16,*Captain\nWarrior* 0,0,420
-08	0030	Reserved for the second fight against Captain Warrior
-08	0032	0,16,*Captain Warrior\nFight 2*
+08	0030	Captain Warrior, NPC mode
+08	0032	0,16,*Captain Warrior\nFight 2* 0,0,420
 
 09	0020	This sprite controls a large amount of space and is more of an obstacle than a threat. It walks back and forth, turning around at walls and ledges. Upon spotting a player, it will attempt to either grab or punch them by stretching out its arm. If it grabs a player, it throws them towards the latest ledge it turned around at. The Tar Creeper blocks against all attacks by using its two hands, and it can not be passed through. Jumping on the Tar Creeper causes it to carry the player with it. The Tar Creeper deals no contact damage unless it is using its punch. The only way to kill one is to use fire.\n\nHP: Invulnerable (but dies instantly to fire)\nRank: D\nTraits: None\nType: Dynamic (6 tiles) + Pseudo-dynamic (4KB)
 09	0022	0,16,*Tar\nCreeper* 0,0,420
@@ -366,13 +366,13 @@ F1	0002	0,0,420
 0D	0030	The Yellow Plant Head will periodically face upwards to spit 3 lotus fires. This version controls a lot of space compared to the red one, but has the same vine tile interaction.\n\nHP: 3\nRank: C\nTraits: Durable\nType: Super-dynamic (size not yet calculated)\nExtra bit: Yes
 0D	0032	0,16,*Yellow\nPlant Head* 0,0,420
 
-0E	0020	This is an NPC. First extra byte determines which character this is, second extra byte determines the state/behavior. NPC list:\n00 - Mario\n01 - Luigi\n02 - Kadaal\n03 - Leeway\n04 - Alter\n05 - Peach\n06 - Survivor\n07 - Tinkerer\n08 - Rally Yoshi\n09 - Big Yoshi\n0A - Painter Yoshi\n0B - Old Yoshi\n0C - reserved for Yoshi NPC\n0D - reserved for Yoshi NPC\n0E - reserved for Yoshi NPC\n0F - reserved for Yoshi NPC\n10 - Toad 1\n11 - Toad 2\n12 - Toad 3\n13 - Toad 4\n14 - Toad 5\n15 - Toad 6\n16 - Toad 7\n17 - Toad 8\n18 - reserved for Captain Toad\n19 - Melody\n\nBehavior:\n0 - Stand still, face player, can NOT be talked to\n1 - Talkable\n2 - Talkable, swaps character with player when talked to (only use for player characters)\n3 - Follow player, can NOT be talked to\n4 - Follow player, CAN be talked to\n\nHP: Invulnerable\nRank: N/A\nTraits: None\nType: Dynamic\nExtra bit: No
+0E	0020	This is an NPC. First extra byte determines which character this is, second extra byte determines the state/behavior. NPC list:\n00 - Mario\n01 - Luigi\n02 - Kadaal\n03 - Leeway\n04 - Alter\n05 - Peach\n06 - Survivor\n07 - Tinkerer\n08 - Rally Yoshi\n09 - Big Yoshi\n0A - Painter Yoshi\n0B - Old Yoshi\n0C - reserved for Yoshi NPC\n0D - reserved for Yoshi NPC\n0E - reserved for Yoshi NPC\n0F - reserved for Yoshi NPC\n10 - Toad 1\n11 - Toad 2\n12 - Toad 3\n13 - Toad 4\n14 - Toad 5\n15 - Toad 6\n16 - Toad 7\n17 - Toad 8\n18 - reserved for Captain Toad\n19 - Melody\n\nBehavior:\n0 - Stand still, face player, can NOT be talked to\n1 - Talkable\n2 - Talkable, swaps character with player when talked to (only use for player characters)\n3 - Follow player, can NOT be talked to\n4 - Follow player, CAN be talked to\n5 - Guard\n6 - Guard (only spawns on intro level)\n7 - Spy\n\nHP: Invulnerable\nRank: N/A\nTraits: None\nType: Dynamic\nExtra bit: No
 0E	0022	0,16,*NPC* 0,0,420
 
 0F	0020	This is a solid 16x16 block. Since it is a sprite, it can be placed overlapping layer 1 tiles. This counts as solid for other sprites as well as players. Extra byte 1 can toggle interactions, but only if extra bit is off.\n1 = disable sprite interaction\n2 = disable sprite interaction\n3 = disable all interaction\n\nHP: Invulnerable\nRank: N/A\nTraits: None\nType: Basic\nExtra bit: Yes
 0F	0022	0,0,06F
 0F	0030	Setting the extra bit causes the sprite to become 2 blocks placed next to each other horizontally. Its hitbox is adjusted as you would expect. Extra byte 1 can not be used when the extra bit is set for this sprite.\n\nHP: Invulnerable\nRank: N/A\nTraits: None\nType: Basic\nExtra bit: Yes
-0F	0032	0,0,06F 16,0,06F
+0F	0032	-16,0,06F 0,0,06F
 
 10	0020	Kingking is the first Realm Boss of the hack, meant to blow player expectations out of the water. See the dev doc for more details.\n\nHP: 8/12/16\nRank: Boss\nTraits: Boss\nType: Boss\nExtra bit: Yes
 10	0022	0,16,*Kingking* 0,0,420
@@ -476,9 +476,9 @@ F1	0002	0,0,420
 2A	0020	Big Max is an advanced Super-dynamic sprite that was originally made as a proof-of-concept for the system. His name is a reference to the "Big Mac" because Von Fahrenheit thought that was funny. See the doc for more details.\n\nHP: 56\nRank: Boss\nTraits: Boss\nType: Boss\nExtra bit: No
 2A	0022	0,16,*Big Max* 0,0,420
 
-2B	0020	The Portal is a utility sprite that acts as a visible spawner. Place another sprite on the same position as the Portal. When the Portal spawns, it instantly and silently eats the sprite placed on it and starts producing clones of that sprite. The Portal displays a little animation before spawning a new sprite. This version will not spawn another sprite until the previous one spawned by it has despawned in some way.\n\nHP: Invulnerable\nRank: ???\nTraits: None\nType: Pseudo-dynamic (1 tile)\nExtra bit: Yes
+2B	0020	The Portal is a utility sprite that acts as a visible spawner. Place another sprite on the same position as the Portal. When the Portal spawns, it instantly and silently eats the sprite placed on it and starts producing clones of that sprite. The Portal displays a little animation before spawning a new sprite. This version will not spawn another sprite until the previous one spawned by it has despawned in some way. The first extra byte controls the delay between spawns (default = 255 frames = 4.25 seconds). This delay timer starts ticking once the spawned sprite is gone.\n\nHP: Invulnerable\nRank: ???\nTraits: None\nType: Pseudo-dynamic (1 tile)\nExtra bit: Yes
 2B	0022	-8,-8,0B6 8,-8,0B7 -8,8,0B8 8,8,0B9 0,-32,*Portal* 0,-16, 405
-2B	0030	The Portal is a utility sprite that acts as a visible spawner. Place another sprite on the same position as the Portal. When the Portal spawns, it instantly and silently eats the sprite placed on it and starts producing clones of that sprite. The Portal displays a little animation before spawning a new sprite. Since the extra bit is set, this Portal will continue spawning sprites endlessly, up to 8 at the same time.\n\nHP: Invulnerable\nRank: ???\nTraits: None\nType: Pseudo-dynamic (1 tile)\nExtra bit: Yes
+2B	0030	The Portal is a utility sprite that acts as a visible spawner. Place another sprite on the same position as the Portal. When the Portal spawns, it instantly and silently eats the sprite placed on it and starts producing clones of that sprite. The Portal displays a little animation before spawning a new sprite. Since the extra bit is set, this Portal will continue spawning sprites endlessly, up to 8 at the same time.The first extra byte controls the delay between spawns (default = 255 frames = 4.25 seconds).\n\nHP: Invulnerable\nRank: ???\nTraits: None\nType: Pseudo-dynamic (1 tile)\nExtra bit: Yes
 2B	0032	-8,-8,0B6 8,-8,0B7 -8,8,0B8 8,8,0B9 0,-32,*Rapid-Fire\nPortal* 0,-16,405
 
 2C	0020	Flying Rex

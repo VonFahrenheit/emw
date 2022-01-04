@@ -121,7 +121,9 @@ LOAD_TILEMAP:	STZ !BigRAM+$7E				; this reg ACTUALLY controls priority bits duri
 		LDY #$0000
 		SEP #$20
 
-.Loop		LDA ($04),y
+
+		.Loop
+		LDA ($04),y
 		AND #$01
 		BEQ $02 : LDA #$80
 		STA !BigRAM+$7F
@@ -151,7 +153,8 @@ LOAD_TILEMAP:	STZ !BigRAM+$7E				; this reg ACTUALLY controls priority bits duri
 		CPY $08 : BCC .Loop
 		BRA .End
 
-.GoodX		STA $06					; save tile xpos
+		.GoodX
+		STA $06					; save tile xpos
 		INY
 		LDA ($04),y
 		AND #$00FF
@@ -162,10 +165,11 @@ LOAD_TILEMAP:	STZ !BigRAM+$7E				; this reg ACTUALLY controls priority bits duri
 		CMP #$FFF0 : BCS .GoodY
 		INY #2
 		SEP #$20
-		CPY $08 : BCC .LoopLong
-		BRA .End
+		CPY $08 : BCS .End
+		JMP .Loop
 
-.GoodY		SEP #$20
+		.GoodY
+		SEP #$20
 		STA !OAM_p1+$001,x
 		LDA $06 : STA !OAM_p1+$000,x
 		INY
@@ -185,8 +189,10 @@ LOAD_TILEMAP:	STZ !BigRAM+$7E				; this reg ACTUALLY controls priority bits duri
 		PLX
 		INX #4
 		CPY $08 : BCS .End
-.LoopLong	JMP .Loop
-.End		TXA
+		JMP .Loop
+
+		.End
+		TXA
 		REP #$20
 		SEC : SBC !OAMindex_p1
 		SEP #$20

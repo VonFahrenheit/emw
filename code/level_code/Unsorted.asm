@@ -1635,19 +1635,12 @@ LoadCameraBox:
 ; --Level INIT--
 
 levelinit0:
-		LDA #$01 : STA !LuigiStatus		; unlock luigi
 
+	if !Debug = 0
+	LDA #$02 : STA !LevelWidth
+	endif
 
-		LDA #$33 : STA !NPC_Talk+$10
-
-
-		INC !SideExit
-		PHP
-;		REP #$30
-;		LDY.w #!File_NPC_Survivor
-;		LDA #$6C00
-;		JSL !LoadFile
-
+		LDA #$06 : STA !PalsetStart
 
 		REP #$20
 		LDA.w #!MSG_MarioSwitch : STA !NPC_Talk+(0*2)
@@ -1656,24 +1649,36 @@ levelinit0:
 		LDA.w #!MSG_LeewaySwitch : STA !NPC_Talk+(3*2)
 		LDA.w #!MSG_AlterSwitch : STA !NPC_Talk+(4*2)
 		LDA.w #!MSG_PeachSwitch : STA !NPC_Talk+(5*2)
+		SEP #$20
 
 
-		LDA.w #!MSG_Survivor_Talk_1 : STA !NPC_Talk+(6*2)
+		.Cutscene
+		LDA $1B : BNE ..done
+		LDA !StoryFlags+0 : BMI ..done
+		REP #$20
+		STZ $00
+		LDA #$00B0 : STA $02
+		LDA.w #!MSG_LuigiSwitchFirstTime : STA !NPC_Talk+(1*2)
+		LDA.w #!MSG_LuigiSwitch : STA !NPC_TalkCap+(1*2)
+		LDA.w #!MSG_KadaalTalk_IntroLevel : STA !NPC_Talk+(2*2)
+		SEP #$20
+		LDA #$0E : JSL SpawnSprite_Custom
+		LDA #$02 : STA !ExtraProp1,x
+		LDA #$14 : STA !SpriteXSpeed,x
+		LDA #$01 : STA !Cutscene
+		STZ !CutsceneIndex
 
 
-		LDA.w #!MSG_Toad1 : STA !NPC_Talk+($10*2)
-		LDA.w #!MSG_Toad1+1 : STA !NPC_TalkCap+($10*2)
+		..done
+
+		.UnlockLuigi				;\
+		LDA !LuigiStatus : BNE ..done		; | unlock luigi
+		LDA #$01 : STA !LuigiStatus		; |
+		..done					;/
+
+		LDA #$33 : STA !NPC_Talk+$10
 
 
-;		SEP #$20
-;		LDA #$01 : STA $410000+!BG_object_Type
-;		LDA #$04 : STA $410000+!BG_object_W
-;		LDA #$02 : STA $410000+!BG_object_H
-;		REP #$20
-;		LDA #$00D0 : STA $410000+!BG_object_X
-;		LDA #$0170 : STA $410000+!BG_object_Y
-
-		PLP
 		RTL
 
 
@@ -1714,7 +1719,6 @@ levelinit24:
 	RTL
 
 levelinit25:
-
 		LDA $94
 		CMP #$20 : BCC .L
 	.R	LDA #$E0
@@ -1722,6 +1726,8 @@ levelinit25:
 		STA !P2XPosLo-$80
 		STA !P2XPosLo
 	.L
+
+	RTL
 
 	;	LDA.b #.SA1 : STA $3180
 	;	LDA.b #.SA1>>8 : STA $3181
@@ -2044,6 +2050,8 @@ levelinitC5:
 
 levelinitC6:
 		LDA.b #999>>8 : STA !TimerSeconds+1
+
+	LDA #$80 : STA !SPC3
 
 		LDA #$06 : STA !PalsetStart
 
@@ -2766,10 +2774,9 @@ levelinit1F5:
 levelinit1F6:
 	RTL
 levelinit1F7:
-
 		LDA #$FF : STA !TimerSeconds+1
 
-		LDA !LevelTable1+$5E : BMI .NotIntro
+		LDA !LevelTable1+$00 : BMI .NotIntro
 		REP #$20
 		LDA.w #!MSG_Toad_Wakeup
 		STA !NPC_Talk+($10*2)
@@ -2801,8 +2808,22 @@ levelinit1F8:
 	RTL
 levelinit1F9:
 	RTL
+
 levelinit1FA:
-	RTL
+		LDA !StoryFlags+$00
+		AND #$81 : BEQ .IntroLevel
+		.Main
+		REP #$20
+		LDA.w #!MSG_Survivor_Talk_1 : STA !NPC_Talk+(6*2)
+		SEP #$20
+		RTL
+		.IntroLevel
+		REP #$20
+		LDA.w #!MSG_Survivor_Talk_IntroLevel : STA !NPC_Talk+(6*2)
+		LDA.w #!MSG_Survivor_Talk_1 : STA !NPC_TalkCap+(6*2)
+		SEP #$20
+		RTL
+
 levelinit1FB:
 	RTL
 levelinit1FC:
@@ -2819,6 +2840,52 @@ levelinit1FF:
 ; --Level MAIN--
 
 level0:
+
+	if !Debug = 1
+	LDA $95
+	CMP #$02 : BEQ +
+	CMP #$03 : BEQ ++
+	STZ !Translevel
+	BRA +++
+	+
+	LDA #$03 : STA !Translevel
+	BRA +++
+	++
+	LDA #$05 : STA !Translevel
+	+++
+	endif
+
+
+		LDA !StoryFlags+$00		;\ can leave once portable warp pipe is obtained
+		AND #$01 : STA !SideExit	;/
+
+		LDA !Cutscene : BNE +		;\
+		LDA !LuigiStatus		; |
+		CMP #$01 : BNE +		; | luigi status: 01 -> 02
+		LDA #$02 : STA !LuigiStatus	; |
+		+				;/
+
+
+		LDX #$0F
+	-	LDA !NewSpriteNum,x
+		CMP #$0E : BNE +
+		LDA !ExtraProp1,x
+		CMP #$02 : BNE +
+		LDA !SpriteXSpeed,x : BEQ +
+		LDA !SpriteXHi,x
+		CMP #$01 : BCC +
+		LDA !SpriteXLo,x
+		CMP #$80 : BCC +
+		STZ !SpriteXSpeed,x
+		STZ !SpriteAnimIndex
+		LDA !ExtraProp2,x
+		AND #$C0
+		ORA #$01 : STA !ExtraProp2,x
+	+	DEX : BPL -
+
+
+
+
 		STZ $00
 		STZ $01
 		JSL DisplayYC
@@ -2834,68 +2901,75 @@ level0:
 	DisplayYC:
 		PHB : PHK : PLB
 
-		LDA !LevelTable1+$5E : BMI .Process	; only draw if intro level has been cleared
+		LDA !StoryFlags+$00 : BMI .Process	; only draw if intro level has been cleared
 		JMP .Return
 
 		.Process
-		LDX !OAMindex				; OAM index
-		LDY #$0C				; loop counter
-	-	LDA .Tilemap+0,y			;\
-		CLC : ADC $00				; | X coordinates
-		STA !OAM+$000,x				;/
-		LDA .Tilemap+1,y			;\
-		CLC : ADC $01				; | Y coordinates
-		STA !OAM+$001,x				;/
-		LDA .Tilemap+2,y : STA !OAM+$002,x	;\ tile/prop
-		LDA .Tilemap+3,y : STA !OAM+$003,x	;/
+		REP #$20
+		STZ $00
+		LDA.w #.CoinIcon : STA $02
+		SEP #$20
+		STZ $0D
+		LDA #$08 : STA $0E
+		JSL !SpriteHUD
+		REP #$30
+		LDA !OAMindex_p3
+		LSR #2
+		TAX
+		LDA #$0000
+		STA !OAMhi_p3+$00,x
+		STA !OAMhi_p3+$01,x
+		LDA !OAMindex_p3 : TAX
+		LDA #$0814 : STA $00
+		LDA !YoshiCoinCount
+		CMP.w #999
+		BCC $03 : LDA.w #999
+
+		LDY #$0000
+	-	CMP #$0064 : BCC ..draw100s
+		SBC #$0064
+		INY : BRA -
+		..draw100s
+		CPY #$0000 : BEQ +
+		STA $02
+		TYA
+		ORA #$3F80 : STA !OAM_p3+$002,x
+		LDA $00 : STA !OAM_p3+$000,x
+		CLC : ADC #$0008
+		STA $00
 		INX #4
-		DEY #4 : BPL -				; loop
+		LDA $02
+		+
 
-		LDX !OAMindex
+		LDY #$0000
+	-	CMP #$000A : BCC ..draw10s
+		SBC #$000A
+		INY : BRA -
+		..draw10s
+		CPY #$0000 : BEQ +
+		STA $02
+		TYA
+		ORA #$3F80 : STA !OAM_p3+$002,x
+		LDA $00 : STA !OAM_p3+$000,x
+		CLC : ADC #$0008
+		STA $00
+		INX #4
+		LDA $02
+		+
 
-		REP #$20				;\
-		LDA !YoshiCoinCount			; |
-		CMP #$03E7				; |
-		BCC $03 : LDA #$03E7			; | (cap at 999)
-	-	CMP #$0064 : BCC +			; | calculate 100s
-		SBC #$0064				; |
-		INC !OAM+$006,x				; |
-		BRA -					;/
-	+	SEP #$20				;\
-	-	CMP #$0A : BCC +			; |
-		SBC #$0A				; | calculate 10s
-		INC !OAM+$00A,x				; |
-		BRA -					;/
-	+	CLC : ADC !OAM+$00E,x			;\ store remainder as 1s
-		STA !OAM+$00E,x				;/
-
-		LDA !OAM+$006,x				;\
-		CMP #$B2 : BNE +			; |
-		LDA #$F0 : STA !OAM+$005,x		; | wipe leading 0s
-		LDA !OAM+$00A,x				; |
-		CMP #$B2 : BNE +			; |
-		LDA #$F0 : STA !OAM+$009,x		;/
-
-	+	TXA					;\
-		LSR #2					; |
-		TAX					; |
-		STZ !OAMhi+$00,x			; | tile size = 8x8
-		STZ !OAMhi+$01,x			; |
-		STZ !OAMhi+$02,x			; |
-		STZ !OAMhi+$03,x			;/
-
-		LDA !OAMindex
-		CLC : ADC #$10
-		STA !OAMindex				; set OAM index
+		ORA #$3F80 : STA !OAM_p3+$002,x
+		LDA $00 : STA !OAM_p3+$000,x
+		INX #4
+		TXA : STA !OAMindex_p3
+		SEP #$30
 
 		.Return
 		PLB
 		RTL
 
-.Tilemap	db $08,$08,$F2,$3F
-		db $14,$08,$B2,$3F
-		db $1E,$08,$B2,$3F
-		db $28,$08,$B2,$3F
+		.CoinIcon
+		db $08,$08,$8E,$3F
+		db $08,$10,$8F,$3F
 
 
 
@@ -2939,16 +3013,24 @@ level24:
 
 level25:
 
-		LDA #$0C : STA !TextPal			; default text pal in this room is 0x0C-0x0F
+		JSL WARP_BOX				;\
+		db $02 : dw $0000,$0090 : db $10,$40	; | elevator exit
+		dw $97B1				; |
+		BCC $01 : RTL				;/
+
+		JSL WARP_BOX				;\
+		db $01 : dw $00F0,$0090 : db $10,$40	; | command bridge exit
+		dw $05F1				; |
+		BCC $01 : RTL				;/
 
 
-		LDA !Level+6 : BNE .PortraitLoaded
-
+	;	LDA #$0C : STA !TextPal			; default text pal in this room is 0x0C-0x0F
+	;	LDA !Level+6 : BNE .PortraitLoaded
 	;	LDA.b #.SA1 : STA $3180
 	;	LDA.b #.SA1>>8 : STA $3181
 	;	LDA.b #.SA1>>16 : STA $3182
-		INC !Level+6
-		STZ !RollWidth
+	;	INC !Level+6
+	;	STZ !RollWidth
 	;	JSR $1E80
 		RTL
 
@@ -2962,18 +3044,6 @@ level25:
 		PLP
 		RTL
 		.PortraitLoaded
-
-
-		JSL WARP_BOX				;\
-		db $02 : dw $0000,$0090 : db $10,$40	; | elevator exit
-		dw $97B1				; |
-		BCC $01 : RTL				;/
-
-		JSL WARP_BOX				;\
-		db $01 : dw $00F0,$0090 : db $10,$40	; | command bridge exit
-		dw $05F1				; |
-		BCC $01 : RTL				;/
-
 
 
 		LDY !Level+4 : BEQ .NoRoll
@@ -3764,39 +3834,60 @@ levelC5:
 ;
 
 levelC6:
-		LDA !P2Character-$80
-		CMP #$02 : BEQ +
-		LDA !Level+4 : BNE +
-		LDA $1B
-		CMP #$0E : BNE +
-		LDX #$0F
-	-	LDA $3230,x : BEQ ++
-		LDA !NewSpriteNum,x
-		CMP #$0E : BNE ++
-		LDA #$01 : STA $3320,x
-		LDA #$3E : STA !ExtraProp2,x
 
+		LDA $1B
+		CMP #$0D : BNE +
+		LDA #$0E : JSL SearchSprite_Custom
+		BMI +
+		LDA !ExtraProp2,x
+		AND #$3F
+		CMP #$07 : BNE +
+		LDA !SpriteXHi,x
+		CMP #$0E : BNE +
+		LDA !SpriteXLo,x
+		CMP #$A0 : BCC +
+		LDA !ExtraProp2,x
+		AND #$C0 : STA !ExtraProp2,x
+		LDA #$AA : STA !SpriteXLo,x
+		LDA #$08 : STA !SpriteAnimIndex
+		STZ !SpriteAnimTimer
+		+
+
+
+		LDA !P2Character-$80				;\
+		CMP #$02 : BEQ +				; |
+		LDA !Level+4 : BNE +				; |
+		LDA $1B						; | if mario is at these camera coords
+		CMP #$0D : BCC +				; |
+		LDA $1A						; |
+		CMP #$E0 : BCC +				;/
+
+		LDA #$0E : JSL SearchSprite_Custom		;\
+		BMI +						; | switch to kadaal
+		LDA #$01 : STA $3320,x				; |
+		LDA #$3E : STA !ExtraProp2,x			;/
 		LDA !Level+1					;\
 		BEQ $02 : LDA #$20				; |
-		ORA #$40					; |
+		ORA #$40					; | checkpoint baybee
 		STA !LevelTable1+$5E				; |
 		LDA !Level : STA !LevelTable2+$5E		;/
-
-		REP #$20
-		LDA.w #!MSG_MeetKadaal_1 : STA !MsgTrigger
-		SEP #$20
-	++	DEX : BPL -
-		LDA #$01 : STA !Level+4
+		REP #$20					;\
+		LDA.w #!MSG_MeetKadaal_1 : STA !MsgTrigger	; | text box
+		SEP #$20					;/
+		LDA #$01 : STA !Level+4				; flag
 		+
 
 
 	; end level
 		REP #$20					;\ end level at coordinate 0x1FF0
-		LDA #$1FF0 : JSL END_Right			;/
-		LDA !GameMode					;\
-		CMP #$0B : BNE .NotEnded			; |
+		LDA #$1FE8 : JSL EXIT_Right			;/
+		BCC .NotEnded					;\
 		STZ $6109					; | beat intro level when reaching the end
-		LDA #$80 : TSB !LevelTable1			; |
+		LDA #$80 : STA !LevelTable1+$00			; |
+		LDA #$80 : STA !SPC3				; > fade music
+		LDA #$00 : STA !Characters
+		STZ !P2Character-$80
+		STZ !P1Dead
 		.NotEnded					;/
 
 	; set HDMA
@@ -4175,6 +4266,26 @@ levelC6:
 		PHP
 		SEP #$10
 		REP #$20
+
+		LDA $1A
+		CMP #$0C80 : BCC +
+		CMP #$0F80 : BCS +
+
+		SEC : SBC #$0EC0
+		BPL $03 : LDA #$0000
+		LSR A
+		CLC : ADC #$0060
+		CMP $1C : BCS +
+		STA $1C
+		STA !CameraBackupY
+		+
+		LDA $1C
+		LSR A
+		CLC : ADC !BG2BaseV
+		STA $20
+
+
+		LDA !MsgTrigger : BNE ..fail
 		LDA $14
 		AND #$0001
 		BEQ $03 : LDA #$0010
@@ -4207,6 +4318,7 @@ levelC6:
 		SEP #$20
 		STZ $4324
 		LDA #$04 : TSB !HDMA		; use channel 2 so it gets overwritten by message box
+		..fail
 		PLP
 		RTL
 
@@ -5128,7 +5240,35 @@ level1F9:
 
 ; mario tutorial room
 level1FA:
+		REP #$20
+		LDA !MsgTrigger
+		CMP.w #!MSG_Survivor_Talk_IntroLevel : BNE +
+		LDA !StoryFlags+$00
+		ORA #$0001 : STA !StoryFlags+$00
+		LDA !P2XPosLo
+		SEC : SBC $1A
+		STA $00
+		LDA !P2YPosLo
+		SEC : SBC $1C
+		SEC : SBC #$0018
+		STA $01
+		LDA.w #.PipeTilemap : STA $02
+		SEP #$20
+		LDA #$02 : STA $0D
+		LDA #$04 : STA $0E
+		JSL !SpriteHUD
+		+
+		SEP #$20
+
+
+		STZ $00
+		STZ $01
+		JSL DisplayYC
 		RTL
+
+		.PipeTilemap
+		db $00,$00,$90,$3B
+
 
 
 ; luigi tutorial room
@@ -6650,7 +6790,8 @@ WARP_BOX:
 		SEC
 		RTS
 
-
+; input: A = exit coordinate
+; output: C = 0 means no exit occurred, C = 1 means the exit was triggered
 
 	EXIT:
 		.Exit
@@ -6674,6 +6815,7 @@ WARP_BOX:
 		BCC .Exit
 		.Return
 		SEP #$20
+		CLC
 		RTL
 
 		.Left
@@ -6684,6 +6826,7 @@ WARP_BOX:
 		LDX !P2Status : BNE .Return
 		CMP !P2XPosLo : BCS .Exit
 		SEP #$20
+		CLC
 		RTL
 
 		.Down
@@ -6698,6 +6841,7 @@ WARP_BOX:
 		BEQ .Exit
 		BCC .Exit
 		SEP #$20
+		CLC
 		RTL
 
 		.Up
@@ -6711,6 +6855,7 @@ WARP_BOX:
 	++	JMP .Exit
 		..fail
 		SEP #$20
+		CLC
 		RTL
 
 
@@ -6793,11 +6938,12 @@ WARP_BOX:
 		LDA #$80				;\ fade music
 		STA !SPC3				;/
 		STA $6DD5				; set exit
-		LDX !Translevel : BEQ ..leveldone	;\ > intro level does not count
+		LDX !Translevel				;\ > intro level does not count
 		LDA !LevelTable1,x : BMI ..beaten	; |
 		LDA !LevelsBeaten			; |
 		INC A					; |
 		STA !LevelsBeaten			; > you've now beaten one more level (only once/level)
+		LDA !LevelTable1,x			; |
 		ORA #$80				; | Set clear, remove midway
 		..beaten				; |
 		AND.b #$60^$FF				; > clear checkpoint

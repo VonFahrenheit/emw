@@ -4,7 +4,9 @@
 
 
 	SCREEN_BORDER:
-		LDA !P2Pipe : BNE .Kill			; skip this during pipe animation
+		LDA !P2Pipe				;\
+		ORA !Cutscene				; | skip this during pipe animation and cutscenes
+		BNE .Kill				;/
 		LDA !GameMode				;\ skip if not in game mode 14
 		CMP #$14 : BNE .Kill			;/
 		LDA !Level+1 : BNE .Process		;\

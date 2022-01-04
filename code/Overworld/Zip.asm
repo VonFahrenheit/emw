@@ -78,19 +78,30 @@
 
 
 
-	!tilecount		= $410000	; 2 KiB, index = raw tile num, how many instances of each tile are currently live
-	!tileaddress		= $410800	; 2 KiB, index = raw tile num, which vram index each tile gfx uses
-	!vramalloc		= $411000	; 512 B, index = vram slot, which raw tile is loaded in each vram slot
+	!tilecount		= $410000	; 2 KiB, index = raw tile num, read = how many instances of each tile are currently live
+	!tileaddress		= $410800	; 2 KiB, index = raw tile num, read = which vram index each tile gfx uses
+	!vramalloc		= $411000	; 512 B, index = vram slot, read = which raw tile is loaded in each vram slot
 	!loadcache		= $411200	; 1 KiB, keeps track of which non-loaded tiles (raw num) are about to scroll on-screen
 	!loadbuffer		= $411600	; 1280 ($500) B, list of tiles (raw num) to load, and to where (simplified feed -> !VRAMtable)
 	!loadindex		= $411B00	; 2 B, index to !loadbuffer
-	!prev1A			= $411B02
-	!prev1C			= $411B04
+	!zipprev1A		= $411B02
+	!zipprev1C		= $411B04
 	!initzipcount		= $411B06	; 2 B, counts up from 0 to initialize zips
-	;next			= $411B08
+	!zipdiagonaldec		= $411B08	; 2 B, subtracted from row tile count if moving diagonally
+	!zipdiagonaloffsetinc	= $411B0A	; 2 B, added to row x position if moving diagonally, for incrementing only
+	!zipdiagonaloffsetdec	= $411B0C	; 2 B, added to row x position if moving diagonally, for decrementing only
+	;next			= $411B0E
 
 	!zipbuffer		= $411C00	; 512 B, tilemap data buffer
 	;next			= $411E00
+
+
+	; constants
+	!zip_x			= $10	; sub
+	!zip_y			= $10	; add
+	!zip_w			= $24
+	!zip_h			= $1C
+
 
 
 ; zip buffer format:
@@ -112,10 +123,10 @@
 		LDA.w !initzipcount
 		ASL #3
 		ADC $1A
-		SEC : SBC #$0010
+		SEC : SBC.w #!zip_x
 		STA $00
 		LDA $1C
-		CLC : ADC #$0010
+		CLC : ADC.w #!zip_y
 		STA $02
 		LDA #$0001 : STA $04
 		JSR HandleZips_Increment
@@ -141,19 +152,45 @@
 		PHP							;\ P wrapper to all regs 16-bit
 		REP #$30						;/
 
+		STZ.w !zipdiagonaldec					;\
+		STZ.w !zipdiagonaloffsetinc				; | reset diagonal
+		STZ.w !zipdiagonaloffsetdec				;/
+
+	; debug: count tiles and display on coin counter
+	if !DebugOverworld = 1
+	LDX #$07FE
+	STZ $00
+	LDA #$0000
+-	CLC : ADC.w !tilecount,x
+	BCC $02 : INC $00
+	DEX #2 : BPL -
+	STA.l !CoinHoard
+	SEP #$20
+	LDA $00 : STA.l !CoinHoard+2
+	REP #$20
+
+	LDA #$0000 : STA.l !BigRAM+$7E
+
+	endif
+
 
 		.Column
 		LDA $1A
-		EOR.w !prev1A
+		EOR.w !zipprev1A
 		AND #$0008 : BEQ ..done
+		LDA #$0001 : STA.w !zipdiagonaldec			;\ set diagonal
+	;	LDA #$0008 : STA.w !zipdiagonaloffset			;/
 		LDA $1C
-		CLC : ADC #$0010
+		CLC : ADC.w #!zip_y
 		STA $02
 		LDA #$0001 : STA $04
 		LDX #$0000
 		LDA $1A
-		CMP.w !prev1A
+		CMP.w !zipprev1A
 		BCS $02 : INX #2
+	LDA.l .HorzOffset_diagonal,x : STA.w !zipdiagonaloffsetinc
+	LDA.l .HorzOffset_diagonal+2,x : STA.w !zipdiagonaloffsetdec
+	LDA $1A
 		CLC : ADC.l .HorzOffset,x
 		PHA
 		CMP #$0600 : BCS ..noincrement
@@ -161,12 +198,12 @@
 		JSR .Increment
 		..noincrement
 
-		LDA.w !prev1C
-		CLC : ADC #$0010
+		LDA.w !zipprev1C
+		CLC : ADC.w #!zip_y
 		STA $02
 		LDA #$0001 : STA $04
 		LDX #$0000
-		LDA.w !prev1A
+		LDA.w !zipprev1A
 		CMP $1A
 		BCC $02 : INX #2
 		CLC : ADC.l .HorzOffset+2,x
@@ -183,15 +220,16 @@
 
 		.Row
 		LDA $1C
-		EOR.w !prev1C
+		EOR.w !zipprev1C
 		AND #$0008 : BEQ ..done
 		LDA $1A
-		SEC : SBC #$0010
+		SEC : SBC.w #!zip_x
+		CLC : ADC.w !zipdiagonaloffsetinc			; diagonal offset (increment)
 		STA $00
 		STZ $04
 		LDX #$0000
 		LDA $1C
-		CMP.w !prev1C
+		CMP.w !zipprev1C
 		BCS $02 : INX #2
 		CLC : ADC.l .VertOffset,x
 		PHA
@@ -200,12 +238,13 @@
 		JSR .Increment
 		..noincrement
 
-		LDA.w !prev1A
-		SEC : SBC #$0010
+		LDA.w !zipprev1A
+		SEC : SBC.w #!zip_x
+		CLC : ADC.w !zipdiagonaloffsetdec			; diagonal offset (decrement)
 		STA $00
 		STZ $04
 		LDX #$0000
-		LDA.w !prev1C
+		LDA.w !zipprev1C
 		CMP $1C
 		BCC $02 : INX #2
 		CLC : ADC.l .VertOffset+2,x
@@ -220,8 +259,15 @@
 		..done
 
 
-		LDA $1A : STA.w !prev1A
-		LDA $1C : STA.w !prev1C
+		LDA $1A : STA.w !zipprev1A				; update X
+		LDA $1C : STA.w !zipprev1C				; update Y
+
+
+	if !DebugOverworld = 1
+	LDA.l !BigRAM+$7E : BEQ +
+	STA.l !YoshiCoinCount
+	+
+	endif
 
 
 		LDX #$03FF*2
@@ -237,10 +283,24 @@
 
 
 		.HorzOffset
-		dw $0108,$FFF0,$0108
+		dw (!zip_w*8)-!zip_x-8
+		dw -!zip_x
+		dw (!zip_w*8)-!zip_x-8
+		;dw $0108,$FFF0,$0108
+
+	; moving right: index = 0
+	; moving left: index = 2
+		..diagonal
+		dw $0000
+		dw $0008
+		dw $0000
+
 
 		.VertOffset
-		dw $00E8,$0010,$00E8
+		dw (!zip_h*8)+!zip_y-8
+		dw !zip_y
+		dw (!zip_h*8)+!zip_y-8
+		;dw $00E8,$0010,$00E8
 
 
 
@@ -249,7 +309,11 @@
 ;------------------------------
 
 
-	; increment new tiles
+; input:
+;	$00 = starting xpos
+;	$02 = starting ypos
+;	$04 = mode (0 = row, 1 = column)
+;
 		.Increment						;\
 		LDA $00							; |
 		BPL $03 : LDA #$0000
@@ -272,6 +336,11 @@
 		BEQ $03 : LDA #$8000					; | set zip direction
 		TSB.w !zipbuffer+2					;/
 		JSR .GetPointer						;\
+	if !DebugOverworld
+	LDA $0C
+	CLC : ADC.l !BigRAM+$7E
+	STA.l !BigRAM+$7E
+	endif
 		LDX #$0000						; | setup
 		LDY #$0000						;/
 		..loop							;\
@@ -297,7 +366,11 @@
 
 
 
-	; decrement old tiles
+; input:
+;	$00 = starting xpos
+;	$02 = starting ypos
+;	$04 = mode (0 = row, 1 = column)
+;
 		.Decrement						;\
 		JSR .GetPointer						; | setup
 		LDY #$0000						;/
@@ -308,6 +381,18 @@
 		TAX							; |
 		DEC.w !tilecount,x : BNE ..next				;/
 		..unload						;\
+
+	; debug: zero out unloaded tiles (for debugger's tile viewer)
+	if !DebugOverworld = 1
+	PHY
+	LDY.w !loadindex
+	LDA #$003D : STA.w !loadbuffer+2,y
+	LDA #$8000 : STA.w !loadbuffer+0,y
+	LDA.w !tileaddress,x
+	ASL #5
+	STA.w !loadbuffer+3,y
+	PLY
+	endif
 		LDA.w !tileaddress,x					; |
 		STZ.w !tileaddress,x					; | count = 0
 		DEC.w !tileaddress,x					; | remapped num = 0xFFFF (not loaded)
@@ -329,7 +414,7 @@
 
 
 
-
+; scratch usage (NOT INPUT)
 ; $00 = byte count
 ; $02 = starting VRAM address
 ; $04 = VRAM cutoff for zip split
@@ -379,8 +464,7 @@
 		DEY #2
 		STY $0C
 		LDY.w !loadindex
-		XBA
-		LSR A
+		ASL #7
 		SEC
 		ROR A
 		STA.w !loadbuffer+0,y
@@ -450,7 +534,7 @@
 		LDA $0E : STA !VRAMbase+!VRAMtable+$02,x		; |
 		LDA $02 : STA !VRAMbase+!VRAMtable+$05,x		; |
 		..return						; |
-		RTS							;/
+		RTS							;/ > RTS to .Convert
 
 		.LoadColumn						;\
 		AND #$7FFF : STA $02					; |
@@ -527,7 +611,22 @@
 ;	$00 = X offset (global)
 ;	$02 = Y offset (global)
 ;	$04 = 0 for horizontal, 1 for vertical
-
+;
+; output:
+;	$00 = 24-bit tilemap pointer
+;	$06 = index+ (value to add to index to reach next tile, 0x02 for row, 0x40 for column)
+;	$08 = ----
+;	$0A = index cutoff to swap in next tilemap
+;	$0C = number of tiles (0x24 for row, 0x1C for colum, can be cut short if hitting borders of overworld)
+;	!BigRAM+$00 = base index of second possible tilemap
+;	!BigRAM+$02 = index cutoff for second possible tilemap
+;	!BigRAM+$04 = pointer to second possible tilemap (24-bit)
+;	!BigRAM+$08 = base index of third possible tilemap
+;	!BigRAM+$0A = index cutoff for third possible tilemap
+;	!BigRAM+$0C = pointer to third possible tilemap (24-bit)
+;	!BigRAM+$10 = initial X of zip
+;	!BigRAM+$12 = initial Y of zip
+;
 		.GetPointer
 		PHB : PHK : PLB
 		LDX #$0000						;\
@@ -569,12 +668,12 @@
 
 	; vertical values
 		..vertical
-		LDA #$001C : STA $0C					; number of tiles to process
+		LDA.w #!zip_h : STA $0C					; number of tiles to process
 		LDA #$0040 : STA $06					; index+
 
-		; negative never actually happens for vertical
+		; negative never actually happens for vertical because offset is added, never subbed
 		LDA !BigRAM+$12
-		SEC : SBC #$0328
+		SEC : SBC.w #$400-(!zip_h*8)
 		BEQ +
 		BMI +
 		LSR #3
@@ -602,12 +701,14 @@
 
 	; horizontal values
 		..horizontal
-		LDA #$0024 : STA $0C					; number of tiles to process
+		LDA.w #!zip_w						;\
+		SEC : SBC.l !zipdiagonaldec				; | number of tiles to process (2 less on diagonal frames)
+		STA $0C							;/
 		LDA #$0002 : STA $06					; index+
 
 		; adjusting size for negative offset breaks the equilibrium, so we can't do it
 		LDA !BigRAM+$10
-		SEC : SBC #$04F0
+		SEC : SBC.w #$600-(!zip_w*8)
 		BEQ +
 		BMI +
 		LSR #3
@@ -703,30 +804,56 @@
 
 
 	DecompressionMap:
-		db $E8 : dl $40E000
-		db $E9 : dl $40E800
-		db $EA : dl $40F000
-		db $EB : dl $40F800
-		db $EC : dl $407000
-		db $ED : dl $41F800
-		db $EE : dl $41F000
-		db $EF : dl $408800
-		db $F0 : dl $409000
-		db $F1 : dl $409800
-		db $F2 : dl $40A000
-		db $F3 : dl $40A800
-		db $F4 : dl $40B000
-		db $F5 : dl $40B800
-		db $F6 : dl $40C000
-		db $F7 : dl $40C800
-		db $F8 : dl $40D000
-		db $F9 : dl $40D800
-		db $FA : dl $41C000
-		db $FB : dl $41C800
-		db $FC : dl $41D000
-		db $FD : dl $41D800
-		db $FE : dl $41E000
-		db $FF : dl $41E800
+	;	db $E8 : dl $40E000		; 11
+	;	db $E9 : dl $40E800		; 12
+	;	db $EA : dl $40F000		; 13
+	;	db $EB : dl $40F800		; 14
+	;	db $EC : dl $407000		; 15
+	;	db $ED : dl $41F800		; 16
+	;	db $EE : dl $41F000		; 21
+	;	db $EF : dl $408800		; 22
+	;	db $F0 : dl $409000		; 23
+	;	db $F1 : dl $409800		; 24
+	;	db $F2 : dl $40A000		; 25
+	;	db $F3 : dl $40A800		; 26
+	;	db $F4 : dl $40B000		; 31
+	;	db $F5 : dl $40B800		; 32
+	;	db $F6 : dl $40C000		; 33
+	;	db $F7 : dl $40C800		; 34
+	;	db $F8 : dl $40D000		; 35
+	;	db $F9 : dl $40D800		; 36
+	;	db $FA : dl $41C000		; 41
+	;	db $FB : dl $41C800		; 42
+	;	db $FC : dl $41D000		; 43
+	;	db $FD : dl $41D800		; 44
+	;	db $FE : dl $41E000		; 45
+	;	db $FF : dl $41E800		; 46
+
+		db $F4 : dl $40E000		; 11
+		db $F5 : dl $40E800		; 12
+		db $F4 : dl $40F000		; 13
+		db $F5 : dl $40F800		; 14
+		db $F4 : dl $407000		; 15
+		db $F5 : dl $41F800		; 16
+		db $FA : dl $41F000		; 21
+		db $FB : dl $408800		; 22
+		db $FA : dl $409000		; 23
+		db $FB : dl $409800		; 24
+		db $FA : dl $40A000		; 25
+		db $FB : dl $40A800		; 26
+		db $F4 : dl $40B000		; 31
+		db $F5 : dl $40B800		; 32
+		db $F4 : dl $40C000		; 33
+		db $F5 : dl $40C800		; 34
+		db $F4 : dl $40D000		; 35
+		db $F5 : dl $40D800		; 36
+		db $FA : dl $41C000		; 41
+		db $FB : dl $41C800		; 42
+		db $FA : dl $41D000		; 43
+		db $FB : dl $41D800		; 44
+		db $FA : dl $41E000		; 45
+		db $FB : dl $41E800		; 46
+
 		.End
 
 

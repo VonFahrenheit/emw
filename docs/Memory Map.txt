@@ -94,7 +94,7 @@
 		$0000-$1FFF:	8 KB	LoRAM
 		$2000-$ACFF:	35 KB	super-dynamic GFX area 1
 		$AD00-$B0FF:	1 KB	start of AN2 file, extends all the way to $C7FF
-		$B100-$B37F:	640 B	decompressed GFX for overworld.
+		$B100-$B37F:	640 B	----
 		$B380-$B67F:	768 B	decompressed Game Over graphics.
 		$B680-$B8FF:	640 B	---- this area is used as an intermediate for compression
 		$B900-$BCFF:	1 KB	---- (it likely holds the GFX while SA-1 keeps decompressing to $410000)
@@ -121,7 +121,6 @@
 
 
 	-- I-RAM map --
-
 		$3000-$30FF:	256 B	SNES/SA-1 DP
 		$3100-$313F:	64 B	SA-1 DP for MPU operation
 		$3140-$3147:	8 B	VRAM remap registers, see Defines
@@ -185,6 +184,7 @@
 		$6703-$6902:	512 B	entire palette (SNES RGB format), fed into shader
 		$6903-$6904:	2 B	mirror of color 0, updated each v-blank (usually black)
 		$6905-$6AF4:	496 B	SMW's work area for overworld palette animations, unused
+					; lunar magic actually tries to write here... scary!
 					Instead, I use it like this:
 					$6905-$6906: 2 B, layer 2 map16 offset when layer 2 is set to level
 					$6907:	     1 B, ----
@@ -196,7 +196,8 @@
 					$6A60-$6ABF: 96 B, checkpoint level, lo byte (level data byte 2)
 					$6AC0-$6AC9: 10 B, camera box registers
 					$6ACA:       1 B, status bar X pos
-					$6ACB-$6AF4: 42 B, ----
+					$6ACB-$????: ?? B, cutscene RAM
+					$????-$6AF4: ?? B, ----
 
 		$6DDF-$6EF4:	278 B	SMW's overworld sprite data
 					I use it as 3D tilemap cache
@@ -302,13 +303,21 @@
 		$B600-$B8FF:	768 B	save file 3
 		$B900-$BBFF:	768 B	permanent SRAM
 		$BC00-$BFFF	1 KB	SRAM buffer
-				$BC00 - misc SRAM buffer data (see defines)
-				$BC10 - database buffer
-				$BC50 - character data buffer
-				$BC8C - story flags buffer
-				$BD1A - ----
 		$C000-$C7FF:	2 KB	2D/3D Cluster Joint data
 		$C800-$FFFF:	14 KB	Map16 hi byte table
 
+		save file layout:
+			16 bytes of misc data (first 16 bytes of SRAM buffer)
+			level data (5 tables, each with 1 byte per level, total 480 bytes)
+			database (64 bytes)
+			character data (10 bytes per character)
+			overworld coordinates (4 bytes)
+			levels beaten counter (1 byte)
+			story flags
+			bit count (2 bytes)
+			checksum (2 bytes)
+			checksum complement (2 bytes)
+
+		permanent SRAM layout:
 
 

@@ -1,9 +1,8 @@
 
 
 
-	!MapSpeed		= $20
-	!MapSpeedSquare		= (!Speed*!Speed)
-
+	!MapSpeed		= $17
+	!MapSpeedDiagonal	= sqrt((!MapSpeed*!MapSpeed)/2)
 
 
 
@@ -406,10 +405,16 @@
 		ORA $04
 		TAY
 		LDA [$00],y
-		AND #$03FF
-		TAY
-		LDA .Solidity,y
-		AND #$00FF
+		AND #$03FF : STA $00
+
+		AND #$0007 : TAY			; get bit index
+		LDA .Solidity_bits,y			;\ bit to check
+		AND #$00FF : STA $02			;/
+		LDA $00					;\
+		LSR #3					; | get byte inndex
+		TAY					; |
+		LDA .Solidity,y				;/
+		AND $02					; check solidity
 		RTS
 
 		.OutOfBounds
@@ -417,39 +422,7 @@
 		RTS
 
 
-	.Solidity
-		db $01		; tile 000
-		db $01		; tile 001
-		db $01		; tile 002
-		db $01		; tile 003
-		db $01		; tile 004
-		db $01		; tile 005
-		db $01		; tile 006
-		db $01		; tile 007
-		db $01		; tile 008
-		db $01		; tile 009
-		db $01		; tile 00A
-		db $01		; tile 00B
-		db $01		; tile 00C
-		db $01		; tile 00D
-		db $01		; tile 00E
-		db $01		; tile 00F
-		db $00		; tile 010
-		db $00		; tile 011
-		db $00		; tile 012
-		db $00		; tile 013
-		db $00		; tile 014
-		db $00		; tile 015
-		db $00		; tile 016
-		db $00		; tile 017
-		db $00		; tile 018
-		db $00		; tile 019
-		db $00		; tile 01A
-		db $00		; tile 01B
-		db $00		; tile 01C
-		db $00		; tile 01D
-		db $00		; tile 01E
-		db $00		; tile 01F
+	incsrc "Data/TileSolidity.asm"
 
 
 
@@ -672,11 +645,13 @@
 		LDA $14
 		AND #$01
 	+	STA $02
-		BIT $6DA2 : BVC +
-		TYA
-		ORA #$10
-		TAY
-		+
+	if !Debug = 1
+	BIT $6DA2 : BVC +
+	TYA
+	ORA #$10
+	TAY
+	+
+	endif
 		LDA .SpeedTable_x,y : STA $00
 		LDA .SpeedTable_y,y : STA $01
 
@@ -858,10 +833,11 @@
 
 
 ; debug: skip collision with R
+	if !Debug = 1
 	LDA $6DA4
 	AND #$0010 : BEQ .Terrain
 	JMP .Terrain_noup
-
+	endif
 
 		.Terrain
 
@@ -995,10 +971,10 @@
 
 	.SpeedTable
 		..x
-		db $00,$20,$E0,$00
-		db $00,$17,$E9,$00
-		db $00,$17,$E9,$00
-		db $00,$20,$E0,$00
+		db $00,!MapSpeed,-!MapSpeed,$00
+		db $00,!MapSpeedDiagonal,-!MapSpeedDiagonal,$00
+		db $00,!MapSpeedDiagonal,-!MapSpeedDiagonal,$00
+		db $00,!MapSpeed,-!MapSpeed,$00
 
 		db $00,$40,$C0,$00
 		db $00,$2E,$D2,$00
@@ -1007,8 +983,8 @@
 
 		..y
 		db $00,$00,$00,$00
-		db $20,$17,$17,$20
-		db $E0,$E9,$E9,$E0
+		db !MapSpeed,!MapSpeedDiagonal,!MapSpeedDiagonal,!MapSpeed
+		db -!MapSpeed,-!MapSpeedDiagonal,-!MapSpeedDiagonal,-!MapSpeed
 		db $00,$00,$00,$00
 
 		db $00,$00,$00,$00

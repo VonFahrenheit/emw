@@ -37,7 +37,7 @@ LoadTable:
 ;===========================================;
 	%gfx_index(ShellessKoopa)	; 000
 	%gfx_index(ShellessKoopa)	; 001
-	%gfx_index(ShellessKoopa)	; 002
+	%gfx_index(KickerKoopa)		; 002
 	%gfx_index(ShellessKoopa)	; 003
 	%gfx_index(Koopa)		; 004
 	%gfx_index(Koopa)		; 005
@@ -1807,7 +1807,9 @@ endmacro
 ;===============================================================
 .LuigiFireball	; no file
 ;===============================================================
-.LeafParticle	%src($FA5, $00, $01, LeafParticle, 0)
+.LeafParticle	%cmd($FA5, $00, $01, LeafParticle, 0)
+		%defaultpal(D)
+		db $FF
 ;===============================================================
 .TinyCoin	%cmd($FA5, $01, $01, TinyCoin, 0)
 		%defaultpal(A)

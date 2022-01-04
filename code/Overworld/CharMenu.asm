@@ -647,6 +647,7 @@ endmacro
 	.Closing
 		BNE ..process
 		STZ !CharMenu
+		RTS
 
 		..process
 		DEC A

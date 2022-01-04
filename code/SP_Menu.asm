@@ -380,7 +380,7 @@ endif
 
 	.Main
 		LDA !Difficulty				;\ see if timer is enabled
-		AND.b #!TimeMode : BEQ .NoTimer			;/
+		AND.b #!TimeMode : BEQ .NoTimer		;/
 
 		LDA !TimerSeconds+1 : BMI .NoTimer	; don't process if negative
 
@@ -468,6 +468,7 @@ endif
 		STX !StatusBar+$1D			; |
 		STA !StatusBar+$1E			; |
 		SEP #$20				; |
+		LDA #$14 : STA !StatusBar+$1F		; > empty space
 		LDA #$0A : STA !StatusBar+$1A		; > P2 coin symbol
 		BRA .MultiPlayer			;/
 		..megalevel				;\
@@ -495,16 +496,20 @@ endif
 		LDA #$1414				; |
 		STA !StatusBar+$05			; |
 		STA !StatusBar+$07			; |
-		STA !StatusBar+$09			; | empty space
+		STA !StatusBar+$09			; |
 		STA !StatusBar+$0B			; |
-		STA !StatusBar+$12			; |
-		STA !StatusBar+$14			; |
-		STA !StatusBar+$16			; |
+		STA !StatusBar+$0D			; | empty space
+		STA !StatusBar+$0F			; |
+		STA !StatusBar+$11			; |
+		STA !StatusBar+$13			; |
+		STA !StatusBar+$15			; |
+		STA !StatusBar+$17			; |
 		STA !StatusBar+$18			; |
 		SEP #$20				;/
 		LDA #$0A : STA !StatusBar+$00		; P1 coin symbols
 
-.YoshiCoins	LDA !MegaLevelID : BEQ +		; check for mega level
+.YoshiCoins	LDA !Translevel : BEQ .Player1HP	; no yoshi coins on index 0
+		LDA !MegaLevelID : BEQ +		; check for mega level
 		TAX
 		LDA #$0A : STA $01
 		LDY #$05
@@ -1807,7 +1812,7 @@ MAIN_MENU:
 		LDA.w #.PressAnyButton : STA $02
 		LDA.w #.PressAnyButton_end-.PressAnyButton : STA $0E
 		SEP #$20
-		LDA #$40 : STA $00
+		LDA #$4C : STA $00
 
 		LDA $13
 		LSR #3
@@ -2080,18 +2085,16 @@ MAIN_MENU:
 		db $08,$00,$C4,$3D
 		db $10,$00,$C5,$3D
 		db $18,$00,$C6,$3D
-		db $20,$00,$C7,$3D
 
-		db $30,$00,$D3,$3D
-		db $38,$00,$D4,$3D
-		db $40,$00,$D5,$3D
+		db $26,$00,$D3,$3D
+		db $2E,$00,$D4,$3D
+		db $36,$00,$D5,$3D
 
-		db $50,$00,$E3,$3D
-		db $58,$00,$E4,$3D
-		db $60,$00,$E5,$3D
-		db $68,$00,$E6,$3D
-		db $70,$00,$E7,$3D
-		db $78,$00,$E8,$3D
+		db $43,$00,$E3,$3D
+		db $4B,$00,$E4,$3D
+		db $53,$00,$E5,$3D
+		db $5B,$00,$E6,$3D
+		db $63,$00,$E7,$3D
 		..end
 
 
@@ -2305,8 +2308,8 @@ MAIN_MENU:
 		SEP #$20
 
 		JSR HandleBG3Files
+		JSR .DrawMovingFiles
 
-		..end
 		LDA !MenuBG3_Y_1
 		ORA !MenuBG3_Y_1+1
 		BEQ ..next
@@ -2390,66 +2393,13 @@ MAIN_MENU:
 		LDA SaveFileIndexLo,y
 		TAX
 		LDA !SRAM_block+$00,x
-		CMP #$FF : BNE ..drawfile
+		CMP #$FF : BEQ ..loopfile
+		LDA .FileDispX,y : STA $04
+		LDA .FileDispY,y : STA $05
+		JSR .DrawFile
 		..loopfile
 		DEY : BPL -
 		SEP #$30
-		JMP ..filesdone
-
-		..drawfile
-		LDA .OutlineDispX,y
-		CLC : ADC #$3A
-		STA $00
-		STZ $01
-		LDA .OutlineDispY,y
-		CLC : ADC #$14
-		STA $02
-		REP #$20
-		LDA !SRAM_block+$008,x : STA !PlaytimeMinutes
-		LDA !SRAM_block+$009,x : STA !PlaytimeHours
-		LDA !SRAM_block+$004,x
-		CLC : ADC !SRAM_block+$270,x
-		ASL A
-		AND #$00FF : PHA
-		LDA !SRAM_block+$010+$005,x
-		AND #$0080 : STA !BigRAM			; castle rex beaten flag
-		PHY
-		PHP
-		JSR .DrawPlaytime
-		PLP
-		PLY
-		LDA .OutlineDispX,y
-		AND #$00FF
-		CLC : ADC #$003E
-		STA $00
-		LDA .OutlineDispY,y
-		CLC : ADC #$0004
-		AND #$00FF : STA $02
-		PLA
-		PHY
-		PHP
-		JSR .DrawPercent_main
-		PLP
-		PLY
-		LDA !BigRAM : BEQ ..nextfile
-		LDA .OutlineDispX,y
-		CLC : ADC #$0010
-		STA $00
-		LDA .OutlineDispY,y
-		CLC : ADC #$0010
-		STA $01
-		LDA.w #.SmallStarTilemap : STA $02
-		STZ $0D
-		LDA #$0004 : STA $0E
-		PHP
-		PHY
-		JSL !SpriteHUD
-		PLY
-		PLP
-		..nextfile
-		JMP ..loopfile
-		..filesdone
-
 
 		REP #$20
 		LDA.w #.HackMarkTilemap : STA $02
@@ -2486,15 +2436,15 @@ MAIN_MENU:
 		AND #$07
 		SEC : SBC #$04
 		BPL $03 : EOR #$FF : INC A
-		CLC : ADC .OutlineDispX,x
-		SEC : SBC #$20
+		CLC : ADC .FileDispX,x
+		SEC : SBC #$2C
 		STA $00
-		LDA .OutlineDispY,x
+		LDA .FileDispY,x
 		CLC : ADC #$08
 		STA $01
 		REP #$20
 		LDA.w #.HandTilemap : STA $02
-		LDA #$0014 : STA $0E
+		LDA #$0008 : STA $0E
 		SEP #$20
 		LDA #$02 : STA $0D
 		JSL !SpriteHUD
@@ -2502,18 +2452,18 @@ MAIN_MENU:
 
 
 
-		LDX $610A
-		LDA .OutlineDispX,x : STA $00
-		LDA .OutlineDispY,x : STA $01
-		LDA $13
-		AND #$18 : BEQ ..blink
-		REP #$20
-		LDA.w #.OutlineTilemap : STA $02
-		LDA #$0050 : STA $0E
-		SEP #$20
-		LDA #$02 : STA $0D
+	;	LDX $610A
+	;	LDA .OutlineDispX,x : STA $00
+	;	LDA .OutlineDispY,x : STA $01
+	;	LDA $13
+	;	AND #$18 : BEQ ..blink
+	;	REP #$20
+	;	LDA.w #.OutlineTilemap : STA $02
+	;	LDA #$0050 : STA $0E
+	;	SEP #$20
+	;	LDA #$02 : STA $0D
 	;	JSL !SpriteHUD
-		..blink
+	;	..blink
 
 		REP #$20
 		LDA #$C820 : STA $00
@@ -2525,7 +2475,7 @@ MAIN_MENU:
 		REP #$20
 		LDA.w #.TooltipsTilemap : STA $02
 		STZ $0D
-		LDA #$0010 : STA $0E
+		LDA #$0014 : STA $0E
 		SEP #$20
 		JSL !SpriteHUD
 
@@ -2548,11 +2498,137 @@ MAIN_MENU:
 		REP #$20
 		LDA.w #.EraseTilemap2 : STA $02
 		STZ $0D
-		LDA #$000C : STA $0E
+		LDA #$0010 : STA $0E
 		SEP #$20
 		JSL !SpriteHUD
 		+
 
+		RTS
+
+
+
+	.DrawMovingFiles
+		REP #$10
+		LDY #$0002
+	-	LDA #$00 : XBA				; B = 0
+		TYA
+		ASL A
+		TAX
+		LDA !MenuBG3_Y_1,x
+		CMP ..limit,y : BCS +
+		EOR #$FF : INC A
+		CLC : ADC .FileDispY,y
+		CLC : ADC #$20
+		STA $05
+		LDA !MenuBG3_X_1,x
+		EOR #$FF : INC A
+		CLC : ADC .FileDispX,y
+		STA $04
+		LDA SaveFileIndexHi,y : XBA
+		LDA SaveFileIndexLo,y
+		TAX
+		LDA !SRAM_block+$00,x
+		CMP #$FF : BEQ +
+		JSR .DrawFile
+		SEP #$20
+	+	DEY : BPL -
+
+		LDA .FileDispY+2
+		SEC : SBC !MenuBG3_Y_3
+		CLC : ADC #$20
+		STA $00
+		LDX #$01FC
+	-	LDA !OAM_p3+$003,x
+		AND.b #$30^$FF
+		STA !OAM_p3+$003,x
+		LDA !OAM_p3+$001,x
+		CMP #$F0 : BEQ +
+		SEC : SBC #$20
+		STA !OAM_p3+$001,x
+		CMP #$F0 : BCS +
+		CMP $00 : BCC +
+		LDA #$F0 : STA !OAM_p3+$001,x
+	+	DEX #4 : BPL -
+		SEP #$10
+		RTS
+
+		..limit
+		db $60,$60,$88
+
+
+; input:
+;	Y = file index
+;	index 16-bit
+;	A 8-bit
+;	$04 = Xdisp
+;	$05 = Ydisp
+; output:
+;	draws that file's info
+	.DrawFile
+		LDA $04
+		CLC : ADC #$3A
+		STA $00
+		STZ $01
+		LDA $05
+		CLC : ADC #$14
+		STA $02
+		REP #$20
+		LDA !SRAM_block+$008,x : STA !PlaytimeMinutes
+		LDA !SRAM_block+$009,x : STA !PlaytimeHours
+		LDA !SRAM_block+$004,x
+		CLC : ADC !SRAM_block+$270,x
+		ASL A
+		AND #$00FF : PHA
+		LDA !SRAM_block+$010+$005,x
+		AND #$0080 : STA !BigRAM			; castle rex beaten flag
+		PHY
+		PHP
+		JSR .DrawPlaytime
+		PLP
+		PLY
+		LDA $04
+		AND #$00FF
+		CLC : ADC #$003E
+		STA $00
+		LDA $05
+		CLC : ADC #$0004
+		AND #$00FF : STA $02
+		PLA
+		PHY
+		PHP
+		JSR .DrawPercent_main
+		PLP
+		PLY
+		LDA $04
+		CLC : ADC #$0060
+		STA $00
+		LDA $05
+		INC A
+		STA $01
+		LDA.w #.RealmPortraitTilemap : STA $02
+		LDA #$0002 : STA $0D
+		LDA #$0010 : STA $0E
+		PHP
+		PHY
+		JSL !SpriteHUD
+		PLY
+		PLP
+		LDA !BigRAM : BEQ ..done
+		LDA $04
+		CLC : ADC #$0010
+		STA $00
+		LDA $05
+		CLC : ADC #$0010
+		STA $01
+		LDA.w #.SmallStarTilemap : STA $02
+		STZ $0D
+		LDA #$0004 : STA $0E
+		PHP
+		PHY
+		JSL !SpriteHUD
+		PLY
+		PLP
+		..done
 		RTS
 
 
@@ -2602,6 +2678,22 @@ MAIN_MENU:
 		STX !HDMA3source			; always double buffer, baby!
 		SEP #$20
 
+		; remains of small previews
+		LDA $0C02,x : BNE +
+		PHX
+		JSR .DrawMovingFiles
+		PLX
+		+
+
+		; challenge mode icons (sprites)
+		LDA $0C01,x
+		EOR #$FF : INC A
+		STA !BigRAM
+		PHX
+		JSR .DrawChallengeModes
+		JSR .DrawDifficulty_all
+		PLX
+
 		LDA $0C02,x : BNE ..choose
 		RTS
 
@@ -2624,11 +2716,13 @@ MAIN_MENU:
 		..nochange
 		BIT $16 : BPL ..nochoice
 		LDA #$03 : STA !MenuState
-		RTS
+		LDA #$06 : STA !SPC4
+		BRA ..notextupdate
 		..nochoice
 		BVC ..noback
 		LDA !WindowDir : BEQ ..waitfortext
 		STZ !MenuState
+		LDA #$06 : STA !SPC4
 		..waitfortext
 		RTS
 		..noback
@@ -2656,18 +2750,20 @@ MAIN_MENU:
 		AND #$07
 		SEC : SBC #$04
 		BPL $03 : EOR #$FF : INC A
-		CLC : ADC #$20
+		CLC : ADC #$10
 		STA $00
 		LDA !Difficulty
-		AND #$03
-		ASL #4
-		CLC : ADC #$50
+		AND #$03 : STA $0F
+		ASL #2
+		ADC $0F
+		ASL #2
+		ADC #$50
 		STA $01
 		LDA #$02 : STA $0D
 		REP #$20
 		LDA.w #.HandTilemap : STA $02
 		SEP #$20
-		LDA #$14 : STA $0E
+		LDA #$08 : STA $0E
 		JSL !SpriteHUD
 
 		; tooltips
@@ -2682,8 +2778,9 @@ MAIN_MENU:
 		LDA.w #.TooltipsTilemap : STA $02
 		SEP #$20
 		STZ $0D
-		LDA #$1C : STA $0E
+		LDA #$20 : STA $0E
 		JSL !SpriteHUD
+
 		RTS
 
 
@@ -2720,24 +2817,42 @@ MAIN_MENU:
 		BIT $16 : BPL ..nochoice
 		LDX !MenuChallengeSelect
 		LDA .ChallengeModeOrder,x
-		EOR !Difficulty
-		STA !Difficulty
+		EOR !Difficulty : STA !Difficulty
+		AND .ChallengeModeOrder,x : BNE +
+		LDA #$13 : STA !SPC4
+		BRA ..nochoice
+	+	LDA #$1F : STA !SPC4
 		..nochoice
 
 		BIT $16 : BVC ..noback
+		LDA #$06 : STA !SPC4
 		LDA #$82 : STA !MenuState
 		LDA !Difficulty
 		AND #$03
 		STA !Difficulty
+		JMP ..nostart
 		..noback
 
 		LDA $16
-		AND #$10 : BEQ ..nostart
-		LDA !Difficulty : JSL NewFileSRAM
+		AND #$10 : BNE ..createnewfile
+		JMP ..nostart
+
+		..createnewfile
+		LDA !Difficulty : JSL NewFileSRAM	; new file (store difficulty only)
+		PHB					;\
+		LDA.b #!SRAM_block>>16			; |
+		PHA : PLB				; |
+		REP #$30				; |
+		LDX #$02FC				; | kill SRAM buffer
+	-	STZ.w !SRAM_buffer+2,x			; |
+		DEX #2 : BPL -				; |
+		SEP #$30				; |
+		STZ.w !SRAM_buffer+1			; > lo byte of coin hoard
+		PLB					;/
 		LDA #$01 : STA !MarioStatus		; start with mario only
 		REP #$20				;\
-		LDA #$0070 : STA !SRAM_overworldX	; | starting overworld coords
-		LDA #$03A0 : STA !SRAM_overworldY	; |
+		LDA #$00B8 : STA !SRAM_overworldX	; | starting overworld coords
+		LDA #$0370 : STA !SRAM_overworldY	; |
 		SEP #$20				;/
 
 	if !Debug = 1				;\
@@ -2748,7 +2863,8 @@ MAIN_MENU:
 	STA !LeewayStatus			; | debug: hold R to start with all chars + skip intro level
 	STA !AlterStatus			; |
 	STA !PeachStatus			; |
-	LDA #$80 : STA !LevelTable1+$5E		; |
+	LDA #$80 : STA !LevelTable1+$00		; |
+	LDA #$81 : STA !StoryFlags+$00		; |
 	STZ $6109				; |
 	+					; |
 	endif					;/
@@ -2759,10 +2875,11 @@ MAIN_MENU:
 	STA !MarioUpgrades			; |
 	STA !LuigiUpgrades			; |
 	STA !KadaalUpgrades			; |
-	STA !LeewayUpgrades			; | debug: hold L to start with all upgrades
+	STA !LeewayUpgrades			; | debug: hold L to start with all upgrades + skip intro level
 	STA !AlterUpgrades			; |
 	STA !PeachUpgrades			; |
-	LDA #$80 : STA !LevelTable1+$5E		; |
+	LDA #$80 : STA !LevelTable1+$00		; |
+	LDA #$81 : STA !StoryFlags+$00		; |
 	STZ $6109				; |
 	+					; |
 	endif					;/
@@ -2800,13 +2917,13 @@ MAIN_MENU:
 		STA $00
 		LDA !MenuChallengeSelect
 		ASL #4
-		CLC : ADC #$50
+		ADC #$58
 		STA $01
 		LDA #$02 : STA $0D
 		REP #$20
 		LDA.w #.HandTilemap : STA $02
 		SEP #$20
-		LDA #$14 : STA $0E
+		LDA #$08 : STA $0E
 		JSL !SpriteHUD
 
 		; challenge markers
@@ -2815,7 +2932,7 @@ MAIN_MENU:
 		STA $08
 		LDX #$05
 		LDA #$9E : STA $00
-		LDA #$31-$10 : STA $01
+		LDA #$31-$8 : STA $01
 		REP #$20
 		LDA.w #.MarkTilemap : STA $02
 		SEP #$20
@@ -2834,14 +2951,16 @@ MAIN_MENU:
 		LDA #$4C : STA $00
 		LDA !Difficulty
 		AND #$03
-		ASL #4
-		CLC : ADC #$5B
-		STA $01
+		ASL A
+		TAX
 		REP #$20
-		LDA.w #.UnderscoreTilemap : STA $02
+		STZ $00
+		LDA .UnderscorePointer,x : STA $02
+		LDA ($02) : STA $0E
+		INC $02
+		INC $02
 		SEP #$20
 		STZ $0D
-		LDA #$10 : STA $0E
 		JSL !SpriteHUD
 
 		; tooltips
@@ -2856,7 +2975,7 @@ MAIN_MENU:
 		LDA.w #.TooltipsTilemap : STA $02
 		SEP #$20
 		STZ $0D
-		LDA #$1C : STA $0E
+		LDA #$20 : STA $0E
 		JSL !SpriteHUD
 		REP #$20
 		LDA #$01A4 : STA $00
@@ -2869,13 +2988,18 @@ MAIN_MENU:
 		LDA.w #.StartTilemap2 : STA $02
 		SEP #$20
 		STZ $0D
-		LDA #$0C : STA $0E
+		LDA #$10 : STA $0E
 		JSL !SpriteHUD
+
+		; challenge mode icons (sprites)
+		STZ !BigRAM
+		JSR .DrawChallengeModes
+		JSR .DrawDifficulty_all
 
 		RTS
 
 		.ChallengeModeOrder
-		db !TimeMode,!CriticalMode,!IronmanMode
+		db !TimeMode,!CriticalMode,!IronmanMode,!HardcoreMode
 
 
 
@@ -2889,10 +3013,7 @@ MAIN_MENU:
 		STZ !TimerSeconds
 		STZ !TimerSeconds+1
 		REP #$30
-		LDA $610A-1
-		AND #$FF00
-		LSR A
-		ADC !LevelHeight
+		LDA !LevelHeight
 		ASL A
 		TAX
 		SEP #$20
@@ -2937,6 +3058,7 @@ MAIN_MENU:
 
 
 		JSR HandleBG3Files
+		JSR .DrawMovingFiles
 		LDA !TimerSeconds : BNE +
 		LDA !P2ExternalAnim-$80
 		CMP #$26 : BEQ ++
@@ -2961,15 +3083,15 @@ MAIN_MENU:
 		LDA !MenuBG1_Y
 		STA $0C03,x
 		STA $0C08,x
-		CLC : ADC #$0010
+		CLC : ADC #$FFF8
 		STA $24
 		STX !HDMA3source			; always double buffer, baby!
-		LDA $0C01,x
+		LDA !MenuBG1_X
 		EOR #$FFFF : INC A
 		EOR #$0100
 		STA !BigRAM
 		SEP #$20
-		LDA $0C02,x : BNE ..choose
+		LDA !MenuBG1_X+1 : BNE ..choose
 		..draw
 		JSR .DrawDifficulty
 		JSR .DrawChallengeModes
@@ -2998,6 +3120,9 @@ MAIN_MENU:
 		JSR .DrawPercent_main			; |
 		JSR .DrawPercent_underscore		;/
 
+
+		LDA !MenuBG1_X+1 : BEQ ..noback
+
 		; tooltips
 		REP #$20
 		LDA #$0128 : STA $00
@@ -3010,14 +3135,14 @@ MAIN_MENU:
 		LDA.w #.TooltipsTilemap : STA $02
 		SEP #$20
 		STZ $0D
-		LDA #$1C : STA $0E
+		LDA #$20 : STA $0E
 		JSL !SpriteHUD
 		RTS
 
 		..choose
 		BIT $16
 		BVS ..back
-		BPL ..draw
+		BMI $03 : JMP ..draw
 		JSL LoadFileSRAM
 		STZ $6109
 		LDA #$80 : STA !SPC3
@@ -3147,7 +3272,7 @@ MAIN_MENU:
 		db $00,$00		; realm 8
 
 		..tilemap
-		db $00,$00,$86,$3F
+		db $00,$00,$83,$3F
 
 
 	.DrawCounterIcons
@@ -3183,14 +3308,16 @@ MAIN_MENU:
 		CMP #$E0 : BCS ..fail
 		CLC : ADC #$20
 		STA $00
-		LDA #$40 : STA $01
+		LDA #$20 : STA $01
 		REP #$20
-		LDA ..ptr,x : STA $02
+		LDA ..ptr,x
+		..draw
+		STA $02
 		LDA ($02) : STA $0E
 		INC $02
 		INC $02
 		SEP #$20
-		STZ $0D
+		LDA #$02 : STA $0D
 		JSL !SpriteHUD
 		..fail
 		RTS
@@ -3201,27 +3328,36 @@ MAIN_MENU:
 		dw ..insane
 
 		..easy
-		dw $0010
-		db $00,$00,$88,$3F
-		db $08,$00,$89,$3F
-		db $10,$00,$8A,$3F
-		db $18,$00,$8B,$3F
+		dw $0008
+		db $00,$00,$86,$3F
+		db $10,$08,$88,$3F
 		..normal
-		dw $0018
-		db $00,$00,$98,$3F
-		db $08,$00,$99,$3F
-		db $10,$00,$9A,$3F
-		db $18,$00,$9B,$3F
-		db $20,$00,$9C,$3F
-		db $28,$00,$9D,$3F
+		dw $0010
+		db $00,$00,$8A,$3F
+		db $10,$00,$8C,$3F
+		db $18,$00,$8D,$3F
+		db $28,$00,$A6,$3F
 		..insane
-		dw $0018
-		db $00,$00,$A8,$3F
-		db $08,$00,$A9,$3F
-		db $10,$00,$AA,$3F
-		db $18,$00,$AB,$3F
-		db $20,$00,$AC,$3F
-		db $28,$00,$AD,$3F
+		dw $000C
+		db $00,$00,$D9,$3F
+		db $10,$00,$DB,$3F
+		db $20,$00,$DD,$3F
+
+
+		..all
+		LDA !BigRAM
+		CMP #$C0 : BCS ..fail
+		ADC #$40
+		STA $00
+		LDA #$4C : STA $01
+		REP #$20
+		LDA.w #..easy : JSR ..draw
+		LDA #$60 : STA $01
+		REP #$20
+		LDA.w #..normal : JSR ..draw
+		LDA #$74 : STA $01
+		REP #$20
+		LDA.w #..insane : BRA ..draw
 
 
 
@@ -3230,47 +3366,85 @@ MAIN_MENU:
 		LSR #2
 		STA $04
 		LDA #$02 : STA $0D
-		LDA #$4C : STA $01
-		LDX.b #..end-..ptr-2
+		LDA #$24 : STA $01
+		LDX #$00
 		..loop
 		REP #$20
+		LDA !MenuState
+		AND #$007F
+		CMP #$0004 : BEQ ..preview
+		LDA !BigRAM
+		AND #$00FF : STA $00
+		TXA
+		AND #$00FF
+		LSR A
+		TAY
+		LDA !Difficulty
+		AND #$00FF
+		AND .ChallengeModeOrder,y : BNE ..chosen
+		..grey
+		LDA ..ptrgrey,x : BRA ..draw
+		..chosen
+		LDA ..ptrchosen,x : BRA ..draw
+		..preview
 		LSR $04 : BCC ..next
-		LDA ..ptr,x : STA $02
-		LDA ($02) : STA $0E
-		INC $02
-		INC $02
+		LDA ..ptrpreview,x
+		..draw
+		STA $02
+		LDA #$0004 : STA $0E
 		SEP #$20
 		LDA ($02)
-		CLC : ADC #$20
 		EOR #$FF : INC A
 		CMP !BigRAM : BCC ..next
-		LDA !BigRAM
-		CLC : ADC #$20
-		STA $00
+		LDA !BigRAM : STA $00
 		PHX
 		JSL !SpriteHUD
 		PLX
 		..next
-		DEX #2 : BPL ..loop
+		INX #2
+		CPX.b #..end-..ptrpreview : BCC ..loop
 		SEP #$20
 		RTS
 
-		..ptr
-		dw ..time
-		dw ..critical
-		dw ..ironman
+
+
+		..ptrpreview
+		dw ..timepreview
+		dw ..criticalpreview
+		dw ..ironmanpreview
 		..end
 
-		..time
-		dw $0004
-		db $00,$00,$B8,$3F
-		..critical
-		dw $0008
-		db $14,$00,$BA,$3F
-		db $14,$08,$CA,$3F
-		..ironman
-		dw $0004
-		db $28,$00,$BC,$3F
+		..timepreview
+		db $70,$00,$B8,$3F
+		..criticalpreview
+		db $84,$00,$BA,$3F
+		..ironmanpreview
+		db $98,$00,$BC,$3F
+
+		..ptrgrey
+		dw ..timegrey
+		dw ..criticalgrey
+		dw ..ironmangrey
+
+		..timegrey
+		db $B0,$54,$B8,$39
+		..criticalgrey
+		db $B0,$65,$BA,$39
+		..ironmangrey
+		db $B0,$78,$BC,$39
+
+		..ptrchosen
+		dw ..timechosen
+		dw ..criticalchosen
+		dw ..ironmanchosen
+
+		..timechosen
+		db $B0,$54,$B8,$3F
+		..criticalchosen
+		db $B0,$65,$BA,$3F
+		..ironmanchosen
+		db $B0,$78,$BC,$3F
+
 
 
 ; input:
@@ -3680,20 +3854,53 @@ MAIN_MENU:
 		db $38,$C0,$02,$30
 
 		.HandTilemap
-		db $00,$00,$80,$3F
-		db $10,$00,$82,$3F
-		db $18,$00,$83,$3F
-		db $00,$08,$90,$3F
-		db $10,$08,$92,$3F
+		db $10,$00,$80,$3F
+		db $18,$00,$81,$3F
+	;	db $18,$00,$83,$3F
+	;	db $00,$08,$90,$3F
+	;	db $10,$08,$92,$3F
 
 		.MarkTilemap
-		db $00,$00,$A4,$3F
+		db $00,$00,$84,$3F
 
 		.UnderscoreTilemap
 		db $00,$00,$B0,$3F
 		db $08,$00,$B1,$3F
 		db $10,$00,$B1,$3F
 		db $18,$00,$B0,$7F
+
+		.UnderscorePointer
+		dw ..easy
+		dw ..normal
+		dw ..insane
+
+		..easy
+		dw $0014
+		db $3C,$5E,$B0,$3F
+		db $44,$5E,$B1,$3F
+		db $4C,$5E,$B1,$3F
+		db $54,$5E,$B1,$3F
+		db $5C,$5E,$B0,$7F
+		..normal
+		dw $0020
+		db $3C,$72,$B0,$3F
+		db $44,$72,$B1,$3F
+		db $4C,$72,$B1,$3F
+		db $54,$72,$B1,$3F
+		db $5C,$72,$B1,$3F
+		db $64,$72,$B1,$3F
+		db $6C,$72,$B1,$3F
+		db $74,$72,$B0,$7F
+		..insane
+		dw $001C
+		db $3C,$86,$B0,$3F
+		db $44,$86,$B1,$3F
+		db $4C,$86,$B1,$3F
+		db $54,$86,$B1,$3F
+		db $5C,$86,$B1,$3F
+		db $64,$86,$B1,$3F
+		db $6C,$86,$B0,$7F
+
 
 		.OutlineTilemap
 		; top line
@@ -3721,48 +3928,57 @@ MAIN_MENU:
 		db $68,$12,$C1,$9F
 		db $72,$12,$C0,$DF
 
-		.OutlineDispX
+		.FileDispX
 		db $2F,$4F,$6F
-		.OutlineDispY
+		.FileDispY
 		db $06,$36,$66
 
 		.EraseTilemap1
-		db $04,$07,$60,$3D
-		db $14,$07,$62,$3D
-		db $00,$00,$40,$3D
-		db $10,$00,$42,$3D
+		db $04,$07,$60,$3D	;\
+		db $14,$07,$62,$3D	; | buttons
+		db $00,$00,$40,$3D	; |
+		db $10,$00,$42,$3D	;/
 		.EraseTilemap2
-		db $20,$07,$D6,$3F
-		db $28,$07,$D7,$3F
-		db $30,$07,$D8,$3F
+		db $20,$07,$A0,$3F	;\
+		db $28,$07,$A1,$3F	; | "ERASE" text
+		db $30,$07,$A2,$3F	; |
+		db $38,$07,$A3,$3F	;/
 
 		.ButtonsTilemap
 		db $00,$00,$02,$3D
-		db $34,$00,$22,$3D
+		db $3C,$00,$22,$3D
 
 		.TooltipsTilemap
-		db $14,$04,$FC,$3F
-		db $1C,$04,$FD,$3F
-		db $24,$04,$FE,$3F
-		db $2C,$04,$FF,$3F
-		db $48,$04,$E9,$3F
-		db $50,$04,$EA,$3F
-		db $58,$04,$EB,$3F
+		db $14,$04,$A8,$3F	;\
+		db $1C,$04,$A9,$3F	; |
+		db $24,$04,$AA,$3F	; | CHOOSE
+		db $2C,$04,$AB,$3F	; |
+		db $34,$04,$AC,$3F	;/
+		db $50,$04,$D6,$3F	;\
+		db $58,$04,$D7,$3F	; | BACK
+		db $60,$04,$D8,$3F	;/
 
 		.StartTilemap1
-		db $00,$FE,$04,$3D
-		db $08,$FE,$05,$3D
+		db $00,$FE,$04,$3D	;\ button
+		db $08,$FE,$05,$3D	;/
 		.StartTilemap2
-		db $1C,$04,$EC,$3F
-		db $24,$04,$ED,$3F
-		db $2C,$04,$EE,$3F
+		db $1C,$04,$FC,$3F	;\
+		db $24,$04,$FD,$3F	; | "START" text
+		db $2C,$04,$FE,$3F	; |
+		db $34,$04,$FF,$3F	;/
 
 
 		.SmallStarTilemap
-		db $00,$00,$86,$3F
+		db $00,$00,$83,$3F
+
+		.RealmPortraitTilemap
+		db $00,$00,$C0,$3E
+		db $10,$00,$C2,$3E
+		db $00,$10,$E0,$3E
+		db $10,$10,$E2,$3E
 
 		.HackMarkTilemap
-		db $00,$00,$A4,$3F
+		db $00,$00,$84,$3F
 
 
 
@@ -3836,14 +4052,27 @@ MAIN_MENU:
 		ASL #2
 		STA !OAMindex_p3
 
-		LDA $00
-		CPY #$0001			;\ "1" digit 1px slimmer
-		BNE $01 : DEC A			;/
-		CLC : ADC #$0005
+		LDA .Width,y
+		AND #$00FF
+		CLC : ADC $00
 		STA $00
 
 		RTS
 
+
+		.Width
+		db $06	; 0
+		db $06	; 1
+		db $07	; 2
+		db $07	; 3
+		db $07	; 4
+		db $06	; 5
+		db $06	; 6
+		db $06	; 7
+		db $06	; 8
+		db $06	; 9
+		db $08	; %
+		db $05	; :
 
 
 
@@ -4736,8 +4965,9 @@ MAIN_MENU:
 	org $0498F6
 		RTS : NOP #3		; don't call save routine
 	org $009BC9
-		JML SaveFileSRAM	;\ org: PHB : PHK : PLB : LDX $610A
-		NOP #2			;/
+		JML SaveFileSRAM	;\
+		JML EraseFileSRAM	; | org: PHB : PHK : PLB : LDX $610A : LDA.w $9CCB,x
+		NOP			;/
 	pullpc
 
 

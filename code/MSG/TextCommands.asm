@@ -80,6 +80,10 @@
 ;	- takes a character name (starts with upper case) and a value 0-1
 ;	- the first value is the portrait index, the second value is horizontal flip (0 = right side, 1 = left side)
 ;
+;	noportrait()
+;	- takes no input
+;	- removes portrait
+;
 ;	scroll(XX)
 ;	- takes a value 0-255 ($00-$FF)
 ;	- the text will be scrolled up a number of lines equal to the given value
@@ -270,6 +274,10 @@ macro portrait(index, xflip)
 	else
 		db !port_<index>|$40
 		endif
+		endmacro
+
+macro noportrait()
+		db $F4,$00
 		endmacro
 
 macro scroll(lines)

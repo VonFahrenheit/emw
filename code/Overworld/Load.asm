@@ -33,6 +33,75 @@
 		DEX : BPL -					;/
 		SEP #$10					; index 8-bit
 
+		LDA !Difficulty					;\
+		AND.b #!HardcoreMode : BEQ .NotHardcore		; |
+		LDA !P1DeathCounter				; |
+		ORA !P1DeathCounter+1				; |
+		ORA !P2DeathCounter				; | hardcore
+		ORA !P2DeathCounter+1				; |
+		BEQ .NotHardcore				; |
+		JSL !EraseFile					; |
+		BRK						; |
+		.NotHardcore					;/
+
+
+		STZ !BossData+0					;\
+		STZ !BossData+1					; |
+		STZ !BossData+2					; |
+		STZ !BossData+3					; | clear boss data
+		STZ !BossData+4					; |
+		STZ !BossData+5					; |
+		STZ !BossData+6					;/
+
+		LDA #$00					; > set up clear
+		STA !MsgMode					; > clear message mode
+		STA !HDMAptr+0					;\
+		STA !HDMAptr+1					; | clear HDMA pointer
+		STA !HDMAptr+2					;/
+
+		REP #$20					;\
+		LDA !P2CoinIncrease				; |
+		AND #$00FF					; |
+		CLC : ADC !P2Coins				; | add up coin increase to make sure player's aren't cheated
+		STA !P2Coins					; |
+		LDA !P1CoinIncrease				; |
+		AND #$00FF					; |
+		CLC : ADC !P1Coins				;/
+		CLC : ADC !P2Coins				;\
+		BEQ .NoCoins					; |
+		STZ !P1Coins					; |
+		STZ !P2Coins					; |
+		CLC : ADC !CoinHoard+0				; | put coins in hoard
+		STA !CoinHoard+0				; |
+		LDA !CoinHoard+2				; |
+		ADC #$0000					; |
+		STA !CoinHoard+2				;/
+
+		LDA #$0F42
+		CMP !CoinHoard+1
+		BCC .CapHoard					; > if less, then cap hoard
+		BNE .NoCoins					; > if greater than, don't cap hoard
+		LDA !CoinHoard+0				;\ if equal, check lowest byte
+		CMP #$423F : BCC .NoCoins			;/
+		LDA #$0F42					; > if it overflows, cap hoard
+
+		.CapHoard
+		STA !CoinHoard+1
+		LDA #$423F : STA !CoinHoard+0
+
+		.NoCoins
+		SEP #$20		
+		STZ !P1CoinIncrease				;\ clear coin increase
+		STZ !P2CoinIncrease				;/
+
+		STZ !P1Dead					;\
+		LDX #$7F					; |
+	-	STZ !P2Base-$80,x				; | revive and reset players
+		STZ !P2Base,x					; |
+		DEX : BPL -					;/
+
+
+
 		STZ !CharMenu
 		STZ !CharMenuSize
 		STZ !CharMenuCursor
@@ -54,15 +123,20 @@
 		LDA.b #!SaveGame>>16 : STA $3182		; |
 		JSR $1E80					;/
 
+		REP #$20					;\
+		LDA #$0000					; |
+		STA !RAMcode_flag				; | kill any RAM code left over from level
+		STA !RAMcode_offset				; |
+		SEP #$20					;/
 
 		; check whether intro level should be loaded!
-		LDA !LevelTable1+$5E : BMI .LoadOverworld
+		LDA !LevelTable1+$00 : BMI .LoadOverworld
 		.LoadIntroLevel
 		LDA #$F0 : STA $6DB0
 		LDA #$10 : STA !GameMode
 		LDA.b #!IntroLevel : STA $6109			; intro level (translevel num... but only kind of...)
 		LDA.b #!IntroLevel>>8 : STA $7F11		; set hi bit of intro level num
-		LDA #$5E : STA !Translevel			;
+		STZ !Translevel					;
 		LDA #$81 : STA $4200				; enable joypad but keep interrupts disabled
 		JML ReturnLoad					; return
 
@@ -70,6 +144,8 @@
 
 	; $00A0B0 is the actual load overworld code in all.log
 		.LoadOverworld
+		LDA !StoryFlags					;\ intro cleared
+		ORA #$80 : STA !StoryFlags			;/
 	;	JSL !KillOAM
 		STZ $2133
 		STZ $2106
@@ -208,6 +284,29 @@
 		LDX #$02 : STX $420B
 
 
+	; debug: clear out BG1 GFX area
+	if !DebugOverworld = 1
+	STZ $2116
+	LDY #$00 : STY $2115
+	LDA #$1808 : STA $4310
+	LDA.w #..debug0 : STA $4312
+	LDA.w #..debug0>>8 : STA $4313
+	LDA #$2000 : STA $4315
+	STX $420B
+	STZ $2116
+	LDY #$80 : STY $2115
+	LDA #$1908 : STA $4310
+	LDA.w #..debug0 : STA $4312
+	LDA.w #..debug0>>8 : STA $4313
+	LDA #$2000 : STA $4315
+	STX $420B
+	BRA ..debugdone
+	..debug0
+	db $00
+	..debugdone
+	endif
+
+
 		; upload BG2 tilemap to 0x9000/$4800 here
 
 
@@ -305,11 +404,13 @@
 		STA !P2MapX
 		SEC : SBC #$0078-4
 		STA $1A
+		STA !zipprev1A
 		LDA !SRAM_overworldY : STA !P1MapY
 		DEC #4
 		STA !P2MapY
 		SEC : SBC #$0078-4
 		STA $1C
+		STA !zipprev1C
 		STZ !P1MapXSpeed
 		STZ !P1MapAnim
 		STZ !P2MapXSpeed
@@ -355,7 +456,7 @@
 		..loopfull
 		SEP #$30
 		LDA !initzipcount
-		CMP #$24 : BCS ..done
+		CMP.b #!zip_w : BCS ..done
 		LDA.b #InitZips : STA $3180
 		LDA.b #InitZips>>8 : STA $3181
 		LDA.b #InitZips>>16 : STA $3182

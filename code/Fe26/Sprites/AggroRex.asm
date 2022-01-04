@@ -17,8 +17,8 @@
 	!AggroRexWall		= $32B0
 	!AggroRexStunTimer	= $32D0
 	!AggroRexIdleTimer	= $34F0
-	!AggroRexHasJump	= $34F0
-	!AggroRexTargetPlayer	= $3500
+	!AggroRexHasJump	= $3500
+	!AggroRexTargetPlayer	= $3510
 
 
 
@@ -703,15 +703,17 @@ AggroRex:
 
 
 	Hurt:
-		LDA #$20 : STA !AggroRexStunTimer,x
-		LDA !Difficulty
-		AND #$03
-		TAY
-		LDA DATA_IFrames,y : STA !AggroRexIFrames,x
-		LDA #!AggroRex_Hurt : STA !SpriteAnimIndex
-		STZ !SpriteAnimTimer
-		INC $BE,x
-		LDA #$01 : STA !AggroRexChase,x
+		LDA !ExtraBits,x					;\ clear extra bit
+		AND.b #$04^$FF : STA !ExtraBits,x			;/
+		LDA #$20 : STA !AggroRexStunTimer,x			; stun
+		LDA !Difficulty						;\
+		AND #$03						; | i-frames depend on difficulty
+		TAY							; |
+		LDA DATA_IFrames,y : STA !AggroRexIFrames,x		;/
+		LDA #!AggroRex_Hurt : STA !SpriteAnimIndex		;\ update anim
+		STZ !SpriteAnimTimer					;/
+		INC $BE,x						; +1 damage taken
+		LDA #$01 : STA !AggroRexChase,x				; make sure rex is chasing
 		RTS
 
 

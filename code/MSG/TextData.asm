@@ -102,8 +102,70 @@ endif
 ;====================================================================================================;
 %insertMSG(MeetKadaal_1)
 if !CompileText = 1
+	%mode(1)
 	%portrait(Kadaal, 0)
-	db "I will take it from here."
+	%talk(1)
+	db "Wait... can see me?"
+	%waitforinput()
+	%scrollfull()
+	%talk(2)
+	db "You agent of Dark Lord?!"
+	%waitforinput()
+	%scrollfull()
+	%speed(12)
+	db "...no. "
+	%speed(8)
+	db "Red Plumber good."
+	%waitforinput()
+	%scrollfull()
+	db "Kadaal take it from here."
+	%waitforinput()
+	%scrollfull()
+	db "Follow Kadaal! "
+	%delay(60)
+	db "Know where flying boat crashed."
+	%endmessage()
+endif
+;====================================================================================================;
+%insertMSG(CrashSite_1)
+if !CompileText = 1
+	%portrait(Kadaal, 0)
+	db "Kadaal find green man."
+	%waitforinput()
+	%scrollfull()
+	%portrait(Mario, 1)
+	db "Mamma mia!"
+	%linebreak()
+	db "Luigi!"
+	%waitforinput()
+	%scrollfull()
+	%portrait(Luigi, 0)
+	db "..."
+	%waitforinput()
+	%scrollfull()
+	db "!"
+	%waitforinput()
+	%scrollfull()
+	db "!!!!!!!!!!!!!!!"
+	%waitforinput()
+	%scrollfull()
+	%mode(1)
+	%portrait(Kadaal, 0)
+	db "Talk green man, then see Kadaal friend."
+	%endmessage()
+endif
+;====================================================================================================;
+%insertMSG(Survivor_Talk_IntroLevel)
+if !CompileText = 1
+	%portrait(Survivor, 0)
+	%speed(7)
+	%mode(1)
+	%talk(1)
+	db "Take this. Use it on the map with ",$57," to return here at any time."
+	%waitforinput()
+	%noportrait()
+	%scrollfull()
+	db "You got the portable warp pipe!"
 	%endmessage()
 endif
 ;====================================================================================================;
@@ -112,7 +174,8 @@ if !CompileText = 1
 	%portrait(Survivor, 0)
 	%speed(7)
 	%mode(1)
-	db "You have returned, hero! Feel free to stay as long as you like!"
+	%talk(1)
+	db "Good luck, hero! Dinosaur Land counts on you!"
 	%endmessage()
 endif
 ;====================================================================================================;
@@ -125,6 +188,18 @@ if !CompileText = 1
 	%endmessage()
 endif
 ;====================================================================================================;
+%insertMSG(LuigiSwitchFirstTime)
+if !CompileText = 1
+	%mode(1)
+	%portrait(Luigi, 0)
+	%speed(7)
+	db "That's-a one way to arrive!"
+	%waitforinput()
+	%scrollfull()
+	db "Rest up, bro! Leave this part to me!"
+	%endmessage()
+endif
+;====================================================================================================;
 %insertMSG(LuigiSwitch)
 if !CompileText = 1
 	%mode(1)
@@ -134,12 +209,27 @@ if !CompileText = 1
 	%endmessage()
 endif
 ;====================================================================================================;
+%insertMSG(KadaalTalk_IntroLevel)
+if !CompileText = 1
+	%mode(1)
+	%portrait(Kadaal, 0)
+	%speed(7)
+	db "Kadaal friend inside."
+	%waitforinput()
+	%scrollfull()
+	db "Dark Lord attack. Kadaal and Kadaal friend survive both."
+	%waitforinput()
+	%scrollfull()
+	db "Talk Kadaal friend before leave!"
+	%endmessage()
+endif
+;====================================================================================================;
 %insertMSG(KadaalSwitch)
 if !CompileText = 1
 	%mode(1)
 	%portrait(Kadaal, 0)
 	%speed(7)
-	db "...very well."
+	db "Kadaal revenge!"
 	%endmessage()
 endif
 ;====================================================================================================;
@@ -456,15 +546,15 @@ endif
 ;====================================================================================================;
 %insertMSG(DinolordsDomain_Sign_1)
 if !CompileText = 1
-	db "Ahead lie the domains of Captain Warrior, Champion of all Rex."
+	db "For his valiant efforts in the legendary Battle of Dinosaurs, Captain Warrior shall be known as Chamption of all Rex and guardian of these lands."
 	%linebreak()
-	db "Non-Rex are NOT welcome."
+	db "Thus decrees the King."
 	%endmessage()
 endif
 ;====================================================================================================;
 %insertMSG(DinolordsDomain_Sign_2)
 if !CompileText = 1
-	db "UNUSED MESSAGE"
+	db "Here lie the brave soldiers who were felled in the legendary Battle of Dinosaurs."
 	%endmessage()
 endif
 ;====================================================================================================;
@@ -903,13 +993,13 @@ if !CompileText = 1
 	%linebreak()
 	db "A relaxing way to experience the game."
 	%linebreak()
-	db "Enemies are weaker and less aggressive."
+	db "You get an extra heart."
 	%linebreak()
 	db "Enemies take contact damage upon touching you."
 	%linebreak()
-	db "Bottomless pits are not instant death."
+	db "Enemies are weaker and less aggressive."
 	%linebreak()
-	db "Powerups are more common."
+	db "Bottomless pits and lava are not instant death."
 	%endmessage()
 endif
 ;====================================================================================================;
@@ -928,7 +1018,7 @@ if !CompileText = 1
 	%linebreak()
 	db "Enemies have all their abilities."
 	%linebreak()
-	db "Bottomless pits are instant death."
+	db "Bottomless pits and lava are instant death."
 	%endmessage()
 endif
 ;====================================================================================================;
@@ -947,9 +1037,7 @@ if !CompileText = 1
 	%linebreak()
 	db "Bosses have new abilities."
 	%linebreak()
-	db "Some enemies are more durable."
-	%linebreak()
-	db "Enemies are more aggressive."
+	db "Enemies are stronger and more aggressive."
 	%endmessage()
 endif
 ;====================================================================================================;
@@ -963,6 +1051,8 @@ if !CompileText = 1
 	%color(0)
 	%clearbox()
 	%linebreak()
+	%linebreak()
+	db "Time Mode:"
 	%linebreak()
 	db "Most levels will have a strict time limit for clearing them. Your fastest clear time for each level will be saved."
 	%endmessage()
@@ -979,7 +1069,11 @@ if !CompileText = 1
 	%clearbox()
 	%linebreak()
 	%linebreak()
+	db "Critical Mode:"
+	%linebreak()
 	db "Enemies will always kill you in one hit."
+	%linebreak()
+	db "(Mario and Luigi can change size with Select)"
 	%endmessage()
 endif
 ;====================================================================================================;
@@ -993,6 +1087,8 @@ if !CompileText = 1
 	%color(0)
 	%clearbox()
 	%linebreak()
+	%linebreak()
+	db "Ironman Mode:"
 	%linebreak()
 	db "If one player dies, the other one dies as well. There's no continuing on your own in this mode!"
 	%linebreak()
@@ -1010,6 +1106,8 @@ if !CompileText = 1
 	%color(0)
 	%clearbox()
 	%linebreak()
+	%linebreak()
+	db "HARDCORRRRRRRE MODE!!!!!"
 	%linebreak()
 	db "This challenge is reserved for those mad enough to face death. In this mode, there are no continues. Once you die, that's it."
 	%endmessage()

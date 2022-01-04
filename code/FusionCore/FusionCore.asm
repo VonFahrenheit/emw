@@ -298,9 +298,14 @@ incsrc "../Defines.asm"
 		JML $029052			; execute bounce pointer
 
 	.Quake
-		PHK : PEA .Return-1		; RTL address = .Return
-		PEA $8B66-1			; RTS address = $8B66 (points to an RTL)
-		JML $02939D			; process quake
+		DEC !Ex_Data1,x : BNE ..return
+		..kill
+		STZ !Ex_Num,x
+		..return
+		JML .Return
+	;	PHK : PEA .Return-1		; RTL address = .Return
+	;	PEA $8B66-1			; RTS address = $8B66 (points to an RTL)
+	;	JML $02939D			; process quake
 
 	.Shooter
 		LDY !Ex_Data1,x : BEQ +		;\

@@ -210,6 +210,10 @@ CODE_1380D0:
 	JSR INIT_PARTICLE
 	RTL
 
+CODE_1380D4:
+	JSR SPRITE_BG
+	RTL
+
 
 incsrc "5bpp.asm"
 incsrc "Transform_GFX.asm"
@@ -3490,6 +3494,62 @@ SPRITE_HUD:
 		PLP
 		RTS
 
+;=========;
+;SPRITE BG;
+;=========;
+; input:
+;	$00 - x offset
+;	$01 - y offset
+;	$02 - 16-bit tilemap pointer (X, Y, T, P)
+;	$0D - size bit (same for all tiles)
+;	$0E - byte count of tilemap
+
+SPRITE_BG:
+		PHP
+		SEP #$20
+		STZ $0F
+		REP #$30
+		LDY #$0000
+		LDA !OAMindex_p0 : TAX
+
+		.Loop
+		LDA ($02),y
+		CLC : ADC $00				; this works as long as X coord doesn't overflow
+		BCC .Draw				; only draw if there's no overflow on Y
+		INY #4
+		BRA .Next
+
+		.Draw
+		SEP #$20
+		LDA ($02),y
+		CLC : ADC $00
+		STA !OAM_p0+$000,x
+		LDA #$01 : TRB $0D
+		BCC $02 : TSB $0D
+		INY
+		LDA ($02),y
+		CLC : ADC $01
+		STA !OAM_p0+$001,x
+		INY
+		REP #$20
+		LDA ($02),y : STA !OAM_p0+$002,x
+		INY #2
+		PHX
+		TXA
+		LSR #2
+		TAX
+		LDA $0D
+		AND #$0003
+		STA !OAMhi_p0+$00,x
+		PLX
+		INX #4
+
+		.Next
+		CPY $0E : BCC .Loop
+		TXA : STA !OAMindex_p0
+		PLP
+		RTS
+
 
 ;===========;
 ;LOAD SCREEN;
@@ -3573,70 +3633,6 @@ KEEP_DATA:
 ; basically, we're just keeping $7938 since that's where !LevelTable4 is
 
 
-
-;==============;
-;CLEAR PLAYER 2;
-;==============;
-;
-; this is called from Overworld.asm
-;
-CLEAR_PLAYER2:
-		STZ !BossData+0			;\
-		STZ !BossData+1			; |
-		STZ !BossData+2			; |
-		STZ !BossData+3			; | Clear boss data
-		STZ !BossData+4			; |
-		STZ !BossData+5			; |
-		STZ !BossData+6			;/
-
-		LDA #$00			; > set up clear
-		STA !MsgMode			; > clear message mode
-		STA !HDMAptr+0			;\
-		STA !HDMAptr+1			; | clear HDMA pointer
-		STA !HDMAptr+2			;/
-
-		REP #$20			;\
-		LDA !P2CoinIncrease		; |
-		AND #$00FF			; |
-		CLC : ADC !P2Coins		; | Add up coin increase to make sure player's aren't cheated
-		STA !P2Coins			; |
-		LDA !P1CoinIncrease		; |
-		AND #$00FF			; |
-		CLC : ADC !P1Coins		;/
-		CLC : ADC !P2Coins		;\
-		BEQ .NoCoins			; |
-		STZ !P1Coins			; |
-		STZ !P2Coins			; |
-		CLC : ADC !CoinHoard+0		; |
-		STA !CoinHoard+0		; | Put coins in hoard
-		LDA !CoinHoard+2		; |
-		ADC #$0000			; |
-		STA !CoinHoard+2		;/
-
-
-		LDA #$0F42
-		CMP !CoinHoard+1
-		BCC .CapHoard			; > If less, then cap hoard
-		BNE .NoCoins			; > If greater than, don't cap hoard
-		LDA !CoinHoard+0		;\ If equal, check lowest byte
-		CMP #$423F : BCC .NoCoins	;/
-		LDA #$0F42			; > If it overflows, cap hoard
-
-		.CapHoard
-		STA !CoinHoard+1
-		LDA #$423F : STA !CoinHoard+0
-
-		.NoCoins
-		SEP #$20		
-		STZ !P1CoinIncrease		;\ Clear coin increase
-		STZ !P2CoinIncrease		;/
-
-		STZ !P1Dead			;\
-		LDX #$7F			; | revive and reset players
-	-	STZ !P2Base-$80,x		; |
-		STZ !P2Base,x			; |
-		DEX : BPL -			;/
-		RTL
 
 ;=========;
 ;CLEAR MSG;
@@ -4762,42 +4758,43 @@ pullpc
 ;BRK RESET;
 ;=========;
 BRK:
-
-		SEP #$30			; Make sure the SNES is doing this
-		TSC
-		XBA
-		CMP #$37 : BNE .SNES
-		LDA.b #.SNES : STA $0183
-		LDA.b #.SNES>>8 : STA $0184
-		LDA.b #.SNES>>16 : STA $0185
-		LDA #$D0 : STA $2209
-		BRA $FE
+		PHK : PLB			; B = K
+		REP #$30			;\ D = 0x3000
+		LDA #$3000 : TCD		;/
+		SEP #$30			;\
+		TSC				; |
+		XBA				; |
+		CMP #$37 : BNE .SNES		; |
+		LDA.b #.SNES : STA $0183	; | force SNES CPU
+		LDA.b #.SNES>>8 : STA $0184	; |
+		LDA.b #.SNES>>16 : STA $0185	; |
+		LDA #$D0 : STA $2209		; |
+		BRA $FE				;/
 
 		.SNES
-		STZ $4200			; Set up RESET
-		SEI
-		SEP #$30
-		LDA #$FF
-		STA $2141
-		LDA #$00
-		PHA : PLB
-		STZ $420C
+		PHK : PLB			; B = K
+		STZ $4200			; set up RESET
+		SEI				; interrupt
+		SEP #$30			; all regs 8-bit
+	;	LDA #$FF : STA $2141		; kill SPC
+		LDA #$00			;\ B = 0x00
+		PHA : PLB			;/
+		STZ $420C			; kill HDMA
 
-		REP #$20
-		LDA #$8008 : STA $4300
-		LDA.w #.some00 : STA $4302
-		LDA.w #.some00>>8 : STA $4303
-		STZ $4305
-		STZ $2181
-		STZ $2182
-		LDX #$01 : STX $420B
-		STZ $4305
-		STZ $2181
-		STX $2183
-		STX $420B
-		SEP #$20
+		REP #$20			;\
+		LDA #$8008 : STA $4300		; |
+		LDA.w #.some00 : STA $4302	; |
+		LDA.w #.some00>>8 : STA $4303	; |
+		STZ $4305			; |
+		STZ $2181			; |
+		STZ $2182			; | kill SNES WRAM
+		LDX #$01 : STX $420B		; |
+		STZ $4305			; |
+		STZ $2181			; |
+		STX $2183			; |
+		STX $420B			; |
+		SEP #$20			;/
 
-	;	JML $008016
 		JML $000000+read2($00FFFC)	; Go to RESET vector
 
 
@@ -4887,14 +4884,6 @@ org $0296C0
 
 org $02A3F6
 	BRA $06 : NOP #6		; source: LDA !Ex_Data3,x : EOR $1779,x : BNE Return
-
-
-org $048086
-
-;	JSL CLEAR_PLAYER2		; Hijack some Overworld routine
-		REP #$30
-		STZ $03
-
 
 org $04828A
 	BRA $03 : NOP #3		; LDY $6DB2 : BEQ $06, enable character select always

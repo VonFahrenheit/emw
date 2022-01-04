@@ -105,12 +105,27 @@ DRAW_TEXT:
 		TAX
 		REP #$20
 		LDA .Ptr,x : STA $0E
-		LDA ($0E) : STA $00		; base X/Y
-		INC $0E				;\ skip past these bytes
-		INC $0E				;/
+		SEP #$20
+		LDA #$68 : STA $01		; base Y
+		STZ $00				;\
+		LDY #$00			; |
+	-	LDA ($0E),y			; |
+		CMP #$FF : BEQ +		; |
+		ASL A				; |
+		ADC ($0E),y			; |
+		TAX				; |
+		LDA .TileData+2,x		; | base X
+		CLC : ADC $00			; |
+		STA $00				; |
+		INY : BRA -			; |
+		+				; |
+		LDA #$00			; |
+		SEC : SBC $00			; |
+		ROR A				; |
+		STA $00				;/
+
 		LDX #$00
 		LDY #$00
-		SEP #$20
 
 	.loop	LDA ($0E),y
 		CMP #$FF : BEQ .done
@@ -261,41 +276,33 @@ table "IntroTable.txt"
 
 	.Mario
 		..1
-		db $40,$68
 		db "IT'S-A-ME!"
 		db $FF
 		..2
-		db $48,$68
 		db "IT'S-A GO TIME!"
 		db $FF
 
 	.Luigi
 		..1
-		db $48,$68
 		db "OH YEAH, LUIGI TIME!"
 		db $FF
 		..2
-		db $60,$68
 		db "GO-IGI!"
 		db $FF
 
 	.Kadaal
 		..1
-		db $32,$68
 		db "KOOPA VENGEANCE!"
 		db $FF
 		..2
-		db $3C,$68
 		db "JUST TRY TO KEEP UP!"
 		db $FF
 
 	.Leeway
 		..1
-		db $58,$68
 		db "GET REXT!"
 		db $FF
 		..2
-		db $48,$68
 		db "SLICE AND DICE!"
 		db $FF
 
@@ -305,7 +312,6 @@ table "IntroTable.txt"
 	.Peach
 		..1
 		..2
-		db $44,$68
 		db "COMING SOON..."
 		db $FF
 

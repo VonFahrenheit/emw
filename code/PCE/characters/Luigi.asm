@@ -13,6 +13,7 @@ namespace Luigi
 
 	MAINCODE:
 		PHB : PHK : PLB
+
 		LDA #$01 : STA !P2Character
 		LDA #$02 : STA !P2MaxHP
 		LDA !P2MaxHP			;\
@@ -331,6 +332,11 @@ namespace Luigi
 		..nospin					;/
 		STX $00
 		LDA !P2Dashing
+		CMP #$30 : BCS +
+		LDX !P2InAir : BEQ +
+		BIT $6DA3 : BVC +
+		LDA #$30
+		+
 		LSR #3
 		AND #$0C
 		BIT $6DA3

@@ -322,6 +322,18 @@ print "Level code handler inserted at $", pc, "."
 		PHP
 		SEP #$30
 
+
+		STZ !Cutscene				; kill cutscene
+		STZ !Cutscene6DA2			;\
+		STZ !Cutscene6DA3			; |
+		STZ !Cutscene6DA4			; |
+		STZ !Cutscene6DA5			; | kill cutscene input
+		STZ !Cutscene6DA6			; |
+		STZ !Cutscene6DA7			; |
+		STZ !Cutscene6DA8			; |
+		STZ !Cutscene6DA9			;/
+
+
 		LDA #$07 : STA !PalsetStart		; default: all palset rows are dynamic
 
 		LDA !CurrentMario : BNE +		;\
@@ -628,14 +640,15 @@ print "Level code handler inserted at $", pc, "."
 	-	STA.l !VineDestroy,x			; |
 		DEX : BPL -				;/
 
-		LDA #$18 : STA !TextPal			; Default text palette (colors 0x19 and 0x1B)
 
 
 		LDA !P1Dead				;\
-		BEQ +					; | Keep P1 dead between sub-levels
+		BEQ +					; | keep mario dead between sub-levels
 		LDA #$09 : STA $71			; |
 		+					;/
-		LDA #$A1 : STA !MsgPal			; > Default portrait palettes are A-B
+		LDA #$A1 : STA !MsgPal			; default portrait palettes are A-B
+		LDA #$18 : STA !TextPal			; default text palette (colors 0x19 and 0x1B)
+		LDA #$08 : STA !BorderPal		; default border palette = red
 		PHB
 		LDA $0002
 		PHA : PLB
@@ -658,7 +671,10 @@ print "Level code handler inserted at $", pc, "."
 		LDA !P2Direction-$80 : PHA			; | preserve player directions
 		LDA !P2Direction : PHA				;/
 
-		LDA $741A : BNE +
+		LDA $741A
+		ORA !P2Pipe-$80
+		ORA !P2Pipe
+		BNE +
 		LDA #$3F : STA !P2Entrance-$80
 		LDA #$4F : STA !P2Entrance
 		+
@@ -2482,11 +2498,26 @@ LoadPalset:
 		STA $0F							; store palset to load in $0F
 		TAX							;\ if palset is already loaded, return
 		LDA !Palset_status,x : BNE .Return			;/
+		.PortraitColors						;\
+		LDA #$FF						; |
+		STA $00							; |
+		STA $01							; |
+		LDA $400000+!MsgPortrait : BEQ ..done			; |
+		LDA !MsgPal						; | don't let portrait colors be overwritten
+		LSR #4							; |
+		AND #$07						; |
+		STA $00							; |
+		INC A : STA $01						; |
+		..done							;/
+
 		LDX !PalsetStart					;\
-	-	LDA !Palset8,x						; |
+	-	CPX $00 : BEQ +
+		CPX $01 : BEQ +
+		LDA !Palset8,x						; |
+		CMP #$80 : BEQ +					; |
 		AND #$7F						; | if palset is about to be loaded this frame, return
 		CMP $0F : BEQ .Return					; | (probably not necessary, just in case there's an error somewhere)
-		DEX : BPL -						;/
+	+	DEX : BPL -						;/
 		PLX							; pull X
 		LDY !PalsetStart					;\
 	.Loop	LDA !Palset8,y						; |

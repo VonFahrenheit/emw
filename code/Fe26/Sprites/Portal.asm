@@ -45,10 +45,17 @@ Portal:
 		BCC .Next
 
 	.Eat	TXY
-		LDX !SpriteIndex
+		TYA
+		ASL A
+		TAX
+		LDA !DynamicList,x					;\ dynamic sprites spawn in state 01
+		ORA !DynamicList+1,x : BNE ..init			;/
 		LDA $3230,y
-		CMP #$08
-		BNE $02 : LDA #$01
+		CMP #$08 : BNE ..setstate
+		..init
+		LDA #$01
+		..setstate
+		LDX !SpriteIndex
 		STA !PortalSpawnState					; state of sprite
 		LDA #$00 : STA $3230,y					; remove eaten sprite
 		LDA $33F0,y : STA !PortalLoadIndex			; remember eaten sprite's load index

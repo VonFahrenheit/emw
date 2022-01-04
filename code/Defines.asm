@@ -852,6 +852,21 @@ endmacro
 
 
 
+		!Cutscene		= $6ACB			; 1 byte, cutscene index (0 = no cutscene)
+		!CutsceneIndex		= $6ACC			; 1 byte
+		!CutsceneWait		= $6ACD			; 1 byte
+		!Cutscene6DA2		= $6ACE			;\
+		!Cutscene6DA3		= $6ACF			; |
+		!Cutscene6DA4		= $6AD0			; |
+		!Cutscene6DA5		= $6AD1			; | input mirrors
+		!Cutscene6DA6		= $6AD2			; |
+		!Cutscene6DA7		= $6AD3			; |
+		!Cutscene6DA8		= $6AD4			; |
+		!Cutscene6DA9		= $6AD5			;/
+		!CutsceneSmoothness	= $6AD6			; transition thing
+
+
+
 	; --P2 DATA --
 		!PlayerBonusHP		= $786C				; added to !P2MaxHP, calculated from file at level init
 
@@ -1285,14 +1300,16 @@ endmacro
 		!SRAM_block		= $41B000
 		!SaveFileSize		= $300
 		!SaveSharedSize		= $300
-		!SaveINIT		= !SRAM_block+(!SaveFileSize*3)+!SaveSharedSize-4
 		!ChecksumComplement	= $1337
-		!SRAM_buffer		= $41BC00		; has to be in same bank as !SRAM_block
+		!SaveINIT		= !SRAM_block+(!SaveFileSize*3)+!SaveSharedSize-4
+		!SRAM_buffer		= !SRAM_block+(!SaveFileSize*3)+!SaveSharedSize	; ($41BC00) has to be in same bank as !SRAM_block
+		!SRAM_shared		= !SRAM_block+(!SaveFileSize*3)
 
 
 		!TimeMode		= $04
 		!CriticalMode		= $08
 		!IronmanMode		= $10
+		!HardcoreMode		= $20
 
 
 		!Difficulty		= !SRAM_buffer+$00
@@ -1410,9 +1427,35 @@ endmacro
 		!LevelsBeaten		= !SRAM_buffer+$90
 
 		!StoryFlags		= !SRAM_buffer+$91
-		; +00:	realm unlock state, 1 bit for each realm (if this is zero, load intro instead of realm select)
-		; +01:	reserved for Realm 1
-		; +02:	first 2 bits used by Mountain King
+		; +00:
+		;	01 received portable warp pipe
+		;	02 ----
+		;	04 ----
+		;	08 ----
+		;	10 ----
+		;	20 ----
+		;	40 ----
+		;	80 intro level cleared
+		;
+		; +01:
+		;	01 shopkeeper (0 = alive, 1 = killed)
+		;	02 ----
+		;	04 ----
+		;	08 ----
+		;	10 ----
+		;	20 ----
+		;	40 ----
+		;	80 ----
+		;
+		; +02:
+		;	01 Mountain King
+		;	02 Mountain King
+		;	04 ----
+		;	08 ----
+		;	10 ----
+		;	20 ----
+		;	40 ----
+		;	80 ----
 
 
 
@@ -1466,6 +1509,10 @@ endmacro
 
 
 
+	;!IntroLevel		= $1F7
+	!IntroLevel		= $0C6
+
+
 
 		!LockROM		= 0			; 0 = lock ROM and finalize header
 								; 1 = do no lock ROM
@@ -1508,16 +1555,29 @@ endmacro
 								; - previous entries, used to calculate averages (8 bytes)
 								; - 3 bytes of padding to make data easier to read in debugger
 
+
+	if !Debug = 1
 		; misc
 		!DebugZips		= 0			; 0 = normal, 1 = while holding select zips use map16 tile 0x0000
-
+		!DebugOverworld		= 1
 		; do not use several trackers at the same time!
 		!TrackSpriteLoad	= 0			; 0 = do not track sprite load, 1 = track sprite load
 		!TrackOAM		= 0			; 0 = do not track OAM, 1 = track OAM
 		!TrackCPU		= 1			; 0 = do not track CPU performance, 1 = track CPU performance and save in .srm file
 		!ResetTracker		= 0			; 0 = keep tracker on bootup, 1 = reset tracker on bootup
+	else
+		!DebugZips		= 0
+		!DebugOverworld		= 0
+		!TrackSpriteLoad	= 0
+		!TrackOAM		= 0
+		!TrackCPU		= 0
+		!ResetTracker		= 0
+	endif
 
-		; toggles for !TrackCPU
+
+
+		; toggles for !TrackCPU (which slot is used by which tracker, IF enabled
+		; generally, don't touch these
 		!TrackFull		= 0
 		!TrackVR3		= 1
 		!TrackPCE		= 2
@@ -2271,6 +2331,7 @@ endmacro
 	; -- MSG RAM --
 		; DP define
 		!MsgPal			= $61			; first portrait color (default = 0xA1)
+		!BorderPal		= $62			; ccc bits of border prop (default = 0x08)
 
 		; LM pointer
 		!MsgData		= $03BC0B		; Use this to figure out where Lunar Magic puts message data
@@ -2554,6 +2615,11 @@ endmacro
 		!LevelTable4		= $7938		; U-ssssss (unlock (0 = locked, 1 = unlocked), best time seconds (0-59))
 		!LevelTable5		= $7F49		; --mmmmmm (best time minutes (0-63))
 
+		; special translevel numbers:
+		; 00 - saves data for intro level
+
+
+
 		!SpriteLoadStatus	= $418A00	; 255 bytes, 1 for each sprite in level data
 
 	; -- Custom routines --
@@ -2600,6 +2666,7 @@ endmacro
 		!GetParticleIndex	= $1380C8
 		!SpawnParticleBlock	= $1380CC
 		!InitParticle		= $1380D0
+		!SpriteBG		= $1380D4
 
 		!PortraitPointers	= $378000		; DATA pointer stored with SP_Files.asm, along with portrait GFX
 		!PalsetData		= $3F8000		; DATA pointer stored with SP_Files.asm, along with palset data
@@ -2625,6 +2692,7 @@ endmacro
 		!BoxPtr			= $048455		; pointer to table that holds pointers to camera boxes (stored with SP_Level.asm)
 
 		!SaveGame		= $009BC9		; rerouted to new code
+		!EraseFile		= $009BCD		; rerouted to new code
 
 	macro CallMSG()
 		JSL read3($00A1DF+1)+4

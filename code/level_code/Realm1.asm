@@ -48,7 +48,15 @@ levelinit2:
 
 
 levelinit3:
-		LDA #$03*4 : STA !TextPal
+		LDA #$06 : STA !PalsetStart		; exclude palette F
+		LDA #$E1 : STA !MsgPal			; portrait: palettes E and F
+		LDA #$03*4 : STA !TextPal		;
+
+		REP #$30				;\
+		LDA.w #.Dynamo : STA $0C		; |
+		LDY.w #!File_Sprite_BG_1		; | upload castle (sprite BG)
+		CLC : JSL !UpdateFromFile		; |
+		SEP #$30				;/
 
 		LDA #$02 : STA !BG2ModeH
 		LDA #$04 : STA !BG2ModeV
@@ -58,47 +66,14 @@ levelinit3:
 		JML levelinit5_HDMA
 
 
+		.Dynamo
+		dw ..end-..start
+		..start
+		dw $0040
+		dl $20*2
+		dw $7EE0
+		..end
 
-; legacy version
-		LDA #$03 : STA !Translevel
-		INC !SideExit
-		LDA #$C1 : STA !MsgPal		; > Portrait CGRAM location
-		LDA #$1F			;\ Put everything on mainscreen
-		STA !MainScreen			;/
-		STZ !SubScreen			; > Disable subscreen
-		JSL CLEAR_DYNAMIC_BG3		; > Clear the top of BG3
-		JSL !GetVRAM
-		LDA #$31
-		STA !VRAMbase+!VRAMtable+$04,x
-		STA !VRAMbase+!VRAMtable+$0B,x
-		REP #$20
-		LDA #$DC40
-		STA !VRAMbase+!VRAMtable+$02,x
-		LDA #$DE40
-		STA !VRAMbase+!VRAMtable+$09,x
-		LDA #$6A20
-		STA !VRAMbase+!VRAMtable+$05,x
-		LDA #$6B20
-		STA !VRAMbase+!VRAMtable+$0C,x
-		LDA #$0080
-	;	STA !VRAMbase+!VRAMtable+$00,x
-	;	STA !VRAMbase+!VRAMtable+$07,x
-
-		.HDMA
-		LDA #$0F02			;\ Use mode 2 to access 210Fl and 210Fh
-		STA $4330			;/
-		LDA #$7600			;\
-		STA $400000+!MsgVRAM1		; | Portrait VRAM location
-		LDA #$7680			; |
-		STA $400000+!MsgVRAM2		;/
-		SEP #$20			; > A 8 bit
-		LDA #$00			;\ Bank of table
-		STA $4334			;/
-		LDA #$08			;\ Enable HDMA on channel 3 
-		TSB $6D9F			;/
-		JSL level3_HDMA : INC $14	;\ Set up double-buffered HDMA
-		JSL level3_HDMA : DEC $14	;/
-		JML level3
 
 
 levelinit4:
@@ -247,7 +222,8 @@ levelinit6:
 	;	SEC : SBC #$90
 	;	STA !P2YPosLo
 
-		LDA #$FF : STA !PalsetF					; lock palsetF for the sun BG
+		LDA #$FF : STA !PalsetF					;\ lock palsetF for the sun BG
+		LDA #$06 : STA !PalsetStart				;/
 		LDA #$02 : STA !GlobalLight1				;\
 		LDA #$03 : STA !GlobalLight2				; |
 		LDA #$40 : STA !LightIndexStart				; | initial shader settings
@@ -366,7 +342,6 @@ levelinit6:
 		LDA.w #.ColorMathHDMA : STA !HDMA7source
 		LDY.b #.ColorMathHDMA>>16 : STY $4374
 
-
 		SEP #$20				; > A 8 bit
 		LDA #$F8 : TSB !HDMA			; > enable HDMA on channels 3 through 7
 
@@ -389,7 +364,6 @@ levelinit6:
 		PLB					;/
 
 		JML level6
-
 
 		.ColorMathHDMA
 		db $4A,$22				;\ color math on backdrop + BG2
@@ -543,7 +517,7 @@ levelinit2C:
 		STA $400000+!MsgVRAM1		; | Portrait VRAM location
 		LDA #$7680			; |
 		STA $400000+!MsgVRAM2		;/
-		LDX #$C1 : STX !MsgPal		; > Portrait CGRAM location
+		LDX #$B1 : STX !MsgPal		; > Portrait CGRAM location
 		LDA $1C
 		ASL #2
 		STA $4204
@@ -825,180 +799,70 @@ level2:
 
 
 level3:
-		REP #$20
-		LDA #$15E8				;\
-		LDY #$01				; | Regular exit (screen 0x15)
+		REP #$20				;\
+		LDA #$1FE8				; | regular exit
+		LDY #$01				; |
 		JSL END_Right				;/
 		LDA !MsgTrigger				;\
 		ORA !MsgTrigger+1 : BNE +		; |
-		LDA #$1F : STA !MainScreen		; | everything on main screen
-		STZ !SubScreen				; | nothing on subscreen
+		LDA #$1F : STA !MainScreen		; | everything on main
+		STZ !SubScreen				; | nothing on sub
 		+					;/
 
-	;	LDA.b #.HDMA : STA !HDMAptr		;\
-	;	LDA.b #.HDMA>>8 : STA !HDMAptr+1	; | Set up pointer
-	;	LDA.b #.HDMA>>16 : STA !HDMAptr+2	;/
+		LDA.b #.HDMA : STA !HDMAptr		;\
+		LDA.b #.HDMA>>8 : STA !HDMAptr+1	; | set up pointer
+		LDA.b #.HDMA>>16 : STA !HDMAptr+2	;/
 
-		LDA.b #level5_HDMA : STA !HDMAptr		;\
-		LDA.b #level5_HDMA>>8 : STA !HDMAptr+1		; | Set up pointer
-		LDA.b #level5_HDMA>>16 : STA !HDMAptr+2		;/
-
-		RTL					; > Return
+		RTL					; > return
 
 		.HDMA
+		PHB : PHK : PLB
 		PHP
-		SEP #$30
-		LDA $9D					;\
-		ORA !Pause				; | Y = pause flag
-		TAY					;/
-		LDA !BossData+0
-		CMP #$82 : BNE ..Scroll
-		LDA !BossData+2
-		CMP #$02 : BNE ..Scroll
-		LDA #$01
-		STA !EnableHScroll			; > Enable scrolling
+		JSL level5_HDMA
 		REP #$20
-		LDA #$1400
-		CMP $1A
-		BEQ +
-		BCC +
-		STA $1A
-		LSR A
-		STA $1E
-	+	SEP #$20
-		STZ !SideExit
-		LDA $1B
-		BRA ..NoScroll
-
-		..Scroll
-		TYX : BNE ..NoScroll
-		LDA $1A
-		CMP #$80
-		LDA $1B
-		SBC #$13 : BCC ..NoScroll
-		STZ !EnableHScroll
-		STZ !SideExit
-		LDA $1B
-		CMP #$14 : BCS ..NoScroll
-		REP #$20
-		INC $1A
-		LDA $1A					;\
-		CLC : ADC #$0008			; |
-		CMP $94					; | Push Mario if he's at the screen border
-		BCC +					; |
-		STA $94					; |
-	+	SEP #$20				;/
-		..NoScroll
-
-		STZ !HDMA3source
-		LDA $14
-		AND #$01
-		XBA
-		LDA #$00
-		REP #$10
-		TAX
-
-		.MakeTable
-		LDA #$70				;\ layer 1 (includes hills)
-		STA $0400,x				;/
-		LDA #$0A				;\ layer 2
-		STA $0403,x				;/
-		LDA #$0B				;\ layer 3
-		STA $0406,x				;/
-		LDA #$0E				;\ layer 4
-		STA $0409,x				;/
-		LDA #$12				;\
-		STA $040C,x				; | layers 5 and 6
-		STA $040F,x				;/
-		LDA #$00				;\ End table
-		STA $0412,x				;/
-		REP #$20				; > A 16 bit
-		LDA $1E					;\ layer 4 (100%)
-		STA $040A,x				;/
-		INY : DEY				;\
-		BNE ++					; |
-		LSR #2					; |
-		CLC : ADC !Level+2			; |
-		STA $22					; | BG3 (25%)
-		LDA #$0090 : STA $24			; | Y = 0x090
-		LDA $14					; |
-		AND #$0007				; |
-		BNE +					; |
-		INC !Level+2				; |
-	+	LDA $1E					;/
-	++	PHA					;\
-		LSR #3					; |
-		STA $00					; | layer 3 (87,5%)
-		PLA					; |
-		SEC : SBC $00				; |
-		STA $0407,x				;/
-		PHA					;\
-		LSR #3					; |
-		STA $00					; | layer 2 (76,5%)
-		PLA					; |
-		SEC : SBC $00				; |
-		STA $0404,x				;/
-		PHA					;\
-		LSR #3					; |
-		STA $00					; | layer 1 (67%)
-		PLA					; |
-		SEC : SBC $00				; |
-		STA $0401,x				;/
-		LDA $1E					;\
-		ASL #3					; |
-		STA $4204				; |
-		LDA #$0007				; | layer 5 (113,3%)
-		STA $4206				; |
-	-	DEC A : BPL -				; |
-		LDA $4214				; |
-		STA $040D,x				;/
-		ASL #3					;\
-		STA $4204				; |
-		LDA #$0007				; |
-		STA $4206				; | layer 6 (130,6%)
-	-	DEC A : BPL -				; |
-		LDA $4214				; |
-		STA $0410,x				;/
-
-		.Castle
-		LDA $1E
-		LSR #3
-		STA $00
-		LDA !OAMindex_p0 : TAX
-		CLC : ADC #$0008
-		STA !OAMindex_p0
-		SEP #$20				; > A 8 bit
-		LDA $00
-		EOR #$FF				;\
-		STA !OAM_p0+$000,x			; | Xpos of castle
-		STA !OAM_p0+$004,x			;/
-		LDA #$30 : STA !OAM_p0+$001,x		;\ Ypos of castle
-		LDA #$40 : STA !OAM_p0+$005,x		;/
-		LDA #$A2 : STA !OAM_p0+$002,x		;\ tile numbers of castle
-		LDA #$A4 : STA !OAM_p0+$006,x		;/
-		LDA #$0E				;\
-		STA !OAM_p0+$003,x			; | YXPPCCCT of castle
-		STA !OAM_p0+$007,x			;/
-		XBA : BEQ +				;\
-		LDA #$01				; | hi byte of castle
-	+	ORA #$02				; |
-		STA $00
-		REP #$20
-		TXA
+		LDA !MsgTrigger : BNE ..fail
+		INC !Level+2
+		LDA $1C
 		LSR #2
-		TAX
-		SEP #$20
-		LDA $00
-		STA !OAMhi_p0+$00,x			; |
-		STA !OAMhi_p0+$01,x			;/
-	..R	SEP #$30
-		LDA $14					;\
-		AND #$01				; | use the table we just made
-		ORA #$04				; |
-		STA !HDMA3source+1			;/
+		CLC : ADC #$0078
+		STA $24
+		LDA !Level+2
+		LSR A
+		CLC : ADC $1A
+		LSR #3
+		STA $22
+
+		..spritebg				;\
+		LDA #$2000				; |
+		SEC : SBC $1A				; |
+		LSR #5					; |
+		SEC : SBC #$0008			; |
+		AND #$01FF				; |
+		EOR #$0100				; | draw castle (sprite BG)
+		STA $00					; |
+		STA $0C					; |
+		LDA.w #.Tilemap : STA $02		; |
+		SEP #$30				; |
+		LDA #$14 : STA $01			; |
+		LDA #$20 : STA $0E			; |
+		JSL !SpriteBG				; |
+		..fail					;/
+
 		PLP
+		PLB
 		RTL
 
+
+
+		.Tilemap
+		db $00,$00,$EE,$0F
+		db $08,$00,$EE,$4F
+		db $00,$08,$EF,$0F
+		db $08,$08,$EF,$0F
+		db $00,$10,$EF,$0F
+		db $08,$10,$EF,$0F
+		db $00,$18,$EF,$0F
+		db $08,$18,$EF,$0F
 
 
 level4:
@@ -1732,7 +1596,7 @@ level6:
 		ROR A					; |
 		STA $0A07,x				;/
 		STX !HDMA6source			; update table pointer
-		LDA #$17 : STA !MainScreen		;\ Main/sub screen settings
+		LDA #$17 : STA !MainScreen		;\ main/sub screen settings
 		STZ !SubScreen				;/
 		LDA !Level+3				;\
 		CMP #$04				; |
@@ -2039,7 +1903,6 @@ level6:
 
 
 levelC:
-
 		JSL WARP_BOX
 		db $04 : dw $12D0,$01F0 : db $50,$10
 		dw $0439
@@ -2047,6 +1910,9 @@ levelC:
 		JSL WARP_BOX
 		db $04 : dw $1910,$01F0 : db $50,$10
 		dw $0C39
+
+		REP #$20
+		LDA #$1BE8 : JSL END_Right
 
 
 		LDA $1B					;\
@@ -2080,14 +1946,12 @@ levelC:
 		LDA.b #HDMA3DWater>>16 : STA !HDMAptr+2
 
 		LDA #$DC : STA !Level+2
-
 		LDA #$10 : TRB !HDMA
 
 		JSL level35_Graphics			; returns 16-bit A
-
 		SEP #$30
-
 		RTL
+
 
 	.FallingHammerData
 		db $D0,$90,$D0,$D0	; X lo byte
@@ -2798,6 +2662,8 @@ level2C:
 		LDA.w #.Table3 : JSL TalkOnce
 
 
+		LDY !Translevel						;\ captain warrior doesn't spawn if level is beaten
+		LDA !LevelTable1-1,y : BMI +				;/
 		LDA $1A
 		CMP #$00E0 : BNE +
 		LDA $1C : BNE +

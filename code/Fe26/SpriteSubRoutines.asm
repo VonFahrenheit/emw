@@ -495,14 +495,26 @@ SPRITE_OFF_SCREEN:
 		DEY : BPL -
 		CLC
 		RTL
-	..puff	LDA #$0F : STA !Ex_Data2,y			; don't mess with carry here! it has to return set
+	..puff	LDA !Ex_Num,y					;\
+		AND #$7F					; | blocks don't puff
+		CMP #$01+!QuakeOffset : BEQ .Return		;/
+		LDA #$0F : STA !Ex_Data2,y			; don't mess with carry here! it has to return set
 		LDA #$01+!ExtendedOffset : STA !Ex_Num,y	; smoke puff num
 		LDA #$01 : STA !SPC1				; SFX
-	.Return	LDA !Ex_XSpeed,y				;\
+
+
+		.Return
+		LDA !Ex_Num,y					;\
+		AND #$7F					; |
+		CMP #$01+!QuakeOffset : BNE ..notblock		; | kick SFX when hit by a block
+		LDA #$03 : STA !SPC1				; |
+		LDA #$00 : BRA +				; > xspeed = 0
+		..notblock					;/
+		LDA !Ex_XSpeed,y				;\
 		ASL #3						; |
 		CMP #$40					; | fireball speed output
 		BCC $02 : ORA #$80				; |
-		STA $00						;/
+	+	STA $00						;/
 		SEC						; set C
 		RTL						; return
 
@@ -511,6 +523,8 @@ SPRITE_OFF_SCREEN:
 		.Main
 		LDA !Ex_Num,y
 		AND #$7F
+		CMP #$01+!QuakeOffset : BEQ .Check		; check block hitbox
+		.NotBounce
 		CMP #$05+!ExtendedOffset : BEQ .Check		; check mario fireball
 		CMP #$02+!CustomOffset : BNE .ReturnC		; check luigi fireball
 	.Check	LDA !Ex_YLo,y : STA $01
@@ -2445,7 +2459,7 @@ SPRITE_OFF_SCREEN:
 ; this routine should never mess with $04 since that is used so often in OAM routines
 
 
-; input: X = sprite number
+; input: X = sprite index
 ; output: $F0 = dynamic tile use table
 	SETUP_SQUARE:
 		PHX
