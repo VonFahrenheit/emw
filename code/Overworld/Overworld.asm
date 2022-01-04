@@ -90,6 +90,7 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 	%MapDef(P1MapPrevAnim,		1)
 	%MapDef(P1MapDirection,		1)
 	%MapDef(P1MapChar,		1)
+	%MapDef(P1Ghost,		1)
 
 	%MapDef(P2MapXFraction,		1)
 	%MapDef(P2MapX,			2)
@@ -104,6 +105,7 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 	%MapDef(P2MapPrevAnim,		1)
 	%MapDef(P2MapDirection,		1)
 	%MapDef(P2MapChar,		1)
+	%MapDef(P2Ghost,		1)
 
 	%MapDef(MapLight,		$60)
 	!MapLight_X	= !MapLight+0
@@ -793,6 +795,11 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		LDA !CharMenu
 		AND #$00FF : BNE +
 		JSR Player
+		PHP
+		SEP #$20
+		STZ !P1Ghost
+		STZ !P2Ghost
+		PLP
 		JSR OverworldSprites
 		JSR OAM_sort
 		+

@@ -1,4 +1,5 @@
 
+	print "VRAM map mode data stored at $", pc, "."
 
 ; this table, located at $188250, holds the VRAM mapping for each sublevel
 ; the values are the following:

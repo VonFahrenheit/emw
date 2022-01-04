@@ -2,8 +2,8 @@
 
 
 	OverworldSprites:
-
 		LDX #$0000
+		.Loop
 		LDA !OW_sprite_Num,x
 		AND #$007F : BEQ .Next
 		CMP.w #(.List_end-.List-1)*2 : BCS .Next
@@ -17,7 +17,7 @@
 		TXA
 		CLC : ADC.w #!OW_sprite_Size
 		TAX
-		CPX.w #!OW_sprite_Size*1 : BCS .Done
+		CPX.w #(!OW_sprite_Size)*16 : BCC .Loop
 
 
 
@@ -27,10 +27,12 @@
 
 		.List
 		dw WarpPipe		; 01
+		dw GhostZone		; 02
 		..end
 
 
 incsrc "Sprites/WarpPipe.asm"
+incsrc "Sprites/GhostZone.asm"
 
 
 

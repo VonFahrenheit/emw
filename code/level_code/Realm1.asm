@@ -1914,6 +1914,28 @@ levelC:
 		REP #$20
 		LDA #$1BE8 : JSL END_Right
 
+
+		.SpawnSwoopos
+		LDA $1B					;\
+		CMP #$13 : BCC ..done			; | spawn on screens 0x13-0x18
+		CMP #$18+1 : BCS ..done			;/
+		LDA $14					;\ spawn every 64 frames (roughly every 1 seconds)
+		AND #$3F : BNE ..done			;/
+		LDA #$2C : JSL CountSprites_Custom	;\ max 6 swoopos active
+		CMP #$06 : BCS ..done			;/
+		REP #$20				;\
+		LDA $1A					; |
+		CLC : ADC #$0110			; |
+		STA $00					; |
+		LDA !RNG				; |
+		AND #$00F0				; | spawn swoopo to the right of the camera, random height offset
+		CLC : ADC #$0080			; |
+		STA $02					; |
+		SEP #$20				; |
+		LDA #$2C : JSL SpawnSprite_Custom	; |
+		..done					;/
+
+
 		LDA.b #HDMA3DWater : STA !HDMAptr+0
 		LDA.b #HDMA3DWater>>8 : STA !HDMAptr+1
 		LDA.b #HDMA3DWater>>16 : STA !HDMAptr+2
@@ -2751,18 +2773,27 @@ level2F:
 	+	DEX : BPL -
 
 
+
+		LDA $1D : BNE +
+		REP #$20
+		LDA #$09E8 : JSL END_Right
+		+
+
+
 		REP #$20
 		LDA !Level : PHA
 		LDA #$0002 : STA !Level
-		LDA #$1BE8 : JSL END_Right
+		LDA #$0DE8 : JSL END_Right
 		PLA : STA !Level
 		PLA : STA !Level+1
+
+
+
 
 
 		.Brawl
 		LDA !Room
 		CMP #$01 : BEQ $03 : JMP ..done
-
 
 		LDA #$30
 		STA $40C800+($A*$400)+$38B
@@ -2794,7 +2825,9 @@ level2F:
 
 		..nextwave
 		LDX !Level+2
-		CPX.b #..lastwaveindex-..waveindex : BEQ ..aggrowave
+		CPX #$FF : BNE +
+		JMP ..noaggro
+	+	CPX.b #..lastwaveindex-..waveindex : BEQ ..aggrowave
 		CPX.b #..lastwaveindex-..waveindex+1 : BCC $03 : JMP ..aggrowavemain
 		INC !Level+2
 		LDY ..waveindex+1,x
@@ -2851,9 +2884,15 @@ level2F:
 		DEX : BPL -
 
 		..aggrowavemain
-		LDA !Level+3 : BEQ +
-		DEC !Level+3
-	+	CMP #$01 : BEQ ..spawnaggro
+		LDA !Level+3 : BNE +
+		LDA #$02 : JSL CountSprites_Custom : BEQ ..end
+		JMP ..noaggro
+		..end
+		LDA #$FF : STA !Level+2
+		JMP ..noaggro
+
+	+	DEC !Level+3
+		CMP #$01 : BEQ ..spawnaggro
 		CMP #$40 : BEQ $03 : JMP ..noaggro
 		..shake
 		ASL A
@@ -2908,8 +2947,6 @@ level2F:
 		SEP #$20
 		..noaggro
 
-		..nolock
-
 		..done
 
 
@@ -2922,8 +2959,9 @@ level2F:
 		LDA #$02 : STA !CameraBoxSpriteErase
 
 		LDA !LevelWidth : PHA
+		LDA !Level+2 : BMI +
 		LDA #$0E : STA !LevelWidth
-		REP #$20
+	+	REP #$20
 		LDA.w #.RoomPointers : JSL LoadCameraBox
 		PLA : STA !LevelWidth
 		LDA !Room : BEQ ..nobox

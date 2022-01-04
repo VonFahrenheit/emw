@@ -9,12 +9,6 @@
 ;	    keep this in mind if they start crashing the game again
 
 
-
-
-; $188250
-	print "VRAM map mode data stored at $", pc, "."
-	incsrc "level_data/VRAM_map.asm"
-
 	print "Sprite GFX file table stored at $", pc, "."
 ; $188450
 

@@ -1560,7 +1560,7 @@ endmacro
 	if !Debug = 1
 		; misc
 		!DebugZips		= 0			; 0 = normal, 1 = while holding select zips use map16 tile 0x0000
-		!DebugOverworld		= 1
+		!DebugOverworld		= 0
 		; do not use several trackers at the same time!
 		!TrackSpriteLoad	= 0			; 0 = do not track sprite load, 1 = track sprite load
 		!TrackOAM		= 0			; 0 = do not track OAM, 1 = track OAM

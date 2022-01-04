@@ -2855,6 +2855,9 @@ MAIN_MENU:
 		LDA #$0370 : STA !SRAM_overworldY	; |
 		SEP #$20				;/
 
+		LDA #$80 : STA !LevelTable4+$02		; unlock rex village
+
+
 	if !Debug = 1				;\
 	LDA $17					; |
 	AND #$10 : BEQ +			; |

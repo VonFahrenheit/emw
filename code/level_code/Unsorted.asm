@@ -6999,11 +6999,11 @@ WARP_BOX:
 		..nosave				;/
 
 		.UnlockNextLevel			;\
-		REP #$10				; |
+		REP #$30				; |
 		LDX !Level				; |
 		LDA.l LEVEL_Unlock,x			; |
-		SEP #$10				; | unlock level
-		TAX					; |
+		AND #$00F : TAX				; | unlock level
+		SEP #$30				; |
 		LDA !LevelTable4,x			; |
 		ORA #$80				; |
 		STA !LevelTable4,x			;/

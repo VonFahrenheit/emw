@@ -437,10 +437,37 @@
 		BCC $03 : LDA #$031F
 		STA $1C
 
-
-	.InitBG1
 		PHP
 
+	.InitSprites
+		REP #$30
+		LDX #$0000
+		..loop
+		STZ !OW_sprite_Num,x
+		STZ !OW_sprite_Anim,x
+		STZ !OW_sprite_X,x
+		STZ !OW_sprite_Y,x
+		STZ !OW_sprite_Z,x
+		STZ !OW_sprite_XSpeed,x
+		STZ !OW_sprite_ZSpeed,x
+		TXA
+		CLC : ADC.w #!OW_sprite_Size
+		TAX
+		CPX.w #(!OW_sprite_Size)*16 : BCC ..loop
+
+		LDA #$0002 : STA !OW_sprite_Num
+		LDA #$0110 : STA !OW_sprite_X
+		LDA #$0330 : STA !OW_sprite_Y
+		LDA #$0002 : STA !OW_sprite_Num+((!OW_sprite_Size)*1)
+		LDA #$0150 : STA !OW_sprite_X+((!OW_sprite_Size)*1)
+		LDA #$02D8 : STA !OW_sprite_Y+((!OW_sprite_Size)*1)
+		LDA #$0002 : STA !OW_sprite_Num+((!OW_sprite_Size)*2)
+		LDA #$0150 : STA !OW_sprite_X+((!OW_sprite_Size)*2)
+		LDA #$02A0 : STA !OW_sprite_Y+((!OW_sprite_Size)*2)
+
+
+
+	.InitBG1
 	; unpack overworld tilemaps
 		REP #$30
 		LDX.w #DecompressionMap_End-DecompressionMap-4
@@ -511,24 +538,6 @@
 		JMP ..loopfull
 
 		..done
-
-
-
-	.InitSprites
-		REP #$30
-		LDX #$0000
-		..loop
-		STZ !OW_sprite_Num,x
-		STZ !OW_sprite_Anim,x
-		STZ !OW_sprite_X,x
-		STZ !OW_sprite_Y,x
-		STZ !OW_sprite_Z,x
-		STZ !OW_sprite_XSpeed,x
-		STZ !OW_sprite_ZSpeed,x
-		TXA
-		CLC : ADC.w #!OW_sprite_Size
-		TAX
-		CPX.w #(!OW_sprite_Size)*1 : BCC ..loop
 
 
 		PLP

@@ -77,7 +77,7 @@ LevelList:
 		%level(296, 688, 32, 32, 	$001)	; mushroom gorge
 		%level(336, 616, 0, 0,		$005)	; castle rex
 		%level(160, 668, 64, 28, 	$004)	; fuzzy's ridge
-		%level(230, 628, 24, 24, 	$006)	; evernight temple
+		%level(246, 638, 0, 0,	 	$006)	; evernight temple
 	..end
 	.Screen32
 		%level(208, 760, 32, 32,	$002)	; rex village
@@ -86,7 +86,7 @@ LevelList:
 		%level(296, 688, 32, 32, 	$001)	; mushroom gorge
 		%level(336, 616, 0, 0,		$005)	; castle rex
 		%level(160, 668, 64, 28, 	$004)	; fuzzy's ridge
-		%level(230, 628, 24, 24, 	$006)	; evernight temple
+		%level(246, 638, 0, 0,	 	$006)	; evernight temple
 	..end
 	.Screen33
 	; levels here
@@ -108,7 +108,7 @@ LevelList:
 		%level(296, 688, 32, 32, 	$001)	; mushroom gorge
 		%level(336, 616, 0, 0,		$005)	; castle rex
 		%level(160, 668, 64, 28, 	$004)	; fuzzy's ridge
-		%level(230, 628, 24, 24, 	$006)	; evernight temple
+		%level(246, 638, 0, 0,	 	$006)	; evernight temple
 	..end
 	.Screen42
 		%level(208, 760, 32, 32,	$002)	; rex village
@@ -117,7 +117,7 @@ LevelList:
 		%level(296, 688, 32, 32, 	$001)	; mushroom gorge
 		%level(336, 616, 0, 0,		$005)	; castle rex
 		%level(160, 668, 64, 28, 	$004)	; fuzzy's ridge
-		%level(230, 628, 24, 24, 	$006)	; evernight temple
+		%level(246, 638, 0, 0,	 	$006)	; evernight temple
 	..end
 	.Screen43
 	; levels here

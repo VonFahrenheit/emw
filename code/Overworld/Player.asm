@@ -891,9 +891,11 @@
 
 ; debug: skip collision with R
 	if !Debug = 1
+	LDA !P1Ghost,x
+	AND #$00FF : BNE +
 	LDA $6DA4
 	AND #$0010 : BEQ .Terrain
-	JMP .Terrain_noup
++	JMP .Terrain_noup
 	endif
 
 		.Terrain
