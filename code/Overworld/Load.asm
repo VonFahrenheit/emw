@@ -441,6 +441,7 @@
 	.InitBG1
 		PHP
 
+	; unpack overworld tilemaps
 		REP #$30
 		LDX.w #DecompressionMap_End-DecompressionMap-4
 	-	LDA.l DecompressionMap+1,x : STA $00
@@ -453,6 +454,25 @@
 		PLX
 		DEX #4 : BPL -
 
+
+	; apply overworld events
+		PHB : PHK : PLB
+		LDX #$005F
+		..eventloop
+		LDA !LevelTable4-1,x : BPL +
+		LDA EventTable_UnlockEvents,x
+		AND #$00FF : BEQ +
+		JSR .LoadEvent
+	+	LDA !LevelTable1-1,x : BPL ..nextlevel
+		LDA EventTable_ClearEvents,x
+		AND #$00FF : BEQ ..nextlevel
+		JSR .LoadEvent
+		..nextlevel
+		DEX : BPL ..eventloop
+		PLB
+
+
+	; load BG1 GFX
 		..loopfull
 		SEP #$30
 		LDA !initzipcount
@@ -775,6 +795,42 @@
 		dw $1C69	; second half of BG2(16 rows)
 		dw $009F	; BG1 (invisible)
 
+
+
+	.LoadEvent
+		ASL A
+		TAY
+		LDA EventTable_Ptr-2,y : STA $0E
+		LDA ($0E) : STA $08			; tile
+		LDY #$0002				;\ w
+		LDA ($0E),y : STA $04			;/
+		LDY #$0004				;\ h
+		LDA ($0E),y : STA $06			;/
+		LDY #$0006				;\
+		LDA ($0E),y : TAY			; | pointer to tilemap
+		LDA DecompressionMap+1,y : STA $00	; |
+		LDA DecompressionMap+2,y : STA $01	;/
+		LDY #$0008				;\ Y = $0C = index to tilemap
+		LDA ($0E),y : STA $0C			;/
+		..loopy
+		LDY $0C					; Y = index
+		LDA $04 : STA $0A			; backup w
+		LDA $08
+		..loopx
+		STA [$00],y
+		INC A
+		INY #2
+		DEC $0A : BNE ..loopx
+		DEC $06 : BEQ ..return
+		SEC : SBC $04
+		CLC : ADC #$0010
+		STA $08
+		LDA $0C
+		CLC : ADC #$0040
+		STA $0C
+		BRA ..loopy
+		..return
+		RTS
 
 
 	Palette:

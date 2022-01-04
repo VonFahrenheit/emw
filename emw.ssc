@@ -481,10 +481,10 @@ F1	0002	0,0,420
 2B	0030	The Portal is a utility sprite that acts as a visible spawner. Place another sprite on the same position as the Portal. When the Portal spawns, it instantly and silently eats the sprite placed on it and starts producing clones of that sprite. The Portal displays a little animation before spawning a new sprite. Since the extra bit is set, this Portal will continue spawning sprites endlessly, up to 8 at the same time.The first extra byte controls the delay between spawns (default = 255 frames = 4.25 seconds).\n\nHP: Invulnerable\nRank: ???\nTraits: None\nType: Pseudo-dynamic (1 tile)\nExtra bit: Yes
 2B	0032	-8,-8,0B6 8,-8,0B7 -8,8,0B8 8,8,0B9 0,-32,*Rapid-Fire\nPortal* 0,-16,405
 
-2C	0020	Flying Rex
-2C	0022	0,16,*Flying\nRex   * 0,0,420
-2C	0030	Flying Rex (stationary)
-2C	0032	0,16,*Flying Rex\nstationary* 0,0,420
+2C	0020	Swoopo Rex
+2C	0022	0,16,*Swoopo\nRex   * 0,0,420
+2C	0030	Swoopo Rex (stationary)
+2C	0032	0,16,*Swoopo Rex\nstationary* 0,0,420
 
 2D	0020	Ultra Fuzzy
 2D	0022	0,16,*Ultra\nFuzzy   * 0,0,420

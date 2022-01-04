@@ -199,6 +199,7 @@ org $308008
 
 
 	dl Overworld_GFX
+	dl Overworld_Anim
 
 
 
@@ -483,6 +484,10 @@ org $3E8008
 
 	%InsertFile(level06_night)
 	incbin ../PaletteData/HSL/level06_night.bin
+	.End
+
+	%InsertFile(Overworld_Anim)
+	incbin ../RawGraphics/Overworld/realm1_anim.bin
 	.End
 
 

@@ -229,7 +229,7 @@ LoadTable:
 	%gfx_index(MegaMole)		; 0BF
 	%gfx_index(RockPlat)		; 0C0
 	%gfx_index(Blocks)		; 0C1
-	%gfx_index(Fish)		; 0C2
+	%gfx_index(BlurpFish)		; 0C2
 	%gfx_index(PorcuPuffer)		; 0C3
 	%gfx_index(BrownGreyPlat)	; 0C4
 	%gfx_index(BigBoo)		; 0C5

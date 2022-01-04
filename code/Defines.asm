@@ -754,6 +754,7 @@ endmacro
 
 		; overworld
 		%def_file(Overworld_GFX)
+		%def_file(Overworld_Anim)
 
 
 	; palset list

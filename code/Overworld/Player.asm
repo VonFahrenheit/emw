@@ -226,7 +226,7 @@
 
 
 
-		.CheckLevel
+	.CheckLevel
 		LDA !Translevel : STA !PrevTranslevel
 		STZ !Translevel
 		LDA !P1MapX
@@ -254,7 +254,14 @@
 		LDA ScreenSpeedup+2,y : STA !BigRAM+2		; final index
 
 		..loop
-		LDY !BigRAM+0
+		LDY !BigRAM+0					; Y = index to level list
+		PHX						;\
+		LDA LevelList+6,y				; |
+		AND #$00FF : TAX				; | see if level is unlocked
+		LDA !LevelTable4,x				; |
+		PLX						; |
+		AND #$0080 : BEQ ..next				;/
+
 		LDA LevelList+0,y
 		STA $04
 		XBA : STA $0A
@@ -267,6 +274,7 @@
 		JSL !CheckContact
 		REP #$30
 		BCS ..load
+		..next
 		TYA
 		CLC : ADC #$0007
 		CMP !BigRAM+2 : BCS ..done
@@ -377,17 +385,23 @@
 
 
 ; input:
+;	Y = collision dir
 ;	$0C = X coord
 ;	$0E = Y coord
+; output:
+;	BNE -> collision, BEQ -> no collision
+;	$00 = value to add to coordinate
 
 	ReadTile:
+		PHY
+
 		LDA $0E+1
 		AND #$00FF
-		CMP #$0004 : BCS .OutOfBounds
+		CMP #$0004 : BCS .FullSolid
 		TAY
 		LDA $0C+1
 		AND #$00FF
-		CMP #$0006 : BCS .OutOfBounds
+		CMP #$0006 : BCS .FullSolid
 		ASL A
 		ADC HandleZips_TilemapMatrix_y,y
 		AND #$00FF
@@ -414,12 +428,55 @@
 		LSR #3					; | get byte inndex
 		TAY					; |
 		LDA .Solidity,y				;/
-		AND $02					; check solidity
+		AND $02 : BNE .FullSolid		; check solidity
+
+		.NotSolid
+		PLY
+		LDA #$0000
 		RTS
 
-		.OutOfBounds
-		LDA #$0001
+		.FullSolid
+		PLY
+		LDA .Solidity_pushoutvalue,y
 		RTS
+
+		.Slant1
+		LDA $0C
+		AND #$0007 : STA $00
+		LDA $0E
+		AND #$0007
+		ASL #3
+		ORA $00
+		TAY
+		LDA ..pixelmap,y
+		AND #$00FF : BEQ .NotSolid
+
+		; CALC PUSHOUT VALUE HERE
+
+
+		..pixelmap
+		db $00,$00,$00,$00,$00,$00,$00,$01
+		db $00,$00,$00,$00,$00,$00,$01,$01
+		db $00,$00,$00,$00,$00,$01,$01,$01
+		db $00,$00,$00,$00,$01,$01,$01,$01
+		db $00,$00,$00,$01,$01,$01,$01,$01
+		db $00,$00,$01,$01,$01,$01,$01,$01
+		db $00,$01,$01,$01,$01,$01,$01,$01
+		db $01,$01,$01,$01,$01,$01,$01,$01
+
+
+
+		.Slant2
+
+		.Slant3
+
+		.Slant4
+
+		.VerticalWall
+
+		.HorizontalWall
+
+
 
 
 	incsrc "Data/TileSolidity.asm"
@@ -863,11 +920,11 @@
 		LDA !P1MapY,x
 		CLC : ADC #$0004
 		STA $0E
-		JSR ReadTile : BNE ..collisionright
+		LDY #$0000 : JSR ReadTile : BNE ..collisionright
 		LDA !P1MapY,x
 		CLC : ADC #$000B
 		STA $0E
-		JSR ReadTile : BEQ ..noright
+		LDY #$0000 : JSR ReadTile : BEQ ..noright
 		..collisionright
 		LDA $0C
 		AND #$FFF8
@@ -883,11 +940,11 @@
 		LDA !P1MapY,x
 		CLC : ADC #$0004
 		STA $0E
-		JSR ReadTile : BNE ..collisionleft
+		LDY #$0002 : JSR ReadTile : BNE ..collisionleft
 		LDA !P1MapY,x
 		CLC : ADC #$000B
 		STA $0E
-		JSR ReadTile : BEQ ..noleft
+		LDY #$0002 : JSR ReadTile : BEQ ..noleft
 		..collisionleft
 		LDA $0C
 		AND #$FFF8
@@ -905,11 +962,11 @@
 		LDA !P1MapY,x
 		CLC : ADC #$000F
 		STA $0E
-		JSR ReadTile : BNE ..collisiondown
+		LDY #$0004 : JSR ReadTile : BNE ..collisiondown
 		LDA !P1MapX,x
 		CLC : ADC #$000B
 		STA $0C
-		JSR ReadTile : BEQ ..nodown
+		LDY #$0004 : JSR ReadTile : BEQ ..nodown
 		..collisiondown
 		LDA $0E
 		AND #$FFF8
@@ -925,11 +982,11 @@
 		CLC : ADC #$0004
 		STA $0C
 		LDA !P1MapY,x : STA $0E
-		JSR ReadTile : BNE ..collisionup
+		LDY #$0006 : JSR ReadTile : BNE ..collisionup
 		LDA !P1MapX,x
 		CLC : ADC #$000B
 		STA $0C
-		JSR ReadTile : BEQ ..noup
+		LDY #$0006 : JSR ReadTile : BEQ ..noup
 		..collisionup
 		LDA $0E
 		AND #$FFF8

@@ -155,7 +155,6 @@ End:
 	PLB
 	PLP
 
-
 	JML $00806B		; Return.  TODO: Detect if the ROM is using the Wait Replace patch.
 
 NoMusic:

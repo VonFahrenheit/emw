@@ -1914,33 +1914,6 @@ levelC:
 		REP #$20
 		LDA #$1BE8 : JSL END_Right
 
-
-		LDA $1B					;\
-		CMP #$15 : BCC .NoHammers		; | only spawn hammers on screens 15-17
-		CMP #$18 : BCS .NoHammers		;/
-		LDA $14
-		AND #$FC : BEQ .NoHammers
-		AND #$1C : BNE .NoHammers
-		LDX.b #!Ex_Amount-1
-	-	LDA !Ex_Num,x : BEQ +
-		DEX : BPL -
-		BRA .NoHammers
-	+	LDA $14
-		AND #$03
-		TAY
-		LDA .FallingHammerData,y : STA !Ex_XLo,x
-		LDA .FallingHammerData+4,y : STA !Ex_XHi,x
-		LDA $1C
-		SEC : SBC #$10
-		STA !Ex_YLo,x
-		LDA $1D
-		SBC #$00
-		STA !Ex_YHi,x
-		LDA #$04+!ExtendedOffset : STA !Ex_Num,x
-		LDA #$40 : STA !Ex_YSpeed,x
-		.NoHammers
-
-
 		LDA.b #HDMA3DWater : STA !HDMAptr+0
 		LDA.b #HDMA3DWater>>8 : STA !HDMAptr+1
 		LDA.b #HDMA3DWater>>16 : STA !HDMAptr+2
@@ -1951,11 +1924,6 @@ levelC:
 		JSL level35_Graphics			; returns 16-bit A
 		SEP #$30
 		RTL
-
-
-	.FallingHammerData
-		db $D0,$90,$D0,$D0	; X lo byte
-		db $15,$17,$16,$17	; X hi byte
 
 
 

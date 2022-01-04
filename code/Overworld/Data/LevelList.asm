@@ -75,8 +75,8 @@ LevelList:
 		%level(320, 816, 64, 64,	$00C)	; rex reef beach
 		%level(350, 740, 32, 32, 	$003)	; dinolord's domain
 		%level(296, 688, 32, 32, 	$001)	; mushroom gorge
-		%level(336, 624, 0, 0,		$005)	; castle rex
-		%level(152, 700, 24, 28, 	$004)	; fuzzy's ridge
+		%level(336, 616, 0, 0,		$005)	; castle rex
+		%level(160, 668, 64, 28, 	$004)	; fuzzy's ridge
 		%level(230, 628, 24, 24, 	$006)	; evernight temple
 	..end
 	.Screen32
@@ -84,8 +84,8 @@ LevelList:
 		%level(320, 816, 64, 64,	$00C)	; rex reef beach
 		%level(350, 740, 32, 32, 	$003)	; dinolord's domain
 		%level(296, 688, 32, 32, 	$001)	; mushroom gorge
-		%level(336, 624, 0, 0,		$005)	; castle rex
-		%level(152, 700, 24, 28, 	$004)	; fuzzy's ridge
+		%level(336, 616, 0, 0,		$005)	; castle rex
+		%level(160, 668, 64, 28, 	$004)	; fuzzy's ridge
 		%level(230, 628, 24, 24, 	$006)	; evernight temple
 	..end
 	.Screen33
@@ -106,8 +106,8 @@ LevelList:
 		%level(320, 816, 64, 64,	$00C)	; rex reef beach
 		%level(350, 740, 32, 32, 	$003)	; dinolord's domain
 		%level(296, 688, 32, 32, 	$001)	; mushroom gorge
-		%level(336, 624, 0, 0,		$005)	; castle rex
-		%level(152, 700, 24, 28, 	$004)	; fuzzy's ridge
+		%level(336, 616, 0, 0,		$005)	; castle rex
+		%level(160, 668, 64, 28, 	$004)	; fuzzy's ridge
 		%level(230, 628, 24, 24, 	$006)	; evernight temple
 	..end
 	.Screen42
@@ -115,8 +115,8 @@ LevelList:
 		%level(320, 816, 64, 64,	$00C)	; rex reef beach
 		%level(350, 740, 32, 32, 	$003)	; dinolord's domain
 		%level(296, 688, 32, 32, 	$001)	; mushroom gorge
-		%level(336, 624, 0, 0,		$005)	; castle rex
-		%level(152, 700, 24, 28, 	$004)	; fuzzy's ridge
+		%level(336, 616, 0, 0,		$005)	; castle rex
+		%level(160, 668, 64, 28, 	$004)	; fuzzy's ridge
 		%level(230, 628, 24, 24, 	$006)	; evernight temple
 	..end
 	.Screen43

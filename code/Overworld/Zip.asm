@@ -90,7 +90,9 @@
 	!zipdiagonaldec		= $411B08	; 2 B, subtracted from row tile count if moving diagonally
 	!zipdiagonaloffsetinc	= $411B0A	; 2 B, added to row x position if moving diagonally, for incrementing only
 	!zipdiagonaloffsetdec	= $411B0C	; 2 B, added to row x position if moving diagonally, for decrementing only
-	;next			= $411B0E
+	!waterframe		= $411B0E
+	!waterspeed		= $411B10
+	;next			= $411B12
 
 	!zipbuffer		= $411C00	; 512 B, tilemap data buffer
 	;next			= $411E00
@@ -137,20 +139,107 @@
 		RTL
 
 
-; TO DO:
-; - add exception for when moving horizontally and vertically on the same frame!
-;	corner tiles overlap, so the same tile might get decremented twice, possibly into a negative number!
-; - add exception to skip processing of any tile outside the map boundaries (no increment/decrement/tile load of any kind)
-;	increment: adjust starting VRAM, adjust size
-;	decrement: adjust starting VRAM, adjust size
-;	tile load: adjust... probably the same? starting VRAM and size?
-;
+
 
 	HandleZips:
 		PHB							;\ B wrapper to bank $41
 		PEA $4141 : PLB : PLB					;/
 		PHP							;\ P wrapper to all regs 16-bit
 		REP #$30						;/
+
+
+; check each water tile:
+;	if it's unloaded, ignore
+;	if it's loaded, update the tile in its GFX slot
+;	tile 0x110	offset 00
+;	tile 0x111	offset 40
+;	tile 0x112	offset 80
+;	tile 0x113	offset C0
+;
+;	frame 0		offset 000
+;	frame 1		offset 100
+;	frame 2		offset 200
+;	frame 3		offset 300
+;	frame 4		offset 400
+;	frame 5		offset 500
+;	frame 6		offset 600
+
+
+	; water animation
+	LDY.w #!File_Overworld_Anim : JSL !GetFileAddress
+	LDA.l !FileAddress : STA $0D
+	LDA.l !FileAddress+1 : STA $0E
+
+	LDA $14
+	AND #$00FF
+	LSR #2
+	SEC : SBC #$0020
+	BPL $04 : EOR #$FFFF : INC A
+	CLC : ADC #$0010
+	STA.w !waterspeed
+
+	LDA.w !waterframe
+	CLC : ADC.w !waterspeed
+	CMP #$0700
+	BCC $03 : LDA #$0000
+	STA.w !waterframe
+	AND #$0700
+	CLC : ADC $0D
+	STA $0D
+
+	LDX.w #$110*2
+-	LDA.w !tilecount,x : BEQ +
+	LDA.w !tileaddress,x
+	ASL #5
+	STA $02
+	PHX
+	JSL !GetVRAM
+	LDA #$0040 : STA !VRAMbase+!VRAMtable+$00,x
+	LDA $0D : STA !VRAMbase+!VRAMtable+$02,x
+	LDA $0E : STA !VRAMbase+!VRAMtable+$03,x
+	LDA $02 : STA !VRAMbase+!VRAMtable+$05,x
+	PLX
+
+	+
+	LDA $0D
+	CLC : ADC #$0040
+	STA $0D
+	INX #2
+	CPX.w #$114*2 : BCC -
+
+	; waterfall animation
+	LDA $14
+	AND #$0008
+	BEQ $03 : LDA #$0040
+	CLC : ADC.w #$24*$40
+	CLC : ADC.l !FileAddress
+	STA $0D
+
+	LDX.w #$95*2
+-	LDA.w !tilecount,x : BEQ +
+	LDA.w !tileaddress,x
+	ASL #5
+	STA $02
+	PHX
+	JSL !GetVRAM
+	LDA #$0040 : STA !VRAMbase+!VRAMtable+$00,x
+	LDA $0D : STA !VRAMbase+!VRAMtable+$02,x
+	LDA $0E : STA !VRAMbase+!VRAMtable+$03,x
+	LDA $02 : STA !VRAMbase+!VRAMtable+$05,x
+	PLX
+
+	+
+	LDA $0D
+	CLC : ADC #$0400
+	STA $0D
+	INX #4
+	CPX.w #$99*2 : BCC -
+
+
+
+
+
+
 
 		STZ.w !zipdiagonaldec					;\
 		STZ.w !zipdiagonaloffsetinc				; | reset diagonal

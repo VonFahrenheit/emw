@@ -343,6 +343,7 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 
 	incsrc "Data/LevelList.asm"
 	incsrc "Data/MapLightPoints.asm"
+	incsrc "Data/Events.asm"
 
 
 	SetCarriedItem:
@@ -436,6 +437,35 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 
 
 	MAIN:
+		LDA $14					;\
+		AND #$1F				; |
+		TAY					; | index RNG table
+		DEC A					; |
+		AND #$1F				; |
+		TAX					;/
+		JSL !Random				; get vanilla RN
+		ADC !RNGtable,x				; add RNG from last frame
+		ADC $13					; add true frame counter
+		ADC $6DA2				;\
+		ADC $6DA3				; |
+		ADC $6DA4				; |
+		ADC $6DA5				; | add player controller input
+		ADC $6DA6				; |
+		ADC $6DA7				; |
+		ADC $6DA8				; |
+		ADC $6DA9				;/
+		ADC !P1MapXSpeed			;\ add player 1 speed
+		ADC !P1MapYSpeed			;/
+		ADC !P1MapX				;\ add player 1 position
+		ADC !P1MapY				;/
+		ADC !P2MapXSpeed			;\ add player 2 speed
+		ADC !P2MapYSpeed			;/
+		ADC !P2MapX				;\ add player 2 position
+		ADC !P2MapY				;/
+		STA !RNGtable,y				; store new RN
+		STA !RNG				; most recently generated
+
+
 		REP #$20					;\
 		LDA #$2C04 : STA $4330				; |
 		LDA #$0800 : STA $4340				; |
@@ -577,12 +607,6 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		JSR KillVR3
 
 		JSL HandleZips
-
-	PHP
-	REP #$20
-	LDA.l !P1MapX : STA !CoinHoard
-	LDA.l !P1MapY : STA !YoshiCoinCount
-	PLP
 
 		PHK : PLB				; get bank
 		SEP #$20

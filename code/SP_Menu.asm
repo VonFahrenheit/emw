@@ -2860,11 +2860,16 @@ MAIN_MENU:
 	AND #$10 : BEQ +			; |
 	LDA #$01				; |
 	STA !KadaalStatus			; |
-	STA !LeewayStatus			; | debug: hold R to start with all chars + skip intro level
+	STA !LeewayStatus			; |
 	STA !AlterStatus			; |
 	STA !PeachStatus			; |
 	LDA #$80 : STA !LevelTable1+$00		; |
-	LDA #$81 : STA !StoryFlags+$00		; |
+	LDA #$81 : STA !StoryFlags+$00		; | debug: hold R to start with all chars + all levels
+	LDX #$5F				; |
+	LDA #$80				; |
+-	STA !LevelTable1,x			; |
+	STA !LevelTable4,x			; |
+	DEX : BPL -				; |
 	STZ $6109				; |
 	+					; |
 	endif					;/
