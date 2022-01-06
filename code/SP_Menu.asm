@@ -278,7 +278,6 @@ endif
 	;	dl !FreeBNK*$10000+!FreeRAM		; Location of 1/2 player select stripe
 
 	org $008C81					; Status bar tilemap
-	;CUSTOM_BAR:
 	;	dw $2814,$2414,$2414,$2414,$2414,$2414	; > P1 coins
 	;	dw $2014,$2014,$2014,$2014,$2014	; > P1 hearts
 	;	dw $2814,$2814,$2814,$2814,$2814	;\ Yoshi coins

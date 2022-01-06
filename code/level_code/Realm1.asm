@@ -11,8 +11,6 @@ levelinit1:
 
 
 levelinit2:
-		LDA #$E1 : STA !MsgPal
-
 		STZ !SideExit
 		LDA $741A : STA !Level+4
 		BNE +
@@ -20,6 +18,13 @@ levelinit2:
 		DEC !P2YPosHi-$80
 		DEC !P2YPosHi
 		+
+
+
+	.Graphics
+		LDA #$01 : STA !GlobalLight1
+		DEC !GlobalLightMixPrev
+		LDA !TranslevelFlags+$00 : STA !GlobalLightMix
+		LDA #$E1 : STA !MsgPal
 
 
 		INC !SideExit
@@ -42,7 +47,6 @@ levelinit2:
 		SEP #$20			; > A 8 bit
 		LDA #$18			;\ Enable HDMA on channels 3 and 4
 		TSB $6D9F			;/
-		JSL CLEAR_DYNAMIC_BG3
 		RTL				; > Return
 
 
@@ -140,7 +144,7 @@ levelinit4:
 
 levelinit5:
 		LDA #$02 : STA !GlobalLight1
-		LDA #$FF : STA !GlobalLightMixPrev
+		DEC !GlobalLightMixPrev
 		LDA.b #$51*2 : STA !LightIndexStart
 		LDA.b #$EF*2 : STA !LightIndexEnd
 		LDA.b #$EF*2>>8 : STA !LightIndexEnd+1
@@ -576,7 +580,7 @@ levelinit2E:
 		RTL
 
 levelinit2F:
-		RTL
+		JML levelinit2_Graphics
 
 
 
@@ -704,10 +708,6 @@ level1:
 
 
 level2:
-	;	LDA #$00 : STA !GlobalPalset1
-	;	LDA #$01 : STA !GlobalPalset2
-	;	LDA #$20 : STA !GlobalPalsetMix
-
 		.SpecialEntrance
 		LDA !Level+4 : BNE ..done
 		LDA !P2Status-$80 : BNE ..p1done
@@ -802,6 +802,16 @@ level2:
 		LDA #$00 : STA !SpriteLoadStatus,x
 		..next
 		INX : BNE ..loop
+
+
+		.MorningLight
+		LDA !TranslevelFlags+$00
+		CMP #$20 : BEQ +
+		LDA $14 : BNE +
+		INC !TranslevelFlags+$00
+		+
+		LDA !TranslevelFlags+$00 : STA !GlobalLightMix
+
 
 		RTL
 
@@ -1232,10 +1242,10 @@ level4:
 		LSR #3
 	++	STA.w !DecompBuffer+$10FA
 
+		LDA.w !DecompBuffer+$10FA : STA.l $2251
 	-	LDA.l !TrigTable,x
 		LSR #5
-		STA.l $2251
-		LDA.w !DecompBuffer+$10FA : STA.l $2253
+		STA.l $2253
 		BRA $00 : NOP
 		LDA.l $2306
 		LSR #4
@@ -1266,6 +1276,8 @@ level4:
 		LSR #5
 		STA.l $2251
 		LDA.w !DecompBuffer+$10FA : STA.l $2253
+		LSR #2
+		STA.l !CutsceneSmoothness			; hide top of screen (cutoff)
 		LDA $14
 		AND #$0001
 		BEQ $03 : LDA #$0004
@@ -2202,20 +2214,20 @@ level27:
 		LDA #$02 : STA !SpriteStasis,x
 		LDA #$5A : STA !SpriteXLo,x
 		LDA $95 : BEQ ..done
-		LDA !Level+2
+		LDA !TranslevelFlags+$01
 		BIT #$01 : BNE ..nomsg1
 		..msg1
-		ORA #$01 : STA !Level+2
+		ORA #$01 : STA !TranslevelFlags+$01
 		REP #$20
 		LDA.w #!MSG_RexVillage_Aristocrat1 : STA !MsgTrigger
 		SEP #$20
 		..nomsg1
 		LDA #$78 : JSL CountSprites_Vanilla
 		BNE ..nomsg2
-		LDA !Level+2
+		LDA !TranslevelFlags+$01
 		BIT #$02 : BNE ..nomsg2
 		..msg2
-		ORA #$02 : STA !Level+2
+		ORA #$02 : STA !TranslevelFlags+$01
 		REP #$20
 		LDA.w #!MSG_RexVillage_Aristocrat2 : STA !MsgTrigger
 		SEP #$20
@@ -2234,7 +2246,7 @@ level27:
 		LDA !Level+3
 		CMP #$01 : BNE ..nomsg
 		STZ !Level+2
-		LDA !StoryFlags+1
+		LDA !StoryFlags+2
 		AND #$01
 		REP #$20
 		BEQ ..buy
@@ -2298,7 +2310,7 @@ level27:
 		LDA #$2A : STA !SPC4
 		..nobuy
 
-		LDA !StoryFlags+1
+		LDA !StoryFlags+2
 		AND #$01 : BEQ ..nokill
 		LDA #$02 : JSL KillSprite_Custom
 		..nokill
@@ -2321,9 +2333,9 @@ level27:
 		SEP #$20
 		BRA ..noclear
 		..kill
-		LDA !StoryFlags+1			;\
+		LDA !StoryFlags+2			;\
 		ORA #$01				; | shopkeeper is kill
-		STA !StoryFlags+1			;/
+		STA !StoryFlags+2			;/
 		LDA #$32 : JSL KillSprite_Custom
 		..noclear
 
@@ -2433,20 +2445,20 @@ level27:
 		LDA #$7A : STA !SpriteXLo,x
 		LDA $95
 		CMP #$05 : BCC ..return
-		LDA !Level+2
+		LDA !TranslevelFlags+$02
 		BIT #$01 : BEQ ..talk1
 		BIT #$02 : BNE ..return
 
 		..talk2
 		LDA #$74 : JSL CountSprites_Vanilla : BNE ..return
-		LDA #$02 : TSB !Level+2
+		LDA #$02 : TSB !TranslevelFlags+$02
 		REP #$20
 		LDA.w #!MSG_RexVillage_Negotiator2 : STA !MsgTrigger
 		SEP #$20
 		RTS
 
 		..talk1
-		LDA #$01 : TSB !Level+2
+		LDA #$01 : TSB !TranslevelFlags+$02
 		REP #$20
 		LDA.w #!MSG_RexVillage_Negotiator1 : STA !MsgTrigger
 		SEP #$20
@@ -2559,9 +2571,9 @@ level27:
 
 	.DimensionalCatacombs
 		JSL level2_ReloadSprites
-		LDA !Level+2
+		LDA !TranslevelFlags+$03
 		BIT #$01 : BNE ..nomsg
-		LDA #$01 : TSB !Level+2
+		LDA #$01 : TSB !TranslevelFlags+$03
 		REP #$20
 		LDA.w #!MSG_RexVillage_Catacombs : STA !MsgTrigger
 		SEP #$20
@@ -4246,7 +4258,7 @@ level38:
 
 
 	.MayorsHouse
-		LDA !Level+2
+		LDA !TranslevelFlags+$04
 		AND #$02 : BEQ ..normal
 		LDA #$02 : JSL KillSprite_Custom
 		..normal
@@ -4274,9 +4286,9 @@ level38:
 		LDA $BE,x : BEQ ..alive
 		CMP #$01 : BEQ +
 		..dead
-		LDA !Level+2
+		LDA !TranslevelFlags+$04
 		AND #$02 : BNE +
-		LDA #$02 : TSB  !Level+2
+		LDA #$02 : TSB !TranslevelFlags+$04
 		REP #$20
 		LDA.w #!MSG_RexVillage_Mayor2 : STA !MsgTrigger
 		SEP #$20
@@ -4286,9 +4298,9 @@ level38:
 		LDA #$02 : STA !SpriteStasis,x
 		LDA #$04 : STA $33C0,x
 		LDA #$1A : STA !SpriteXLo,x
-		LDA !Level+2
+		LDA !TranslevelFlags+$04
 		AND #$01 : BNE +
-		LDA #$01 : TSB !Level+2
+		LDA #$01 : TSB !TranslevelFlags+$04
 		REP #$20
 		LDA.w #!MSG_RexVillage_Mayor1 : STA !MsgTrigger
 		SEP #$20
@@ -4318,10 +4330,10 @@ level38:
 		LDA $BE,x : BNE ..return
 		STZ $3320,x
 
-		LDA !Level+2
+		LDA !TranslevelFlags+$05
 		BIT #$01 : BNE ..return
 		LDA $95 : BEQ ..return
-		LDA #$01 : TSB !Level+2
+		LDA #$01 : TSB !TranslevelFlags+$05
 		REP #$20
 		LDA.w #!MSG_RexVillage_BullyGuard : STA !MsgTrigger
 		SEP #$20

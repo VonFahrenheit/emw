@@ -176,8 +176,8 @@ Rex:
 		LDA $3330,x
 		AND #$04 : BEQ ..done
 		LDA !SpriteYSpeed,x : BMI ..alive
-		CMP #$50 : BCC ..alive
-		CMP #$60 : BCC ..hurt
+		CMP #$48 : BCC ..alive
+		CMP #$58 : BCC ..hurt
 		..kill
 		LDA #$01 : STA $BE,x
 		..hurt

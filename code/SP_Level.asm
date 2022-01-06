@@ -554,7 +554,10 @@ print "Level code handler inserted at $", pc, "."
 		STZ !P2Init-$80				;\ reset PCE init flags
 		STZ !P2Init				;/
 
-		LDA $741A : BNE +			;\ How many doors have been entered
+		LDA $741A : BNE +			; how many doors have been entered
+		LDX #$7F				;\
+	-	STZ !TranslevelFlags,x			; | clear translevel flags on first sublevel only
+		DEX : BPL -				;/
 
 		STZ !P2TempHP-$80			;\ clear temp HP
 		STZ !P2TempHP				;/
@@ -724,9 +727,9 @@ print "Level code handler inserted at $", pc, "."
 
 		JSL !BuildOAM					; put tiles on-screen
 
-		LDA.b #HandleGraphics : STA $3180		;\
-		LDA.b #HandleGraphics>>8 : STA $3181		; | run this in case global light was set
-		LDA.b #HandleGraphics>>16 : STA $3182		; |
+		LDA.b #HandleGraphics_CallLight : STA $3180	;\
+		LDA.b #HandleGraphics_CallLight>>8 : STA $3181	; | run this in case global light was set
+		LDA.b #HandleGraphics_CallLight>>16 : STA $3182	; |
 		JSR $1E80					;/
 
 		REP #$20					;\
@@ -795,7 +798,13 @@ print "Level code handler inserted at $", pc, "."
 		PHP
 		STZ $2250
 		REP #$30
-		LDX #$FFFE : BRA ..next
+		LDX #$0000
+	-	LDA !PaletteRGB+$00,x : STA !ShaderInput+$00,x
+		INX #2
+		CPX !LightIndexStart : BCC -
+		+
+
+		LDX !LightIndexStart
 
 		..loop
 		LDA !PaletteRGB,x : STA $04
@@ -829,10 +838,8 @@ print "Level code handler inserted at $", pc, "."
 
 		..next
 		INX #2
-		CPX #$0200 : BCC ..checkdisable
-		PLP
-		PLB
-		RTL
+		CPX !LightIndexEnd : BCC ..checkdisable
+		JMP ..finish
 
 		..checkdisable
 		TXA
@@ -867,6 +874,15 @@ print "Level code handler inserted at $", pc, "."
 		..ok
 		TYX
 		JMP ..loop
+
+		..finish
+	-	CPX #$0200 : BCS ..return
+		LDA !PaletteRGB+$00,x : STA !ShaderInput+$00,x
+		INX #2 : BRA -
+		..return
+		PLP
+		PLB
+		RTL
 
 
 
@@ -2042,7 +2058,7 @@ dl level1FF
 
 LightValues:	;    R     G     B
 .Default	dw $0100,$0100,$0100	; 00
-.Dawn		dw $0100,$0100,$0100	; 01
+.Dawn		dw $00F8,$00EE,$00D4	; 01
 .Sunset		dw $0120,$00E0,$00C0	; 02
 .Night		dw $0080,$00C0,$00E0	; 03
 .Lava		dw $0180,$0080,$0080	; 04
@@ -2061,154 +2077,23 @@ HandleGraphics:
 
 		JSR .RotateSimple
 		JSR .RainbowShifter					; also spawns sparkles
+		JSR .UpdateLight
+		JSR .UpdatePalset
 
-
-	; update light RGB
-		LDA !GlobalLightMix					;\
-		CMP !GlobalLightMixPrev : BNE .UpdateLight		; | see if there was a change this frame
-		JMP .NoLightUpdate					;/
-		.UpdateLight
-		STZ $2250						; prepare multiplication
-		REP #$20						;\
-		LDA !GlobalLight1					; |
-		AND #$00FF						; |
-		ASL A							; |
-		STA $00							; |
-		ASL A							; | RGB values of light 1
-		ADC $00							; |
-		TAX							; |
-		LDA.w LightValues+0,x : STA $04				; |
-		LDA.w LightValues+2,x : STA $06				; |
-		LDA.w LightValues+4,x : STA $08				;/
-		LDA !GlobalLight2					;\
-		AND #$00FF						; |
-		ASL A							; |
-		STA $00							; |
-		ASL A							; | RGB values of light 2
-		ADC $00							; |
-		TAX							; |
-		LDA.w LightValues+0,x : STA $0A				; |
-		LDA.w LightValues+2,x : STA $0C				; |
-		LDA.w LightValues+4,x : STA $0E				;/
-		LDA !GlobalLightMix					;\
-		AND #$00FF						; |
-		CMP #$0021						; | (min 0x00, max 0x20)
-		BCC $03 : LDA #$0020					; | strength of lights 1 and 2
-		STA $02							; |
-		LDA #$0020						; |
-		SEC : SBC $02						; |
-		STA $00							;/
-		STA $2251						;\
-		LDA $04 : STA $2253					; |
-		NOP : BRA $00						; |
-		LDA $2306 : STA $04					; |
-		LDA $06 : STA $2253					; |
-		NOP : BRA $00						; | update light 1
-		LDA $2306 : STA $06					; |
-		LDA $08 : STA $2253					; |
-		LDA #$0020						; |
-		SEC : SBC $00						; |
-		STA $02							; |
-		LDA $2306 : STA $08					;/
-		LDA $02 : STA $2251					;\
-		LDA $0A : STA $2253					; |
-		NOP							; |
-		LDA $04							; |
-		CLC : ADC $2306						; |
-		LSR #5							; |
-		STA !LightR						; |
-		LDA $0C : STA $2253					; |
-		NOP							; |
-		LDA $06							; | update light 2, merge with light 1, then update light RGB values
-		CLC : ADC $2306						; |
-		LSR #5							; |
-		STA !LightG						; |
-		LDA $0E : STA $2253					; |
-		NOP							; |
-		LDA $08							; |
-		CLC : ADC $2306						; |
-		LSR #5							; |
-		STA !LightB						; |
-		SEP #$20						;/
-		.NoLightUpdate
-		LDA !GlobalLightMix : STA !GlobalLightMixPrev		; update for next frame
-
-
-
-	; update palsets
-		LDX #$07						;\
-	-	STZ $00,x						; | clear $00-$07
-		DEX : BPL -						;/
-
-		LDY #$0F						;\
-	-	LDA $33C0,y						; |
-		LSR A							; |
-		AND #$07						; | mark palettes as used if an existing sprite uses them
-		TAX							; |
-		LDA $3230,y						; |
-		BEQ $02 : STA $00,x					; |
-		DEY : BPL -						;/
-
-		LDY.b #!Ex_Amount-1					;\
-	-	LDA !Ex_Palset,y					; |
-		CMP #$FF : BEQ +					; |
-		LSR A							; | mark palettes as used if a FusionCore sprite uses them
-		AND #$07						; |
-		TAX							; |
-		LDA #$01 : STA $00,x					; |
-	+	DEY : BPL -						;/
-
-		LDA !MsgPal						;\
-		AND #$7F						; |
-		LSR #4							; |
-		STA $0E							; |
-		INC A							; |
-		STA $0F							; |
-		LDA !MsgTrigger						; | mark palsets used by portrait
-		ORA !MsgTrigger+1					; |
-		BEQ .nomsg						; |
-		LDA !WindowDir : BEQ .msg				; |
-		.nomsg							; |
-		LDA #$FF						; |
-		STA $0E							; |
-		STA $0F							; |
-		.msg							;/
-
-		LDX !PalsetStart					;\
-	-	CPX $0E : BEQ +						; |
-		CPX $0F : BEQ +						; |
-		LDA !Palset8,x						; |
-		AND #$7F						; |
-		CMP PalsetDefaults,x : BEQ +				; |
-		LDA $00,x : BNE +					; |
-		PHX							; |
-		LDA !Palset8,x						; | if palset is non-default AND unused, unload it
-		AND #$7F						; | (unless it is used by msg portraits)
-		TAX							; |
-		LDA #$00 : STA !Palset_status,x				; |
-		PLX							; |
-		LDA #$80 : STA !Palset8,x				; |
-	+	DEX							; |
-		CPX #$02 : BCS -					;/
-
-		LDY !PalsetStart					; loop through all sprite palsets
-		REP #$10
-	.loop	LDA !Palset8,y : BMI .next				; if already loaded, go to next			
-		STA $00 : STZ $01					; $00 = palset to load
-		TAX							;\
-		ORA #$80						; | mark palset as loaded
-		STA !Palset8,y						; |
-		TYA : STA !Palset_status,x				;/
-
-		TYX							;\ disable this for 1 operation
-		LDA #$01 : STA !ShaderRowDisable+8,x			;/
-
-		JSR UpdatePalset					; get color data
-
-	.next	DEY : BPL .loop						; loop
 		PLP
 		PLB
 		RTL
+
+
+		.CallLight
+		PHB : PHK : PLB
+		PHP
+		SEP #$30
+		JSR .UpdateLight
+		PLP
+		PLB
+		RTL
+
 
 
 	; handler for simple rotation graphics
@@ -2463,6 +2348,151 @@ HandleGraphics:
 		STA !Ex_YHi,x				;/
 		RTS
 
+
+	.UpdateLight
+		LDA !GlobalLightMix					;\
+		CMP !GlobalLightMixPrev : BNE ..update			; | see if there was a change this frame
+		RTS							;/
+		..update
+		STZ $2250						; prepare multiplication
+		REP #$20						;\
+		LDA !GlobalLight1					; |
+		AND #$00FF						; |
+		ASL A							; |
+		STA $00							; |
+		ASL A							; | RGB values of light 1
+		ADC $00							; |
+		TAX							; |
+		LDA.w LightValues+0,x : STA $04				; |
+		LDA.w LightValues+2,x : STA $06				; |
+		LDA.w LightValues+4,x : STA $08				;/
+		LDA !GlobalLight2					;\
+		AND #$00FF						; |
+		ASL A							; |
+		STA $00							; |
+		ASL A							; | RGB values of light 2
+		ADC $00							; |
+		TAX							; |
+		LDA.w LightValues+0,x : STA $0A				; |
+		LDA.w LightValues+2,x : STA $0C				; |
+		LDA.w LightValues+4,x : STA $0E				;/
+		LDA !GlobalLightMix					;\
+		AND #$00FF						; |
+		CMP #$0021						; | (min 0x00, max 0x20)
+		BCC $03 : LDA #$0020					; | strength of lights 1 and 2
+		STA $02							; |
+		LDA #$0020						; |
+		SEC : SBC $02						; |
+		STA $00							;/
+		STA $2251						;\
+		LDA $04 : STA $2253					; |
+		NOP : BRA $00						; |
+		LDA $2306 : STA $04					; |
+		LDA $06 : STA $2253					; |
+		NOP : BRA $00						; | update light 1
+		LDA $2306 : STA $06					; |
+		LDA $08 : STA $2253					; |
+		LDA #$0020						; |
+		SEC : SBC $00						; |
+		STA $02							; |
+		LDA $2306 : STA $08					;/
+		LDA $02 : STA $2251					;\
+		LDA $0A : STA $2253					; |
+		NOP							; |
+		LDA $04							; |
+		CLC : ADC $2306						; |
+		LSR #5							; |
+		STA !LightR						; |
+		LDA $0C : STA $2253					; |
+		NOP							; |
+		LDA $06							; | update light 2, merge with light 1, then update light RGB values
+		CLC : ADC $2306						; |
+		LSR #5							; |
+		STA !LightG						; |
+		LDA $0E : STA $2253					; |
+		NOP							; |
+		LDA $08							; |
+		CLC : ADC $2306						; |
+		LSR #5							; |
+		STA !LightB						; |
+		SEP #$20						;/
+		..done
+		LDA !GlobalLightMix : STA !GlobalLightMixPrev		; update for next frame
+		RTS
+
+
+	.UpdatePalset
+		LDX #$07						;\
+	-	STZ $00,x						; | clear $00-$07
+		DEX : BPL -						;/
+
+		LDY #$0F						;\
+	-	LDA $33C0,y						; |
+		LSR A							; |
+		AND #$07						; | mark palettes as used if an existing sprite uses them
+		TAX							; |
+		LDA $3230,y						; |
+		BEQ $02 : STA $00,x					; |
+		DEY : BPL -						;/
+
+		LDY.b #!Ex_Amount-1					;\
+	-	LDA !Ex_Palset,y					; |
+		CMP #$FF : BEQ +					; |
+		LSR A							; | mark palettes as used if a FusionCore sprite uses them
+		AND #$07						; |
+		TAX							; |
+		LDA #$01 : STA $00,x					; |
+	+	DEY : BPL -						;/
+
+		LDA !MsgPal						;\
+		AND #$7F						; |
+		LSR #4							; |
+		STA $0E							; |
+		INC A							; |
+		STA $0F							; |
+		LDA !MsgTrigger						; | mark palsets used by portrait
+		ORA !MsgTrigger+1					; |
+		BEQ .nomsg						; |
+		LDA !WindowDir : BEQ .msg				; |
+		.nomsg							; |
+		LDA #$FF						; |
+		STA $0E							; |
+		STA $0F							; |
+		.msg							;/
+
+		LDX !PalsetStart					;\
+	-	CPX $0E : BEQ +						; |
+		CPX $0F : BEQ +						; |
+		LDA !Palset8,x						; |
+		AND #$7F						; |
+		CMP PalsetDefaults,x : BEQ +				; |
+		LDA $00,x : BNE +					; |
+		PHX							; |
+		LDA !Palset8,x						; | if palset is non-default AND unused, unload it
+		AND #$7F						; | (unless it is used by msg portraits)
+		TAX							; |
+		LDA #$00 : STA !Palset_status,x				; |
+		PLX							; |
+		LDA #$80 : STA !Palset8,x				; |
+	+	DEX							; |
+		CPX #$02 : BCS -					;/
+
+		LDY !PalsetStart					; loop through all sprite palsets
+		REP #$10
+	.loop	LDA !Palset8,y : BMI .next				; if already loaded, go to next			
+		STA $00 : STZ $01					; $00 = palset to load
+		TAX							;\
+		ORA #$80						; | mark palset as loaded
+		STA !Palset8,y						; |
+		TYA : STA !Palset_status,x				;/
+
+		TYX							;\ disable this for 1 operation
+		LDA #$01 : STA !ShaderRowDisable+8,x			;/
+
+		JSR UpdatePalset					; get color data
+
+	.next	DEY : BPL .loop						; loop
+		RTS
 
 
 ;==============;

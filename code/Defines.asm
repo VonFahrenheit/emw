@@ -400,6 +400,9 @@ endmacro
 
 
 		!Level			= $610B
+		!TranslevelFlags	= $6DDF			; 128 bytes, also used as main RAM block on overworld
+								; purpose of this RAM is that it's cleared on initial level load but kept between sublevels
+
 		!BossData		= $66F9			; 7 bytes
 		!RNGtable		= $6660			; 32 random values, a new one is generated each frame
 		!RNG			= $6700			; most recently generated RN
@@ -903,7 +906,7 @@ endmacro
 		!P2Basics		= !P2Base+$00
 		!P2Physics		= !P2Base+$20
 		!P2Hitbox		= !P2Base+$40
-		!P2Custom		= !P2Base+$60
+		!P2Custom		= !P2Base+$60		; last byte is temp HP
 
 
 	; --BASICS--
@@ -1436,6 +1439,16 @@ endmacro
 		;	80+ all intro stuff cleared (portable warp pipe obtained)
 		;
 		; +01:
+		;	01 first legendary bit (1 = obtained)
+		;	02 ----
+		;	04 ----
+		;	08 ----
+		;	10 ----
+		;	20 ----
+		;	40 ----
+		;	80 ----
+		;
+		; +02:
 		;	01 shopkeeper (0 = alive, 1 = killed)
 		;	02 ----
 		;	04 ----
@@ -1446,14 +1459,6 @@ endmacro
 		;	80 ----
 		;
 		; +02:
-		;	01 Mountain King
-		;	02 Mountain King
-		;	04 ----
-		;	08 ----
-		;	10 ----
-		;	20 ----
-		;	40 ----
-		;	80 ----
 
 
 

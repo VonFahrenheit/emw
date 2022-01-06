@@ -969,8 +969,14 @@ MarioGraphics:
 		AND #$01
 		CMP !CurrentPlayer : BEQ .ThisOne
 		.OtherOne
+		LDA !P2Entrance
 		REP #$30
-		LDA !P2BackupTilemap : STA $0E
+		BEQ ..backup
+		LDA.w #ANIM_16x32TM : BRA ..loadbackup
+		..backup
+		LDA !P2BackupTilemap
+		..loadbackup
+		STA $0E
 		JMP GRAPHICS
 		.ThisOne
 		LDA !P2ExternalAnimTimer : BNE ..external	;\

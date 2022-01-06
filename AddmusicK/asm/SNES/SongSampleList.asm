@@ -11,7 +11,7 @@ dw $0000, SGPointer01, SGPointer02, SGPointer03, SGPointer04, SGPointer05, SGPoi
 dw SGPointer10, SGPointer11, SGPointer12, SGPointer13, SGPointer14, SGPointer15, SGPointer16, SGPointer17, SGPointer18, SGPointer19, SGPointer1A, SGPointer1B, SGPointer1C, SGPointer1D, SGPointer1E, SGPointer1F
 dw SGPointer20, SGPointer21, SGPointer22, SGPointer23, SGPointer24, SGPointer25, SGPointer26, SGPointer27, SGPointer28, SGPointer29, SGPointer2A, SGPointer2B, SGPointer2C, SGPointer2D, SGPointer2E, SGPointer2F
 dw SGPointer30, SGPointer31, SGPointer32, SGPointer33, SGPointer34, SGPointer35, SGPointer36, SGPointer37, SGPointer38, SGPointer39, SGPointer3A, SGPointer3B, SGPointer3C, SGPointer3D, SGPointer3E, SGPointer3F
-dw SGPointer40, SGPointer41, SGPointer42, SGPointer43, SGPointer44, SGPointer45, SGPointer46
+dw SGPointer40, SGPointer41, SGPointer42, SGPointer43, SGPointer44, SGPointer45, SGPointer46, SGPointer47, SGPointer48
 
 
 SGPointer01:
@@ -215,4 +215,10 @@ dw $0015, $0016, $0017, $0018, $0019, $001A, $001B, $001C, $001D, $001E, $001F, 
 SGPointer46:
 db $21
 dw $0015, $0016, $0017, $0018, $0019, $001A, $001B, $001C, $001D, $001E, $001F, $0020, $0021, $0014, $0023, $0014, $0025, $0014, $0027, $0028, $007B, $0042, $0035, $007C, $004F, $002A, $0043, $003E, $0029, $0034, $0030, $003B, $002B
+SGPointer47:
+db $22
+dw $0015, $0016, $0017, $0018, $0019, $001A, $001B, $001C, $001D, $001E, $001F, $0020, $0021, $0014, $0023, $0014, $0025, $0014, $0027, $0028, $007D, $007E, $007F, $0080, $0081, $0082, $0083, $0084, $0085, $0086, $0087, $0088, $0089, $008A
+SGPointer48:
+db $1F
+dw $0015, $0016, $0017, $0018, $0019, $001A, $001B, $001C, $001D, $0014, $001F, $0020, $0021, $0014, $0023, $0014, $0025, $0014, $0027, $0014, $008B, $008C, $008D, $008E, $008F, $0090, $0091, $0092, $0093, $0094, $0095
 SGEnd:

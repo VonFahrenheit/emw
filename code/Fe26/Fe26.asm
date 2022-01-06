@@ -1471,7 +1471,9 @@ endmacro
 		STZ !ExtraProp2,x
 		STZ !NewSpriteNum,x
 		JSL !LoadTweakers				; load vanilla tweakers
+		LDA $04 : PHA					; LoadPalset will eat this byte if lighting is enabled
 		JSL Init_Vanilla				; make sure palset is loaded even if sprite was spawned in a state other than 01
+		PLA : STA $04					; keep this baybeeeeee
 		PLP
 		PLY
 		RTL
