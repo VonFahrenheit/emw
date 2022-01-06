@@ -85,7 +85,7 @@ endmacro
 
 
 		..pushoutvalue
-		dw $FFF1,$0008,$FFF1,$0008	; right, left, down, up
+		dw $FFF1,$0007,$FFF1,$0007	; right, left, down, up
 
 
 

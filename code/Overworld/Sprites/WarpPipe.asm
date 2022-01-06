@@ -67,7 +67,7 @@
 		AND #$00FF
 		ASL A
 		TAY
-		LDA .Anim,y : JSR DrawSprite
+		LDA .Anim,y : JSR DrawSpriteMain
 		LDA !OW_sprite_Anim,x
 		AND #$00FF
 		CMP #$0003 : BNE .Return
@@ -76,13 +76,13 @@
 		DEC !OW_sprite_Y,x
 		LDA !OW_sprite_Timer,x
 		AND #$00FF : STA !OW_sprite_Z,x
-		LDA.w #.TM3_main : JSR DrawSprite
+		LDA.w #.TM3_main : JSR DrawSpriteMain
 		LDA !OW_sprite_Y,x : PHA
 		SEC : SBC #$0028
 		SEC : SBC !OW_sprite_Z,x
 		STA !OW_sprite_Y,x
 		LDA #$FFE0 : STA !OW_sprite_Z,x
-		LDA.w #.TM1 : JSR DrawSprite
+		LDA.w #.TM1 : JSR DrawSpriteMain
 		STZ !OW_sprite_Z,x
 		PLA
 		INC A

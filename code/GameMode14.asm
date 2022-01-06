@@ -452,7 +452,7 @@ Camera:
 		LDA.b #Cutscene>>8 : STA $3181
 		LDA.b #Cutscene>>16 : STA $3182
 		JSR $1E80
-		RTL
+		BRA .Shared
 		.NoCutscene
 
 
@@ -648,11 +648,11 @@ Camera:
 		REP #$20					;\
 		LDA !P2XPosLo-$80				; |
 		CLC : ADC !P2XPosLo				; |
-		LSR A						; | composite coords
+		ROR A						; | composite coords
 		STA $0C						; |
 		LDA !P2YPosLo-$80				; |
 		CLC : ADC !P2YPosLo				; |
-		LSR A						; |
+		ROR A						; |
 		STA $0E						;/
 		LDA !P2XPosLo-$80				;\
 		SEC : SBC !P2XPosLo				; |
@@ -1859,6 +1859,10 @@ macro endloadoverworld()
 		db $0D
 		endmacro
 
+macro endonmsgend()
+		db $0E
+		endmacro
+
 
 ; cutscene:
 ;	- NPC cam (camera controlled by NPC)
@@ -1913,7 +1917,12 @@ macro endloadoverworld()
 
 
 		.CutscenePtr
-		dw .ArriveAtCrashSite
+		dw .MeetKadaal			; 01
+		dw .ArriveAtCrashSite		; 02
+
+		.MeetKadaal
+		%cutscenewait(240)
+		%endonmsgend()
 
 		.ArriveAtCrashSite
 		%cutscenewait(60)
@@ -1922,7 +1931,7 @@ macro endloadoverworld()
 		%input6DA2($00)
 		%cutscenewait(16)
 		%cutscenetextbox(!MSG_CrashSite_1)
-		%endstay()
+		%endonmsgend()
 
 		.CutsceneCommand
 		dw .Wait
@@ -1939,6 +1948,7 @@ macro endloadoverworld()
 		dw .EndStay
 		dw .EndLoadLevel
 		dw .EndLoadOverworld
+		dw .EndOnMsgEnd
 
 	.Wait
 		INY
@@ -2027,6 +2037,13 @@ macro endloadoverworld()
 		STZ !CutsceneIndex
 		STZ !CutsceneWait
 		LDA #$0B : STA !GameMode
+		BRA .Clean
+	.EndOnMsgEnd
+		LDA !MsgTrigger
+		ORA !MsgTrigger+1
+		BEQ .EndStay
+		DEC !CutsceneIndex
+		RTS
 
 	.Clean
 		STZ !Cutscene6DA2			;\
@@ -2037,7 +2054,6 @@ macro endloadoverworld()
 		STZ !Cutscene6DA7			; |
 		STZ !Cutscene6DA8			; |
 		STZ !Cutscene6DA9			;/
-
 		RTS
 
 

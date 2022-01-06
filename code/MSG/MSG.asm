@@ -2635,6 +2635,8 @@ endmacro
 
 
 
+	!CompileText	= 0		;\ pass 0 (ID)
+	incsrc "TextData.asm"		;/
 cleartable
 table "MessageTable.txt"
 print "Text data:"

@@ -3892,6 +3892,14 @@ NMI:		PHP					;\
 		STA $212E				; |
 		LDA $44 : STA $2130			; |
 		LDA $40 : STA $2131			;/
+		STZ $4304				; bank 00
+		REP #$20				;\
+		LDA #$2202 : STA $4300			; |
+		LDA #$00A0 : STA $4302			; |
+		LDA #$000E : STA $4305			; | upload dynamic BG3 color
+		LDY #$01				; |
+		STY $2121				; |
+		STY $420B				;/
 		JMP .Lag				; skip most of NMI on lag frames
 		.NoLag
 

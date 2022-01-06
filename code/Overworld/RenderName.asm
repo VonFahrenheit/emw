@@ -46,6 +46,11 @@
 		PHP							;/
 		REP #$30						; all regs 16-bit
 
+		LDA !MapEvent						; don't draw to OAM during event
+		ORA !CutsceneSmoothness					; don't draw during cutscene
+		BEQ .DrawYoshiCoins
+		JMP .Main
+
 		.DrawYoshiCoins
 		LDA !CharMenu
 		AND #$00FF : BNE +
@@ -240,6 +245,11 @@
 		..drawtext
 		PHK : PLB
 		REP #$30
+
+		LDA !MapEvent						; don't draw to OAM during event
+		ORA !CutsceneSmoothness					; don't draw during cutscene
+		BNE ..return
+
 		LDA !OAMindex_p3 : TAX
 		LDA !MapLevelNameWidth
 		LSR A

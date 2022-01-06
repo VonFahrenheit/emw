@@ -296,6 +296,7 @@ print "Level code handler inserted at $", pc, "."
 
 
 		STZ !Cutscene				; kill cutscene
+		STZ !CutsceneSmoothness			; kill effect
 		STZ !Cutscene6DA2			;\
 		STZ !Cutscene6DA3			; |
 		STZ !Cutscene6DA4			; |
@@ -607,25 +608,25 @@ print "Level code handler inserted at $", pc, "."
 		.Mario					;/
 
 
-		LDX #$18				;\
-		LDA #$00				; | Make sure these regs are wiped
-	-	STA.l !VineDestroy,x			; |
-		DEX : BPL -				;/
+		LDX #$18					;\
+		LDA #$00					; | make sure these regs are wiped
+	-	STA.l !VineDestroy,x				; |
+		DEX : BPL -					;/
 
 
 
-		LDA !P1Dead				;\
-		BEQ +					; | keep mario dead between sub-levels
-		LDA #$09 : STA $71			; |
-		+					;/
-		LDA #$A1 : STA !MsgPal			; default portrait palettes are A-B
-		LDA #$18 : STA !TextPal			; default text palette (colors 0x19 and 0x1B)
-		LDA #$08 : STA !BorderPal		; default border palette = red
+		LDA !P1Dead					;\
+		BEQ +						; | keep mario dead between sub-levels
+		LDA #$09 : STA $71				; |
+		+						;/
+		LDA #$A1 : STA !MsgPal				; default portrait palettes are A-B
+		LDA #$18 : STA !TextPal				; default text palette (colors 0x19 and 0x1B)
+		LDA #$08 : STA !BorderPal			; default border palette = red
 		PHB
 		LDA $0002
 		PHA : PLB
-		PHK : PEA.w .Return-1			; set return address
-		JML [$0000]				; execute pointer
+		PHK : PEA.w .Return-1				; set return address
+		JML [$0000]					; execute pointer
 		.Return
 		PLB
 		SEP #$30
@@ -722,6 +723,11 @@ print "Level code handler inserted at $", pc, "."
 		PLA : STA !MarioDirection			;/
 
 		JSL !BuildOAM					; put tiles on-screen
+
+		LDA.b #HandleGraphics : STA $3180		;\
+		LDA.b #HandleGraphics>>8 : STA $3181		; | run this in case global light was set
+		LDA.b #HandleGraphics>>16 : STA $3182		; |
+		JSR $1E80					;/
 
 		REP #$20					;\
 		LDA !OAMindex_p0_prev : STA !OAMindex_p0	; |
@@ -2037,7 +2043,7 @@ dl level1FF
 LightValues:	;    R     G     B
 .Default	dw $0100,$0100,$0100	; 00
 .Dawn		dw $0100,$0100,$0100	; 01
-.Dusk		dw $0140,$00E0,$00C0	; 02
+.Sunset		dw $0120,$00E0,$00C0	; 02
 .Night		dw $0080,$00C0,$00E0	; 03
 .Lava		dw $0180,$0080,$0080	; 04
 .Water		dw $00C0,$00E0,$00F0	; 05
@@ -2634,8 +2640,6 @@ UpdatePalset:
 
 
 
-incsrc "level_data/TimeLimits.asm"
-incsrc "level_data/LevelLightPoints.asm"
 
 
 print "Unsorted code inserted at $", pc, "."
@@ -2648,6 +2652,8 @@ db $53,$54,$41,$52
 dw $FFF7
 dw $0008
 
+incsrc "level_data/TimeLimits.asm"
+incsrc "level_data/LevelLightPoints.asm"
 incsrc "level_data/CameraBox.asm"
 
 print "Realm 1 code inserted at $", pc, "."

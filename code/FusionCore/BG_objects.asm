@@ -172,6 +172,10 @@ incsrc "BG_objects/TrashCan.asm"
 ; $4B:	bottom border of zip box
 
 
+; input:
+;	$00 = pointer to tile table
+;	$0E = base ---CCC-- -------- bits
+
 	TileUpdate:
 
 		.Setup
@@ -211,7 +215,7 @@ incsrc "BG_objects/TrashCan.asm"
 		LDA !BG_object_Tile,x
 		AND #$00FF
 		ORA #$0300
-		STA $0E
+		TSB $0E
 		; HERE: GET LOCATION ON PAGE 3
 		; STORE TO $0E (tttttttt lo + ------TT hi)
 

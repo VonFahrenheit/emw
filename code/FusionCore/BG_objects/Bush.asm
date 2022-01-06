@@ -69,6 +69,7 @@
 		LDA.l .TilePointer,x : STA $00			; |
 		PLX						;/
 
+		STZ $0E						; palette included in tile table
 		JMP TileUpdate
 
 

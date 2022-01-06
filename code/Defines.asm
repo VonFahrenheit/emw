@@ -1429,14 +1429,11 @@ endmacro
 
 		!StoryFlags		= !SRAM_buffer+$91
 		; +00:
-		;	01 received portable warp pipe
-		;	02 ----
-		;	04 ----
-		;	08 ----
-		;	10 ----
-		;	20 ----
-		;	40 ----
-		;	80 intro level cleared
+		;	00 new file, load airship
+		;	01 new file, load crash overworld cutscene
+		;	02 new file, load unexplored hill
+		;	03 new file, load cannon overworld cutscene (portable warp pipe obtained)
+		;	80+ all intro stuff cleared (portable warp pipe obtained)
 		;
 		; +01:
 		;	01 shopkeeper (0 = alive, 1 = killed)
@@ -1510,8 +1507,9 @@ endmacro
 
 
 
-	;!IntroLevel		= $1F7
-	!IntroLevel		= $0C6
+	!IntroLevel_Airship		= $1F7
+	!IntroLevel_Airship		= $1F1
+	!IntroLevel_UnexploredHill	= $0C6
 
 
 
@@ -2612,7 +2610,7 @@ endmacro
 
 		!LevelTable1		= $7EA2		; BCH54321 (beaten, checkpoint flag, checkpoint level number hi bit, yoshi coins 1-5)
 		!LevelTable2		= $6A60		; cccccccc (checkpoint level number lo byte)
-		!LevelTable3		= $6120		; --ffffff (best time frames (0-59))
+		!LevelTable3		= $6120		; CUffffff (clear event finished, unlock event finished, best time frames (0-59))
 		!LevelTable4		= $7938		; U-ssssss (unlock (0 = locked, 1 = unlocked), best time seconds (0-59))
 		!LevelTable5		= $7F49		; --mmmmmm (best time minutes (0-63))
 

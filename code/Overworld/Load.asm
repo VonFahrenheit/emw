@@ -107,6 +107,14 @@
 		STZ !CharMenuCursor
 		STZ !SelectingPlayer
 		STZ !WarpPipe
+		STZ !MapHidePlayers
+
+		STZ !Cutscene
+		STZ !Cutscene+1
+		STZ !CutsceneSmoothness
+		STZ !CutsceneSmoothness+1
+
+
 		LDA #$FF : STA !PrevTranslevel
 		LDA #$14
 		STA !MapCheckpointX
@@ -129,23 +137,40 @@
 		STA !RAMcode_offset				; |
 		SEP #$20					;/
 
-		; check whether intro level should be loaded!
-		LDA !LevelTable1+$00 : BMI .LoadOverworld
-		.LoadIntroLevel
+
+	; 00 -> airship
+	; 01 -> airship crash overworld cutscene
+	; 02 -> unexplored hill
+	; 03 -> cannon overworld cutscene
+	; 80+ -> normal overworld
+
+		LDA !StoryFlags+$00
+		BMI .LoadOverworld
+		BEQ .LoadAirship
+		CMP #$01 : BEQ .LoadOverworld
+		CMP #$03 : BEQ .LoadOverworld
+
+		.LoadUnexploredHill
 		LDA #$F0 : STA $6DB0
 		LDA #$10 : STA !GameMode
-		LDA.b #!IntroLevel : STA $6109			; intro level (translevel num... but only kind of...)
-		LDA.b #!IntroLevel>>8 : STA $7F11		; set hi bit of intro level num
+		LDA.b #!IntroLevel_UnexploredHill : STA $6109	; intro level (translevel num... but only kind of...)
+		LDA.b #!IntroLevel_UnexploredHill>>8 : STA $7F11; set hi bit of intro level num
+		STZ !Translevel					;
+		LDA #$81 : STA $4200				; enable joypad but keep interrupts disabled
+		JML ReturnLoad					; return
+
+		.LoadAirship
+		LDA #$F0 : STA $6DB0
+		LDA #$10 : STA !GameMode
+		LDA.b #!IntroLevel_Airship : STA $6109		; intro level (translevel num... but only kind of...)
+		LDA.b #!IntroLevel_Airship>>8 : STA $7F11	; set hi bit of intro level num
 		STZ !Translevel					;
 		LDA #$81 : STA $4200				; enable joypad but keep interrupts disabled
 		JML ReturnLoad					; return
 
 
-
 	; $00A0B0 is the actual load overworld code in all.log
 		.LoadOverworld
-		LDA !StoryFlags					;\ intro cleared
-		ORA #$80 : STA !StoryFlags			;/
 	;	JSL !KillOAM
 		STZ $2133
 		STZ $2106
@@ -244,6 +269,7 @@
 		LDA #$1801 : STA $4310				; word writes to 2118-2119
 
 
+		; generate tilemap for BG2 HUD
 		REP #$10
 		LDX #$0000
 		LDA #$3E00
@@ -273,7 +299,6 @@
 		SBC #$006E
 		INX #2
 		CPX #$0020 : BCC -
-
 
 		SEP #$10
 		LDA #$1801 : STA $4310
@@ -398,47 +423,6 @@
 
 
 
-	.InitPlayers
-		LDA !SRAM_overworldX : STA !P1MapX
-		DEC #4
-		STA !P2MapX
-		SEC : SBC #$0078-4
-		STA $1A
-		STA !zipprev1A
-		LDA !SRAM_overworldY : STA !P1MapY
-		DEC #4
-		STA !P2MapY
-		SEC : SBC #$0078-4
-		STA $1C
-		STA !zipprev1C
-		STZ !P1MapXSpeed
-		STZ !P1MapAnim
-		STZ !P2MapXSpeed
-		STZ !P2MapAnim
-
-		LDA #$00FF
-		STA !P1MapPrevAnim
-		STA !P2MapPrevAnim
-
-		LDA !Characters
-		LSR #4
-		AND #$000F : STA !P1MapChar
-		LDA !Characters
-		AND #$000F : STA !P2MapChar
-
-		LDA $1A
-		BPL $03 : LDA #$0000
-		CMP #$0500
-		BCC $03 : LDA #$0500
-		STA $1A
-		LDA $1C
-		BPL $03 : LDA #$0000
-		CMP #$031F
-		BCC $03 : LDA #$031F
-		STA $1C
-
-		PHP
-
 	.InitSprites
 		REP #$30
 		LDX #$0000
@@ -453,17 +437,127 @@
 		TXA
 		CLC : ADC.w #!OW_sprite_Size
 		TAX
-		CPX.w #(!OW_sprite_Size)*16 : BCC ..loop
+		CPX.w #(!OW_sprite_Size)*!OW_sprite_Count : BCC ..loop
 
-		LDA #$0002 : STA !OW_sprite_Num
-		LDA #$0110 : STA !OW_sprite_X
-		LDA #$0330 : STA !OW_sprite_Y
+
+	; TEMPORARY: GHOST ZONES
+		; bridge to beach
+		LDA #$0002 : STA !OW_sprite_Num+((!OW_sprite_Size)*0)
+		LDA #$0124 : STA !OW_sprite_X+((!OW_sprite_Size)*0)
+		LDA #$0330 : STA !OW_sprite_Y+((!OW_sprite_Size)*0)
+		LDA #$0110 : STA !OW_sprite_Anim+((!OW_sprite_Size)*0)
+		LDA #$0C0F : STA !OW_sprite_XSpeed+((!OW_sprite_Size)*0)
+
 		LDA #$0002 : STA !OW_sprite_Num+((!OW_sprite_Size)*1)
-		LDA #$0150 : STA !OW_sprite_X+((!OW_sprite_Size)*1)
-		LDA #$02D8 : STA !OW_sprite_Y+((!OW_sprite_Size)*1)
+		LDA #$0114 : STA !OW_sprite_X+((!OW_sprite_Size)*1)
+		LDA #$0328 : STA !OW_sprite_Y+((!OW_sprite_Size)*1)
+		LDA #$0810 : STA !OW_sprite_Anim+((!OW_sprite_Size)*1)
+		LDA #$0C03 : STA !OW_sprite_XSpeed+((!OW_sprite_Size)*1)
+
+		; bridge to gorge
 		LDA #$0002 : STA !OW_sprite_Num+((!OW_sprite_Size)*2)
-		LDA #$0150 : STA !OW_sprite_X+((!OW_sprite_Size)*2)
-		LDA #$02A0 : STA !OW_sprite_Y+((!OW_sprite_Size)*2)
+		LDA #$0160 : STA !OW_sprite_X+((!OW_sprite_Size)*2)
+		LDA #$02E0 : STA !OW_sprite_Y+((!OW_sprite_Size)*2)
+		LDA #$0801 : STA !OW_sprite_Anim+((!OW_sprite_Size)*2)
+		LDA #$010F : STA !OW_sprite_XSpeed+((!OW_sprite_Size)*2)
+
+		; stairs to castle
+		LDA #$0002 : STA !OW_sprite_Num+((!OW_sprite_Size)*3)
+		LDA #$0150 : STA !OW_sprite_X+((!OW_sprite_Size)*3)
+		LDA #$02A0 : STA !OW_sprite_Y+((!OW_sprite_Size)*3)
+		LDA #$1010 : STA !OW_sprite_Anim+((!OW_sprite_Size)*3)
+		LDA #$050C : STA !OW_sprite_XSpeed+((!OW_sprite_Size)*3)
+
+	; CUTSCENE 1: AIRSHIP CRASHES
+		.CrashingAirshipCutscene
+		LDA !StoryFlags+$00
+		AND #$00FF
+		CMP #$0001 : BNE ..done
+		SEP #$20
+		LDA #$05 : STA !OW_sprite_Num+((!OW_sprite_Size)*4)
+		REP #$30
+		LDA #$001F : STA !CutsceneSmoothness
+		PEA.w ..done-1
+		LDX.w #(!OW_sprite_Size)*4 : PHX
+		JMP CrashingAirship
+		..done
+
+
+	.InitPlayers
+		REP #$30
+		LDA !SRAM_overworldX : STA !P1MapX
+		DEC #4
+		STA !P2MapX
+		LDA !SRAM_overworldY : STA !P1MapY
+		DEC #4
+		STA !P2MapY
+
+		STZ !P1MapXSpeed
+		STZ !P1MapAnim
+		STZ !P2MapXSpeed
+		STZ !P2MapAnim
+
+		SEP #$20
+		STZ !P1MapForceFlip
+		STZ !P2MapForceFlip
+		REP #$20
+
+		LDA #$00FF
+		STA !P1MapPrevAnim
+		STA !P2MapPrevAnim
+
+		LDA !Characters
+		LSR #4
+		AND #$000F : STA !P1MapChar
+		LDA !Characters
+		AND #$000F : STA !P2MapChar
+
+
+	; CUTSCENE 2: CANNON BLAST
+	; this has to be done after player init
+	; otherwise the player could get soft-locked by resetting the game during the cutscene...
+		.CannonCutscene
+		LDA !StoryFlags+$00
+		AND #$00FF
+		CMP #$0003 : BNE ..done
+		SEP #$20
+		LDA #$80 : STA !StoryFlags+$00
+		LDA #$06 : STA !OW_sprite_Num+((!OW_sprite_Size)*4)
+		LDA #$40 : STA !P1MapZSpeed
+		LDA #$01 : STA !MapHidePlayers
+		REP #$30
+		LDA #$00E0 : STA !SRAM_overworldX
+		LDA #$0308 : STA !SRAM_overworldY
+		LDA #$001F : STA !CutsceneSmoothness
+		LDA #$00B8
+		STA !OW_sprite_X+((!OW_sprite_Size)*4)
+		STA !P1MapX
+		LDA #$0370
+		STA !OW_sprite_Y+((!OW_sprite_Size)*4)
+		STA !P1MapY
+		LDA #$0040 : STA !OW_sprite_AnimTimer+((!OW_sprite_Size)*4)
+		LDA #$0002 : STA !Cutscene			; overworld cutscene 2
+		..done
+
+
+
+	.InitCamera
+		LDA !P1MapX
+		SEC : SBC #$0078
+		BPL $03 : LDA #$0000
+		CMP #$0500
+		BCC $03 : LDA #$0500
+		STA $1A
+		STA !zipprev1A
+		LDA !P1MapY
+		SEC : SBC #$0078
+		BPL $03 : LDA #$0000
+		CMP #$031F
+		BCC $03 : LDA #$031F
+		STA $1C
+		STA !zipprev1C
+
+
 
 
 
@@ -486,14 +580,14 @@
 		PHB : PHK : PLB
 		LDX #$005F
 		..eventloop
-		LDA !LevelTable4-1,x : BPL +
-		LDA EventTable_UnlockEvents,x
-		AND #$00FF : BEQ +
-		JSR .LoadEvent
-	+	LDA !LevelTable1-1,x : BPL ..nextlevel
-		LDA EventTable_ClearEvents,x
-		AND #$00FF : BEQ ..nextlevel
-		JSR .LoadEvent
+		BIT !LevelTable3-1,x : BVC +			;\
+		LDA EventTable_UnlockEvents,x			; | load unlock event
+		AND #$00FF : BEQ +				; |
+		JSR LoadEvent					;/
+	+	LDA !LevelTable3-1,x : BPL ..nextlevel		;\
+		LDA EventTable_ClearEvents,x			; | load clear event
+		AND #$00FF : BEQ ..nextlevel			; |
+		JSR LoadEvent					;/
 		..nextlevel
 		DEX : BPL ..eventloop
 		PLB
@@ -540,15 +634,72 @@
 		..done
 
 
-		PLP
+
+; event sprites:
+;	- spawn for levels that are cleared but do NOT have 0x80 bit marked in table 3
+;	- spawn for levels that are unlocked but do NOT have 0x40 bit marked in table 3
+;	- IGNORE all other cases!
+
+	.EventSprites
+		REP #$30
+		PHB : PHK : PLB
+
+		LDX #$005F
+
+		..unlockevents
+		BIT !LevelTable4-1,x : BPL ..clearevents	;\ check for newly unlocked level
+		BIT !LevelTable3-1,x : BVS ..clearevents	;/
+		LDA !LevelTable3,x				;\ mark event as run
+		ORA #$0040 : STA !LevelTable3,x			;/
+		LDA EventTable_UnlockEvents,x			;\ see if level has an unlock event
+		AND #$00FF : BEQ ..clearevents			;/
+		JSR GetEventCoords				;\
+		PHX						; |
+		JSR GetSpriteIndex				; |
+		JSR ResetSprite					; |
+		LDA #$0003 : STA !OW_sprite_Num,x		; |
+		LDA $00 : STA !OW_sprite_X,x			; | spawn reveal flash for unlock event
+		LDA $02 : STA !OW_sprite_Y,x			; |
+		PLY						; |
+		LDA #$00E0 : STA !OW_sprite_AnimTimer,x		; > wait 1 second before showing
+		LDA EventTable_UnlockEvents,y			; |
+		AND #$00FF : STA !OW_sprite_Timer,x		; |
+		TYX						;/
+
+		..clearevents
+		BIT !LevelTable1-1,x : BPL ..nextlevel		;\ check for newly unlocked level
+		LDA !LevelTable3-1,x : BMI ..nextlevel		;/
+		ORA #$8000 : STA !LevelTable3-1,x		; mark event as run
+		LDA EventTable_ClearEvents,x			;\ see if level has an unlock event
+		AND #$00FF : BEQ ..nextlevel			;/
+		JSR GetEventCoords				;\
+		PHX						; |
+		JSR GetSpriteIndex				; |
+		JSR ResetSprite					; |
+		LDA #$0003 : STA !OW_sprite_Num,x		; |
+		LDA $00 : STA !OW_sprite_X,x			; | spawn reveal flash for unlock event
+		LDA $02 : STA !OW_sprite_Y,x			; |
+		PLY						; |
+		LDA #$00E0 : STA !OW_sprite_AnimTimer,x		; > wait 1 second before showing
+		LDA EventTable_ClearEvents,y			; |
+		AND #$00FF : STA !OW_sprite_Timer,x		; |
+		TYX						;/
+
+		..nextlevel
+		DEX : BMI $03 : JMP ..unlockevents
+		PLB
+
+
+
 
 
 	.InitMusic
-		LDY #$33 : STY !SPC3					; overworld music
+		SEP #$30
+		LDA #$33 : STA !SPC3					; overworld music
 
 
 	.InitPalette
-		REP #$10						;\
+		REP #$30						;\
 		LDX #$01FE						; |
 	-	LDA.l Palette,x						; |
 		STA !PaletteRGB,x					; | copy palette to RAM
@@ -657,57 +808,58 @@
 
 
 	.InitWindow
-		PHK : PLB
-		SEP #$30
+		; PHK : PLB
 
+		SEP #$30
 		LDA #$3F : TRB $40		;\ no color math
 		STZ $44				;/
 		LDA #$22 : STA $41		;\ hide BG1/BG2 inside window, show BG3 ONLY inside window
 		LDA #$03 : STA $42		;/
 		STZ $43				; > enable sprites within window
-		STZ $4324			; bank 0x00 for both channels
-		REP #$20
-		LDA #$2601 : STA $4320		; > regs 2126 and 2127
-		LDA #$0200 : STA !HDMA2source	; > table at $0200
 
-		LDA #$00FF			;\
-		STA $0201			; |
-		STA $0204			; | Default window table (no window)
-		STA $0207			; |
-		STA $020A			;/
+		; STZ $4324			; bank 0x00 for both channels
+		; REP #$20
+		; LDA #$2601 : STA $4320		; > regs 2126 and 2127
+		; LDA #$0200 : STA !HDMA2source	; > table at $0200
 
-		SEP #$20
-		LDA #$04 : TSB !HDMA		; Enable HDMA
+		; LDA #$00FF			;\
+		; STA $0201			; |
+		; STA $0204			; | default window table (no window)
+		; STA $0207			; |
+		; STA $020A			;/
 
-		LDA #$07 : STA $0200		;\
-		LDA #$40			; |
-		STA $0203			; | Base windowing table
-		STA $0206			; |
-		LDA #$01 : STA $0209		; |
-		STZ $020C			;/
+		; SEP #$20
+		; LDA #$04 : TSB !HDMA		; Enable HDMA
 
-		LDA !CharMenu : BEQ ..R		;\
-		LDA #$07 : STA $0200		; |
-		LDA #$70			; |
-		STA $0203			; |
-		LDA #$01 : STA $0206		; |
-		STZ $0209			; | Char menu windowing table
-		STZ $0202			; |
-		STZ $0204			; |
-		STZ $0208			; |
-		LDA #$FF			; |
-		STA $0201			; |
-		STA $0207			; |
-		LDA !CharMenuSize		; |
-		STA $0205			; |
-		LDA #$22			; |
-		STA $41				; |
-		STA $42				; |
-		STZ $43				; |
-		LDA !CharMenu			; |
-		LSR A : BCC ..R			; > Disable sprite window when char menu is fully open
-		LDA #$02 : STA $43		; |
-		..R				;/
+		; LDA #$07 : STA $0200		;\
+		; LDA #$40			; |
+		; STA $0203			; | base mainscreen table
+		; STA $0206			; |
+		; LDA #$01 : STA $0209		; |
+		; STZ $020C			;/
+
+		; LDA !CharMenu : BEQ ..R		;\
+		; LDA #$07 : STA $0200		; |
+		; LDA #$70			; |
+		; STA $0203			; |
+		; LDA #$01 : STA $0206		; |
+		; STZ $0209			; | char menu mainscreen table
+		; STZ $0202			; |
+		; STZ $0204			; |
+		; STZ $0208			; |
+		; LDA #$FF			; |
+		; STA $0201			; |
+		; STA $0207			; |
+		; LDA !CharMenuSize		; |
+		; STA $0205			; |
+		; LDA #$22			; |
+		; STA $41				; |
+		; STA $42				; |
+		; STZ $43				; |
+		; LDA !CharMenu			; |
+		; LSR A : BCC ..R			; > Disable sprite window when char menu is fully open
+		; LDA #$02 : STA $43		; |
+		; ..R				;/
 
 
 	.InitRender
@@ -806,10 +958,15 @@
 
 
 
-	.LoadEvent
-		ASL A
-		TAY
-		LDA EventTable_Ptr-2,y : STA $0E
+; input:
+;	A = event number
+; output:
+;	$0E = event data pointer
+
+	LoadEvent:
+		ASL A					;\
+		TAY					; | pointer to event data
+		LDA EventTable_Ptr-2,y : STA $0E	;/
 		LDA ($0E) : STA $08			; tile
 		LDY #$0002				;\ w
 		LDA ($0E),y : STA $04			;/
@@ -821,25 +978,53 @@
 		LDA DecompressionMap+2,y : STA $01	;/
 		LDY #$0008				;\ Y = $0C = index to tilemap
 		LDA ($0E),y : STA $0C			;/
-		..loopy
+		.LoopY					;
 		LDY $0C					; Y = index
 		LDA $04 : STA $0A			; backup w
-		LDA $08
-		..loopx
-		STA [$00],y
-		INC A
-		INY #2
-		DEC $0A : BNE ..loopx
-		DEC $06 : BEQ ..return
-		SEC : SBC $04
-		CLC : ADC #$0010
-		STA $08
-		LDA $0C
-		CLC : ADC #$0040
-		STA $0C
-		BRA ..loopy
-		..return
-		RTS
+		LDA $08					;\
+		.LoopX					; |
+		STA [$00],y				; |
+		INC A					; |
+		INY #2					; |
+		DEC $0A : BNE .LoopX			; |
+		DEC $06 : BEQ .Return			; | draw event rectangle to map
+		SEC : SBC $04				; |
+		CLC : ADC #$0010			; |
+		STA $08					; |
+		LDA $0C					; |
+		CLC : ADC #$0040			; |
+		STA $0C					; |
+		BRA .LoopY				;/
+		.Return					;
+		RTS					; return
+
+
+; input:
+;	A = event number
+; output:
+;	$00 = xpos (global coordinate)
+;	$02 = ypos (global coordinate)
+
+	GetEventCoords:
+		ASL A					;\
+		TAY					; | pointer to event data
+		LDA EventTable_Ptr-2,y : STA $0E	;/
+		LDY #$0008				;\ Y = $0C = index to tilemap
+		LDA ($0E),y : STA $0C			;/
+		LDY #$0006				;\ Y = index to map chunk base coords
+		LDA ($0E),y : TAY			;/
+		LDA $0C					;\
+		AND #$001F*2				; |
+		ASL #2					; | output X coord
+		ADC MapCoords+0,y			; |
+		STA $00					;/
+		LDA $0C					;\
+		AND #$001F*$40				; |
+		LSR #3					; | output Y coord
+		ADC MapCoords+2,y			; |
+		STA $02					;/
+		RTS					; return
+
 
 
 	Palette:

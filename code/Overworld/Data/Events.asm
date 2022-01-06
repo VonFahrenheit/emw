@@ -256,7 +256,7 @@ endmacro
 .CastleOpen	%event($150, $2A8, 2, 2, $13A)
 .CastleClosed	%event($150, $268, 2, 1, $12B)
 .RidgeOpen	%event($0B0, $2C0, 2, 2, $138)
-.TempleOpen	%event($0E8, $290, 2, 2, $138)
+.TempleOpen	%event($0E8, $290, 2, 3, $138)
 
 
 

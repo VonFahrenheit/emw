@@ -2078,6 +2078,7 @@ ReadLevelData:
 		CPY.w #$0300*2 : BEQ ..bush
 		CPY.w #$0310*2 : BEQ ..window
 		CPY.w #$0330*2 : BEQ ..cannon
+		CPY.w #$0332*2 : BEQ ..cannon
 		CPY.w #$0350*2 : BEQ ..cable
 		CPY.w #$0360*2 : BEQ ..poleleft
 		CPY.w #$0362*2 : BEQ ..poleright

@@ -39,10 +39,10 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 
 
 	macro MapDef(name, size)
+	print "<name>: $", hex(!LevelSelectBase+!Temp)
+
 		!<name>	:= !LevelSelectBase+!Temp
 		!Temp	:= !Temp+<size>
-
-
 	endmacro
 
 
@@ -69,13 +69,21 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 	%MapDef(CircleRadius,		2)
 	%MapDef(CircleCenterX,		2)
 	%MapDef(CircleCenterY,		2)
+	%MapDef(CircleForceCenter,	2)
 	%MapDef(ButtonTimer,		2)
 	%MapDef(MapCheckpointX,		1)
 	%MapDef(MapCheckpointTargetX,	1)
 	%MapDef(CircleTimer,		1)
 	%MapDef(PrevTranslevel,		2)
+	%MapDef(MapLockCamera,		1)	;\ these 2 are used together
+	%MapDef(MapCameraTimer,		1)	;/
+	%MapDef(MapEvent,		2)	; when set, players can't move. gets cleared when camera reaches its resting position
+	%MapDef(MapCameraSpeedX,	2)
+	%MapDef(MapCameraSpeedY,	2)
 	%MapDef(MapUpdateHUD,		4)
 	%MapDef(MapLevelNameWidth,	2)
+
+	%MapDef(MapHidePlayers,		1)
 
 	%MapDef(P1MapXFraction,		1)
 	%MapDef(P1MapX,			2)
@@ -90,7 +98,8 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 	%MapDef(P1MapPrevAnim,		1)
 	%MapDef(P1MapDirection,		1)
 	%MapDef(P1MapChar,		1)
-	%MapDef(P1Ghost,		1)
+	%MapDef(P1MapGhost,		1)
+	%MapDef(P1MapForceFlip,		1)
 
 	%MapDef(P2MapXFraction,		1)
 	%MapDef(P2MapX,			2)
@@ -105,7 +114,8 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 	%MapDef(P2MapPrevAnim,		1)
 	%MapDef(P2MapDirection,		1)
 	%MapDef(P2MapChar,		1)
-	%MapDef(P2Ghost,		1)
+	%MapDef(P2MapGhost,		1)
+	%MapDef(P2MapForceFlip,		1)
 
 	%MapDef(MapLight,		$60)
 	!MapLight_X	= !MapLight+0
@@ -135,8 +145,9 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 	%MapDef(OW_sprite_YSpeed,	1)
 	%MapDef(OW_sprite_ZSpeed,	1)
 	%MapDef(OW_sprite_Direction,	1)
+	%MapDef(OW_sprite_Tilemap,	2)
 	!OW_sprite_Size	:= !Temp-(!OW_sprite_Size)
-
+	!OW_sprite_Count = 16
 
 
 
@@ -330,6 +341,10 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 
 ; insert new code here
 	pullpc
+	incsrc "Data/LevelList.asm"
+	incsrc "Data/MapLightPoints.asm"
+	incsrc "Data/Events.asm"
+
 	incsrc "Zip.asm"
 	incsrc "RenderHUD.asm"
 	incsrc "RenderName.asm"
@@ -339,13 +354,10 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 	incsrc "CharMenu.asm"
 	incsrc "OverworldSprites.asm"
 	incsrc "Lighting.asm"
-	incsrc "OAM_sort.asm"
+	incsrc "Sort_OAM.asm"
 
 
 
-	incsrc "Data/LevelList.asm"
-	incsrc "Data/MapLightPoints.asm"
-	incsrc "Data/Events.asm"
 
 
 	SetCarriedItem:
@@ -509,15 +521,16 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		BNE $03 : LDX.w #HDMA_Window1			; |
 		STX !HDMA6source				;/
 
-; $0200 -> adjust scanline
-; $0210 -> adjust scanline
-; $0220 -> expand
+; $0200 -> adjust scanline (MainScreen + SubScreen)
+; $0210 -> adjust scanline (BG2 Tilemap address)
+; $0220 -> expand (BG2 coordinates)
 
 		LDA !CircleTimer
 		AND #$0001
 		BEQ $03 : LDA #$0080
 		TAX
 		SEP #$20
+
 		LDA !CharMenuTimer : STA $00
 		LDA !CharMenu : BEQ ..20
 		CMP #$01 : BEQ ..dynamic
@@ -792,48 +805,88 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		STA $00							;/
 		LDA $0A : JSR DrawCoinDigit				; 1s
 
+
+	.Objects
 		LDA !CharMenu
-		AND #$00FF : BNE +
-		JSR Player
-		PHP
-		SEP #$20
-		STZ !P1Ghost
-		STZ !P2Ghost
-		PLP
-		JSR OverworldSprites
-		JSR OAM_sort
+		AND #$00FF : BNE ..done
+
+		..cameraspeed
+		LDA !MapEvent : BEQ ..speed4
+		..speed2
+		LDA #$0002
+		STA !MapCameraSpeedX
+		STA !MapCameraSpeedY
+		BRA +
+		..speed4
+		LDA #$0004
+		STA !MapCameraSpeedX
+		STA !MapCameraSpeedY
 		+
 
+		LDA !WarpPipe						;\
+		AND #$00FF : BEQ ..nowarppipe				; |
+		JSR Player						; | players are processed first when a warp pipe is on-screen
+		JSR OverworldSprites					; |
+		BRA ..drawstuff						;/
 
-	.CircleTest
-	LDA !P1MapX
-	CLC : ADC #$0008
-	SEC : SBC $1A
-	BPL $03 : LDA #$0000
-	CMP #$00FF
-	BCC $03 : LDA #$00FF
-	STA !CircleCenterX
-	LDA !P1MapY
-	CLC : ADC #$0008
-	SEC : SBC $1C
-	BPL $03 : LDA #$0000
-	CMP #$00FF
-	BCC $03 : LDA #$00FF
-	STA !CircleCenterY
-	LDA !CircleRadius
-	BPL $03 : LDA #$0000
-	CMP #$0030
-	BCC $03 : LDA #$0030
-	STA !CircleRadius
-	PHA
-	STZ $2250
-	STA $2251
-	CLC
-	JSL !GetRoot : STA $2253
-	NOP : BRA $00
-	LDA $2307 : STA !CircleRadius
-	JSR RenderCircle
-	PLA : STA !CircleRadius
+		..nowarppipe						;\
+		JSR OverworldSprites					; | otherwise, sprites first to let them control the camera during events
+		JSR Player						;/
+
+		..drawstuff
+		PHP
+		SEP #$20
+		STZ !P1MapGhost
+		STZ !P2MapGhost
+		STZ !MapLockCamera		; KEEP THIS ONE WHEN YOU REMOVE GHOST ZONES
+		PLP
+		JSR DrawSprites			; separate call to let sprites control the camera
+		JSR Sort_OAM
+		..done
+
+
+	.Circle
+		LDA !CircleForceCenter
+		STZ !CircleForceCenter
+		BEQ ..calccenter
+		LDA #$0080
+		STA !CircleCenterX
+		STA !CircleCenterY
+		BRA ..process
+
+		..calccenter
+		LDA !P1MapX
+		CLC : ADC #$0008
+		SEC : SBC $1A
+		BPL $03 : LDA #$0000
+		CMP #$00FF
+		BCC $03 : LDA #$00FF
+		STA !CircleCenterX
+		LDA !P1MapY
+		CLC : ADC #$0008
+		SEC : SBC $1C
+		BPL $03 : LDA #$0000
+		CMP #$00FF
+		BCC $03 : LDA #$00FF
+		STA !CircleCenterY
+
+		..process
+		LDA !CircleRadius
+		BPL $03 : LDA #$0000
+		CMP #$0030
+		BCC $03 : LDA #$0030
+		STA !CircleRadius
+		PHA
+		STZ $2250
+		STA $2251
+		CLC
+		JSL !GetRoot : STA $2253
+		NOP : BRA $00
+		LDA $2307 : STA !CircleRadius
+		JSR RenderCircle
+		JSR RenderCircle_Cutscene
+		PLA : STA !CircleRadius
+		..done
 
 
 		SEP #$10				;\ regs: A 16-bit, index 8-bit
@@ -914,7 +967,6 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		LDA #$03 : STA !SPC4
 		REP #$10
 		JSR GetSpriteIndex
-		BCC $03 : LDX #$0000
 		JSR ResetSprite
 		LDA #$01 : STA !OW_sprite_Num,x
 		SEP #$10
@@ -1206,6 +1258,81 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		RTS
 
 
+; input:
+;	$00 = target X
+;	$02 = target Y
+; output:
+;	BEQ -> camera at target, BNE -> camera not at target
+
+	UpdateCamera:
+		LDA $00
+		BPL $02 : STZ $00
+		LDA $02
+		BPL $02 : STZ $02
+		LDA !MapCameraSpeedX
+		ASL A : STA $04
+		LDA !MapCameraSpeedY
+		ASL A : STA $06
+
+		.MoveX
+		LDA $1A
+		SEC : SBC $00
+		CLC : ADC !MapCameraSpeedX
+		CMP $04 : BCC ..snapX
+		LDA $1A
+		CMP $00 : BCS ..decX
+		..incX
+		CLC : ADC !MapCameraSpeedX
+		BRA ..storeX
+		..decX
+		SEC : SBC !MapCameraSpeedX
+		BRA ..storeX
+		..snapX
+		LDA $00
+		..storeX
+		STA $1A
+
+		.MoveY
+		LDA $1C
+		SEC : SBC $02
+		CLC : ADC !MapCameraSpeedY
+		CMP $06 : BCC ..snapY
+		LDA $1C
+		CMP $02 : BCS ..decY
+		..incY
+		CLC : ADC !MapCameraSpeedY
+		BRA ..storeY
+		..decY
+		SEC : SBC !MapCameraSpeedY
+		BRA ..storeY
+		..snapY
+		LDA $02
+		..storeY
+		STA $1C
+
+		.CapCameraX
+		LDA $1A : BPL ..pos
+		LDA #$0000 : STA $1A
+	..pos	CMP #$0500 : BCC ..done
+		LDA #$0500 : STA $1A
+		..done
+
+		.CapCameraY
+		LDA $1C : BPL ..pos
+		LDA #$0000 : STA $1C
+	..pos	CMP #$031F : BCC ..done
+		LDA #$031F : STA $1C
+		..done
+
+		LDA $1A
+		SEC : SBC $00
+		BNE .Return
+		LDA $1C
+		SEC : SBC $02
+
+		.Return
+		RTS
+
 
 
 macro CharDyn(file, tiles, source, dest)
@@ -1229,27 +1356,6 @@ endmacro
 
 
 	HDMA:
-	; direct -> 2108
-	.Tilemap
-		db $40 : db $50
-		db $01 : db $48
-		db $00
-
-	; indirect -> 210F, B = K
-	.Coords
-		db $40 : dw ..hud
-		db $01 : dw $301E
-		db $00
-
-		..hud
-		dw $0000,$FFFF
-
-	; direct -> 212C
-	.MainScreen
-		db $40 : db $12,$00,$12,$00
-		db $01 : db $13,$00,$13,$00
-		db $00
-
 
 	; indirect -> $2126 + $2127, B = K
 	.Window1

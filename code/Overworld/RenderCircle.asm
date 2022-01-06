@@ -157,6 +157,43 @@
 
 
 
+		.Cutscene
+		LDA !Cutscene
+		AND #$00FF : BEQ ..dec
+
+		..inc
+		LDA !CutsceneSmoothness
+		CMP #$001F : BEQ ..render
+		INC !CutsceneSmoothness
+		BRA ..render
+
+		..dec
+		LDA !CutsceneSmoothness : BEQ ..return
+		DEC !CutsceneSmoothness
+
+		..render
+		ASL A
+		STA $00
+		LDA !CircleTimer
+		AND #$0001
+		BEQ $03 : LDA #$0200
+		CLC : ADC #$3200
+		STA $0C
+		CLC : ADC #$00DF*2
+		SEC : SBC $00
+		STA $0E
+		LDY $00
+		LDA #$00FF
+	-	STA ($0C),y
+		STA ($0E),y
+		DEY #2 : BPL -
+
+		..return
+		RTS
+
+
+
+
 
 
 

@@ -33,7 +33,7 @@
 	.B06	db !64x64
 	.B07	db !64x32
 	.B08	db !64x64
-	.B09	db !64x64
+	.B09	db !64x32
 	.B0A	db !64x32
 	.B0B	db !64x64
 	.B0C	db !64x32

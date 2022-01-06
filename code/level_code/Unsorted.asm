@@ -1652,6 +1652,35 @@ levelinit0:
 		SEP #$20
 
 
+		.Cannon
+		LDA !StoryFlags+$00
+		CMP #$03 : BCS ..done
+		LDX #$01
+		..loop
+		LDA #$25
+		STA $40C800+$1B0+$6A,x
+		STA $40C800+$1B0+$7A,x
+		LDA #$00
+		STA $41C800+$1B0+$6A,x
+		STA $41C800+$1B0+$7A,x
+		DEX : BPL ..loop
+		..done
+
+		.Pipe
+		LDA !StoryFlags+$00 : BMI ..done
+		LDX #$01
+		..loop
+		LDA #$25
+		STA $40C800+$A7,x
+		STA $40C800+$B7,x
+		LDA #$00
+		STA $41C800+$A7,x
+		STA $41C800+$B7,x
+		DEX : BPL ..loop
+		..done
+
+
+
 		.Cutscene
 		LDA $1B : BNE ..done
 		LDA !StoryFlags+0 : BMI ..done
@@ -1665,10 +1694,8 @@ levelinit0:
 		LDA #$0E : JSL SpawnSprite_Custom
 		LDA #$02 : STA !ExtraProp1,x
 		LDA #$14 : STA !SpriteXSpeed,x
-		LDA #$01 : STA !Cutscene
+		LDA #$02 : STA !Cutscene
 		STZ !CutsceneIndex
-
-
 		..done
 
 		.UnlockLuigi				;\
@@ -2049,9 +2076,12 @@ levelinitC5:
 
 
 levelinitC6:
+		INC $14 : JSL levelC6_HDMA
+		DEC $14 : JSL levelC6_HDMA
+
 		LDA.b #999>>8 : STA !TimerSeconds+1
 
-	LDA #$80 : STA !SPC3
+		LDA #$80 : STA !SPC3
 
 		LDA #$06 : STA !PalsetStart
 
@@ -2811,7 +2841,7 @@ levelinit1F9:
 
 levelinit1FA:
 		LDA !StoryFlags+$00
-		AND #$81 : BEQ .IntroLevel
+		CMP #$03 : BCC .IntroLevel
 		.Main
 		REP #$20
 		LDA.w #!MSG_Survivor_Talk_1 : STA !NPC_Talk+(6*2)
@@ -2856,13 +2886,26 @@ level0:
 	endif
 
 
-		LDA !StoryFlags+$00		;\ can leave once portable warp pipe is obtained
-		AND #$01 : STA !SideExit	;/
 
-		LDA !Cutscene : BNE +		;\
-		LDA !LuigiStatus		; |
-		CMP #$01 : BNE +		; | luigi status: 01 -> 02
-		LDA #$02 : STA !LuigiStatus	; |
+		LDA !P2SlantPipe-$80 : BEQ +	;\
+		LDA #$03 : STA !StoryFlags+$00	; | set cannon overworld cutscene when leaving with cannon
+		REP #$20			; |
+		LDA #$0000 : JSL END_Up		;/
+		+
+
+		LDA #$20
+		TRB !P2Pipe-$80
+		TRB !P2Pipe
+		LDA !P2Pipe-$80
+		ORA !P2Pipe-$80
+		CMP #$C0 : BCC +
+		REP #$20
+		LDA #$00B0 : JSL END_Down
+		+
+
+
+		LDA !MsgMode : BEQ +		;\
+		LDA #$02 : STA !LuigiStatus	; | luigi status -> 2
 		+				;/
 
 
@@ -3832,8 +3875,14 @@ levelC5:
 ;		4 - senku
 ;		5 - senku jump
 ;
+; $0A20		BG3 Y offset
+; $0A22		color counter for kadaal's animation
 
 levelC6:
+		LDA $95 : BNE +
+		STZ !P2Entrance-$80
+		STZ !P2Entrance
+		+
 
 		LDA $1B
 		CMP #$0D : BNE +
@@ -3845,37 +3894,57 @@ levelC6:
 		LDA !SpriteXHi,x
 		CMP #$0E : BNE +
 		LDA !SpriteXLo,x
-		CMP #$A0 : BCC +
+		CMP #$90 : BCC +
 		LDA !ExtraProp2,x
 		AND #$C0 : STA !ExtraProp2,x
-		LDA #$AA : STA !SpriteXLo,x
 		LDA #$08 : STA !SpriteAnimIndex
 		STZ !SpriteAnimTimer
+		LDA #$01 : STA $400000+!MsgTalk
 		+
 
-
+		.MeetKadaal
 		LDA !P2Character-$80				;\
-		CMP #$02 : BEQ +				; |
-		LDA !Level+4 : BNE +				; |
+		CMP #$02 : BEQ ..done				; |
+		LDA !Level+4 : BNE ..done			; |
 		LDA $1B						; | if mario is at these camera coords
-		CMP #$0D : BCC +				; |
+		CMP #$0D : BCC ..done				; |
 		LDA $1A						; |
-		CMP #$E0 : BCC +				;/
+		CMP #$E0 : BCC ..done				;/
 
 		LDA #$0E : JSL SearchSprite_Custom		;\
-		BMI +						; | switch to kadaal
-		LDA #$01 : STA $3320,x				; |
-		LDA #$3E : STA !ExtraProp2,x			;/
-		LDA !Level+1					;\
-		BEQ $02 : LDA #$20				; |
-		ORA #$40					; | checkpoint baybee
-		STA !LevelTable1+$5E				; |
-		LDA !Level : STA !LevelTable2+$5E		;/
+		BMI ..done					; | kadaal faces mario
+		LDA #$01 : STA $3320,x				;/
+
+		LDA #$02 : STA !P2Stasis-$80			; freeze mario
+		LDA #$01 : STA !Cutscene
+
+		LDA $400000+!MsgTalk
+		CMP #$02 : BCS ..checkforpose
+		LDA #$02 : STA $400000+!MsgTalk
+		BRA ..done
+
+		..checkforpose
+		CMP #$04 : BEQ ..checkforfinale
+		LDA $3330,x
+		AND #$04 : BEQ ..done
+		LDA #$04 : STA $400000+!MsgTalk
+		LDA #$20 : STA $3300,x
+		BRA ..done
+
+		..checkforfinale
+		LDA $0A22
+		CMP #$40 : BNE ..done
+		LDA #$3E : STA !ExtraProp2,x			; switch to kadaal
 		REP #$20					;\
 		LDA.w #!MSG_MeetKadaal_1 : STA !MsgTrigger	; | text box
 		SEP #$20					;/
 		LDA #$01 : STA !Level+4				; flag
-		+
+		LDA !Level+1					;\
+		BEQ $02 : LDA #$20				; |
+		ORA #$40					; | checkpoint baybee
+		STA !LevelTable1+$00				; |
+		LDA !Level : STA !LevelTable2+$00		;/
+		..done
 
 
 	; end level
@@ -3883,7 +3952,6 @@ levelC6:
 		LDA #$1FE8 : JSL EXIT_Right			;/
 		BCC .NotEnded					;\
 		STZ $6109					; | beat intro level when reaching the end
-		LDA #$80 : STA !LevelTable1+$00			; |
 		LDA #$80 : STA !SPC3				; > fade music
 		LDA #$00 : STA !Characters
 		STZ !P2Character-$80
@@ -3895,25 +3963,60 @@ levelC6:
 		LDA.b #.HDMA>>8 : STA !HDMAptr+1
 		LDA.b #.HDMA>>16 : STA !HDMAptr+2
 
-	; screen regs
-	;	LDA #$44 : STA !2131
-	;	LDA #$13 : STA !SubScreen
-	;	LDA #$17 : STA !MainScreen
-	;	LDA #$09 : STA !2105
-
-	; background color
+	; colors
+		.HandleColors
 		REP #$20
 		LDA #$7BDE : STA !PaletteCacheRGB+0
-		LDA $1B
+		LDA #$7FFF
+		STA !PaletteCacheRGB+($1D*2)
+		STA !PaletteCacheRGB+($1E*2)
+		STA !PaletteCacheRGB+($1F*2)
+
+		LDA $0A22 : BNE ..kadaal
+		LDA $400000+!MsgTalk
 		AND #$00FF
+		CMP #$0004 : BNE ..mario
+
+		..kadaal
+		LDA $14
+		LSR A : BCC +
+		LDA $0A22
+		CMP #$0040
+		BEQ $03 : INC $0A22
+		+
+		LDX #$00
+		LDY #$01
+		LDA $0A22
 		CMP #$001F
 		BCC $03 : LDA #$001F
-		EOR #$001F
+		PHA
+		JSL !MixRGB
+		PLA : BRA ..finish
+
+		..mario
+		LDA $1A
+		CMP #$07FF
+		BCC $03 : LDA #$07FF
+		EOR #$07FF
+		LSR #6
 		LDX #$00
 		LDY #$01
 		JSL !MixRGB
-		LDA !PaletteBuffer+0 : STA !2132_RGB	;STA !Color0
+		LDA $1A
+		SEC : SBC #$0700
+		BPL $03 : LDA #$0000
+		CMP #$07FF
+		BCC $03 : LDA #$07FF
+		EOR #$07FF
+		LSR #6
+
+		..finish
+		LDX #$1D
+		LDY #$03
+		JSL !MixRGB
+		LDA !PaletteBuffer+0 : STA !2132_RGB
 		SEP #$20
+		..done
 
 
 
@@ -4005,6 +4108,9 @@ levelC6:
 		.NoSenkuJump
 
 	; tap run check
+		LDA $0A22
+		CMP #$40 : BNE .NoTapRun
+		LDA !CutsceneSmoothness : BNE .NoTapRun
 		LDA !P2Dashing-$80 : BEQ +
 		LDA !P2Direction-$80
 		EOR #$01
@@ -4267,58 +4373,51 @@ levelC6:
 		SEP #$10
 		REP #$20
 
-		LDA $1A
-		CMP #$0C80 : BCC +
-		CMP #$0F80 : BCS +
 
-		SEC : SBC #$0EC0
-		BPL $03 : LDA #$0000
-		LSR A
-		CLC : ADC #$0060
-		CMP $1C : BCS +
-		STA $1C
-		STA !CameraBackupY
-		+
-		LDA $1C
-		LSR A
-		CLC : ADC !BG2BaseV
-		STA $20
+		LDA $1A					;\
+		CMP #$0C80 : BCC +			; |
+		CMP #$0F80 : BCS +			; |
+		SEC : SBC #$0EC0			; |
+		BPL $03 : LDA #$0000			; |
+		LSR A					; |
+		CLC : ADC #$0060			; |
+		CMP $1C : BCS +				; | camera slant where you meet kadaal
+		STA $1C					; | so the text box appears at a good height
+		STA !CameraBackupY			; |
+		+					; |
+		LDA $1C					; |
+		LSR A					; |
+		CLC : ADC !BG2BaseV			; |
+		STA $20					;/
 
+		LDX #$1F : STX !MainScreen
+		LDX #$02 : STX !SubScreen
+		LDX #$20 : STX !2131
 
-		LDA !MsgTrigger : BNE ..fail
-		LDA $14
-		AND #$0001
-		BEQ $03 : LDA #$0010
-		TAX
-		LDA $1A
-		CMP #$0600 : BCC +
-		LDA $14
-		AND #$0007 : BNE +
-		INC $22
-		LDA $24
-		CMP #$01B0
-		BEQ $01 : INC A
-		STA $24
-	+	LDA #$0001 : STA $0A00,x
-		STZ $0A05,x
-		LDA $1A
-		CLC : ADC $22
-		STA $0A01,x
-		LDA $1C
-		CLC : ADC $24
-		CMP #$0100
-		BCS $03 : LDA #$0100
-		STA $0A03,x
-		LDA #$1103 : STA $4320
-		LDA $14
-		AND #$0001
-		BEQ $03 : LDA #$0010
-		ORA #$0A00
-		STA !HDMA2source
-		SEP #$20
-		STZ $4324
-		LDA #$04 : TSB !HDMA		; use channel 2 so it gets overwritten by message box
+		LDA !MsgTrigger : BNE ..fail		; don't run during text box
+		LDA $1A : STA $22			; BG3 X
+		LDA $0A22 : BEQ ..slow
+		..fast					;\
+		LDA $0A22				; |
+		LSR A					; | quickly raise BG3 for kadaal
+		ADC $0A20				; |
+		STA $0A20				; |
+		BRA ..shared				;/
+		..slow					;\
+		LDA $14					; | slowly raise BG3 for mario
+		AND #$0007				; |
+		BNE $03 : INC $0A20			;/
+		..shared				;\
+		LDA $0A20				; | BG3 Y
+		CLC : ADC $1C				; |
+		STA $24					;/
+		LDX #$13 : STX !SubScreen
+		LDX #$04 : STX !MainScreen
+		LDX #$02 : STX !2130
+		LDX #$24 : STX !2131
 		..fail
+
+
 		PLP
 		RTL
 
@@ -5051,6 +5150,15 @@ level1F0:
 
 ; command bridge
 level1F1:
+		REP #$20
+		LDA !MsgTrigger
+		CMP.w #!MSG_Toad_IntroLevel_2
+		SEP #$20
+		BNE +
+		LDA #$01 : STA !StoryFlags+$00
+		+
+
+
 		STZ $00					;\
 		STZ $01					; | YC count
 		JSL DisplayYC				;/
@@ -5238,13 +5346,21 @@ level1F9:
 		RTL
 
 
-; mario tutorial room
 level1FA:
 		REP #$20
 		LDA !MsgTrigger
-		CMP.w #!MSG_Survivor_Talk_IntroLevel : BNE +
-		LDA !StoryFlags+$00
-		ORA #$0001 : STA !StoryFlags+$00
+		CMP.w #!MSG_Survivor_Talk_IntroLevel
+		SEP #$20
+		BNE +
+
+		LDA #$03 : STA !StoryFlags+$00			; portable warp pipe get
+		LDA #$80 : TSB !LevelTable1+$00			;\ beat intro level and save event
+		LDA #$80 : TSB !LevelTable3+$00			;/
+
+		REP #$20
+		LDA #$00B8 : STA !SRAM_overworldX		;\ move on overworld
+		LDA #$0330 : STA !SRAM_overworldY		;/
+
 		LDA !P2XPosLo
 		SEC : SBC $1A
 		STA $00
@@ -5258,7 +5374,6 @@ level1FA:
 		LDA #$04 : STA $0E
 		JSL !SpriteHUD
 		+
-		SEP #$20
 
 
 		STZ $00

@@ -77,23 +77,7 @@ NPC:
 		LDA #$01 : STA $3230,x				; |
 		RTL						;/
 		..unlock					; if unlocked...
-		LDA !SparkleTimer,x				;\
-		AND #$01 : BEQ ..nosparkle			; |
-		LDA !RNG					; |
-		AND #$0F					; |
-		ASL A						; |
-		SBC #$0C					; |
-		STA $00						; |
-		LDA #$08 : STA $01				; |
-		STZ $02						; | handle sparkle timer, even when not in play
-		LDA #$F0 : STA $03				; | (the animation plays while the player is in swap stun)
-		STZ $04						; |
-		LDA #$E8 : STA $05				; |
-		LDA !RNG					; |
-		LSR #4						; |
-		STA $06						; |
-		LDA.b #!prt_sparkle : JSL SpawnParticle		; |
-		..nosparkle					;/
+		JSR Sparkles
 		JSR CheckPlayer : BEQ ..lock			; lock if this character is controlled by a player
 
 		PHB : PHK : PLB
@@ -238,6 +222,8 @@ NPC:
 
 	MAIN:
 		PHB : PHK : PLB
+
+		JSR Sparkles
 
 		.Process
 		LDA !MsgTrigger
@@ -480,16 +466,13 @@ NPC:
 		LDA !Talking,x : BEQ ..spymode
 		..talking
 		LDA $400000+!MsgTalk
-		CMP #$01 : BEQ ..hiding2
+		CMP #$01 : BEQ ..hiding
 		CMP #$02 : BEQ ..jumpforth
 		CMP #$03 : BEQ ..idle
-		BRA ..spymode
+		CMP #$04 : BNE ..spymode
 
-		..jumpforth
-		INC A : STA $400000+!MsgTalk
-		LDA #$D0 : STA !SpriteYSpeed,x
-		LDA #$E8 : STA !SpriteXSpeed,x
-		BRA +
+		..victory
+		LDA #$18 : BRA ++
 
 		..idle
 		LDA $3330,x
@@ -501,10 +484,13 @@ NPC:
 		LDA !SpriteAnimIndex
 		CMP #$04 : BCC ..done
 		LDA #$00 : BRA ++
-		..hiding2
-		JSL SUB_HORZ_POS
-		TYA : STA $3320,x
-		LDA #$11 : BRA ++
+
+		..jumpforth
+		INC A : STA $400000+!MsgTalk
+		LDA #$D0 : STA !SpriteYSpeed,x
+		LDA #$E8 : STA !SpriteXSpeed,x
+		STZ $3330,x
+		BRA +
 
 		..spymode
 		LDA !ExtraProp2,x
@@ -599,6 +585,8 @@ NPC:
 		dw Tilemap_Peek2,.Idle00 : db $02,$17
 		dw Tilemap_Peek1,.Idle00 : db $02,$0C
 
+		dw Tilemap_16x32,.Victory00 : db $FF,$18
+
 
 		.Idle00
 		dw ..end-..start
@@ -668,6 +656,13 @@ NPC:
 		%SquareDyn($0BE)
 		..end
 
+
+		.Victory00
+		dw ..end-..start
+		..start
+		%SquareDyn($118)
+		%SquareDyn($138)
+		..end
 
 
 
@@ -1707,6 +1702,28 @@ NPC:
 
 
 
+	Sparkles:
+		LDA !SparkleTimer,x				;\
+		AND #$01 : BEQ .Return				; |
+		LDA !RNG					; |
+		AND #$0F					; |
+		ASL A						; |
+		SBC #$0C					; |
+		STA $00						; |
+		LDA #$08 : STA $01				; |
+		STZ $02						; | handle sparkle timer, even when not in play
+		LDA #$F0 : STA $03				; | (the animation plays while the player is in swap stun)
+		STZ $04						; |
+		LDA #$E8 : STA $05				; |
+		LDA !RNG					; |
+		LSR #4						; |
+		STA $06						; |
+		LDA.b #!prt_sparkle : JSL SpawnParticle		; |
+		.Return						;/
+		RTS
+
+
+
 ; if return with z = 0, this NPC should run
 ; if return with z = 1, this NPC should be disabled
 	CheckPlayer:
@@ -1911,7 +1928,7 @@ NPC:
 		LDA $3330,x
 		AND #$04 : BEQ +
 		STZ !SpriteYSpeed,x
-		LDA !SpriteSlope : BPL +
+		LDA !SpriteSlope,x : BPL +
 		LDA #$C0 : STA !SpriteYSpeed,x
 		+
 		RTS

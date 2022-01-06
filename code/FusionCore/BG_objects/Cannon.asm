@@ -49,15 +49,32 @@
 		RTS						;/
 
 		.Valid						;\
-		DEC !BG_object_Timer,x				; |
 		PHX						; |
-		LDA.w #.TilePointer_end-.TilePointer-2
-		SEC : SBC !BG_object_Timer,x			; |
-		AND #$00FE					; | get pointer to tile data
+		LDA !BG_object_X,x				; |
+		LDY !BG_object_Y,x				; |
+		TAX						; |
+		SEP #$20					; |
+		JSL !GetMap16					; |
+		REP #$30					; |
+		PLX						; |
+		LDA $03						; | get palette
+		CMP #$0330 : BNE ..palette7			; |
+		..palette2					; |
+		LDA #$0002*$400 : BRA ..setpal			; |
+		..palette7					; |
+		LDA #$0007*$400					; |
+		..setpal					; |
+		STA $0E						;/
+
+		DEC !BG_object_Timer,x				;\
+		PHX						; |
+		LDA.w #.TilePointer_end-.TilePointer-2		; |
+		SEC : SBC !BG_object_Timer,x			; | get pointer to tile data
+		AND #$00FE					; |
 		TAX						; |
 		LDA.l .TilePointer,x : STA $00			; |
 		PLX						;/
-		JMP TileUpdate
+		JMP TileUpdate					; update tiles
 
 
 		.Interact
@@ -139,6 +156,7 @@
 		LDA #$00
 		STA.l !P2Pipe-$80
 		STA.l !P2Pipe
+		STZ !MarioDucking
 		LDA #$FF
 		STA.l !P2Stasis-$80
 		STA.l !P2Stasis
@@ -357,29 +375,29 @@
 
 
 		.CannonIdle
-		dw $2800,$2801,$2802,$2803
-		dw $2810,$2811,$2812,$2813
-		dw $2820,$2821,$2822,$2823
-		dw $2830,$2831,$2832,$2833
+		dw $2000,$2001,$2002,$2003
+		dw $2010,$2011,$2012,$2013
+		dw $2020,$2021,$2022,$2023
+		dw $2030,$2031,$2032,$2033
 		.CannonTilt1
-		dw $2840,$2841,$2842,$2843
-		dw $2850,$2851,$2852,$2853
-		dw $2860,$2861,$2862,$2863
-		dw $2870,$2871,$2872,$2873
+		dw $2040,$2041,$2042,$2043
+		dw $2050,$2051,$2052,$2053
+		dw $2060,$2061,$2062,$2063
+		dw $2070,$2071,$2072,$2073
 		.CannonTilt2
-		dw $2804,$2805,$2806,$2807
-		dw $2814,$2815,$2816,$2817
-		dw $2824,$2825,$2826,$2827
-		dw $2834,$2835,$2836,$2837
+		dw $2004,$2005,$2006,$2007
+		dw $2014,$2015,$2016,$2017
+		dw $2024,$2025,$2026,$2027
+		dw $2034,$2035,$2036,$2037
 		.CannonFire1
-		dw $2808,$2809,$280A,$280B
-		dw $2818,$2819,$281A,$281B
-		dw $2828,$2829,$282A,$282B
-		dw $2838,$2839,$283A,$283B
+		dw $2008,$2009,$200A,$200B
+		dw $2018,$2019,$201A,$201B
+		dw $2028,$2029,$202A,$202B
+		dw $2038,$2039,$203A,$203B
 		.CannonFire2
-		dw $280C,$280D,$280E,$280F
-		dw $281C,$281D,$281E,$281F
-		dw $282C,$282D,$282E,$282F
-		dw $283C,$283D,$283E,$283F
+		dw $200C,$200D,$200E,$200F
+		dw $201C,$201D,$201E,$201F
+		dw $202C,$202D,$202E,$202F
+		dw $203C,$203D,$203E,$203F
 
 

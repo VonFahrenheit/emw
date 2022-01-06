@@ -87,12 +87,14 @@
 	!zipprev1A		= $411B02
 	!zipprev1C		= $411B04
 	!initzipcount		= $411B06	; 2 B, counts up from 0 to initialize zips
-	!zipdiagonaldec		= $411B08	; 2 B, subtracted from row tile count if moving diagonally
+	!zipdiagonalsize	= $411B08	; 2 B, replaces !zip_w if nonzero, only used if moving diagonally (also hijacked by RealTimeEvent)
 	!zipdiagonaloffsetinc	= $411B0A	; 2 B, added to row x position if moving diagonally, for incrementing only
 	!zipdiagonaloffsetdec	= $411B0C	; 2 B, added to row x position if moving diagonally, for decrementing only
 	!waterframe		= $411B0E
 	!waterspeed		= $411B10
-	;next			= $411B12
+	!ziploop		= $411B12	; 2 B, used by RealTimeEvent
+	!ziploopcache		= $411B14	; 2 B, used by RealTimeEvent
+	;next			= $411B16
 
 	!zipbuffer		= $411C00	; 512 B, tilemap data buffer
 	;next			= $411E00
@@ -241,7 +243,7 @@
 
 
 
-		STZ.w !zipdiagonaldec					;\
+		STZ.w !zipdiagonalsize					;\
 		STZ.w !zipdiagonaloffsetinc				; | reset diagonal
 		STZ.w !zipdiagonaloffsetdec				;/
 
@@ -267,8 +269,7 @@
 		LDA $1A
 		EOR.w !zipprev1A
 		AND #$0008 : BEQ ..done
-		LDA #$0001 : STA.w !zipdiagonaldec			;\ set diagonal
-	;	LDA #$0008 : STA.w !zipdiagonaloffset			;/
+		LDA.w #!zip_w-1 : STA.w !zipdiagonalsize		; set diagonal
 		LDA $1C
 		CLC : ADC.w #!zip_y
 		STA $02
@@ -399,31 +400,30 @@
 
 
 ; input:
-;	$00 = starting xpos
-;	$02 = starting ypos
+;	$00 = starting xpos (global coord)
+;	$02 = starting ypos (global coord)
 ;	$04 = mode (0 = row, 1 = column)
 ;
 		.Increment						;\
 		LDA $00							; |
-		BPL $03 : LDA #$0000
+		BPL $03 : LDA #$0000					; |
 		AND #$00F8						; |
 		LSR #3							; |
 		STA $06							; |
 		LDA $02							; |
-		BPL $03 : LDA #$0000
+		BPL $03 : LDA #$0000					; |
 		AND #$00F8						; |
 		ASL #2							; | starting VRAM address of zip
 		TSB $06							; |
 		LDA $00							; |
-		BPL $03 : LDA #$0000
+		BPL $03 : LDA #$0000					; |
 		AND #$0100						; |
 		ASL #2							; |
 		ORA $06							; |
 		ORA.l !BG1Address					; |
+		LDX $04							; > zip direction
+		BEQ $03 : ORA #$8000					; |
 		STA.w !zipbuffer+2					;/
-		LDA $04							;\
-		BEQ $03 : LDA #$8000					; | set zip direction
-		TSB.w !zipbuffer+2					;/
 		JSR .GetPointer						;\
 	if !DebugOverworld
 	LDA $0C
@@ -456,8 +456,8 @@
 
 
 ; input:
-;	$00 = starting xpos
-;	$02 = starting ypos
+;	$00 = starting xpos (global coord)
+;	$02 = starting ypos (global coord)
 ;	$04 = mode (0 = row, 1 = column)
 ;
 		.Decrement						;\
@@ -790,8 +790,9 @@
 
 	; horizontal values
 		..horizontal
-		LDA.w #!zip_w						;\
-		SEC : SBC.l !zipdiagonaldec				; | number of tiles to process (2 less on diagonal frames)
+
+		LDA.l !zipdiagonalsize					;\
+		BNE $03 : LDA.w #!zip_w					; | number of tiles to process
 		STA $0C							;/
 		LDA #$0002 : STA $06					; index+
 
@@ -944,6 +945,33 @@
 		db $FB : dl $41E800		; 46
 
 		.End
+
+	MapCoords:
+		dw $0000,$0000			; 11
+		dw $0100,$0000			; 12
+		dw $0200,$0000			; 13
+		dw $0300,$0000			; 14
+		dw $0400,$0000			; 15
+		dw $0500,$0000			; 16
+		dw $0000,$0100			; 21
+		dw $0100,$0100			; 22
+		dw $0200,$0100			; 23
+		dw $0300,$0100			; 24
+		dw $0400,$0100			; 25
+		dw $0500,$0100			; 26
+		dw $0000,$0200			; 31
+		dw $0100,$0200			; 32
+		dw $0200,$0200			; 33
+		dw $0300,$0200			; 34
+		dw $0400,$0200			; 35
+		dw $0500,$0200			; 36
+		dw $0000,$0300			; 41
+		dw $0100,$0300			; 42
+		dw $0200,$0300			; 43
+		dw $0300,$0300			; 44
+		dw $0400,$0300			; 45
+		dw $0500,$0300			; 46
+
 
 
 

@@ -88,9 +88,14 @@ endif
 ;====================================================================================================;
 %insertMSG(Toad_IntroLevel_2)
 if !CompileText = 1
+	%mode(1)
 	db "Off you go!"
-	%setexit($C6, $04)
-	%triggerexit()
+	%waitforinput()
+
+;	%setexit($C6, $04)
+;	%triggerexit()
+	%endlevel(0)
+
 	%endmessage()
 endif
 ;====================================================================================================;
@@ -104,11 +109,9 @@ endif
 if !CompileText = 1
 	%mode(1)
 	%portrait(Kadaal, 0)
-	%talk(1)
 	db "Wait... can see me?"
 	%waitforinput()
 	%scrollfull()
-	%talk(2)
 	db "You agent of Dark Lord?!"
 	%waitforinput()
 	%scrollfull()
@@ -153,8 +156,7 @@ if !CompileText = 1
 	%portrait(Kadaal, 0)
 	db "Talk green man, then see Kadaal friend."
 	%endmessage()
-endif
-;====================================================================================================;
+endif;====================================================================================================;
 %insertMSG(Survivor_Talk_IntroLevel)
 if !CompileText = 1
 	%portrait(Survivor, 0)

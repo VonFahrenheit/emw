@@ -110,7 +110,7 @@ levelinit4:
 		LDA #$00E0 : STA !CameraBoxD
 		SEP #$20
 		LDA #$02 : STA !CameraBoxSpriteErase
-		RTL
+		JML level4
 
 	.Bonus
 		CMP #$1E : BEQ ..2
@@ -128,7 +128,7 @@ levelinit4:
 
 	..R	STA !CameraBoxD
 		SEP #$30
-		RTL
+		JML level4
 
 	..3	REP #$20
 		LDA #$1F00
@@ -139,6 +139,12 @@ levelinit4:
 
 
 levelinit5:
+		LDA #$02 : STA !GlobalLight1
+		LDA #$FF : STA !GlobalLightMixPrev
+		LDA.b #$51*2 : STA !LightIndexStart
+		LDA.b #$EF*2 : STA !LightIndexEnd
+		LDA.b #$EF*2>>8 : STA !LightIndexEnd+1
+
 		LDA #$06 : STA !PalsetStart
 		LDA #$D1 : STA !MsgPal
 
@@ -373,6 +379,9 @@ levelinit6:
 
 
 levelinitC:
+		LDA #$03 : STA !BG2ModeH
+		STZ !BG2ModeV
+
 
 		LDA $97 : BEQ +
 		LDA #$C4
@@ -393,6 +402,7 @@ levelinitC:
 		STZ !Level+3
 		REP #$20
 		LDA $6701 : STA !3DWater_Color
+
 		SEP #$20
 		INC $14 : JSL HDMA3DWater		;\ set up double-buffered HDMA
 		DEC $14 : JSL HDMA3DWater		;/
@@ -866,6 +876,26 @@ level3:
 
 
 level4:
+		LDA.b #.SA1 : STA $3180			;\
+		LDA.b #.SA1>>8 : STA $3181		; |
+		LDA.b #.SA1>>16 : STA $3182		; | speedup
+		LDA #$80 : STA $2200			; |
+		JSR !MPU_light				;/
+		RTL					; return
+
+
+	.SA1
+		PHB : PHK : PLB
+		PHP
+		SEP #$30
+
+		LDA #$02 : STA !GlobalLight2		; fade into sunset
+		LDA $1B					;\
+		CMP #$1D : BCS +			; | advance light as player proceeds in level
+		CMP !GlobalLightMix : BCC +		; > can't go back
+		STA !GlobalLightMix			; |
+		+					;/
+
 		LDA #$20 : STA $64
 		LDA $71
 		CMP #$05 : BEQ ++
@@ -938,12 +968,7 @@ level4:
 		BRA .NoSpawn
 
 		.TriggerSpawn
-		STX $00
-		STY $01
-		LDA.b #.Spawn : STA $3180
-		LDA.b #.Spawn>>8 : STA $3181
-		LDA.b #.Spawn>>16 : STA $3182
-		JSR $1E80
+		JSR .Spawn
 		.NoSpawn
 
 
@@ -952,10 +977,11 @@ level4:
 		LDA.w #.Mode2>>8 : STA !HDMAptr+1
 		LDA $94
 		CMP #$1D00 : BCS .Bonus
-		LDA #$1CE8 : JML END_Right		; exit
+		LDA #$1CE8 : JSL END_Right		; exit
 
 	.Bonus
-		SEP #$30
+		PLP
+		PLB
 		RTL
 
 
@@ -967,11 +993,6 @@ level4:
 	dw $0120
 
 		.Spawn
-		PHB : PHK : PLB
-		PHP
-		SEP #$30
-		LDX $00
-		LDY $01
 		LDA !RNG
 		AND #$F0
 		CLC : ADC $1C
@@ -981,13 +1002,11 @@ level4:
 		ADC $7889
 		STA !SpriteYHi,x
 		CPY #$02 : BEQ +
-
 		LDY #$00
 		LDA !BG1_X_Delta
 		BEQ ..random
 		BMI $02 : LDY #$02
 		BRA +
-
 		..random
 		LDA !RNG
 		AND #$02
@@ -1003,11 +1022,8 @@ level4:
 		LDA #$2D : STA $35C0,x
 		LDA #$08 : STA $3590,x
 		JSL !ResetSprite
-
-	..fail
-		PLP
-		PLB
-		RTL
+		..fail
+		RTS
 
 
 
@@ -1028,7 +1044,16 @@ level4:
 		LDA !StarTimer : BEQ ..process
 		STZ !Level+2
 		STZ !Level+3
-		STZ !HDMA
+		LDA #$08 : STA !HDMA
+		LDA $14
+		AND #$01
+		BEQ $02 : LDA #$40
+		STA !HDMA3source
+		LDA.b #..callparallax : STA $3180
+		LDA.b #..callparallax>>8 : STA $3181
+		LDA.b #..callparallax>>16 : STA $3182
+		JSR $1E80
+
 		LDA #$01 : STA !2105
 		LDA !DizzyEffect : BEQ +
 		LDA #$00 : STA !DizzyEffect
@@ -1064,19 +1089,19 @@ level4:
 		LDA $14							; |
 		AND #$0001						; | layer 1 HDMA
 		BEQ $03 : LDA #$0004					; |
-		ORA.w #!DecompBuffer+$10F0 : STA !HDMA2source		;/
+		CLC : ADC.w #!DecompBuffer+$10F0 : STA !HDMA2source	;/
 
 		LDA #$0F02 : STA $4330					;\
 		LDA $14							; |
 		AND #$0001						; | layer 2 horizontal HDMA
 		BEQ $03 : LDA #$0040					; |
-		ORA.w #!DecompBuffer+$1100 : STA !HDMA3source		;/
+		CLC : ADC.w #!DecompBuffer+$1100 : STA !HDMA3source	;/
 
 		LDA #$1002 : STA $4340					;\
 		LDA $14							; |
 		AND #$0001						; | layer 2 stretch HDMA
 		BEQ $03 : LDA #$0400					; |
-		ORA.w #!DecompBuffer+$1200 : STA !HDMA4source		;/
+		CLC : ADC.w #!DecompBuffer+$1200 : STA !HDMA4source	;/ > add because of bit overlap
 
 		LDA #$3101 : STA $4350					;\ color math HDMA
 		LDA #$0A00 : STA !HDMA5source				;/
@@ -1091,16 +1116,31 @@ level4:
 		LDA #$3C : TSB !HDMA
 
 		LDA #$13 : STA !MainScreen
-		LDA #$02 : TRB $44
+		STZ !2130						; don't add subscreen, just add $2132
 
-		LDA #$02 : TRB $44
-		LDA #$01 : STA $0A00
-		LDA #$3F : STA $0A01
-		LDA !Level+2
-		LSR #3
-		TAY
-		LDA ..ColorTable,y : STA $0A02
-		STZ $0A03
+		LDA !Level+2						;\
+		ORA !Level+3						; |
+		BNE ..dizzycolor					; | without dizzy, disable this HDMA channel
+		STZ $0A00						; |
+		REP #$20						; |
+		LDA !PaletteRGB+0 : STA !2132_RGB			; > backdrop setup
+		STZ !Color0						; |
+		SEP #$20						; |
+		BRA ..colordone						;/
+
+		..dizzycolor
+		REP #$20						;\
+		STZ !2132_RGB						; | backdrop setup
+		LDA !PaletteRGB : STA !Color0				; |
+		SEP #$20						;/
+		LDA #$01 : STA $0A00					; full screen
+		LDA #$3F : STA $0A01					; dizzy effect: color on everything (otherwise just backdrop)
+		LDA !Level+2						;\
+		LSR #3							; | color value
+		TAY							; |
+		LDA ..ColorTable,y : STA $0A02				;/
+		STZ $0A03						; end HDMA table
+		..colordone
 
 		LDY #$00
 	-	LDA !P2Blocked-$80,y
@@ -1243,72 +1283,92 @@ level4:
 		STZ $24
 
 		PLB
-		SEP #$10
+
+		; Z stretch code
+		REP #$10					;\
+		LDA $14						; |
+		AND #$0001					; | double buffer index
+		BEQ $03 : LDA #$0400				; |
+		TAX						;/
+		LDA !Level+6					;\
+		CLC : ADC $20					; |
+	-	CMP.w #..ZTable_End-..ZTable : BCC +		; | modulo
+		SBC.w #..ZTable_End-..ZTable : BRA -		; |
+	+	TAY						;/
+		LDA !DecompBuffer+$10FA : STA $2251		; multiplicand
+	-	INY						; +1
+		CPY.w #..ZTable_End-..ZTable			;\ overflow from +1 -> 0
+		BCC $03 : LDY #$0000				;/
+
+
+
+	; X &$3FF / 3 = position on-screen
+	; find first scanline that shows the Y coordinate 0xF0 (in BG tilemap)
+	; 0xF0 - scroll value = cutoff
+	; cutoff + scroll value > 0xF0
+
+
+		LDA #$0001 : STA !DecompBuffer+$1200,x		; scanline count
+		LDA ..ZTable,y					;\
+		AND #$00FF : STA $2253				; |
+		INX #3						; |
+		INY						; | calculate y position
+		LDA $2306					; |
+		LSR #5						; |
+		CLC : ADC $20					;/
+		STA !DecompBuffer+$1201-3,x			; store (-3 because we already +3 the index)
+		TXA						;\
+		AND #$03FF					; | loop for $D8 entries
+		CMP #$00D8*3 : BCC -				;/
+		LDA #$0000 : STA !DecompBuffer+$1200,x		; end table
 
 
 		; H wave code
-		LDA !Level+4
-		LSR #2
-		AND #$001F
-		TAY
-		LDA $14
-		AND #$0001
-		BEQ $03 : LDA #$0040
-		TAX
-
-	-	TYA
-		INC A
-		AND #$001F
-		TAY
-		LDA #$0010 : STA !DecompBuffer+$1100,x
-		LDA ..HTable,y
-		AND #$00FF
-		STA $2251
-		LDA !DecompBuffer+$10FA : STA $2253
-		BRA $00 : NOP
-		LDA $2306
-		LSR #5
-		CLC : ADC $1E
-		STA !DecompBuffer+$1101,x
-		INX #3
-		TXA
-		AND #$003F
-		CMP #$0030 : BCC -
-		LDA #$0000 : STA !DecompBuffer+$1100,x
+		JSR ..parallax
 
 
-		; Z stretch code
-		REP #$10
-		LDA $14
-		AND #$0001
-		BEQ $03 : LDA #$0400
-		TAX
-		LDA !Level+6
-		CLC : ADC $20
-	-	CMP.w #..ZTable_End-..ZTable : BCC +
-		SBC.w #..ZTable_End-..ZTable : BRA -
-	+	TAY
+		; LDA !Level+4
+		; LSR #2
+		; AND #$001F
+		; TAY
+		; LDA $14
+		; AND #$0001
+		; BEQ $03 : LDA #$0040
+		; TAX
 
-	-	INY
-		CPY.w #..ZTable_End-..ZTable
-		BCC $03 : LDY #$0000
-		LDA #$0001 : STA !DecompBuffer+$1200,x
-		LDA ..ZTable,y
-		AND #$00FF
-		SEC : SBC #$001B
-		STA $2251
-		LDA !DecompBuffer+$10FA : STA $2253
-		BRA $00 : NOP
-		LDA $2306
-		LSR #5
-		CLC : ADC $20
-		STA !DecompBuffer+$1201,x
-		INX #3
-		INY
-		TXA
-		AND #$03FF
-		CMP #$0300 : BCC -
-		LDA #$0000 : STA !DecompBuffer+$1200,x
+	; ; STZ $02						; scanline tally = 0
+	; ; STZ $04						; half flag = 0
+
+		; LDA !DecompBuffer+$10FA : STA $2251
+	; -	TYA
+		; INC A
+		; AND #$001F
+		; TAY
+		; LDA #$0010 : STA !DecompBuffer+$1100,x
+	; ; BIT $04 : BMI +
+	; ; CLC : ADC $02
+	; ; STA $02
+	; ; CMP $00 : BCC +
+	; ; SBC $00
+	; ; ADC #$000F
+	; ; STA !DecompBuffer+$1100-3,x
+	; ; DEC $04
+	; ; +
+		; LDA ..HTable,y
+		; AND #$00FF : STA $2253
+		; INX #3
+		; LDA $2306
+		; LSR #5
+		; CLC : ADC $1E
+	; ; BIT $04
+	; ; BMI $01 : LSR A
+		; STA !DecompBuffer+$1101-3,x
+		; TXA
+		; AND #$003F
+		; CMP #$0030 : BCC -
+		; LDA #$0000 : STA !DecompBuffer+$1100,x
+
+
 
 		SEP #$10
 
@@ -1325,38 +1385,94 @@ level4:
 		RTL
 
 
+		..callparallax
+		PHB : PHK : PLB
+		PHP
+		REP #$30
+		STZ $2250
+		JSR ..parallax
+		PLP
+		PLB
+		RTL
+
+		..parallax
+		LDA $14
+		AND #$0001
+		BEQ $03 : LDA #$0040
+		TAX
+		LDA $1A : STA $2251
+
+		LDA !Level+2 : BEQ +
+		LDA #$0140 : STA $2253
+		LDA #$0001 : STA !DecompBuffer+$1100,x
+		LDA #$0000 : STA !DecompBuffer+$1103,x
+		LDA $2307 : STA !DecompBuffer+$1101,x
+		RTS
+		+
+
+		LDA #$00F0
+		SEC : SBC $20
+		LSR A
+		STA !DecompBuffer+$1100,x
+		BCC $01 : INC A
+		STA !DecompBuffer+$1103,x
+		LDA #$0020 : STA !DecompBuffer+$1106,x
+		LDA #$0040 : STA !DecompBuffer+$1109,x
+		LDA #$0012 : STA !DecompBuffer+$110C,x
+		LDA #$0001 : STA !DecompBuffer+$110F,x
+		LDA #$0000 : STA !DecompBuffer+$1112,x
+		LDA #$00C0 : STA $2253
+		NOP : BRA $00
+		LDA $2307 : STA !DecompBuffer+$110F+1,x
+		LDA #$00A8 : STA $2253
+		NOP : BRA $00
+		LDA $2307 : STA !DecompBuffer+$110C+1,x
+		LDA #$0080 : STA $2253
+		NOP : BRA $00
+		LDA $2307 : STA !DecompBuffer+$1109+1,x
+		LDA #$0070 : STA $2253
+		NOP : BRA $00
+		LDA $2307 : STA !DecompBuffer+$1106+1,x
+		LDA #$0060 : STA $2253
+		NOP : BRA $00
+		LDA $2307
+		STA !DecompBuffer+$1100+1,x
+		STA !DecompBuffer+$1103+1,x
+		RTS
+
+
+
 	..HTable
-		db $00,$01,$02,$03,$05,$07,$09,$0C
-		db $0F,$12,$14,$16,$17,$18,$19,$1A
-		db $1A,$19,$18,$17,$16,$14,$12,$0F
-		db $0C,$09,$07,$05,$03,$02,$01,$00
+	db $00,$01,$02,$03,$05,$07,$09,$0C
+	db $0F,$12,$14,$16,$17,$18,$19,$1A
+	db $1A,$19,$18,$17,$16,$14,$12,$0F
+	db $0C,$09,$07,$05,$03,$02,$01,$00
 
 
 ; ripped from yoshi's island
+; -$1B appended to make processing faster
 	..ZTable
-	db $28,$29,$29,$2A,$2A,$2B,$2B,$2C
-	db $2C,$2C,$2D,$2D,$2E,$2E,$2E,$2F
-	db $2F,$2F,$2F,$30,$30,$30,$30,$30
-	db $30,$30,$31,$31,$31,$30,$30,$30
-	db $30,$30,$30,$30,$2F,$2F,$2F,$2F
-	db $2E,$2E,$2E,$2D,$2D,$2C,$2C,$2C
-	db $2B,$2B,$2A,$2A,$29,$29,$28,$28
-	db $27,$27,$26,$26,$25,$24,$24,$23
-	db $23,$22,$22,$21,$21,$20,$20,$1F
-	db $1F,$1F,$1E,$1E,$1D,$1D,$1D,$1C
-	db $1C,$1C,$1C,$1B,$1B,$1B,$1B,$1B
-	db $1B,$1B,$1B,$1B,$1B,$1B,$1B,$1B
-	db $1B,$1B,$1B,$1B,$1C,$1C,$1C,$1C
-	db $1D,$1D,$1D,$1E,$1E,$1F,$1F,$1F
-	db $20,$20,$21,$21,$22,$22,$23,$23
-	db $24,$24,$25,$26,$26,$27,$27,$28
+	db $28-$1B,$29-$1B,$29-$1B,$2A-$1B,$2A-$1B,$2B-$1B,$2B-$1B,$2C-$1B
+	db $2C-$1B,$2C-$1B,$2D-$1B,$2D-$1B,$2E-$1B,$2E-$1B,$2E-$1B,$2F-$1B
+	db $2F-$1B,$2F-$1B,$2F-$1B,$30-$1B,$30-$1B,$30-$1B,$30-$1B,$30-$1B
+	db $30-$1B,$30-$1B,$31-$1B,$31-$1B,$31-$1B,$30-$1B,$30-$1B,$30-$1B
+	db $30-$1B,$30-$1B,$30-$1B,$30-$1B,$2F-$1B,$2F-$1B,$2F-$1B,$2F-$1B
+	db $2E-$1B,$2E-$1B,$2E-$1B,$2D-$1B,$2D-$1B,$2C-$1B,$2C-$1B,$2C-$1B
+	db $2B-$1B,$2B-$1B,$2A-$1B,$2A-$1B,$29-$1B,$29-$1B,$28-$1B,$28-$1B
+	db $27-$1B,$27-$1B,$26-$1B,$26-$1B,$25-$1B,$24-$1B,$24-$1B,$23-$1B
+	db $23-$1B,$22-$1B,$22-$1B,$21-$1B,$21-$1B,$20-$1B,$20-$1B,$1F-$1B
+	db $1F-$1B,$1F-$1B,$1E-$1B,$1E-$1B,$1D-$1B,$1D-$1B,$1D-$1B,$1C-$1B
+	db $1C-$1B,$1C-$1B,$1C-$1B,$1B-$1B,$1B-$1B,$1B-$1B,$1B-$1B,$1B-$1B
+	db $1B-$1B,$1B-$1B,$1B-$1B,$1B-$1B,$1B-$1B,$1B-$1B,$1B-$1B,$1B-$1B
+	db $1B-$1B,$1B-$1B,$1B-$1B,$1B-$1B,$1C-$1B,$1C-$1B,$1C-$1B,$1C-$1B
+	db $1D-$1B,$1D-$1B,$1D-$1B,$1E-$1B,$1E-$1B,$1F-$1B,$1F-$1B,$1F-$1B
+	db $20-$1B,$20-$1B,$21-$1B,$21-$1B,$22-$1B,$22-$1B,$23-$1B,$23-$1B
+	db $24-$1B,$24-$1B,$25-$1B,$26-$1B,$26-$1B,$27-$1B,$27-$1B,$28-$1B
 	...End
 
 
 
 level5:
-		LDA #$02 : STA !GlobalLight1
-
 		LDA #$02 : JSL SearchSprite_Custom
 		BMI +
 		LDA !ExtraBits,x
@@ -1941,7 +2057,7 @@ levelC:
 		LDA.b #HDMA3DWater>>16 : STA !HDMAptr+2
 
 		LDA #$DC : STA !Level+2
-		LDA #$10 : TRB !HDMA
+		LDA #$30 : TRB !HDMA			; disable channels 4 + 5
 
 		JSL level35_Graphics			; returns 16-bit A
 		SEP #$30
@@ -2783,7 +2899,7 @@ level2F:
 		REP #$20
 		LDA !Level : PHA
 		LDA #$0002 : STA !Level
-		LDA #$0DE8 : JSL END_Right
+		LDA #$0CE8 : JSL END_Right
 		PLA : STA !Level
 		PLA : STA !Level+1
 
@@ -2792,172 +2908,172 @@ level2F:
 
 
 		.Brawl
-		LDA !Room
-		CMP #$01 : BEQ $03 : JMP ..done
+		; LDA !Room
+		; CMP #$01 : BEQ $03 : JMP ..done
 
-		LDA #$30
-		STA $40C800+($A*$400)+$38B
-		STA $40C800+($A*$400)+$39B
-		STA $40C800+($A*$400)+$3AB
-		STA $40C800+($D*$400)+$385
-		STA $40C800+($D*$400)+$395
-		STA $40C800+($D*$400)+$3A5
-		LDA #$01
-		STA $41C800+($A*$400)+$38B
-		STA $41C800+($A*$400)+$39B
-		STA $41C800+($A*$400)+$3AB
-		STA $41C800+($D*$400)+$385
-		STA $41C800+($D*$400)+$395
-		STA $41C800+($D*$400)+$3A5
+		; LDA #$30
+		; STA $40C800+($A*$400)+$38B
+		; STA $40C800+($A*$400)+$39B
+		; STA $40C800+($A*$400)+$3AB
+		; STA $40C800+($D*$400)+$385
+		; STA $40C800+($D*$400)+$395
+		; STA $40C800+($D*$400)+$3A5
+		; LDA #$01
+		; STA $41C800+($A*$400)+$38B
+		; STA $41C800+($A*$400)+$39B
+		; STA $41C800+($A*$400)+$3AB
+		; STA $41C800+($D*$400)+$385
+		; STA $41C800+($D*$400)+$395
+		; STA $41C800+($D*$400)+$3A5
 
-		LDX #$0F
-		LDY #$00
-	-	LDA $3230,x : BEQ +
-		LDA !NewSpriteNum,x
-		CMP #$02 : BEQ ++
-		CMP #$03 : BEQ ++
-		CMP #$04 : BEQ ++
-		CMP #$2C : BNE +
-	++	INY
-	+	DEX : BPL -
-		CPY #$02 : BCC ..nextwave
-		JMP ..done
+		; LDX #$0F
+		; LDY #$00
+	; -	LDA $3230,x : BEQ +
+		; LDA !NewSpriteNum,x
+		; CMP #$02 : BEQ ++
+		; CMP #$03 : BEQ ++
+		; CMP #$04 : BEQ ++
+		; CMP #$2C : BNE +
+	; ++	INY
+	; +	DEX : BPL -
+		; CPY #$02 : BCC ..nextwave
+		; JMP ..done
 
-		..nextwave
-		LDX !Level+2
-		CPX #$FF : BNE +
-		JMP ..noaggro
-	+	CPX.b #..lastwaveindex-..waveindex : BEQ ..aggrowave
-		CPX.b #..lastwaveindex-..waveindex+1 : BCC $03 : JMP ..aggrowavemain
-		INC !Level+2
-		LDY ..waveindex+1,x
-		LDA ..waveindex,x : TAX
-		..nextspawn
-		REP #$20
-		LDA ..wavedata+0,x
-		AND #$00FF
-		ASL #4
-		ADC #$0A00
-		STA $00
-		LDA ..wavedata+1,x
-		AND #$00FF
-		ASL #4
-		ADC #$0200
-		STA $02
-		SEP #$20
-		PHX
-		PHY
-		LDA ..wavedata+2,x : JSL SpawnSprite_Custom
-		CPX #$FF : BEQ +
-		LDA !NewSpriteNum,x
-		CMP #$02 : BNE +
-		LDA #$05 : STA !ExtraProp1,x
-		LDA !ExtraProp2,x
-		AND #$C0
-		ORA #$08 : STA !ExtraProp2,x
-		+
-		PLY : STY $00
-		PLX
-		INX #3
-		CPX $00 : BCC ..nextspawn
-		JMP ..done
+		; ..nextwave
+		; LDX !Level+2
+		; CPX #$FF : BNE +
+		; JMP ..noaggro
+	; +	CPX.b #..lastwaveindex-..waveindex : BEQ ..aggrowave
+		; CPX.b #..lastwaveindex-..waveindex+1 : BCC $03 : JMP ..aggrowavemain
+		; INC !Level+2
+		; LDY ..waveindex+1,x
+		; LDA ..waveindex,x : TAX
+		; ..nextspawn
+		; REP #$20
+		; LDA ..wavedata+0,x
+		; AND #$00FF
+		; ASL #4
+		; ADC #$0A00
+		; STA $00
+		; LDA ..wavedata+1,x
+		; AND #$00FF
+		; ASL #4
+		; ADC #$0200
+		; STA $02
+		; SEP #$20
+		; PHX
+		; PHY
+		; LDA ..wavedata+2,x : JSL SpawnSprite_Custom
+		; CPX #$FF : BEQ +
+		; LDA !NewSpriteNum,x
+		; CMP #$02 : BNE +
+		; LDA #$05 : STA !ExtraProp1,x
+		; LDA !ExtraProp2,x
+		; AND #$C0
+		; ORA #$08 : STA !ExtraProp2,x
+		; +
+		; PLY : STY $00
+		; PLX
+		; INX #3
+		; CPX $00 : BCC ..nextspawn
+		; JMP ..done
 
-		..aggrowave
-		LDA #$80 : STA !Level+3
-		INC !Level+2
+		; ..aggrowave
+		; LDA #$80 : STA !Level+3
+		; INC !Level+2
 
-		LDX #$02
-	-	LDA #$30
-		STA $40C800+($A*$400)+$38D,x
-		STA $40C800+($A*$400)+$39D,x
-		STA $40C800+($A*$400)+$3AD,x
-		STA $40C800+($D*$400)+$380,x
-		STA $40C800+($D*$400)+$390,x
-		STA $40C800+($D*$400)+$3A0,x
-		LDA #$01
-		STA $41C800+($A*$400)+$38D,x
-		STA $41C800+($A*$400)+$39D,x
-		STA $41C800+($A*$400)+$3AD,x
-		STA $41C800+($D*$400)+$380,x
-		STA $41C800+($D*$400)+$390,x
-		STA $41C800+($D*$400)+$3A0,x
-		DEX : BPL -
+		; LDX #$02
+	; -	LDA #$30
+		; STA $40C800+($A*$400)+$38D,x
+		; STA $40C800+($A*$400)+$39D,x
+		; STA $40C800+($A*$400)+$3AD,x
+		; STA $40C800+($D*$400)+$380,x
+		; STA $40C800+($D*$400)+$390,x
+		; STA $40C800+($D*$400)+$3A0,x
+		; LDA #$01
+		; STA $41C800+($A*$400)+$38D,x
+		; STA $41C800+($A*$400)+$39D,x
+		; STA $41C800+($A*$400)+$3AD,x
+		; STA $41C800+($D*$400)+$380,x
+		; STA $41C800+($D*$400)+$390,x
+		; STA $41C800+($D*$400)+$3A0,x
+		; DEX : BPL -
 
-		..aggrowavemain
-		LDA !Level+3 : BNE +
-		LDA #$02 : JSL CountSprites_Custom : BEQ ..end
-		JMP ..noaggro
-		..end
-		LDA #$FF : STA !Level+2
-		JMP ..noaggro
+		; ..aggrowavemain
+		; LDA !Level+3 : BNE +
+		; LDA #$02 : JSL CountSprites_Custom : BEQ ..end
+		; JMP ..noaggro
+		; ..end
+		; LDA #$FF : STA !Level+2
+		; JMP ..noaggro
 
-	+	DEC !Level+3
-		CMP #$01 : BEQ ..spawnaggro
-		CMP #$40 : BEQ $03 : JMP ..noaggro
-		..shake
-		ASL A
-		STA !ShakeTimer
-		JMP ..noaggro
-		..spawnaggro
-		..aggro
-		LDX #$00
-		..loop
-		LDA $3230,x : BEQ ..thisone
-		INX
-		CPX #$10 : BCC ..loop
-		INC !Level+3
-		JMP ..noaggro
-		..thisone
-		INC $3230,x
-		LDA #$04 : STA !NewSpriteNum,x
-		LDA #$08 : STA !ExtraBits,x
-		JSL !ResetSprite
-		LDA.b #!StatueX*16+$10 : STA !SpriteXLo,x
-		LDA.b #!StatueX*16+$10>>8 : STA !SpriteXHi,x
-		LDA.b #!StatueY*16+$20 : STA !SpriteYLo,x
-		LDA.b #!StatueY*16+$20>>8 : STA !SpriteYHi,x
-		LDA #$25 : STA !SPC1					; roar SFX
-		LDA #$01 : STA $3280,x					; start chase
-		LDA #$09 : STA !SpriteAnimIndex				; |
-		LDA #$C0 : STA !SpriteAnimTimer				; | roar animation
-		LDA #$40 : STA $32D0,x					; |
-		STZ !SpriteXSpeed,x					; |
-		REP #$20
-		LDA.w #!StatueX*16+$10 : STA $9A
-		LDA.w #!StatueY*16 : STA $98
-		JSR ..break
-		LDA.w #!StatueX*16 : STA $9A
-		JSR ..break
-		LDA.w #!StatueY*16+$10 : STA $98
-		JSR ..break
-		LDA.w #!StatueX*16+$10 : STA $9A
-		JSR ..break
-		LDA.w #!StatueY*16+$20 : STA $98
-		JSR ..break
-		LDA.w #!StatueX*16 : STA $9A
-		JSR ..break
-		LDA.w #!StatueY*16+$30 : STA $98
-		JSR ..break
-		LDA.w #!StatueX*16+$10 : STA $9A
-		JSR ..break
-		LDA.w #!StatueX*16+$20 : STA $9A
-		JSR ..break
-		LDA.w #!StatueY*16+$20 : STA $98
-		JSR ..break
-		SEP #$20
-		..noaggro
+	; +	DEC !Level+3
+		; CMP #$01 : BEQ ..spawnaggro
+		; CMP #$40 : BEQ $03 : JMP ..noaggro
+		; ..shake
+		; ASL A
+		; STA !ShakeTimer
+		; JMP ..noaggro
+		; ..spawnaggro
+		; ..aggro
+		; LDX #$00
+		; ..loop
+		; LDA $3230,x : BEQ ..thisone
+		; INX
+		; CPX #$10 : BCC ..loop
+		; INC !Level+3
+		; JMP ..noaggro
+		; ..thisone
+		; INC $3230,x
+		; LDA #$04 : STA !NewSpriteNum,x
+		; LDA #$08 : STA !ExtraBits,x
+		; JSL !ResetSprite
+		; LDA.b #!StatueX*16+$10 : STA !SpriteXLo,x
+		; LDA.b #!StatueX*16+$10>>8 : STA !SpriteXHi,x
+		; LDA.b #!StatueY*16+$20 : STA !SpriteYLo,x
+		; LDA.b #!StatueY*16+$20>>8 : STA !SpriteYHi,x
+		; LDA #$25 : STA !SPC1					; roar SFX
+		; LDA #$01 : STA $3280,x					; start chase
+		; LDA #$09 : STA !SpriteAnimIndex				; |
+		; LDA #$C0 : STA !SpriteAnimTimer				; | roar animation
+		; LDA #$40 : STA $32D0,x					; |
+		; STZ !SpriteXSpeed,x					; |
+		; REP #$20
+		; LDA.w #!StatueX*16+$10 : STA $9A
+		; LDA.w #!StatueY*16 : STA $98
+		; JSR ..break
+		; LDA.w #!StatueX*16 : STA $9A
+		; JSR ..break
+		; LDA.w #!StatueY*16+$10 : STA $98
+		; JSR ..break
+		; LDA.w #!StatueX*16+$10 : STA $9A
+		; JSR ..break
+		; LDA.w #!StatueY*16+$20 : STA $98
+		; JSR ..break
+		; LDA.w #!StatueX*16 : STA $9A
+		; JSR ..break
+		; LDA.w #!StatueY*16+$30 : STA $98
+		; JSR ..break
+		; LDA.w #!StatueX*16+$10 : STA $9A
+		; JSR ..break
+		; LDA.w #!StatueX*16+$20 : STA $9A
+		; JSR ..break
+		; LDA.w #!StatueY*16+$20 : STA $98
+		; JSR ..break
+		; SEP #$20
+		; ..noaggro
 
-		..done
+		; ..done
 
 
 
 
 		REP #$20
 		LDA #$0008 : JSL EXIT_Left
+
 		JSL level2_ReloadSprites
 
 		LDA #$02 : STA !CameraBoxSpriteErase
-
 		LDA !LevelWidth : PHA
 		LDA !Level+2 : BMI +
 		LDA #$0E : STA !LevelWidth

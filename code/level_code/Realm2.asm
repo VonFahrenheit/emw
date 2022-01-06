@@ -1103,24 +1103,24 @@ db $00,$10,$20,$30,$04,$14,$24,$34,$08,$18,$28,$38,$0C,$1C,$2C,$3C
 		CLC : ADC #$0008
 		STA $06
 		DEY #2 : BPL -
-		LDA #$0001 : STA $40A380,x
-		LDA #$0060 : STA $40A383,x
-		LDA #$0000 : STA $40A385,x
+		LDA #$0001 : STA $414000,x
+		LDA #$0060 : STA $414003,x
+		LDA #$0000 : STA $414005,x
 		JMP ..endbg3
 
 	+
 	-	CMP #$007F
 		BCC $03 : LDA #$007F
-		STA $40A380,x
+		STA $414000,x
 		CPY #$0016 : BNE +
-		LDA #$0060 : STA $40A383,x		; ignore X here
+		LDA #$0060 : STA $414003,x		; ignore X here
 		BRA ++
 	
-	+	LDA !BigRAM+$18,y : STA $40A381,x
+	+	LDA !BigRAM+$18,y : STA $414001,x
 		LDA !BigRAM,y
 		EOR #$FFFF : INC A
 		CLC : ADC $06
-		STA $40A383,x
+		STA $414003,x
 
 	++	INX #5
 		LDA $06
@@ -1134,9 +1134,9 @@ db $00,$10,$20,$30,$04,$14,$24,$34,$08,$18,$28,$38,$0C,$1C,$2C,$3C
 
 	+	DEY #2 : BPL -				; note that this doesn't loop for y = 0
 							; meaning that the next chunk is the below-water section
-	++	LDA #$0001 : STA $40A380,x
-		LDA #$0020 : STA $40A383,x
-		LDA #$0000 : STA $40A385,x
+	++	LDA #$0001 : STA $414000,x
+		LDA #$0020 : STA $414003,x
+		LDA #$0000 : STA $414005,x
 		JMP ..endbg3
 
 
@@ -1145,16 +1145,16 @@ db $00,$10,$20,$30,$04,$14,$24,$34,$08,$18,$28,$38,$0C,$1C,$2C,$3C
 		LDA !BigRAM,y
 		CMP #$007F : BCC +
 		LSR A
-		STA $40A380,x
+		STA $414000,x
 		BCC $01 : INC A
 		PHA
-		LDA #$0060 : STA $40A383,x
-		LDA #$0000 : STA $40A381,x
+		LDA #$0060 : STA $414003,x
+		LDA #$0000 : STA $414001,x
 		INX #5
 		PLA
-	+	STA $40A380,x
-		LDA #$0060 : STA $40A383,x
-		LDA #$0000 : STA $40A381,x
+	+	STA $414000,x
+		LDA #$0060 : STA $414003,x
+		LDA #$0000 : STA $414001,x
 		INX #5
 		STZ $00
 
@@ -1168,19 +1168,19 @@ db $00,$10,$20,$30,$04,$14,$24,$34,$08,$18,$28,$38,$0C,$1C,$2C,$3C
 	;	BNE $01 : INC A
 		CMP #$007F
 		BCC $03 : LDA #$007F
-	++	STA $40A380,x
+	++	STA $414000,x
 		LDA !BigRAM,y
 		EOR #$FFFF : INC A
 		CLC : ADC $00
-		STA $40A383,x
-		LDA !BigRAM+$18,y : STA $40A381,x
+		STA $414003,x
+		LDA !BigRAM+$18,y : STA $414001,x
 		INX #5
 	+	INY #2
 		LDA $00
 		CLC : ADC #$0008
 		STA $00
 		CPY #$0018 : BNE -
-		LDA #$0000 : STA $40A380,x
+		LDA #$0000 : STA $414000,x
 
 		..endbg3
 		PLX

@@ -97,7 +97,7 @@ levelinit35:
 ; $0C00/$0C10 - priority HDMA
 ; $0C20/$0C80 - BG1 wave HDMA (indirect values at $0D00/$0D10)
 ; $40A000/$40A400 - BG2 HDMA
-; $40A380/$40A780 - BG3 HDMA
+; $414000/$414400 - BG3 HDMA
 
 
 		LDA #$01 : STA !3DWater			; enable 3D water
@@ -148,7 +148,7 @@ levelinit35:
 		STZ $4334				;\ bank for BG1 wave HDMA
 		STZ $4337				;/
 		LDA #$40 : STA $4354			; > bank for BG2 parallax HDMA
-		LDA #$40 : STA $4364			; > bank for BG3 parallax HDMA
+		LDA #$41 : STA $4364			; > bank for BG3 parallax HDMA
 		STZ $4374				; > bank for priority HDMA
 
 		LDA #$EC : TSB $6D9F
@@ -949,11 +949,11 @@ level35:
 		..3DWater
 		STA $0C
 		SEP #$20
-		LDA #$80 : STA !HDMA6source		;\
+		STZ !HDMA6source			;\
 		LDA $14					; |
 		AND #$01				; | double buffer BG3 parallax table
 		ASL #2					; |
-		ORA #$A3				; |
+		ORA #$40				; |
 		STA !HDMA6source+1			;/
 
 
@@ -975,7 +975,7 @@ level35:
 		CLC : ADC #$0070			; |
 		CMP !Level+2 : BCC .AboveWater		;/
 
-		.BelowWater
+	.BelowWater
 		LDA !BigRAM+$16 : STA $0E		; wave effect will start at Cx
 		LDA !BigRAM+$10				;\ check w
 		BEQ ..LowP : BMI ..LowP			;/
@@ -989,19 +989,19 @@ level35:
 		BNE $01 : INC A
 		BRA ..HighP_w
 
-	..HighP
+		..HighP
 		LDA !BigRAM+$10
 	...w	STA $0C00,x
 		LDA #$1304 : STA $0C01,x
 		INX #3
 
-	..LowP
+		..LowP
 		LDA #$0001 : STA $0C00,x		; final chunk is always the rest of the screen
-		LDA #$1700 : STA $0C01,x
+		LDA #$1700 : STA $0C01,x		; PROBLEM: layer 2 goes in front of layer 3
 		STZ $0C03,x
 		BRA .PrioDone
 
-		.AboveWater
+	.AboveWater
 		LDA !BigRAM+$10 : STA $0E		; wave effect will start at w
 		LDA !BigRAM+$00				;\
 		LSR A					; |
@@ -1015,14 +1015,14 @@ level35:
 		LDA !BigRAM+$10
 		CMP #$00E0 : BCC ..HighP
 
-	..LowP
+		..LowP
 		LDA #$0001 : STA $0C06,x		;\
 		LDA #$1315 : STA $0C07,x		; | hi prio doesn't fit so just go with lo prio
 		STZ $0C09,x				; |
 		BRA .PrioDone				;/
 
 
-	..HighP
+		..HighP
 		LDA !BigRAM+$10				;\
 		SEC : SBC !BigRAM+$00			; | lo prio for w - h scanlines
 		BNE $01 : INC A				; | (minimum 1 scanline)

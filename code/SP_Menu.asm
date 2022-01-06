@@ -2851,8 +2851,8 @@ MAIN_MENU:
 		PLB					;/
 		LDA #$01 : STA !MarioStatus		; start with mario only
 		REP #$20				;\
-		LDA #$00B8 : STA !SRAM_overworldX	; | starting overworld coords
-		LDA #$0370 : STA !SRAM_overworldY	; |
+		LDA #$0098 : STA !SRAM_overworldX	; | starting overworld coords
+		LDA #$0362 : STA !SRAM_overworldY	; |
 		SEP #$20				;/
 
 		LDA #$80 : STA !LevelTable4+$02		; unlock rex village
@@ -2867,11 +2867,12 @@ MAIN_MENU:
 	STA !AlterStatus			; |
 	STA !PeachStatus			; |
 	LDA #$80 : STA !LevelTable1+$00		; |
-	LDA #$81 : STA !StoryFlags+$00		; | debug: hold R to start with all chars + all levels
+	LDA #$82 : STA !StoryFlags+$00		; | debug: hold R to start with all chars + all levels
 	LDX #$5F				; |
-	LDA #$80				; |
--	STA !LevelTable1,x			; |
+-	LDA #$80				; |
+	STA !LevelTable1,x			; |
 	STA !LevelTable4,x			; |
+	LDA #$C0 : STA !LevelTable3,x		; |
 	DEX : BPL -				; |
 	STZ $6109				; |
 	+					; |
@@ -2887,7 +2888,7 @@ MAIN_MENU:
 	STA !AlterUpgrades			; |
 	STA !PeachUpgrades			; |
 	LDA #$80 : STA !LevelTable1+$00		; |
-	LDA #$81 : STA !StoryFlags+$00		; |
+	LDA #$82 : STA !StoryFlags+$00		; |
 	STZ $6109				; |
 	+					; |
 	endif					;/

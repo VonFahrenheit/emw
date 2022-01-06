@@ -125,9 +125,9 @@
 ;
 ;
 ;
-;	next(XX)
-;	- takes a value 0-255 ($00-$FF)
-;	- links the current message to the one corresponding to the given value
+;	next(MSG)
+;	- takes a MSG name
+;	- links the current message to the one specified
 ;	- upon hitting an endmessage command, the window will be cleared and the linked message will immediately start rendering
 ;	- it is recommended to use the waitforinput and scroll commands to make this transition appear smoother
 ;
@@ -304,7 +304,7 @@ macro dialogue(options, type)
 
 macro next(message)
 		db $F9
-		dw <message>
+		dw !MSG_<message>
 		endmacro
 
 macro setexit(lo, hi)

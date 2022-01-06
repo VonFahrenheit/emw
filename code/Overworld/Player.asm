@@ -8,6 +8,20 @@
 
 	Player:
 		REP #$30
+
+		LDA !MapEvent				;\
+		ORA !CutsceneSmoothness			; |
+		BEQ +					; |
+		STZ $6DA2				; | no inputs while camera is out of control (during event)
+		STZ $6DA4				; |
+		STZ $6DA6				; |
+		STZ $6DA8				; |
+		+					;/
+
+
+
+
+
 		LDA !GameMode
 		AND #$00FF
 		CMP #$000E : BEQ .Process
@@ -77,6 +91,7 @@
 
 
 		.CapCoords
+		LDA !MapLockCamera : BNE ..done		; no screen border interaction during event
 		LDA !MultiPlayer
 		AND #$00FF : BNE ..done
 		LDA !P1MapX
@@ -100,6 +115,14 @@
 	; this part is done for P1 only
 
 		.MoveCamera
+		LDA !MapLockCamera : BEQ ..handlecam
+		AND #$FF00 : BEQ ..notimer
+		DEC !MapCameraTimer
+		..notimer
+		JMP .ReturnCamera
+		..handlecam
+
+
 		LDA !MultiPlayer
 		AND #$00FF : BEQ ..single
 
@@ -146,52 +169,20 @@
 		STA $02
 
 		..movecamera
+		JSR UpdateCamera
+
+		.ReturnCamera
+		LDA !MapLockCamera : BNE ..done
 		LDA $1A
-		SEC : SBC $00
-		INC #3
-		CMP #$0007 : BCC ..storeX
-		LDA $1A
-		CMP $00 : BCS ..decX
-		..incX
-		INC #4 : BRA ++
-		..decX
-		DEC #4 : BRA ++
-		..storeX
-		LDA $00
-	++	STA $1A
-		+
+		CMP $00 : BNE ..done
 		LDA $1C
-		SEC : SBC $02
-		INC #3
-		CMP #$0007 : BCC ..storeY
-		LDA $1C
-		CMP $02 : BCS ..decY
-		..incY
-		INC #4 : BRA ++
-		..decY
-		DEC #4 : BRA ++
-		..storeY
-		LDA $02
-	++	STA $1C
-		+
-
-
-
-
-		..capcamera
-		LDA $1A : BPL +
-		LDA #$0000 : STA $1A
-	+	CMP #$0500 : BCC +
-		LDA #$0500 : STA $1A
-		+
-		LDA $1C : BPL +
-		LDA #$0000 : STA $1C
-	+	CMP #$031F : BCC +
-		LDA #$031F : STA $1C
-		+
+		CMP $02 : BNE ..done
+		STZ !MapEvent
+		..done
 
 
 		.CapMultiPlayerCoords
+		LDA !MapLockCamera : BNE ..done		; no screen border interaction during event
 		LDA !MultiPlayer
 		AND #$00FF : BEQ ..done
 		LDA $1A
@@ -304,7 +295,10 @@
 
 		..drawbuttons
 		LDA !WarpPipe
-		AND #$00FF : BNE ..return
+		AND #$00FF
+		ORA !MapEvent				; event flag
+		ORA !CutsceneSmoothness			; cutscene effect
+		BNE ..return
 		LDA !GameMode
 		AND #$00FF
 		CMP #$000E : BCC ..return
@@ -437,7 +431,7 @@
 
 		.FullSolid
 		PLY
-		LDA .Solidity_pushoutvalue,y
+		LDA .Solidity_pushoutvalue,y : STA $00
 		RTS
 
 		.Slant1
@@ -560,16 +554,26 @@
 		EOR $04
 		..setprop
 		ORA #$1000
+		BIT !P1MapForceFlip-1,x
+		BPL $03 : EOR #$8000
+		BVC $03 : EOR #$4000
 		STA $04
 
 		CPX #$0000 : BEQ +
 		LDA #$0202 : TSB $04
 		+
 
+
+		LDA !MapHidePlayers			;\
+		AND #$00FF : BEQ ..nothidden		; |
+		STX $0A					; | don't draw to OAM if hidden
+		BRA ..noshadow				; |
+		..nothidden				;/
+
 		LDY !MapOAMindex
 		CPY #$0100 : BCS ..fail
-		LDA #$0005 : STA !MapOAMdata+$002,y
 		LDA $06 : STA !MapOAMdata+$000,y
+		LDA #$0005 : STA !MapOAMdata+$002,y
 		INY #4
 
 		LDA $00 : STA !MapOAMdata+$000,y
@@ -592,9 +596,8 @@
 		LDA !OAMindex_p0 : TAX
 		LDA $00 : STA !OAM_p0+$000,x
 		LDA $06
-		CLC : ADC #$0006
-		STA !OAM_p0+$001,x
-		LDA #$1504 : STA !OAM_p0+$002,x
+		INC A : STA !OAM_p0+$001,x
+		LDA #$1EE0 : STA !OAM_p0+$002,x
 		TXA
 		LSR #2
 		TAX
@@ -801,6 +804,24 @@
 
 
 		.UpdateSpeed
+
+	LDA !P1MapGhost,x
+	AND #$000F
+	CMP #$000F : BEQ ++
+	LDA !P1MapGhost,x
+	AND #$0003 : BEQ +
+	SEP #$20
+	STZ !P1MapYSpeed,x
+	REP #$20
+	+
+	LDA !P1MapGhost,x
+	AND #$000C : BEQ ++
+	SEP #$20
+	STZ !P1MapXSpeed,x
+	REP #$20
+	++
+
+
 		LDA !WarpPipe
 		AND #$00FF : BNE ..z
 		..x
@@ -891,11 +912,9 @@
 
 ; debug: skip collision with R
 	if !Debug = 1
-	LDA !P1Ghost,x
-	AND #$00FF : BNE +
 	LDA $6DA4
 	AND #$0010 : BEQ .Terrain
-+	JMP .Terrain_noup
+	JMP .Terrain_noup
 	endif
 
 		.Terrain
@@ -916,6 +935,8 @@
 
 
 		..right
+	LDA !P1MapGhost,x
+	AND #$000F : BNE ..noright
 		LDA !P1MapX,x
 		CLC : ADC #$000F
 		STA $0C
@@ -930,7 +951,7 @@
 		..collisionright
 		LDA $0C
 		AND #$FFF8
-		SEC : SBC #$000F
+		CLC : ADC $00
 		STA !P1MapX,x
 		SEP #$20
 		STZ !P1MapXSpeed,x
@@ -938,6 +959,8 @@
 		..noright
 
 		..left
+	LDA !P1MapGhost,x
+	AND #$000F : BNE ..noleft
 		LDA !P1MapX,x : STA $0C
 		LDA !P1MapY,x
 		CLC : ADC #$0004
@@ -950,7 +973,7 @@
 		..collisionleft
 		LDA $0C
 		AND #$FFF8
-		CLC : ADC #$0008
+		CLC : ADC $00
 		STA !P1MapX,x
 		SEP #$20
 		STZ !P1MapXSpeed,x
@@ -958,6 +981,8 @@
 		..noleft
 
 		..down
+	LDA !P1MapGhost,x
+	AND #$000F : BNE ..nodown
 		LDA !P1MapX,x
 		CLC : ADC #$0004
 		STA $0C
@@ -972,7 +997,7 @@
 		..collisiondown
 		LDA $0E
 		AND #$FFF8
-		SEC : SBC #$000F
+		CLC : ADC $00
 		STA !P1MapY,x
 		SEP #$20
 		STZ !P1MapYSpeed,x
@@ -980,6 +1005,8 @@
 		..nodown
 
 		..up
+	LDA !P1MapGhost,x
+	AND #$000F : BNE ..noup
 		LDA !P1MapX,x
 		CLC : ADC #$0004
 		STA $0C
@@ -992,7 +1019,7 @@
 		..collisionup
 		LDA $0E
 		AND #$FFF8
-		CLC : ADC #$0008
+		CLC : ADC $00
 		STA !P1MapY,x
 		SEP #$20
 		STZ !P1MapYSpeed,x
@@ -1011,7 +1038,10 @@
 
 
 		.AnimDir
+		LDA !Cutscene
+		CMP #$02 : BEQ ..process
 		LDA !WarpPipe : BEQ ..done
+		..process
 		LDA !P1MapZSpeed,x : BMI +
 		STZ !P1MapDirection,x
 		LDA $14
