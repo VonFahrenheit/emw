@@ -1194,7 +1194,7 @@ level35:
 		RTL
 
 
-.Gradient
+	.Gradient
 		dw ..end-..start
 		dw $0008
 		..start

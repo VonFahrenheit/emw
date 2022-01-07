@@ -416,7 +416,10 @@ levelinitC:
 
 
 levelinit26:
-		%GradientRGB(HDMA_BlueSky)
+	;	%GradientRGB(HDMA_BlueSky)
+
+		LDA #$02 : STA !GlobalLight2
+
 		LDA #$06			;\
 		STA !BG2ModeH			; | BG2 scroll = Close, Close
 		STA !BG2ModeV			;/
@@ -2073,8 +2076,7 @@ levelC:
 		PHP
 		PHB : PHK : PLB			; start of bank wrapper has to go here so .Gradient can be read
 		REP #$20
-		LDA.w #.Gradient
-		JML level35_HDMA_3DWater
+		LDA.w #.Gradient : JML level35_HDMA_3DWater
 
 	.SA1
 		PHB
@@ -2088,28 +2090,46 @@ levelC:
 		PLB
 		RTL
 
-.Gradient
+
+	.Gradient
 		dw ..end-..start
-		dw $000C
+		dw $0007
 		..start
-		dw $4CA0
-		dw $48A0
-		dw $4080
-		dw $3C80
-		dw $3880
-		dw $3060
-		dw $2C60
-		dw $2860
-		dw $2040
-		dw $1C40
-		dw $1840
-		dw $1020
-		dw $0C20
-		dw $0400
+		dw $5986
+		dw $59A6
+		dw $59A7
+		dw $59C7
+		dw $59E8
+		dw $5A08
+		dw $5A29
+		dw $5A49
+		dw $5A6A
+		dw $5A8A
+		dw $5A8B
+		dw $5AAB
 		..end
 
 
 level26:
+		LDA $14
+		AND #$7F : BNE +
+		LDA !TranslevelFlags+$00
+		CMP #$20 : BEQ +
+		INC !TranslevelFlags+$00
+		+
+		LDA !TranslevelFlags+$00 : STA !GlobalLightMix
+		LDA !LightBuffer
+		LSR A
+		REP #$20
+		BCS +
+		LDA !LightData_SNES+($10*2)+$200 : BRA ++
+		+
+		LDA !LightData_SNES+($10*2)
+	++	STA !2132_RGB
+		SEP #$20
+
+
+
 		STZ !SideExit
 		LDA $1B
 		BEQ .NoSide
@@ -2886,6 +2906,10 @@ level2F:
 	+	DEX : BPL -
 
 
+		LDA !Level+3 : BEQ +
+		DEC !Level+3
+		+
+
 
 		LDA $1D : BNE +
 		REP #$20
@@ -2906,7 +2930,9 @@ level2F:
 
 		.Brawl
 		LDA !Room
-		CMP #$01 : BEQ $03 : JMP ..done
+		CMP #$01 : BEQ ..fight
+	-	JMP ..done
+		..fight
 		LDA #$48 : STA !SPC3
 
 		; LDA #$30
@@ -2924,143 +2950,58 @@ level2F:
 		; STA $41C800+($D*$400)+$395
 		; STA $41C800+($D*$400)+$3A5
 
-		; LDX #$0F
-		; LDY #$00
-	; -	LDA $3230,x : BEQ +
-		; LDA !NewSpriteNum,x
-		; CMP #$02 : BEQ ++
-		; CMP #$03 : BEQ ++
-		; CMP #$04 : BEQ ++
-		; CMP #$2C : BNE +
-	; ++	INY
-	; +	DEX : BPL -
-		; CPY #$02 : BCC ..nextwave
-		; JMP ..done
+		LDA !Level+3 : BNE -
+		LDX #$0F
+		LDY #$00
+	-	LDA $3230,x : BEQ +
+		LDA !NewSpriteNum,x
+		CMP #$02 : BEQ ++
+		CMP #$03 : BEQ ++
+		CMP #$04 : BEQ ++
+		CMP #$2C : BNE +
+	++	INY
+	+	DEX : BPL -
+		CPY #$02 : BCS ..done
 
-		; ..nextwave
-		; LDX !Level+2
-		; CPX #$FF : BNE +
-		; JMP ..noaggro
-	; +	CPX.b #..lastwaveindex-..waveindex : BEQ ..aggrowave
-		; CPX.b #..lastwaveindex-..waveindex+1 : BCC $03 : JMP ..aggrowavemain
-		; INC !Level+2
-		; LDY ..waveindex+1,x
-		; LDA ..waveindex,x : TAX
-		; ..nextspawn
-		; REP #$20
-		; LDA ..wavedata+0,x
-		; AND #$00FF
-		; ASL #4
-		; ADC #$0A00
-		; STA $00
-		; LDA ..wavedata+1,x
-		; AND #$00FF
-		; ASL #4
-		; ADC #$0200
-		; STA $02
-		; SEP #$20
-		; PHX
-		; PHY
-		; LDA ..wavedata+2,x : JSL SpawnSprite_Custom
-		; CPX #$FF : BEQ +
-		; LDA !NewSpriteNum,x
-		; CMP #$02 : BNE +
-		; LDA #$05 : STA !ExtraProp1,x
-		; LDA !ExtraProp2,x
-		; AND #$C0
-		; ORA #$08 : STA !ExtraProp2,x
-		; +
-		; PLY : STY $00
-		; PLX
-		; INX #3
-		; CPX $00 : BCC ..nextspawn
-		; JMP ..done
 
-		; ..aggrowave
-		; LDA #$80 : STA !Level+3
-		; INC !Level+2
+	STZ $7FFF
 
-		; LDX #$02
-	; -	LDA #$30
-		; STA $40C800+($A*$400)+$38D,x
-		; STA $40C800+($A*$400)+$39D,x
-		; STA $40C800+($A*$400)+$3AD,x
-		; STA $40C800+($D*$400)+$380,x
-		; STA $40C800+($D*$400)+$390,x
-		; STA $40C800+($D*$400)+$3A0,x
-		; LDA #$01
-		; STA $41C800+($A*$400)+$38D,x
-		; STA $41C800+($A*$400)+$39D,x
-		; STA $41C800+($A*$400)+$3AD,x
-		; STA $41C800+($D*$400)+$380,x
-		; STA $41C800+($D*$400)+$390,x
-		; STA $41C800+($D*$400)+$3A0,x
-		; DEX : BPL -
 
-		; ..aggrowavemain
-		; LDA !Level+3 : BNE +
-		; LDA #$02 : JSL CountSprites_Custom : BEQ ..end
-		; JMP ..noaggro
-		; ..end
-		; LDA #$FF : STA !Level+2
-		; JMP ..noaggro
+		..nextwave
+		LDX !TranslevelFlags+$10
+;	STX !P1Coins
+		CPX.b #..lastwaveindex-..waveindex : BCS ..done
+		INC !TranslevelFlags+$10
+		LDA ..waveindex+1,x : STA $0F
+		LDA ..waveindex,x : TAX
 
-	; +	DEC !Level+3
-		; CMP #$01 : BEQ ..spawnaggro
-		; CMP #$40 : BEQ $03 : JMP ..noaggro
-		; ..shake
-		; ASL A
-		; STA !ShakeTimer
-		; JMP ..noaggro
-		; ..spawnaggro
-		; ..aggro
-		; LDX #$00
-		; ..loop
-		; LDA $3230,x : BEQ ..thisone
-		; INX
-		; CPX #$10 : BCC ..loop
-		; INC !Level+3
-		; JMP ..noaggro
-		; ..thisone
-		; INC $3230,x
-		; LDA #$04 : STA !NewSpriteNum,x
-		; LDA #$08 : STA !ExtraBits,x
-		; JSL !ResetSprite
-		; LDA.b #!StatueX*16+$10 : STA !SpriteXLo,x
-		; LDA.b #!StatueX*16+$10>>8 : STA !SpriteXHi,x
-		; LDA.b #!StatueY*16+$20 : STA !SpriteYLo,x
-		; LDA.b #!StatueY*16+$20>>8 : STA !SpriteYHi,x
-		; LDA #$25 : STA !SPC1					; roar SFX
-		; LDA #$01 : STA $3280,x					; start chase
-		; LDA #$09 : STA !SpriteAnimIndex				; |
-		; LDA #$C0 : STA !SpriteAnimTimer				; | roar animation
-		; LDA #$40 : STA $32D0,x					; |
-		; STZ !SpriteXSpeed,x					; |
-		; REP #$20
-		; LDA.w #!StatueX*16+$10 : STA $9A
-		; LDA.w #!StatueY*16 : STA $98
-		; JSR ..break
-		; LDA.w #!StatueX*16 : STA $9A
-		; JSR ..break
-		; LDA.w #!StatueY*16+$10 : STA $98
-		; JSR ..break
-		; LDA.w #!StatueX*16+$10 : STA $9A
-		; JSR ..break
-		; LDA.w #!StatueY*16+$20 : STA $98
-		; JSR ..break
-		; LDA.w #!StatueX*16 : STA $9A
-		; JSR ..break
-		; LDA.w #!StatueY*16+$30 : STA $98
-		; JSR ..break
-		; LDA.w #!StatueX*16+$10 : STA $9A
-		; JSR ..break
-		; LDA.w #!StatueX*16+$20 : STA $9A
-		; JSR ..break
-		; LDA.w #!StatueY*16+$20 : STA $98
-		; JSR ..break
-		; SEP #$20
-		; ..noaggro
-
+		..nextspawn
+		REP #$20
+		LDA ..wavedata+0,x
+		AND #$00FF
+		ASL #4
+		ADC #$0A00
+		STA $00
+		LDA ..wavedata+1,x
+		AND #$00FF
+		ASL #4
+		ADC #$0200
+		STA $02
+		SEP #$20
+		PHX
+		LDA $0F : PHA
+		LDA ..wavedata+2,x : JSL SpawnSprite_Custom
+		PLA : STA $0F
+		CPX #$FF : BEQ +
+		LDA !NewSpriteNum,x
+		CMP #$02 : BNE +
+		LDA #$05 : STA !ExtraProp1,x
+		LDA !ExtraProp2,x
+		AND #$C0
+		ORA #$08 : STA !ExtraProp2,x
+	+	PLX
+		INX #3
+		CPX $0F : BCC ..nextspawn
 		..done
 
 
@@ -3070,6 +3011,13 @@ level2F:
 		LDA #$0008 : JSL EXIT_Left
 
 		JSL level2_ReloadSprites
+
+		LDA !Room
+		CMP !Level+4
+		STA !Level+4 : BEQ ..same
+		..newroom
+		LDA #$3F : STA !Level+3
+		..same
 
 		LDA #$02 : STA !CameraBoxSpriteErase
 		LDA !LevelWidth : PHA
@@ -3104,8 +3052,8 @@ level2F:
 	db ..wave1-..wavedata
 	db ..wave2-..wavedata
 	db ..wave3-..wavedata
-	db ..waveend-..wavedata
 	..lastwaveindex
+	db ..waveend-..wavedata
 
 ; coords relative to 0A00,0200
 	..wavedata

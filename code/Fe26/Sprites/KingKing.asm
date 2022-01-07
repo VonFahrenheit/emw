@@ -233,7 +233,8 @@
 		db $08,$0C,$10
 
 		.DelayTable
-		db $3C,$28,$20,$18
+	;	db $3C,$28,$20,$18		; pre-demo
+		db $3C,$3C,$28,$20		; nerfed version
 
 	; index:
 	; dir + Attack_SpeedIndex,[attack] + difficulty&3 * 8
@@ -1105,10 +1106,11 @@
 		JSR JumpSmoke
 		..animdone
 		LDA !Difficulty					;\
-		AND #$03 : BEQ .Process				; |
+		AND #$03					; |
+		CMP #$02 : BNE .Process				; |
 		LDA !Phase,x					; |
-		AND #$7F					; |
-		CMP #$04 : BNE .Process				; | dunk check?
+		AND #$7F					; | dunk check?
+		CMP #$04 : BNE .Process				; | (only on insane phase 2)
 		LDA !SpriteYSpeed,x				; |
 		CMP #$BE : BNE .Process				; |
 		LDY $3320,x					; |
@@ -1469,6 +1471,9 @@
 		INC !HeadTimer,x				;/
 		.Move
 
+		LDA !Difficulty					;\
+		AND #$03					; | can only charge -> smack on insane
+		CMP #$02 : BCC ..nosmack			;/
 		REP #$20					;\
 		LDA.w #Smack_Hitbox : JSL LOAD_HITBOX		; |
 		SEC : JSL !PlayerClipping : BCC ..nosmack	; |
@@ -1637,7 +1642,11 @@
 		STA !SpriteXSpeed,x				;/
 		JSR Wait					;\
 		LDA #!KK_Smack : STA !SpriteAnimIndex		; |
-		STZ !SpriteAnimTimer				; |
+		LDA !Difficulty
+		AND #$03 : TAY
+		LDA #$28
+		SEC : SBC DATA_DelayTable,y
+		STA !SpriteAnimTimer				; |
 	;	LDA !SpriteXSpeed,x				; |
 	;	CLC : ADC #$20					; | init anim
 	;	CMP #$40 : BCC ..nofast				; | (save 8 frames on startup when moving fast)
@@ -1666,7 +1675,7 @@
 		RTS						;/
 
 		.Hitbox
-		dw $FFD8,$FFD1 : db $18,$40
+		dw $FFE0,$FFD1 : db $10,$40
 
 		.Dust
 		LDY $3320,x

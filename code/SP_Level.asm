@@ -737,24 +737,39 @@ print "Level code handler inserted at $", pc, "."
 		LDA !OAMindex_p1_prev : STA !OAMindex_p1	; | keep the just-drawn stuff from being cleared
 		LDA !OAMindex_p2_prev : STA !OAMindex_p2	; |
 		LDA !OAMindex_p3_prev : STA !OAMindex_p3	;/
-
 		LDA #$0100					;\
 		CMP !LightR : BNE ..shade			; | check for light alterations
 		CMP !LightG : BNE ..shade			; |
 		CMP !LightB : BEQ ..initpal			;/
 		..shade						;\
-	STZ $7FFF
 		LDA.w #.PreShade : STA $3180			; |
 		LDA.w #.PreShade>>8 : STA $3181			; | have sa-1 preshade palette and dump it in !PaletteBuffer
 		SEP #$20					; |
 		JSR $1E80					;/
-		STZ $2121					;\
+		LDA !LightIndexStart+1				;\
+		LSR A						; |
+		LDA !LightIndexStart				; |
+		ROR A						; |
+		STA $2121					; |
+		LDA.b #!PaletteBuffer>>16 : STA $4304		; |
 		REP #$30					; |
+		LDX !LightIndexStart				; |
+		CPX #$000E+2 : BCS ..noBG3			; |
+		..BG3						; |
+		LDA !PaletteBuffer,x : STA $00A0-2,x		; |
+		CPX #$0002 : BCC ..noBG3			; |
+		DEX #2 : BRA ..BG3				; | !PaletteBuffer -> CGRAM
+		..noBG3						; |
 		LDA #$2202 : STA $4300				; |
-		LDA.w #!PaletteBuffer : STA $4302		; | !PaletteBuffer -> CGRAM
-		LDA.w #!PaletteBuffer>>8 : STA $4303		; |
-		LDA #$0200 : STA $4305				; |
-		LDA #$0001 : STA $420B				; |
+		LDA !LightIndexStart				; |
+		CLC : ADC.w #!PaletteBuffer			; |
+		STA $4302					; |
+		LDA !LightIndexEnd				; |
+		BNE $03 : LDA #$0200				; |
+		SEC : SBC !LightIndexStart			; |
+		STA $4305					; |
+		SEP #$30					; |
+		LDA #$01 : STA $420B				; |
 		BRA ..noshade					;/
 		..initpal					;\
 		SEP #$20					; |
@@ -764,10 +779,10 @@ print "Level code handler inserted at $", pc, "."
 		LDA.w #!PaletteRGB : STA $4302			; |
 		LDA.w #!PaletteRGB>>8 : STA $4303		; |
 		LDA #$0200 : STA $4305				; |
-		LDA #$0001 : STA $420B				; |
+		SEP #$30					; |
+		LDA #$01 : STA $420B				; |
 		..noshade					;/
-		SEP #$30					;\
-		LDA.b #.InitShader : STA $3180			; |
+		LDA.b #.InitShader : STA $3180			;\
 		LDA.b #.InitShader>>8 : STA $3181		; | initialize !ShaderInput with a copy of !PaletteRGB
 		LDA.b #.InitShader>>16 : STA $3182		; |
 		JSR $1E80					;/
@@ -797,11 +812,6 @@ print "Level code handler inserted at $", pc, "."
 		PHP
 		STZ $2250
 		REP #$30
-		LDX #$0000
-	-	LDA !PaletteRGB+$00,x : STA !PaletteBuffer+$00,x
-		INX #2
-		CPX !LightIndexStart : BCC -
-		+
 
 		LDX !LightIndexStart
 
@@ -837,8 +847,12 @@ print "Level code handler inserted at $", pc, "."
 
 		..next
 		INX #2
-		CPX !LightIndexEnd : BCC ..checkdisable
-		JMP ..finish
+		CPX #$0200 : BCS ..end
+		CPX !LightIndexEnd : BNE ..checkdisable
+		..end
+		PLP
+		PLB
+		RTL
 
 		..checkdisable
 		TXA
@@ -865,7 +879,7 @@ print "Level code handler inserted at $", pc, "."
 		LDA !PaletteRGB+$1A,x : STA !PaletteBuffer+$1A,x
 		LDA !PaletteRGB+$1C,x : STA !PaletteBuffer+$1C,x
 		LDA !PaletteRGB+$1E,x : STA !PaletteBuffer+$1E,x
-		TYA
+		TXA
 		CLC : ADC #$0020
 		TAX
 		JMP ..loop
@@ -873,15 +887,6 @@ print "Level code handler inserted at $", pc, "."
 		..ok
 		TYX
 		JMP ..loop
-
-		..finish
-	-	CPX #$0200 : BCS ..return
-		LDA !PaletteRGB+$00,x : STA !PaletteBuffer+$00,x
-		INX #2 : BRA -
-		..return
-		PLP
-		PLB
-		RTL
 
 
 
@@ -2204,23 +2209,6 @@ HandleGraphics:
 		PHP
 		SEP #$30
 		LDA !StarTimer : BNE .Shift
-
-	; music backup function
-	; from $00E2EB in all.log
-		LDA !MusicBackup
-		CMP #$FF : BEQ +
-		AND #$7F
-		STA !MusicBackup
-		TAX
-		LDA $74AD
-		ORA $74AE
-		ORA $790C
-		BEQ ++
-		LDX #$0E
-	++	STX !SPC3
-		+
-
-
 	..P1	LDA !P2LockPalset-$80 : BNE ..P2
 		LDA !Palset8
 		AND #$7F

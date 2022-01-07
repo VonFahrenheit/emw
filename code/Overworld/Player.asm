@@ -489,6 +489,7 @@
 		STA $00
 		LDA !P1MapY,x
 		SEC : SBC $1C
+		DEC A				; draw 1px up
 		STA $06
 		SEC : SBC !P1MapZ,x
 		STA $02

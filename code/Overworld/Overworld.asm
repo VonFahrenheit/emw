@@ -25,7 +25,7 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 ;
 ; All OW sprite tables can be used since I'm killing OW sprites
 ; $6DDF-$6EE5 is free to be used for this.
-; The maximum number that can be added to !LevelSelectBase is +$106
+; The maximum number that can be added to !OverworldBase is +$106 (outdated, based on base address of $6DDF)
 
 
 ; $7EA2:
@@ -35,13 +35,13 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 
 
 
-	!LevelSelectBase	= $6DDF			; can be up to $500 bytes i think
+	!OverworldBase	= $74C8			; can be up to $500 bytes i think
 
 
 	macro MapDef(name, size)
-	print "<name>: $", hex(!LevelSelectBase+!Temp)
+	print "<name>: $", hex(!OverworldBase+!Temp)
 
-		!<name>	:= !LevelSelectBase+!Temp
+		!<name>	:= !OverworldBase+!Temp
 		!Temp	:= !Temp+<size>
 	endmacro
 
@@ -130,24 +130,42 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 	%MapDef(MapOAMdata,		$100)	; holds OAM data to be sorted by Y coord
 
 
+	print "Overworld RAM:"
+	print " $", hex(!OverworldBase), "-$", hex(!OverworldBase+!Temp-1)
+	print " total $", hex(!Temp), " bytes"
+
+
+
+	!OverworldSpriteBase = $6DDF
+
+	macro MapSpriteDef(name, size)
+	print "<name>: $", hex(!OverworldSpriteBase+!Temp)
+		!<name>	:= !OverworldSpriteBase+!Temp
+		!Temp	:= !Temp+<size>
+	endmacro
+
+	!Temp = 0
+	%MapSpriteDef(OW_sprite_Num,		1)
+	%MapSpriteDef(OW_sprite_Timer,		1)
+	%MapSpriteDef(OW_sprite_Anim,		1)
+	%MapSpriteDef(OW_sprite_AnimTimer,	1)
+	%MapSpriteDef(OW_sprite_XFraction,	1)
+	%MapSpriteDef(OW_sprite_X,		2)
+	%MapSpriteDef(OW_sprite_YFraction,	1)
+	%MapSpriteDef(OW_sprite_Y,		2)
+	%MapSpriteDef(OW_sprite_ZFraction,	1)
+	%MapSpriteDef(OW_sprite_Z,		2)
+	%MapSpriteDef(OW_sprite_XSpeed,		1)
+	%MapSpriteDef(OW_sprite_YSpeed,		1)
+	%MapSpriteDef(OW_sprite_ZSpeed,		1)
+	%MapSpriteDef(OW_sprite_Direction,	1)
+	%MapSpriteDef(OW_sprite_Tilemap,	2)
 	!OW_sprite_Size	:= !Temp
-	%MapDef(OW_sprite_Num,		1)
-	%MapDef(OW_sprite_Timer,	1)
-	%MapDef(OW_sprite_Anim,		1)
-	%MapDef(OW_sprite_AnimTimer,	1)
-	%MapDef(OW_sprite_XFraction,	1)
-	%MapDef(OW_sprite_X,		2)
-	%MapDef(OW_sprite_YFraction,	1)
-	%MapDef(OW_sprite_Y,		2)
-	%MapDef(OW_sprite_ZFraction,	1)
-	%MapDef(OW_sprite_Z,		2)
-	%MapDef(OW_sprite_XSpeed,	1)
-	%MapDef(OW_sprite_YSpeed,	1)
-	%MapDef(OW_sprite_ZSpeed,	1)
-	%MapDef(OW_sprite_Direction,	1)
-	%MapDef(OW_sprite_Tilemap,	2)
-	!OW_sprite_Size	:= !Temp-(!OW_sprite_Size)
 	!OW_sprite_Count = 16
+
+	print "Overworld sprite RAM:"
+	print " $", hex(!OverworldSpriteBase), "-$", hex(!OverworldSpriteBase+((!Temp)*!OW_sprite_Count)-1)
+	print " total $", hex((!Temp)*!OW_sprite_Count), " bytes"
 
 
 

@@ -1353,9 +1353,9 @@ Mode7Presents:
 		ORA $00							; |
 		STA.l !LightData_SNES,x					;/
 		CPX #$0002 : BCC ..next					;\
-		CPX #$0010 : BCC ..BG3					; |
+		CPX #$000E+2 : BCC ..BG3				; |
 		CPX #$0202 : BCC ..next					; | BG3 palette mirrors
-		CPX #$0210 : BCS ..next					; |
+		CPX #$020E+2 : BCS ..next				; |
 		STA $FEA0-2,x						; > does this work???
 		BRA ..next						; | it does! it just wraps to the next bank, which is fine with this mirroring (that's probably why STA addr,x and STA long,x both use the same amount of cycles)
 	..BG3	STA $A0-2,x						;/

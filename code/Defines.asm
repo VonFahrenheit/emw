@@ -221,7 +221,7 @@ endmacro
 
 		!LightBuffer		= $3171		; lowest bit: which buffer SNES is working on (0 = first buffer, 1 = second buffer), highest bit: 0 = not ready for upload, 1 = ready for upload
 		!LightIndexStart	= $3172
-		!LightIndexEnd		= $3174
+		!LightIndexEnd		= $3174		; NOTE: 0 (NOT 200) should be used if the last color should be shaded
 
 		!LightR			= $3176		; these are 16-bit numbers with 8-bit fixed point fractions
 		!LightG			= $3178		; normal value is 01.00, 01.00, 01.00, meaning that each color is applied 100%
@@ -400,7 +400,7 @@ endmacro
 
 
 		!Level			= $610B
-		!TranslevelFlags	= $6DDF			; 128 bytes, also used as main RAM block on overworld
+		!TranslevelFlags	= $6DDF			; 128 bytes, also used as main RAM block for overworld sprites
 								; purpose of this RAM is that it's cleared on initial level load but kept between sublevels
 
 		!BossData		= $66F9			; 7 bytes
