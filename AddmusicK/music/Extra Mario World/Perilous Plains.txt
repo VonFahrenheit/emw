@@ -10,47 +10,51 @@
 {
 	#optimized
 	
-"Trumpet.brr"
-"Sine Marimba.brr"
-"Marimba.brr"
-"Flute.brr"
-"ocarina.brr"
-"Saxophone.brr"
+"emw/trumpet 1.brr"
+"emw/yi/piano.brr"
+"emw/yi/piano.brr"
+"emw/yi/flute.brr"
+"emw/high strings oct 2.brr"
 
-"String Ensemble 2.brr"
-
-	"conga.brr"
-	"Kick.brr"
-	"Synth Snare.brr"
-	"izu_chat.brr"
+	"emw/808 conga.brr"
+	"emw/kick 6.brr"
+	"emw/elec hat close 1.brr"
+	"emw/snare 5.brr"
 	
-	"Guitar.brr"
-	"synth bass 1.brr"
-	"piano.brr"
+	"emw/deep bass 1.brr"
+	"emw/finger bass 2.brr"
+	"emw/yi/electric piano.brr" 
+	"emw/dark hollow.brr"
+	"emw/whospy 1.brr"
+	"emw/celesta 2.brr"
+	"emw/Tom 6.brr"
 }
 #instruments
 {
-"Trumpet.brr" $8C $60 $B8 $04 $00
-"Sine Marimba.brr" $8D $8C $B8 $08 $00
-"Saxophone.brr" $fC $CC $00 $02 $00
-"Marimba.brr" $8E $7C $B8 $02 $80
-"ocarina.brr" $8C $CC $B8 $04 $00
+	"emw/trumpet 1.brr" $FE $C8 $00 $02 $00
+	"emw/yi/electric piano.brr" $FF $92 $00 $0A $00
+	"emw/whospy 1.brr"$f9 $6E $00 $02 $00
+	"emw/yi/piano.brr" $FF $F0 $00 $03 $BD
+	"emw/yi/flute.brr" $AC $C7 $AC $04 $00
 
-"Guitar.brr" $8F $72 $B8 $03 $00
+	"emw/finger bass 2.brr"$ff $ee $00 $06 $00 
 
-	"Kick.brr" $8E $BC $00 $06 $00 
-	"izu_chat.brr" $fe $B5 $00 $09 $00
-	"Synth Snare.brr" $ef $B0 $B8 $04 $00
-	"conga.brr" $06 $B3 $60 $06 $00
+
+	"emw/kick 6.brr" $FF $F8 $7F $03 $00
+	"emw/elec hat close 1.brr" $fe $F8 $00 $07 $00
+	"emw/snare 5.brr" $ef $F8 $B8 $05 $00
+	"emw/808 conga.brr" $cf $1d $00 $0C $00
 	
-"String Ensemble 2.brr" $AB $AA $00 $02 $8C
-;@2 $FF $72 $B8 $0C $00
+	"emw/high strings oct 2.brr" $AB $A8 $00 $01 $80
 
 
 	
+	"emw/deep bass 1.brr"$ff $ee $00 $03 $00	
 	
-	"synth bass 1.brr"		$AE $66 $B8 $02 $00
-	"piano.brr"		$AE $D0 $B8 $06 $00
+	"emw/yi/piano.brr" $FF $D2 $00 $07 $80
+	"emw/dark hollow.brr" $ff $ec $00 $02 $00
+	"emw/celesta 2.brr"$fA $6e $00 $06 $00 
+	"emw/Tom 6.brr" $8E $15 $00 $0A $00 
 }
 
 "tgec = $F4 $03"
@@ -59,9 +63,9 @@
 $EF $DF $04 $04
 $F1 $04 $A0 $00
 $F2 $0F $14 $14
-t90 w185
+t90 w170
 
-#0 q7F 
+#0 q7F $f4 $02
 @33 o5 p0,0
 [v200 g v180 g v160 g v120 g v100 g v80 g v60 g v40 g]8/
 [@30 v170 o5 116 $DE $30 $08 $60
@@ -87,18 +91,21 @@ cegdgfr
 grfrerdrc
 frr
 err
-d1.
+d1^4.
 
-fdfgr
+@42 o4 116
+c16d16fdfgr
 grfrerdre
-g2.
+g8[e12g12]3 g ;g2.
 ge
 g^1
 
+@43 o4 116 v140
 >ed<bged agfedc
 egd
 $EB $01 $08 $03 <a4. $EB $00 $00 $00 a4. f1.>
 
+@34 o4 116 v190
 <ag>cdefg
 defdefga
 efgefgab
@@ -153,16 +160,32 @@ fgafab>c
 [g<g>gg<g>eg4<g>e4<e>a4<a>e]99
 
 #2 v250 o4 $ED $0F $E0
-[@36c @37c @39>c<
+[@36c @37c @39>q7a c q7f<
 @36c @37c @37c
 @37c @39>c<]8
 /
 [@36c @37c @37c
 @36c @37c @37c
-@39>c< @37c
+@39>q7a c q7f< @37c
 @36c @36c @37c
 @38c @37c @37c
-@38c @37c]99
+@38c @37c]15
+
+(21)[@36c @39 >q7a c q7f< @38c 
+@36c @38c @38c
+@39>q7a c q7f< @38c
+@45g @36c @45g
+@38c @45f16 @45f16 @45e
+@45d @45c]
+
+[@36c @37c @37c
+@36c @37c @37c
+@39>q7a c q7f< @37c
+@36c @36c @37c
+@38c @37c @37c
+@38c @37c]9
+
+(21)1
 
 #3 q7F v180
 [@40 o5 116 p0,0
@@ -184,14 +207,14 @@ $ED $0B $B4
 ] g1^1
 
 *1 g1
- @42
+ @42 v230
 l24
 o6dc<bag fedc <abgf edc
 <bag fedc
 r
 l8
 @40 o5
-$ED $0B $AA
+$ED $0B $AA v180
 c1^1
 <b1^1
 a1^1>
@@ -262,10 +285,10 @@ e4r
 d4r
 d1.
 grgercrerdrfregr
-@2 $ED $0F $6C v150 o4 116 
+@44 $ED $0F $6C v150 o4 116 
 a>c gec<a4ea>c gec<a]2
 
-@2 $ED $0F $6C o4 116
+@44 $ED $0F $6C o4 116
 cegdgfr
 grfrerdrc
 frr

@@ -8,24 +8,24 @@
 #samples
 {
 	#optimized
-	"Guitar.brr"
-	"Marimba.brr"
-	"String Ensemble 1.brr"
-	"String Ensemble 2.brr"
-	"izu_chat.brr"
-	"Kick.brr"
-	"izu_snare.brr"
+	"emw/finger bass 2.brr"
+	"emw/Marimba.brr"
+	"emw/high strings 1 alt (small).brr" 
+	"emw/high strings oct 2.brr"
+	"emw/elec hat close 1.brr"
+	"emw/kick 6.brr"
+	"emw/snare 5.brr"
 }
 #instruments
 {
 	@16 $8C $6E $00 $0B $F8
-	"izu_chat.brr" $8E $72 $00 $07 $08
-	"Guitar.brr" $8E $70 $b8 $03 $00
-	"String Ensemble 1.brr" $8C $6A $00 $01 $E6
-	"String Ensemble 2.brr" $8C $6A $00 $02 $8A
-	"Marimba.brr" $8E $70 $00 $05 $08
-	"Kick.brr" $8F $75 $00 $04 $00 
-	"izu_snare.brr" $01 $23 $60 $05 $a0
+	"emw/elec hat close 1.brr" $fe $F8 $00 $07 $00
+	"emw/finger bass 2.brr"$ff $f0 $00 $06 $00 
+	"emw/high strings 1 alt (small).brr" $A8 $6C $00 $03 $00
+	"emw/high strings oct 2.brr" $A8 $6C $00 $01 $80
+	"emw/Marimba.brr" $8E $70 $00 $0A $00
+	"emw/kick 6.brr" $FF $F8 $7F $03 $00
+	"emw/snare 5.brr" $ef $F8 $B8 $06 $00
 }
 
 "pico= @30 y10 $de $20 $0c $40 q7d"
@@ -46,7 +46,7 @@ pico o3
 <b>cd4. c<bag4f2.]2 r4 >
 (1)[f4f4ed16c16^4
 e4e4dc16<b16^4>]
-d4.dedc<b> c4d4e2
+d4.dedc<b> c4d4e4..d32e32
 (1)
 <g4.b>c<bagf2.
 

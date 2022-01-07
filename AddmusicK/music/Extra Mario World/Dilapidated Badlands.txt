@@ -10,42 +10,41 @@
 {
 	#optimized
 	
-"Pizzicato001.brr"
-"Violin.brr"
+"emw/yi/Pizzicato.brr"
+
+"emw/Violin 1.brr"
 "French Horn.brr"
-"Marimba.brr"
-"Sine Wave.brr"
-"pan flute.brr"
+"emw/yi/piano.brr"
+"emw/dark hollow.brr"
+"emw/pan flute 2.brr"
 
-"String Ensemble 2.brr"
+"emw/high strings oct 2.brr"
 
-	"conga.brr"
-	"Kick.brr"
-	"Synth Snare.brr"
-	"izu_chat.brr"
-	
-	"Guitar.brr"
-	"synth bass 1.brr"
+	"emw/woodblock.brr"
+	"emw/kick 6.brr"
+	"emw/snare 2.brr"
+	"emw/elec hat close 1.brr"
+	"emw/finger bass 2.brr"
+	"emw/deep bass 1.brr"
 }
 #instruments
 {
-"Pizzicato001.brr" $8C $60 $B8 $02 $60
-"Violin.brr" $8f $AC $00 $02 $E8
-"French Horn.brr" $8C $AF $df $04 $80
-"Marimba.brr" $8E $7C $B8 $02 $78
-"Sine Wave.brr" $EA $B2 $df $02 $00
-"pan flute.brr" $8A $48 $B8 $03 $00
+	"emw/yi/Pizzicato.brr" $8C $60 $B8 $01 $80
+	"emw/Violin 1.brr" $8C $EF $00 $03 $00
+	"French Horn.brr" $8C $AF $df $04 $80
+	"emw/yi/piano.brr" $FF $92 $00 $03 $BD
+	"emw/dark hollow.brr" $ff $ec $00 $02 $00
+	"emw/pan flute 2.brr" $8B $88 $B8 $04 $00 ;pan flute
 
-"String Ensemble 2.brr" $AB $A6 $00 $02 $8C
-@2 $FF $72 $B8 $0C $00
-
-	"Kick.brr" $8E $BC $00 $06 $00 
-	"izu_chat.brr" $fe $B5 $00 $09 $00
-	"Synth Snare.brr" $ef $B0 $B8 $04 $00
-	"conga.brr" $06 $B3 $60 $06 $00
+	"emw/high strings oct 2.brr" $AB $EF $00 $01 $80
+	@2 $FE $72 $B8 $0C $00
+	"emw/kick 6.brr" $FF $F8 $7F $05 $00
+	"emw/elec hat close 1.brr" $fe $F8 $00 $07 $00 
+	"emw/snare 2.brr" $ef $F8 $B8 $05 $00
+	"emw/woodblock.brr" $06 $23 $60 $01 $00
 	
-	"Guitar.brr" $8F $72 $B8 $03 $00
-	"synth bass 1.brr"		$Fd $75 $B8 $02 $00
+	"emw/deep bass 1.brr"$ff $f0 $00 $03 $00
+	"emw/finger bass 2.brr"$ff $f0 $00 $06 $00 
 }
 
 "tgec = $F4 $03"
@@ -137,7 +136,7 @@ b4.g^4f-4b1]2
 [egb2 egb1]2
 [df-a2 df-a1]2
 
-#1 q7f v200
+#1 q7f v230
 
 @1 @43 $ED $0A $CC o2 l8 p30,10
 [e2. e2. >e2<]2

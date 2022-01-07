@@ -8,30 +8,28 @@
 #samples
 {
 	#optimized
-	"izu_snare.brr"
-	"Bass Drum.brr"
-	"izu_chat.brr"
-	"String Ensemble 2.brr"
-	"XG_Crash.brr"
-	"Orchestral Harp.brr" 
-	"Trumpet003.brr"
-	"Timpani.brr"
-	"Piano.brr"
+	"emw/brass oct high 1.brr"
+	"emw/high strings oct 2.brr"
+	"emw/snare 5.brr"
+	"emw/Crash Cymbal.brr"
+	"emw/dark hollow.brr"
 }
 #instruments
 {
-	"Trumpet003.brr" $FC $E8 $B8 $06 $00
-	"String Ensemble 2.brr" $FB $E8 $00 $02 $8A
-	@10 $ff $f0 $00 $06 $00
-	"izu_snare.brr" $02 $26 $60 $0C $80
-	"XG_Crash.brr" $FE $CE $CF $04 $82	;@34
+	"emw/brass oct high 1.brr" $FF $6C $B8 $04 $00
+	"emw/high strings oct 2.brr" $AB $A8 $00 $01 $80;$02 $80
+	@10 $ff $fa $00 $06 $00
+	"emw/snare 5.brr" $ef $F8 $B8 $05 $00
+	"emw/Crash Cymbal.brr" $8D $0F $CF $05 $F0
+	"emw/dark hollow.brr" $FF $18 $00 $01 $00
 }
 $EF $FF $14 $14
 $F1 $06 $48 $01
 $F5 $50 $BF $DB $E0 $E0 $0A $C8 $C8
 
-#0 w140 v220 l8 t49
-@30 o4 q5f r^4
+#0 w140 v220  t49
+@35 l32 cde def efg fga  l8
+@30 o4 q5f
 e2. f12f12f12  g2. g12g12g12 a2b12r12g12r12b12r12 $ed $0f $ea q7f >c1^1^1^1 /r1
 
 #1 v240

@@ -8,28 +8,29 @@
 #samples
 {
 	#optimized
-	"String Ensemble 2.brr"
-	"izu_snare.brr"
-	"Bass Drum.brr"
-	"izu_chat.brr"
-	"Synth lead.brr"
-	"saxophone.brr"
-	"synth bass 1.brr"
-	"ocarina.brr"
-	"Marimba.brr"
+	"emw/yi/flute.brr"
+	"emw/whospy 1.brr"
+	"emw/fat punch.brr" 
+	"emw/high strings oct 2.brr"
+	"emw/deep bass 1.brr"
+	"emw/elec hat close 1.brr" 
+	"emw/kick 6.brr" 
+	"emw/snare 2.brr"
+	"emw/finger bass 2.brr"
+	"emw/dark hollow.brr"
 }
 #instruments
 {
-	"ocarina.brr" $8F $6C $00 $06 $00
-	"Synth lead.brr" $8F $B2 $B8 $04 $00
-	"saxophone.brr" $8C $B2 $B8 $04 $00
-	"String Ensemble 2.brr" $8E $C8 $00 $02 $8A
-	"synth bass 1.brr" $8e $74 $00 $01 $00
-	"izu_chat.brr" $8e $75 $00 $06 $08
-	"Bass Drum.brr" $8f $72 $00 $03 $8f 
-	"izu_snare.brr" $02 $26 $60 $04 $a0	;@37
-	"synth bass 1.brr" $8F $74 $B8 $02 $00
-	"Marimba.brr" $8E $7C $B8 $05 $00
+	"emw/yi/flute.brr" $AF $D2 $AC $04 $00
+	"emw/fat punch.brr" $fE $F2 $00 $06 $00
+	"emw/whospy 1.brr"$f9 $6E $00 $04 $00
+	"emw/high strings oct 2.brr" $AF $EF $00 $01 $80
+	"emw/deep bass 1.brr" $ff $ee $00 $03 $00	
+	"emw/elec hat close 1.brr" $fe $F8 $00 $07 $00
+	"emw/kick 6.brr" $FF $F8 $7F $03 $80
+	"emw/snare 2.brr" $ef $F8 $B8 $03 $80
+	"emw/finger bass 2.brr"$ff $f0 $00 $06 $00 
+	"emw/dark hollow.brr" $FF $72 $00 $02 $00
 }
 
 $EF $FF $02 $02
@@ -136,7 +137,7 @@ f4e4a4 f4e4a4 f4e4a4 f4g4b4
 [@36e@35e@10e@35e@37e@35e]8
 [@36e@37e@35e @36e@37e@35e  @37e@36e@37e@36e@37e@36e]8
 
-#4@38 o2 q6f v180 [g4g4g4 g4g4g4 f4f4f4 f4f4f4 e4e4e4 e4e4e4 f4f4f4 f4f4f4]2
+#4@38 o3 q6f v180 [g4g4g4 g4g4g4 f4f4f4 f4f4f4 e4e4e4 e4e4e4 f4f4f4 f4f4f4]2
 @33
 g2. g2. g2. g2.
 f2. f2. f2. f2.
@@ -147,7 +148,7 @@ f2. f2. f2. g2.
 @33o2 v250
 [g2. f2. e2. f2.]8
 
-#5@38 o3 q6f v120 [g4g4g4 g4g4g4 f4f4f4 f4f4f4 e4e4e4 e4e4e4 f4f4f4 f4f4f4]2
+#5@38 o4 q6f v120 [g4g4g4 g4g4g4 f4f4f4 f4f4f4 e4e4e4 e4e4e4 f4f4f4 f4f4f4]2
 @33
 g2. g2. g2. g2.
 f2. f2. f2. f2.

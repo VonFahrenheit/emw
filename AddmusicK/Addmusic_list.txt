@@ -59,7 +59,7 @@ Locals:
 39  Extra Mario World/There is Joy.txt
 3A  Extra Mario World/There is Joy (Indoors).txt
 3B  Extra Mario World/There is Joy (Underground).txt
-3C  Extra Mario World/Steep Cliffside.txt
+3C  Extra Mario World/Fuzzy's Ridge.txt
 3D  Extra Mario World/No Turning Back.txt
 3E  Extra Mario World/Unused Theme 1.txt
 3F  Extra Mario World/Nightwalking.txt

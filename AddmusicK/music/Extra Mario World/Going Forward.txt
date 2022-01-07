@@ -8,26 +8,29 @@
 #samples
 {
 	#optimized
-	"String Ensemble 2.brr"
-	"Clavinet.brr"
-	"Bass Drum.brr"
-	"Synth snare.brr"
-	"izu_chat.brr"
-	"String Ensemble 1.brr"
-	"piccolo.brr"
-	"saxophone.brr"
+	"emw/high strings oct 2.brr" 
+	"emw/trumpet 1.brr"
+	"emw/fat punch.brr"
+	"emw/kick 6.brr"
+	"emw/snare 2.brr"
+	"emw/elec hat close 1.brr"
+	"emw/high strings 1 alt (small).brr"
+	"emw/yi/flute.brr"
+	"emw/dark hollow.brr"
+	"emw/YI/Agogo.brr"
 }
 #instruments
 {
-	@16 $8C $60 $B8 $05 $F8
-	"String Ensemble 2.brr" $86 $A8 $00 $05 $10
-	"Clavinet.brr" $8E $72 $B8 $06 $00
-	"Bass Drum.brr" $8F $74 $00 $05 $00 
-	"izu_chat.brr" $8E $76 $00 $09 $00	;@34
-	"Synth snare.brr" $8f $70 $B8 $03 $80
-	@1 $8E $74 $00 $01 $80
-	"String Ensemble 1.brr" $86 $A8 $00 $01 $E6 ;@37
-	"saxophone.brr" $8A $70 $00 $02 $00
+	"emw/yi/flute.brr" $AF $D2 $AC $04 $00
+	"emw/high strings oct 2.brr" $AB $EF $00 $03 $00
+	"emw/fat punch.brr" $fE $F2 $00 $01 $80
+	"emw/kick 6.brr" $FF $F8 $7F $04 $40
+	"emw/elec hat close 1.brr" $fe $F8 $00 $07 $00
+	"emw/snare 2.brr" $ef $F8 $B8 $03 $80
+	"emw/dark hollow.brr" $FF $18 $00 $02 $00
+	"emw/high strings 1 alt (small).brr" $AB $A8 $00 $01 $80
+	"emw/trumpet 1.brr" $FE $EF $00 $02 $00
+	"emw/YI/Agogo.brr" $FF $D8 $B8 $04 $00
 }
 
 $EF $F7 $04 $04
@@ -45,7 +48,7 @@ g<g16>g<g16>g<g>gg<g>ar2..]2
 > q7e
 [e.f.ag2 e.f.agefd e.f.ag^4 a16g16 e.f.ag2]2
 
-#1 v160
+#1 v200
 @32 o2 q7e
 [fg >a< gf >a< f >a< f >a< f >a< f >a g4<
 ef >g< fe >g< e >g< e >g< e >g< e >g f4<
@@ -57,8 +60,9 @@ ef >g< fe >g< e >g< e >g< e >g< e >g a4<]4
 [o3 a16a16 o4 aa. a16 o3 g16 o4 a16 o3 g16 o4 a16 o3 g16 o4 a16 o3 g16a16]32
 
 #3 o4q7f v240
-[@33e @34e16e16 @35e @34e16 @33e @34e16 @33e16 @34e16 @35e @34e]32
-
+[@33e @34e16e16 @35e @34e16 @33e @34e16 @33e16 @34e16 @35e @34e]15
+@33e @34e16 @35e16 @35e @34e16 @33e @35e16 @33e16 @35 q7a e24 @35 q7c  e24 @35 q7f  e24 @35e16 @35e16 @34e16
+[@33e @34e16e16 @35e16 @39e16 @34e16 @33e16 @39e16 @34e16 @33e16 @34e16 @35e16 @39e @34e16]8
 #4
 [@30 o3 q4a  v230 y5
 a<a16>a<a16>a<a>aa4gr2..

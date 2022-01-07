@@ -8,30 +8,31 @@
 #samples
 {
 	#optimized
-	"Choir Aahs.brr" 
-	"izu_snare.brr"
-	"Kick.brr"
-	"izu_chat.brr"
-	"String Ensemble 2.brr"
-	"Organ (Church).brr"
-	"Piano.brr"
-	"Celesta.brr"
-	"Crash Cymbal.brr"
+	"emw/Choir Aahs.brr"
+	"emw/snare 5.brr"
+	"emw/kick 6.brr"
+	"emw/elec hat close 1.brr"
+	"emw/high strings oct 2.brr"
+	"emw/Organ (Church).brr"
+	"emw/yi/piano.brr"
+	"emw/celesta 2.brr"
+	"emw/Crash Cymbal.brr"
+	"emw/harpsichord med 2.brr"
 }
 #instruments
 {
-	"Organ (Church).brr" $8D $C8 $B8 $04 $02
-	"Choir Aahs.brr" $8B $CA $B8 $02 $00
-	"String Ensemble 2.brr" $8E $C6 $00 $02 $8A
-	"Piano.brr" $8f $D1 $B8 $06 $00
-	"izu_chat.brr" $8e $75 $00 $05 $08	;@34
-	"Kick.brr" $8E $B5 $00 $03 $00
-	"izu_snare.brr" $02 $26 $60 $05 $00
-	@1 $8E $CF $B8 $03 $00
+	"emw/Organ (Church).brr" $FD $C8 $B8 $04 $02
+	"emw/Choir Aahs.brr" $FD $CA $B8 $02 $00
+	"emw/high strings oct 2.brr" $AB $A8 $00 $01 $80
+	"emw/yi/piano.brr" $FF $92 $00 $07 $80
+	"emw/elec hat close 1.brr" $fe $F8 $00 $07 $00
+	"emw/kick 6.brr" $FF $F8 $7F $03 $00
+	"emw/snare 5.brr" $ef $F8 $B8 $05 $00
+	"emw/harpsichord med 2.brr" $FD $72 $00 $06 $00	
 	@10 $8f $D0 $00 $02 $00
-	"izu_chat.brr" $8E $75 $00 $05 $08
-	"Celesta.brr" $8E $CF $B8 $03 $00
-	"Crash Cymbal.brr" $FC $8E $CF $05 $40	;@41
+	"emw/elec hat close 1.brr" $fe $F8 $00 $07 $00
+	"emw/celesta 2.brr"$f8 $98 $00 $06 $00 
+	"emw/Crash Cymbal.brr" $8D $0F $CF $05 $D8	;@41
 }
 "sngp= h1 $ee $08"	;Pitch of everything
 "tgec= $F4 $03"

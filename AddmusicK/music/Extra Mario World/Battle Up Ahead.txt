@@ -9,44 +9,44 @@
 #samples
 {
 	#optimized
-	"Guitar.brr"
-	"String Ensemble 2.brr"
-	"izu_snare.brr"
-	"izu_chat.brr"
-	"Oboe.brr"
-	"Crash Cymbal.brr"
-	"Synth lead.brr"
-	"Celesta.brr"
-	"Brasschord001.brr"
-	"chinese cymbal.brr"
-	"Tom.brr"
-	"Bass Drum.brr"
-	"Kick.brr"
-	
+	"emw/finger bass 2.brr"
+	"emw/high strings oct 2.brr"
+	"emw/snare 5.brr" 
+	"emw/elec hat close 1.brr"
+	"emw/yi/Oboe.brr"
+	"emw/Crash Cymbal.brr"
+	"emw/trumpet 1.brr"
+	"emw/yi/flute.brr"
+	"emw/brass oct high 1.brr"
+	"emw/chinese cymbal.brr"
+	"emw/Tom 6.brr"
+	"emw/kick 6.brr"
+	"emw/deep bass 1.brr"
+	"emw/dark hollow.brr"
 }
 #instruments
 {
-	"Brasschord001.brr" $AC $8B $BA $02 $94
-	"Synth lead.brr" $8E $6B $B8 $03 $F8
-	"Oboe.brr" $8E $8C $B8 $05 $F0
-	"String Ensemble 2.brr" $8E $CA $00 $02 $86
-	"synth lead.brr" $8E $75 $df $01 $00
-	"Guitar.brr" $BE $B0 $0A $01 $80
-	"izu_chat.brr" $8F $05 $00 $05 $00
-	"Kick.brr" $8F $0C $00 $03 $80 
-	"izu_snare.brr" $03 $00 $60 $05 $00
-	"Celesta.brr" $BF $48 $7F $01 $80
-	"Crash Cymbal.brr" $8D $0F $CF $05 $F0	;@40
-	@16 $8E $76 $B8 $06 $00
+	"emw/brass oct high 1.brr" $FF $6C $B8 $02 $00
+	"emw/trumpet 1.brr" $FE $C8 $00 $04 $00
+	"emw/yi/Oboe.brr" $8E $8C $B8 $05 $F0
+	"emw/high strings oct 2.brr" $AB $A8 $00 $01 $80;$02 $80
+	"emw/deep bass 1.brr" $ff $ee $00 $06 $00
+	"emw/finger bass 2.brr"$ff $ee $00 $03 $00 
+	"emw/elec hat close 1.brr" $fe $F8 $00 $07 $00
+	"emw/kick 6.brr" $FF $F8 $7F $03 $00
+	"emw/snare 5.brr" $ef $F8 $B8 $05 $00
+	"emw/yi/flute.brr" $AC $6A $AC $04 $00
+	"emw/Crash Cymbal.brr" $8D $0F $CF $05 $F0	;@40
+	"emw/dark hollow.brr" $FF $98 $00 $02 $00
 	@6 $FE $8A $00 $06 $00	
-	@3 $CD $14 $B8 $03 $01
-	"chinese cymbal.brr" $8f $0E $B8 $06 $00
-	"Tom.brr" $8F $15 $00 $04 $40 
+	@3 $CD $FC $B8 $03 $01
+	"emw/chinese cymbal.brr" $8f $0E $B8 $06 $00
+	"emw/Tom 6.brr" $8E $15 $00 $0A $00 
 }
 
 $EF $B7 $02 $02
-$F1 $04 $A0 $00		;Outside
-$F2 $C0 $14 $14	;Underground
+$F1 $03 $A0 $00		;Outside
+$F2 $C0 $24 $24	;Underground
 
 "swoopa=$ee $0C"
 "noeb=$ee $00"
@@ -80,11 +80,11 @@ c12d12e12 d12e12f12 e12f12g12 f12g12a12
 d12e12f12 e12f12g12 f12g12a12 g12a12b12 >swoopa c1^1^1^1^1^1 noeb
 [r1]6 
 /swoopa leada o4 v170 
-g4.noeb b16>c16g2 e4.f16g16 e. c. <a g4. e^1. 
-g4>c16<b16a16g16 f4 b16a16g16f16 e4 a16g16f16e16 d4 e16f16g16a16>swoopac2noeb< e16f16g16a16 f16g16a16b16 >c<g16>c<g16>c<gab>c
+g4.noeb b16>c16g2 $ec $02 $04 $02 e4. $ec $00 $00 $00 f16g16 e. c. <a g4. e^1. 
+g4>c16<b16a16g16 f4 b16a16g16f16 e4 a16g16f16e16 d4 e16f16g16a16>$ec $02 $04 $02 c2 $ec $00 $00 $00< e16f16g16a16 f16g16a16b16 >c<g16>c<g16>c<gab>c
 o4
 g4.b16>c16g2 e4.f16g16 e. c. <a g4. e^1.
-g4>c16<b16a16g16 f4 b16a16g16f16 e4 a16g16f16e16 d4 e16f16g16a16>c.c.cc.c.cer16er16e gr4. 
+g4>c16<b16a16g16 f4 b16a16g16f16 e4 a16g16f16e16 d4 e16f16g16a16>c.c.cc.c.c $ec $02 $04 $02 e $ec $00 $00 $00 r16er16e gr4. 
 
 oboe o3 v190 
 swoopag4.noeb b16>c16 g^2 e16f16 gfedcd droop e nodr r c<g^1.
@@ -92,7 +92,7 @@ g4.b16>c16 droop g1 nodr g4 a4 b^2 >c< a b^1<
 g4.b16>c16 g^2  e16f16 gfedcd droop e nodr r c<g^1.
 g4.b16>c16 droop g1 nodr g4 a4 b2. >c4 g1 
 
-leadb o4 v220
+leadb o4 v220 $DF
 g1..>c16<b16a16g16 f1.. b16a16g16f16 e1.. a16g16f16e16 d1..e16f16g16a16
 [ar16ar16a16a16g4rf gr16gr16g16g16f4r4 fr16fr16f16f16e4rd f.g.a >c16<g16a16b16>cr]2
 <g.a.b16>c16 $DE $30 $0C $30 q69 $ED $7F $EB g2^1^1^1[r1]4
@@ -121,27 +121,33 @@ g1..>c16<b16a16g16 f1.. b16a16g16f16 e1.. a16g16f16e16 d1..e16f16g16a16
 g1^1^1^1[r1]4
 
 #1
-@6 o4 y2,1,1
-c2 e2 g2 a2 >c1^1^1^1
+@4 $ed $0c $a8 o2 v210  y2,1,1 
+c2 e2 g2 a2 
+@6  $ed $0a $ac o4 v180 
+>c1^1^1^1
 bassb o4 v210
 (11)[g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 f<f16>f<f16>f16f16 e<e16>e<e16>e16e16 d<d16>d<d16>d16d16 e<e16>e<e16>e16e16]2
 /
 (11)3
 g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 f<f16>f<f16>f16f16 e<e16>e<e16>e16e16 d<d16>d<d16>d16d16 er4.
 (11)4
-[f16rfr16f f16rfr16f f16rfr16f f16rfr16f e16rer16e e16rer16e e16rer16e e16rer16e d16rdr16d d16rdr16d d16rdr16d d16rdr16d e16rer16e e16rer16e e16rer16e e16rer16e]99
+[f16rfr16f f16rfr16f f16rfr16f f16rfr16f e16rer16e e16rer16e e16rer16e e16rer16e d16rdr16d d16rdr16d d16rdr16d d16rdr16d e16rer16e e16rer16e e16rer16e e16rer16e]2
+[gr16 gr16 gr g16e16ge16c16 fr16 fr16 f16g16f4r4  er16 er16 cr e16c16ef16e16 $ec $02 $04 $02 c^16 $ec $00 $00 $00 er16 f16e16g4r4]2
  
 #4 
-@6 o2 v240
+@1 $ed $0c $ac o4 v180 
 c2 e2 g2 a2 
-smwb o4 v200
+smwb o4 v150
 [gg16g16g g16ggg16gg]12/
 [gg16g16g g16ggg16gg]15 gg16g16g g16g16gr4.
 [o5 q7ag16 q76g16 q7ag16g16 q76g g16g16]32
-[o4 q7f gg16g16g g16ggg16gg]99
+[o4 q7f gg16g16g g16ggg16gg]16
+[o5 q7ag16 q76g16 q7ag16g16 q76g g16g16]32
+
 
 #3 y10o4 v240
-[ drum c12 chat e12tgec snar e12 snar e12 snar e12 snar e12tgec]4
+[ drum c12 chat e12tgec snar e12 snar e12 snar e12 snar e12tgec]3
+drum c12 snar tgec e12 tom o3 e12 tom o3 d12 snar o4 e12  tom o3 c12 tgec o4
 [r1]4 v180
 [ chat q7fe q79e16 q7be.q7de]16/
 [ chat q7fe q79e16 q7be.q7de]31
@@ -156,22 +162,23 @@ crash c1[r1]7 tgec
 [ drum c16 chat e16tgec snar e16 snar e16 snar e16tgec chat e16]2
  drum c16tgec snar e16 snar e16 snar e16/tgec
 (41)[ drum c16 chat ee16tgec snar e chat e16tgec drum c chat e16 drum ctgec snar e chat etgec]15
-v250  drum c16 chat ee16tgec snar e chat e16tgec drum c chat e16 $FB $80 $0C $01  drum c chat e16 drum c16 chat e16 drum c16v220 $FB $80 $00 $00
+v250  drum c16 chat ee16tgec snar e chat e16tgec drum c chat e16  drum c chat e16 drum c16 chat e16 drum c16v220
 (41)99
+
 
 #6
 stra o4 y18,1,1
 c2 e2 g2 a2 >c1^1^1^1
 bassa o3 v120
-(61)[g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 f<f16>f<f16>f16f16 e<e16>e<e16>e16e16 d<d16>d<d16>d16d16 e<e16>e<e16>e16e16]2
+(61)[g<g16>g<g16>g16g16 g<g16> g<g16>g16g16 $ec $02 $01 $02 g r16 $ec $00 $00 $00 g<g16>g16g16 g<g16>g<g16>g16g16 f<f16>f<f16>f16f16 e<e16>e<e16>e16e16 d<d16>d<d16>d16d16 e<e16>e<e16>e16e16]2
 /
 (61)3
-g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 f<f16>f<f16>f16f16 e<e16>e<e16>e16e16 d<d16>d<d16>d16d16 er4.
+g<g16>g<g16>g16g16 $ec $02 $01 $02 g^16 $ec $02 $00 $00 g<g16>g16g16 g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 f<f16>f<f16>f16f16 e<e16>e<e16>e16e16 d<d16>d<d16>d16d16 er4.
 chin o3 v200 a1
 bassa o3 v120 g<g16>g<g16>g16g16 g<g16>g<g16>g16g16 f<f16>f<f16>f16f16 e<e16>e<e16>e16e16 d<d16>d<d16>d16d16 e<e16>e<e16>e16e16
 (61)3o3
-[f16rfr16f f16rfr16f f16rfr16f f16rfr16f e16rer16e e16rer16e e16rer16e e16rer16e d16rdr16d d16rdr16d d16rdr16d d16rdr16d e16rer16e e16rer16e e16rer16e e16rer16e]99
-
+[f16rfr16f f16rfr16f f16rfr16f f16rfr16f e16rer16e e16rer16e e16rer16e e16rer16e d16rdr16d d16rdr16d d16rdr16d d16rdr16d e16rer16e e16rer16e e16rer16e e16rer16e]2
+[gr16 gr16 gr g16e16ge16c16 fr16 fr16 f16g16f4r4  er16 er16 cr e16c16ef16e16 $ec $02 $04 $02 c^16 $ec $00 $00 $00 er16 f16e16g4r4]2
 #7
 smwa o3 v200 
 c12d12e12 d12e12f12 e12f12g12 f12g12a12

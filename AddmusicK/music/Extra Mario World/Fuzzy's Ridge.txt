@@ -1,0 +1,223 @@
+#amk 2
+#SPC
+{
+	#author "Ruberjig"
+	#game "Extra Mario World"
+	#length "1:10"
+	#title "Fuzzy Ridge"
+	#comment "touch fuzzy get woooaaaaahhhhhhhh"
+}
+
+
+#samples
+{
+	#optimized
+	"emw/YI/Short Pizzicato.brr"
+	"emw/trumpet 1.brr"
+	"emw/YI/yi-2d.brr"
+	"emw/YI/Agogo.brr"
+	"emw/kick 6.brr"
+	"emw/YI/Shaker.brr"
+	"emw/yi/pan flute.brr"
+	"emw/finger bass 2.brr"
+	"emw/yi/flute.brr"
+	"emw/deep bass 1.brr"
+	"emw/yi/piano.brr"
+	"emw/dark hollow.brr"
+	"emw/yi/rock organ.brr"
+}
+#instruments
+{
+	
+	"emw/YI/yi-2d.brr" $FE $D5 $B8 $03 $80
+	"emw/yi/flute.brr" $AF $92 $AC $08 $00
+	"emw/yi/rock organ.brr" $FD $92 $00 $03 $00
+	"emw/trumpet 1.brr" $FE $C8 $00 $04 $00
+	
+	"emw/YI/Agogo.brr" $FF $B8 $B8 $04 $00
+	"emw/kick 6.brr" $FF $F8 $7F $05 $00	
+	"emw/YI/Shaker.brr" $FF $E0 $B8 $0A $3C 
+
+	"emw/yi/piano.brr" $FE $F1 $00 $07 $80
+	
+	"emw/finger bass 2.brr"$fE $EF $00 $0C $00 
+	@0 $00 $00 $00 $00 $00 ;empty
+	
+	"emw/deep bass 1.brr"$fE $EF $00 $06 $00
+	@0 $00 $00 $00 $00 $00 ;empty
+	"emw/yi/pan flute.brr" $AF $F $AC $04 $00
+	
+
+}
+"tgec= $F4 $03"
+"rgec= $EF $7B $14 $14 "
+"mrmb= @30 q3c o5 p0,0"
+"pico= @31 q7F o3 p0,0"
+"drum= rgec @35 q7d y15,1,1"
+"chat= rgec @36 q7a y10,1,1"
+"cong= @34 q79 y5,1,1"
+"trum=@33 q7a o4 p0,0"
+"bing=@32 q7f o5 p0,0"
+"stra= @37 q7f p5,15"
+"strb= @42 q7f p0,0"
+"bass= @38 o3 q7f $FA $03 $80 y10"
+"lead= @39 o2 q5f y10,1,1 "
+"leadb= @40 o2 q7f y10,1,1 "
+"oboe= @41 y10 q6f"
+$F0
+
+$EF $17 $02 $02
+$F1 $04 $40 $00
+$F2 $A0 $20 $20
+
+t68 #0  v190  w190 $f4 $02
+
+y8
+
+
+[mrmb
+eegcr 
+bing q7a <e g> mrmb
+<g>c4re4  
+bing q7a <f a b> mrmb
+eegcr<g>ec4 
+bing q7a <b e g4 a g e> mrmb
+
+eegcr
+bing q7a <e g> mrmb
+<g>c4re4
+bing q7a <f a b> mrmb
+eegcr<ab>c4
+bing q7a c< g a4 b a4>
+]2
+
+;0:22
+pico 
+(2)[<g>cde4<ba>d4a4g^2]
+(3)[agef.<e16g>cf4<aeg^2>]
+(2)(4)[agef.<e16g>cf4]<fffr2>
+(2)(3)(2)
+(4)ffffr4.
+
+(1)[trum  cdee4def]1
+(5)[bing  rcdcedeg]
+(1)(6)[bing rcgedcge]
+(1)(7)[bing cdce4deg]
+(9)[trum cdeg4fd<b>]1
+(8)[bing rcdcfegb]
+(1)(5)(1)(6)(1)(7)(9)(8)
+
+#2 v120
+
+
+bass y14
+[cr16.c32c^2d4.d2cder16.e32e2ef4^16.f32f4..e16ed]4
+(23)[g4ga4a>c<b>c<b>cd^2 e4e drdrd] (24)[c4<gar2>]
+(23)(25)[c4<gar2>]
+(23)(24)(23)(25)
+(21)[crc4.<ga>c^1]3
+(22)[crc4.edc^1]
+(21)3(22)1
+
+#3 v200
+
+
+leadb y16 $FA $03 $02
+[crc^2d4.d2cdere2ef4.f2ed]4
+(33)[g4ga4a>c<b>c<b>cd^2 e4e drdrd] (34)[c4<gar2>]
+(33)(35)[c4<gar2>]
+(33)(34)(33)(35)
+
+(31)[leadb crc4.<ga>c]
+(36)[bing  <<rcdcedeg]
+(31)(37)[bing <<rcgedcge]
+(31)(38)[bing <<cdce4deg]
+(39)[leadb crc4.edc]
+(32)[bing <<rcdcfegb]
+
+(31)1(36)1
+(31)1(37)1
+(31)1(38)1
+(39)1(32)1
+
+#1 v230 o4
+[ drum e chat e cong rgec etgec   chat e drum e chat e chat q78 e
+ cong rgec etgec  chat e drum e  cong rgec etgec  chat e chat q78 e chat q76 e  drum e chat e
+ drum e chat e cong rgec etgec   chat e drum e chat e chat q78 e
+ cong rgec etgec  chat e drum e  cong rgec etgec  chat e chat q78 e cong rgec etgec   cong q78 e drum e
+]99
+
+#7 v80  $ee $10 r12
+
+
+@0 $ED $0A $F2 o4 y12
+[eegcr4.<g>c4re^2
+eegcr<g>ec4r2..
+eegcr4.<g>c4re^2
+eegcr<ab>c4r2..]2
+
+;0:22
+@0 $ED $0C $F2 o4 v120
+(72)[<g>cde4<ba>d4a4g^2]
+(73)[agef4<g>cf4<aeg^2>]
+(72)(74)[agef4<g>cf4]<fffr2>
+(72)(73)(72)
+(74)ffffr4.
+
+(71)[@1 v120 $ED $0B $F2 o5 cdee4def]1
+(75)[@6 v70 $ED $0D $F2 o5 rcdcedeg]
+(71)(76)[@6 v70 $ED $0D $F2 o5 rcgedcge]
+(71)(77)[@6 v70 $ED $0D $F2 o5 cdce4deg]
+(79)[@1 v120 $ED $0B $F2 o5 cdeg4fd<b>]1
+(78)[@6 v70 $ED $0D $F2 o5 rcdcfegb]
+(71)(75)(71)(76)(71)(77)(79)(78)
+
+#4 v160
+stra o4 y10
+[e4e2.c4re^2
+e4e4.<a4>c^1]4
+
+;0:22
+(42)[g2..b^1]
+(43)[a2..f2<g^2>]
+(42)(44)[a2..f2<f^2>]
+strb o5 y10 v160
+(42)(43)(42)(44)
+stra o5 y10 v160
+(45)[c4e^2f4r2..]3
+(46)[c4e^2<b4>r2..]
+(45)3(46)
+
+#5 
+
+stra o2 y15 v200
+[e4e2.c4re^2
+e4e4.<a4>c^1]4
+
+;0:22
+(52)[g2..b^1]
+(53)[a2..f2<g^2>]
+(52)(54)[a2..f2<f^2>]
+strb o2 y15 v200
+(52)(53)(52)(54)
+stra o2 y15 v200
+(55)[c4e^2f4r2..]3
+(56)[c4e^2<b4>r2..]
+(55)3(56)
+
+#6 
+
+stra o3 y5 v160
+[e4e2.c4re^2
+e4e4.<a4>c^1]4
+
+;0:22
+(62)[g2..b^1]
+(63)[a2..f2<g^2>]
+(62)(64)[a2..f2<f^2>]
+strb o4 y5 v160
+(62)(63)(62)(64)
+stra o4 y5 v160
+(65)[c4e^2f4r2..]3
+(66)[c4e^2<b4>r2..]
+(65)3(66)

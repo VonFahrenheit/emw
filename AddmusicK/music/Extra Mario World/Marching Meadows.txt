@@ -8,68 +8,72 @@
 #samples
 {
 	#optimized
-	"String Ensemble 2.brr"
-	"saxophone.brr"
-	"synth bass 1.brr"
-	"Electric Bass (Pick).brr"
-	"Drum.brr"
-	"izu_snare.brr"
-	"izu_chat.brr"
-	"Synth lead.brr"
-	"piccolo.brr"
+	"emw/yi/flute.brr"
+	"emw/high strings oct 2.brr"
+	"emw/trumpet 1.brr"
+	
+	"emw/deep bass 1.brr"
+	"emw/finger bass 2.brr"
+	"emw/dark hollow.brr"
+	"emw/yi/harmonica.brr"
+	"emw/kick 6.brr"
+	"emw/elec hat close 1.brr"
+	"emw/snare 2.brr"
 }
 #instruments
 {
-	"piccolo.brr" $AC $C7 $AC $03 $08
-	"String Ensemble 2.brr" $FA $CA $00 $05 $10
-	"saxophone.brr" $FD $CF $B8 $04 $00
-	"Electric Bass (Pick).brr" $BF $B1 $0A $0C $80
-	"synth bass 1.brr"	$Fd $75 $B8 $04 $00
-	@0 $Fd $CE $B8 $03 $00
-	"Synth lead.brr" $8E $C8 $B8 $04 $00
-	"Drum.brr" $ff $B2 $00 $03 $42 
-	"izu_chat.brr" $fE $B6 $00 $09 $00	;@38
-	"izu_snare.brr" $01 $2F $60 $09 $a0
+	"emw/yi/flute.brr" $AC $C7 $AC $08 $00
+	"emw/high strings oct 2.brr" $AE $A8 $00 $03 $00;$02 $80
+	"emw/trumpet 1.brr" $FE $C8 $00 $04 $00
+	"emw/deep bass 1.brr"$ff $ee $00 $06 $00
+	"emw/finger bass 2.brr"$ff $ee $00 $06 $00 
+	
+	"emw/dark hollow.brr"$FE $90 $00 $01 $00
+	
+	"emw/yi/harmonica.brr" $FD $EF $00 $06 $00
+	"emw/kick 6.brr" $FF $F8 $7F $03 $00
+	"emw/elec hat close 1.brr" $fe $F8 $00 $07 $00
+	"emw/snare 2.brr" $ef $F8 $B8 $05 $00
 }
 
-$EF $7F $04 $04
+$EF $65 $04 $04
 $F1 $07 $A0 $00
 $F2 $0F $14 $14
 $F4 $02
 "tgec= $F4 $03"
-#0 w130 v180 y10 l8 t50
+#0 w130 v140 y10 l8 t50 $F4 $02
 @30 o4 q3f $DE $18 $0C $50 $F4 $02
 [ag16f16 ed cded ag16f16 ed cdec gf16e16 dc <b>cdc gf16e16 d<b>  cd c16d16e16f16]2
-@36 o4 v210
-[gcefg2 g.d.fg2 f<b>def2 f.c.ef2 >>c<<cdegfed >>c<<cdegfe >b>c<<cdegfe >>c16<b16>c<<cdegfed]2
+@36 o4 v210 $EF $7F $04 $04
+[gcefg2 $ec $02 $04 $02 g. $ec $00 $00 $00 d.fg2 f<b>def2 $ec $02 $04 $02 f. $ec $00 $00 $00 c.ef2 >>c<<cdegfed >>c<<cdegfe >b>c<<cdegfe >>c16<b16>c<<cdegfed]2
 @32 o4 v190
-(1)[a^1.f16g16>f16e16d16c16< a^1.f16g16>f16e16d16c16< f^1.e16d16c16d16e16f16] g^1.f16e16d16e16f16g16
-(1) g^1. fdf
+(1)[a^1.f16g16>f16e16d16c16< a^1.f16g16>f16e16d16c16< $ec $02 $04 $02 f^1. $ec $00 $00 $00 e16d16c16d16e16f16] g^1.f16e16d16e16f16g16
+(1) g^1. $ec $04 $04 $02 f $ec $00 $00 $00 df
 
 #1
 @35 o4 q6f $DE $2C $0C $50
-[a1a1g1g2.c16d16e16f16]2
+[a1a2...c32e32g1g2.c16d16e16f16]2
 @31 o2 q6f p0,0
 [g1^1 f1^1 >>cr2..cr2.<b>cr2.c16<b16>cr2..]2
 @31  o3 
 [a1^1a1^1f1^1g1^1]2
 
 #2
-@33 o2 v160 q7f $ee $10
+@33 o2 v230 q7f ;$ee $10
 [g>g<g>g<g>g<g>g<g>g<g>g<g>g<g>g< f>f<f>f<f>f<f>f<f>f<f>f<f>f<f>f<]6
 [g>g<g>g<g>g<g>g<g>g<g>g<g>g<g>g< f>f<f>f<f>f<f>f<f>f<f>f<f>f<f>f< e>e<e>e<e>e<e>e<e>e<e>e<e>e<e>e< f>f<f>f<f>f<f>f<f>f<f>f<f>f<f>f<]2
 
 #5
-@34 o1q5f 
+@34 o2q5f 
 [g>g<g>g<g>g<g>g<g>g<g>g<g>g<g>g< f>f<f>f<f>f<f>f<f>f<f>f<f>f<f>f<]6
 [g>g<g>g<g>g<g>g<g>g<g>g<g>g<g>g< f>f<f>f<f>f<f>f<f>f<f>f<f>f<f>f< e>e<e>e<e>e<e>e<e>e<e>e<e>e<e>e< f>f<f>f<f>f<f>f<f>f<f>f<f>f<f>f<]2
 
 #4 v180
 @35o5 q3d
-[ag16f16 ed cded ag16f16 ed cdec gf16e16 dc <b>cdc gf16e16 d<b>  cd c16d16e16f16]2
-@3o3 
-[gcefg2 g.d.fg2 f<b>def2 f.c.ef2 >>c<<cdegfed >>c<<cdegfe >b>c<<cdegfe >>c16<b16>c<<cdegfed]2
-@32 o3 
+[ag16f16 ed cded ag16f16 ed cdec gf16e16 dc <b>cdc gf16e16 d<b>  cd c16d16e16f16]2 r16. v120
+@0o4
+[gcefg2 g.d.fg2 f<b>def2 f.c.ef2 >>c<<cdegfed >>c<<cdegfe >b>c<<cdegfe >>c16<b16>c<<cdegfe] d *1 d32
+@32 o3 v180
 (2)[a^1.f16g16>f16e16d16c16< a^1.f16g16>f16e16d16c16< f^1.e16d16c16d16e16f16] g^1.f16e16d16e16f16g16
 (2) g^1. fdf
 

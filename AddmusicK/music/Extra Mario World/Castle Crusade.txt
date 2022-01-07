@@ -8,35 +8,35 @@
 #samples
 {
 	#optimized
-	"Choir Aahs.brr" 
-	"izu_snare.brr"
-	"Kick.brr" 
-	"izu_chat.brr"
-	"String Ensemble 1.brr"
-	"Crash Cymbal.brr"
-	"Organ (Church).brr"
-	"Timpani.brr"
-	"String Ensemble 2.brr"
-	"Guitar.brr"
-	"lead.brr" 
-	"synth bass 1.brr"
+	"emw/Choir Aahs.brr" 
+	"emw/snare 5.brr"
+	"emw/kick 6.brr"
+	"emw/elec hat close 1.brr"
+	"emw/high strings 1 alt (small).brr"
+	"emw/Crash Cymbal.brr"
+	"emw/Organ (Church).brr"
+	"emw/Timpani roll 2.brr"
+	"emw/high strings oct 2.brr"
+	"emw/deep bass 1.brr"
+	"emw/harpsichord med 2.brr"
 }
 #instruments
 {
-	"Organ (Church).brr" $FD $C8 $B8 $04 $02
-	"Choir Aahs.brr" $FD $CA $B8 $02 $00
-	"Organ (Church).brr" $FE $C2 $B8 $04 $00
-	"izu_snare.brr" $02 $B5 $60 $05 $00
+		
+	"emw/Organ (Church).brr" $FD $C8 $B8 $04 $02
+	"emw/Choir Aahs.brr" $FD $CA $B8 $02 $00
+	"emw/Organ (Church).brr" $FE $C2 $B8 $04 $00
+	"emw/snare 5.brr" $ef $F8 $B8 $05 $00
 	@10 $02 $B8 $60 $03 $00
-	"Guitar.brr" $BE $B0 $0A $06 $00	;@8 $8E $6C $B8 $1E $00;						;SMW Bass is actually great here
-	"izu_chat.brr" $fe $75 $00 $05 $08
-	"Kick.brr" $8E $B5 $00 $03 $00
-	"String Ensemble 2.brr" $FE $C6 $00 $02 $8A
-	"Crash Cymbal.brr" $FE $D2 $CF $05 $40	;@39
-	"lead.brr" $BE $B5 $0A $03 $00
-	"Timpani.brr" $fe $70 $00 $03 $00
-	"lead.brr" $8f $D7 $B8 $06 $00
-	"String Ensemble 1.brr" $FE $A6 $00 $01 $E6
+	"emw/deep bass 1.brr" $ff $ee $00 $06 $00					;SMW Bass is actually great here
+	"emw/elec hat close 1.brr" $fe $F8 $00 $07 $00
+	"emw/kick 6.brr" $FF $F8 $7F $03 $00
+	"emw/high strings oct 2.brr" $AB $A8 $00 $01 $80
+	"emw/Crash Cymbal.brr" $FE $D2 $CF $05 $40	;@39
+	"emw/harpsichord med 2.brr" $FD $72 $00 $06 $00	
+	"emw/Timpani roll 2.brr" $f2 $E0 $00 $02 $A0
+	"emw/harpsichord med 2.brr" $FF $F7 $00 $06 $00	
+	"emw/high strings 1 alt (small).brr" $AB $A8 $00 $03 $00
 }
 "tgec= $F4 $03"
 "rgec= $EF $DF $04 $04"
@@ -71,13 +71,13 @@ o3  q6f
 >
 [d16f16a16 d16f16a16 d16f16 <a16>d16 <a16>f16 a16f16d16a16]4
 
-#2 @43 o5 v220 y15 q7f
+#2 @43 o4 v220 y15 q7f
 c1<b1 b1a1 a1g1 a4>c4<b2 g4.>c<b2 ^1^1
 
 [r1]2 $ed $04 $A8 g1^1 $ed $7e $AA
-/ o4
+/ o3
 [c1<b1 b1a1 a1g1 a4>c4<b2 g4.>c<b2]2
-o4 v160
+o3 v160
 [a1^1 g1^1 a1^1 b1^1]2
 [d. d. d. d. a4]8
 
@@ -92,7 +92,7 @@ o4
 [a1^1 g1^1 a1^1 b1^1]2
 [d. d. d. d. a4]8
 
-#4 @40 q7f o1 v180 $DE $20 $0C $20
+#4 @40 q7f o3 v180 $DE $20 $0C $20
 [b16>c16d16e16f16g16a16b16>c16 d16e16f16g16a16g16f16]6
 o2 <a4>c4<b2 g.a.>c<b2 ^1^1
 [r1]2 @38 o3 $ed $04 $A8 e1^1 $ed $7e $AA
@@ -119,6 +119,6 @@ ce16g16f16e16d ce16g16f16e16d ce16g16f16e16d ce16g16f16e16d]99
  
 #6 v200 o4 $FA $03 $40 q7f $e5 $01 $50 $10
 @39 [c1]7@39c2@39c2^1 $ed $01 $f0 c1 @39 $ed $0f $f0 c1 r1 @38 $ed $04 $e8 o2 e1^1 $ed $7e $ea
-/@39 o4 v200 c1  (71)[@38o2b1 b1a1 a1g1 a4>c4<b2] g4.>c<b2> c1 (71) v100 $E8 $60 $FF @41[e32]32@39
-o4 v200 c1^1 (72)[@38o2 g1^1 a1^1] b1^1 a1^1(72) b1 v100 $E8 $60 $FF @41[e32]32@39 o4 v200
-c1 (73)[@0o3 d. d. d. d. a4]6 v100 $E8 $60 $FF @41[e32]32
+/@39 o4 v200 c1  (71)[@38o2b1 b1a1 a1g1 a4>c4<b2] g4.>c<b2> c1 (71) (74)[v100 $E8 $60 $FF @41e1] @39
+o4 v200 c1^1 (72)[@38o2 g1^1 a1^1] b1^1 a1^1(72) b1 (74)1 @39 o4 v200
+c1 (73)[@0o3 d. d. d. d. a4]6 (74)1

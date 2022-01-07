@@ -8,24 +8,26 @@
 #samples
 {
 	#optimized
-	"Bass Drum.brr"
-	"synth snare.brr"
-	"Guitar.brr"
-	"Xylophone.brr"
-	"izu_chat.brr"
-	"Marimba.brr" 
+	"emw/finger bass 2.brr"
+	"emw/Marimba.brr"
+	"emw/elec hat close 1.brr"
+	"emw/kick 6.brr"
+	"emw/snare 2.brr"
+	"emw/dark hollow.brr"
+	"emw/fat punch.brr"
+	"emw/synth ep 2.brr"
+	"emw/whospy 2.brr"
 }
 #instruments
 {
-	
-	"Xylophone.brr" $8d $f4 $00 $03 $00
-	"izu_chat.brr" $8E $F2 $00 $07 $08
-	"Guitar.brr" $8E $72 $b8 $03 $00
-	@11 $8E $70 $00 $03 $00
-	@16 $8F $70 $00 $06 $08
-	"Marimba.brr" $8E $6C $00 $05 $00
-	"Bass Drum.brr" $8F $6B $00 $03 $40 
-	"synth snare.brr" $8f $70 $B8 $03 $80
+	"emw/dark hollow.brr" $FF $EF $00 $04 $00
+	"emw/elec hat close 1.brr" $fe $F8 $00 $07 $00
+	"emw/finger bass 2.brr"$ff $f0 $00 $06 $00 
+	"emw/fat punch.brr" $fE $6C $00 $01 $80
+	"emw/synth ep 2.brr" $fE $6C $00 $02 $F0
+	"emw/whospy 2.brr"$fE $ec $00 $02 $80
+	"emw/kick 6.brr" $FF $F8 $7F $02 $80
+	"emw/snare 2.brr" $ef $F8 $B8 $03 $80
 }
 
 
