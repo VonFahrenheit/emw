@@ -738,46 +738,45 @@ print "Level code handler inserted at $", pc, "."
 		LDA !OAMindex_p2_prev : STA !OAMindex_p2	; |
 		LDA !OAMindex_p3_prev : STA !OAMindex_p3	;/
 
-		LDA #$0100
-		CMP !LightR : BNE ..shade
-		CMP !LightG : BNE ..shade
-		CMP !LightB : BEQ ..initpal
-		..shade
-		LDA.w #.PreShade : STA $3180
-		LDA.w #.PreShade>>8 : STA $3181
-		SEP #$20
-		JSR $1E80
-		STZ $2121
-		REP #$30
-		LDA #$2202 : STA $4300
-		LDA.w #!ShaderInput : STA $4302
-		LDA.w #!ShaderInput>>8 : STA $4303
-		LDA #$0200 : STA $4305
-		LDA #$0001 : STA $420B
-		BRA ..noshade
-		..initpal
-		SEP #$20
-		STZ $2121
-		REP #$30
-		LDA #$2202 : STA $4300
-		LDA.w #!PaletteRGB : STA $4302
-		LDA.w #!PaletteRGB>>8 : STA $4303
-		LDA #$0200 : STA $4305
-		LDA #$0001 : STA $420B
-		..noshade
-		SEP #$30
-		LDA.b #.InitShader : STA $3180
-		LDA.b #.InitShader>>8 : STA $3181
-		LDA.b #.InitShader>>16 : STA $3182
-		JSR $1E80
+		LDA #$0100					;\
+		CMP !LightR : BNE ..shade			; | check for light alterations
+		CMP !LightG : BNE ..shade			; |
+		CMP !LightB : BEQ ..initpal			;/
+		..shade						;\
+	STZ $7FFF
+		LDA.w #.PreShade : STA $3180			; |
+		LDA.w #.PreShade>>8 : STA $3181			; | have sa-1 preshade palette and dump it in !PaletteBuffer
+		SEP #$20					; |
+		JSR $1E80					;/
+		STZ $2121					;\
+		REP #$30					; |
+		LDA #$2202 : STA $4300				; |
+		LDA.w #!PaletteBuffer : STA $4302		; | !PaletteBuffer -> CGRAM
+		LDA.w #!PaletteBuffer>>8 : STA $4303		; |
+		LDA #$0200 : STA $4305				; |
+		LDA #$0001 : STA $420B				; |
+		BRA ..noshade					;/
+		..initpal					;\
+		SEP #$20					; |
+		STZ $2121					; |
+		REP #$30					; |
+		LDA #$2202 : STA $4300				; | if light is all 100%, just upload !PaletteRGB -> CGRAM
+		LDA.w #!PaletteRGB : STA $4302			; |
+		LDA.w #!PaletteRGB>>8 : STA $4303		; |
+		LDA #$0200 : STA $4305				; |
+		LDA #$0001 : STA $420B				; |
+		..noshade					;/
+		SEP #$30					;\
+		LDA.b #.InitShader : STA $3180			; |
+		LDA.b #.InitShader>>8 : STA $3181		; | initialize !ShaderInput with a copy of !PaletteRGB
+		LDA.b #.InitShader>>16 : STA $3182		; |
+		JSR $1E80					;/
 
 
 
 		PLB						; > end of bank wrapper
 		PEA $A5F3-1					;\ set return address and execute subroutine
 		JML $00919B					;/
-
-
 
 	.InitShader						;\
 		PHB : PHK : PLB					; |
@@ -799,7 +798,7 @@ print "Level code handler inserted at $", pc, "."
 		STZ $2250
 		REP #$30
 		LDX #$0000
-	-	LDA !PaletteRGB+$00,x : STA !ShaderInput+$00,x
+	-	LDA !PaletteRGB+$00,x : STA !PaletteBuffer+$00,x
 		INX #2
 		CPX !LightIndexStart : BCC -
 		+
@@ -834,7 +833,7 @@ print "Level code handler inserted at $", pc, "."
 		AND #$001F*$20*$20
 		ORA $00
 		ORA $02
-		STA !ShaderInput,x
+		STA !PaletteBuffer,x
 
 		..next
 		INX #2
@@ -850,22 +849,22 @@ print "Level code handler inserted at $", pc, "."
 		LDA !ShaderRowDisable,x
 		AND #$00FF : BEQ ..ok
 		TYX
-		LDA !PaletteRGB+$00,x : STA !ShaderInput+$00,x
-		LDA !PaletteRGB+$02,x : STA !ShaderInput+$02,x
-		LDA !PaletteRGB+$04,x : STA !ShaderInput+$04,x
-		LDA !PaletteRGB+$06,x : STA !ShaderInput+$06,x
-		LDA !PaletteRGB+$08,x : STA !ShaderInput+$08,x
-		LDA !PaletteRGB+$0A,x : STA !ShaderInput+$0A,x
-		LDA !PaletteRGB+$0C,x : STA !ShaderInput+$0C,x
-		LDA !PaletteRGB+$0E,x : STA !ShaderInput+$0E,x
-		LDA !PaletteRGB+$10,x : STA !ShaderInput+$10,x
-		LDA !PaletteRGB+$12,x : STA !ShaderInput+$12,x
-		LDA !PaletteRGB+$14,x : STA !ShaderInput+$14,x
-		LDA !PaletteRGB+$16,x : STA !ShaderInput+$16,x
-		LDA !PaletteRGB+$18,x : STA !ShaderInput+$18,x
-		LDA !PaletteRGB+$1A,x : STA !ShaderInput+$1A,x
-		LDA !PaletteRGB+$1C,x : STA !ShaderInput+$1C,x
-		LDA !PaletteRGB+$1E,x : STA !ShaderInput+$1E,x
+		LDA !PaletteRGB+$00,x : STA !PaletteBuffer+$00,x
+		LDA !PaletteRGB+$02,x : STA !PaletteBuffer+$02,x
+		LDA !PaletteRGB+$04,x : STA !PaletteBuffer+$04,x
+		LDA !PaletteRGB+$06,x : STA !PaletteBuffer+$06,x
+		LDA !PaletteRGB+$08,x : STA !PaletteBuffer+$08,x
+		LDA !PaletteRGB+$0A,x : STA !PaletteBuffer+$0A,x
+		LDA !PaletteRGB+$0C,x : STA !PaletteBuffer+$0C,x
+		LDA !PaletteRGB+$0E,x : STA !PaletteBuffer+$0E,x
+		LDA !PaletteRGB+$10,x : STA !PaletteBuffer+$10,x
+		LDA !PaletteRGB+$12,x : STA !PaletteBuffer+$12,x
+		LDA !PaletteRGB+$14,x : STA !PaletteBuffer+$14,x
+		LDA !PaletteRGB+$16,x : STA !PaletteBuffer+$16,x
+		LDA !PaletteRGB+$18,x : STA !PaletteBuffer+$18,x
+		LDA !PaletteRGB+$1A,x : STA !PaletteBuffer+$1A,x
+		LDA !PaletteRGB+$1C,x : STA !PaletteBuffer+$1C,x
+		LDA !PaletteRGB+$1E,x : STA !PaletteBuffer+$1E,x
 		TYA
 		CLC : ADC #$0020
 		TAX
@@ -877,7 +876,7 @@ print "Level code handler inserted at $", pc, "."
 
 		..finish
 	-	CPX #$0200 : BCS ..return
-		LDA !PaletteRGB+$00,x : STA !ShaderInput+$00,x
+		LDA !PaletteRGB+$00,x : STA !PaletteBuffer+$00,x
 		INX #2 : BRA -
 		..return
 		PLP

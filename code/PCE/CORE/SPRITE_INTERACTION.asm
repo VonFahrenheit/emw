@@ -50,6 +50,8 @@
 SPRITE_INTERACTION:
 		PHB : PHK : PLB
 
+		STZ !P2TouchingItem			; clear this flag
+
 		REP #$20				;\
 		LDA !P2Hurtbox+2			; |
 		STA $01					; |
@@ -103,6 +105,9 @@ SPRITE_INTERACTION:
 		CMP #$09 : BNE .NoCarry
 		LDA !P2Carry : BNE .NoCarry
 		LDA !P2Climbing : BNE .NoCarry
+	STZ $7FFF
+
+		INC !P2TouchingItem			; this flag prevents attacks
 		LDA $3330,x
 		AND #$04 : BNE +
 		BIT $6DA3 : BVS .Carry

@@ -685,6 +685,8 @@ namespace Kadaal
 		BRA .NoPunch
 		.NoSpin
 
+		LDA !P2TouchingItem : BNE .NoPunch
+
 		LDA !P2Punch
 		ORA !P2Headbutt
 		BEQ .Attack

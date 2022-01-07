@@ -70,5 +70,5 @@ Locals:
 44  Extra Mario World/Perilous Plains.txt
 45  Extra Mario World/Lightning Lounge.txt
 46  Extra Mario World/I'm a Ghost.txt
-47  Extra Mario World/Street Brawl Guitar.txt
-48  Extra Mario World/Beach.txt
+47  Extra Mario World/Beach.txt
+48  Extra Mario World/Street Brawl Guitar.txt

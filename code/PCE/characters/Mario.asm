@@ -729,6 +729,7 @@ namespace Mario
 		LDA !P2FireCharge : BNE $03			;\
 	-	JMP .NoFire					; | if mario has a fire charge and presses Y, consume the fire charge to throw a fireball
 		BIT $16 : BVC -					; |
+		LDA !P2TouchingItem : BNE -			; > picking up items has priority over fireball
 		STZ !P2FireCharge				;/
 		LDA.b #!MarioFlashPal&$E0|$10 : STA !P2FlashPal	; flash
 		LDA #$36 : STA !SPC4				; fireball SFX

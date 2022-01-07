@@ -675,30 +675,14 @@ levelinit39:
 
 
 level1:
-
-;	JSL DisplayHurtbox_Main
-
-	JSL DisplayHitbox1_Main
-	JSL DisplayHitbox2_Main
-
-
 		STZ !SideExit
-		LDA $1B
-		BNE .NoSide
-		INC A
-		STA !SideExit
-.NoSide		CMP #$0D
-		BCC .Return
+		LDA $1B : BNE .NoSide
+		INC A : STA !SideExit
+.NoSide		CMP #$0D : BCC .Return
 		LDA $1A
-		CMP #$A0
-		BCC .Return
-		LDA #$01			;\ Enable Vscroll
-		STA !EnableVScroll		;/
+		CMP #$A0 : BCC .Return
+		LDA #$01 : STA !EnableVScroll
 .Return		RTL
-
-
-
-
 
 
 
@@ -2887,6 +2871,7 @@ level2E:
 	!StatueX	= 191
 	!StatueY	= 54
 
+
 level2F:
 		LDX #$0F
 	-	LDA !NewSpriteNum,x
@@ -2920,8 +2905,9 @@ level2F:
 
 
 		.Brawl
-		; LDA !Room
-		; CMP #$01 : BEQ $03 : JMP ..done
+		LDA !Room
+		CMP #$01 : BEQ $03 : JMP ..done
+		LDA #$48 : STA !SPC3
 
 		; LDA #$30
 		; STA $40C800+($A*$400)+$38B
@@ -3075,7 +3061,7 @@ level2F:
 		; SEP #$20
 		; ..noaggro
 
-		; ..done
+		..done
 
 
 
