@@ -1973,6 +1973,7 @@ Bank16Start:
 %InsertSprite(EpicBlock)
 %InsertSprite(ShopObject)
 %InsertSprite(LifeShroom)
+%InsertSprite(SmokeyBoy)
 
 Bank16End:
 

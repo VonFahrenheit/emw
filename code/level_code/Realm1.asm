@@ -2913,14 +2913,18 @@ level2F:
 
 		LDA $1D : BNE +
 		REP #$20
-		LDA #$09E8 : JSL END_Right
+		LDA #$09E8 : JSL END_Right		; secret exit to fuzzy's ridge
+		LDA #$02 : TRB !SubScreen		; disable BG2
+		BRA ++
 		+
+		LDA #$02 : TSB !SubScreen		; enable BG2
+		++
 
 
 		REP #$20
 		LDA !Level : PHA
 		LDA #$0002 : STA !Level
-		LDA #$0CE8 : JSL END_Right
+		LDA #$0CE8 : JSL END_Right		; normal exit to rex reef beach
 		PLA : STA !Level
 		PLA : STA !Level+1
 

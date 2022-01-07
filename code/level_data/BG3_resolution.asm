@@ -25,21 +25,21 @@
 
 	BG3_Resolution:
 	.B00	db $FF		; mode 7 tilemap
-	.B01	db !64x64
-	.B02	db !32x64
-	.B03	db !32x64
-	.B04	db !32x32
-	.B05	db !32x32
-	.B06	db !64x64
-	.B07	db !64x32
-	.B08	db !64x64
-	.B09	db !64x32
-	.B0A	db !64x32
-	.B0B	db !64x64
-	.B0C	db !64x32
-	.B0D	db !64x64
-	.B0E	db !64x64
-	.B0F	db !32x64
+	.B01	db !64x64	; main menu BG3
+	.B02	db !32x64	; vanilla castle windows
+	.B03	db !32x64	; vanilla castle pillars (now on BG3 instead of BG2)
+	.B04	db !32x32	; vanilla cave rocks
+	.B05	db !32x32	; cave wall
+	.B06	db !32x64	; cloud wall
+	.B07	db !64x32	; vanilla fog
+	.B08	db !64x64	; vanilla fishes
+	.B09	db !64x32	; light fog
+	.B0A	db !64x32	; 3D water
+	.B0B	db !32x64	; vanilla hills (now on BG3 instead of BG2)
+	.B0C	db !64x32	; castle ramparts (foreground)
+	.B0D	db !64x64	;
+	.B0E	db !64x64	;
+	.B0F	db !32x64	; temple interior
 
 	.B10	db !64x64
 	.B11	db !64x64

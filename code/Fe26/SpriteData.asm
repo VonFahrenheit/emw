@@ -309,3 +309,8 @@ db $00,$00,$3A,$A2,$39,$46
 db $36
 db $10,$2A,$4C,$A1,$18,$00
 %AddToList(Rex_Dense, $00)
+
+; -- Sprite 35 --
+db $36
+db $00,$1F,$30,$A6,$39,$47
+%AddToList(SmokeyBoy, $00)

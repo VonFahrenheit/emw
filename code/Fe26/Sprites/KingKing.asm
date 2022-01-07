@@ -293,9 +293,7 @@
 		LDY.w #!MSG_KingKing_Intro : STY !MsgTrigger
 		SEP #$10
 		.NoMsg
-		LDA !StunTimer,x : BEQ .Next
-		.Return
-		JMP GRAPHICS
+		LDA !StunTimer,x : BNE .Return
 
 		.Next
 		LDA #$02 : STA !Phase,x				; next phase
@@ -320,12 +318,51 @@
 		SEP #$20					; |
 		PLB						;/
 		JSR UPDATE_MODE2				; > initialize vertical offset data
+
+		.Return
+		JSR Pushback
 		JMP GRAPHICS					; go to graphics
+
+
+	Pushback:
+		REP #$20
+		LDA.w #HITBOX_FullBody : JSL LOAD_HITBOX
+		JSL FireballContact_Destroy
+		SEC : JSL !PlayerClipping : BCC .Return
+		LSR A : BCC .P2
+
+		.P1
+		PHA
+		LDY $3320,x
+		LDA .PushValue,y : STA !P2VectorX-$80
+		LDA #$0F : STA !P2VectorTimeX-$80
+		LDA !P2InAir-$80 : BEQ ..done
+		LDA !P2YSpeed-$80 : BMI ..done
+		LDY #$00 : JSL P2Bounce
+		..done
+		PLA
+		.P2
+		LSR A : BCC .Return
+		LDY $3320,x
+		LDA .PushValue,y : STA !P2VectorX
+		LDA #$0F : STA !P2VectorTimeX
+		LDA !P2InAir : BEQ ..done
+		LDA !P2YSpeed : BMI ..done
+		LDY #$80 : JSL P2Bounce
+		..done
+
+		.Return
+		RTS
+
+		.PushValue
+		db $20,$E0
+
 
 
 	Transform:
 		JSR UPDATE_MODE2				; update wave
 		LDX !SpriteIndex				; X = sprite index
+		JSR Pushback
 		DEC !SpriteAnimTimer				;\ prevent animation
 		INC !HeadTimer,x				;/
 		STZ !InvincTimer,x				; make visible
@@ -1732,18 +1769,24 @@
 		LDA !Attack,x : BMI .Main			;\
 		.Init						; |
 		ORA #$80 : STA !Attack,x			; |
-		LDA #$50 : STA !StunTimer,x			; |
-		LDA #!KK_Squat : STA !SpriteAnimIndex		; |
-		STZ !SpriteAnimTimer				; | init anim + dir
+		LDA #$70 : STA !StunTimer,x			; |
+		LDA #!KK_Squat : STA !SpriteAnimIndex		; | init anim + dir
+		STZ !SpriteAnimTimer				; |
 		STZ !HeadAnim,x					; |
 		JSL SUB_HORZ_POS				; |
 		TYA : STA $3320,x				; |
 		.Main						;/
 		LDA !StunTimer,x : BEQ .End			;\
-		CMP #$08+1 : BCC .Squat				; | do things at these times
-		CMP #$38+1 : BCC .BigFire			; |
-		CMP #$48+1 : BCC .PrepFire			;/
+		CMP #$20+1 : BCC .Stand				; |
+		CMP #$28+1 : BCC .Squat				; | do things at these times
+		CMP #$58+1 : BCC .BigFire			; |
+		CMP #$68+1 : BCC .PrepFire			;/
 		.Return
+		RTS
+
+		.Stand
+		STZ !SpriteAnimIndex
+		STZ !SpriteAnimTimer
 		RTS
 
 		.End
@@ -1763,7 +1806,7 @@
 		LDA #$02 : STA !HeadTimer,x
 
 		LDA !StunTimer,x
-		CMP #$38 : BNE .Return
+		CMP #$58 : BNE .Return
 
 		LDY !ScepterIndex,x
 		LDA $3320,x : STA $3320,y
@@ -1992,6 +2035,9 @@
 
 		.Head
 		dw $0004,$FFF8 : db $18,$1C
+
+		.FullBody
+		dw $FFF8,$FFD8 : db $18,$38
 
 
 
@@ -3171,6 +3217,7 @@ Wait:		LDA !Difficulty
 		RTS						; return
 
 		..explode
+		JSL BigPuff
 		STZ !StunTimer,x
 		LDA !Difficulty
 		AND #$03 : TAY
@@ -3222,11 +3269,10 @@ Wait:		LDA !Difficulty
 		RTS
 
 		..xspeed
-		db $20,$E0
-		db $10,$F0
-		db $18,$E8
-		db $08,$F8
-
+		db $34,$CC		;\ first 2 on easy
+		db $14,$EC		;/
+		db $24,$DC		; added on normal and insane
+		db $04,$FC		; added on insane
 
 		..count
 		db $01,$02,$03

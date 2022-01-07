@@ -510,4 +510,7 @@ F1	0002	0,0,420
 33	0022	0,0,074
 
 34	0020	Dense Rex
-34	0022	0,16,*Dense Rex* 0,0,420
+34	0022	0,16,*Dense\nRex  * 0,0,420
+
+35	0020	Smoke Generator
+35	0022	0,16,*Smoke    \nGenerator* 0,0,420

@@ -179,6 +179,8 @@ Portal:
 		LDA !PortalSpawnState : STA $3230,y			; set spawned sprite status
 		LDA !PortalDelay : STA !PortalTimer			; reset timer
 
+		JSL BigPuff
+
 
 
 	.Return

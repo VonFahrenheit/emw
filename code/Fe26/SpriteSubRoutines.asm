@@ -1038,6 +1038,45 @@ SPRITE_OFF_SCREEN:
 		RTL						; return
 
 
+; input: void
+; output: void
+	BigPuff:
+		PHB : PHK : PLB
+		LDY #$07
+	-	LDA .SmokeX,y : STA $00
+		LDA .SmokeY,y : STA $01
+		LDA .SmokeXSpeed,y : STA $02
+		LDA .SmokeYSpeed,y : STA $03
+		STZ $04
+		STZ $05
+		LDA #$30 : STA $07
+		PHY
+		LDA.b #!prt_smoke16x16 : JSL SpawnParticle
+		PLY
+		DEY : BPL -
+		PLB
+		RTL
+
+		.SmokeX
+		db $08,$06
+		.SmokeY
+		db $00,$FA
+		db $F8,$FA
+		db $00,$06
+		; extended cosine area
+		db $08,$06
+
+		.SmokeXSpeed
+		db $10,$0C
+		.SmokeYSpeed
+		db $00,$FC
+		db $F0,$F4
+		db $00,$0C
+		; extended cosine area
+		db $10,$0C
+
+
+
 
 ; input: A = GFX index
 ; output: !SpriteProp and !SpriteTile updated

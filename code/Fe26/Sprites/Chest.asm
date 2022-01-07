@@ -87,11 +87,7 @@ Chest:
 
 		.BreakMaybe
 		LDA $3330,x
-		BIT #$08 : BNE .Break
-		AND #$03 : BEQ .Done
-		LDA $3280,x
-		CLC : ADC #$21
-		CMP #$42 : BCC .Done
+		BIT #$0B : BEQ .Done
 
 		.Break
 		JSR Open
