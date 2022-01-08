@@ -297,6 +297,7 @@ print "Level code handler inserted at $", pc, "."
 
 		STZ !Cutscene				; kill cutscene
 		STZ !CutsceneSmoothness			; kill effect
+		STZ !CutsceneWait			; kill timer
 		STZ !Cutscene6DA2			;\
 		STZ !Cutscene6DA3			; |
 		STZ !Cutscene6DA4			; |
@@ -2693,34 +2694,23 @@ UpdatePalset:
 
 
 
+macro CameraBox(X, Y, W, H, S, FX, FY)
+	dw <X>*$100
+	dw <Y>*$E0
+	dw (<X>+<W>)*$100
+	dw (<Y>+<H>)*$E0
+	dw <S>|(<FX><<6)|(<FY><<11)
+endmacro
 
+macro Door(x, y)
+	db <x>|(<y><<4)
+endmacro
 
-
-print "Unsorted code inserted at $", pc, "."
-incsrc "level_code/Unsorted.asm"
-
-print "Bank $18 level code ends at $", pc, "."
-
-org $198000
-db $53,$54,$41,$52
-dw $FFF7
-dw $0008
 
 incsrc "level_data/TimeLimits.asm"
 incsrc "level_data/LevelLightPoints.asm"
 incsrc "level_data/CameraBox.asm"
 
-print "Realm 1 code inserted at $", pc, "."
-incsrc "level_code/Realm1.asm"
-
-print "Realm 2 code inserted at $", pc, "."
-incsrc "level_code/Realm2.asm"
-
-print "Realm 3 code inserted at $", pc, "."
-incsrc "level_code/Realm3.asm"
-
-print "Realm 4 code inserted at $", pc, "."
-incsrc "level_code/Realm4.asm"
 
 print "Realm 5 code inserted at $", pc, "."
 incsrc "level_code/Realm5.asm"
@@ -2734,5 +2724,39 @@ incsrc "level_code/Realm7.asm"
 print "Realm 8 code inserted at $", pc, "."
 incsrc "level_code/Realm8.asm"
 
-print "Level code ends at $", pc, "."
+
+print "Bank $18 level code ends at $", pc, "."
+
+org $198000
+db $53,$54,$41,$52
+dw $FFF7
+dw $0008
+
+print "Unsorted code inserted at $", pc, "."
+incsrc "level_code/Unsorted.asm"
+
+
+print "Bank $19 code ends at $", pc, "."
+
+
+org $1C8000
+db $53,$54,$41,$52
+dw $FFF7
+dw $0008
+
+print "Realm 1 code inserted at $", pc, "."
+incsrc "level_code/Realm1.asm"
+
+print "Realm 2 code inserted at $", pc, "."
+incsrc "level_code/Realm2.asm"
+
+print "Realm 3 code inserted at $", pc, "."
+incsrc "level_code/Realm3.asm"
+
+print "Realm 4 code inserted at $", pc, "."
+incsrc "level_code/Realm4.asm"
+
+print "Bank $1C code ends at $", pc, "."
 print " "
+
+

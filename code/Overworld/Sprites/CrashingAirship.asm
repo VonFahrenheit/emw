@@ -67,6 +67,7 @@
 		LDA.w #!event_CrashedAirship : JSR GetEventCoords
 		LDA.w #!event_CrashedAirship : JSR RealTimeEvent
 		SEP #$20
+		LDA #$18 : STA !SPC4
 		LDA #$15 : STA !GameMode
 		LDA.b #!IntroLevel_UnexploredHill : STA $6109
 		LDA.b #!IntroLevel_UnexploredHill>>8 : STA $7F11

@@ -91,6 +91,18 @@
 ;	- expressions: "neutral", "happy", "angry", "distressed", "sad"
 ;	- this command will display a variation of a portrait
 ;
+;	playerportrait(X)
+;	- takes a value
+;	- value is horizontal flip (0 = right side, 1 = left side)
+;	- loads the portrait of the character currently in play
+;	- uses the neutral expression
+;
+;	playerexpression(expression, X)
+;	- takes an expression and a value
+;	- value is horizontal flip (0 = right side, 1 = left side)
+;	- loads the portrait of the character currently in play, with the specified expression
+;	- expressions: "neutral", "happy", "angry", "distressed", "sad"
+;
 ;	scroll(XX)
 ;	- takes a value 0-255 ($00-$FF)
 ;	- the text will be scrolled up a number of lines equal to the given value
@@ -137,6 +149,18 @@
 ;	- links the current message to the one specified
 ;	- upon hitting an endmessage command, the window will be cleared and the linked message will immediately start rendering
 ;	- it is recommended to use the waitforinput and scroll commands to make this transition appear smoother
+;
+;	playernext()
+;	- takes no input
+;	- same as next, but adds the player character number to the current message
+;	- mario will load the next message, luigi the one after that, and so on
+;	- order is:
+;		mario	+1
+;		luigi	+2
+;		kadaal	+3
+;		leeway	+4
+;		alter	+5
+;		peach	+6
 ;
 ;	setexit(XX, XX)
 ;	- takes two values 0-255 ($00-$FF)
@@ -239,31 +263,31 @@
 ;==============;
 macro font(index)
 	if <index> < 16
-		db $A0|<index>
+		db $90|<index>
 		endif
 		endmacro
 
 macro p2char(char)
 	if <char> < 16
-		db $B0|<char>
+		db $A0|<char>
 		endif
 		endmacro
 
 macro p1char(char)
 	if <char> < 16
-		db $C0|<char>
+		db $B0|<char>
 		endif
 		endmacro
 
 macro talk(value)
 	if <value> < 16
-		db $D0|<value>
+		db $C0|<value>
 		endif
 		endmacro
 
 macro speed(value)
 	if <value> < 16
-		db $E0|<value>
+		db $D0|<value>
 		endif
 		endmacro
 
@@ -298,6 +322,23 @@ macro expression(index, expression, xflip)
 		db !<expression>
 		endmacro
 
+macro playerportrait(xflip)
+	if <xflip> == 0
+		db $EC
+	else
+		db $ED
+		endif
+		endmacro
+
+macro playerexpression(expression, xflip)
+	if <xflip> == 0
+		db $EE
+	else
+		db $EF
+		endif
+		db !<expression>
+		endmacro
+
 
 macro scroll(lines)
 		db $F5,<lines>
@@ -324,6 +365,10 @@ macro dialogue(options, type)
 macro next(message)
 		db $F9
 		dw !MSG_<message>
+		endmacro
+
+macro playernext()
+		db $EB
 		endmacro
 
 macro setexit(lo, hi)

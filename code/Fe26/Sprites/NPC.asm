@@ -1195,7 +1195,7 @@ NPC:
 		STA !TalkAnim1,x
 		STA !TalkAnim3,x
 		LDA #!Toad_Cheer : STA !TalkAnim2,x
-		LDA #!Toad_Bow : STA !TalkAnim4,x
+	;	LDA #!Toad_Bow : STA !TalkAnim4,x
 
 	.Movement
 		LDY !SpriteAnimIndex
@@ -1225,9 +1225,6 @@ NPC:
 		..processtalk
 		LDA $400000+!MsgTalk : BMI ..done
 		CPY #!Toad_Cower : BCS ..done
-		CPY #!Toad_Bow : BCC +
-		CPY #!Toad_Bow_over : BCC ..done
-	+	LDA #!Toad_Bow : BRA ..setanim
 		..notalk
 
 		LDA $3330,x

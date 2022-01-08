@@ -15,7 +15,9 @@
 		Bank $19	SP_Level
 		Bank $1A	Fe26
 		Bank $1B	Overworld
-		Bank $1C-$1E	--------
+		Bank $1C	SP_Level
+		Bank $1D	claimed but UNUSED
+		Bank $1E	--------
 		Bank $1F	PCE
 		-- MB 2 --
 		Bank $20-$2F	--------

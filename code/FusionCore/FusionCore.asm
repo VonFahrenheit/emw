@@ -331,6 +331,7 @@ incsrc "../Defines.asm"
 		dw LuigiFireball		; 02
 		dw BigFireball			; 03
 		dw CustomShooter		; 04
+		dw MMX_Explosion		; 05
 		..End
 
 
@@ -655,6 +656,7 @@ incsrc "FusionSprites/DizzyStar.asm"
 incsrc "FusionSprites/LuigiFireball.asm"
 incsrc "FusionSprites/BigFireball.asm"
 incsrc "FusionSprites/CustomShooter.asm"
+incsrc "FusionSprites/MMX_Explosion.asm"
 
 
 

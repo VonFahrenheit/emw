@@ -2289,12 +2289,15 @@ endmacro
 ;COMMAND-HANDLING ROUTINE;
 ;========================;
 ; commands:
-; 80-9F free
-; AX - font (X is font)
-; BX - set player 2 character (X is character)
-; CX - set player 1 character (X is character)
-; DX - talk (X is talk flag value)
-; EX - speed (X is speed value)
+; 80-8F free
+; 9X - font (X is font)
+; AX - set player 2 character (X is character)
+; BX - set player 1 character (X is character)
+; CX - talk (X is talk flag value)
+; DX - speed (X is speed value)
+
+; E0-FF - special commands
+;
 ; F0 - header settings
 ; F1 - unused
 ; F2 - clear box
@@ -2313,21 +2316,21 @@ endmacro
 ; FF - end of message
 ;
 ; programming note:
+;	B is always clear when a special command is called
 ;	$0F can be used freely as scratch RAM in this routine
 ;
 	HANDLE_COMMANDS:
-		CMP #$A0 : BCC .Return			; 80-9F are currently unused
-		CMP #$B0 : BCC .Font			; AX - font
-		CMP #$C0 : BCC .P2Char			; BX - player 2 character
-		CMP #$D0 : BCC .P1Char			; CX - player 1 character
-		CMP #$E0 : BCC .Talk			; DX - talk
-		CMP #$F0 : BCC .Speed			; EX - speed
-		AND #$0F				;\
+		CMP #$90 : BCC .Return			; 80-9F are currently unused
+		CMP #$A0 : BCC .Font			; AX - font
+		CMP #$B0 : BCC .P2Char			; BX - player 2 character
+		CMP #$C0 : BCC .P1Char			; CX - player 1 character
+		CMP #$D0 : BCC .Talk			; DX - talk
+		CMP #$E0 : BCC .Speed			; EX - speed
+		AND #$1F				;\
 		ASL A					; |
 		XBA					; |
-		LDA #$00				; | FX - special command
-		XBA					; |
-		TAX					; |
+		LDA #$00 : XBA				; | E0-FF - special command
+		TAX					; | (always clear B here)
 		PEA.w .Return-1				; |
 		JMP (.Ptr,x)				;/
 
@@ -2400,9 +2403,24 @@ endmacro
 		BRA .Return
 
 
-
-
-.Ptr		dw .HeaderSettings	; F0, variable length followup
+		.Ptr
+		dw .UNUSED		; E0
+		dw .UNUSED		; E1
+		dw .UNUSED		; E2
+		dw .UNUSED		; E3
+		dw .UNUSED		; E4
+		dw .UNUSED		; E5
+		dw .UNUSED		; E6
+		dw .UNUSED		; E7
+		dw .UNUSED		; E8
+		dw .UNUSED		; E9
+		dw .UNUSED		; EA
+		dw .PlayerNext		; EB
+		dw .PlayerPortraitR	; EC,XX
+		dw .PlayerPortraitL	; ED,XX
+		dw .PlayerExpressionR	; EE,XX,XX
+		dw .PlayerExpressionL	; EF,XX,XX
+		dw .HeaderSettings	; F0, variable length followup
 		dw .Expression		; F1,XX,XX
 		dw .ClearBox		; F2
 		dw .Music		; F3,XX
@@ -2421,7 +2439,24 @@ endmacro
 
 
 ; how many extra bytes each command has
-.CommandLength	db $FF			; F0, special variable length
+	.CommandLength
+		db $00			; E0
+		db $00			; E1
+		db $00			; E2
+		db $00			; E3
+		db $00			; E4
+		db $00			; E5
+		db $00			; E6
+		db $00			; E7
+		db $00			; E8
+		db $00			; E9
+		db $00			; EA
+		db $00			; EB
+		db $00			; EC
+		db $00			; ED
+		db $01			; EE
+		db $01			; EF
+		db $FF			; F0, special variable length
 		db $02			; F1
 		db $00			; F2
 		db $01			; F3
@@ -2437,6 +2472,18 @@ endmacro
 		db $00			; FD
 		db $00			; FE
 		db $00			; FF
+
+
+; returns with A = character in play (can be P1 or P2)
+.GetPlayer
+		LDA.l !P2Status-$80 : BNE ..p2			; try P2 if P1 is dead
+		..p1						;\
+		LDA.l !P2Character-$80				; | P1 char
+		RTS						;/
+		..p2						;\ check for multiplayer (in singleplayer, always use P1)
+		LDA !MultiPlayer : BEQ ..p1			;/
+		LDA.l !P2Character				;\ P2 char
+		RTS						;/
 
 
 .HeaderSettings	INY
@@ -2499,6 +2546,8 @@ endmacro
 		JMP .HeaderSettings
 
 
+	.UNUSED
+
 .ClearBox	LDA #$01 : STA !MsgTerminateRender
 		JMP CLEAR_BOX
 
@@ -2506,7 +2555,31 @@ endmacro
 		LDA [$08],y : STA.l !SPC3
 		RTS
 
+
+.PlayerExpressionR
+		JSR .PlayerPortraitR
+		BRA .SetExpression
+
+.PlayerExpressionL
+		JSR .PlayerPortraitL
+		BRA .SetExpression
+
+.PlayerPortraitR
+		JSR .GetPlayer
+		INC A
+		BRA .SetPlayerPortrait
+
+.PlayerPortraitL
+		JSR .GetPlayer
+		INC A
+		ORA #$40
+		.SetPlayerPortrait
+		STA !MsgPortrait
+		STZ !MsgPortraitExpression
+		RTS
+
 .Expression	JSR .Portrait
+		.SetExpression
 		INY
 		LDA [$08],y : STA !MsgPortraitExpression
 		RTS
@@ -2565,6 +2638,18 @@ endmacro
 		STZ !MsgArrow
 		RTS
 
+
+.PlayerNext
+		LDA !MsgCounter : TAX				; X = sequence index
+		JSR .GetPlayer
+		REP #$20					;\
+		SEC : ADC.l !MsgTrigger				; |
+		STA !MsgSequence,x				; | queue message
+		SEP #$20					; |
+		INC !MsgCounter					; |
+		INC !MsgCounter					;/
+		RTS						; return
+
 .Next		LDA !MsgCounter
 		TAX
 		INY
@@ -2599,8 +2684,6 @@ endmacro
 .EndLevel	PHB : PHK : PLB
 		PHX
 		LDA #$02 : STA $73CE			; clear midway
-		LDA #$80				;\ fade music
-		STA !SPC3				;/
 		STA $6DD5				; set exit
 		LDX !Translevel : BEQ ++		;\ > intro level does not count
 		LDA !LevelTable1,x : BMI +		; |

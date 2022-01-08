@@ -85,12 +85,12 @@ if !CompileText = 1
 	db "Dinosaur Land... I haven't been there since I was a spore!"
 	%waitforinput()
 	%scrollfull()
-	%expression(Mario, neutral, 1)
-	db "Do you remember much?"
+	%expression(Mario, happy, 1)
+	db "Do you remember it?"
 	%waitforinput()
 	%scrollfull()
 	%expression(Toad, neutral, 0)
-	db "Not at all!. Toads don't develop brains until adulthood!"
+	db "Not at all! Toads don't develop brains until adulthood!"
 	%waitforinput()
 	%scrollfull()
 	%expression(Mario, sad, 1)
@@ -102,6 +102,14 @@ if !CompileText = 1
 	db "Huh?"
 	%delay(128)
 	%scrollfull()
+	%next(Toad_IntroLevel_2)
+	%endmessage()
+endif
+;====================================================================================================;
+%insertMSG(Toad_IntroLevel_2)
+if !CompileText = 1
+	%mode(1)
+	%music($1F)
 	%expression(Toad, distressed, 0)
 	db "Mario! We're under attack!"
 	%waitforinput()
@@ -118,39 +126,35 @@ if !CompileText = 1
 	%mode(1)
 	%expression(Kadaal, angry, 0)
 	%talk(3)
-	db "Suspicious red man!"
+	db "You! Suspicious red man!"
 	%waitforinput()
 	%scrollfull()
-	db "You agent of Dark Lord?!"
+	db "Are you with the Dark Lord?!"
 	%waitforinput()
 	%scrollfull()
 	%expression(Kadaal, neutral, 0)
 	%speed(12)
-	db "...no. "
+	db "...No. "
 	%speed(8)
-	db "Red Plumber good."
+	db "You're not."
 	%waitforinput()
 	%scrollfull()
 	%expression(Kadaal, happy, 0)
-	db "Kadaal take it from here."
+	db "I will take it from here."
 	%waitforinput()
 	%scrollfull()
-	db "Follow Kadaal! "
-	%delay(60)
-	db "Know where flying boat crashed."
+	db "Follow me! I know where the flying boat crashed."
 	%endmessage()
 endif
 ;====================================================================================================;
 %insertMSG(CrashSite_1)
 if !CompileText = 1
 	%portrait(Kadaal, 0)
-	db "Kadaal find green man."
+	db "I found a green man."
 	%waitforinput()
 	%scrollfull()
 	%expression(Mario, distressed, 1)
-	db "Mamma mia!"
-	%linebreak()
-	db "Luigi!"
+	db "Mamma mia! Luigi!"
 	%waitforinput()
 	%scrollfull()
 	%expression(Luigi, sad, 0)
@@ -162,11 +166,16 @@ if !CompileText = 1
 	%scrollfull()
 	db "!!!!!!!!!!!!!!!"
 	%expression(Luigi, happy, 0)
+	%mode(1)
+	db " "
+	%mode(0)
 	%waitforinput()
 	%scrollfull()
-	%mode(1)
 	%portrait(Kadaal, 0)
-	db "Talk green man, then see Kadaal friend."
+	db "I will set up the cannon."
+	%waitforinput()
+	%scrollfull()
+	db "We'll use it to get out of this forest."
 	%endmessage()
 endif;====================================================================================================;
 %insertMSG(Survivor_Talk_IntroLevel)
@@ -228,14 +237,13 @@ endif
 if !CompileText = 1
 	%mode(1)
 	%portrait(Kadaal, 0)
-	%speed(7)
-	db "Kadaal friend inside."
+	db "Did you know? This island used to be called Yoshi's Island."
 	%waitforinput()
 	%scrollfull()
-	db "Dark Lord attack. Kadaal and Kadaal friend survive both."
+	db "After the Dark Lord appeared, some of the Rex became really strong."
 	%waitforinput()
 	%scrollfull()
-	db "Talk Kadaal friend before leave!"
+	db "Their king rules this island now."
 	%endmessage()
 endif
 ;====================================================================================================;
@@ -744,23 +752,106 @@ endif
 ;====================================================================================================;
 %insertMSG(KingKing_Intro)
 if !CompileText = 1
-	%portrait(KingKing, 0)
-	db "You shall be crushed under my fangs!"
+	%playerexpression(angry, 1)
+	db "King of the Rex!"
 	%waitforinput()
 	%scrollfull()
-	%expression(Mario, sad, 1)
+	%portrait(KingKing, 0)
+	db "Ah, an interloper appears."
+	%waitforinput()
+	%scrollfull()
+	%next(KingKing_Intro2)
+	%playernext()
+	db "And who are you to dare tread on my domain?"
+	%waitforinput()
+	%scrollfull()
+	%endmessage()
+endif
+;====================================================================================================;
+%insertMSG(KingKing_Rebuttal_Mario)
+if !CompileText = 1
+	%playerexpression(neutral, 1)
+	db "King, you have reigned long enough."
+	%waitforinput()
+	%scrollfull()
+	%playerexpression(sad, 1)
 	db "Prepare for justice..."
 	%waitforinput()
 	%scrollfull()
-	%expression(Mario, angry, 1)
+	%playerexpression(angry, 1)
 	db "Plumber justice!"
+	%waitforinput()
+	%scrollfull()
+	%endmessage()
+endif
+;====================================================================================================;
+%insertMSG(KingKing_Rebuttal_Luigi)
+if !CompileText = 1
+	%playerexpression(distressed, 1)
+	db "(come on, Luigi, just do what your bro would have done!)"
+	%waitforinput()
+	%scrollfull()
+	%playerexpression(neutral, 1)
+	db "(here goes!)"
+	%waitforinput()
+	%scrollfull()
+	%playerexpression(angry, 1)
+	db "Hey! Big guy! You're going down!"
+	%waitforinput()
+	%scrollfull()
+	%endmessage()
+endif
+;====================================================================================================;
+%insertMSG(KingKing_Rebuttal_Kadaal)
+if !CompileText = 1
+	%playerexpression(happy, 1)
+	db "At last..."
+	%waitforinput()
+	%scrollfull()
+	%playerexpression(angry, 1)
+	db "For my tribe, I will have revenge!"
+	%waitforinput()
+	%scrollfull()
+	%endmessage()
+endif
+;====================================================================================================;
+%insertMSG(KingKing_Rebuttal_Leeway)
+if !CompileText = 1
+	%playerexpression(sad, 1)
+	db "I do so apologize, your highness..."
+	%waitforinput()
+	%scrollfull()
+	%playerexpression(happy, 1)
+	db "But I think it's time we end the monarchy, right here, right now!"
+	%waitforinput()
+	%scrollfull()
+	%endmessage()
+endif
+;====================================================================================================;
+%insertMSG(KingKing_Intro2)
+if !CompileText = 1
+	%portrait(KingKing, 0)
+	db "You will be crushed under my claw!"
 	%endmessage()
 endif
 ;====================================================================================================;
 %insertMSG(KingKing_Defeated)
 if !CompileText = 1
 	%portrait(KingKing, 0)
-	db "DEFEAT TEXT"
+	%important(2)
+	%speed(12)
+	db "How... can this... be..."
+	%waitforinput()
+	%scrollfull()
+	%speed(8)
+	db "I am the Dragon King!"
+	%waitforinput()
+	%scrollfull()
+	db "But even with the power from the Dark Lord..."
+	%waitforinput()
+	%scrollfull()
+	%speed(15)
+	db "NOOOOOOOOOOOOOO"
 	%endmessage()
 endif
 ;====================================================================================================;

@@ -514,3 +514,6 @@ F1	0002	0,0,420
 
 35	0020	Smoke Generator
 35	0022	0,16,*Smoke    \nGenerator* 0,0,420
+
+36	0020	Airship Display
+36	0022	0,16,*Airship\nDisplay* 0,0,420

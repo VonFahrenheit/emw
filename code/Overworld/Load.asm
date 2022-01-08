@@ -695,8 +695,13 @@
 
 	.InitMusic
 		SEP #$30
-		LDA #$33 : STA !SPC3					; overworld music
-
+		LDA !StoryFlags+$00 : BMI ..normaltheme
+		LDA #$1F : BRA ..setmusic				; crash
+		..normaltheme
+		LDA #$33
+		..setmusic
+		STA !SPC3						; overworld music
+		..done
 
 	.InitPalette
 		REP #$30						;\

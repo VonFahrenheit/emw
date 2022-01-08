@@ -1974,6 +1974,7 @@ Bank16Start:
 %InsertSprite(ShopObject)
 %InsertSprite(LifeShroom)
 %InsertSprite(SmokeyBoy)
+%InsertSprite(AirshipDisplay)
 
 Bank16End:
 

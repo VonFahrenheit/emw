@@ -314,3 +314,8 @@ db $10,$2A,$4C,$A1,$18,$00
 db $36
 db $00,$1F,$30,$A6,$39,$47
 %AddToList(SmokeyBoy, $00)
+
+; -- Sprite 36 --
+db $36
+db $00,$1F,$30,$A6,$39,$47
+%AddToList(AirshipDisplay, $00)

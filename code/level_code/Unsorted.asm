@@ -394,20 +394,6 @@ UploadDecomp:
 		RTL
 
 
-
-macro CameraBox(X, Y, W, H, S, FX, FY)
-	dw <X>*$100
-	dw <Y>*$E0
-	dw (<X>+<W>)*$100
-	dw (<Y>+<H>)*$E0
-	dw <S>|(<FX><<6)|(<FY><<11)
-endmacro
-
-macro Door(x, y)
-	db <x>|(<y><<4)
-endmacro
-
-
 LoadCameraBox:
 		STA $00
 		LDA.w #.SA1 : STA $3180
@@ -1637,7 +1623,7 @@ LoadCameraBox:
 levelinit0:
 
 	if !Debug = 0
-	LDA #$02 : STA !LevelWidth
+	LDA #$03 : STA !LevelWidth
 	endif
 
 		LDA #$06 : STA !PalsetStart
@@ -1658,11 +1644,11 @@ levelinit0:
 		LDX #$01
 		..loop
 		LDA #$25
-		STA $40C800+$1B0+$6A,x
-		STA $40C800+$1B0+$7A,x
+		STA $40C800+($1B0*2)+$63,x
+		STA $40C800+($1B0*2)+$73,x
 		LDA #$00
-		STA $41C800+$1B0+$6A,x
-		STA $41C800+$1B0+$7A,x
+		STA $41C800+($1B0*2)+$63,x
+		STA $41C800+($1B0*2)+$73,x
 		DEX : BPL ..loop
 		..done
 
@@ -2760,6 +2746,14 @@ levelinit1EF:
 levelinit1F0:
 	RTL
 levelinit1F1:
+		LDA #$30 : STA !SPC3
+		LDA #$06 : STA !PalsetStart
+
+		REP #$20
+		LDA #$7000 : STA $400000+!MsgVRAM1
+		LDA #$7200 : STA $400000+!MsgVRAM2
+		LDA #$7400 : STA $400000+!MsgVRAM3
+		SEP #$20
 
 		; .BlockExit
 		; LDA !LevelTable1+$5E : BMI ..done
@@ -2873,8 +2867,8 @@ level0:
 
 	if !Debug = 1
 	LDA $95
-	CMP #$03 : BEQ +
-	CMP #$04 : BEQ ++
+	CMP #$04 : BEQ +
+	CMP #$05 : BEQ ++
 	STZ !Translevel
 	BRA +++
 	+
@@ -3879,6 +3873,8 @@ levelC5:
 ; $0A22		color counter for kadaal's animation
 
 levelC6:
+		LDA #$30 : STA !SPC3
+
 		LDA $95 : BNE +
 		STZ !P2Entrance-$80
 		STZ !P2Entrance
@@ -3951,11 +3947,10 @@ levelC6:
 		REP #$20					;\ end level at coordinate 0x1FF0
 		LDA #$1FE8 : JSL EXIT_Right			;/
 		BCC .NotEnded					;\
-		STZ $6109					; | beat intro level when reaching the end
-		LDA #$80 : STA !SPC3				; > fade music
-		LDA #$00 : STA !Characters
-		STZ !P2Character-$80
-		STZ !P1Dead
+		STZ $6109					; |
+		LDA #$00 : STA !Characters			; > swap character to mario
+		STZ !P2Character-$80				; |
+		STZ !P1Dead					; |
 		.NotEnded					;/
 
 	; set HDMA
@@ -5155,6 +5150,44 @@ level1F1:
 		+
 
 
+		.Explosions
+		REP #$20
+		LDA !MsgTrigger
+		CMP.w #!MSG_Toad_IntroLevel_2
+		SEP #$20
+		BNE ..done
+		..shake
+		LDA #$10 : TSB !ShakeBG1
+		..sfx
+		LDA $14
+		AND #$07 : BNE ..sprites
+		LDA #$18 : STA !SPC4
+		..sprites
+		LDA $14
+		AND #$03 : BNE ..done
+		%Ex_Index_X_fast()
+		LDA #$05+!CustomOffset : STA !Ex_Num,x
+		LDA !RNG
+		AND #$F0
+		CLC : ADC $1A
+		STA !Ex_XLo,x
+		LDA $1B
+		ADC #$00
+		STA !Ex_XHi,x
+		LDA !RNG
+		ASL #4
+		CMP #$E0
+		BCC $02 : AND #$80
+		CLC : ADC $1C
+		STA !Ex_YLo,x
+		LDA $1D
+		ADC #$00
+		STA !Ex_YHi,x
+		STZ !Ex_Data1,x
+		..done
+
+
+
 		STZ $00					;\
 		STZ $01					; | YC count
 		JSL DisplayYC				;/
@@ -5191,7 +5224,6 @@ level1F1:
 
 .DoorList	db $FF			; no doors
 .DoorTable
-
 
 
 ; empty room
