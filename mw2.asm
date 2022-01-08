@@ -117,5 +117,10 @@ db $00
 %sprite(32, 0)		; Shop Object
 %sprite(33, 0)		; Life Shroom
 %extrasprite(34, 0, 00, 07)	; dense rex: bandana
+%extrasprite(34, 0, 01, 07)	; dense rex: bandana
+%extrasprite(34, 0, 02, 07)	; dense rex: bandana
+%extrasprite(35, 0, 02, 00)	; smoke generator
+%sprite(36, 0)		; Airship Display
 db $FF
+
 
