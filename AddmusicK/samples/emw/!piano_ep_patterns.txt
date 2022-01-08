@@ -1,0 +1,12 @@
+"electric piano 1.brr"$bf $af $00 $04 $00 $a4 $40 $40
+"harpsichord low 1.brr"$9f $71 $00 $04 $00 $a4 $40 $40"harpsichord med 1.brr"$9f $71 $00 $04 $00 $a4 $40 $40
+"harpsichord med 2.brr"$9f $71 $00 $06 $00 $a4 $40 $40
+"piano & bass.brr"$ff $f0 $00 $03 $00 $a4 $40 $40
+"piano extra high 1.brr"$9f $70 $00 $04 $00 $a4 $40 $40
+"piano high 1.brr"$ff $ef $00 $06 $00 $a4 $40 $40
+"piano low 1.brr"$ff $ed $00 $04 $00 $a4 $40 $40
+"piano low oct 1.brr"$ff $ed $00 $04 $00 $a4 $40 $40
+"piano med 2.brr"$ff $ee $00 $04 $00 $a4 $40 $40
+"synth ep 2.brr"$8e $6e $00 $01 $74 $a4 $40 $40
+"synth ep 4.brr"$8f $6e $00 $04 $73 $a4 $40 $40
+"synth ep 6.brr"$af $4e $00 $06 $00 $a4 $40 $40

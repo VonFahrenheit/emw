@@ -1,0 +1,14 @@
+"808 clap.brr"$ff $f7 $00 $06 $80 $a4 $40 $40
+"concert bass drum 4.brr"$bf $d0 $00 $02 $00 $a4 $40 $40
+"kick 4.brr"$00 $00 $DD $05 $00 $a4 $40 $40
+"kick 6.brr"$00 $00 $7f $04 $00 $a4 $40 $40
+"kick verb 2.brr"$8f $bc $00 $04 $00 $a4 $40 $40
+"snare 1.brr"$00 $00 $7f $06 $40 $a4 $40 $40
+"snare 2.brr"$00 $00 $7f $04 $40 $a4 $40 $40
+"snare 5.brr"$fe $f3 $00 $05 $80 $a4 $40 $40
+"snare 9.brr"$df $80 $00 $04 $00 $a4 $40 $40
+"snare brush swirl 1.brr"$87 $92 $00 $06 $00 $a4 $40 $40
+"snare roll 1.brr"$00 $00 $7f $05 $d0 $a4 $40 $40
+"snare verb 1.brr"$af $15 $7f $06 $80 $a4 $40 $40
+"tom 6.brr"$ff $f6 $00 $06 $00 $a4 $40 $40
+"tom verb 1.brr"$00 $00 $7f $03 $00 $a4 $40 $40

@@ -34,14 +34,46 @@ SPRITE_OFF_SCREEN:
 	;	BRA .GoodY
 	;	.HorizontalLevel
 
-		LDA $3250,x
-		XBA
+		LDA !SpriteXHi,x : XBA
 		LDA !CameraBoxSpriteErase			;\ if camera box ignores sprites, sprites ignore camera box
 		CMP #$02 : BCS +				;/
-		BIT !CameraBoxU+1 : BPL .GoodX
+		CMP #$01 : BNE ++				;\
+		LDA !SpriteXLo,x				; |
+		REP #$20					; |
+		STA $00						; |
+		SEC : SBC !CameraBoxL				; |
+		BPL .WithinCamL					; |
+		CMP #$FFC0 : BCS .WithinCamL			; |
+		.BadCamX					; |
+		INC $3350,x					; |
+		BRA .CamY					; |
+		.WithinCamL					; |
+		LDA $00						; |
+		SEC : SBC !CameraBoxR				; |
+		BMI .CamY					; |
+		CMP #$0140 : BCS .BadCamX			; | erase mode 1: erase zone defined by camera box borders
+		.CamY						; |
+		SEP #$20					; |
+		LDA !SpriteYHi,x : XBA				; |
+		LDA !SpriteYLo,x				; |
+		REP #$20					; |
+		STA $00						; |
+		SEC : SBC !CameraBoxU				; |
+		BPL .WithinCamU					; |
+		CMP #$FFC0 : BCS .WithinCamU			; |
+		.BadCamY					; |
+		JMP .OutOfBoundsY				; |
+		.WithinCamU					; |
+		LDA $00						; |
+		SEC : SBC !CameraBoxD				; |
+		BPL .GoodY					; |
+		CMP #$0120 : BCS .BadCamY			; |
+		BRA .GoodY					;/
+
+	++	BIT !CameraBoxU+1 : BPL .GoodX
 	+	LDA !SpriteTweaker4,x
 		AND #$04 : BNE .GoodX
-		LDA $3220,x
+		LDA !SpriteXLo,x
 		REP #$20
 		SEC : SBC $1A
 		CLC : ADC #$0060
@@ -55,10 +87,10 @@ SPRITE_OFF_SCREEN:
 		AND #$03
 		ASL A
 		TAY
-		LDA $3240,x : XBA
+		LDA !SpriteYHi,x : XBA
 		LDA !CameraBoxSpriteErase
 		CMP #$02					; be careful to keep C flag here
-		LDA $3210,x
+		LDA !SpriteYLo,x
 		REP #$20
 		BCS .NoBoxY
 

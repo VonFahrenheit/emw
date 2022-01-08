@@ -77,50 +77,61 @@ endif
 ;====================================================================================================;
 %insertMSG(Toad_IntroLevel_1)
 if !CompileText = 1
-	db "Are you ready to embark?"
-	%linebreak()
-	%dialogue(1, 0)
-	db "   Yes"
-	%linebreak()
-	db "   No"
-	%endmessage()
-endif
-;====================================================================================================;
-%insertMSG(Toad_IntroLevel_2)
-if !CompileText = 1
 	%mode(1)
-	db "Off you go!"
+	%expression(Toad, neutral, 0)
+	db "Mario! We're about to arrive!"
 	%waitforinput()
-
-;	%setexit($C6, $04)
-;	%triggerexit()
+	%scrollfull()
+	db "Dinosaur Land... I haven't been there since I was a spore!"
+	%waitforinput()
+	%scrollfull()
+	%expression(Mario, neutral, 1)
+	db "Do you remember much?"
+	%waitforinput()
+	%scrollfull()
+	%expression(Toad, neutral, 0)
+	db "Not at all!. Toads don't develop brains until adulthood!"
+	%waitforinput()
+	%scrollfull()
+	%expression(Mario, sad, 1)
+	db "I see..."
+	%waitforinput()
+	%scrollfull()
+	%expression(Toad, neutral, 0)
+	%music($80)
+	db "Huh?"
+	%delay(128)
+	%scrollfull()
+	%expression(Toad, distressed, 0)
+	db "Mario! We're under attack!"
+	%waitforinput()
+	%scrollfull()
+	%talk(1)
+	db "The ship- the ship is going down!!"
+	%waitforinput()
 	%endlevel(0)
-
-	%endmessage()
-endif
-;====================================================================================================;
-%insertMSG(Toad_IntroLevel_3)
-if !CompileText = 1
-	db "Very well. Come back when you're ready!"
 	%endmessage()
 endif
 ;====================================================================================================;
 %insertMSG(MeetKadaal_1)
 if !CompileText = 1
 	%mode(1)
-	%portrait(Kadaal, 0)
-	db "Wait... can see me?"
+	%expression(Kadaal, angry, 0)
+	%talk(3)
+	db "Suspicious red man!"
 	%waitforinput()
 	%scrollfull()
 	db "You agent of Dark Lord?!"
 	%waitforinput()
 	%scrollfull()
+	%expression(Kadaal, neutral, 0)
 	%speed(12)
 	db "...no. "
 	%speed(8)
 	db "Red Plumber good."
 	%waitforinput()
 	%scrollfull()
+	%expression(Kadaal, happy, 0)
 	db "Kadaal take it from here."
 	%waitforinput()
 	%scrollfull()
@@ -136,13 +147,13 @@ if !CompileText = 1
 	db "Kadaal find green man."
 	%waitforinput()
 	%scrollfull()
-	%portrait(Mario, 1)
+	%expression(Mario, distressed, 1)
 	db "Mamma mia!"
 	%linebreak()
 	db "Luigi!"
 	%waitforinput()
 	%scrollfull()
-	%portrait(Luigi, 0)
+	%expression(Luigi, sad, 0)
 	db "..."
 	%waitforinput()
 	%scrollfull()
@@ -150,6 +161,7 @@ if !CompileText = 1
 	%waitforinput()
 	%scrollfull()
 	db "!!!!!!!!!!!!!!!"
+	%expression(Luigi, happy, 0)
 	%waitforinput()
 	%scrollfull()
 	%mode(1)
@@ -193,11 +205,12 @@ endif
 %insertMSG(LuigiSwitchFirstTime)
 if !CompileText = 1
 	%mode(1)
-	%portrait(Luigi, 0)
+	%expression(Luigi, distressed, 0)
 	%speed(7)
 	db "That's-a one way to arrive!"
 	%waitforinput()
 	%scrollfull()
+	%expression(Luigi, happy, 0)
 	db "Rest up, bro! Leave this part to me!"
 	%endmessage()
 endif
@@ -732,7 +745,15 @@ endif
 %insertMSG(KingKing_Intro)
 if !CompileText = 1
 	%portrait(KingKing, 0)
-	db "FIGHT START TEXT"
+	db "You shall be crushed under my fangs!"
+	%waitforinput()
+	%scrollfull()
+	%expression(Mario, sad, 1)
+	db "Prepare for justice..."
+	%waitforinput()
+	%scrollfull()
+	%expression(Mario, angry, 1)
+	db "Plumber justice!"
 	%endmessage()
 endif
 ;====================================================================================================;

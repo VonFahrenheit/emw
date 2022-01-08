@@ -285,8 +285,10 @@ namespace GAMEMODE14
 .CODE_00C533	LDY $74AD				;\
 		CPY $74AE				; |
 		BCS $03 : LDY $74AE			; |
+		CPY !StarTimer				; |
+		BCS $03 : LDY !StarTimer		; |
 		LDA $6DDA : BMI +			; |
-		CPY #$01 : BNE +			; | POW (blue and silver) timer + music
+		CPY #$01 : BNE +			; | POW (blue and silver) + star power timer + music
 		LDY $790C : BNE +			; |
 		STA !SPC3				; |
 	+	CMP #$FF : BEQ .CODE_00C55C		; |
@@ -1211,8 +1213,7 @@ Camera:
 		LDX #$0F					;\
 	-	LDY $3230,x : BNE +				; |
 	--	JMP .Next					; |
-	+	LDY !CameraBoxSpriteErase
-		CPY #$02 : BCS --
+	+	LDY !CameraBoxSpriteErase : BNE --
 		LDA !SpriteTweaker4,x				; |
 		ORA #$0004					; |
 		STA !SpriteTweaker4,x				; |
@@ -1259,8 +1260,6 @@ Camera:
 
 	.Freeze	LDY $3230,x					;\ delete if status < 8
 		CPY #$08 : BCC .Delete				;/
-		LDY !CameraBoxSpriteErase			; 00 = freeze, 01 = erase, 02 = ignore
-		CPY #$01 : BEQ .Delete
 		..freeze
 		LDA !SpriteStasis,x				;\
 		ORA #$0002					; | freeze if status >= 8
@@ -1666,16 +1665,16 @@ Camera:
 		dw .AutoXSlow		; 6 - speed + slow
 		dw .AutoXConstant	; 7 - speed + constant
 		dw .AutoXFast		; 8 - speed + variable
-		dw .AutoXFast2		; 9 - speed + constant
+		dw .AutoXFast2		; 9 - speed + slow
 		dw .AutoXSlow		; A - speed + slow
 		dw .AutoXConstant	; B - speed + constant
 		dw .AutoXFast		; C - speed + variable
-		dw .AutoXFast2		; D - speed + constant
+		dw .AutoXFast2		; D - speed + slow
 		dw .Variable3Horz	; E - 12% (unused by LM)
 		dw .NoHorz		; F - 0% (UNUSED)
 
 .AutoXFast2	JSR .AutoX
-		BRA .ConstantHorz
+		BRA .SlowHorz
 
 .AutoXFast	JSR .AutoX
 		BRA .VariableHorz
@@ -1732,16 +1731,16 @@ Camera:
 		dw .AutoYSlow		; 6 - speed + slow
 		dw .AutoYConstant	; 7 - speed + constant
 		dw .AutoYFast		; 8 - speed + variable
-		dw .AutoYFast2		; 9 - speed + constant
+		dw .AutoYFast2		; 9 - speed + slow
 		dw .AutoYSlow		; A - speed + slow
 		dw .AutoYConstant	; B - speed + constant
 		dw .AutoYFast		; C - speed + variable
-		dw .AutoYFast2		; D - speed + constant
+		dw .AutoYFast2		; D - speed + slow
 		dw .Variable3Vert	; E - 12% (unused by LM)
 		dw .NoVert		; F - 0% (UNUSED)
 
 .AutoYFast2	JSR .AutoY
-		BRA .ConstantVert
+		BRA .SlowVert
 
 .AutoYFast	JSR .AutoY
 		BRA .VariableVert

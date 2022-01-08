@@ -20,8 +20,6 @@
 
 
 
-
-
 		LDA !GameMode
 		AND #$00FF
 		CMP #$000E : BEQ .Process

@@ -1,0 +1,18 @@
+"accordion 1.brr"$8f $c3 $00 $03 $00 $a4 $40 $40
+"accordion oct 1.brr"$8f $a3 $00 $03 $00 $a4 $40 $40
+"bass clarinet.brr"$00 $00 $7f $04 $00 $a4 $40 $40
+"bassoon 1.brr"$00 $00 $7f $04 $00 $a4 $40 $40
+"clarinet 1.brr"$00 $00 $7f $02 $00 $a4 $40 $40
+"dark reed.brr"$00 $00 $7f $04 $00 $a4 $40 $40
+"pan flute 2.brr"$ff $e5 $00 $04 $00 $a4 $40 $40
+"pan flute 2 alt (small).brr"$ff $e5 $00 $02 $80 $a4 $40 $40
+"flute 1.brr"$00 $00 $7f $04 $00 $a4 $40 $40
+"flute low 1.brr"$00 $00 $7f $04 $00 $a4 $40 $40
+"flute overblow 1.brr"$8f $60 $00 $06 $00 $a4 $40 $40
+"mellow bass.brr"$00 $00 $7f $02 $00 $a4 $40 $40
+"obo 1.brr"$00 $00 $7f $02 $00 $a4 $40 $40
+"ocarina 1.brr"$00 $00 $7f $01 $00 $a4 $40 $40
+"sax 1.brr"$00 $00 $7f $02 $00 $a4 $40 $40
+"shakuhachi.brr"$00 $00 $7f $04 $00 $a4 $40 $40
+"small pipe.brr"$00 $00 $7f $04 $00 $a4 $40 $40
+"solo winds oct.brr"$00 $00 $7f $04 $00 $a4 $40 $40

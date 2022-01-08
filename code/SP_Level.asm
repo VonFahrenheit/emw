@@ -2080,6 +2080,7 @@ HandleGraphics:
 		SEP #$30
 
 		JSR .RotateSimple
+		JSR .UpdatePortal
 		JSR .RainbowShifter					; also spawns sparkles
 		JSR .UpdateLight
 		JSR .UpdatePalset
@@ -2202,6 +2203,42 @@ HandleGraphics:
 		dw !GFX_LuigiFireball_offset	: db $06,$20,$00,$00
 		dw !GFX_Baseball_offset		: db $07,$20,$40,$0F
 		..end
+
+
+
+	; handler for portal sprite
+	.UpdatePortal
+		PHP
+		REP #$30
+		LDA $14
+		AND #$0003 : BNE ..return
+		LDA !GFX_Portal : BEQ ..return
+		LDY.w #!File_Portal : JSL !GetFileAddress
+		JSL !GetVRAM
+		LDA !FileAddress+1
+		STA !VRAMbase+!VRAMtable+$03,x
+		STA !VRAMbase+!VRAMtable+$0A,x
+		LDA $14
+		LSR #2
+		AND #$0003
+		XBA : LSR A			; *128
+		ADC !FileAddress
+		STA !VRAMbase+!VRAMtable+$02,x
+		ADC #$0200
+		STA !VRAMbase+!VRAMtable+$09,x
+		LDA #$0080
+		STA !VRAMbase+!VRAMtable+$00,x
+		STA !VRAMbase+!VRAMtable+$07,x
+		LDA !GFX_Portal
+		ASL #4
+		ORA #$6000
+		STA !VRAMbase+!VRAMtable+$05,x
+		ADC #$0100
+		STA !VRAMbase+!VRAMtable+$0C,x
+		..return
+		PLP
+		RTS
+
 
 
 	; handler for player rainbow effect

@@ -10,10 +10,17 @@ HammerRex:
 	namespace HammerRex
 
 	INIT:
+		PHB : PHK : PLB
 		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
+		LDA !Difficulty
+		AND #$03 : TAY
+		LDA .Delay,y : STA $32D0,x			; wait before throwing first hammer
+		PLB
 		RTL
 
+		.Delay
+		db $5A,$3C,$3C
 
 
 	MAIN:
@@ -49,8 +56,7 @@ HammerRex:
 		.ThrowHammer
 		LDA $32D0,x : BNE ..nothrow			;\
 		LDA.l !Difficulty				; |
-		AND #$03					; |
-		TAY						; |
+		AND #$03 : TAY					; |
 		LDA !RNG					; | wait a random number of frames
 		LSR #2						; |
 		CLC : ADC #$23					; |
@@ -71,10 +77,10 @@ HammerRex:
 		LDY $3320,x
 		LDA DATA_XSpeed,y : STA !SpriteXSpeed,x
 		..nospeed
-		LDA $3220,x : PHA
-		LDA $3250,x : PHA
-		LDA $3210,x : PHA
-		LDA $3240,x : PHA
+		LDA !SpriteXLo,x : PHA
+		LDA !SpriteXHi,x : PHA
+		LDA !SpriteYLo,x : PHA
+		LDA !SpriteYHi,x : PHA
 		LDA $3330,x
 		AND #$04 : PHA
 		JSL !SpriteApplySpeed
@@ -85,10 +91,10 @@ HammerRex:
 		LDA $3330,x
 		AND #$03 : BEQ ..noturn
 		..turn
-		PLA : STA $3240,x
-		PLA : STA $3210,x
-		PLA : STA $3250,x
-		PLA : STA $3220,x
+		PLA : STA !SpriteYHi,x
+		PLA : STA !SpriteYLo,x
+		PLA : STA !SpriteXHi,x
+		PLA : STA !SpriteXLo,x
 		LDA $3320,x
 		EOR #$01
 		STA $3320,x
@@ -251,7 +257,6 @@ HammerRex:
 
 
 	DropHat:
-
 		REP #$20
 		LDA.w ANIM_TM_Walk00+$0F
 		AND #$00FF
@@ -278,16 +283,16 @@ HammerRex:
 		PLB							; |
 		SEP #$20						; |
 		LDY !SpriteIndex					; |
-		LDA $3220,y						; |
+		LDA !SpriteXLo,y					; |
 		CLC : ADC $00						; |
 		STA !41_Particle_XLo,x					; |
-		LDA $3250,y						; |
+		LDA !SpriteXHi,y					; |
 		ADC $01							; |
 		STA !41_Particle_XHi,x					; |
-		LDA $3210,y						; |
+		LDA !SpriteYLo,y					; |
 		CLC : ADC $02						; | spawn particle
 		STA !41_Particle_YLo,x					; |
-		LDA $3240,y						; |
+		LDA !SpriteYHi,y					; |
 		ADC $03							; |
 		STA !41_Particle_YHi,x					; |
 		LDA !SpriteTile,y					; |
@@ -323,16 +328,16 @@ HammerRex:
 		EOR #$40					; |
 		BCC $02 : ORA #$80				; |
 		STA !Ex_Data3,y					;/
-		LDA $3220,x					;\
+		LDA !SpriteXLo,x				;\
 		CLC : ADC $00					; |
 		STA !Ex_XLo,y					; | Xpos
-		LDA $3250,x					; |
+		LDA !SpriteXHi,x				; |
 		ADC $01						; |
 		STA !Ex_XHi,y					;/
-		LDA $3210,x					;\
+		LDA !SpriteYLo,x				;\
 		SEC : SBC #$01					; |
 		STA !Ex_YLo,y					; | Ypos
-		LDA $3240,x					; |
+		LDA !SpriteYHi,x				; |
 		SBC #$00					; |
 		STA !Ex_YHi,y					;/
 
@@ -359,8 +364,8 @@ HammerRex:
 		ORA.b #!P2YPosLo-$80				; | target a random player
 		STA $00						; |
 		LDA.b #!P2Base>>8 : STA $01			;/
-		LDA $3240,x : XBA				;\
-		LDA $3210,x					; |
+		LDA !SpriteYHi,x : XBA				;\
+		LDA !SpriteYLo,x				; |
 		REP #$20					; |
 		SEC : SBC ($00)					; |
 		LSR #2						; |
@@ -375,9 +380,9 @@ HammerRex:
 		LDA $00						;\
 		SEC : SBC.b #(!P2YPosLo)-(!P2XPosLo)		; | update pointer
 		STA $00						;/
-		LDA $3250,x					;\
+		LDA !SpriteXHi,x				;\
 		XBA						; |
-		LDA $3220,x					; |
+		LDA !SpriteXLo,x				; |
 		REP #$20					; |
 		SEC : SBC ($00)					; | Xspeed
 		LSR #2						; |

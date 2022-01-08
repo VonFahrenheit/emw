@@ -350,6 +350,10 @@ endmacro
 
 
 		!CameraBoxSpriteErase	= $5C	; 00 = freeze off-screen sprites, 01 = erase off-screen sprites, 02 = ignore off-screen sprites
+		; 00 = camera box handles off-screen code, sprites outside the border get frozen (tweaker lets them ignore this)
+		; 01 = sprites handle off-screen code, erase thresholds are camera box borders +32px
+		; 02 = sprites ignore camera box and camera box ignores sprites
+
 
 		!CameraBoxL		= $6AC0
 		!CameraBoxU		= $6AC2
@@ -735,6 +739,7 @@ endmacro
 		%def_file(NPC_Melody)
 		%def_file(NPC_Toad)
 		%def_file(MiniMech)
+		%def_file(Portal)
 
 		; boss files
 		%def_file(CaptainWarrior)
@@ -2398,7 +2403,12 @@ endmacro
 		!MsgInputBuffer		= !MsgRAM+$42		; 8 bytes, $6DA2-$6DA9 are buffered here, and these are read instead, used to buffer inputs during startup timer
 		!MsgInputLock		= !MsgRAM+$4A		; 4 bytes, each bit locks out the corresponding hold bit in input buffer, this is cleared when the input is 0, used to prevent press -> hold
 		!MsgClearBox		= !MsgRAM+$4E		; 1 byte, signals that the message box should be cleared
-		!MsgBold		= !MsgRAM+$4F		; 1 byte, enthiccens the text
+		!MsgPortraitExpression	= !MsgRAM+$4F		; 1 byte, chooses variation of portrait (defaults to neutral if variation doesn't exist)
+								; 0 = neutral
+								; 1 = happy
+								; 2 = angry
+								; 3 = distressed
+								; 4 = sad
 
 
 
@@ -2439,7 +2449,15 @@ endmacro
 		%def_portrait(Rex)
 		%def_portrait(CaptainWarrior)
 		%def_portrait(KingKing)
+		%def_portrait(Toad)
 
+
+	; expressions
+		!neutral	= 0
+		!happy		= 1
+		!angry		= 2
+		!distressed	= 3
+		!sad		= 4
 
 
 
@@ -2593,6 +2611,7 @@ endmacro
 		!CoinTimer		= $786B
 		!MarioRidingYoshi	= $787A
 		!ShakeTimer		= $7887
+		!ShakeBG1		= !ShakeTimer	; alt name
 		!YoshiIndex		= $78E2
 		!GeneratorNum		= $78B9
 		!MarioStunTimer		= $78BD

@@ -1901,13 +1901,21 @@
 		JSR GRAPHICS					; do graphics first
 
 		.Head
-		REP #$20					;\
-		LDA.w #HITBOX_Head : JSL LOAD_HITBOX		; |
-		LDA $04						; |
+		LDA !HeadAnim,x					;\
+		CMP.b #!KK_Head_Charge				; |
+		REP #$20					; |
+		BEQ ..charge					; |
+		..normal					; |
+		LDA.w #HITBOX_Head : BRA ..load			; |
+		..charge					; |
+		LDA.w #HITBOX_HeadCharging			; |
+		..load						; |
+		JSL LOAD_HITBOX					; |
+		LDA $04						; | head hitbox
 		CLC : ADC !BigRAM+0				; |
 		STA $04						; |
 		LDA $0A						; |
-		ADC !BigRAM+1					; | head hitbox
+		ADC !BigRAM+1					; |
 		STA $0A						; |
 		LDA $05						; |
 		CLC : ADC !BigRAM+2				; |
@@ -1915,6 +1923,17 @@
 		LDA $0B						; |
 		ADC !BigRAM+3					; |
 		STA $0B						;/
+
+	if !Debug = 1
+	LDA $04 : STA $41CC00
+	LDA $0A : STA $41CC01
+	LDA $05 : STA $41CC02
+	LDA $0B : STA $41CC03
+	LDA $06 : STA $41CC04
+	LDA $07 : STA $41CC05
+	endif
+
+
 		JSL FireballContact_Destroy			; fireballs break upon touching Kingking
 		BCS ..hurt					; ...but also hurt him if hitting the head
 
@@ -1950,6 +1969,14 @@
 		..loadhitbox					; |
 		REP #$20					; |
 		LDA HITBOX,y : JSL LOAD_HITBOX			;/
+	if !Debug = 1
+	LDA $04 : STA $41CC06
+	LDA $0A : STA $41CC07
+	LDA $05 : STA $41CC08
+	LDA $0B : STA $41CC09
+	LDA $06 : STA $41CC0A
+	LDA $07 : STA $41CC0B
+	endif
 		JSL FireballContact_Destroy			; fireballs break upon touching Kingking
 		LDA !Attack,x
 		AND #$7F
@@ -2034,7 +2061,10 @@
 		dw $FFF8,$0000 : db $18,$10
 
 		.Head
-		dw $0004,$FFF8 : db $18,$1C
+		dw $FFF8,$FFF8 : db $24,$1C
+
+		.HeadCharging
+		dw $FFF0,$FFF8 : db $24,$1C
 
 		.FullBody
 		dw $FFF8,$FFD8 : db $18,$38

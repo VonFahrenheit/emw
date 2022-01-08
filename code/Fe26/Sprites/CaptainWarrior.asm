@@ -254,6 +254,8 @@ CaptainWarrior:
 		JMP Defeated						;/
 		..alive
 
+	BRA .Boss
+
 
 		LDA !CW_Screen,x : STA !BigRAM
 		.Minion1						;\

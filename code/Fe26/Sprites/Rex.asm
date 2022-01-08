@@ -31,15 +31,15 @@ Rex:
 		STA $33C0,x
 		INC !RexDensity,x
 		LDA #$0C : STA !ExtraBits,x
-		BRA INIT
+		LDA !ExtraProp1,x : BEQ INIT
+		DEC A : STA $3320,x
+		STZ !ExtraProp1,x
+		RTL
 
 	Dense_MAIN:
-		LDA !RexChase,x : BNE +
-		JSL SUB_HORZ_POS
-		TYA : STA $3320,x
-		+
 		LDA #$60 : STA !SpriteFallSpeed,x		; max fall speed = 0x60
 		LDA $BE,x : BNE MAIN
+		LDA !SpriteWater,x : BNE MAIN
 		LDA #$02 : STA !SpriteGravityTimer,x		; gravity timer
 		LDA #$FF : STA !SpriteGravityMod,x		; gravity mod moving up: -1
 		LDA !SpriteYSpeed,x : BMI MAIN
@@ -176,8 +176,8 @@ Rex:
 		LDA $3330,x
 		AND #$04 : BEQ ..done
 		LDA !SpriteYSpeed,x : BMI ..alive
-		CMP #$48 : BCC ..alive
-		CMP #$58 : BCC ..hurt
+		CMP #$41 : BCC ..alive
+		CMP #$50 : BCC ..hurt
 		..kill
 		LDA #$01 : STA $BE,x
 		..hurt

@@ -583,8 +583,13 @@ levelinit2E:
 		RTL
 
 levelinit2F:
-		JML levelinit2_Graphics
-
+		JSL levelinit2_Graphics				;\
+		LDA $741A : BNE .Return				; |
+		LDA #$20					; | if entering through midway entrance, time of day is already mid day
+		STA !TranslevelFlags+$00			; |
+		STA !GlobalLightMix				;/
+		.Return
+		RTL
 
 
 
@@ -894,9 +899,10 @@ level4:
 		+					;/
 
 		LDA #$20 : STA $64
-		LDA $71
-		CMP #$05 : BEQ ++
-		CMP #$06 : BNE +
+		LDA !P2Status : BNE +
+		LDA !P2Pipe : BNE ++
+	+	LDA !P2Status-$80 : BNE +
+		LDA !P2Pipe-$80 : BEQ +
 	++	STZ $64
 		LDA #$40 : STA !SPC4			; dizzy OFF!! SFX
 		+
@@ -2030,25 +2036,46 @@ levelC:
 		LDA #$1BE8 : JSL END_Right
 
 
-		.SpawnSwoopos
+		.SpawnDense
 		LDA $1B					;\
 		CMP #$13 : BCC ..done			; | spawn on screens 0x13-0x18
 		CMP #$18+1 : BCS ..done			;/
-		LDA $14					;\ spawn every 64 frames (roughly every 1 seconds)
-		AND #$3F : BNE ..done			;/
-		LDA #$2C : JSL CountSprites_Custom	;\ max 6 swoopos active
-		CMP #$06 : BCS ..done			;/
+		LDA $14					;\ spawn every 128 frames (roughly every 2 seconds)
+		AND #$7F : BNE ..done			;/
+		LDA #$34 : JSL CountSprites_Custom	;\ max 10 dense active
+		CMP #$0A : BCS ..done			;/
 		REP #$20				;\
-		LDA $1A					; |
-		CLC : ADC #$0110			; |
-		STA $00					; |
-		LDA !RNG				; |
-		AND #$00F0				; | spawn swoopo to the right of the camera, random height offset
-		CLC : ADC #$0080			; |
+		LDA $1C					; |
+		SEC : SBC #$0020			; |
 		STA $02					; |
+		LDA !BG1_X_Delta			; |
+		AND #$0080				; |
+		EOR #$0080				; |
+		STA $00					; | spawn above camera, random X offset
+		LDA !RNG				; | (favors side that camera is moving towards)
+		AND #$0070				; |
+		ORA $00					; |
+		ADC $1A					; |
+		STA $00					; |
 		SEP #$20				; |
-		LDA #$2C : JSL SpawnSprite_Custom	; |
+		LDA #$34 : JSL SpawnSprite_Custom	; |
+		BMI ..done				; |
+		LDA !RNG				; |
+		AND #$01				; |
+		INC A : STA !ExtraProp1,x		; |
 		..done					;/
+
+		LDX #$0F
+	-	LDA !NewSpriteNum,x
+		CMP #$34 : BNE +
+		LDA $BE,x
+		CMP #$02 : BCS +
+		LDA $3330,x
+		AND #$04 : BEQ +
+		LDA #$0B : STA !SpriteAnimIndex
+		STZ !SpriteAnimTimer
+		LDA #$02 : STA $BE,x
+	+	DEX : BPL -
 
 
 		LDA.b #HDMA3DWater : STA !HDMAptr+0
@@ -2850,14 +2877,46 @@ level2C:
 level2D:
 		LDA #$10 : JSL CountSprites_Custom	;\ count custom sprite 0x10 (boss + scepter)
 		CMP #$01 : BNE .KeepFighting		;/ if there is 1 (scepter) boss is dead
+
 		LDA !Level+4 : BEQ .End			;\
-		DEC !Level+4 : BRA .Stall		; | once boss has died, wait 2 seconds then beat the level
+		CMP #$C0 : BNE .DecTimer		; |
+		LDA #$36 : STA !SPC3			; > victory fanfare
+		.DecTimer				; |
+		LDA $14					; |
+		AND #$03 : BNE .Stall			; | once boss has died, wait for timer then beat the level
+		DEC !Level+4 : BRA .Stall		; |
 		.End					; |
 		JSL END_End				;/
 		.KeepFighting				;\
-		LDA #$80 : STA !Level+4			; | if boss is alive, keep timer at 2 seconds
+		LDA #$E0 : STA !Level+4			; | if boss is alive, keep timer up
 		.Stall					;/
 
+	if !Debug = 1
+	REP #$20
+	LDA !P2Hitbox1XLo-$80 : PHA
+	LDA !P2Hitbox1YLo-$80 : PHA
+	LDA !P2Hitbox1W-$80 : PHA
+	LDA !P2Hitbox2XLo-$80 : PHA
+	LDA !P2Hitbox2YLo-$80 : PHA
+	LDA !P2Hitbox2W-$80 : PHA
+	LDA $41CC00 : STA !P2Hitbox1X-$80
+	LDA $41CC02 : STA !P2Hitbox1Y-$80
+	LDA $41CC04 : STA !P2Hitbox1W-$80
+	LDA $41CC06 : STA !P2Hitbox2X-$80
+	LDA $41CC08 : STA !P2Hitbox2Y-$80
+	LDA $41CC0A : STA !P2Hitbox2W-$80
+	SEP #$20
+	JSL DisplayHitbox1_Main
+	JSL DisplayHitbox2_Main
+	REP #$20
+	PLA : STA !P2Hitbox2W-$80
+	PLA : STA !P2Hitbox2YLo-$80
+	PLA : STA !P2Hitbox2XLo-$80
+	PLA : STA !P2Hitbox1W-$80
+	PLA : STA !P2Hitbox1YLo-$80
+	PLA : STA !P2Hitbox1XLo-$80
+	SEP #$20
+	endif
 		LDA.b #.HDMA : STA !HDMAptr+0
 		LDA.b #.HDMA>>8 : STA !HDMAptr+1
 		LDA.b #.HDMA>>16 : STA !HDMAptr+2
@@ -2924,58 +2983,100 @@ level2F:
 		REP #$20
 		LDA !Level : PHA
 		LDA #$0002 : STA !Level
-		LDA #$0CE8 : JSL END_Right		; normal exit to rex reef beach
+		LDA #$0DE8 : JSL END_Right		; normal exit to rex reef beach
 		PLA : STA !Level
 		PLA : STA !Level+1
 
 
 
+		REP #$20
+		LDA #$0008 : JSL EXIT_Left
 
 
-		.Brawl
+
+		JSL level2_ReloadSprites
+
+
+		.HandleRooms
+		LDA !Room : STA !Level+4
+		REP #$20
+		LDA.w #.RoomPointers : JSL LoadCameraBox
 		LDA !Room
-		CMP #$01 : BEQ ..fight
-	-	JMP ..done
-		..fight
-		LDA #$48 : STA !SPC3
+		CMP !Level+4
+		STA !Level+4 : BEQ ..same
+		..newroom
+		LDA #$3F : STA !Level+3
+		..same
+		LDA !Room : BEQ .NoBox
+		CMP #$01 : BEQ .Brawl
+		.Return
+		RTL
 
-		; LDA #$30
-		; STA $40C800+($A*$400)+$38B
-		; STA $40C800+($A*$400)+$39B
-		; STA $40C800+($A*$400)+$3AB
-		; STA $40C800+($D*$400)+$385
-		; STA $40C800+($D*$400)+$395
-		; STA $40C800+($D*$400)+$3A5
-		; LDA #$01
-		; STA $41C800+($A*$400)+$38B
-		; STA $41C800+($A*$400)+$39B
-		; STA $41C800+($A*$400)+$3AB
-		; STA $41C800+($D*$400)+$385
-		; STA $41C800+($D*$400)+$395
-		; STA $41C800+($D*$400)+$3A5
-
-		LDA !Level+3 : BNE -
-		LDX #$0F
-		LDY #$00
-	-	LDA $3230,x : BEQ +
-		LDA !NewSpriteNum,x
-		CMP #$02 : BEQ ++
-		CMP #$03 : BEQ ++
-		CMP #$04 : BEQ ++
-		CMP #$2C : BNE +
-	++	INY
-	+	DEX : BPL -
-		CPY #$02 : BCS ..done
+		.NoBox
+		LDA #$FF : STA !CameraBoxU+1			; box 0 = no camera box
+		RTL
 
 
-	STZ $7FFF
+	.Brawl
+		LDA !TranslevelFlags+$00 : BMI .Return
+		LDA #$01 : STA !CameraBoxSpriteErase
+		REP #$20
+		LDA #$0C00 : STA !CameraBoxR
+		SEP #$20
 
+		LDX !TranslevelFlags+$10
+		CPX.b #..lastwaveindex-..waveindex+3 : BCC ..nextwave
+		..end
+		LDA #$04 : JSL CountSprites_Custom : BNE .Return
+		LDA #$FF : STA !TranslevelFlags+$10
+		INC !CameraBoxR+1				; reload camera box
+		REP #$30
+		LDA #$0025 : JSR ..togglegates
+		SEP #$30
+		LDA #$39 : STA !SPC3				; restore music
+		RTL
 
 		..nextwave
-		LDX !TranslevelFlags+$10
-;	STX !P1Coins
-		CPX.b #..lastwaveindex-..waveindex : BCS ..done
+		CPX.b #..lastwaveindex-..waveindex+1 : BCC ..normalwave
+		..aggrowave
+		LDA !Level+3 : BEQ ..aggroinit
+		CMP #$80 : BEQ ..aggroshake
+		RTL
+
+		..aggroinit
+		CPX.b #..lastwaveindex-..waveindex+2 : BEQ ..aggrospawn
+		LDA #$FF : STA !Level+3
 		INC !TranslevelFlags+$10
+		RTL
+
+		..aggroshake
+		ADC #$20
+		STA !ShakeBG1
+		RTL
+
+		..aggrospawn
+		JMP ..breakstatue
+
+
+		..normalwave
+		LDA !Level+3 : BNE .Return			;\
+		LDX #$0F					; |
+		LDY #$00					; |
+	-	LDA $3230,x : BEQ +				; |
+		LDA !NewSpriteNum,x				; |
+		CMP #$02 : BEQ ++				; | count brawlers
+		CMP #$03 : BEQ ++				; |
+		CMP #$04 : BEQ ++				; |
+		CMP #$2C : BNE +				; |
+	++	INY						; |
+	+	DEX : BPL -					; |
+		CPY #$02 : BCS ..return				;/
+
+		LDA #$48 : STA !SPC3				; switch music when spawning first wave
+
+		LDX !TranslevelFlags+$10
+		INC !TranslevelFlags+$10
+		CPX.b #..lastwaveindex-..waveindex : BCS ..return
 		LDA ..waveindex+1,x : STA $0F
 		LDA ..waveindex,x : TAX
 
@@ -3006,49 +3107,64 @@ level2F:
 	+	PLX
 		INX #3
 		CPX $0F : BCC ..nextspawn
-		..done
-
-
-
-
-		REP #$20
-		LDA #$0008 : JSL EXIT_Left
-
-		JSL level2_ReloadSprites
-
-		LDA !Room
-		CMP !Level+4
-		STA !Level+4 : BEQ ..same
-		..newroom
-		LDA #$3F : STA !Level+3
-		..same
-
-		LDA #$02 : STA !CameraBoxSpriteErase
-		LDA !LevelWidth : PHA
-		LDA !Level+2 : BMI +
-		LDA #$0E : STA !LevelWidth
-	+	REP #$20
-		LDA.w #.RoomPointers : JSL LoadCameraBox
-		PLA : STA !LevelWidth
-		LDA !Room : BEQ ..nobox
-		CMP #$01 : BNE ..return
-		REP #$20
-		LDA #$0C00 : STA !CameraBoxR
-		SEP #$20
-		RTL
-
-		..nobox
-		LDA #$FF : STA !CameraBoxU+1			; box 0 = no camera box
 		..return
 		RTL
 
 
-		..break
+		..breakstatue
+		INC !TranslevelFlags+$10
+		REP #$30
+		LDX.w #..statueblocky-..statueblockx-2
+	-	LDA ..statueblockx,x : STA $9A
+		LDA ..statueblocky,x : STA $98
+		PHX
 		LDA #$0025 : JSL !ChangeMap16
-		LDA #$FF80 : STA $00
-		STZ $02
+		STZ $00
+		LDA #$FF80 : STA $02
 		LDA.w #!prt_smoke16x16 : JSL !SpawnParticleBlock
+		PLX
+		DEX #2 : BPL -
+		LDA #$0130 : JSR ..togglegates
+		REP #$30
+		LDA.w #!StatueX*16+16 : STA $00
+		LDA.w #!StatueY*16+48 : STA $02
+		SEP #$30
+		LDA #$04 : JSL SpawnSprite_Custom
+		CPX #$FF : BEQ ..return
+		LDA #$09 : STA !SpriteAnimIndex
+		LDA #$E0 : STA !SpriteAnimTimer
+		LDA #$40 : STA $32D0,x
+		INC $3280,x
+		LDA #$25 : STA !SPC1					; roar SFX
+		RTL
+
+		..statueblockx
+		dw !StatueX*16,!StatueX*16+16,!StatueX*16+32
+		dw !StatueX*16,!StatueX*16+16,!StatueX*16+32
+		dw !StatueX*16,!StatueX*16+16,!StatueX*16+32
+		dw !StatueX*16,!StatueX*16+16,!StatueX*16+32
+		..statueblocky
+		dw !StatueY*16,!StatueY*16,!StatueY*16
+		dw !StatueY*16+16,!StatueY*16+16,!StatueY*16+16
+		dw !StatueY*16+32,!StatueY*16+32,!StatueY*16+32
+		dw !StatueY*16+48,!StatueY*16+48,!StatueY*16+48
+
+
+	; input: A = map16 tile
+		..togglegates
+		REP #$10
+		LDX #$0000
+		SEP #$20
+	-	STA $40C800+($A*$400)+$30D,x
+		STA $40C800+($D*$400)+$302,x
+		XBA
+		STA $41C800+($A*$400)+$30D,x
+		STA $41C800+($D*$400)+$302,x
+		XBA
+		INX #16
+		CPX #$00B0 : BCC -
 		RTS
+
 
 
 	..waveindex
@@ -3238,7 +3354,8 @@ level32:
 		LDA $1B
 		CMP #$0E : BNE .NoExit
 		REP #$20
-		LDA #$00A0 : JSL EXIT_Up
+	;	LDA #$00A0 : JSL EXIT_Up
+	LDA #$00A0 : JSL END_Up
 		.NoExit
 
 

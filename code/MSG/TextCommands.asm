@@ -77,12 +77,19 @@
 ;	- a value of $FF should not be used
 ;
 ;	portrait(name, X)
-;	- takes a character name (starts with upper case) and a value 0-1
-;	- the first value is the portrait index, the second value is horizontal flip (0 = right side, 1 = left side)
+;	- takes a character name (starts with upper case), and a value 0-1
+;	- value is horizontal flip (0 = right side, 1 = left side)
+;	- uses the neutral version of a portrait
 ;
 ;	noportrait()
 ;	- takes no input
 ;	- removes portrait
+;
+;	expression(name, expression, X)
+;	- takes a character name (starts with upper case), an expression, and a value 0-1
+;	- value is horizontal flip (0 = right side, 1 = left side)
+;	- expressions: "neutral", "happy", "angry", "distressed", "sad"
+;	- this command will display a variation of a portrait
 ;
 ;	scroll(XX)
 ;	- takes a value 0-255 ($00-$FF)
@@ -226,6 +233,7 @@
 ;
 ;
 
+
 ;==============;
 ;COMMAND MACROS;
 ;==============;
@@ -277,8 +285,19 @@ macro portrait(index, xflip)
 		endmacro
 
 macro noportrait()
-		db $F4,$00
+		db $F4,$00,$00
 		endmacro
+
+macro expression(index, expression, xflip)
+		db $F1
+	if <xflip> == 0
+		db !port_<index>
+	else
+		db !port_<index>|$40
+		endif
+		db !<expression>
+		endmacro
+
 
 macro scroll(lines)
 		db $F5,<lines>

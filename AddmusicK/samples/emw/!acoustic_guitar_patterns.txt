@@ -1,0 +1,7 @@
+"acoustic layered.brr"$bf $8f $00 $04 $00 $a4 $40 $40
+"body tap 1.brr"$00 $00 $7f $02 $00 $a4 $40 $40
+"chord major.brr"$9f $54 $00 $05 $fe $a4 $40 $40
+"chord minor.brr"$9f $54 $00 $05 $9b $a4 $40 $40
+"low nylon.brr"$bf $91 $00 $04 $00 $a4 $40 $40
+"low steel.brr"$bf $8e $00 $04 $00 $a4 $40 $40
+"nylon gt 2.brr"$df $6f $00 $04 $00 $a4 $40 $40

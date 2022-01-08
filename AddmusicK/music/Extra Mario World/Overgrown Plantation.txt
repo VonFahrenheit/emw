@@ -6,48 +6,43 @@
 	#title "Overgrown Plantation"
 	#comment "eat them greens boi"
 }
-
 #samples
 {
 	#optimized
 	
-	"lead/filtered square.brr"
+	"synth lead.brr"
 	"Marimba.brr"
-	"reeds & winds/pan flute 2.brr"
-	"emw/yi/flute.brr"
-	"emw/808 conga.brr"
+	"pan flute.brr"
+	"ocarina.brr"
+	"conga.brr"
 	"Sine Wave.brr"
-	"Acoustic Drums/kick 6.brr"
-	"Acoustic Drums/snare 5.brr"
-	"hats and cymbals/elec hat close 1.brr"
-	"emw/trumpet 1.brr"
-	;"Strings/Ensemble/high strings 1.brr"
-	"Strings/Ensemble/high strings oct 2.brr"
-	"samples of insanity/individual samples/bass/finger bass 2.brr"
-	"brass/ensemble/brass oct high 1.brr"
+	"Kick.brr"
+	"Synth Snare.brr"
+	"izu_chat.brr"
+	"Trumpet003.brr"
+	"String Ensemble 2.brr"
+	"synth bass 1.brr"
+	"Brasschord001.brr"
 }
 #instruments
 {
-"Marimba.brr" $8E $7C $B8 $04 $00; "Marimba.brr" $8E $7C $B8 $02 $78
-@0 $EA $72 $df $03 $00
+"Marimba.brr" $8E $7C $B8 $05 $00
+"Sine Wave.brr" $EA $72 $df $02 $00
 
-"emw/yi/flute.brr" $AC $C7 $AC $04 $00
-"lead/filtered square.brr" $8E $E8 $df $02 $00 ;synth lead
-"emw/trumpet 1.brr" $FE $C8 $00 $02 $00 ;Trumpet003
-"reeds & winds/pan flute 2.brr" $8B $88 $B8 $04 $00 ;pan flute
+"ocarina.brr" $8C $E8 $B8 $04 $00
+"synth lead.brr" $8E $E8 $df $02 $00
+"Trumpet003.brr" $FE $C8 $00 $03 $04
+"pan flute.brr" $8B $88 $B8 $03 $00
 
-"Strings/Ensemble/high strings oct 2.brr" $AB $A8 $00 $01 $80
-;"String Ensemble 2.brr"  $AB $A8 $00 $02 $8C 
-;"synth/bass/synth bass 5.brr"		$FD $D5 $B8 $04 $00 ;"synth bass 1.brr"
-"samples of insanity/individual samples/bass/finger bass 2.brr"$ff $ee $00 $03 $00 
-	"Acoustic Drums/kick 6.brr" $FF $F8 $7F $05 $00		;"Kick.brr" $FF $E0 $7F $05 $A7
-	"hats and cymbals/elec hat close 1.brr" $fe $F8 $00 $07 $00
-	"Acoustic Drums/snare 5.brr" $ef $F8 $B8 $06 $00 ;"Synth Snare.brr"
-	"emw/808 conga.brr" $cf $9d $00 $0C $00
-	;"misc percussion/woodblock.brr" $06 $23 $60 $03 $00 ;Conga
+"String Ensemble 2.brr" $AB $A8 $00 $02 $8C
+"synth bass 1.brr"		$Fd $75 $B8 $02 $00
+
+	"Kick.brr" $8E $4C $00 $06 $00 
+	"izu_chat.brr" $fe $55 $00 $09 $00
+	"Synth Snare.brr" $ef $70 $B8 $04 $00
+	"conga.brr" $06 $23 $60 $06 $00
 	
-	;"brass/ensemble/horns 3.brr" $FD $6C $B8 $03 $80 ;"Brasschord001.brr" $FD $6C $B8 $02 $98
-	"brass/ensemble/brass oct high 1.brr" $FF $6C $B8 $02 $00
+	"Brasschord001.brr" $FD $6C $B8 $02 $98
 }
 "tgec = $F4 $03"
 $EF $DF $04 $04
@@ -94,10 +89,10 @@ c4rc2.]dfa
 @1 @0 $ED $0E $8A o3 l8 $DE $30 $0C $40 
 [g4rg2.baf d^1 cegceg2.. dfab1.]2
 
-@0 @1 $ED $0C $8C o4 l8 $DE $30 $0C $40 
+@0 @0 $ED $0C $8C o3 l8 $DE $30 $0C $40 
 [g4rg2.baf d^1 cegceg2.. dfab1.]2
 
-@1 @6 $ED $0A $8E o5 l8 $DE $30 $0C $40 
+@1 @1 $ED $0D $8E o5 l8 $DE $30 $0C $40 
 v120
 [e4re2.gfd
 d4rd2.fec

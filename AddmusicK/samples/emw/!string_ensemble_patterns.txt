@@ -1,0 +1,26 @@
+"big oct.brr"$00 $00 $7f $03 $96 $a4 $40 $40
+"chord major.brr"$00 $00 $cb $05 $08 $a4 $40 $40
+"chord minor.brr"$00 $00 $cb $04 $c0 $a4 $40 $40
+"high piz 3.brr"$ff $d6 $7f $06 $00 $a4 $40 $40
+"high piz 4.brr"$8f $d4 $00 $06 $05 $a4 $40 $40
+"high strings 1.brr"$00 $00 $7f $04 $00 $a4 $40 $40
+"high strings 1 alt (no attack).brr"$00 $00 $da $04 $00 $a4 $40 $40
+"high strings 1 alt (small).brr"$00 $00 $d5 $03 $00 $a4 $40 $40
+"high strings accent 1.brr"$8d $60 $00 $04 $00 $a4 $40 $40
+"high strings oct 2.brr"$00 $00 $7f $06 $00 $a4 $40 $40
+"high strings oct accent 1.brr"$8f $d4 $7f $06 $00 $a4 $40 $40
+"low piz 3.brr"$af $93 $00 $01 $00 $a4 $40 $40
+"low piz oct 1.brr"$ff $f5 $00 $03 $00 $a4 $40 $40
+"low strings 2.brr"$00 $00 $d8 $02 $e0 $a4 $40 $40
+"low strings oct 2.brr"$00 $00 $ed $03 $00 $a4 $40 $40
+"low strings 5th.brr"$00 $00 $7f $02 $df $a4 $40 $40
+"med piz 1.brr"$8f $d4 $00 $06 $00 $a4 $40 $40
+"med piz oct 1.brr"$ff $f5 $00 $04 $00 $a4 $40 $40
+"med strings 2.brr"$00 $00 $d1 $03 $00 $a4 $40 $40
+"med strings accent 2.brr"$8c $d4 $00 $06 $00 $a4 $40 $40
+"med strings accent 2 alt (small).brr"$ac $b6 $00 $06 $00 $a4 $40 $40
+"med strings oct 1.brr"$00 $00 $7f $04 $00 $a4 $40 $40
+"med strings oct 1 alt (small).brr"$00 $00 $7f $04 $00 $a4 $40 $40
+"med strings oct 2.brr"$00 $00 $d9 $05 $00 $a4 $40 $40
+"trem strings low oct 1.brr"$00 $00 $7f $04 $00 $a4 $40 $40
+"trem strings med 1.brr"$00 $00 $d6 $03 $00 $a4 $40 $40

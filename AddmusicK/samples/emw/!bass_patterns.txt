@@ -1,0 +1,16 @@
+"acoustic bass 1.brr"$ff $f1 $00 $03 $00 $a4 $40 $40
+"acoustic bass 2.brr"$8f $cf $00 $02 $00 $a4 $40 $40
+"deep bass 1.brr"$ff $ee $00 $01 $80 $a4 $40 $40
+"deep bass 2.brr"$ff $ee $00 $03 $00 $a4 $40 $40
+"deep bass 3.brr"$ff $ee $00 $01 $00 $a4 $40 $40
+"finger bass 1.brr"$ff $ee $00 $02 $00 $a4 $40 $40
+"finger bass 2.brr"$ff $ee $00 $03 $00 $a4 $40 $40
+"finger bass 3.brr"$ff $ee $00 $02 $00 $a4 $40 $40
+"finger bass 4.brr"$ff $ee $00 $02 $00 $a4 $40 $40
+"pick bass 1.brr"$ff $f1 $00 $04 $00 $a4 $40 $40
+"pick bass 2.brr"$ff $ee $00 $02 $00 $a4 $40 $40
+"pick bass 3.brr"$ff $f2 $00 $04 $00 $a4 $40 $40
+"pick bass 4.brr"$ff $ee $00 $03 $00 $a4 $40 $40
+"pick bass 5.brr"$ff $ee $00 $04 $00 $a4 $40 $40
+"slap bass 1.brr"$df $ae $00 $04 $00 $a4 $40 $40
+"slap bass 2.brr"$af $ae $00 $03 $00 $a4 $40 $40

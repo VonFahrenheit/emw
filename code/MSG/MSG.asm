@@ -1816,6 +1816,12 @@ endmacro
 		LDA.l !PortraitPointers+3,x : STA $01				; | GFX pointer
 		LDA.l !PortraitPointers+4,x : STA $02				;/
 
+		LDA !MsgPortraitExpression					;\
+		ASL A : TAY							; |
+		REP #$20							; | read expression
+		LDA [$00],y : STA $00						; |
+		SEP #$20							;/
+
 
 		LDA #!VRAMbank
 		PHA : PLB
@@ -2397,7 +2403,7 @@ endmacro
 
 
 .Ptr		dw .HeaderSettings	; F0, variable length followup
-		dw .Unused		; F1
+		dw .Expression		; F1,XX,XX
 		dw .ClearBox		; F2
 		dw .Music		; F3,XX
 		dw .Portrait		; F4,XX
@@ -2416,7 +2422,7 @@ endmacro
 
 ; how many extra bytes each command has
 .CommandLength	db $FF			; F0, special variable length
-		db $00			; F1
+		db $02			; F1
 		db $00			; F2
 		db $01			; F3
 		db $01			; F4
@@ -2500,6 +2506,11 @@ endmacro
 		LDA [$08],y : STA.l !SPC3
 		RTS
 
+.Expression	JSR .Portrait
+		INY
+		LDA [$08],y : STA !MsgPortraitExpression
+		RTS
+
 .Portrait	INY
 		LDA [$08],y
 		AND #$7F : STA !MsgPortrait		; load portrait
@@ -2509,6 +2520,7 @@ endmacro
 		LDA [$08],y
 		AND #$80
 		TSB !MsgVertOffset			; set "lock portrait to top-right corner" bit
+		STZ !MsgPortraitExpression
 		RTS
 
 .Scroll		INY

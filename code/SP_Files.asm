@@ -180,6 +180,7 @@ org $308008
 	dl NPC_Melody
 	dl NPC_Toad
 	dl MiniMech
+	dl Portal
 
 	dl CaptainWarrior
 	dl CaptainWarrior_Axe
@@ -293,6 +294,10 @@ org $368008
 	incbin ../RawGraphics/DynamicSprites/MiniMechBeta.bin
 	.End
 
+	%InsertFile(Portal)
+	incbin ../RawGraphics/DynamicSprites/Portal.bin
+	.End
+
 	%InsertFile(LavaLord)
 	incbin ../RawGraphics/DynamicSprites/LavaLord.bin
 	.End
@@ -321,6 +326,7 @@ org $378000
 	dl RexPortrait : db $09			; 0A, Rex
 	dl CaptainWarriorPortrait : db $0A	; 0B, Captain Warrior
 	dl KingKingPortrait : db $0B		; 0C, KingKing
+	dl ToadPortrait : db $0C		; 0C, Toad
 
 	.PalPtr
 	dw .MarioPal		; 00
@@ -335,6 +341,7 @@ org $378000
 	dw .RexPal		; 09
 	dw .CaptainWarriorPal	; 0A
 	dw .KingKingPal		; 0B
+	dw .ToadPal		; 0C
 
 	.MarioPal
 		incbin ../PaletteData/portraits/MarioPortrait.mw3
@@ -358,45 +365,199 @@ org $378000
 		incbin ../PaletteData/portraits/CaptainWarriorPortrait.mw3
 	.KingKingPal
 		incbin ../PaletteData/portraits/KingKingPortrait.mw3
+	.ToadPal
+		incbin ../PaletteData/portraits/ToadPortrait.mw3
 
 	%InsertFile(MarioPortrait)
-	incbin ../RawGraphics/Portraits/MarioPortrait.bin
+	dw .Neutral
+	dw .Happy
+	dw .Angry
+	dw .Distressed
+	dw .Sad
+	.Neutral
+	incbin ../RawGraphics/Portraits/MarioPortrait_neutral.bin
+	.Happy
+	incbin ../RawGraphics/Portraits/MarioPortrait_happy.bin
+	.Angry
+	incbin ../RawGraphics/Portraits/MarioPortrait_angry.bin
+	.Distressed
+	incbin ../RawGraphics/Portraits/MarioPortrait_distressed.bin
+	.Sad
+	incbin ../RawGraphics/Portraits/MarioPortrait_sad.bin
 	.End
+
 	%InsertFile(LuigiPortrait)
-	incbin ../RawGraphics/Portraits/LuigiPortrait.bin
+	dw .Neutral
+	dw .Happy
+	dw .Angry
+	dw .Distressed
+	dw .Sad
+	.Neutral
+	incbin ../RawGraphics/Portraits/LuigiPortrait_neutral.bin
+	.Happy
+	incbin ../RawGraphics/Portraits/LuigiPortrait_happy.bin
+	.Angry
+	incbin ../RawGraphics/Portraits/LuigiPortrait_angry.bin
+	.Distressed
+	incbin ../RawGraphics/Portraits/LuigiPortrait_distressed.bin
+	.Sad
+	incbin ../RawGraphics/Portraits/LuigiPortrait_sad.bin
 	.End
+
 	%InsertFile(KadaalPortrait)
-	incbin ../RawGraphics/Portraits/KadaalPortrait.bin
+	dw .Neutral
+	dw .Happy
+	dw .Angry
+	dw .Distressed
+	dw .Sad
+	.Neutral
+	incbin ../RawGraphics/Portraits/KadaalPortrait_neutral.bin
+	.Happy
+	incbin ../RawGraphics/Portraits/KadaalPortrait_happy.bin
+	.Angry
+	incbin ../RawGraphics/Portraits/KadaalPortrait_angry.bin
+	.Distressed
+	.Sad
+	incbin ../RawGraphics/Portraits/KadaalPortrait_distressed.bin
 	.End
+
 	%InsertFile(LeewayPortrait)
+	dw .Neutral
+	dw .Happy
+	dw .Angry
+	dw .Distressed
+	dw .Sad
+	.Neutral
+	.Happy
+	.Angry
+	.Distressed
+	.Sad
 	incbin ../RawGraphics/Portraits/LeewayPortrait.bin
 	.End
+
 	%InsertFile(AlterPortrait)			; < reserved for Alter
-	incbin ../RawGraphics/Portraits/MarioPortrait.bin
+	dw .Neutral
+	dw .Happy
+	dw .Angry
+	dw .Distressed
+	dw .Sad
+	.Neutral
+	.Happy
+	.Angry
+	.Distressed
+	.Sad
 	.End
+
 	%InsertFile(PeachPortrait)			; < reserved for peach
-	incbin ../RawGraphics/Portraits/MarioPortrait.bin
+	dw .Neutral
+	dw .Happy
+	dw .Angry
+	dw .Distressed
+	dw .Sad
+	.Neutral
+	.Happy
+	.Angry
+	.Distressed
+	.Sad
 	.End
 
 	%InsertFile(SurvivorPortrait)
+	dw .Neutral
+	dw .Happy
+	dw .Angry
+	dw .Distressed
+	dw .Sad
+	.Neutral
+	.Happy
+	.Angry
+	.Distressed
+	.Sad
 	incbin ../RawGraphics/Portraits/SurvivorPortrait.bin
 	.End
+
 	%InsertFile(TinkererPortrait)
+	dw .Neutral
+	dw .Happy
+	dw .Angry
+	dw .Distressed
+	dw .Sad
+	.Neutral
+	.Happy
+	.Angry
+	.Distressed
+	.Sad
 	incbin ../RawGraphics/Portraits/TinkererPortrait.bin
 	.End
+
 	%InsertFile(RallyoshiPortrait)
+	dw .Neutral
+	dw .Happy
+	dw .Angry
+	dw .Distressed
+	dw .Sad
+	.Neutral
+	.Happy
+	.Angry
+	.Distressed
+	.Sad
 	incbin ../RawGraphics/Portraits/RallyoshiPortrait.bin
 	.End
 
 	%InsertFile(RexPortrait)
+	dw .Neutral
+	dw .Happy
+	dw .Angry
+	dw .Distressed
+	dw .Sad
+	.Neutral
+	.Happy
+	.Angry
+	.Distressed
+	.Sad
 	incbin ../RawGraphics/Portraits/RexPortrait.bin
 	.End
 
 	%InsertFile(CaptainWarriorPortrait)
+	dw .Neutral
+	dw .Happy
+	dw .Angry
+	dw .Distressed
+	dw .Sad
+	.Neutral
+	.Happy
+	.Angry
+	.Distressed
+	.Sad
 	incbin ../RawGraphics/Portraits/CaptainWarriorPortrait.bin
 	.End
+
 	%InsertFile(KingKingPortrait)
+	dw .Neutral
+	dw .Happy
+	dw .Angry
+	dw .Distressed
+	dw .Sad
+	.Neutral
+	.Happy
+	.Angry
+	.Distressed
+	.Sad
 	incbin ../RawGraphics/Portraits/KingKingPortrait.bin
+	.End
+
+	%InsertFile(ToadPortrait)
+	dw .Neutral
+	dw .Happy
+	dw .Angry
+	dw .Distressed
+	dw .Sad
+	.Neutral
+	.Happy
+	.Angry
+	.Sad
+	incbin ../RawGraphics/Portraits/ToadPortrait_neutral.bin
+	.Distressed
+	incbin ../RawGraphics/Portraits/ToadPortrait_distressed.bin
 	.End
 
 

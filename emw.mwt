@@ -87,5 +87,7 @@
 31 x2 Experimental Object
 32 x2 Shop Object
 33 x2 Life Mushroom
-34 x2 Dense Rex
+34 x2 Dense Rex (faces player)
+34 x2 Dense Rex (faces right)
+34 x2 Dense Rex (faces left)
 35 x2 Smoke Generator

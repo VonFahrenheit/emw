@@ -2641,6 +2641,7 @@ MAIN_MENU:
 		LDA !MenuState : BMI ..main
 		..init
 		ORA #$80 : STA !MenuState
+		LDA #$01 : STA !Difficulty		; default = normal
 		STZ !MenuBG1_X
 		STZ !MenuBG1_X+1
 		REP #$10
@@ -4103,6 +4104,8 @@ MAIN_MENU:
 		STZ !AnimToggle			; make sure CCDMA doesn't black bar by putting limit at 2KB/frame
 
 		REP #$20
+		STZ $00A0+(7*2)-2
+
 		LDA !BG2BaseV
 		DEC A
 		STA $20
@@ -4215,18 +4218,15 @@ MAIN_MENU:
 		.Layer1
 		REP #$20
 		LDA $1C
-		CMP #$0BF0 : BEQ ..clear
-		CMP #$0800 : BEQ ..loadairship
-		JMP ..done
-		..clear
-		JSL !GetVRAM
-		LDA #$5000 : STA !VRAMbase+!VRAMtable+$00,x
-		LDA.w #.BG1Clear : STA !VRAMbase+!VRAMtable+$02,x
-		LDA.w #.BG1Clear>>16 : STA !VRAMbase+!VRAMtable+$04,x
-		LDA !2107
-		AND #$00FC
-		XBA
-		STA !VRAMbase+!VRAMtable+$05,x
+		CMP #$0BF0 : BEQ ..hide
+		CMP #$04A0
+		BEQ ..loadairship
+		BCS ..done
+		..animateairship
+		JSR .UpdateMode7
+		BRA ..done
+		..hide
+		LDA #$0001 : TRB !MainScreen					; hide layer 1 until mode 7 starts
 		BRA ..done
 		..loadairship
 		REP #$30
@@ -4242,7 +4242,15 @@ MAIN_MENU:
 		LDA.w #!DecompBuffer : STA !VRAMbase+!VRAMtable+$02,x		; |
 		LDA.w #!DecompBuffer>>8 : STA !VRAMbase+!VRAMtable+$03,x	; |
 		LDA #$0000 : STA !VRAMbase+!VRAMtable+$05,x			; |
-		SEP #$20							;/
+		SEP #$30							;/
+		LDA #$00
+		LDX #$0F*2
+	-	STA !DecompBuffer+(128*14*2),x
+		STA !DecompBuffer+(128*15*2),x
+		DEX #2 : BPL -
+
+		JSR .UpdateMode7
+
 		..done
 		SEP #$30
 
@@ -4268,6 +4276,12 @@ MAIN_MENU:
 		CMP #$0980 : BEQ ..kill
 		CMP #$0780 : BCS ..move
 		SEP #$30
+		RTS
+
+		..kill
+		SEP #$30
+		LDA #$80 : STA !SPC3
+		LDA #$0B : STA !GameMode
 		RTS
 
 		..move
@@ -4301,7 +4315,7 @@ MAIN_MENU:
 		CLC : ADC #$0080
 	+	STA !Mode7X
 		LDA $00
-		CMP #$0180 : BCS +
+		CMP #$0180 : BCS ..done
 		LSR A
 		EOR #$FFFF
 		CLC : ADC #$00A0
@@ -4309,25 +4323,110 @@ MAIN_MENU:
 		CMP #$0100
 		BCC $03 : ORA #$FF00
 		STA !Mode7Y
-	+	BRA ..done
-		..kill
-		SEP #$20
-		LDA #$80 : STA !SPC3
-		LDA #$0B : STA !GameMode
 		..done
 		SEP #$30
+		LDA #$01 : TSB !MainScreen		; enable BG1 when airship starts moving
 		RTS
 
 
 
-		.BG1Clear
-		dw $38F8
+	; 3*2 tiles -> flag
+	; 1*2 tiles -> jet 1
+	; 1*2 tiles -> jet 2
+	.UpdateMode7
+		REP #$30				;\
+		LDA $13					; |
+		BIT #$0007 : BEQ ..update
+		RTS
+
+		..update
+		LSR #3					; |
+		AND #$0003 : TAY			; | tile offsets from animation
+		SEP #$20				; |
+		LDA ..offset+0,y : STA $00		; |
+		LDA ..offset+4,y : STA $01		;/
+
+		LDY #$0004				; loop counter
+	-	LDX ..address,y				; address
+		LDA ..data,y				;\
+		CLC : ADC $00				; |
+		CMP #$5F				; | upper tile
+		BNE $02 : LDA #$59			; > this tile was killed by snesgfx
+		STA !DecompBuffer,x			;/
+		CLC : ADC #$0F				;\ lower tile
+		STA !DecompBuffer+$100,x		;/
+		DEY #2 : BPL -
+
+		LDY #$0002				; loop counter
+	-	LDX ..address+6,y			; address
+		LDA ..data+6,y				;\
+		CLC : ADC $01				; | upper tile
+		STA !DecompBuffer,x			;/
+		CLC : ADC #$0F				;\ lower tile
+		STA !DecompBuffer+$100,x		;/
+		DEY #2 : BPL -
+
+	STZ $7FFF
+		PHB
+		LDA.b #!VRAMbank
+		PHA : PLB
+		REP #$30
+		JSL !GetVRAM
+
+
+		; transfer 1: flag top half
+		LDA #$0006 : STA.w !VRAMtable+$00,x
+		LDA.w #!DecompBuffer+$204 : STA.w !VRAMtable+$02,x
+		LDA.w #!DecompBuffer+$204>>8 : STA.w !VRAMtable+$03,x
+		LDA.w #$204/2 : STA.w !VRAMtable+$05,x
+
+		; transfer 2: flag bottom half
+		LDA #$0006 : STA.w !VRAMtable+$07,x
+		LDA.w #!DecompBuffer+$304 : STA.w !VRAMtable+$09,x
+		LDA.w #!DecompBuffer+$304>>8 : STA.w !VRAMtable+$0A,x
+		LDA.w #$304/2 : STA.w !VRAMtable+$0C,x
+
+		; transfer 3: row 9
+		LDA #$0002 : STA.w !VRAMtable+$0E,x
+		LDA.w #!DecompBuffer+$900 : STA.w !VRAMtable+$10,x
+		LDA.w #!DecompBuffer+$900>>8 : STA.w !VRAMtable+$11,x
+		LDA.w #$900/2 : STA.w !VRAMtable+$13,x
+
+		; transfer 4: row A
+		LDA #$000A : STA.w !VRAMtable+$15,x
+		LDA.w #!DecompBuffer+$A00 : STA.w !VRAMtable+$17,x
+		LDA.w #!DecompBuffer+$A00>>8 : STA.w !VRAMtable+$18,x
+		LDA.w #$A00/2 : STA.w !VRAMtable+$1A,x
+
+		; transfer 5: row B
+		LDA #$0002 : STA.w !VRAMtable+$1C,x
+		LDA.w #!DecompBuffer+$B08 : STA.w !VRAMtable+$1E,x
+		LDA.w #!DecompBuffer+$B08>>8 : STA.w !VRAMtable+$1F,x
+		LDA.w #$B08/2 : STA.w !VRAMtable+$21,x
+
+		PLB
+		RTS
+
+
+		..offset
+		db $00,$03,$06,$09			; flag tiles
+		db $00,$01,$00,$01			; jet tiles
+
+		..address
+		dw $204,$206,$208			; flag
+		dw $900					; jet 1
+		dw $A08					; jet 2
+		..data					; (only lo bytes of data are read)
+		db $54,$63,$55,$64,$56,$65		; flag
+		db $50,$5F				; jet 1
+		db $52,$61				; jet 2
 
 
 
-		.ProcessClouds
-		PHB : PHK : PLB			;\ wrapper start
-		PHP				;/
+
+	.ProcessClouds
+		PHB : PHK : PLB				;\ wrapper start
+		PHP					;/
 
 		STZ $2250				; prepare multiplication
 

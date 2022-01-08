@@ -1,0 +1,32 @@
+"Acoustic Guitar.brr" $FE $F3 $B8 $04 $FF $A4 $40 $40
+"Music Box.brr" $8F $EF $7F $03 $C3 $A4 $40 $40
+"Kalimba.brr" $FF $E0 $7F $03 $C5 $A4 $40 $40
+"Flute.brr" $FF $E0 $7F $04 $01 $A4 $40 $40
+"Finger Bass.brr" $FF $EC $7F $04 $FF $A4 $40 $40
+"Sawtooth.brr" $FF $E0 $B8 $03 $00 $A4 $40 $40
+"Strings.brr" $FF $E0 $B8 $05 $37 $A4 $40 $40
+"Pizzicato.brr" $FF $F6 $B8 $03 $03 $A4 $40 $40
+"Vibraphone.brr" $FF $F6 $B8 $03 $FF $A4 $40 $40
+"Oboe.brr" $FF $E2 $B8 $03 $00 $A4 $40 $40
+"Brass Synth.brr" $FF $E0 $B8 $03 $74 $A4 $40 $40
+"Piccolo.brr" $8D $E0 $B8 $03 $00 $A4 $40 $40
+"Drawbar Organ.brr" $FF $E0 $B8 $03 $00 $A4 $40 $40
+"Clarinet.brr" $FF $EB $B8 $01 $00 $A4 $40 $40
+"Brass Section.brr" $FF $E0 $B8 $03 $00 $A4 $40 $40
+"Octave Guitar.brr" $FF $E0 $B8 $07 $03 $A4 $40 $40
+"Chorded Steel Guitar.brr" $FF $E0 $B8 $0A $12 $A4 $40 $40
+"Overdriven Guitar.brr" $FF $E0 $B8 $01 $C7 $A4 $40 $40
+"Low Strings.brr" $FF $E7 $B8 $0E $FF $A4 $40 $40
+"Tubular Bell.brr" $FF $EC $B8 $04 $41 $A4 $40 $40
+"Short Pizzicato.brr" $FF $F0 $B8 $02 $00 $A4 $40 $40
+"Piano.brr" $FF $F0 $B8 $03 $BD $A4 $40 $40
+"French Horn.brr" $FF $E0 $B8 $07 $03 $A4 $40 $40
+"Timpani.brr" $FF $E0 $B8 $08 $E8 $A4 $40 $40
+
+"Agogo.brr" $FF $E0 $B8 $04 $00 $A4 $40 $40
+"Bongo.brr" $FF $E0 $B8 $0A $3C $A4 $40 $40
+"Closed Hi-Hat.brr" $FF $E0 $00 $03 $FD $A4 $40 $40
+"Crash Cymbal.brr" $FF $E0 $B8 $04 $86 $A4 $40 $40
+"Kick.brr" $FF $E0 $B8 $03 $B2 $A4 $40 $40
+"Open Hi-Hat.brr" $FF $E0 $00 $03 $C8 $A4 $40 $40
+"Shaker.brr" $FF $E0 $B8 $0A $3C $A4 $40 $40

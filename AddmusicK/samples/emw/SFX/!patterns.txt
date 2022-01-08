@@ -1,0 +1,14 @@
+"blip1.brr"$00 $00 $7f $04 $00 $a4 $40 $40
+"blip2.brr"$00 $00 $7f $01 $00 $a4 $40 $40
+"drone.brr"$f3 $e0 $00 $00 $a0 $a4 $40 $40
+"flute trill.brr"$00 $00 $7f $03 $00 $a4 $40 $40
+"little creature grunt.brr"$00 $00 $7f $02 $63 $a4 $40 $40
+"little creature gurgle.brr"$8f $7f $7f $02 $06 $a4 $40 $40
+"machines.brr"$00 $00 $c5 $01 $00 $a4 $40 $40
+"metal clang.brr"$df $33 $00 $06 $c0 $a4 $40 $40
+"metal rain.brr"$ff $ed $00 $04 $00 $a4 $40 $40
+"pressure noise.brr"$f2 $0d $00 $01 $00 $a4 $40 $40
+"processed breath.brr"$c4 $33 $00 $04 $60 $a4 $40 $40
+"processed growl.brr"$d8 $8e $00 $03 $00 $a4 $40 $40
+"Riser Flangy.brr"$00 $00 $c6 $02 $f8 $a4 $40 $40
+"vibrate.brr"$00 $00 $d4 $04 $00 $a4 $40 $40

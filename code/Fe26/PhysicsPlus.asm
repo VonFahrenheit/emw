@@ -147,6 +147,9 @@ endmacro
 
 		%UpdateY()					; overwritten code
 
+		LDA !SpriteFallSpeed,x
+		LSR #2 : STA $00
+		EOR #$FF : STA $01
 		LDA !SpriteYSpeed,x
 		LDY !SpriteGravityTimer,x : BEQ .NormalGravity	;\
 		DEC !SpriteGravityTimer,x			; |
@@ -157,10 +160,10 @@ endmacro
 
 		.Water
 		STA !SpriteYSpeed,x : BPL ++
-		CMP #$E8 : BCS +
-		LDA #$E8 : BRA +
-	++	CMP #$10 : BCC +
-		LDA #$10 : BRA +
+		CMP $01 : BCS +
+		LDA $01 : BRA +
+	++	CMP $00 : BCC +
+		LDA $00 : BRA +
 
 		.Land
 		INC #2

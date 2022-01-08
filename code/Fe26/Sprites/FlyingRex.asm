@@ -5,12 +5,25 @@
 	%def_anim(FlyingRex_Swoop, 2)
 
 
-	!FlyingRexTargetPlayer	= $3280
-	!FlyingRexTargetYLo	= $3290
-	!FlyingRexTargetYHi	= $32A0
-	!FlyingRexState		= $32B0
-
+	!DisableSwoopTimer	= $3280
+	!SwoopoInitialYLo	= $3290
+	!SwoopoInitialYHi	= $32A0
 	!FlyingRexTimer		= $32D0
+
+
+
+	; values
+	!SwoopTimeEasy		= $A8
+	!SwoopOffsetEasy	= $4F
+
+	!SwoopTimeNormal	= $72
+	!SwoopOffsetNormal	= $2F
+
+	!SwoopTimeInsane	= $5F
+	!SwoopOffsetInsane	= $21
+
+
+
 
 
 FlyingRex:
@@ -22,21 +35,14 @@ FlyingRex:
 		PHB : PHK : PLB
 		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
-		STZ !FlyingRexTargetPlayer,x			; just in case
-		LDA !Difficulty
-		AND #$03 : TAY
-		LDA $3210,x
-		CLC : ADC DATA_SwoopDisp,y
-		STA !FlyingRexTargetYLo,x			; save adjusted Ypos
-		LDA $3240,x
-		ADC #$00
-		STA !FlyingRexTargetYHi,x
 		LDA #!palset_generic_lightblue : JSL LoadPalset
 		LDX $0F
 		LDA !Palset_status,x
 		LDX !SpriteIndex
 		ASL A
 		STA $33C0,x
+	;	LDA !SpriteYLo,x : STA !SwoopoInitialYLo,x
+	;	LDA !SpriteYHi,x : STA !SwoopoInitialYHi,x
 		PLB
 		RTL
 
@@ -47,6 +53,10 @@ FlyingRex:
 		JSL SPRITE_OFF_SCREEN
 		LDA $9D : BEQ .Process
 		JMP GRAPHICS
+
+
+
+
 
 		.Process
 		LDA $BE,x : BNE .Transform
@@ -77,6 +87,8 @@ FlyingRex:
 
 	PHYSICS:
 
+		%decreg(!DisableSwoopTimer)
+
 		.Speed
 		LDA !ExtraBits,x
 		AND #$04 : BEQ ..move
@@ -84,58 +96,54 @@ FlyingRex:
 		TYA : STA $3320,x
 		JMP ..done
 		..move
-		LDA !FlyingRexTimer,x : BNE ..notseen
-		LDA !FlyingRexState,x : BNE ..notseen
+		LDA !FlyingRexTimer,x
+		ORA !DisableSwoopTimer,x
+		BNE ..notseen
 		LDY $3320,x
-		LDA $3220,x
+		LDA !SpriteXLo,x
 		CLC : ADC DATA_SightX,y
 		STA $04
-		LDA $3250,x
+		LDA !SpriteXHi,x
 		ADC DATA_SightX+2,y
 		STA $0A
-		LDA $3210,x : STA $05
-		LDA $3240,x : STA $0B
+		LDA !SpriteYLo,x : STA $05
+		LDA !SpriteYHi,x : STA $0B
 		LDA #$20 : STA $06
 		LDA #$80 : STA $07
 		SEC : JSL !PlayerClipping : BCC ..notseen
-		CMP #$02 : BCC +
-		LDA #$80 : STA !FlyingRexTargetPlayer,x		; target player 2
-	+	LDA #$01 : STA !FlyingRexState,x
-		LDA #$3F : STA !FlyingRexTimer,x
+		LDA !Difficulty
+		AND #$03 : TAY
+		LDA DATA_FlyTimer,y : STA !FlyingRexTimer,x
 		LDA #$02 : STA !SpriteAnimIndex
 		STZ !SpriteAnimTimer
 		LDA #$26 : STA !SPC4				; swooper SFX
 		..notseen
-		LDA !FlyingRexState,x : BEQ ..forward
-		CMP #$01 : BEQ ..swoop
+		LDA !Difficulty
+		AND #$03 : TAY
+		LDA !FlyingRexTimer,x : BEQ ..forward
+		CMP DATA_RiseThreshold,y : BCS ..swoop
 		..rise
-		LDA $3210,x
-		CMP !FlyingRexTargetYLo,x
-		LDA $3240,x
-		SBC !FlyingRexTargetYHi,x
-		BCS +
-		STZ !FlyingRexState,x
-		STZ !SpriteAnimIndex
-		STZ !SpriteAnimTimer
-		LDA #$30 : STA !FlyingRexTimer,x
-	+	LDA !Difficulty
+		LDA #$20 : STA !DisableSwoopTimer,x
+		LDA !Difficulty
 		AND #$03 : TAY
 		LDA DATA_SwoopSpeed,y
 		EOR #$FF
 		BRA ..acc
 		..swoop
-		LDY !FlyingRexTargetPlayer,x : BNE +
-		JSL SUB_VERT_POS_P1 : BRA ++
-	+	JSL SUB_VERT_POS_P2
-	++	CPY #$00 : BEQ +
-		LDA #$02 : STA !FlyingRexState,x
-		BRA ..rise
-	+	LDA !Difficulty
+		LDA !Difficulty
 		AND #$03 : TAY
 		LDA DATA_SwoopSpeed,y
 		BRA ..acc
 		..forward
-		LDA #$00
+	;	LDA !SpriteYSpeed,x : BNE +
+	;	LDA !SwoopoInitialYLo,x : STA !SpriteYLo,x
+	;	LDA !SwoopoInitialYHi,x : STA !SpriteYHi,x
+	;	+
+		LDA !SpriteAnimIndex
+		CMP #$02 : BCC +
+		STZ !SpriteAnimIndex
+		STZ !SpriteAnimTimer
+	+	LDA #$00
 	..acc	JSL AccelerateY
 		LDY $3320,x
 		LDA DATA_XSpeed,y : STA !SpriteXSpeed,x
@@ -265,8 +273,13 @@ FlyingRex:
 		.SwoopSpeed
 		db $18,$28,$38,$48
 
-		.SwoopDisp
-		db $08,$18,$2F,$4F
+		.FlyTimer
+		db !SwoopTimeEasy,!SwoopTimeNormal,!SwoopTimeInsane
+
+		.RiseThreshold
+		db !SwoopTimeEasy-!SwoopOffsetEasy
+		db !SwoopTimeNormal-!SwoopOffsetNormal
+		db !SwoopTimeInsane-!SwoopOffsetInsane
 
 		.SightX
 		db $00,$E0

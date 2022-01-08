@@ -1,0 +1,16 @@
+"killer lead.brr"$00 $00 $da $02 $00 $a4 $40 $40
+"killer lead alt(small).brr"$00 $00 $da $02 $00 $a4 $40 $40
+"loud lead.brr"$ff $e8 $00 $02 $00 $a4 $40 $40
+"low bright.brr"$af $a9 $00 $06 $00 $a4 $40 $40
+"mild lead.brr"$ff $ea $00 $04 $00 $a4 $40 $40
+"power chord 1 mute.brr"$af $b2 $00 $03 $00 $9c $40 $40
+"power chord 1 sus.brr"$af $a6 $00 $03 $00 $9c $40 $40
+"power chord 2.brr"$af $a8 $00 $04 $00 $a8 $40 $40
+"power chord 3.brr"$af $a6 $00 $06 $00 $9c $40 $40
+"power chord 4.brr"$af $a6 $00 $02 $00 $9c $40 $40
+"power chord 5 mute.brr"$af $b2 $00 $03 $00 $9c $40 $40
+"power chord 5 sus.brr"$af $a6 $00 $03 $00 $9c $40 $40
+"power chord 6 mute.brr"$af $b2 $00 $06 $00 $9c $40 $40
+"power chord 6 sus.brr"$af $a6 $00 $06 $00 $9c $40 $40
+"rhythm gt mute 1.brr"$af $b3 $00 $02 $00 $9c $40 $40
+"rhythm gt sus 1.brr"$af $a6 $00 $02 $00 $a8 $40 $40

@@ -1167,10 +1167,10 @@ LoadCameraBox:
 
 
 		LDA #$04 : STA !HDMA			; enable HDMA on channel 2
-		LDA #$22
+		LDA #$AA
 		STA $41
 		STA $42
-		STZ $43
+		STA $43
 
 
 		LDX #$00				; table index: 0
@@ -2761,24 +2761,24 @@ levelinit1F0:
 	RTL
 levelinit1F1:
 
-		.BlockExit
-		LDA !LevelTable1+$5E : BMI ..done
-		LDX #$0F
-		..loop
-		LDA $3230,x : BEQ ..thisone
-		DEX : BPL ..loop
-		BRA ..done
-		..thisone
-		LDA #$80 : STA !SpriteXLo,x
-		LDA #$00 : STA !SpriteXHi,x
-		LDA #$10 : STA !SpriteYLo,x
-		LDA #$00 : STA !SpriteYHi,x
-		LDA #$0F : STA !NewSpriteNum,x
-		LDA #$0C : STA !ExtraBits,x
-		LDA #$36 : STA $3200,x
-		LDA #$01 : STA $3230,x
-		JSL !ResetSprite
-		..done
+		; .BlockExit
+		; LDA !LevelTable1+$5E : BMI ..done
+		; LDX #$0F
+		; ..loop
+		; LDA $3230,x : BEQ ..thisone
+		; DEX : BPL ..loop
+		; BRA ..done
+		; ..thisone
+		; LDA #$80 : STA !SpriteXLo,x
+		; LDA #$00 : STA !SpriteXHi,x
+		; LDA #$10 : STA !SpriteYLo,x
+		; LDA #$00 : STA !SpriteYHi,x
+		; LDA #$0F : STA !NewSpriteNum,x
+		; LDA #$0C : STA !ExtraBits,x
+		; LDA #$36 : STA $3200,x
+		; LDA #$01 : STA $3230,x
+		; JSL !ResetSprite
+		; ..done
 
 		REP #$20
 		LDA.w #!MSG_Toad_IntroLevel_1 : STA !NPC_Talk+($10*2)
@@ -2873,8 +2873,8 @@ level0:
 
 	if !Debug = 1
 	LDA $95
-	CMP #$02 : BEQ +
-	CMP #$03 : BEQ ++
+	CMP #$03 : BEQ +
+	CMP #$04 : BEQ ++
 	STZ !Translevel
 	BRA +++
 	+
@@ -5150,11 +5150,7 @@ level1F0:
 
 ; command bridge
 level1F1:
-		REP #$20
-		LDA !MsgTrigger
-		CMP.w #!MSG_Toad_IntroLevel_2
-		SEP #$20
-		BNE +
+		LDA $400000+!MsgTalk : BEQ +
 		LDA #$01 : STA !StoryFlags+$00
 		+
 
@@ -7018,6 +7014,7 @@ WARP_BOX:
 
 		.Left
 		LDX !P2Status-$80 : BNE +
+		BIT !P2XPosLo-$80 : BMI .End
 		CMP !P2XPosLo-$80 : BCS .End
 	+	LDX !P2Status : BNE +
 		CMP !P2XPosLo : BCS .End
@@ -7040,6 +7037,7 @@ WARP_BOX:
 
 		.Up
 		LDX !P2Status-$80 : BNE +
+		BIT !P2YPosLo-$80 : BMI .End
 		CMP !P2YPosLo-$80 : BCS .End
 	+	LDX !P2Status : BNE +
 		CMP !P2YPosLo : BCS .End

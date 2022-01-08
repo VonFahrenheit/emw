@@ -100,30 +100,24 @@ Portal:
 		LDA !PortalTimer
 		CMP $00 : BEQ +
 		CMP #$20 : BCS +
+		ADC !RNG
+		STA $0F
 		AND #$0F
-		TAY
-		REP #$20
-		LDA .Offset+0,y
-		AND #$00FF
-		CMP #$0080
-		BCC $03 : ORA #$FF00
-		SEP #$20
-		CLC : ADC !SpriteYLo,x
-		STA !SpriteYLo,x
-		XBA
-		ADC !SpriteYHi,x
-		STA !SpriteYHi,x
-		REP #$20
-		LDA .Offset+4,y
-		AND #$00FF
-		CMP #$0080
-		BCC $03 : ORA #$FF00
-		SEP #$20
-		CLC : ADC !SpriteXLo,x
-		STA !SpriteXLo,x
-		XBA
-		ADC !SpriteXHi,x
-		STA !SpriteXHi,x
+		ASL A
+		SBC #$0F
+		STA $02
+		ADC #$04
+		STA $00
+		LDA $0F
+		AND #$F0
+		LSR #3
+		SBC #$0F
+		STA $01
+		STA $03
+		STZ $04
+		LDA #$D0 : STA $05
+		LDA #$30 : STA $07
+		LDA.b #!prt_smoke8x8 : JSL SpawnParticle
 		+
 
 
@@ -191,24 +185,10 @@ Portal:
 
 	.Tilemap
 		dw $0010
-		db $32,$08,$F0,$20
-		db $72,$F8,$F0,$20
-		db $B2,$08,$00,$20
-		db $F2,$F8,$00,$20
-
-	.Offset
-		db $F0,$10
-		db $F5,$0B
-	..cos	db $00,$00
-		db $0B,$F5
-		db $10,$F0
-		db $0B,$F5
-		db $00,$00
-		db $F5,$0B
-	..ext	db $F0,$10		; extended area for cosine
-		db $F5,$0B
-
-
+		db $32,$F8,$F0,$00
+		db $F2,$08,$F0,$02
+		db $F2,$08,$00,$00
+		db $32,$F8,$00,$02
 
 
 
