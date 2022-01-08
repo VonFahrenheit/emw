@@ -570,6 +570,9 @@ endmacro
 		BEQ $02 : LDA #$10
 		ORA #$81
 		STA !CGRAMtable+$05,y
+		LSR #4
+		TAX
+		LDA #$01 : STA !ShaderRowDisable,x
 		RTS
 
 

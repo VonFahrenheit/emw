@@ -539,6 +539,26 @@
 		LDA #$0002 : STA !Cutscene			; overworld cutscene 2
 		..done
 
+	; HIDDEN CUTSCENE: CANNON BLAST FROM TEMPLE
+		.CannonCutscene2
+		LDA !StoryFlags+$02-1 : BPL ..done
+		AND #$7FFF : STA !StoryFlags+$02-1
+		SEP #$20
+		LDA #$07 : STA !OW_sprite_Num+((!OW_sprite_Size)*4)
+		LDA #$40 : STA !P1MapZSpeed
+		LDA #$01 : STA !MapHidePlayers
+		REP #$30
+		LDA #$001F : STA !CutsceneSmoothness
+		LDA.w #246
+		STA !OW_sprite_X+((!OW_sprite_Size)*4)
+		STA !P1MapX
+		LDA.w #638
+		STA !OW_sprite_Y+((!OW_sprite_Size)*4)
+		STA !P1MapY
+		LDA #$0040 : STA !OW_sprite_AnimTimer+((!OW_sprite_Size)*4)
+		LDA #$0002 : STA !Cutscene			; overworld cutscene 2
+		..done
+
 
 
 	.InitCamera

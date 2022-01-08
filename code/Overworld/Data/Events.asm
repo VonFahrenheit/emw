@@ -38,7 +38,7 @@
 		db $00				; level 009
 		db $00				; level 00A
 		db $00				; level 00B
-		db $00				; level 00C
+		db !event_DomainOpen		; level 00C
 		db $00				; level 00D
 		db $00				; level 00E
 		db $00				; level 00F
@@ -129,7 +129,7 @@
 		db $00				; level 000
 		db !event_GorgeOpen		; level 001
 		db $00				; level 002
-		db !event_DomainOpen		; level 003
+		db $00				; level 003
 		db !event_RidgeOpen		; level 004
 		db !event_CastleOpen		; level 005
 		db !event_TempleOpen		; level 006

@@ -33,7 +33,7 @@ namespace Kadaal
 		PHB : PHK : PLB
 
 		LDA #$02 : STA !P2Character
-		LDA #$02 : STA !P2MaxHP
+		LDA #$03 : STA !P2MaxHP
 		LDA !KadaalUpgrades		;\
 		AND #$20			; | +1 Max HP with upgrade
 		BEQ $03 : INC !P2MaxHP		;/

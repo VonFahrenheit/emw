@@ -21,7 +21,7 @@ namespace Leeway
 		PHB : PHK : PLB
 
 		LDA #$03 : STA !P2Character
-		LDA #$02 : STA !P2MaxHP
+		LDA #$03 : STA !P2MaxHP
 		LDA !P2MaxHP			;\
 		CLC : ADC !PlayerBonusHP	; | max HP buff
 		STA !P2MaxHP			;/

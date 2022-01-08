@@ -18,8 +18,7 @@ incsrc "Defines.asm"
 		STA $4330			; |
 		LDA #<table>_Red		; |
 		STA !HDMA3source		; | Set up red colour math on channel 3
-		PHK				; |
-		PLY				; |
+		LDY.b #<table>_Red>>16		; |
 		STY $4334			;/
 		LDA #$3200			;\
 		STA $4340			; |
@@ -42,8 +41,7 @@ incsrc "Defines.asm"
 		STA $4330			; |
 		LDA #<table>_Green		; |
 		STA !HDMA3source		; | Set up red colour math on channel 3
-		PHK				; |
-		PLY				; |
+		LDY.b #<table>_Red>>16		; |
 		STY $4334			;/
 		LDA #$3200			;\
 		STA $4340			; |
@@ -293,7 +291,6 @@ print "Level code handler inserted at $", pc, "."
 		PHB : PHK : PLB				; > Bank wrapper
 		PHP
 		SEP #$30
-
 
 		STZ !Cutscene				; kill cutscene
 		STZ !CutsceneSmoothness			; kill effect
@@ -2493,6 +2490,7 @@ HandleGraphics:
 		CMP PalsetDefaults,x : BEQ +				; |
 		LDA $00,x : BNE +					; |
 		PHX							; |
+		LDA #$00 : XBA						; > clear B
 		LDA !Palset8,x						; | if palset is non-default AND unused, unload it
 		AND #$7F						; | (unless it is used by msg portraits)
 		TAX							; |
@@ -2506,6 +2504,8 @@ HandleGraphics:
 		REP #$10
 	.loop	LDA !Palset8,y : BMI .next				; if already loaded, go to next			
 		STA $00 : STZ $01					; $00 = palset to load
+		XBA : LDA #$00						;\ clear B
+		XBA							;/
 		TAX							;\
 		ORA #$80						; | mark palset as loaded
 		STA !Palset8,y						; |
@@ -2565,6 +2565,8 @@ LoadPalset:
 		ORA #$80						; |
 		STA !Palset8,y						;/
 		PHX							;\
+		XBA : LDA #$00						;\ clear B
+		XBA							;/
 		AND #$7F						; |
 		TAX							; | mark palset as loaded
 		TYA : STA !Palset_status,x				; |

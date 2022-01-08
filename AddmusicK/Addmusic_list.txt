@@ -72,3 +72,5 @@ Locals:
 46  Extra Mario World/I'm a Ghost.txt
 47  Extra Mario World/Beach.txt
 48  Extra Mario World/Street Brawl Guitar.txt
+49  Yoshi's Island/Training Course.txt
+4A  Jungle Drumble.txt

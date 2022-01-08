@@ -652,6 +652,8 @@ endmacro
 .ChunkTable	dw $02D0,$0110 : db $06		; X, Y, size
 
 
+levelinit33:
+		RTL
 
 
 levelinit38:
@@ -1809,8 +1811,12 @@ level6:
 		.NoHSL				;/
 
 
+	PHB
+	LDX.b #HDMA_Evening>>16
+	PHX : PLB
 		LDX #$00
 		REP #$20
+
 
 		LDA !Level+2
 		AND #$03FF
@@ -1868,6 +1874,7 @@ level6:
 		CPY #$1E
 		BNE -
 	++	TDC : STA $0700,x
+	PLB
 
 		LDX #$00
 		REP #$20
@@ -1883,7 +1890,14 @@ level6:
 		INX #2
 		SEC : SBC #$001A
 		BRA -
-	+	SEP #$20
+
+		+
+	PHB
+	PHX
+	LDX.b #HDMA_Evening>>16
+	PHX : PLB
+	PLX
+		SEP #$20
 		STA $7FA200
 		LDA #$1A : XBA
 		LDA #$00
@@ -1932,6 +1946,7 @@ level6:
 		CPY #$1E
 		BNE -
 	++	TDC : STA $0900,x
+	PLB
 
 .CGRAM		REP #$20				;\
 		LDA !Level+2				; |
@@ -3033,7 +3048,7 @@ level2F:
 		REP #$30
 		LDA #$0025 : JSR ..togglegates
 		SEP #$30
-		LDA #$39 : STA !SPC3				; restore music
+		LDA #$80 : STA !SPC3				; fade music
 		RTL
 
 		..nextwave
@@ -3354,8 +3369,7 @@ level32:
 		LDA $1B
 		CMP #$0E : BNE .NoExit
 		REP #$20
-	;	LDA #$00A0 : JSL EXIT_Up
-	LDA #$00A0 : JSL END_Up
+		LDA #$00A0 : JSL EXIT_Up
 		.NoExit
 
 
@@ -3924,6 +3938,19 @@ level32:
 
 
 
+
+level33:
+		STZ !SideExit
+		LDA !StoryFlags+$02
+		ORA #$80 : STA !StoryFlags+$02
+		LDA #$80 : TSB !LevelTable4+$03		; unlock dinolord's domain
+
+
+		REP #$20
+		LDA.w #350 : STA !SRAM_overworldX
+		LDA.w #740 : STA !SRAM_overworldY
+		LDA #$00A0 : JSL END_Up
+		RTL
 
 
 

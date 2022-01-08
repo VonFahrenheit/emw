@@ -1462,7 +1462,7 @@ endmacro
 		;	10 ----
 		;	20 ----
 		;	40 ----
-		;	80 ----
+		;	80 exiting evernight temple
 		;
 		; +02:
 

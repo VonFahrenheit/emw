@@ -1623,8 +1623,13 @@ LoadCameraBox:
 levelinit0:
 
 	if !Debug = 0
-	LDA #$03 : STA !LevelWidth
+	LDA #$04 : STA !LevelWidth
 	endif
+
+		LDA $741A : BNE +
+		LDA #$30 : STA !SPC3
+		+
+
 
 		LDA #$06 : STA !PalsetStart
 
@@ -1635,6 +1640,7 @@ levelinit0:
 		LDA.w #!MSG_LeewaySwitch : STA !NPC_Talk+(3*2)
 		LDA.w #!MSG_AlterSwitch : STA !NPC_Talk+(4*2)
 		LDA.w #!MSG_PeachSwitch : STA !NPC_Talk+(5*2)
+		LDA.w #!MSG_ToadTemp : STA !NPC_Talk+($10*2)
 		SEP #$20
 
 
@@ -1770,10 +1776,6 @@ levelinit25:
 		PLP
 		RTL
 
-
-
-levelinit33:
-	RTL
 
 
 
@@ -2067,7 +2069,11 @@ levelinitC6:
 
 		LDA.b #999>>8 : STA !TimerSeconds+1
 
-		LDA #$80 : STA !SPC3
+		LDA !Characters
+		CMP #$20 : BCC +
+		LDA #$49 : BRA ++
+	+	LDA #$80
+	++	STA !SPC3
 
 		LDA #$06 : STA !PalsetStart
 
@@ -2749,6 +2755,7 @@ levelinit1F1:
 		LDA #$30 : STA !SPC3
 		LDA #$06 : STA !PalsetStart
 
+
 		REP #$20
 		LDA #$7000 : STA $400000+!MsgVRAM1
 		LDA #$7200 : STA $400000+!MsgVRAM2
@@ -2844,7 +2851,6 @@ levelinit1FA:
 		.IntroLevel
 		REP #$20
 		LDA.w #!MSG_Survivor_Talk_IntroLevel : STA !NPC_Talk+(6*2)
-		LDA.w #!MSG_Survivor_Talk_1 : STA !NPC_TalkCap+(6*2)
 		SEP #$20
 		RTL
 
@@ -3564,12 +3570,6 @@ LoadScreen:	PHP
 
 
 
-
-level33:
-	RTL
-
-
-
 level3A:
 	RTL
 level3B:
@@ -3873,7 +3873,14 @@ levelC5:
 ; $0A22		color counter for kadaal's animation
 
 levelC6:
-		LDA #$30 : STA !SPC3
+		LDA !TranslevelFlags+$00 : BMI +
+		LDA !P2InAir-$80 : BNE +
+		LDA !P2Character-$80 : BNE +
+		DEC !TranslevelFlags+$00
+		REP #$20
+		LDA.w #!MSG_UnexploredHill_Mario : STA !MsgTrigger
+		SEP #$20
+		+
 
 		LDA $95 : BNE +
 		STZ !P2Entrance-$80
@@ -5377,10 +5384,10 @@ level1F9:
 level1FA:
 		REP #$20
 		LDA !MsgTrigger
-		CMP.w #!MSG_Survivor_Talk_IntroLevel
+		CMP.w #!MSG_Survivor_Talk_IntroLevel_End
 		SEP #$20
 		BNE +
-
+		LDA $400000+!MsgPortrait : BNE +
 		LDA #$03 : STA !StoryFlags+$00			; portable warp pipe get
 		LDA #$80 : TSB !LevelTable1+$00			;\ beat intro level and save event
 		LDA #$80 : TSB !LevelTable3+$00			;/
@@ -5388,13 +5395,20 @@ level1FA:
 		REP #$20
 		LDA #$00B8 : STA !SRAM_overworldX		;\ move on overworld
 		LDA #$0330 : STA !SRAM_overworldY		;/
-
+		LDA.w #!MSG_Survivor_Talk_1 : STA !NPC_Talk+(6*2)
 		LDA !P2XPosLo
 		SEC : SBC $1A
 		STA $00
+		LDA $14
+		LSR #2
+		AND #$000F
+		SBC #$0008
+		BPL $03 : EOR #$FFFF
+		CLC : ADC #$0020
+		STA $02
 		LDA !P2YPosLo
 		SEC : SBC $1C
-		SEC : SBC #$0018
+		SEC : SBC $02
 		STA $01
 		LDA.w #.PipeTilemap : STA $02
 		SEP #$20

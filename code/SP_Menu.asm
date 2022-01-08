@@ -1081,6 +1081,28 @@ Mode7Presents:
 
 		PHP
 
+
+	if !LockROM = 1
+		SEP #$30
+		LDX.b #.BackupName_end-.BackupName-1
+	-	LDA.l .BackupName,x
+		CMP.l ROMNAME,x : BNE .Fail
+		DEX : BPL -
+		BRA +
+
+		.Fail
+		BRK
+
+		.BackupName
+		cleartable
+		db "Extra Mario World"
+		table "MSG/MessageTable.txt"
+		..end
+		+
+	endif
+
+
+
 		REP #$30
 		LDX #$00FE
 		LDA #$0000
@@ -1147,13 +1169,13 @@ Mode7Presents:
 		STZ $2116
 		LDX #$01 : STX $420B
 
-		LDX #$01 : STX $2121			; CGRAM color 1
+		LDX #$00 : STX $2121			; CGRAM color 1
 		LDA #$2202 : STA $4300			; 2122 write twice
 		LDA.w #.SourcePal : STA $4302
 		LDA.w #.SourcePal>>8 : STA $4303
-		LDA #$0050 : STA $4305
+		LDA #$0200 : STA $4305
 		LDX #$01 : STX $420B
-		LDA.l .SourcePal+$40 : STA !Color0
+		LDA.l .SourcePal+$00 : STA !Color0
 
 		LDX #$07 : STX $2105			; mode 7
 		STX $3E
@@ -1171,7 +1193,7 @@ Mode7Presents:
 		LDX #$00 : STX $211E
 		LDX #$01 : STX $211E
 
-		LDX #$C0 : STX $211A			; mode 7 settings: large playfield, char 0 fill, no mirroring
+		LDX #$80 : STX $211A			; mode 7 settings: large playfield, transparency fill, no mirroring
 
 
 		SEP #$20
@@ -1369,7 +1391,7 @@ print "Shader RAM code is $", hex(..end-.MPU_light), " bytes long"
 warnpc .MPU_light+$200
 
 .SourcePal
-incbin "PresentsScreenPalette.mw3"
+incbin "../PaletteData/PresentsScreenPalette.mw3"
 
 
 	pushpc
@@ -1402,8 +1424,8 @@ incbin "PresentsScreenPalette.mw3"
 		LDA #$40 : STA $2120
 		STZ $2120
 		LDA $7DF5 : BEQ .NextGameMode
-		LDA.l Mode7Presents_SourcePal+$40 : STA !Color0
-		LDA.l Mode7Presents_SourcePal+$41 : STA !Color0+1
+		LDA.l Mode7Presents_SourcePal+$00 : STA !Color0
+		LDA.l Mode7Presents_SourcePal+$01 : STA !Color0+1
 		JML $00941A
 
 		.NextGameMode
@@ -2574,10 +2596,18 @@ MAIN_MENU:
 		REP #$20
 		LDA !SRAM_block+$008,x : STA !PlaytimeMinutes
 		LDA !SRAM_block+$009,x : STA !PlaytimeHours
-		LDA !SRAM_block+$004,x
-		CLC : ADC !SRAM_block+$270,x
-		ASL A
-		AND #$00FF : PHA
+		STZ $0E
+		LDA !SRAM_block+$271-1,x			;\ +1 from portable warp pipe
+		BPL $02 : INC $0E				;/
+		LDA !SRAM_block+$010+$003-1,x			;\ +1 from beating captain warrior
+		BPL $02 : INC $0E				;/
+		LDA !SRAM_block+$010+$005-1,x			;\ +1 from beating castle rex
+		BPL $02 : INC $0E				;/
+		LDA !SRAM_block+$004,x				; + yoshi coins
+		CLC : ADC !SRAM_block+$270,x			; + levels beaten
+		CLC : ADC $0E					;\
+		ASL A						; | completion %
+		AND #$00FF : PHA				;/
 		LDA !SRAM_block+$010+$005,x
 		AND #$0080 : STA !BigRAM			; castle rex beaten flag
 		PHY
@@ -2896,7 +2926,7 @@ MAIN_MENU:
 	;	LDA #$0B : STA !GameMode
 	;	LDA #$EA : STA $6109
 		LDA #$07 : STA !MenuState
-		RTS
+		JMP .FileAway
 		..nostart
 
 
@@ -2935,12 +2965,68 @@ MAIN_MENU:
 		LDA #$08 : STA $0E
 		JSL !SpriteHUD
 
+		; tooltips
+		REP #$20
+		LDA #$0128 : STA $00
+		LDA.w #.ButtonsTilemap : STA $02
+		SEP #$20
+		LDA #$02 : STA $0D
+		LDA #$08 : STA $0E
+		JSL !SpriteHUD
+		REP #$20
+		LDA.w #.TooltipsTilemap : STA $02
+		SEP #$20
+		STZ $0D
+		LDA #$20 : STA $0E
+		JSL !SpriteHUD
+
+
+		REP #$20
+		LDA #$01A4 : STA $00
+		LDA.w #.StartTilemap2 : STA $02
+		SEP #$20
+		STZ $0D
+		LDA #$10 : STA $0E
+		JSL !SpriteHUD
+		LDA $13					;\ flash start button
+		AND.b #$1C : BEQ +			;/
+		REP #$20
+		LDA.w #.StartTilemap1 : STA $02
+		SEP #$20
+		LDA #$02 : STA $0D
+		LDA #$08 : STA $0E
+		JSL !SpriteHUD
+
+		+
+
+		STZ !BigRAM
+
+		.DrawNewFile
+
+		; underscore
+		LDA !Difficulty
+		AND #$03
+		ASL A
+		TAX
+		REP #$20
+		LDA !BigRAM
+		AND #$00FF : STA $00
+		LDA .UnderscorePointer,x : STA $02
+		LDA ($02) : STA $0E
+		INC $02
+		INC $02
+		SEP #$20
+		STZ $0D
+		JSL !SpriteHUD
+
 		; challenge markers
 		LDA !Difficulty
 		AND.b #$03^$FF
 		STA $08
 		LDX #$05
-		LDA #$9E : STA $00
+		LDA !BigRAM
+	;	CLC : ADC #$9E			; moved into ROM part
+		STA $00
 		LDA #$31-$8 : STA $01
 		REP #$20
 		LDA.w #.MarkTilemap : STA $02
@@ -2956,52 +3042,7 @@ MAIN_MENU:
 		PLX
 	+	DEX : BPL -
 
-		; underscore
-		LDA #$4C : STA $00
-		LDA !Difficulty
-		AND #$03
-		ASL A
-		TAX
-		REP #$20
-		STZ $00
-		LDA .UnderscorePointer,x : STA $02
-		LDA ($02) : STA $0E
-		INC $02
-		INC $02
-		SEP #$20
-		STZ $0D
-		JSL !SpriteHUD
-
-		; tooltips
-		REP #$20
-		LDA #$0128 : STA $00
-		LDA.w #.ButtonsTilemap : STA $02
-		SEP #$20
-		LDA #$02 : STA $0D
-		LDA #$08 : STA $0E
-		JSL !SpriteHUD
-		REP #$20
-		LDA.w #.TooltipsTilemap : STA $02
-		SEP #$20
-		STZ $0D
-		LDA #$20 : STA $0E
-		JSL !SpriteHUD
-		REP #$20
-		LDA #$01A4 : STA $00
-		LDA.w #.StartTilemap1 : STA $02
-		SEP #$20
-		LDA #$02 : STA $0D
-		LDA #$08 : STA $0E
-		JSL !SpriteHUD
-		REP #$20
-		LDA.w #.StartTilemap2 : STA $02
-		SEP #$20
-		STZ $0D
-		LDA #$10 : STA $0E
-		JSL !SpriteHUD
-
 		; challenge mode icons (sprites)
-		STZ !BigRAM
 		JSR .DrawChallengeModes
 		JSR .DrawDifficulty_all
 
@@ -3100,7 +3141,25 @@ MAIN_MENU:
 		EOR #$0100
 		STA !BigRAM
 		SEP #$20
-		LDA !MenuBG1_X+1 : BNE ..choose
+		LDA !MenuBG1_X+1 : BEQ ..draw
+
+		..choose
+		BIT $16
+		BVS ..back
+		BPL ..draw
+		JSL LoadFileSRAM
+		STZ $6109
+		LDA #$80 : STA !SPC3
+		LDA #$0B : STA !GameMode
+		RTS
+		..back
+		STZ !MenuState
+		STZ $22
+		LDA #$01 : STA $23
+		STZ !HDMA
+		..noback
+		RTS
+
 		..draw
 		JSR .DrawDifficulty
 		JSR .DrawChallengeModes
@@ -3117,20 +3176,25 @@ MAIN_MENU:
 		REP #$30				;\
 		LDA !BigRAM				; |
 		CLC : ADC #$00C8			; |
-		STA $00					; |
+		STA $00					; | completion %
 		LDA #$0084 : STA $02			; |
-		LDA !LevelsBeaten			; |
-		ASL A					; | completion %
-		STA $0A					; |
-		LDA !YoshiCoinCount			; |
+		STZ $0E					; |
+		LDA !StoryFlags+$00-1			;\ +1 from portable warp pipe
+		BPL $02 : INC $0E			;/
+		LDA !LevelTable1+$03-1			;\ +1 from beating captain warrior
+		BPL $02 : INC $0E			;/
+		LDA !LevelTable1+$05-1			;\ +1 from beating castle rex
+		BPL $02 : INC $0E			;/
+		LDA !YoshiCoinCount			; + yoshi coins
+		CLC : ADC !LevelsBeaten			; + levels beaten
+		CLC : ADC $0E				; |
 		ASL A					; |
-		ADC $0A					; |
 		AND #$00FF				; |
 		JSR .DrawPercent_main			; |
 		JSR .DrawPercent_underscore		;/
 
 
-		LDA !MenuBG1_X+1 : BEQ ..noback
+		LDA !MenuBG1_X+1 : BEQ ..return
 
 		; tooltips
 		REP #$20
@@ -3146,23 +3210,7 @@ MAIN_MENU:
 		STZ $0D
 		LDA #$20 : STA $0E
 		JSL !SpriteHUD
-		RTS
-
-		..choose
-		BIT $16
-		BVS ..back
-		BMI $03 : JMP ..draw
-		JSL LoadFileSRAM
-		STZ $6109
-		LDA #$80 : STA !SPC3
-		LDA #$0B : STA !GameMode
-		RTS
-		..back
-		STZ !MenuState
-		STZ $22
-		LDA #$01 : STA $23
-		STZ !HDMA
-		..noback
+		..return
 		RTS
 
 
@@ -3870,7 +3918,7 @@ MAIN_MENU:
 	;	db $10,$08,$92,$3F
 
 		.MarkTilemap
-		db $00,$00,$84,$3F
+		db $9E,$00,$84,$3F
 
 		.UnderscoreTilemap
 		db $00,$00,$B0,$3F
@@ -3993,12 +4041,12 @@ MAIN_MENU:
 
 
 	.FileAway
+		STZ !BigRAM
 		LDA !MsgTrigger
 		ORA !MsgTrigger+1
-		BEQ ..process
-		RTS
-		..process
+		BNE ..draw
 
+		..process
 		LDA !MenuState : BMI ..main
 		..init
 		ORA #$80 : STA !MenuState
@@ -4021,18 +4069,24 @@ MAIN_MENU:
 		STA !MenuBG1_X
 		STA $0C01,x
 		STA $0C06,x
+		EOR #$FF : INC A
+		INC A
+		STA !BigRAM
 		LDA !MenuBG1_Y
 		STA $0C03,x
 		STA $0C08,x
 		STX !HDMA3source
 		SEP #$20
-		RTS
+		LDA !BigRAM : BEQ ..return
+		..draw
+		JMP .DrawNewFile
 
 
 		..done
 		SEP #$20
 		LDA #$08 : STA !MenuState
 		STZ !HDMA
+		..return
 		RTS
 
 

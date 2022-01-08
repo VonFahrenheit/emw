@@ -31,6 +31,7 @@
 		dw Explosion		; 04
 		dw CrashingAirship	; 05
 		dw BlastHandler		; 06
+		dw BlastHandler2	; 07
 		..end
 
 
@@ -57,6 +58,7 @@ incsrc "Sprites/RevealFlash.asm"
 incsrc "Sprites/Explosion.asm"
 incsrc "Sprites/CrashingAirship.asm"
 incsrc "Sprites/BlastHandler.asm"
+incsrc "Sprites/BlastHandler2.asm"
 
 
 

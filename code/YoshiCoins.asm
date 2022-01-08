@@ -14,248 +14,172 @@ macro YC(X, Y, SubLevel)
 	dw <SubLevel>
 endmacro
 
-; Format for sublevel number:
-; NMMMMMMS ssssssss
-; N is nonexistent flag; if this bit is set, the Yoshi Coin does not exist
-; M is mega level number;
-;	This is only set for the first coin and causes the level to load from an additional slot.
-;	A value of 0 means that it's not a mega level
-;	Otherwise the value will be used to count backwards from the maximum number and use that slot.
-;	Value of 1 will use level 0x13B, Value of 2 will use level 0x13A, 3 will use 0x139, etc.
-; S is hi bit of sublevel number
-; s is lo byte of sublevel number
+; if sublevel number is $FFFF, the Yoshi Coin does not exist
 
 
-YoshiCoins:
-	STA $00
-	REP #$30
-	LDA !Translevel			;\
-	PHA				; < Backup translevel
-	ASL #2				; | Multiply by 5 (bytes/coin)
-	CLC : ADC !Translevel		;/
-	STA $0E				;\
-	ASL #2				; | Multiply by 5 (coins/level)
-	CLC : ADC $0E			;/
-	TAY
-	LDX !Translevel
-	LDA !LevelTable1,x
-	SEP #$20
-	DEC $00 : BNE .INIT
-	JMP .MAIN
+	YoshiCoins:
+		STA $00				; 00 = INIT, 01 = MAIN
+		PHA
+		REP #$30
+		LDA !Translevel : JSR .Run
+		SEP #$20
+		PLA : STA $00
+		REP #$30
+		LDA !MegaLevelID : JSR .Run
+		SEP #$30
+		RTS
 
-	.INIT
-	LSR A : BCC .Init2
-	JSR DestroyCoin
+		.Run
+		AND #$00FF : BEQ ..fail		; fail if 0
+		TAX				; X = level table index
+		STA $0E				;\
+		ASL #2				; |
+		ADC $0E				; | x25
+		STA $0E				; |
+		ASL #2				; |
+		ADC $0E				;/
+		TAY				; Y = yoshi coin table index
+		SEP #$20			; A 8-bit
+		LDA !LevelTable1,x		; get coin status
+		DEC $00 : BNE .INIT		; INIT
+		JMP .MAIN			; MAIN
+		..fail
+		RTS
 
-	.Init2
-	INY #5
-	LSR A : BCC .Init3
-	JSR DestroyCoin
+		.INIT
+		LSR A : BCC .Init2
+		JSR DestroyCoin
 
-	.Init3
-	INY #5
-	LSR A : BCC .Init4
-	JSR DestroyCoin
+		.Init2
+		INY #5
+		LSR A : BCC .Init3
+		JSR DestroyCoin
 
-	.Init4
-	INY #5
-	LSR A : BCC .Init5
-	JSR DestroyCoin
+		.Init3
+		INY #5
+		LSR A : BCC .Init4
+		JSR DestroyCoin
 
-	.Init5
-	INY #5
-	LSR A : BCC .End
-	JSR DestroyCoin
+		.Init4
+		INY #5
+		LSR A : BCC .Init5
+		JSR DestroyCoin
 
-	.End
-	REP #$20
-	TYA
-	SEC : SBC #$0019
-	TAY
-	LDA Data+$3,y : BMI +
-	AND #$7E00 : BNE .MegaInit
-+	PLA : STA !Translevel
-	SEP #$20
-	RTS
+		.Init5
+		INY #5
+		LSR A : BCC .End
+		JSR DestroyCoin
 
-	.MegaInit
-	XBA
-	LSR A
-	SEC : SBC #$0060
-	EOR #$FFFF
-	INC A
-	STA !Translevel
-	TAX
-	STA $0C
-	ASL #2
-	CLC : ADC $0C
-	STA $0C
-	ASL #2
-	CLC : ADC $0C
-	STA $0C
-	TAY
-	LDA !LevelTable1,x
-	SEP #$20
-	JMP .INIT
+		.End
+		SEP #$20
+		RTS
 
 
-	.MAIN
-	STY $0C
-	LSR A
-	BCS .Main2
-	PHA
-	JSR GetPointer
-	BCS +
-	LDA [$05]
-	XBA
-	DEC $07
-	LDA [$05]
-	REP #$20
-	CMP #$0025
-	SEP #$20
-	BNE +
-	LDX !Translevel
-	LDA !LevelTable1,x
-	ORA #$01
-	STA !LevelTable1,x
-	+
-	PLA
+		.MAIN
+		STX $0E
+		STY $0C
+		LSR A
+		BCS .Main2
+		PHA
+		JSR GetPointer : BCS +
+		REP #$20
+		CMP #$0025
+		SEP #$20
+		BNE +
+		LDX $0E
+		LDA !LevelTable1,x
+		ORA #$01
+		STA !LevelTable1,x
+		+
+		PLA
 
-	.Main2
-	LSR A
-	BCS .Main3
-	PHA
-	REP #$20
-	LDA $0C
-	CLC : ADC #$0005
-	TAY
-	SEP #$20
-	JSR GetPointer
-	BCS +
-	LDA [$05]
-	XBA
-	DEC $07
-	LDA [$05]
-	REP #$20
-	CMP #$0025
-	SEP #$20
-	BNE +
-	LDX !Translevel
-	LDA !LevelTable1,x
-	ORA #$02
-	STA !LevelTable1,x
-	+
-	PLA
+		.Main2
+		LSR A
+		BCS .Main3
+		PHA
+		REP #$20
+		LDA $0C
+		CLC : ADC #$0005
+		TAY
+		SEP #$20
+		JSR GetPointer : BCS +
+		REP #$20
+		CMP #$0025
+		SEP #$20
+		BNE +
+		LDX $0E
+		LDA !LevelTable1,x
+		ORA #$02
+		STA !LevelTable1,x
+		+
+		PLA
 
-	.Main3
-	LSR A
-	BCS .Main4
-	PHA
-	REP #$20
-	LDA $0C
-	CLC : ADC #$000A
-	TAY
-	SEP #$20
-	JSR GetPointer
-	BCS +
-	LDA [$05]
-	XBA
-	DEC $07
-	LDA [$05]
-	REP #$20
-	CMP #$0025
-	SEP #$20
-	BNE +
-	LDX !Translevel
-	LDA !LevelTable1,x
-	ORA #$04
-	STA !LevelTable1,x
-	+
-	PLA
+		.Main3
+		LSR A
+		BCS .Main4
+		PHA
+		REP #$20
+		LDA $0C
+		CLC : ADC #$000A
+		TAY
+		SEP #$20
+		JSR GetPointer : BCS +
+		REP #$20
+		CMP #$0025
+		SEP #$20
+		BNE +
+		LDX $0E
+		LDA !LevelTable1,x
+		ORA #$04
+		STA !LevelTable1,x
+		+
+		PLA
 
-	.Main4
-	LSR A
-	BCS .Main5
-	PHA
-	REP #$20
-	LDA $0C
-	CLC : ADC #$000F
-	TAY
-	SEP #$20
-	JSR GetPointer
-	BCS +
-	LDA [$05]
-	XBA
-	DEC $07
-	LDA [$05]
-	REP #$20
-	CMP #$0025
-	SEP #$20
-	BNE +
-	LDX !Translevel
-	LDA !LevelTable1,x
-	ORA #$08
-	STA !LevelTable1,x
-	+
-	PLA
+		.Main4
+		LSR A
+		BCS .Main5
+		PHA
+		REP #$20
+		LDA $0C
+		CLC : ADC #$000F
+		TAY
+		SEP #$20
+		JSR GetPointer : BCS +
+		REP #$20
+		CMP #$0025
+		SEP #$20
+		BNE +
+		LDX $0E
+		LDA !LevelTable1,x
+		ORA #$08
+		STA !LevelTable1,x
+		+
+		PLA
 
 
-	.Main5
-	LSR A
-	BCS .Return
-	PHA
-	REP #$20
-	LDA $0C
-	CLC : ADC #$0014
-	TAY
-	SEP #$20
-	JSR GetPointer
-	BCS +
-	LDA [$05]
-	XBA
-	DEC $07
-	LDA [$05]
-	REP #$20
-	CMP #$0025
-	SEP #$20
-	BNE +
-	LDX !Translevel
-	LDA !LevelTable1,x
-	ORA #$10
-	STA !LevelTable1,x
-	+
-	PLA
+		.Main5
+		LSR A
+		BCS .Return
+		PHA
+		REP #$20
+		LDA $0C
+		CLC : ADC #$0014
+		TAY
+		SEP #$20
+		JSR GetPointer : BCS +
+		REP #$20
+		CMP #$0025
+		SEP #$20
+		BNE +
+		LDX $0E
+		LDA !LevelTable1,x
+		ORA #$10
+		STA !LevelTable1,x
+		+
+		PLA
 
-	.Return
-	LDY $0C
-	REP #$20
-	LDA Data+$3,y
-	BMI +
-	AND #$7E00
-	BNE .MegaMain
-+	PLA : STA !Translevel
-	SEP #$20
-	RTS
-
-	.MegaMain
-	XBA
-	LSR A
-	SEC : SBC #$0060
-	EOR #$FFFF
-	INC A
-	STA !Translevel
-	TAX
-	STA $0C
-	ASL #2
-	CLC : ADC $0C
-	STA $0C
-	ASL #2
-	CLC : ADC $0C
-	STA $0C
-	TAY
-	LDA !LevelTable1,x
-	SEP #$20
-	JMP .MAIN
+		.Return
+		RTS
 
 
 	DestroyCoin:
@@ -285,48 +209,44 @@ YoshiCoins:
 		PLA
 		RTS
 
-; Returning with clear carry means coin exists on this sublevel
-; Returning with set carry means coin does not exist on this sublevel
-GetPointer:
-	PHP
-	REP #$30
-	LDA Data+$3,y : BMI .NoCoin
-	AND #$01FF
-	CMP !Level : BNE .NoCoin
+	; Returning with clear carry means coin exists on this sublevel
+	; Returning with set carry means coin does not exist on this sublevel
+	GetPointer:
+		PHP
+		REP #$30
+		LDA Data+$3,y : BMI .NoCoin
+		AND #$01FF
+		CMP !Level : BNE .NoCoin
 
-	LDA Data+$0,y
-	ASL #4
-	STA $02
+		LDA Data+$0,y				;\
+		ASL #4					; | X position
+		STA $02					;/
+		XBA					;\
+		AND #$00FF : TAX			; |
+		LDA #$0000				; |
+		CPX #$0000 : BEQ +			; | offset from X screen
+	-	CLC : ADC !LevelHeight			; |
+		DEX : BNE -				; |
+		+					;/
+		STA $00					;\
+		LDA Data+$0,y				; | X part of index
+		AND #$000F : TSB $00			;/
+		LDA Data+$1,y				;\
+		AND #$FFF0				; | add Y part of position
+		CLC : ADC $00				;/
+		TAX					;\
+		SEP #$20				; |
+		LDA $41C800,x : XBA			; | load map16 number
+		LDA $40C800,x				; |
+		REP #$20				;/
+		PLP
+		CLC
+		RTS
 
-	LDA Data+$1,y
-	AND #$FFF0
-	STA $00
-
-	SEP #$30
-	LDA $00
-	AND #$F0
-	STA $06
-	LDA $02
-	LSR #4
-	ORA $06
-	LDX $03
-	CLC : ADC $6CB6,x
-	STA $05
-	LDA $6CD6,x
-	ADC $01
-	STA $06
-
-	.Shared
-	LDA #$41
-	STA $07
-	PLP
-	CLC
-	RTS
-
-	.NoCoin
-	PLP
-	SEC
-	RTS
+		.NoCoin
+		PLP
+		SEC
+		RTS
 
 
 print "Yoshi Coin data at $", pc, "."

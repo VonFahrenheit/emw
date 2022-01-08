@@ -15,11 +15,11 @@ Data:
 %YC(4, 139, $026)
 
 .002
-%YC(0, 0, $FFFF)
-%YC(0, 0, $FFFF)
+%YC(0, 0, $FFFF)	; sprite
+%YC(0, 0, $FFFF)	; sprite
 %YC(52, 106, $027)
 %YC(120, 62, $027)
-%YC(0, 0, $FFFF)
+%YC(0, 0, $FFFF)	; sprite
 
 .003
 %YC(80, 17, $003)
@@ -43,11 +43,11 @@ Data:
 %YC(0, 0, $FFFF)
 
 .006
-%YC(0, 0, $FFFF)
-%YC(0, 0, $FFFF)
-%YC(0, 0, $FFFF)
-%YC(0, 0, $FFFF)
-%YC(0, 0, $FFFF)
+%YC(67, 10, $006)
+%YC(187, 20, $032)
+%YC(3, 17, $033)
+%YC(6, 17, $033)
+%YC(9, 17, $033)
 
 .007
 %YC(319, 7, $007)
@@ -666,11 +666,11 @@ Data:
 %YC(0, 0, $FFFF)
 
 .13B	; Mega level 1
-%YC(0, 0, $FFFF)
-%YC(0, 0, $FFFF)
-%YC(0, 0, $FFFF)
-%YC(0, 0, $FFFF)
-%YC(0, 0, $FFFF)
+%YC(0, 0, $FFFF)	; sprite
+%YC(21, 68, $027)	; demo
+%YC(88, 59, $027)	; demo
+%YC(15, 52, $027)	; demo
+%YC(18, 213, $038)	; demo
 
 
 

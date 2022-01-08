@@ -20,12 +20,29 @@
 ;====================================================================================================;
 %insertMSG(DebugMessage)
 if !CompileText = 1
-	%mode(1)
-	db "You're a real whippersnapper!"
+	db "This level is not finished."
 	%waitforinput()
-	%talk(2)
 	%scrollfull()
-	db "AND I MEAN IT!!"
+	db "Conveniently, there is a cannon here pointing right to where you need to go!"
+	%endmessage()
+endif
+;====================================================================================================;
+%insertMSG(UnexploredHill_Mario)
+if !CompileText = 1
+	%important(1)
+	%mode(1)
+	%playerexpression(distressed, 1)
+	db "Mamma mia!"
+	%waitforinput()
+	%scrollfull()
+	%playerexpression(neutral, 1)
+	db "I have-a no idea where I fell..."
+	%waitforinput()
+	%scrollfull()
+	%playerexpression(angry, 1)
+	db "But the airship crashed somewhere in that direction!"
+	%delay(1)
+	%music($49)
 	%endmessage()
 endif
 ;====================================================================================================;
@@ -77,6 +94,7 @@ endif
 ;====================================================================================================;
 %insertMSG(Toad_IntroLevel_1)
 if !CompileText = 1
+	%important(1)
 	%mode(1)
 	%expression(Toad, neutral, 0)
 	db "Mario! We're about to arrive!"
@@ -123,6 +141,7 @@ endif
 ;====================================================================================================;
 %insertMSG(MeetKadaal_1)
 if !CompileText = 1
+	%important(1)
 	%mode(1)
 	%expression(Kadaal, angry, 0)
 	%talk(3)
@@ -140,7 +159,8 @@ if !CompileText = 1
 	%waitforinput()
 	%scrollfull()
 	%expression(Kadaal, happy, 0)
-	db "I will take it from here."
+	%music($4A)
+	db "My name is Kadaal and I can tell you're a good person!"
 	%waitforinput()
 	%scrollfull()
 	db "Follow me! I know where the flying boat crashed."
@@ -149,6 +169,7 @@ endif
 ;====================================================================================================;
 %insertMSG(CrashSite_1)
 if !CompileText = 1
+	%important(2)
 	%portrait(Kadaal, 0)
 	db "I found a green man."
 	%waitforinput()
@@ -172,23 +193,113 @@ if !CompileText = 1
 	%waitforinput()
 	%scrollfull()
 	%portrait(Kadaal, 0)
-	db "I will set up the cannon."
+	db "Your flying boat fell here."
 	%waitforinput()
 	%scrollfull()
-	db "We'll use it to get out of this forest."
+	db "I will prepare its cannon."
+	%waitforinput()
+	%scrollfull()
+	db "We'll use that to get out of this forest."
 	%endmessage()
-endif;====================================================================================================;
+endif
+;====================================================================================================;
 %insertMSG(Survivor_Talk_IntroLevel)
 if !CompileText = 1
-	%portrait(Survivor, 0)
-	%speed(7)
+	%important(2)
 	%mode(1)
 	%talk(1)
-	db "Take this. Use it on the map with ",$57," to return here at any time."
+	%portrait(Survivor, 1)
+	%next(Survivor_Talk_IntroLevel_End)
+	db "Hello."
 	%waitforinput()
-	%noportrait()
 	%scrollfull()
+	%playerexpression(distressed, 0)
+	db "Those injuries! What happened to you?"
+	%waitforinput()
+	%scrollfull()
+	db "Did we... land on you?"
+	%waitforinput()
+	%scrollfull()
+	%portrait(Survivor, 1)
+	db "That WAS quite the landing!"
+	%waitforinput()
+	%scrollfull()
+	db "But no, your captain managed to just avoid my tent."
+	%waitforinput()
+	%scrollfull()
+	db "Very impressive for a crash landing!"
+	%waitforinput()
+	%scrollfull()
+	%playerexpression(angry, 0)
+	db "Then who did this to you?"
+	%waitforinput()
+	%scrollfull()
+	%portrait(Survivor, 1)
+	db "If you're here, I'm sure you already know that the Dark Lord has appeared."
+	%waitforinput()
+	%scrollfull()
+	db "No one has yet to see him... but when he appeared, the Rex on this island became incredibly dangerous."
+	%waitforinput()
+	%scrollfull()
+	db "I don't know where the other Yoshi are. I've been hiding here for weeks!"
+	%waitforinput()
+	%scrollfull()
+	%playerexpression(distressed, 0)
+	db "You mean..."
+	%waitforinput()
+	%scrollfull()
+	db "You're the last Yoshi here?"
+	%waitforinput()
+	%scrollfull()
+	db "On Yoshi's Island?"
+	%waitforinput()
+	%scrollfull()
+	%portrait(Survivor, 1)
+	db "Most likely."
+	%waitforinput()
+	%scrollfull()
+	%playerexpression(sad, 0)
+	db "...I see."
+	%waitforinput()
+	%scrollfull()
+	db "Then stay here for as long as you need."
+	%waitforinput()
+	%scrollfull()
+	%music($3D)
+	%playerexpression(angry, 0)
+	db "We will free this island."
+	%waitforinput()
+	%scrollfull()
+	%endmessage()
+endif
+;====================================================================================================;
+%insertMSG(Survivor_Talk_IntroLevel_End)
+if !CompileText = 1
+	%important(2)
+	%mode(1)
+	%portrait(Survivor, 1)
+	db "I can see that you're determined."
+	%waitforinput()
+	%scrollfull()
+	db "Here, I have something for you!"
+	%talk(1)
+	%waitforinput()
+	%scrollfull()
+	%noportrait()
 	db "You got the portable warp pipe!"
+	%waitforinput()
+	%scrollfull()
+	db "Use it on the map with ",$57," to return to the crash site at any time!"
+	%waitforinput()
+	%scrollfull()
+	%portrait(Survivor, 1)
+	db "I think Kadaal already left."
+	%waitforinput()
+	%scrollfull()
+	db "Make sure you get the most use out of all your companions!"
+	%waitforinput()
+	%scrollfull()
+	db "If you're ever in doubt, press ",$56," on the overworld to call your buddies!"
 	%endmessage()
 endif
 ;====================================================================================================;
@@ -244,6 +355,10 @@ if !CompileText = 1
 	%waitforinput()
 	%scrollfull()
 	db "Their king rules this island now."
+	%waitforinput()
+	%scrollfull()
+	%expression(Kadaal, angry, 0)
+	db "They demand that it be called Rex Island, but I refuse to accept that!"
 	%endmessage()
 endif
 ;====================================================================================================;
@@ -280,6 +395,22 @@ if !CompileText = 1
 	%portrait(Peach, 0)
 	%speed(7)
 	db "[PLACEHOLDER]"
+	%endmessage()
+endif
+;====================================================================================================;
+%insertMSG(ToadTemp)
+if !CompileText = 1
+	%expression(Toad, distressed, 0)
+	%mode(1)
+	db "My poor ship!"
+	%waitforinput()
+	%scrollfull()
+	db "The repairs are gonna be so expensive!"
+	%waitforinput()
+	%scrollfull()
+	%portrait(Toad, 0)
+	%talk(2)
+	db "You wouldn't mind getting me 1000000 coins to pay for it, would you?"
 	%endmessage()
 endif
 ;====================================================================================================;
@@ -597,12 +728,13 @@ if !CompileText = 1
 	%speed(8)
 	%waitforinput()
 	%scrollfull()
+	db "I have been tasked with guarding these grounds and I can not allow you to pass."
+	%waitforinput()
+	%scrollfull()
 	db "In the name of the great King of the Rex, I, Captain Warrior, sentence you to die!"
 	%waitforinput()
 	%scrollfull()
-	db "All troops, "
-	%delay(16)
-	db "attack!"
+	db "Brace yourself!"
 	%endmessage()
 endif
 ;====================================================================================================;
@@ -620,9 +752,7 @@ if !CompileText = 1
 	db "I can't believe how strong you are..."
 	%waitforinput()
 	%scrollfull()
-	db "All troops withdraw at once."
-	%linebreak()
-	db "We must warn the King."
+	db "I must warn the King..."
 	%endmessage()
 endif
 ;====================================================================================================;
@@ -668,6 +798,9 @@ endif
 ;====================================================================================================;
 %insertMSG(MushroomGorge_Sign_1)
 if !CompileText = 1
+	db "The Cliff of Kings"
+	%linebreak()
+	%linebreak()
 	db "This monument marks the highest point on Rex Island."
 	%endmessage()
 endif
@@ -678,9 +811,9 @@ if !CompileText = 1
 	db "Ahead lies Castle Rex."
 	%waitforinput()
 	%scrollfull()
-	db "I've been building up my courage to go visit it some day..."
-	%linebreak()
+	db "I've been building up my courage to go visit it..."
 	%waitforinput()
+	%scrollfull()
 	db "But somehow it seems more intimidating than usual today."
 	%endmessage()
 endif
@@ -700,16 +833,19 @@ if !CompileText = 1
 	%waitforinput()
 	%scrollfull()
 	db "But the King is the strongest there is! You can't beat him!"
-	%waitforinput()
-	%scrollfull()
-	db "Well... maybe the Dark Lord is stronger, but he's our ally now."
 	%endmessage()
 endif
 ;====================================================================================================;
 %insertMSG(CastleRex_Rex_Warning_2)
 if !CompileText = 1
 	%portrait(Rex, 1)
-	db "The strongest Rex has always been our leader, but since the pact with the Dark Lord, the King has been stronger than ever before!"
+	db "Our leader has always been the strongest Rex."
+	%waitforinput()
+	%scrollfull()
+	db "After the Dark Lord appeared, our leader undertook gruesome training and attained an invincible body."
+	%waitforinput()
+	%scrollfull()
+	db "With his newfound power, he claimed the title of King and led us to defeat the Yoshi in the legendary Battle of Dinosaurs."
 	%endmessage()
 endif
 ;====================================================================================================;
@@ -722,13 +858,12 @@ if !CompileText = 1
 	db "Still, I'm not worried, because the King will do what I can not!"
 	%waitforinput()
 	%scrollfull()
-	db "That's what he always does, and it's why we rule this Island today."
+	db "I think that's what i means to be King."
 	%endmessage()
 endif
 ;====================================================================================================;
 %insertMSG(CaptainWarrior_Warning)
 if !CompileText = 1
-	%speed(10)
 	%portrait(CaptainWarrior, 0)
 	db "There you are."
 	%waitforinput()
@@ -736,10 +871,15 @@ if !CompileText = 1
 	db "The King is on the other side of this door."
 	%waitforinput()
 	%scrollfull()
-	db "No, I won't try to stop you. I already know how that would go."
+	%playerexpression(angry, 1)
+	db "Will you not try to stop me?"
 	%waitforinput()
 	%scrollfull()
-	db "I have faith in my King. He is far beyond even you."
+	%portrait(CaptainWarrior, 0)
+	db "I have faith in my King."
+	%waitforinput()
+	%scrollfull()
+	db "I have faith in the strongest Rex!"
 	%waitforinput()
 	%scrollfull()
 	db "So go! "
@@ -1187,7 +1327,7 @@ if !CompileText = 1
 	%linebreak()
 	db "Enemies will always kill you in one hit."
 	%linebreak()
-	db "(Mario and Luigi can change size with Select)"
+	db "Mario and Luigi can change size with ",$57
 	%endmessage()
 endif
 ;====================================================================================================;
@@ -1349,6 +1489,8 @@ dw .L13B
 .L005	dw !MSG_CastleRex_Villager
 	dw !MSG_CastleRex_Sign_2
 .L006
+	dw !MSG_DebugMessage
+
 .L007
 .L008
 .L009

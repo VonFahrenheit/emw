@@ -309,7 +309,7 @@ macro portrait(index, xflip)
 		endmacro
 
 macro noportrait()
-		db $F4,$00,$00
+		db $F4,$00
 		endmacro
 
 macro expression(index, expression, xflip)

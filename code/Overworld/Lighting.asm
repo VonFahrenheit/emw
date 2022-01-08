@@ -17,6 +17,16 @@
 ;
 
 	CalcLightPoints:
+
+	LDA !Translevel
+	ASL A : TAX
+	LDA MapLight_R,x : STA $00
+	LDA MapLight_G,x : STA $02
+	LDA MapLight_B,x : STA $04
+	JSL !FadeLight
+	JMP .End
+
+
 		LDA $1A
 		CLC : ADC #$0080
 		STA $00
@@ -95,8 +105,12 @@
 		LDA $0C : STA !LightG
 		LDA $0E : STA !LightB
 
+
+	.End
 		SEP #$20
-		LDA !ProcessLight : BPL +
+		LDA #$80 : TRB !ProcessLight
+		LDA !ProcessLight
+		CMP #$02 : BNE +
 		LDA #$01 : STA !ShaderRowDisable+$7
 		LDA #$01 : STA !ShaderRowDisable+$F
 		STZ !ProcessLight
@@ -108,8 +122,49 @@
 
 
 
-
-
+	MapLight:
+	.R
+	dw $0100		; 00
+	dw $0100		; 01
+	dw $0100		; 02
+	dw $0100		; 03
+	dw $0100		; 04
+	dw $0140		; 05
+	dw $0140		; 06
+	dw $0100		; 07
+	dw $0100		; 08
+	dw $0100		; 09
+	dw $0100		; 0A
+	dw $0100		; 0B
+	dw $0100		; 0C
+	.G
+	dw $0100		; 00
+	dw $0100		; 01
+	dw $0100		; 02
+	dw $0100		; 03
+	dw $0100		; 04
+	dw $0100		; 05
+	dw $0100		; 06
+	dw $0100		; 07
+	dw $0100		; 08
+	dw $0100		; 09
+	dw $0100		; 0A
+	dw $0100		; 0B
+	dw $0100		; 0C
+	.B
+	dw $0100		; 00
+	dw $0100		; 01
+	dw $0100		; 02
+	dw $0100		; 03
+	dw $0100		; 04
+	dw $0100		; 05
+	dw $00C0		; 06
+	dw $00C0		; 07
+	dw $0100		; 08
+	dw $0100		; 09
+	dw $0100		; 0A
+	dw $0100		; 0B
+	dw $0100		; 0C
 
 
 

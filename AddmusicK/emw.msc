@@ -116,8 +116,8 @@
 3A	1	There is Joy (Indoors)
 3B	0	There is Joy (Underground)
 3B	1	There is Joy (Underground)
-3C	0	Steep Cliffside
-3C	1	Steep Cliffside
+3C	0	Fuzzy Ridge
+3C	1	Fuzzy Ridge
 3D	0	No Turning Back...
 3D	1	No Turning Back...
 3E	0	Unused Theme 1
@@ -138,5 +138,11 @@
 45	1	Lightning Lounge
 46	0	I'm A Ghost
 46	1	I'm A Ghost
-47	0	Street Brawl Guitar.txt
-47	1	Street Brawl Guitar.txt
+47	0	Beach
+47	1	Beach
+48	0	Street Brawl Guitar.txt
+48	1	Street Brawl Guitar.txt
+49	0	Training Course
+49	1	Training Course
+4A	0	Jungle Drumble
+4A	1	Jungle Drumble
