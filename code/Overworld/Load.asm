@@ -595,6 +595,8 @@
 		PLX
 		DEX #4 : BPL -
 
+	STZ $7FFF
+
 
 	; apply overworld events
 		PHB : PHK : PLB

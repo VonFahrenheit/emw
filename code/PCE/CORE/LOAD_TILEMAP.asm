@@ -179,9 +179,11 @@ LOAD_TILEMAP:	STZ !BigRAM+$7E				; this reg ACTUALLY controls priority bits duri
 	+	STA !OAM_p1+$002,x
 		INY
 		PHX
+		REP #$20
 		TXA
 		LSR #2
 		TAX
+		SEP #$20
 		LDA $07
 		AND #$01
 		BIT !BigRAM+$7F : BMI $02 : ORA #$02

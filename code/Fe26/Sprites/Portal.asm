@@ -124,7 +124,7 @@ Portal:
 		REP #$20
 		LDA.w #.Tilemap : STA $04
 		SEP #$20
-		JSL LOAD_PSUEDO_DYNAMIC_p0
+		JSL LOAD_PSUEDO_DYNAMIC_p1
 
 		PLA : STA !SpriteYHi,x
 		PLA : STA !SpriteYLo,x

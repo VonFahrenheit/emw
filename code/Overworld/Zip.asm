@@ -17,40 +17,24 @@
 ; it has to be done this way to maximize space efficiency
 ;
 
+
+; BWRAM map:
 ;
-; decompression map:
-;
-; $407000	HUD GFX composite (4KiB)
+; $400000-$401FFF:	BWRAM image ($6000-$7FFF), holds most important variables during overworld processing
+; $402000-$403FFF:	level name rendering area (holds both cached font and rendering area)
+; $404000-$406FFF:	---- UNUSED (not carefully checked, might not be safe to overwrite) ----
+; $407000-$407FFF:	rendering area for HUD
+; $408000-$40FFFF:	tilemap data (32 KiB, 16 tilemaps)
+; $410000-$411FFF:	used by zip loader, see below
+; $412000-$412FFF:	HUD GFX (base layer)
+; $413000-$413FFF:	HUD GFX (sprite layer)
+; $414000-$418FF7:	---- UNUSED (not carefully checked, might not be safe to overwrite) ----
+; $418FF8-$4199FF:	OAM buffers
+; $419A00-$41A0AF:	particle data
+; $41A0B0-$41AFFF:	---- UNUSED (not carefully checked, might not be safe to overwrite) ----
+; $41B000-$41BFFF:	SRAM (obviously do not touch)
+; $41C000-$41FFFF:	tilemap data (16 KiB, 8 tilemaps)
 
-; $408000	map 21
-; $408800	map 22
-; $409000	map 23
-; $409800	map 24
-; $40A000	map 25
-; $40A800	map 26
-
-; $40B000	map 31
-; $40B800	map 32
-; $40C000	map 33
-; $40C800	map 34
-; $40D000	map 35
-; $40D800	map 36
-; $40E000	map 11
-; $40E800	map 12
-; $40F000	map 13
-; $40F800	map 14
-
-; $41C000	map 41
-; $41C800	map 42
-; $41D000	map 43
-; $41D800	map 44
-; $41E000	map 43
-; $41E800	map 44
-; $41F000	map 15
-; $41F800	map 16
-
-; $412000	HUD GFX (base layer)
-; $413000	HUD GFX (sprite layer)
 
 
 
@@ -894,56 +878,30 @@
 
 
 	DecompressionMap:
-	;	db $E8 : dl $40E000		; 11
-	;	db $E9 : dl $40E800		; 12
-	;	db $EA : dl $40F000		; 13
-	;	db $EB : dl $40F800		; 14
-	;	db $EC : dl $407000		; 15
-	;	db $ED : dl $41F800		; 16
-	;	db $EE : dl $41F000		; 21
-	;	db $EF : dl $408800		; 22
-	;	db $F0 : dl $409000		; 23
-	;	db $F1 : dl $409800		; 24
-	;	db $F2 : dl $40A000		; 25
-	;	db $F3 : dl $40A800		; 26
-	;	db $F4 : dl $40B000		; 31
-	;	db $F5 : dl $40B800		; 32
-	;	db $F6 : dl $40C000		; 33
-	;	db $F7 : dl $40C800		; 34
-	;	db $F8 : dl $40D000		; 35
-	;	db $F9 : dl $40D800		; 36
-	;	db $FA : dl $41C000		; 41
-	;	db $FB : dl $41C800		; 42
-	;	db $FC : dl $41D000		; 43
-	;	db $FD : dl $41D800		; 44
-	;	db $FE : dl $41E000		; 45
-	;	db $FF : dl $41E800		; 46
-
-		db $F4 : dl $40E000		; 11
-		db $F5 : dl $40E800		; 12
-		db $F4 : dl $40F000		; 13
-		db $F5 : dl $40F800		; 14
-		db $F4 : dl $407000		; 15
-		db $F5 : dl $41F800		; 16
-		db $FA : dl $41F000		; 21
-		db $FB : dl $408800		; 22
-		db $FA : dl $409000		; 23
-		db $FB : dl $409800		; 24
-		db $FA : dl $40A000		; 25
-		db $FB : dl $40A800		; 26
-		db $F4 : dl $40B000		; 31
-		db $F5 : dl $40B800		; 32
-		db $F4 : dl $40C000		; 33
-		db $F5 : dl $40C800		; 34
-		db $F4 : dl $40D000		; 35
-		db $F5 : dl $40D800		; 36
-		db $FA : dl $41C000		; 41
-		db $FB : dl $41C800		; 42
-		db $FA : dl $41D000		; 43
-		db $FB : dl $41D800		; 44
-		db $FA : dl $41E000		; 45
-		db $FB : dl $41E800		; 46
-
+		db $E8 : dl $408000		; 11
+		db $E9 : dl $408800		; 12
+		db $EA : dl $409000		; 13
+		db $EB : dl $409800		; 14
+		db $EC : dl $40A000		; 15
+		db $ED : dl $40A800		; 16
+		db $EE : dl $40B000		; 21
+		db $EF : dl $40B800		; 22
+		db $F0 : dl $40C000		; 23
+		db $F1 : dl $40C800		; 24
+		db $F2 : dl $40D000		; 25
+		db $F3 : dl $40D800		; 26
+		db $F4 : dl $40E000		; 31
+		db $F5 : dl $40E800		; 32
+		db $F6 : dl $40F000		; 33
+		db $F7 : dl $40F800		; 34
+		db $F8 : dl $41C000		; 35
+		db $F9 : dl $41C800		; 36
+		db $FA : dl $41D000		; 41
+		db $FB : dl $41D800		; 42
+		db $FC : dl $41E000		; 43
+		db $FD : dl $41E800		; 44
+		db $FE : dl $41F000		; 45
+		db $FF : dl $41F800		; 46
 		.End
 
 	MapCoords:

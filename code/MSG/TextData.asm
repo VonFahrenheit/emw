@@ -700,6 +700,7 @@ endif
 ;====================================================================================================;
 %insertMSG(DinolordsDomain_Sign_1)
 if !CompileText = 1
+	%mode(1)
 	db "For his valiant efforts in the legendary Battle of Dinosaurs, Captain Warrior shall be known as Chamption of all Rex and guardian of these lands."
 	%linebreak()
 	db "Thus decrees the King."
@@ -708,6 +709,7 @@ endif
 ;====================================================================================================;
 %insertMSG(DinolordsDomain_Sign_2)
 if !CompileText = 1
+	%mode(1)
 	db "Here lie the brave soldiers who were felled in the legendary Battle of Dinosaurs."
 	%endmessage()
 endif
@@ -828,6 +830,7 @@ endif
 ;====================================================================================================;
 %insertMSG(CastleRex_Rex_Warning_1)
 if !CompileText = 1
+	%mode(1)
 	%portrait(Rex, 0)
 	db "I saw you fight Captain Warrior so I know how strong you are."
 	%waitforinput()
@@ -838,6 +841,7 @@ endif
 ;====================================================================================================;
 %insertMSG(CastleRex_Rex_Warning_2)
 if !CompileText = 1
+	%mode(1)
 	%portrait(Rex, 1)
 	db "Our leader has always been the strongest Rex."
 	%waitforinput()
@@ -851,6 +855,7 @@ endif
 ;====================================================================================================;
 %insertMSG(CastleRex_Rex_Warning_3)
 if !CompileText = 1
+	%mode(1)
 	%portrait(Rex, 1)
 	db "Captain Warrior told me I can't beat you, so I won't fight."
 	%waitforinput()

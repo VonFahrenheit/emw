@@ -2351,9 +2351,9 @@ Build_RAM_Code:
 		LDA.l !BG2ZipRowY				;\
 		AND #$01F8					; |
 		ASL #3						; |
-		CLC : ADC.w #!BG2Tilemap			; | read directly from the raw copy of the BG2 tilemap
+		ADC.w #!BG2Tilemap				; | read directly from the raw copy of the BG2 tilemap
 		%writecode(..src1)				; | (note that the raw is twice as large as the VRAM space)
-		CLC : ADC #$1000				; |
+		ADC #$1000					; |
 		%writecode(..src2)				;/
 
 		LDA.l !BG2ZipRowY				;\
