@@ -111,27 +111,23 @@ FlyingRex:
 		LDA #$20 : STA $06
 		LDA #$80 : STA $07
 		SEC : JSL !PlayerClipping : BCC ..notseen
-		LDA !Difficulty
-		AND #$03 : TAY
+		LDY !Difficulty
 		LDA DATA_FlyTimer,y : STA !FlyingRexTimer,x
 		LDA #$02 : STA !SpriteAnimIndex
 		STZ !SpriteAnimTimer
 		LDA #$26 : STA !SPC4				; swooper SFX
 		..notseen
-		LDA !Difficulty
-		AND #$03 : TAY
+		LDY !Difficulty
 		LDA !FlyingRexTimer,x : BEQ ..forward
 		CMP DATA_RiseThreshold,y : BCS ..swoop
 		..rise
 		LDA #$20 : STA !DisableSwoopTimer,x
-		LDA !Difficulty
-		AND #$03 : TAY
+		LDY !Difficulty
 		LDA DATA_SwoopSpeed,y
 		EOR #$FF
 		BRA ..acc
 		..swoop
-		LDA !Difficulty
-		AND #$03 : TAY
+		LDY !Difficulty
 		LDA DATA_SwoopSpeed,y
 		BRA ..acc
 		..forward

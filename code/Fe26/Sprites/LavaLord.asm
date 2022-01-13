@@ -73,9 +73,7 @@ endmacro
 		LDA $3210,x : STA !LavaLordFloatHeight	; remember spawn height
 		LDA $3250,x : STA !LavaLordScreen	; remember spawn screen (X)
 		LDA !MultiPlayer : PHP
-		LDA !Difficulty
-		AND #$03
-		TAY
+		LDY !Difficulty
 		LDA DATA_HP,y
 		PLP : BEQ $01 : ASL A			; HP is doubled on multiplayer
 		STA !LavaLordHP
@@ -296,9 +294,7 @@ endmacro
 		STZ !SpriteAnimTimer
 	+	CPY #$10 : BNE ATTACK_Return		; Attack happens at t = 0x10 to make time for backswing
 
-	.Shoot	LDA !Difficulty
-		AND #$03
-		TAY
+	.Shoot	LDY !Difficulty
 		LDA .ProjectileCount,y
 		TAY
 	.Loop	PHY
@@ -511,9 +507,8 @@ endmacro
 		CMP #$20 : BNE .Return
 
 		LDY #$01				;\
-		LDA !Difficulty				; |
-		AND #$03 : BNE +			; | spawn from a random direction on EASY
-		LDA !RNG				; |
+		LDA !Difficulty : BNE +			; |
+		LDA !RNG				; | spawn from a random direction on EASY
 		LSR A : BCC +				; |
 		DEY					;/
 
@@ -533,8 +528,7 @@ endmacro
 		LDA .Speed,y : STA $AE,x
 		LDA #$C0 : STA $9E,x
 		LDX !SpriteIndex
-		LDA !Difficulty				;\ only one flame on EASY
-		AND #$03 : BEQ .Return			;/
+		LDA !Difficulty : BEQ .Return		; only one flame on EASY
 		DEY : BPL -
 
 		.Return
@@ -556,9 +550,7 @@ endmacro
 
 	Flamestrike:
 		PLX
-		LDA.l !Difficulty
-		AND #$03
-		TAY
+		LDY !Difficulty
 		LDA DATA_FlameStrikeDelay+0,y : STA $00
 		LDA DATA_FlameStrikeDelay+4,y : STA $01
 		LDY !LavaLordAttackTimer : BNE +
@@ -594,9 +586,7 @@ endmacro
 
 	.GoodHeight
 		STZ $9E,x
-	.Rise	LDA.l !Difficulty
-		AND #$03
-		TAY
+	.Rise	LDY !Difficulty
 		LDA !LavaLordAttackTimer
 		CMP DATA_FlameStrikeDelay+0,y : BCS .Target
 		STZ $AE,x
@@ -671,9 +661,7 @@ endmacro
 		LDA !ShakeTimer : BNE .Return
 		LDA #$1F : STA !ShakeTimer
 
-		LDA.l !Difficulty
-		AND #$03
-		TAY
+		LDY !Difficulty
 		LDA DATA_FlameStrikeX+0,y : STA $00
 		LDA DATA_FlameStrikeX+4,y : STA $01
 		LDA DATA_FlameStrikeCount,y

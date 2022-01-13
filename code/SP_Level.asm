@@ -288,55 +288,59 @@ incsrc "GameMode14.asm"
 print "Level code handler inserted at $", pc, "."
 	INIT_Level:
 
-		PHB : PHK : PLB				; > Bank wrapper
+		PHB : PHK : PLB					; > bank wrapper start
 		PHP
 		SEP #$30
 
-		STZ !Cutscene				; kill cutscene
-		STZ !CutsceneSmoothness			; kill effect
-		STZ !CutsceneWait			; kill timer
-		STZ !Cutscene6DA2			;\
-		STZ !Cutscene6DA3			; |
-		STZ !Cutscene6DA4			; |
-		STZ !Cutscene6DA5			; | kill cutscene input
-		STZ !Cutscene6DA6			; |
-		STZ !Cutscene6DA7			; |
-		STZ !Cutscene6DA8			; |
-		STZ !Cutscene6DA9			;/
+		STZ !Cutscene					; kill cutscene
+		STZ !CutsceneSmoothness				; kill effect
+		STZ !CutsceneWait				; kill timer
+		STZ !Cutscene6DA2				;\
+		STZ !Cutscene6DA3				; |
+		STZ !Cutscene6DA4				; |
+		STZ !Cutscene6DA5				; | kill cutscene input
+		STZ !Cutscene6DA6				; |
+		STZ !Cutscene6DA7				; |
+		STZ !Cutscene6DA8				; |
+		STZ !Cutscene6DA9				;/
 
 
-		LDA #$07 : STA !PalsetStart		; default: all palset rows are dynamic
+		LDA !SRAM_Difficulty : STA !Difficulty_full	;\ difficulty settings from SRAM buffer
+		AND #$03 : STA !Difficulty			;/
 
-		LDA !CurrentMario : BNE +		;\
-		LDA #$7F : STA !MarioMaskBits		; | hide mario if he's not in play
-		+					;/
+
+		LDA #$07 : STA !PalsetStart			; default: all palset rows are dynamic
+
+		LDA !CurrentMario : BNE +			;\
+		LDA #$7F : STA !MarioMaskBits			; | hide mario if he's not in play
+		+						;/
 		LDA #$00
-		STA !PauseThif				; unpause Thif
-		STA !LevelInitFlag			; set level INIT
-		STA !3DWater				; disable 3D water
-		STA !DizzyEffect			; disable dizzy effect
-		LDA #$FF				;\
-		STA !CameraBoxU+1			; | disable camera box
-		STA !CameraForbiddance			;/
-		LDX #$00				;\
-	-	STA !Map16Remap,x			; | default map16 remap = 0xFF (disabled)
-		INX : BNE -				;/
-		LDA #$03 : STA !Map16Remap+3		; > exception for page 3, which defaults to GFX page 3
-		LDA #$00 : JSL !ProcessYoshiCoins	; > Load Yoshi Coins (A must be 0x00)
-		LDA.b #.SA1 : STA $3180			;\
-		LDA.b #.SA1>>8 : STA $3181		; | Have SA-1 clear VR2 RAM
-		LDA.b #.SA1>>16 : STA $3182		; |
-		JSR $1E80				;/
+		STA !PauseThif					; unpause Thif
+		STA !LevelInitFlag				; set level INIT
+		STA !3DWater					; disable 3D water
+		STA !DizzyEffect				; disable dizzy effect
+		LDA #$FF					;\
+		STA !CameraBoxU+1				; | disable camera box
+		STA !CameraForbiddance				;/
+		LDX #$00					;\
+	-	STA !Map16Remap,x				; | default map16 remap = 0xFF (disabled)
+		INX : BNE -					;/
+		LDA #$03 : STA !Map16Remap+3			; > exception for page 3, which defaults to GFX page 3
+		LDA #$00 : JSL !ProcessYoshiCoins		; > load Yoshi Coins (A must be 0x00)
+		LDA.b #.SA1 : STA $3180				;\
+		LDA.b #.SA1>>8 : STA $3181			; | have SA-1 clear VR2 RAM
+		LDA.b #.SA1>>16 : STA $3182			; |
+		JSR $1E80					;/
 		PLP
-		LDY !Translevel				;\
-		LDA.w LEVEL_MegaLevel,y			; | Set mega level
-		STA !MegaLevelID			;/
-		LDA !Level				;\
-		ASL A					; |
-		CLC : ADC !Level			; | load pointer based on level number
-		TAX					; | x3
-		LDA .Table,x : STA $0000		; |
-		LDA .Table+1,x : STA $0001		;/
+		LDY !Translevel					;\
+		LDA.w LEVEL_MegaLevel,y				; | set mega level
+		STA !MegaLevelID				;/
+		LDA !Level					;\
+		ASL A						; |
+		CLC : ADC !Level				; | load pointer based on level number
+		TAX						; | x3
+		LDA .Table,x : STA $0000			; |
+		LDA .Table+1,x : STA $0001			;/
 
 		.LoadLightPoints					;\
 		STZ !LightPointIndex					; |
@@ -784,7 +788,7 @@ print "Level code handler inserted at $", pc, "."
 		LDA.b #.InitShader>>8 : STA $3181		; | initialize !ShaderInput with a copy of !PaletteRGB
 		LDA.b #.InitShader>>16 : STA $3182		; |
 		JSR $1E80					;/
-
+		STZ !ProcessLight				; light shader is good to go
 
 
 		PLB						; > end of bank wrapper
@@ -913,9 +917,9 @@ print "Level code handler inserted at $", pc, "."
 		SEP #$30
 
 		STZ !PlayerBonusHP				;\
-		LDA !Difficulty					; |
-		AND #$03 : BNE ..nobonushp			; | +1 max HP on easy
-		LDA #$01 : STA !PlayerBonusHP			; |
+	;	LDA !Difficulty_full				; |
+	;	AND #$03 : BNE ..nobonushp			; | +1 max HP on easy
+	;	LDA #$04 : STA !PlayerBonusHP			; |
 		..nobonushp					;/
 
 		%ReloadOAMData()				; reload

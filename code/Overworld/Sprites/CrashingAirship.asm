@@ -43,18 +43,15 @@
 		BRA ..done
 
 		..carrymario
-		SEP #$20
-		LDA #$01
-		STA !MapHidePlayers
-		STA !CircleForceCenter
-		REP #$20
+		INC !MapHidePlayers
+		INC !CircleForceCenter
 		LDA #$00D4 : STA !P1MapX
 		LDA #$0370 : STA !P1MapY
 		BRA ..done
 
 		..dropmario
-		SEP #$20
 		STZ !MapHidePlayers
+		SEP #$20
 		LDA #$20 : STA !P1MapZSpeed
 		REP #$20
 		LDA !OW_sprite_X,x : STA !P1MapX

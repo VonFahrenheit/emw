@@ -556,23 +556,38 @@ endmacro
 		REP #$30
 		JSR DrawPlayer_Dynamic
 
-		JSL !GetCGRAM
-		LDA !CharMenuCursor
-		AND #$00FF
-		ASL #5
-		ADC.w #!PalsetData+2
-		PLB						; go into bank 0x40
-		STA !CGRAMtable+$02,y
-		LDA.w #!PalsetData>>16 : STA !CGRAMtable+$04,y
-		LDA #$001E : STA !CGRAMtable+$00,y
-		SEP #$20
-		LDA.l !SelectingPlayer
-		BEQ $02 : LDA #$10
-		ORA #$81
-		STA !CGRAMtable+$05,y
-		LSR #4
-		TAX
-		LDA #$01 : STA !ShaderRowDisable,x
+
+
+		LDA.w #!PalsetData>>8 : STA $01			;\
+		LDA !CharMenuCursor				; |
+		AND #$00FF					; | get palette data pointer
+		ASL #5						; |
+		ADC.w #!PalsetData+2				; |
+		STA $00						;/
+		LDY #$001C					;\
+		LDA !SelectingPlayer				; |
+		AND #$00FF					; |
+		BEQ $03 : LDA #$0020				; |
+		ORA #$011E					; |
+		TAX						; | update palette (RGB mirror + shader input)
+	-	LDA [$00],y					; |
+		STA !PaletteRGB,x				; |
+		STA !ShaderInput,x				; |
+		DEX #2						; |
+		DEY #2 : BPL -					;/
+		JSL !GetCGRAM					;\
+		PLB						; > go into bank 0x40
+		LDA $00 : STA !CGRAMtable+$02,y			; |
+		LDA.w #!PalsetData>>16 : STA !CGRAMtable+$04,y	; |
+		LDA #$001E : STA !CGRAMtable+$00,y		; |
+		SEP #$20					; | update palette (CGRAM)
+		LDA.l !SelectingPlayer				; |
+		BEQ $02 : LDA #$10				; |
+		ORA #$81					; |
+		STA !CGRAMtable+$05,y				; |
+		LSR #4						; |
+		TAX						; |
+		LDA #$01 : STA !ShaderRowDisable,x		;/
 		RTS
 
 

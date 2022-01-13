@@ -178,7 +178,6 @@ EliteKoopa:
 		JSR SetAim
 		LDY #$00
 		LDA !Difficulty
-		AND #$03
 		BNE $02 : INY #2
 		LDA DATA_FireSpeed,y
 		JSL AIM_SHOT
@@ -189,7 +188,6 @@ EliteKoopa:
 		.NoAim
 		LDY $3320,x
 		LDA !Difficulty
-		AND #$03
 		BNE $02 : INY #2
 		LDA DATA_FireSpeed,y : STA $04
 		STZ $05
@@ -507,7 +505,6 @@ EliteKoopa:
 		STZ !SpriteAnimTimer			; |
 		BRA .Frctn				; > apply friction
 	+	LDA !Difficulty				; |
-		AND #$03				; |
 		CMP #$02				; |
 		BNE $02 : INY #2			; |
 		LDA !ShellTimer : BNE .NoShll		; |
@@ -532,8 +529,7 @@ EliteKoopa:
 
 	.Speed	LDY $3320,x				;\
 	..Diff	LDA !Difficulty				; |
-		AND #$03				; | higher index on EASY, based on direction
-		BNE $02 : INY #2			; |
+		BNE $02 : INY #2			; | higher index on EASY, based on direction
 		LDA DATA_XSpeed,y			; |
 	.X	JSR SetSpeed				;/
 	.Write	LDA $3330,x				;\ backup ground flag
@@ -764,8 +760,7 @@ EliteKoopa:
 		LSR A
 		LDA #$40
 		BCC +
-		LDA !Difficulty
-		AND #$03 : TAY
+		LDY !Difficulty
 		LDA DATA_YellowFireRate,y
 
 	+	STA !FireTimer
@@ -780,8 +775,7 @@ EliteKoopa:
 
 	CounterSight:
 		CPY #$06 : BNE .NoEasy
-		LDA !Difficulty
-		AND #$03 : BNE .NoEasy
+		LDA !Difficulty : BNE .NoEasy
 		LDY #$1E
 		.NoEasy
 

@@ -222,7 +222,6 @@ Rex:
 		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
 		LDA !Difficulty
-		AND #$03
 	+	ASL A
 		ADC $3320,x
 		TAY

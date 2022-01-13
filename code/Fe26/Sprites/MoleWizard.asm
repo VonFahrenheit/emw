@@ -14,11 +14,8 @@ MoleWizard:
 	INIT:
 		PHB : PHK : PLB
 		LDA #$40 : STA !MoleWizardTimer
-		LDA !Difficulty
-		AND #$03
-		TAY
-		LDA DATA_HP,y
-		STA !MoleWizardHP
+		LDY !Difficulty
+		LDA DATA_HP,y : STA !MoleWizardHP
 		PLB
 
 
@@ -90,9 +87,7 @@ MoleWizard:
 		LDA $3330,x				; |
 		AND #$04 : BEQ ..Return			; | Enter attack state
 		LDA #$01 : STA !MoleWizardState		; |
-		LDA !Difficulty				; |
-		AND #$03				; |
-		TAY					; |
+		LDY !Difficulty				; |
 		LDA DATA_AttackTime,y			; |
 		STA !MoleWizardTimer			;/
 		JSL SUB_HORZ_POS			;\ Face a player

@@ -298,9 +298,7 @@ Wizrex:
 		SBC #$03 : BRA -				; |
 	+	TAY						; |
 		LDA ..bigorbtile,y : STA $03			;/
-		LDA !Difficulty					;\
-		AND #$03					; | difficulty index
-		TAY						;/
+		LDY !Difficulty					; difficulty index
 		LDA ..orbangle,y : STA $02			; angle index offset
 		LDA ..orbcount,y : STA $01			; number of orbs
 		SEC : SBC !WizrexCircleStatus,x			;\ orbs to skip
@@ -883,8 +881,7 @@ Wizrex:
 
 		LDY !WizrexFlyTimer,x				;\
 		CPY #$28 : BEQ ..shoot				; |
-		LDA !Difficulty					; |
-		AND #$03 : BEQ ..return				; |
+		LDA !Difficulty : BEQ ..return			; |
 		CPY #$25 : BEQ ..startanim			; | shoot values
 		CPY #$1D : BEQ ..shoot				; |
 		CMP #$02 : BNE ..return				; |
@@ -987,11 +984,10 @@ Wizrex:
 		LDY !WizrexTargetPlayer,x			;\ move without anim
 		JSR .Hover_move					;/
 
-		LDA !Difficulty					;\
-		AND #$03 : BEQ ..easy				; |
+		LDA !Difficulty : BEQ ..easy			;\
 		CMP #$01 : BEQ ..normal				; |
-		..insane					; | insane cast
-		LDA $14						; |
+		..insane					; |
+		LDA $14						; | insane cast
 		AND #$07 : BEQ ..cast				; |
 		..return					; |
 		RTS						;/
@@ -1037,9 +1033,7 @@ Wizrex:
 		..init						; |
 		ORA #$80 : STA !WizrexMovement,x		; |
 		LDA #$D8-1 : STA !WizrexAttackTimer,x		; |
-		LDA !Difficulty					; |
-		AND #$03					; |
-		TAY						; |
+		LDY !Difficulty					; |
 		LDA GRAPHICS_CircleCast_orbcount,y		; |
 		STA !WizrexCircleStatus,x			; | init timer + orb count + target
 		LDA !RNG					; |
@@ -1066,9 +1060,7 @@ Wizrex:
 		JSR CAST_Target					; |
 		BRA ..firedone					; |
 		..checkfire					;/
-		LDA !Difficulty					;\
-		AND #$03					; | cast offset index
-		TAY						;/
+		LDY !Difficulty					; cast offset index
 		STZ $2250					;\
 		LDA ..spellangle,y : STA $2251			; |
 		STZ $2252					; |

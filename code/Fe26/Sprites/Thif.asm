@@ -326,9 +326,7 @@ Interact:	LDA !P2YSpeed-$80,y
 	+	RTS
 
 	.Side	LDA $3290,x : BEQ +
-		LDA !Difficulty
-		AND #$03
-		TAY
+		LDY !Difficulty
 		LDA DATA_Invinc,y
 		STA $3300,x			; Set don't get hurt timer
 		LDA $AE,x

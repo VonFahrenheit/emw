@@ -143,7 +143,6 @@ AggroRex:
 		STA !ExtraBits,x					; |
 		STZ $3330,x						; |
 		LDA !Difficulty						; | ambush mode: jump upon detecting a player
-		AND #$03						; |
 		ASL A							; |
 		ADC $3320,x						; |
 		TAY							; |
@@ -184,7 +183,6 @@ AggroRex:
 		TYA : STA $3320,x					; |
 		..forward						; |
 		LDA !Difficulty						; | acceleration for chase
-		AND #$03						; |
 		ASL A							; |
 		ADC $3320,x						; |
 		TAY							; |
@@ -230,8 +228,7 @@ AggroRex:
 		LDY !AggroRexTargetPlayer,x				;\
 		JSL SUB_HORZ_POS_Target					; |
 		TYA : STA $3320,x					; |
-		LDA !Difficulty						; |
-		AND #$03						; | gain full X speed upon jumping
+		LDA !Difficulty						; | gain full X speed upon jumping
 		ASL A							; |
 		ADC $3320,x						; |
 		TAY							; |
@@ -706,9 +703,7 @@ AggroRex:
 		LDA !ExtraBits,x					;\ clear extra bit
 		AND.b #$04^$FF : STA !ExtraBits,x			;/
 		LDA #$20 : STA !AggroRexStunTimer,x			; stun
-		LDA !Difficulty						;\
-		AND #$03						; | i-frames depend on difficulty
-		TAY							; |
+		LDY !Difficulty						;\ i-frames depend on difficulty
 		LDA DATA_IFrames,y : STA !AggroRexIFrames,x		;/
 		LDA #!AggroRex_Hurt : STA !SpriteAnimIndex		;\ update anim
 		STZ !SpriteAnimTimer					;/

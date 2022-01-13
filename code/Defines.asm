@@ -290,7 +290,7 @@ endmacro
 
 
 
-		!Mode7Settings		= $786D		; $211A mirror
+		!Mode7Settings		= $786C		; $211A mirror
 			; rc--emyx (rc----yx are written to $211A, the rest is software side)
 			;
 			; hardware bits:
@@ -877,7 +877,10 @@ endmacro
 
 
 	; --P2 DATA --
-		!PlayerBonusHP		= $786C				; added to !P2MaxHP, calculated from file at level init
+		!PlayerBonusHP		= $786D				; added to !P2MaxHP, calculated from file at level init
+		!PlayerDamage		= $786E				; how much damage the player should take (must be set before calling !HurtPlayers)
+		!dmg			= !PlayerDamage			; alt name
+		!DefaultDamage		= $02				; used if !dmg is not specified when calling !HurtPlayers
 
 		!ApexTimerP1		= $611A				;\ resets apex 8 frames after landing
 		!ApexTimerP2		= $611B				;/
@@ -1322,7 +1325,11 @@ endmacro
 		!HardcoreMode		= $20
 
 
-		!Difficulty		= !SRAM_buffer+$00
+
+		!Difficulty		= $786F		; only lowest 2 bits
+		!Difficulty_full	= $7870		; includes challenge modes
+
+		!SRAM_Difficulty	= !SRAM_buffer+$00
 					; -hicrtDD
 					; DD - difficulty setting (00 = EASY, 01 = NORMAL, 02 = INSANE)
 					; t = time

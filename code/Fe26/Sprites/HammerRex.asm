@@ -13,8 +13,7 @@ HammerRex:
 		PHB : PHK : PLB
 		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
-		LDA !Difficulty
-		AND #$03 : TAY
+		LDY !Difficulty
 		LDA .Delay,y : STA $32D0,x			; wait before throwing first hammer
 		PLB
 		RTL
@@ -55,10 +54,9 @@ HammerRex:
 	PHYSICS:
 		.ThrowHammer
 		LDA $32D0,x : BNE ..nothrow			;\
-		LDA.l !Difficulty				; |
-		AND #$03 : TAY					; |
-		LDA !RNG					; | wait a random number of frames
-		LSR #2						; |
+		LDY !Difficulty					; |
+		LDA !RNG					; |
+		LSR #2						; | wait a random number of frames (decreases on higher difficulties)
 		CLC : ADC #$23					; |
 		CLC : ADC.w DATA_ThrowDelay,y			; |
 		STA $32D0,x					;/
@@ -341,8 +339,7 @@ HammerRex:
 		SBC #$00					; |
 		STA !Ex_YHi,y					;/
 
-		LDA !Difficulty
-		AND #$03 : BNE .FlexArc
+		LDA !Difficulty : BNE .FlexArc
 
 	; fixed arc on easy
 		.FixedArc
@@ -397,7 +394,6 @@ HammerRex:
 
 	; limit arc on normal
 		LDA !Difficulty
-		AND #$03
 		CMP #$02 : BEQ .Return
 		.LimitArc
 		LDA #$D0 : STA !Ex_YSpeed,y

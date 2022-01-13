@@ -126,8 +126,10 @@
 		ASL A					;\
 		TAY					; | pointer to event data
 		LDA EventTable_Ptr-2,y : STA $0E	;/
-		LDY #$0002				;\ w (hijack diagonal setting)
-		LDA ($0E),y : STA.l !zipdiagonalsize	;/
+		LDY #$0002				;\
+		LDA ($0E),y				; | w (hijack diagonal setting)
+		STA.l !zipdiagonalsizeinc		; |
+		STA.l !zipdiagonalsizedec		;/
 		LDY #$0004				;\ h
 		LDA ($0E),y : STA.l !ziploopcache	;/
 

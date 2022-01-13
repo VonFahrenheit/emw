@@ -1,13 +1,21 @@
 
 
 	HURT:
+		LDA !dmg : BNE .Go			;\
+		LDA.b #!DefaultDamage : STA !dmg	; | make sure there is a damage value loaded
+		.Go					;/
+		BEQ .Ready				;\
+		LDY !Difficulty : BNE .Ready		; | take 1 less damage on easy, but not less than 1
+		DEC !dmg				; |
+		.Ready					;/
+
 		LDA !P2Invinc				;\
 		ORA !StarTimer				; |
 		ORA !P2Pipe				; | invincibility
 		ORA !P2SlantPipe			; |
 		BNE .Return				;/
 
-		LDA !Difficulty				;\
+		LDA !Difficulty_full			;\
 		AND.b #!CriticalMode : BEQ .NotCrit	; | critical mode sets HP to 1 when player gets hit, meaning they'll always die from the damage
 		LDA #$01 : STA !P2HP			; |
 		.NotCrit				;/
@@ -28,10 +36,11 @@
 		STZ !P2TempHP				; remove temp HP
 		LDA #$0F : STA !P2HurtTimer		; set hurt animation timer
 		LDA !P2HP				;\
-		DEC A					; |
-		STA !P2HP				; | decrement HP and kill player 2 if zero
-		BEQ .Kill				; |
-		BMI .Kill				;/
+		SEC : SBC !dmg				; |
+		BPL $02 : LDA #$00			; | subtract damage from player HP (kill if 0)
+		STA !P2HP				; |
+		CMP #$00 : BEQ .Kill			;/
+		STZ !dmg				; damage value used
 		RTL					; return
 
 .Kill		LDA #$01 : STA !P2Status		; > this player dies
@@ -42,12 +51,14 @@
 		LDA !P1DeathCounter
 		INC A : STA !P1DeathCounter
 		SEP #$20
+		STZ !dmg				; damage value used
 		RTL
 		..p2
 		REP #$20
 		LDA !P1DeathCounter
 		INC A : STA !P1DeathCounter
 		SEP #$20
+		STZ !dmg				; damage value used
 .Return		RTL
 
 
@@ -62,9 +73,13 @@
 
 		.Mario
 		LDA !P2Invinc : STA !MarioFlashTimer
-		LDA !P2HP
-		CMP #$01 : BEQ ..kill
-		CMP #$02 : BNE ..noshrink
+		LDA !P2HP				;\
+		SEC : SBC !dmg				; | die when HP goes to 0 or negative
+		BEQ ..kill				; |
+		BMI ..kill				;/
+		CMP #$05 : BCS ..noshrink		;\
+		LDA !P2HP				; | only shrink when going from big to small
+		CMP #$05 : BCC ..noshrink		;/
 		LDA #$04 : STA !SPC1			; power down SFX
 		LDA #$01 : STA !MarioAnim
 		STZ $19
@@ -83,6 +98,12 @@
 		RTS
 
 		.Luigi
+		LDA !P2HP				;\
+		CMP #$05 : BCC ..nosizechange		; |
+		SBC !dmg				; | set shrink timer when size changes from big to small
+		CMP #$05 : BCS ..nosizechange		; |
+		LDA #$1F : STA !P2ShrinkTimer		; |
+		..nosizechange				;/
 		STZ !P2FireTimer			; reset fire timer
 		STZ !P2PickUp				; end pickup animation
 		STZ !P2SpinAttack			; end spin attack

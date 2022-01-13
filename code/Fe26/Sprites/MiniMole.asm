@@ -211,9 +211,7 @@ MiniMole:
 		LDA #$00
 		STA $6DA6,y
 		STA $6DA8,y
-		LDA !Difficulty
-		AND #$03
-		TAY
+		LDY !Difficulty
 		LDA !MiniMoleClingHP
 		CMP DATA_ClingHP,y
 		BCC ..Return

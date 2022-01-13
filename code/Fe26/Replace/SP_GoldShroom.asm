@@ -23,11 +23,13 @@ org $01C6C9
 		DEC A					; |
 		LSR A					; |
 		ROR A					; |
-		TAX					; | flash white + heal
+		TAX					; |
 		LDA #$14 : STA !P2FlashPal-$80,x	; |
-		LDA !P2HP-$80,x				; |
-		CMP !P2MaxHP-$80,x : BCS ..return	; |
-		INC !P2HP-$80,x				; |
+		LDA !P2HP-$80,x				; | flash white + heal
+		CLC : ADC #$04				; |
+		CMP !P2MaxHP-$80,x : BCC +		; |
+		LDA !P2MaxHP-$80,x			; |
+	+	STA !P2HP-$80,x				; |
 		..return				; |
 		PLX					; |
 		RTS					;/

@@ -155,6 +155,8 @@
 		LDA #$10 : STA !GameMode
 		LDA.b #!IntroLevel_UnexploredHill : STA $6109	; intro level (translevel num... but only kind of...)
 		LDA.b #!IntroLevel_UnexploredHill>>8 : STA $7F11; set hi bit of intro level num
+		LDA !LevelTable1+$00
+		AND #$40 : STA !LoadCheckpoint
 		STZ !Translevel					;
 		LDA #$81 : STA $4200				; enable joypad but keep interrupts disabled
 		JML ReturnLoad					; return
@@ -228,7 +230,7 @@
 		STA $2108					;/
 
 
-		LDA #$80 : STA !ProcessLight			; stop this
+		LDA #$02 : STA !ProcessLight			; stop this
 
 		PHB						;\ make sure these don't mess up
 		PHP						;/
@@ -338,13 +340,13 @@
 
 		LDA.w #!DecompBuffer : STA $00			;\ decompression destination
 		LDA.w #!DecompBuffer>>8 : STA $01		;/
-		LDA #$2800 : STA $2116
-		LDA.w #$00A : JSL !DecompressFile
-		LDA #$1801 : STA $4310
-		LDA.w #!DecompBuffer : STA $4312
-		LDA.w #!DecompBuffer>>8 : STA $4313
-		LDA #$1000 : STA $4315
-		STX $420B
+		LDA #$2800 : STA $2116				;\
+		LDA.w #$00A : JSL !DecompressFile		; |
+		LDA #$1801 : STA $4310				; |
+		LDA.w #!DecompBuffer : STA $4312		; | upload file 00A
+		LDA.w #!DecompBuffer>>8 : STA $4313		; |
+		LDA #$1000 : STA $4315				; |
+		STX $420B					;/
 
 
 
@@ -373,7 +375,7 @@
 		LDA.w #$00B : JSL !DecompressFile		;\
 		LDA #$8000 : STA $4310				; |
 		LDA #$7F00 : STA $2182				; |
-		STZ $2181					; | store file 00B at $7F0000
+		STZ $2181					; | store file 00B at $7F0000 (player GFX)
 		LDA.w #!DecompBuffer : STA $4312		; |
 		LDA.w #!DecompBuffer>>8 : STA $4313		; |
 		LDA #$2000 : STA $4315				; |
@@ -734,6 +736,8 @@
 		STA !PaletteBuffer,x					; |
 		DEX #2 : BPL -						;/
 		STA !Color0						; store color 0
+		LDA #$00FF : TRB !ProcessLight				; light shader is good to go
+
 
 
 		LDA !P1MapChar						;\

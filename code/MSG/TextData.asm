@@ -126,6 +126,7 @@ endif
 ;====================================================================================================;
 %insertMSG(Toad_IntroLevel_2)
 if !CompileText = 1
+	%important(1)
 	%mode(1)
 	%music($1F)
 	%expression(Toad, distressed, 0)
@@ -1252,7 +1253,7 @@ if !CompileText = 1
 	%linebreak()
 	db "A relaxing way to experience the game."
 	%linebreak()
-	db "You get an extra heart."
+	db "You take less damage."
 	%linebreak()
 	db "Enemies take contact damage upon touching you."
 	%linebreak()

@@ -362,6 +362,18 @@ endif
 ;	endif
 
 
+	!CoinTile		= $18
+	!YoshiCoinTile		= $19
+	!DashTile		= $1A
+	!HeartTile		= $0A
+	!HeartTile_empty	= !HeartTile+0
+	!HeartTile_quarter	= !HeartTile+1
+	!HeartTile_half		= !HeartTile+2
+	!HeartTile_threeq	= !HeartTile+3
+	!HeartTile_full		= !HeartTile+4
+	!SkullTile		= $0F
+
+
 	org $008DAC					; Code that uploads the status bar
 		RTS					; > Return
 	warnpc $008DFE
@@ -378,7 +390,7 @@ endif
 		RTL
 
 	.Main
-		LDA !Difficulty				;\ see if timer is enabled
+		LDA !Difficulty_full			;\ see if timer is enabled
 		AND.b #!TimeMode : BEQ .NoTimer		;/
 
 		LDA !TimerSeconds+1 : BMI .NoTimer	; don't process if negative
@@ -430,13 +442,11 @@ endif
 .Coins		LDA !CoinSound
 		BEQ $03 : DEC !CoinSound
 		REP #$20				; > A 16 bit
-		LDX !P1CoinIncrease
-		BEQ .Next
+		LDX !P1CoinIncrease : BEQ .Next
 	.P1	DEC !P1CoinIncrease
 		INC !P1Coins
 		JSR CoinSound
-	.Next	LDX !P2CoinIncrease
-		BEQ .Nope
+	.Next	LDX !P2CoinIncrease : BEQ .Nope
 	.P2	DEC !P2CoinIncrease
 		INC !P2Coins
 		JSR CoinSound
@@ -449,7 +459,7 @@ endif
 		LDA !P1Coins				;\
 		JSR Thousands				; |
 		STY !StatusBar+$01			; |
-		STX !StatusBar+$02			; | Run coin counter for player 1
+		STX !StatusBar+$02			; | P1 coin counter
 		JSR HexToDec				; |
 		STX !StatusBar+$03			; |
 		STA !StatusBar+$04			;/
@@ -468,7 +478,7 @@ endif
 		STA !StatusBar+$1E			; |
 		SEP #$20				; |
 		LDA #$14 : STA !StatusBar+$1F		; > empty space
-		LDA #$0A : STA !StatusBar+$1A		; > P2 coin symbol
+		LDA.b #!CoinTile : STA !StatusBar+$1A	; > P2 coin symbol
 		BRA .MultiPlayer			;/
 		..megalevel				;\
 		LDA !P2Coins				; |
@@ -480,7 +490,7 @@ endif
 		STA !StatusBar+$1F			; |
 		SEP #$20				; |
 		LDA #$14 : STA !StatusBar+$1A		; |
-		LDA #$0A : STA !StatusBar+$1B		; > P2 coin symbol
+		LDA.b #!CoinTile : STA !StatusBar+$1B	; > P2 coin symbol
 		BRA .MultiPlayer			;/
 
 		.SinglePlayer				;\
@@ -505,12 +515,12 @@ endif
 		STA !StatusBar+$17			; |
 		STA !StatusBar+$18			; |
 		SEP #$20				;/
-		LDA #$0A : STA !StatusBar+$00		; P1 coin symbols
+		LDA.b #!CoinTile : STA !StatusBar+$00	; P1 coin symbols
 
 .YoshiCoins	LDA !Translevel : BEQ .Player1HP	; no yoshi coins on index 0
 		LDA !MegaLevelID : BEQ +		; check for mega level
 		TAX
-		LDA #$0A : STA $01
+		LDA #$0A : STA $01			; index to stop at
 		LDY #$05
 		BRA ..Start
 
@@ -537,30 +547,49 @@ endif
 
 .Player1HP	LDA !P2Status-$80 : BNE .Player2HP	; don't write player 1 HP if player 1 is dead
 
-		LDA !Difficulty				;\
+		LDA !Difficulty_full			;\
 		AND.b #!CriticalMode : BEQ ..notcrit	; |
-		LDA #$0F : STA !StatusBar+$07		; | skull icon on critical mode
+		LDA.b #!SkullTile : STA !StatusBar+$07	; | skull icon on critical mode
 		BRA .Player2HP				; |
 		..notcrit				;/
-		LDX !P2HP-$80				;\
-		CPX !P2MaxHP-$80			; |
-		BCC $03 : LDX !P2MaxHP-$80		; |
-		BEQ .Player2HP				; | write player 1 HP
-		DEX					; |
-		PHX					; > push
-		LDA #$0D				; |
-	-	STA !StatusBar+$06,x			; |
-		DEX : BPL -				;/
-		PLX					; > pull
-		LDA !P2TempHP-$80 : BEQ .Player2HP	;\ player 1 temp HP icon
-		LDA #$0E : STA !StatusBar+$06,x		;/
+
+
+	LDA !P2MaxHP-$80
+	LSR #2
+	STA $00
+	LDX #$00
+	LDA.b #!HeartTile_full : XBA
+	LDA !P2HP-$80
+-	CMP #$04 : BCC +
+	SBC #$04
+	XBA : BRA ++
++	XBA : LDA #$00
+	XBA : ADC.b #!HeartTile
+++	STA !StatusBar+$06,x
+	XBA
+	INX
+	CPX $00 : BCC -
+
+
+;		LDX !P2HP-$80				;\
+;		CPX !P2MaxHP-$80			; |
+;		BCC $03 : LDX !P2MaxHP-$80		; |
+;		BEQ .Player2HP				; | write player 1 HP
+;		DEX					; |
+;		PHX					; > push
+;		LDA.b #!HeartTile_full			; |
+;	-	STA !StatusBar+$06,x			; |
+;		DEX : BPL -				;/
+;		PLX					; > pull
+;		LDA !P2TempHP-$80 : BEQ .Player2HP	;\ player 1 temp HP icon
+;		LDA #$0E : STA !StatusBar+$06,x		;/
 
 
 .Player2HP	LDA !P2Status : BNE .Return		; don't write player 2 HP if player 2 is dead
 		LDA !MultiPlayer : BEQ .Return		; don't write player 2 HP on singleplayer
-		LDA !Difficulty				;\
+		LDA !Difficulty_full			;\
 		AND.b #!CriticalMode : BEQ ..notcrit	; |
-		LDA #$0F : STA !StatusBar+$18		; | skull icon on critical mode
+		LDA.b #!SkullTile : STA !StatusBar+$18	; | skull icon on critical mode
 		BRA .Return				; |
 		..notcrit				;/
 
@@ -573,7 +602,7 @@ endif
 		BCC $03 : LDX !P2MaxHP			; |
 		BEQ .Return				; | write player 2 HP
 		DEX					; |
-		LDA #$0D				; |
+		LDA.b #!HeartTile_full			; |
 	-	STA !StatusBar,y			; |
 		DEY					; |
 		DEX : BPL -				;/	
@@ -584,7 +613,7 @@ endif
 .Return		RTS					; > Return
 
 
-.YoshiCoinGFX:	db $0C,$0B				; Not collected, collected
+.YoshiCoinGFX:	db !DashTile,!YoshiCoinTile		; not collected, collected
 
 	Thousands:
 		LDX #$00
@@ -2397,7 +2426,7 @@ MAIN_MENU:
 		BRA ..nochoice
 		..makenewfile
 		LDA #$02 : STA !MenuState		;\
-		LDA #$00 : STA !Difficulty		; | create a new file
+		LDA #$00 : STA !SRAM_Difficulty		; | create a new file
 		JSL NewFileSRAM				;/ (this prevents storage from previews)
 		..nochoice
 
@@ -2671,7 +2700,7 @@ MAIN_MENU:
 		LDA !MenuState : BMI ..main
 		..init
 		ORA #$80 : STA !MenuState
-		LDA #$01 : STA !Difficulty		; default = normal
+		LDA #$01 : STA !SRAM_Difficulty		; default = normal
 		STZ !MenuBG1_X
 		STZ !MenuBG1_X+1
 		REP #$10
@@ -2733,15 +2762,15 @@ MAIN_MENU:
 		AND #$0C : BEQ ..nochange
 		CMP #$0C : BEQ ..nochange
 		CMP #$04 : BEQ ..d
-	..u	LDA !Difficulty
+	..u	LDA !SRAM_Difficulty
 		DEC A : BPL ..w
 		LDA #$02
 		BRA ..w
-	..d	LDA !Difficulty
+	..d	LDA !SRAM_Difficulty
 		INC A
 		CMP #$03
 		BCC $02 : LDA #$00
-	..w	STA !Difficulty
+	..w	STA !SRAM_Difficulty
 		LDA #$06 : STA !SPC4
 		..nochange
 		BIT $16 : BPL ..nochoice
@@ -2757,7 +2786,7 @@ MAIN_MENU:
 		RTS
 		..noback
 
-		LDA !Difficulty
+		LDA !SRAM_Difficulty
 		AND #$03
 		INC A
 		CMP !MsgTrigger : BEQ ..notextupdate
@@ -2782,7 +2811,7 @@ MAIN_MENU:
 		BPL $03 : EOR #$FF : INC A
 		CLC : ADC #$10
 		STA $00
-		LDA !Difficulty
+		LDA !SRAM_Difficulty
 		AND #$03 : STA $0F
 		ASL #2
 		ADC $0F
@@ -2847,7 +2876,7 @@ MAIN_MENU:
 		BIT $16 : BPL ..nochoice
 		LDX !MenuChallengeSelect
 		LDA .ChallengeModeOrder,x
-		EOR !Difficulty : STA !Difficulty
+		EOR !SRAM_Difficulty : STA !SRAM_Difficulty
 		AND .ChallengeModeOrder,x : BNE +
 		LDA #$13 : STA !SPC4
 		BRA ..nochoice
@@ -2857,9 +2886,9 @@ MAIN_MENU:
 		BIT $16 : BVC ..noback
 		LDA #$06 : STA !SPC4
 		LDA #$82 : STA !MenuState
-		LDA !Difficulty
+		LDA !SRAM_Difficulty
 		AND #$03
-		STA !Difficulty
+		STA !SRAM_Difficulty
 		JMP ..nostart
 		..noback
 
@@ -2868,7 +2897,7 @@ MAIN_MENU:
 		JMP ..nostart
 
 		..createnewfile
-		LDA !Difficulty : JSL NewFileSRAM	; new file (store difficulty only)
+		LDA !SRAM_Difficulty : JSL NewFileSRAM	; new file (store difficulty only)
 		PHB					;\
 		LDA.b #!SRAM_block>>16			; |
 		PHA : PLB				; |
@@ -3004,7 +3033,7 @@ MAIN_MENU:
 		.DrawNewFile
 
 		; underscore
-		LDA !Difficulty
+		LDA !SRAM_Difficulty
 		AND #$03
 		ASL A
 		TAX
@@ -3020,7 +3049,7 @@ MAIN_MENU:
 		JSL !SpriteHUD
 
 		; challenge markers
-		LDA !Difficulty
+		LDA !SRAM_Difficulty
 		AND.b #$03^$FF
 		STA $08
 		LDX #$05
@@ -3357,7 +3386,7 @@ MAIN_MENU:
 
 
 	.DrawDifficulty
-		LDA !Difficulty
+		LDA !SRAM_Difficulty
 		AND #$03
 		ASL A
 		TAX
@@ -3419,7 +3448,7 @@ MAIN_MENU:
 
 
 	.DrawChallengeModes
-		LDA !Difficulty
+		LDA !SRAM_Difficulty
 		LSR #2
 		STA $04
 		LDA #$02 : STA $0D
@@ -3436,7 +3465,7 @@ MAIN_MENU:
 		AND #$00FF
 		LSR A
 		TAY
-		LDA !Difficulty
+		LDA !SRAM_Difficulty
 		AND #$00FF
 		AND .ChallengeModeOrder,y : BNE ..chosen
 		..grey
@@ -5296,7 +5325,7 @@ endmacro
 		SEP #$20						; A 8-bit
 
 		; load a bunch of variables from file
-		%loadbyte(!Difficulty)
+		%loadbyte(!SRAM_Difficulty)
 		%loadbyte(!CoinHoard)
 		%loadbyte(!CoinHoard+1)
 		%loadbyte(!CoinHoard+2)
@@ -5465,7 +5494,7 @@ endmacro
 		LDA.b #!SRAM_block>>16 : STA $0F			; bank byte of pointer to file
 
 		; add a bunch of variables to file
-		%addchecksum(!Difficulty)
+		%addchecksum(!SRAM_Difficulty)
 		%addchecksum(!CoinHoard)
 		%addchecksum(!CoinHoard+1)
 		%addchecksum(!CoinHoard+2)

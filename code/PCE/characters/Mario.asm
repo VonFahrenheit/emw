@@ -323,9 +323,8 @@ namespace Mario
 
 
 	Mario:
-		LDA #$03 : STA !P2MaxHP
-		LDA !P2MaxHP					;\
-		CLC : ADC !PlayerBonusHP			; | max HP buff
+		LDA #$08					;\
+		CLC : ADC !PlayerBonusHP			; | max HP
 		STA !P2MaxHP					;/
 
 		LDA !P2HP					;\
@@ -335,9 +334,7 @@ namespace Mario
 
 		LDX #$00					;\
 		LDA !P2HP					; |
-		DEC A						; |
-		BEQ +						; | set powerup status (size)
-		BMI +						; |
+		CMP #$05 : BCC +				; | set powerup status (really just size)
 		LDX #$01					; |
 	+	STX $19						;/
 
@@ -1049,7 +1046,7 @@ MarioGraphics:
 		LDY !P2ShrinkTimer : BNE .BigAddress		; shrink animation always uses big mario address
 
 		LDY !P2HP					;\
-		CPY #$02 : BCS .BigAddress			; |
+		CPY #$05 : BCS .BigAddress			; |
 		STA $00						; |
 		AND #$01E0					; |
 		STA $02						; X tile
@@ -1084,7 +1081,7 @@ MarioGraphics:
 
 		LDY !P2HurtTimer : BNE .BigFormat		;\
 		LDY !P2HP					; | conditions for big format
-		CPY #$02 : BCS .BigFormat			; |
+		CPY #$05 : BCS .BigFormat			; |
 		LDY !P2ShrinkTimer : BNE .BigFormat		;/
 		LDA !BigRAM+$12 : STA !BigRAM+$19		; 3 -> 4
 		LDA !BigRAM+$0B : STA !BigRAM+$12		; 2 -> 3
@@ -1124,7 +1121,7 @@ MarioGraphics:
 		LDY !P2HurtTimer : BNE .Big		;\
 		LDY !P2ShrinkTimer : BNE .Big		; | conditions for big mario tilemap
 		LDY !P2HP				; |
-		CPY #$02 : BCS .Big			;/
+		CPY #$05 : BCS .Big			;/
 		CLC : ADC ($04)				;\
 		INC #2					; | small mario tilemap
 		STA $04					;/

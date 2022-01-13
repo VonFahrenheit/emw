@@ -1576,7 +1576,7 @@ endmacro
 		dw .Block_MultipleCoins		; 123
 		dw .Block_Coin			; 124
 		dw .Block_VariableItem		; 125
-		dw .Block_Yoshi			; 126
+		dw .Block_1Up			; 126
 		dw .Block_GreenShell		; 127
 		dw .Block_GreenShell		; 128
 		dw .Brick_Fakeout		; 129
@@ -2115,7 +2115,8 @@ endmacro
 		JSR SPAWN_OBJECT
 		JSR REMOVE_TILE
 		BRA ..bonk
-		..Yoshi					; yoshi banned, just go to shell
+		..1Up					; yoshi banned, replaced with 1-up
+		LDA #$78 : BRA +			; 1-up
 		..GreenShell
 		LDA #$04				; 1 green shell
 	+	STA $04					;\ set item with no loop

@@ -20,7 +20,6 @@ PlantHead:
 		LDA !ExtraBits,x
 		AND #$04 : BEQ .NoAlt
 		LDA !Difficulty
-		AND #$03
 		INC A
 		STA !PlantHeadHP		; alt HP depends on difficulty
 		.NoAlt

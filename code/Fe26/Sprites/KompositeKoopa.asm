@@ -24,15 +24,14 @@ KompositeKoopa:
 
 
 	INIT:
-		PHB : PHK : PLB			; > Start of bank wrapper
+		PHB : PHK : PLB			; > start of bank wrapper
 		INC $3320,x
 		LDA !Difficulty			;\
-		AND #$03			; | Starting HP
-		CLC : ADC #$03			; |
+		CLC : ADC #$03			; | starting HP
 		STA !HP				;/
 		LDA #$06 : STA !SpriteAnimIndex
-		PLB				; > End of bank wrapper
-		RTL				; > End INIT routine
+		PLB				; > end of bank wrapper
+		RTL				; > end INIT routine
 
 
 ; The tail-end is stationary.
@@ -80,7 +79,6 @@ KompositeKoopa:
 		STZ $05
 		JSR Fire
 		LDA !Difficulty
-		AND #$03
 		CMP #$02 : BNE Interact
 		LDA #$10 : STA $05
 		JSR Fire

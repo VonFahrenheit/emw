@@ -1424,8 +1424,7 @@ level28:
 		.ProcessMoles
 		DEX : BPL -
 		LDA !Difficulty				;\
-		AND #$03				; | Amount of waves depends on difficulty
-		INC #2					; |
+		INC #2					; | number of waves depends on difficulty
 		STA $00					;/
 		LDY !Level+5
 		CPY $00 : BCS $04 : JML .Mole

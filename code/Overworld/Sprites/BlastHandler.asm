@@ -12,8 +12,8 @@
 		.Process
 		SEP #$20
 		LDA #$0F : STA !P1MapGhost
-		STZ !MapHidePlayers
 		REP #$20
+		STZ !MapHidePlayers
 
 		.Explosions
 		LDA !OW_sprite_AnimTimer,x

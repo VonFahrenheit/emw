@@ -32,8 +32,12 @@ sa1rom
 ; this takes up $900 bytes for normal mode (144 x 64 px) and $D90 bytes for cinematic mode (248 x 56 px)
 ; max size is $E00
 
-; - Hijacks:
+	!TextBaseTile	= $1B
 
+
+
+
+; - hijack
 
 	org $00A1DF
 	print "-- MSG --"
@@ -41,13 +45,13 @@ sa1rom
 		JML MESSAGE_ENGINE					; hijack message box routine
 
 
-; - Defines:
+; - defines
 
 	incsrc "../Defines.asm"
 
 
 
-; - Code:
+; - code
 
 	org $118000
 		db $53,$54,$41,$52	; claim this bank
@@ -182,7 +186,7 @@ sa1rom
 
 
 		.LastFrame
-		; this code runs on the last frame of the window being open
+		; this code runs on the last frame of the window being open/existing
 		LDA #$04 : TRB !HDMA
 		STZ !MsgTrigger						; otherwise close the message and restore a bunch of regs from backups
 		STZ !MsgTrigger+1					;
@@ -299,7 +303,6 @@ sa1rom
 		STX !MsgCounter						; |
 		LDA !MsgSequence,x : STA.l !MsgTrigger			; |
 		LDA !MsgSequence+1,x : STA.l !MsgTrigger+1		;/
-		JSR CLEAR_BOX						; clear previous text
 		STZ !MsgEnd						; reset message
 		LDA #$FF						;\
 		STA !MsgInputLock+0					; |
@@ -317,6 +320,7 @@ sa1rom
 
 
 		JSR ApplyHeader						;\
+		JSR CLEAR_BOX						; clear previous text
 		PLB							; | load header of next message and return
 		RTL							;/
 
@@ -463,7 +467,7 @@ sa1rom
 		AND #$000F						; |
 		XBA							; | restore layer 3 GFX overwritten by text
 		ASL #4							; | (backed up in SNES WRAM
-		ORA #$0018*8						; |
+		ORA.w #!TextBaseTile*8					; |
 		STA !VRAMtable+$2F,x					; |
 		LDA #$0E00 : STA !VRAMtable+$2A,x			;/
 
@@ -692,7 +696,7 @@ sa1rom
 		AND #$000F						; |
 		XBA							; |
 		ASL #4							; | backup all the layer 3 GFX that the text will use in SNES WRAM
-		ORA #$8000+($0018*8)					; |
+		ORA #$8000+(!TextBaseTile*8)				; |
 		STA !VRAMtable+$2F,x					; |
 		LDA #$0E00 : STA !VRAMtable+$2A,x			;/
 
@@ -797,11 +801,12 @@ sa1rom
 		REP #$20
 
 		.EmptyTile						;\
-		LDA !TextPal-1						; |
+		LDA !MsgFillerColor					; |
+		AND #$0003 : STA $00					; |
+		LDA !TextPal-1						; | tile 0x14-0x17 depending on filler color
 		AND #$FF00						; |
-		ORA #$2014						; | tile 0x014 if no border, tile 0x015 if border
-		BIT !MsgVertOffset-1					; |
-		BVS $01 : INC A						; |
+		ORA #$2014						; |
+		ORA $00							; |
 		STA.w !GFX_buffer+$2FE					;/
 
 		LDA.w #!GFX_buffer+$2FE : STA !VRAMtable+$02,x		;\
@@ -832,7 +837,7 @@ sa1rom
 		AND #$000F						; | (fixed from RAM)
 		XBA							; | overwrite with 0000 with no border or 00FF with border (pixel color 01)
 		ASL #4							; |
-		ORA #$0018*8						; |
+		ORA.w #!TextBaseTile*8					; |
 		STA !VRAMtable+$13,x					; |
 		STA !VRAMtable+$1A,x					; |
 		LDA #$4700						; |
@@ -1211,7 +1216,7 @@ sa1rom
 		XBA							; |
 		ASL #4							; | finish VRAM calculation
 		ORA.l $2306						; |
-		CLC : ADC.w #$0018*8					; |
+		CLC : ADC.w #!TextBaseTile*8				; |
 		STA !CCDMAtable+$05,x					;/
 
 		SEP #$20
@@ -1235,7 +1240,7 @@ sa1rom
 		XBA							; |
 		ASL #4							; | finish VRAM calculation
 		ORA.l $2306						; |
-		CLC : ADC.w #$0018*8					; |
+		CLC : ADC.w #!TextBaseTile*8				; |
 		STA !CCDMAtable+$05,x					;/
 		SEP #$20
 
@@ -1250,6 +1255,7 @@ sa1rom
 		STA !MsgDelay						; |
 		.NoDelay						;/
 
+	; construct tilemap
 		LDA #$00 : STA.l $2250
 		PLA
 		REP #$20
@@ -1266,7 +1272,7 @@ sa1rom
 		AND #$FF00
 		ORA #$2000
 		STA $0C
-		LDA #$0018
+		LDA.w #!TextBaseTile
 		CLC : ADC.l $2306
 		ORA $0C
 		LDX #$0000
@@ -1279,7 +1285,7 @@ sa1rom
 		INC A
 		STA.l $2253
 		LDX #$0000
-		LDA #$0018
+		LDA.w #!TextBaseTile
 		CLC : ADC.l $2306
 		ORA $0C
 	-	STA.w !GFX_buffer+$240,x
@@ -1590,7 +1596,7 @@ sa1rom
 ;	- set !MsgDelay to !MsgSpeed - 8
 
 
-; starting tile should be row * width + $18
+; starting tile should be row * width + !TextBaseTile
 ; that way i don't need different tables for different dimensions
 ; VRAM offset is always row * $20
 

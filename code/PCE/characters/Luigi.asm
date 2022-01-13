@@ -15,9 +15,8 @@ namespace Luigi
 		PHB : PHK : PLB
 
 		LDA #$01 : STA !P2Character
-		LDA #$03 : STA !P2MaxHP
-		LDA !P2MaxHP			;\
-		CLC : ADC !PlayerBonusHP	; | max HP buff
+		LDA #$08			;\
+		CLC : ADC !PlayerBonusHP	; | max HP
 		STA !P2MaxHP			;/
 
 		LDA !P2Init : BNE .Main
@@ -97,9 +96,6 @@ namespace Luigi
 		BEQ $03 : DEC !P2KickTimer
 		LDA !P2HurtTimer : BEQ +
 		DEC !P2HurtTimer
-		LDA !P2HP
-		CMP #$01 : BNE ++
-		LDA #$10 : STA !P2ShrinkTimer
 		BRA ++
 	+	LDA !P2Invinc
 		BEQ $03 : DEC !P2Invinc
@@ -191,9 +187,10 @@ namespace Luigi
 		LDA !P2XPosHi					; |
 		ADC .FireballXDisp+2,y				; |
 		STA !Ex_XHi,x					; |
-		LDY !P2HP					; | throw fireball at the correct time in the animation
-		DEY						; |
-		BEQ $02 : LDY #$01				; |
+		LDY #$00					; |
+		LDA !P2HP					; |
+		CMP #$05					; | throw fireball at the correct time in the animation
+		BCC $02 : LDY #$01				; |
 		LDA !P2YPosLo					; |
 		CLC : ADC .FireballYDisp,y			; |
 		STA !Ex_YLo,x					; |
@@ -705,7 +702,7 @@ namespace Luigi
 		REP #$30
 		LDA !P2HP				;\
 		AND #$00FF				; |
-		CMP #$0001 : BNE +			; | always use crouch clipping for small luigi
+		CMP #$0005 : BCS +			; | always use crouch clipping for small luigi
 		LDA.w #ANIM_ClippingCrouch		; |
 		BRA ++					;/
 	+	LDA !P2Anim				;\
@@ -1118,7 +1115,7 @@ namespace Luigi
 		LDY !P2ShrinkTimer : BNE .BigAddress		; shrink animation always uses big luigi address
 
 		LDY !P2HP					;\
-		CPY #$02 : BCS .BigAddress			; |
+		CPY #$05 : BCS .BigAddress			; |
 		STA $00						; |
 		AND #$01E0					; |
 		STA $02						; X tile
@@ -1154,7 +1151,7 @@ namespace Luigi
 		LDY !P2Anim					;\
 		CPY #!Lui_Hurt : BEQ .BigFormat			; |
 		LDY !P2HP					; | conditions for big format
-		CPY #$02 : BCS .BigFormat			; |
+		CPY #$05 : BCS .BigFormat			; |
 		LDY !P2ShrinkTimer : BNE .BigFormat		;/
 		LDA !BigRAM+$12 : STA !BigRAM+$19		; 3 -> 4
 		LDA !BigRAM+$0B : STA !BigRAM+$12		; 2 -> 3
@@ -1197,7 +1194,7 @@ namespace Luigi
 		CPY #!Lui_Hurt : BEQ .Big		; |
 		LDY !P2ShrinkTimer : BNE .Big		; | conditions for big luigi tilemap
 		LDY !P2HP				; |
-		CPY #$02 : BCS .Big			;/
+		CPY #$05 : BCS .Big			;/
 		CLC : ADC ($04)				;\
 		INC #2					; | small Luigi tilemap
 		STA $04					;/

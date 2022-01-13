@@ -72,13 +72,15 @@
 	!zipprev1C		= $411B04
 	!initzipcount		= $411B06	; 2 B, counts up from 0 to initialize zips
 	!zipdiagonalsize	= $411B08	; 2 B, replaces !zip_w if nonzero, only used if moving diagonally (also hijacked by RealTimeEvent)
-	!zipdiagonaloffsetinc	= $411B0A	; 2 B, added to row x position if moving diagonally, for incrementing only
-	!zipdiagonaloffsetdec	= $411B0C	; 2 B, added to row x position if moving diagonally, for decrementing only
-	!waterframe		= $411B0E
-	!waterspeed		= $411B10
-	!ziploop		= $411B12	; 2 B, used by RealTimeEvent
-	!ziploopcache		= $411B14	; 2 B, used by RealTimeEvent
-	;next			= $411B16
+	!zipdiagonalsizeinc	= $411B0A	;\ buffered into !zipdiagonalsize
+	!zipdiagonalsizedec	= $411B0C	;/
+	!zipdiagonaloffsetinc	= $411B0E	; 2 B, added to row x position if moving diagonally, for incrementing only
+	!zipdiagonaloffsetdec	= $411B10	; 2 B, added to row x position if moving diagonally, for decrementing only
+	!waterframe		= $411B12
+	!waterspeed		= $411B14
+	!ziploop		= $411B16	; 2 B, used by RealTimeEvent
+	!ziploopcache		= $411B18	; 2 B, used by RealTimeEvent
+	;next			= $411B1A
 
 	!zipbuffer		= $411C00	; 512 B, tilemap data buffer
 	;next			= $411E00
@@ -228,7 +230,9 @@
 
 
 		STZ.w !zipdiagonalsize					;\
-		STZ.w !zipdiagonaloffsetinc				; | reset diagonal
+		STZ.w !zipdiagonalsizeinc				; |
+		STZ.w !zipdiagonalsizedec				; | reset diagonal
+		STZ.w !zipdiagonaloffsetinc				; |
 		STZ.w !zipdiagonaloffsetdec				;/
 
 	; debug: count tiles and display on coin counter
@@ -249,11 +253,21 @@
 	endif
 
 
+
+; theory moment
+; - it's possible that some issues are still caused around the borders of the map
+; - if the column is inactive due to being outside of the map borders, diagonal will still trigger
+; - this would cause the corner tile to be ignored, allowing it to leak, breaking equilibrium
+; - note that increment and decrement likely have to be handled separately since they are assymetrical close to map borders
+; - if the column crosses the bottom map border, the bottom row is inactive, so diagonal is irrelevant for that corner
+; - if the column is inactive (outside map border) the corresponding (inc/dec) diagonal should be disabled
+;	BUT the other diagonal might still be active
+;	because of this inc/dec diagonals have to be handled separately
+
 		.Column
 		LDA $1A
 		EOR.w !zipprev1A
 		AND #$0008 : BEQ ..done
-		LDA.w #!zip_w-1 : STA.w !zipdiagonalsize		; set diagonal
 		LDA $1C
 		CLC : ADC.w #!zip_y
 		STA $02
@@ -262,13 +276,12 @@
 		LDA $1A
 		CMP.w !zipprev1A
 		BCS $02 : INX #2
-	LDA.l .HorzOffset_diagonal,x : STA.w !zipdiagonaloffsetinc
-	LDA.l .HorzOffset_diagonal+2,x : STA.w !zipdiagonaloffsetdec
-	LDA $1A
 		CLC : ADC.l .HorzOffset,x
 		PHA
 		CMP #$0600 : BCS ..noincrement
 		STA $00
+		LDA.l .HorzOffset_diagonal,x : STA.w !zipdiagonaloffsetinc
+		LDA.w #!zip_w-1 : STA.w !zipdiagonalsizeinc		; set diagonal (increment)
 		JSR .Increment
 		..noincrement
 
@@ -283,6 +296,8 @@
 		CLC : ADC.l .HorzOffset+2,x
 		CMP #$0600 : BCS ..nodecrement
 		STA $00
+		LDA.l .HorzOffset_diagonal+2,x : STA.w !zipdiagonaloffsetdec
+		LDA.w #!zip_w-1 : STA.w !zipdiagonalsizedec		; set diagonal (decrement)
 		JSR .Decrement
 		..nodecrement
 
@@ -408,6 +423,7 @@
 		LDX $04							; > zip direction
 		BEQ $03 : ORA #$8000					; |
 		STA.w !zipbuffer+2					;/
+		LDA.w !zipdiagonalsizeinc : STA.w !zipdiagonalsize	; > diagonal (increment)
 		JSR .GetPointer						;\
 	if !DebugOverworld
 	LDA $0C
@@ -445,6 +461,7 @@
 ;	$04 = mode (0 = row, 1 = column)
 ;
 		.Decrement						;\
+		LDA.w !zipdiagonalsizedec : STA.w !zipdiagonalsize	; > diagonal (decrement)
 		JSR .GetPointer						; | setup
 		LDY #$0000						;/
 		..loop							;\
@@ -781,15 +798,27 @@
 		LDA #$0002 : STA $06					; index+
 
 		; adjusting size for negative offset breaks the equilibrium, so we can't do it
-		LDA !BigRAM+$10
-		SEC : SBC.w #$600-(!zip_w*8)
-		BEQ +
-		BMI +
-		LSR #3
-		SEC : SBC $0C
-		EOR #$FFFF : INC A
-		STA $0C
-		+
+		; LDA !BigRAM+$10
+		; SEC : SBC.w #$600-(!zip_w*8)
+		; BEQ +
+		; BMI +
+		; LSR #3
+		; SEC : SBC $0C
+		; EOR #$FFFF : INC A
+		; STA $0C
+		; +
+
+	LDA !BigRAM+$10 : BPL +
+	EOR #$FFFF : INC A
+	BRA ++
++	SEC : SBC.w #$600-(!zip_w*8)
+	BEQ +
+	BMI +
+++	LSR #3
+	SEC : SBC $0C
+	EOR #$FFFF : INC A
+	STA $0C
+	+
 
 		LDA $08							;\
 		AND #$003E						; |
@@ -831,7 +860,7 @@
 
 
 
-; matrix is 8 screens wide to leave a "buffer screen" outside the actual map
+; matrix is 8 screens wide to leave a "buffer screen" outside the actual map (THIS SEEMS UNTRUE)
 ; actual map is 6 x 4 screens
 
 		.TilemapMatrix

@@ -1382,8 +1382,10 @@ CHUCK_PUSH:	db $20,$E0
 		BRA .Shared
 
 .Powerup	LDA !P2HP			;\
-		CMP !P2MaxHP : BCS .Shared	; | give HP
-		INC !P2HP			;/
+		CLC : ADC #$04			; |
+		CMP !P2MaxHP : BCC +		; | heal 1 heart
+		LDA !P2MaxHP			; |
+	+	STA !P2HP			;/
 
 .Shared		LDA #$0A : STA !SPC1
 		LDA #$14 : STA !P2FlashPal	; flash pal

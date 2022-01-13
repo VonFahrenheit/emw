@@ -82,7 +82,7 @@ endmacro
 		STZ !PalFlash+1
 		LDA #$06 : STA !Phase		; > Intro phase
 		LDA !Difficulty			;\
-		AND #$03			; | EASY:	8 HP
+	;	AND #$03			; | EASY:	8 HP
 		ASL #2				; | NORMAL:	12 HP
 		CLC : ADC #$08			; | INSANE:	16 HP
 		STA !HP				;/
@@ -593,8 +593,7 @@ endmacro
 		.Main
 		LDA !Enrage : BEQ ..NoSpawn		; > Only spawn spinies if enraged
 		LDA !MsgTrigger : BNE ..NoSpawn		; > Don't spawn during message
-		LDA !Difficulty
-		AND #$03 : BEQ ..NoSpawn		; > No spinies on EASY
+		LDA !Difficulty : BEQ ..NoSpawn		; > No spinies on EASY
 		CMP #$02 : BEQ ..Insane
 
 		..Normal
@@ -1007,9 +1006,7 @@ endmacro
 		LDA #$0706 : STA !SpinyMemory+$E		; |
 		SEP #$20					;/
 
-		LDA !Difficulty
-		AND #$03
-		TAY
+		LDY !Difficulty
 		LDA .MoveBase,y
 		STA !Move
 		JSR Random					;/
@@ -1081,9 +1078,7 @@ endmacro
 		AND #$7F					; | Handle new movement
 		INC A						; |
 		CMP #$09 : BNE .KeepMoving			;/
-		LDA !Difficulty
-		AND #$03
-		TAY
+		LDY !Difficulty
 		LDA .MoveBase,y : STA !Lightning
 		LDA #$0B : STA !SpriteAnimIndex
 		BRA Zap_INIT
@@ -1177,7 +1172,7 @@ endmacro
 	+	TAY
 		REP #$20
 		LDA !Difficulty
-		AND #$0003
+		AND #$0003						; note the 16-bit A, this is still necessary here
 		CMP #$0002 : BEQ ..AimX
 		LDA !P2XPosLo-$80,y
 		BRA ..X
@@ -1680,9 +1675,7 @@ endmacro
 		.Dancing
 		LDA !DanceTimer : BNE .Return
 
-	.Spawn	LDA !Difficulty
-		AND #$03
-		TAY
+	.Spawn	LDY !Difficulty
 		LDA DANCEPAD_SpawnSpeed,y
 		STA !DanceTimer
 		LDA !Move
@@ -1730,7 +1723,6 @@ endmacro
 		STA.l !VineDestroy+$11				;/
 
 		LDA !Difficulty
-		AND #$03
 		CLC : ADC #$03
 		CMP !Impressiveness
 		BNE .NotImpressed
@@ -2433,10 +2425,8 @@ endmacro
 		CMP #$01 : BNE .Done
 
 		.Init
-		LDA !Difficulty					;\
-		AND #$03					; |
-		TAY						; | Spawn more symbols
-		LDA.w .SpawnSpeed,y : STA $3420,x		; |
+		LDY !Difficulty					;\
+		LDA.w .SpawnSpeed,y : STA $3420,x		; | Spawn more symbols
 		LDA $32D0,x : BEQ .Done				; |
 		JMP .Spawn					;/
 
@@ -2492,9 +2482,8 @@ endmacro
 
 		INC $BE,x					; Dance pad activated
 		LDA #$01 : STA.l !VineDestroy+$00		; Activate dance game
-		LDA !Difficulty					;\
-		AND #$03 : TAY					; | Spawn time depends on difficulty
-		LDA.w .SpawnSpeed,y : STA $3420,x		; |
+		LDY !Difficulty					;\
+		LDA.w .SpawnSpeed,y : STA $3420,x		; | Spawn time depends on difficulty
 		LDA.w .SpawnTime,y : STA $32D0,x		;/
 		INC A
 

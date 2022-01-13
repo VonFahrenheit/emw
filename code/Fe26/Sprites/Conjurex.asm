@@ -30,9 +30,7 @@ Conjurex:
 		AND #$1F
 		STA !ConjurexMask,x
 
-		LDA !Difficulty
-		AND #$03
-		TAY
+		LDY !Difficulty
 		LDA DATA_Ammo,y
 		STA !ConjurexMaxAmmo,x
 		STA !ConjurexAmmo,x
@@ -566,9 +564,7 @@ Conjurex:
 
 
 	Hurt:
-		LDA !Difficulty
-		AND #$03
-		TAY
+		LDY !Difficulty
 		LDA DATA_IFrames,y : STA !ConjurexIFrames,x
 
 		LDA $BE,x : BEQ +

@@ -406,7 +406,6 @@ level10:
 
 	++	DEX : BPL -
 		LDA !Difficulty
-		AND #$03
 		INC A
 		STA $00
 		CPY $00 : BCS .Return

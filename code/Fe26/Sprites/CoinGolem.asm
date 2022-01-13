@@ -35,9 +35,7 @@ CoinGolem:
 		ORA #$80 : STA !ExtraBits,x
 		LDA !MultiPlayer
 		STA $00
-		LDA !Difficulty
-		AND #$03
-		TAY
+		LDY !Difficulty
 		LDA DATA_HP,y
 		LDY $00
 		BEQ $01 : ASL A

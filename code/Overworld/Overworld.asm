@@ -83,7 +83,7 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 	%MapDef(MapUpdateHUD,		4)
 	%MapDef(MapLevelNameWidth,	2)
 
-	%MapDef(MapHidePlayers,		1)
+	%MapDef(MapHidePlayers,		2)
 
 	%MapDef(P1MapXFraction,		1)
 	%MapDef(P1MapX,			2)
@@ -97,6 +97,7 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 	%MapDef(P1MapAnim,		1)
 	%MapDef(P1MapPrevAnim,		1)
 	%MapDef(P1MapDirection,		1)
+	%MapDef(P1MapDiag2,		1)
 	%MapDef(P1MapChar,		1)
 	%MapDef(P1MapGhost,		1)
 	%MapDef(P1MapForceFlip,		1)
@@ -113,6 +114,7 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 	%MapDef(P2MapAnim,		1)
 	%MapDef(P2MapPrevAnim,		1)
 	%MapDef(P2MapDirection,		1)
+	%MapDef(P2MapDiag2,		1)
 	%MapDef(P2MapChar,		1)
 	%MapDef(P2MapGhost,		1)
 	%MapDef(P2MapForceFlip,		1)

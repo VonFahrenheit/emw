@@ -27,9 +27,8 @@ Birdo:
 		LDA $3220,x : STA !BirdoStartX
 
 		LDA !Difficulty
-		AND #$03
-		CLC : ADC #$03
 		ASL A
+		ADC #$06
 		STA !BirdoHP
 
 	.Return	PLB				; > End of bank wrapper

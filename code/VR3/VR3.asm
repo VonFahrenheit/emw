@@ -3870,11 +3870,32 @@ NMI:		PHP					;\
 
 	; initialize NMI
 		PHK : PLB				; set bank
-		SEP #$30				; all regs 8-bit
-		LDA $4210				; clear NMI flag
-		LDA #$80 : STA $2100			; enable f-blank
-		STZ $420C				; disable HDMA
+		SEP #$10				; all regs 8-bit
+		LDX $4210				; clear NMI flag
+		LDX #$80 : STX $2100			; enable f-blank
+		STZ $420B				; disable DMA + HDMA (DMA doesn't matter, but we're in 16-bit A and don't want to touch $420D)
 		INC !MPU_NMI				; set NMI flag for SA-1
+
+
+	; direct color update
+		LDA !2132_RGB
+		ASL #3
+		SEP #$21
+		ROR #3
+		XBA
+		ORA #$40
+		STA $2132
+		LDA !2132_RGB+1
+		LSR A
+		SEC : ROR A
+		STA $2132
+		XBA
+		STA $2132
+
+	; color 0 update
+		STZ $2121
+		LDA !Color0 : STA $2122
+		LDA !Color0+1 : STA $2122
 
 
 	; check lag
@@ -3886,12 +3907,12 @@ NMI:		PHP					;\
 		LDA $23 : STA $2111			; |
 		LDA $24 : STA $2112			; |
 		LDA $25 : STA $2112			; | just update these regs on lag frames
-		LDA $42 : STA $2124			; | (these are changed during status bar IRQ so they have to be updated every v-blank)
+		LDA !2124 : STA $2124			; | (these are changed during status bar IRQ so they have to be updated every v-blank)
 		LDA !MainScreen				; |
 		STA $212C				; |
 		STA $212E				; |
-		LDA $44 : STA $2130			; |
-		LDA $40 : STA $2131			;/
+		LDA !2130 : STA $2130			; |
+		LDA !2131 : STA $2131			;/
 		STZ $4304				; bank 00
 		REP #$20				;\
 		LDA #$2202 : STA $4300			; |
@@ -3948,25 +3969,7 @@ NMI:		PHP					;\
 		LDA #$3000 : TCD			; DP = $3000
 
 
-	; direct color update
-		LDA !2132_RGB
-		ASL #3
-		SEP #$21
-		ROR #3
-		XBA
-		ORA #$40
-		STA $2132
-		LDA $6702
-		LSR A
-		SEC : ROR A
-		STA $2132
-		XBA
-		STA $2132
-
-	; color 0 update
-		STZ $2121
-		LDA !Color0 : STA $2122
-		LDA !Color0+1 : STA $2122
+		SEP #$20
 
 
 		INC $10					; set processing frame flag (anywhere in .NoLag where DP = $3000 and A is 8-bit will do)

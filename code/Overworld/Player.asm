@@ -2,7 +2,8 @@
 
 
 	!MapSpeed		= $17
-	!MapSpeedDiagonal	= sqrt((!MapSpeed*!MapSpeed)/2)
+	!MapSpeedDiag		= $10
+	!MapSpeedDiag2		= $0B
 
 
 
@@ -375,107 +376,6 @@
 		RTS
 
 
-
-; input:
-;	Y = collision dir
-;	$0C = X coord
-;	$0E = Y coord
-; output:
-;	BNE -> collision, BEQ -> no collision
-;	$00 = value to add to coordinate
-
-	ReadTile:
-		PHY
-
-		LDA $0E+1
-		AND #$00FF
-		CMP #$0004 : BCS .FullSolid
-		TAY
-		LDA $0C+1
-		AND #$00FF
-		CMP #$0006 : BCS .FullSolid
-		ASL A
-		ADC HandleZips_TilemapMatrix_y,y
-		AND #$00FF
-		TAY
-		LDA HandleZips_TilemapMatrix,y : TAY
-		LDA DecompressionMap+1,y : STA $00
-		LDA DecompressionMap+2,y : STA $01
-		LDA $0C
-		AND #$00F8
-		LSR #2
-		STA $04
-		LDA $0E
-		AND #$00F8
-		ASL #3
-		ORA $04
-		TAY
-		LDA [$00],y
-		AND #$03FF : STA $00
-
-		AND #$0007 : TAY			; get bit index
-		LDA .Solidity_bits,y			;\ bit to check
-		AND #$00FF : STA $02			;/
-		LDA $00					;\
-		LSR #3					; | get byte inndex
-		TAY					; |
-		LDA .Solidity,y				;/
-		AND $02 : BNE .FullSolid		; check solidity
-
-		.NotSolid
-		PLY
-		LDA #$0000
-		RTS
-
-		.FullSolid
-		PLY
-		LDA .Solidity_pushoutvalue,y : STA $00
-		RTS
-
-		.Slant1
-		LDA $0C
-		AND #$0007 : STA $00
-		LDA $0E
-		AND #$0007
-		ASL #3
-		ORA $00
-		TAY
-		LDA ..pixelmap,y
-		AND #$00FF : BEQ .NotSolid
-
-		; CALC PUSHOUT VALUE HERE
-
-
-		..pixelmap
-		db $00,$00,$00,$00,$00,$00,$00,$01
-		db $00,$00,$00,$00,$00,$00,$01,$01
-		db $00,$00,$00,$00,$00,$01,$01,$01
-		db $00,$00,$00,$00,$01,$01,$01,$01
-		db $00,$00,$00,$01,$01,$01,$01,$01
-		db $00,$00,$01,$01,$01,$01,$01,$01
-		db $00,$01,$01,$01,$01,$01,$01,$01
-		db $01,$01,$01,$01,$01,$01,$01,$01
-
-
-
-		.Slant2
-
-		.Slant3
-
-		.Slant4
-
-		.VerticalWall
-
-		.HorizontalWall
-
-
-
-
-	incsrc "Data/TileSolidity.asm"
-
-
-
-;
 ; $00	X
 ; $02	Y
 ; $04	tile + prop
@@ -563,8 +463,7 @@
 		+
 
 
-		LDA !MapHidePlayers			;\
-		AND #$00FF : BEQ ..nothidden		; |
+		LDA !MapHidePlayers : BEQ ..nothidden	;\
 		STX $0A					; | don't draw to OAM if hidden
 		BRA ..noshadow				; |
 		..nothidden				;/
@@ -615,7 +514,6 @@
 
 
 	; check if tile in $0E should be uploaded
-
 		.Dynamic
 		LDA $0A
 		BEQ $03 : LDA #$0020
@@ -704,13 +602,15 @@
 		LDA $14
 		AND #$01
 	+	STA $02
-	if !Debug = 1
-	BIT $6DA2 : BVC +
-	TYA
-	ORA #$10
-	TAY
-	+
-	endif
+
+		LDA !P1MapDiag2,x : BEQ +
+		TYA
+		ORA #$10
+		TAY
+		STZ !P1MapDiag2,x
+		+
+
+
 		LDA .SpeedTable_x,y : STA $00
 		LDA .SpeedTable_y,y : STA $01
 
@@ -802,6 +702,317 @@
 
 
 
+; debug: skip collision with R
+	if !Debug = 1
+	LDA $6DA4
+	AND #$0010 : BEQ .Collision
+	JMP .Collision_done
+	endif
+
+		.Collision
+
+
+	LDA !P1MapGhost,x
+	AND #$000F : BEQ $03 : JMP ..done
+
+
+
+
+
+		LDA !P1MapXSpeed,x
+		AND #$00FF
+		STA !BigRAM+$10
+		STA !BigRAM+$12
+		STA !BigRAM+$14
+		STA !BigRAM+$16
+		LDA !P1MapYSpeed,x
+		AND #$00FF
+		STA !BigRAM+$18
+		STA !BigRAM+$1A
+		STA !BigRAM+$1C
+		STA !BigRAM+$1E
+
+		LDY #$0000				; index = 0
+
+		..loop					;\
+		LDA #$0000 : STA !BigRAM,y		; > clear collision
+		LDA #$0000 : STA !BigRAM+$70,y		; > clear corner correction
+		LDA !BigRAM+$10,y : BEQ ..next		; |
+		EOR .CollisionBits,y			; |
+		AND #$0080 : BNE ..next			; |
+		LDA Collision_X,y			; |
+		CLC : ADC !P1MapX,x			; |
+		STA $0C					; | get collision
+		STA !BigRAM+$40,y			; > save collision point X
+		AND #$0007 : STA !BigRAM+$20,y		; > save within-tile X
+		LDA Collision_Y,y			; |
+		CLC : ADC !P1MapY,x			; |
+		STA $0E					; |
+		STA !BigRAM+$50,y			; > save collision point Y
+		AND #$0007 : STA !BigRAM+$30,y		; > save within-tile Y
+		JSR ReadTile				; |
+		..next					; |
+		INY #2					; |
+		CPY #$0010 : BCC ..loop			;/
+
+
+
+; clear both speeds if holding into wall
+; and...
+;
+; R2 = D2 = bot right
+;
+; L2 = D1 = bot left
+;
+; R1 = U2 = top right
+;
+; L1 = U1 = top left
+;
+; + snap to position (HOW TO DO THIS???)
+		LDA $6DA2
+		AND #$000F : TAY
+
+		CPY #$0005 : BNE +
+		LDA !BigRAM+$02
+		CMP !BigRAM+$0A : BNE +
+		CMP #$0002*$400 : BEQ ++
+		+
+		CPY #$0006 : BNE +
+		LDA !BigRAM+$06
+		CMP !BigRAM+$08 : BNE +
+		CMP #$0003*$400 : BEQ ++
+		+
+		CPY #$0009 : BNE +
+		LDA !BigRAM+$00
+		CMP !BigRAM+$0E : BNE +
+		CMP #$0004*$400 : BEQ ++
+		+
+		CPY #$000A : BNE +
+		LDA !BigRAM+$04
+		CMP !BigRAM+$0C : BNE +
+		CMP #$0005*$400 : BNE +
+	++	SEP #$20
+		STZ !P1MapXSpeed,x
+		STZ !P1MapYSpeed,x
+		REP #$20
+		+
+		..nodiagcollision
+
+
+; if R1 = top right
+; and R2 = bot right
+;	- cap X
+;	- set Y
+;
+; if D1 = bot left
+; and D2 = bot right
+;	- set X
+;	- cap Y
+;
+; if L1 = top left
+; and L2 = bot left
+;	- cap X
+;	- set Y
+;
+; if U1 = top left
+; and U2 = top right
+;	- set X
+;	- cap Y
+
+		LDA !BigRAM+$00				;\ if R1 = top right
+		CMP #$0004*$400 : BNE +			;/
+		LDA !BigRAM+$02				;\ and R2 = bot right
+		CMP #$0002*$400 : BNE +			;/
+		LDA !P1MapX,x
+		AND #$0007
+		CMP #$0004 : BCC +
+		LDA !P1MapX,x
+		AND #$FFF8
+		ORA #$0004 : STA !P1MapX,x
+		LDA !BigRAM+$50
+		AND #$FFF8
+		ORA #$0000 : STA !P1MapY,x
+		LDA #$0000
+		STA !BigRAM+$00
+		STA !BigRAM+$02
+		SEP #$20
+		STZ !P1MapXSpeed,x
+		REP #$20
+		+
+
+		LDA !BigRAM+$04				;\ if L1 = top left
+		CMP #$0005*$400 : BNE +			;/
+		LDA !BigRAM+$06				;\ and L2 = bot left
+		CMP #$0003*$400 : BNE +			;/
+		LDA !P1MapX,x
+		AND #$0007
+		CMP #$0004+1 : BCS +
+		LDA !P1MapX,x
+		AND #$FFF8
+		ORA #$0004 : STA !P1MapX,x
+		LDA !BigRAM+$54
+		AND #$FFF8
+		ORA #$0000 : STA !P1MapY,x
+		LDA #$0000
+		STA !BigRAM+$04
+		STA !BigRAM+$06
+		SEP #$20
+		STZ !P1MapXSpeed,x
+		REP #$20
+		+
+
+		LDA !BigRAM+$08				;\ if D1 = top left
+		CMP #$0003*$400 : BNE +			;/
+		LDA !BigRAM+$0A				;\ and D2 = bot left
+		CMP #$0002*$400 : BNE +			;/
+		LDA !P1MapY,x
+		AND #$0007
+		CMP #$0004 : BCC +
+		LDA !BigRAM+$48
+		AND #$FFF8
+		ORA #$0000 : STA !P1MapX,x
+		LDA !P1MapY,x
+		AND #$FFF8
+		ORA #$0004 : STA !P1MapY,x
+		LDA #$0000
+		STA !BigRAM+$08
+		STA !BigRAM+$0A
+		SEP #$20
+		STZ !P1MapYSpeed,x
+		REP #$20
+		+
+
+		LDA !BigRAM+$0C				;\ if U1 = top left
+		CMP #$0005*$400 : BNE +			;/
+		LDA !BigRAM+$0E				;\ and U2 = bot left
+		CMP #$0004*$400 : BNE +			;/
+		LDA !P1MapY,x
+		AND #$0007
+		CMP #$0004+1 : BCS +
+		LDA !BigRAM+$4C
+		AND #$FFF8
+		ORA #$0000 : STA !P1MapX,x
+		LDA !P1MapY,x
+		AND #$FFF8
+		ORA #$0004 : STA !P1MapY,x
+		LDA #$0000
+		STA !BigRAM+$0C
+		STA !BigRAM+$0E
+		SEP #$20
+		STZ !P1MapYSpeed,x
+		REP #$20
+		+
+
+
+
+
+; bot right:
+; if R1 Y = 0, immediately move player 1 px up (+ set R2 = bot right)
+; if D1 X = 0, immediately move player 1 px left (+ set D2 = bot right)
+
+; bot left:
+; if L1 Y = 0, immediately move player 1 px up (+ set L2 = bot left)
+; if D2 X = 7, immediately move player 1 px right (+ set D1 = bot left)
+
+; top right
+; if R2 Y = 7, immediately move player 1 px down (+ set R1 = top right)
+; if U1 X = 0, immediately move player 1 px left (+ set U2 = top right)
+
+; top left
+; if L2 Y = 7, immediately move player 1 px down (+ set L1 = top left)
+; if U2 X = 7, immediately move player 1 px right (+ set U1 = top left)
+
+		LDA !BigRAM+$30 : BNE +
+		LDA !BigRAM+$00				;
+		CMP #$0002*$400 : BNE +			; if R1 = bot right
+		STA !BigRAM+$72
+		DEC !P1MapY,x
+		LDA #$0000 : STA !BigRAM+$00
+		+
+
+		LDA !BigRAM+$32
+		CMP #$0007 : BNE +
+		LDA !BigRAM+$02				; 
+		CMP #$0004*$400 : BNE +			; if R2 = top right
+		STA !BigRAM+$70
+		INC !P1MapY,x
+		LDA #$0000 : STA !BigRAM+$02
+		+
+
+		LDA !BigRAM+$34 : BNE +
+		LDA !BigRAM+$04				; 
+		CMP #$0003*$400 : BNE +			; if L1 = bot left
+		STA !BigRAM+$76
+		DEC !P1MapY,x
+		LDA #$0000 : STA !BigRAM+$04
+		+
+
+		LDA !BigRAM+$36
+		CMP #$0007 : BNE +
+		LDA !BigRAM+$06				; 
+		CMP #$0005*$400 : BNE +			; if L2 = top left
+		STA !BigRAM+$74
+		INC !P1MapY,x
+		LDA #$0000 : STA !BigRAM+$06
+		+
+
+		LDA !BigRAM+$28 : BNE +
+		LDA !BigRAM+$08				; 
+		CMP #$0002*$400 : BNE +			; if D1 = bot right
+		STA !BigRAM+$7A
+		DEC !P1MapX,x
+		LDA #$0000 : STA !BigRAM+$08
+		+
+
+		LDA !BigRAM+$2A
+		CMP #$0007 : BNE +
+		LDA !BigRAM+$0A				; 
+		CMP #$0003*$400 : BNE +			; if D2 = bot left
+		STA !BigRAM+$78
+		INC !P1MapX,x
+		LDA #$0000 : STA !BigRAM+$0A
+		+
+
+		LDA !BigRAM+$2C : BNE +
+		LDA !BigRAM+$0C				; 
+		CMP #$0004*$400 : BNE +			; if U1 = top right
+		STA !BigRAM+$7E
+		DEC !P1MapX,x
+		LDA #$0000 : STA !BigRAM+$0C
+		+
+
+		LDA !BigRAM+$2E
+		CMP #$0007 : BNE +
+		LDA !BigRAM+$0E				; 
+		CMP #$0005*$400 : BNE +			; if U2 = top left
+		STA !BigRAM+$7C
+		INC !P1MapX,x
+		LDA #$0000 : STA !BigRAM+$0E
+		+
+
+		LDY #$000E				;\
+	-	LDA !BigRAM+$70,y : BEQ +		; | apply corner correction to tile numbers
+		STA !BigRAM,y				; |
+	+	DEY #2 : BPL -				;/
+
+
+
+		LDY #$0000
+	-	LDA Collision_X,y
+		CLC : ADC !P1MapX,x
+		STA $0C
+		LDA Collision_Y,y
+		CLC : ADC !P1MapY,x
+		STA $0E
+		JSR RunTile : BEQ +
+		JSR Collision				; |
+	+	INY #2
+		CPY #$0010 : BCC -
+
+		..done
+
+
+
 		.UpdateSpeed
 
 	LDA !P1MapGhost,x
@@ -875,162 +1086,22 @@
 		DEC !P1MapZSpeed,x
 		..done
 
-
-		; .CapSpeedX
-		; LDA !P1MapXSpeed,x : BMI ..neg
-		; ..pos
-		; CMP #$20 : BCC ..done
-		; LDA #$20 : STA !P1MapXSpeed,x
-		; BRA ..done
-		; ..neg
-		; CMP #$E0 : BCS ..done
-		; LDA #$E0 : STA !P1MapXSpeed,x
-		; ..done
-
-		; .CapSpeedY
-		; LDA !P1MapYSpeed,x : BMI ..neg
-		; ..pos
-		; CMP #$20 : BCC ..done
-		; LDA #$20 : STA !P1MapYSpeed,x
-		; BRA ..done
-		; ..neg
-		; CMP #$E0 : BCS ..done
-		; LDA #$E0 : STA !P1MapYSpeed,x
-		; ..done
-
-
-
 		REP #$30
 
 		.CapZ
 		LDA !P1MapZ,x : BPL ..done
 		STZ !P1MapZ,x
+		SEP #$20
+		STZ !P1MapZSpeed,x
+		REP #$20
 		..done
 
 
 
-; debug: skip collision with R
-	if !Debug = 1
-	LDA $6DA4
-	AND #$0010 : BEQ .Terrain
-	JMP .Terrain_noup
-	endif
 
-		.Terrain
-
-; points:
-;	right
-;	 F,4
-;	 F,B
-;	left
-;	 0,4
-;	 0,B
-;	down
-;	 4,F
-;	 B,F
-;	up
-;	 4,0
-;	 B,0
-
-
-		..right
-	LDA !P1MapGhost,x
-	AND #$000F : BNE ..noright
-		LDA !P1MapX,x
-		CLC : ADC #$000F
-		STA $0C
-		LDA !P1MapY,x
-		CLC : ADC #$0004
-		STA $0E
-		LDY #$0000 : JSR ReadTile : BNE ..collisionright
-		LDA !P1MapY,x
-		CLC : ADC #$000B
-		STA $0E
-		LDY #$0000 : JSR ReadTile : BEQ ..noright
-		..collisionright
-		LDA $0C
-		AND #$FFF8
-		CLC : ADC $00
-		STA !P1MapX,x
-		SEP #$20
-		STZ !P1MapXSpeed,x
-		REP #$20
-		..noright
-
-		..left
-	LDA !P1MapGhost,x
-	AND #$000F : BNE ..noleft
-		LDA !P1MapX,x : STA $0C
-		LDA !P1MapY,x
-		CLC : ADC #$0004
-		STA $0E
-		LDY #$0002 : JSR ReadTile : BNE ..collisionleft
-		LDA !P1MapY,x
-		CLC : ADC #$000B
-		STA $0E
-		LDY #$0002 : JSR ReadTile : BEQ ..noleft
-		..collisionleft
-		LDA $0C
-		AND #$FFF8
-		CLC : ADC $00
-		STA !P1MapX,x
-		SEP #$20
-		STZ !P1MapXSpeed,x
-		REP #$20
-		..noleft
-
-		..down
-	LDA !P1MapGhost,x
-	AND #$000F : BNE ..nodown
-		LDA !P1MapX,x
-		CLC : ADC #$0004
-		STA $0C
-		LDA !P1MapY,x
-		CLC : ADC #$000F
-		STA $0E
-		LDY #$0004 : JSR ReadTile : BNE ..collisiondown
-		LDA !P1MapX,x
-		CLC : ADC #$000B
-		STA $0C
-		LDY #$0004 : JSR ReadTile : BEQ ..nodown
-		..collisiondown
-		LDA $0E
-		AND #$FFF8
-		CLC : ADC $00
-		STA !P1MapY,x
-		SEP #$20
-		STZ !P1MapYSpeed,x
-		REP #$20
-		..nodown
-
-		..up
-	LDA !P1MapGhost,x
-	AND #$000F : BNE ..noup
-		LDA !P1MapX,x
-		CLC : ADC #$0004
-		STA $0C
-		LDA !P1MapY,x : STA $0E
-		LDY #$0006 : JSR ReadTile : BNE ..collisionup
-		LDA !P1MapX,x
-		CLC : ADC #$000B
-		STA $0C
-		LDY #$0006 : JSR ReadTile : BEQ ..noup
-		..collisionup
-		LDA $0E
-		AND #$FFF8
-		CLC : ADC $00
-		STA !P1MapY,x
-		SEP #$20
-		STZ !P1MapYSpeed,x
-		REP #$20
-		..noup
-
-
-
-
-		SEP #$20
 
 		.AnimSpeed
+		SEP #$20
 		LDA !Translevel : BEQ ..nopose
 		BIT $6DA6 : BMI +
 		..nopose
@@ -1054,37 +1125,431 @@
 		..done
 		RTS
 
-
+	.CollisionBits
+		dw $0000,$0000
+		dw $0080,$0080
+		dw $0000,$0000
+		dw $0080,$0080
 
 
 	.SpeedTable
 		..x
 		db $00,!MapSpeed,-!MapSpeed,$00
-		db $00,!MapSpeedDiagonal,-!MapSpeedDiagonal,$00
-		db $00,!MapSpeedDiagonal,-!MapSpeedDiagonal,$00
+		db $00,!MapSpeedDiag,-!MapSpeedDiag,$00
+		db $00,!MapSpeedDiag,-!MapSpeedDiag,$00
 		db $00,!MapSpeed,-!MapSpeed,$00
 
-		db $00,$40,$C0,$00
-		db $00,$2E,$D2,$00
-		db $00,$2E,$D2,$00
-		db $00,$40,$C0,$00
+		db $00,!MapSpeedDiag2,-!MapSpeedDiag2,$00
+		db $00,!MapSpeedDiag2,-!MapSpeedDiag2,$00
+		db $00,!MapSpeedDiag2,-!MapSpeedDiag2,$00
+		db $00,!MapSpeedDiag2,-!MapSpeedDiag2,$00
 
 		..y
 		db $00,$00,$00,$00
-		db !MapSpeed,!MapSpeedDiagonal,!MapSpeedDiagonal,!MapSpeed
-		db -!MapSpeed,-!MapSpeedDiagonal,-!MapSpeedDiagonal,-!MapSpeed
+		db !MapSpeed,!MapSpeedDiag,!MapSpeedDiag,!MapSpeed
+		db -!MapSpeed,-!MapSpeedDiag,-!MapSpeedDiag,-!MapSpeed
 		db $00,$00,$00,$00
 
 		db $00,$00,$00,$00
-		db $40,$2E,$2E,$40
-		db $C0,$D2,$D2,$C0
+		db !MapSpeedDiag2,!MapSpeedDiag2,!MapSpeedDiag2,!MapSpeedDiag2
+		db -!MapSpeedDiag2,-!MapSpeedDiag2,-!MapSpeedDiag2,-!MapSpeedDiag2
 		db $00,$00,$00,$00
+
 
 		..accel
-		db $01,$01,$01,$01
+		db $00,$01,$01,$00
 		db $01,$00,$00,$01
 		db $01,$00,$00,$01
-		db $01,$01,$01,$01
+		db $00,$01,$01,$00
+
+
+
+
+
+; input:
+;	$00 = pushout value
+;	$02 = pushout direction
+	Collision:
+		LDA $02 : BNE .Vertical
+		.Horizontal
+		LDA $0C
+		AND #$FFF8
+		CLC : ADC $00
+		STA !P1MapX,x
+		SEP #$20
+		STZ !P1MapXSpeed,x
+		REP #$20
+		RTS
+		.Vertical
+		LDA $0E
+		AND #$FFF8
+		CLC : ADC $00
+		STA !P1MapY,x
+		SEP #$20
+		STZ !P1MapYSpeed,x
+		REP #$20
+		RTS
+
+
+		.X
+		dw $000F,$000F		; R1, R2
+		dw $0000,$0000		; L1, L2
+		dw $0004,$000C		; D1, D2
+		dw $0004,$000C		; U1, U2
+
+		.Y
+		dw $0004,$000C		; R1, R2
+		dw $0004,$000C		; L1, L2
+		dw $000F,$000F		; D1, D2
+		dw $0000,$0000		; U1, U2
+
+
+
+; input:
+;	Y = collision dir
+;	$0C = X coord
+;	$0E = Y coord
+; output:
+;	BNE -> collision, BEQ -> no collision
+;	$00 = value to add to coordinate
+;	$02 = pushout direction (0 = horizontal, 1 = vertical)
+;
+; RAM:
+;	$00 - 24-bit tilemap pointer ($02 gets overwritten later)
+;	$02 - player index
+;	$08 - collision point index
+;
+
+	ReadTile:
+		STY $08					; $08 = direction index
+
+		LDA $0E+1
+		AND #$00FF
+		CMP #$0004 : BCS .FullSolid
+		TAY
+		LDA $0C+1
+		AND #$00FF
+		CMP #$0006 : BCS .FullSolid
+		ASL A
+		ADC HandleZips_TilemapMatrix_y,y
+		AND #$00FF
+		TAY
+		LDA HandleZips_TilemapMatrix,y : TAY
+		LDA DecompressionMap+1,y : STA $00
+		LDA DecompressionMap+2,y : STA $01
+		LDA $0C
+		AND #$00F8
+		LSR #2
+		STA $04
+		LDA $0E
+		AND #$00F8
+		ASL #3
+		ORA $04
+		TAY
+		LDA [$00],y
+		AND #$0007*$400
+		LDY $08					; Y = direction index
+		STA !BigRAM,y				; store collision type (this might not end up being used)
+		RTS
+
+
+	.FullSolid
+		LDY $08
+		LDA #$0001*$400 : STA !BigRAM,y
+		RTS
+
+
+	RunTile:
+		LDA !BigRAM,y
+		STY $08
+		STX $02
+		LSR A
+		XBA
+		TAX
+		JMP (.TilePtr,x)
+
+		.TilePtr
+		dw .NotSolid				; 0
+		dw .FullSolid				; 1
+		dw .TriangleBotRight			; 2
+		dw .TriangleBotLeft			; 3
+		dw .TriangleTopRight			; 4
+		dw .TriangleTopLeft			; 5
+		dw .VerticalWall			; 6
+		dw .HorizontalWall			; 7
+
+	.FullSolid
+		LDX $02					; X = player index
+		LDY $08					; Y = direction index
+		LDA .PushoutDirection,y : STA $02	; get pushout direction
+		LDA .PushoutValue,y : STA $00		; get pushout value
+		RTS
+
+	.NotSolid
+		LDX $02					; X = player index
+		LDY $08					; Y = direction index
+		LDA #$0000 : STA !BigRAM,y
+	;	SEP #$02				; z = 1 (zero), no collision
+		RTS
+
+
+; input:
+;	A - Y position of first solid pixel within column (counting from open side)
+;	$00 - X position of first solid pixel within row (counting from open side)
+;	$02 - player index
+
+
+	.TriangleBotRight
+		LDA ..fullsolid,y : BNE .TriangleClosed	; if touching flat side, full solid
+		LDA $0C					;\
+		AND #$0007 : STA $00			; |
+		LDA $0E					; | check X + Y
+		AND #$0007				; |
+		CLC : ADC $00				; |
+		CMP #$0007 : BCC .TriangleOpen		;/
+		..pushout
+		LDA $0E					;\ X position of first solid pixel (row) = Y coordinate
+		AND #$0007 : STA $00			;/
+		LDA $0C					;\
+		AND #$0007				; | Y position of first solid pixel (column) = X coordinate
+		BRA .TrianglePush			;/
+
+		..fullsolid
+		dw $FFFF,$0000		; R
+		dw $FFFF,$FFFF		; L
+		dw $FFFF,$0000		; D
+		dw $FFFF,$FFFF		; U
+
+
+	.TriangleBotLeft
+		LDA ..fullsolid,y : BNE .TriangleClosed	; if touching flat side, full solid
+		LDA $0C					;\
+		AND #$0007				; |
+		EOR #$0007 : STA $00			; > flip X
+		LDA $0E					; | check X + Y
+		AND #$0007				; |
+		CLC : ADC $00				; |
+		CMP #$0007 : BCC .TriangleOpen		;/
+		..pushout
+		LDA $0E					;\ X position of first solid pixel (row) = Y coordinate
+		AND #$0007 : STA $00			;/
+		LDA $0C					;\
+		AND #$0007				; | Y position of first solid pixel (column) = -X coordinate
+		EOR #$0007				; |
+		BRA .TrianglePush			;/
+
+		..fullsolid
+		dw $FFFF,$FFFF		; R
+		dw $FFFF,$0000		; L
+		dw $0000,$FFFF		; D
+		dw $FFFF,$FFFF		; U
+
+
+	.TriangleClosed
+		LDX $02					; X = player index
+		LDY $08					; Y = direction index
+		LDA .PushoutDirection,y : STA $02	; get pushout direction
+		LDA .PushoutValue,y : STA $00		; get pushout value
+		RTS
+
+	.TriangleOpen
+		LDX $02					; X = player index
+		LDY $08					; Y = direction index
+		SEP #$02				; z = 1 (zero), no collision
+		RTS
+
+
+	.TrianglePush
+		LDX $08
+		STA $04
+		LDA .PushoutValue_triangle,y
+		JMP (..ptr,x)
+
+		..ptr
+		dw .TrianglePushDown	; R1
+		dw .TrianglePushUp	; R2
+		dw .TrianglePushDown	; L1
+		dw .TrianglePushUp	; L2
+		dw .TrianglePushRight	; D1
+		dw .TrianglePushLeft	; D2
+		dw .TrianglePushRight	; U1
+		dw .TrianglePushLeft	; U2
+
+
+	.TriangleTopRight
+		LDA ..fullsolid,y : BNE .TriangleClosed	; full solid check
+		LDA $0C					;\
+		AND #$0007 : STA $00			; |
+		LDA $0E					; |
+		AND #$0007				; | check X + Y
+		EOR #$0007				; > flip Y
+		CLC : ADC $00				; |
+		CMP #$0007 : BCC .TriangleOpen		;/
+		..pushout
+		LDA $0E					;\
+		AND #$0007				; | X position of first solid pixel (row) = -Y coordinate
+		EOR #$0007 : STA $00			;/
+		LDA $0C					;\
+		AND #$0007				; | Y position of first solid pixel (column) = X coordinate
+		BRA .TrianglePush			;/
+
+		..fullsolid
+		dw $0000,$FFFF		; R
+		dw $FFFF,$FFFF		; L
+		dw $FFFF,$FFFF		; D
+		dw $FFFF,$0000		; U
+
+
+	.TriangleTopLeft
+		LDA ..fullsolid,y : BNE .TriangleClosed	; full solid check
+		LDA $0C					;\
+		AND #$0007				; > flip X
+		EOR #$0007 : STA $00			; |
+		LDA $0E					; | check X + Y
+		AND #$0007				; |
+		EOR #$0007				; > flip Y
+		CLC : ADC $00				; |
+		CMP #$0007 : BCS $03 : JMP .TriangleOpen		;/
+		..pushout
+		LDA $0E					;\
+		AND #$0007				; | X position of first solid pixel (row) = -Y coordinate
+		EOR #$0007 : STA $00			;/
+		LDA $0C					;\
+		AND #$0007				; | Y position of first solid pixel (column) = -X coordinate
+		EOR #$0007				; |
+		JMP .TrianglePush			;/
+
+		..fullsolid
+		dw $FFFF,$FFFF		; R
+		dw $0000,$FFFF		; L
+		dw $FFFF,$FFFF		; D
+		dw $0000,$FFFF		; U
+
+
+	.TrianglePushRight
+		LDX $02
+		CLC : ADC $00
+		SEC : SBC #$000A
+		BRA .OutputTriangle
+
+	.TrianglePushLeft
+		LDX $02
+		CLC : ADC #$0009
+		SEC : SBC $00
+		BRA .OutputTriangle
+
+	.TrianglePushDown
+		LDX $02
+		CLC : ADC $04
+		SEC : SBC #$000A
+		BRA .OutputTriangle
+
+	.TrianglePushUp
+		LDX $02
+		CLC : ADC #$0009
+		SEC : SBC $04
+
+	.OutputTriangle
+		STA $00
+		INC !P1MapDiag2,x
+		LDA .PushoutDirection_triangle,y : STA $02	; get pushout direction
+		REP #$02				; z = 0 (nonzero)
+		RTS
+
+
+
+
+	.WallOpen
+		SEP #$02
+		RTS
+
+	.VerticalWall
+		LDX $02
+		LDA .SolidSide_vertical,y : BNE ..left
+
+		..right
+		LDA $0C
+		AND #$0007
+		CMP #$0004 : BCC .WallOpen
+		LDA .PushoutValue,y
+		CPY #$0008 : BCS .CloseWall
+		CLC : ADC #$0004
+		BRA .CloseWall
+
+		..left
+		LDA $0C
+		AND #$0007
+		CMP #$0004 : BCS .WallOpen
+		LDA .PushoutValue,y
+		CPY #$0008 : BCS .CloseWall
+		SEC : SBC #$0004
+		BRA .CloseWall
+
+
+	.HorizontalWall
+		LDX $02
+		LDA .SolidSide_horizontal,y : BNE ..up
+
+		..down
+		LDA $0E
+		AND #$0007
+		CMP #$0004 : BCC .WallOpen
+		LDA .PushoutValue,y
+		CPY #$0008 : BCC .CloseWall
+		CLC : ADC #$0004
+		BRA .CloseWall
+
+		..up
+		LDA $0E
+		AND #$0007
+		CMP #$0004 : BCS .WallOpen
+		LDA .PushoutValue,y
+		CPY #$0008 : BCC .CloseWall
+		SEC : SBC #$0004
+
+	.CloseWall
+		STA $00
+		LDA .PushoutDirection,y : STA $02
+		REP #$02
+		RTS
+
+
+	.SolidSide
+		..horizontal
+		dw $FFFF,$0000
+		dw $FFFF,$0000
+		..vertical
+		dw $0000,$0000
+		dw $FFFF,$FFFF
+		dw $FFFF,$0000
+		dw $FFFF,$0000
+
+
+	.PushoutValue
+		dw $FFF1,$FFF1		; R
+		dw $0007,$0007		; L
+		dw $FFF1,$FFF1		; D
+		dw $0007,$0007		; U
+		..triangle
+		dw $0007,$FFF1		; R
+		dw $0007,$FFF1		; L
+		dw $0007,$FFF1		; D
+		dw $0007,$FFF1		; U
+
+
+
+	.PushoutDirection
+		..cardinal
+		dw $0000,$0000
+		dw $0000,$0000
+		..triangle
+		dw $0002,$0002
+		dw $0002,$0002
+		dw $0000,$0000
+		dw $0000,$0000
+
+
+
 
 
 

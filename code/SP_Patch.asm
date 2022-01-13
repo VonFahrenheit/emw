@@ -1378,12 +1378,23 @@ INIT_PARTICLE:
 
 
 	HurtPlayers:
+		LDY !dmg : BNE .Go			;\
+		LDY.b #!DefaultDamage : STY !dmg	; | make sure there is a damage value loaded
+		.Go					;/
+		BEQ .Ready				;\
+		LDY !Difficulty : BNE .Ready		; | take 1 less damage on easy, but not less than 1
+		DEC !dmg				; |
+		.Ready					;/
 		LSR A : BCC .P2
 	.P1	PHA
 		LDY #$00
 		JSR HurtP1
 		PLA
-	.P2	LSR A : BCC HurtP1_Return
+	.P2	LSR A : BCC .Return
+		JSR HurtP2
+		.Return
+		STZ !dmg				; this damage was used
+		RTS
 
 HurtP2:		LDY #$80				; > P2 index
 HurtP1:		LDA !P2Invinc-$80,y			;\
@@ -1392,7 +1403,7 @@ HurtP1:		LDA !P2Invinc-$80,y			;\
 		ORA !P2SlantPipe-$80,y			; |
 		BNE .Return				;/
 
-		LDA !Difficulty				;\
+		LDA !Difficulty_full			;\
 		AND.b #!CriticalMode : BEQ .NotCrit	; | critical mode sets HP to 1 when player gets hit, meaning they'll always die from the damage
 		LDA #$01 : STA !P2HP-$80,y		; |
 		.NotCrit				;/
@@ -1414,10 +1425,10 @@ HurtP1:		LDA !P2Invinc-$80,y			;\
 		LDA #$00 : STA !P2TempHP-$80,y		; remove temp HP
 		LDA #$0F : STA !P2HurtTimer-$80,y	; set hurt animation timer
 		LDA !P2HP-$80,y				;\
-		DEC A					; |
-		STA !P2HP-$80,y				; | decrement HP and kill player 2 if zero
-		BEQ .Kill				; |
-		BMI .Kill				;/
+		SEC : SBC !dmg				; |
+		BPL $02 : LDA #$00			; | subtract damage from player HP (kill if 0)
+		STA !P2HP-$80,y				; |
+		CMP #$00 : BEQ .Kill			;/
 .Return		RTS					; return
 
 .Kill		LDA #$01 : STA !P2Status-$80,y		; > This player dies
@@ -1447,9 +1458,13 @@ HurtP1:		LDA !P2Invinc-$80,y			;\
 		..End
 
 		.Mario
-		LDA !P2HP-$80,y
-		CMP #$01 : BEQ ..kill
-		CMP #$02 : BNE ..noshrink
+		LDA !P2HP-$80,y				;\
+		SEC : SBC !dmg				; | die when HP goes negative
+		BEQ ..kill				; |
+		BMI ..kill				;/
+		CMP #$05 : BCS ..noshrink		;\
+		LDA !P2HP-$80,y				; | shrink only when going from big to small
+		CMP #$05 : BCC ..noshrink		;/
 		LDA #$04 : STA !SPC1			; power down SFX
 		LDA #$01 : STA !MarioAnim
 		STZ $19
@@ -1470,6 +1485,12 @@ HurtP1:		LDA !P2Invinc-$80,y			;\
 		RTS
 
 		.Luigi
+		LDA !P2HP-$80,y				;\
+		CMP #$05 : BCC ..nosizechange		; |
+		SBC !dmg				; | set shrink timer when size changes from big to small
+		CMP #$05 : BCS ..nosizechange		; |
+		LDA #$1F : STA !P2ShrinkTimer		; |
+		..nosizechange				;/
 		STA !P2FireTimer-$80,y			; reset fire timer
 		STA !P2PickUp-$80,y			; end pickup animation
 		STA !P2SpinAttack-$80,y			; end spin attack

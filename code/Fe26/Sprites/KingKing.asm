@@ -111,8 +111,7 @@
 	KINGKING:
 	.INIT
 		LDA #$04 : STA $3330,x
-		LDA !Difficulty					;\
-		AND #$03 : TAY					; | set base HP
+		LDY !Difficulty					;\ base HP
 		LDA.w DATA_BaseHP,y : STA !HP,x			;/
 		LDA #$01 : STA !Phase,x				; enter main phase
 		JSL SUB_HORZ_POS				;\ face players
@@ -978,8 +977,7 @@
 
 
 	Fireball:
-		LDA !Difficulty					;\
-		AND #$03 : TAY					; |
+		LDY !Difficulty					;\
 		CPY #$02 : BEQ .Insane				; |
 		LDA !Phase,x					; | difficulty data
 		AND #$7F : CMP #$04				; |
@@ -1032,8 +1030,7 @@
 
 		.Spawn
 		LDA #$17 : STA !SPC4				; > fire spit SFX
-		LDA !Difficulty
-		AND #$03 : BNE .FlexArc
+		LDA !Difficulty : BNE .FlexArc
 
 		.FixedArc					;\
 		LDY $3320,x					; |
@@ -1055,7 +1052,6 @@
 		STA $02						;/
 		LDA #$B0 : STA $03				; Y speed = -0x50
 		LDA !Difficulty					;\
-		AND #$03					; |
 		CMP #$02 : BEQ .Unlimit				; |
 		.LimitArc					; |
 		LDA $02 : BMI ..neg				; |
@@ -1143,7 +1139,6 @@
 		JSR JumpSmoke
 		..animdone
 		LDA !Difficulty					;\
-		AND #$03					; |
 		CMP #$02 : BNE .Process				; |
 		LDA !Phase,x					; |
 		AND #$7F					; | dunk check?
@@ -1508,8 +1503,7 @@
 		INC !HeadTimer,x				;/
 		.Move
 
-		LDA !Difficulty					;\
-		AND #$03					; | can only charge -> smack on insane
+		LDA !Difficulty					;\ can only charge -> smack on insane
 		CMP #$02 : BCC ..nosmack			;/
 		REP #$20					;\
 		LDA.w #Smack_Hitbox : JSL LOAD_HITBOX		; |
@@ -1633,9 +1627,8 @@
 		STA !SpriteAnimTimerY				;/
 
 		LDA !Difficulty					;\
-		AND #$03					; |
-		CMP #$02 : BNE .Boomerang			; | arc bounce on insane only
-		LDA !Phase,x					; |
+		CMP #$02 : BNE .Boomerang			; |
+		LDA !Phase,x					; | arc bounce on insane only
 		AND #$7F					; |
 		CMP #$04 : BEQ .ArcBounce			;/
 
@@ -1679,8 +1672,7 @@
 		STA !SpriteXSpeed,x				;/
 		JSR Wait					;\
 		LDA #!KK_Smack : STA !SpriteAnimIndex		; |
-		LDA !Difficulty
-		AND #$03 : TAY
+		LDY !Difficulty
 		LDA #$28
 		SEC : SBC DATA_DelayTable,y
 		STA !SpriteAnimTimer				; |
@@ -1881,7 +1873,6 @@
 		.SetAttack
 		STA $00
 		LDA !Difficulty
-		AND #$03
 		ASL #3
 		ADC $00
 		ADC !WalkDirection,x
@@ -2006,11 +1997,10 @@
 		CMP #$04 : BCS ..noclear			; |
 		STZ !AttackTimer,x				; |
 		..noclear					; |
-		DEC !HP,x					; |
+		DEC !HP,x					; | transform when at half HP
 		LDA #$30 : STA !InvincTimer,x			; |
 		LDA #$28 : STA !SPC4				; > hurt boss SFX
-		LDA !Difficulty					; |
-		AND #$03 : TAY					; | transform when at half HP
+		LDY !Difficulty					; |
 		LDA.w DATA_BaseHP,y				; |
 		LSR A						; |
 		CMP !HP,x : BNE ..return			; |
@@ -3032,9 +3022,7 @@ UPDATE_MODE2:	PHB						;\
 ;============;
 ;WAIT ROUTINE;
 ;============;
-Wait:		LDA !Difficulty
-		AND #$03
-		TAY
+Wait:		LDY !Difficulty
 		LDA !Phase,x
 		AND #$7F
 		CMP #$04
@@ -3249,8 +3237,7 @@ Wait:		LDA !Difficulty
 		..explode
 		JSL BigPuff
 		STZ !StunTimer,x
-		LDA !Difficulty
-		AND #$03 : TAY
+		LDY !Difficulty
 		LDA ..count,y
 		..loop
 		PHA

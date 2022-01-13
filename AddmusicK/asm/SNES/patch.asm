@@ -193,6 +193,9 @@ PlayDirect:
 
 	
 ChangeMusic:
+	-	BIT $4212 : BPL -	; wait for v-blank to stay in sync with PPU (should prevent HDMA tearing for 1 frame after loading the new song)
+
+
 	LDA $187A|!SA1Addr2		; \ 
 	BEQ +
 	LDA #$FF

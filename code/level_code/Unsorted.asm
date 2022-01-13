@@ -1626,9 +1626,10 @@ levelinit0:
 	LDA #$04 : STA !LevelWidth
 	endif
 
-		LDA $741A : BNE +
-		LDA #$30 : STA !SPC3
-		+
+		LDA !StoryFlags+$00 : BMI ++		; home base music if cannon has been used
+		CMP #$03 : BEQ +			;\
+	++	LDA #$30 : STA !SPC3			; | keep music if warp pipe has been obtained but cannon has not been used
+		+					;/
 
 
 		LDA #$06 : STA !PalsetStart
@@ -2070,8 +2071,9 @@ levelinitC6:
 		LDA.b #999>>8 : STA !TimerSeconds+1
 
 		LDA !Characters
-		CMP #$20 : BCC +
-		LDA #$49 : BRA ++
+		CMP #$10 : BCC +
+		LDA #$20 : STA $0A22
+		LDA #$4A : BRA ++
 	+	LDA #$80
 	++	STA !SPC3
 
@@ -4164,6 +4166,7 @@ levelC6:
 		AND #$80
 		TAX
 		LDA !P2FireCharge-$80,x : BEQ .Return
+		LDA !CutsceneSmoothness : BNE .Return
 		LDY #$02
 		BRA .LoadTilemap
 
@@ -4375,7 +4378,8 @@ levelC6:
 		SEP #$10
 		REP #$20
 
-
+		LDA !LoadCheckpoint			;\ ignore this part if the player spawned from the checkpoint
+		AND #$00FF : BNE +			;/
 		LDA $1A					;\
 		CMP #$0C80 : BCC +			; |
 		CMP #$0F80 : BCS +			; |
@@ -4392,9 +4396,10 @@ levelC6:
 		CLC : ADC !BG2BaseV			; |
 		STA $20					;/
 
-		LDX #$1F : STX !MainScreen
-		LDX #$02 : STX !SubScreen
-		LDX #$20 : STX !2131
+
+	;	LDX #$1F : STX !MainScreen
+	;	LDX #$02 : STX !SubScreen
+	;	LDX #$20 : STX !2131
 
 		LDA !MsgTrigger : BNE ..fail		; don't run during text box
 		LDA $1A : STA $22			; BG3 X
@@ -7112,7 +7117,7 @@ WARP_BOX:
 		..leveldone
 
 		.SaveTime				;\
-		LDA !Difficulty				; | only save time on time mode
+		LDA !SRAM_Difficulty			; | only save time on time mode
 		AND #$04 : BEQ ..nosave			;/
 		LDA !LevelTable3,x			;\
 		ORA !LevelTable4,x			; |

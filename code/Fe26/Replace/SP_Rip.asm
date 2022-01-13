@@ -82,7 +82,6 @@
 		LDA $AE,x : PHA				;\
 		LDA $9E,x : PHA				; |
 		LDA !Difficulty				; |
-		AND #$03				; |
 		INC A					; |
 		CMP #$03				; |
 		BCC $02 : LDA #$03			; | double Y speed

@@ -33,13 +33,12 @@ namespace Kadaal
 		PHB : PHK : PLB
 
 		LDA #$02 : STA !P2Character
-		LDA #$03 : STA !P2MaxHP
+		LDA #$08			;\
+		CLC : ADC !PlayerBonusHP	; | max HP
+		STA !P2MaxHP			;/
 		LDA !KadaalUpgrades		;\
 		AND #$20			; | +1 Max HP with upgrade
 		BEQ $03 : INC !P2MaxHP		;/
-		LDA !P2MaxHP			;\
-		CLC : ADC !PlayerBonusHP	; | max HP buff
-		STA !P2MaxHP			;/
 
 
 

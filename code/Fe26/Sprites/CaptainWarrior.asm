@@ -38,10 +38,12 @@ CaptainWarrior:
 
 
 	INIT:
+	if !Debug = 0
 		LDY !Translevel						;\
 		LDA !LevelTable1,y : BPL .Go				; | if this level is beaten, despawn
 		STZ $3230,x						; |
 		RTL							;/
+	endif
 
 		.Go
 		PHB : PHK : PLB						; bank wrapper start
@@ -115,9 +117,7 @@ CaptainWarrior:
 		JSL SUB_HORZ_POS					;\ face players
 		TYA : STA $3320,x					;/
 		LDA #$04 : STA $3330,x					; start on ground
-		LDA !Difficulty						;\
-		AND #$03						; | HP
-		TAY							; |
+		LDY !Difficulty						;\ HP
 		LDA.w DATA_BaseHP,y : STA !CW_HP,x			;/
 
 		LDA !ExtraBits,x					;\ return if NPC mode
@@ -279,8 +279,7 @@ CaptainWarrior:
 		STA !CW_Minion1,x					;/
 
 		.Minion2
-		LDA !Difficulty						;\
-		AND #$03						; | only spawn the second minion on insane
+		LDA !Difficulty						;\ only spawn the second minion on insane
 		CMP #$02 : BNE .Boss					;/
 		LDX !SpriteIndex					;\
 		LDA !CW_Minion2,x : BEQ ..init				; |
@@ -439,9 +438,7 @@ CaptainWarrior:
 	Hurt:
 		LDA #$28 : STA !SPC4					; hurt SFX
 		DEC !CW_HP,x						; -1 HP
-		LDA !Difficulty						;\
-		AND #$03						; | invinc time
-		TAY							; |
+		LDY !Difficulty						;\ invinc time
 		LDA DATA_InvincTime,y : STA !CW_InvincTimer,x		;/
 		LDA $3330,x						;\ check air/ground
 		AND #$04 : BEQ .Air					;/
@@ -879,8 +876,7 @@ CaptainWarrior:
 		LDA .MinionTable+$18,y : STA !SpriteYSpeed,x		; Y speed
 
 		LDA #$08 : STA !ExtraProp2,x				; give rex a helmet
-		LDA !Difficulty						;\
-		AND #$03 : BEQ .Easy					; |
+		LDA !Difficulty : BEQ .Easy				;\
 		.NormalInsane						; | unless on easy, also give rex a sword so it can chase
 		LDA #$05 : STA !ExtraProp1,x				; |
 		.Easy							;/

@@ -352,9 +352,7 @@ BigMax:
 		LDA !SubTile					; |
 		AND #$80					; |
 		STA !SubTile					; |
-		LDA !Difficulty					; |
-		AND #$03					; |
-		TAY						; |
+		LDY !Difficulty					; |
 		LDA Data_Phase2Fire,y : STA !FireTimer		; |
 		LDA #$25 : STA !SPC1				; > roar SFX
 		..NoFireball					;/
