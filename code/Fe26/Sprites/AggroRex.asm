@@ -307,6 +307,7 @@ AggroRex:
 		..nocontact
 
 		.Body							;\
+		LDA #$04 : STA !dmg					; > 1 full heart of damage
 		JSL P2Standard						; | standard player interaction
 		BCC ..nocontact						; |
 		BEQ ..nocontact						;/

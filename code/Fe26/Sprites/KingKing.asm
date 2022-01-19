@@ -1696,6 +1696,7 @@
 		JSR .Dust					; > dust
 		REP #$20					; | hitbox
 		LDA.w #.Hitbox : JSL LOAD_HITBOX		; |
+		LDA #$04 : STA !dmg				; > 1 full heart of damage
 		LDA #$40 : JSL P2Hurt				;/
 		BCC ..nocontact					;\
 		LDA #$09 : STA !SPC4				; | smash SFX
@@ -1915,20 +1916,12 @@
 		ADC !BigRAM+3					; |
 		STA $0B						;/
 
-	if !Debug = 1
-	LDA $04 : STA $41CC00
-	LDA $0A : STA $41CC01
-	LDA $05 : STA $41CC02
-	LDA $0B : STA $41CC03
-	LDA $06 : STA $41CC04
-	LDA $07 : STA $41CC05
-	endif
-
-
 		JSL FireballContact_Destroy			; fireballs break upon touching Kingking
 		BCS ..hurt					; ...but also hurt him if hitting the head
 
-		JSL P2Standard : BCC ..nobodycontact		;\
+		LDA #$04 : STA !dmg				; > 1 full heart of damage
+		JSL P2Standard					;\
+		BCC ..nobodycontact				; |
 		BEQ ..nobodycontact				; |
 		JSR .HurtBoss					; | player body x boss head interaction
 		LDA !SpriteAnimIndex				;\ check for fire anim
@@ -1960,14 +1953,6 @@
 		..loadhitbox					; |
 		REP #$20					; |
 		LDA HITBOX,y : JSL LOAD_HITBOX			;/
-	if !Debug = 1
-	LDA $04 : STA $41CC06
-	LDA $0A : STA $41CC07
-	LDA $05 : STA $41CC08
-	LDA $0B : STA $41CC09
-	LDA $06 : STA $41CC0A
-	LDA $07 : STA $41CC0B
-	endif
 		JSL FireballContact_Destroy			; fireballs break upon touching Kingking
 		LDA !Attack,x
 		AND #$7F
@@ -1975,6 +1960,7 @@
 	..20	LDA #$20 : BRA ..knockback
 	..00	LDA #$00
 		..knockback
+		LDY #$04 : STY !dmg				; 1 full heart of damage
 		JSL P2Hurt					; hurt on contact
 		..nocontact
 

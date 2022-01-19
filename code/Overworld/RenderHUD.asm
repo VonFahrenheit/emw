@@ -329,7 +329,7 @@ macro UpdateHUD(slot)
 	LDA.b #!DecompBuffer>>16 : STA !VRAMbase+!CCDMAtable+$04,x
 	REP #$20
 	LDA.w #!DecompBuffer+(<slot>*$400) : STA !VRAMbase+!CCDMAtable+$02,x
-	LDA.w #$2000+(<slot>*$200) : STA !VRAMbase+!CCDMAtable+$05,x
+	LDA.w #$3000+(<slot>*$200) : STA !VRAMbase+!CCDMAtable+$05,x
 	LDA.w #$0400 : STA !VRAMbase+!CCDMAtable+$00,x
 	SEP #$20
 	?Next:

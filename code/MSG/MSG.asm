@@ -309,8 +309,8 @@ sa1rom
 		STA !MsgInputLock+1					; |
 		STA !MsgInputLock+2					; |
 		STA !MsgInputLock+3					; |
-		STZ !MsgInputBuffer+0					; | kill input buffer
-		STZ !MsgInputBuffer+1					; |
+		STZ !MsgInputBuffer+0					; |
+		STZ !MsgInputBuffer+1					; | kill input buffer
 		STZ !MsgInputBuffer+2					; |
 		STZ !MsgInputBuffer+3					; |
 		STZ !MsgInputBuffer+4					; |

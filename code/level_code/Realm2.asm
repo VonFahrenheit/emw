@@ -1,11 +1,13 @@
+
+
 levelinit7:
 		LDA #$06
-		TRB $6D9D
-		TRB $6D9E
+		TRB !MainScreen
+		TRB !SubScreen
 
 		LDA #$11
-		TSB $6D9D
-		TRB $6D9E
+		TSB !MainScreen
+		TRB !SubScreen
 
 		LDA #$0C : STA !TextPal			; Text palette = 0x03
 
@@ -14,10 +16,11 @@ levelinit7:
 		LDA #$02 : STA !BG2ModeH
 		LDA #$04 : STA !BG2ModeV
 		%GradientRGB(HDMA_BlueSky)
-		LDA #$BA : STA !Level+4			; > negative 0x3F
-		LDA #$07 : STA !Level+5			; > Size of chunks
+		LDA #$B9 : STA !Level+4			; > base offset
+		LDA #$07 : STA !Level+5			; > size of chunks
 		JSL levelinit5_HDMA
 		JML level7
+
 
 levelinit8:
 		INC !SideExit
@@ -25,7 +28,6 @@ levelinit8:
 		REP #$20
 		LDA #$0404 : STA !BG2ModeH		; BG2 scroll: variable2;variable2
 		LDA #$01D0 : STA !BG2BaseV		; base BG2 position
-		JSL read3($048434)
 		SEP #$20
 		RTL
 
@@ -35,44 +37,22 @@ levelinit8:
 levelinit9:
 	RTL
 levelinitA:
+		LDA #$01 : STA !3DWater
+
 		LDA #$11				;\
-		TSB $6D9D				; | BG1 and sprites are on both main and subscreen
-		TSB $6D9E				;/
+		TSB !MainScreen				; | BG1 and sprites are on both main and sub
+		TSB !SubScreen				;/
 
 		LDA #$80 : STA !Level+3
-		JSL levelA_HDMA
+		JML levelA_HDMA
 
-		.GFX
-		JSL !GetVRAM
-		PHB
-		LDA #!VRAMbank
-		PHA : PLB
-		REP #$20
-		LDA #$3131				;\
-		STA !VRAMtable+$04,x			; | Source bank
-		STA !VRAMtable+$0B,x			;/
-		LDA #$DC00+$400				;\
-		CLC : ADC $00				; |
-		STA !VRAMtable+$02,x			; | Source GFX
-		CLC : ADC #$0200			; |
-		STA !VRAMtable+$09,x			;/
-		LDA #$0100				;\
-		STA !VRAMtable+$00,x			; | Upload size
-		STA !VRAMtable+$07,x			;/
-		LDA #$7860 : STA !VRAMtable+$05,x	;\ VRAM destination
-		LDA #$7960 : STA !VRAMtable+$0C,x	;/
-		SEP #$20
-		PLB
-		RTL
 
 levelinitB:
 		INC !SideExit
 
-		JSL CLEAR_DYNAMIC_BG3
 		JSL VineDestroy_INIT
 
-		LDA #$0E
-		STA !VineDestroyPage			; > page of vines
+		LDA #$0E : STA !VineDestroyPage		; > page of vines
 
 		LDA #$07				;\
 		STA !BG2ModeH				; | 75% BG2 scroll rate
@@ -89,28 +69,28 @@ levelinitB:
 levelinitD:
 		INC !SideExit
 
-		LDA #$1F			;\ Put everything on mainscreen
-		STA $6D9D			;/
-		STZ $6D9E			; > Disable subscreen
+		LDA #$1F				;\ Put everything on mainscreen
+		STA !MainScreen				;/
+		STZ !SubScreen				; > Disable subscreen
 
 
 
 
-		REP #$20			; > A 16 bit
-		LDA #$0F03			;\ Use mode 3 to access both bytes of 210F and 2110
-		STA $4350			;/
-		SEP #$20			; > A 8 bit
-		LDA #$40			;\ Bank of table
-		STA $4354			;/
-		LDA #$20			;\ Enable HDMA on channel 5 
-		TSB $6D9F			;/
-		JSL levelD_HDMA : INC $14	;\ Set up double-buffered HDMA
-		JSL levelD_HDMA : DEC $14	;/
+		REP #$20				; > A 16 bit
+		LDA #$0F03				;\ Use mode 3 to access both bytes of 210F and 2110
+		STA $4350				;/
+		SEP #$20				; > A 8 bit
+		LDA #$40				;\ Bank of table
+		STA $4354				;/
+		LDA #$20				;\ Enable HDMA on channel 5 
+		TSB $6D9F				;/
+		JSL levelD_HDMA : INC $14		;\ Set up double-buffered HDMA
+		JSL levelD_HDMA : DEC $14		;/
 		JML levelD
 
 
 levelinitE:
-		LDA #$0C : STA !TextPal		; Text palette = 0x03
+		LDA #$0C : STA !TextPal			; Text palette = 0x03
 		LDA #$01 : STA !BG2ModeH
 		LDA #$06 : STA !BG2ModeV
 		REP #$20
@@ -118,7 +98,7 @@ levelinitE:
 		JSL read3($048434)
 		SEP #$20
 
-		LDA #$2C : STA !SPC3		; Battle music
+		LDA #$2C : STA !SPC3			; Battle music
 
 		LDY $97
 		STY !P2YPosHi-$80
@@ -138,7 +118,7 @@ levelinitE:
 		CPY #$19 : BCS .NoRestrict
 		LDA #$19 : STA $5F
 		LDA #$45
-	.Music	STA !SPC3			; Normal music
+	.Music	STA !SPC3				; Normal music
 		.NoRestrict
 
 		RTL
@@ -170,17 +150,13 @@ levelinit28:
 		RTL
 
 levelinit29:
-		LDA #$15			;\ Put everything except BG2 on main screen
-		STA $6D9D			;/
-		LDA #$02 : STA $6D9E		; > BG2 on subscreen
-		%GradientRGB(HDMA_Sunset)	; > Enable sunset gradient
+		LDA #$15 : STA !MainScreen		; everything except BG2 on main
+		LDA #$02 : STA !SubScreen		; BG2 on sub
+		%GradientRGB(HDMA_Sunset)		; gradient
 		RTL
 
 levelinit30:
-		INC !SideExit
-		JSL levelinitA
-		STZ !Level+3
-		RTL
+		JML levelinitA
 
 levelinit31:
 		LDA #$0E : STA !Translevel
@@ -199,8 +175,8 @@ levelinit31:
 		JSL CLEAR_DYNAMIC_BG3
 
 		LDA #$11				;\
-		TSB $6D9D				; | BG1 and sprites are on both main and subscreen
-		TSB $6D9E				;/
+		TSB !MainScreen				; | BG1 and sprites are on both main and subscreen
+		TSB !SubScreen				;/
 		RTL
 
 levelinit34:
@@ -222,8 +198,8 @@ level7:
 	; 04 - Quest rewarded
 
 		LDA #$06
-		TRB $6D9D
-		TSB $6D9E
+		TRB !MainScreen
+		TSB !SubScreen
 
 
 		LDA.b #level5_HDMA : STA !HDMAptr		;\
@@ -339,39 +315,27 @@ level7:
 		CMP #$60 : BCC .CastleColor
 
 		.CaveColor
-		LDA !Level+2
-		BEQ .Return
-		JSL $138030
-		BCS .Return
-		PHB
-		LDA #!VRAMbank
-		PHA : PLB
+		LDA !Level+2 : BEQ .Return
 		REP #$20
-		LDA #$000E : STA !CGRAMtable+$00,y
-		LDA.w #.Pal1 : STA !CGRAMtable+$02,y
+		LDY #$0E
+		LDX.b #$7F*2
+	-	LDA .Pal1,y : STA !ShaderInput+($71*2),x
+		DEX #2
+		DEY #2 : BPL -
 		SEP #$20
-		LDA.b #.Pal1>>16 : STA !CGRAMtable+$04,y
-		LDA #$71 : STA !CGRAMtable+$05,y
-		PLB
 		STZ !Level+2
 		RTL
 
 
 		.CastleColor
-		LDA !Level+2
-		BNE .Return
-		JSL $138030
-		BCS .Return
-		PHB
-		LDA #!VRAMbank
-		PHA : PLB
+		LDA !Level+2 : BNE .Return
 		REP #$20
-		LDA #$000E : STA !CGRAMtable+$00,y
-		LDA.w #.Pal2 : STA !CGRAMtable+$02,y
+		LDY #$0E
+		LDX.b #$7F*2
+	-	LDA .Pal2,y : STA !ShaderInput+($71*2),x
+		DEX #2
+		DEY #2 : BPL -
 		SEP #$20
-		LDA.b #.Pal2>>16 : STA !CGRAMtable+$04,y
-		LDA #$71 : STA !CGRAMtable+$05,y
-		PLB
 		LDA #$01 : STA !Level+2
 
 		.Return
@@ -392,11 +356,8 @@ level7:
 		.Pal1
 		dw $7FDD,$0000,$08E1,$0DA2,$1663,$4653,$56F8	; green version
 
-		dw $7FDD,$0C63,$2D6B,$39CE,$4231,$4E95,$5EF8	; grey version
-
-
 		.Pal2
-		dw $7FDD,$0000,$0C62,$2108,$31AD,$4653,$56F8
+		dw $7FDD,$0000,$0C62,$2108,$31AD,$4653,$56F8	; grey version
 
 
 level8:
@@ -405,14 +366,10 @@ level8:
 level9:
 	RTL
 levelA:
-
-
 		STZ !SideExit
 		LDA $1B : BNE +
 		INC !SideExit
 		+
-
-		LDA #$02 : STA $7403
 
 		LDA.b #.HDMA : STA !HDMAptr+0
 		LDA.b #.HDMA>>8 : STA !HDMAptr+1
@@ -434,168 +391,89 @@ levelA:
 
 
 		.HDMA
-		PHP
 		PHB : PHK : PLB
-	LDX #$00
-	LDA $13
-	LSR A
-	BCC $02 : LDX #$10
+		PHP
 
-	REP #$20
-	LDA #$00AF
-	SEC : SBC $1C
-	CLC : ADC #$00C0
-	LSR A
 		SEP #$30
-	PHP
-	CMP #$6C
-	BCC $02 : LDA #$6C
-	PLP
-
-
-
-LDX #$00
-
-
+		LDA $14				;\
+		AND #$01			; | X = HDMA table index
+		BEQ $02 : LDA #$20		; |
+		TAX				;/
 		REP #$20			; > A 16-bit
-
 		LDA $1A : STA $22		;\
-		LDA $1C				; | Set BG3 coordinates
-		SEC : SBC #$006E		; |
+		LDA $1C				; |
+		BMI ..wrap			; |
+		CMP #$0030 : BCS ..nowrap	; |
+		..wrap				; |
+		AND #$000F			; |
+		ORA #$0030			; |
+		..nowrap			; |
 		STA $24				;/
 
-		LDA $1C
-		LSR A
-		PHP
-		EOR #$FFFF : INC A
-		CLC : ADC #$00B3
-		STA $0400,x			;\
-		PLP : BCC $01 : INC A
-		STA $0405,x
-		LDA #$0008 : STA $040A,x
-		LDA #$0001 : STA $040F,x
+		LDA #$0176 : STA !Level+2	; water height
 
-		STZ $0414,x			; | Make BG3 look like it's at the same height as BG1
+		LDA #$0166			;\
+		SEC : SBC $24			; |
+		CMP #$00D8 : BCC ..fulleffect	; |
+		..onlyrain			; | if only rain fits on screen
+		LDA #$0001 : STA $0400,x	; |
+		STZ $0405,x			; |
+		BRA ..scrollrain		;/
+		..fulleffect			;\
+		LSR A				; |
+		STA $0400,x			; | scanline counts (rain part)
+		BCC $01 : INC A			; |
+		STA $0405,x			;/
+		LDA #$0008 : STA $040A,x	; scanline count (lo prio water part)
+		LDA #$0001 : STA $040F,x	; scanline count (hi prio water part)
+		STZ $0414,x			; end table
 
-
-		LDA $14
-		AND #$000F
-		CLC : ADC $1A
-		STA $0401,x
-		STA $0406,x
-
-		LDA $14
-		ASL A
-		EOR #$FFFF
-		AND #$000F
-		CLC : ADC $1C
-		SEC : SBC #$0020
-
-		STA $0403,x			;/
-		STA $0408,x
-
-		LDA $1C
-		STA $040D,x
-		STA $0412,x
-		LDA $14
-		AND #$00FF
-		CLC : ADC $1A
-		STA $040B,x
-		LSR A
-		CLC : ADC $040B,x
-		STA $0410,x
+		LDA $1C				;\
+		STA $040D,x			; | water Y = BG1 Y
+		STA $0412,x			;/
+		LDA $14				;\
+		AND #$00FF			; | scroll lo prio water
+		CLC : ADC $1A			; |
+		STA $040B,x			;/
+		LSR #2				;\
+		CLC : ADC $040B,x		; | hi prio water = lo prio water x 125%
+		STA $0410,x			;/
 
 
+		..scrollrain
+		LDA $14				;\
+		ASL A				; | rain scroll value
+		AND #$000F : STA $00		;/
+		CLC : ADC $22			;\
+		STA $0401,x			; | scroll rain right
+		STA $0406,x			;/
+		LDA $24				;\
+		SEC : SBC $00			; |
+		SEC : SBC #$0020		; | scroll rain down
+		STA $0403,x			; |
+		STA $0408,x			;/
 
+
+
+		..updatemirrors
 		LDA #$1103 : STA $4330		;\
 		STZ $4334			; | mode 3 to write twice to 2111 and 2112
 		TXA				; |
 		ORA #$0400			; |
-	;	STA !HDMA3source		;/
+		STA !HDMA3source		;/
 		SEP #$20			; > A 8-bit
 
-		LDA #$08 : TSB $6D9F		; > HDMA on channel 3
+		LDA #$08 : TSB !HDMA		; > HDMA on channel 3
 
 
-		..Lightning
-
-
-; 2130: 0x02
-; 2131: 0x24
-
-
-		LDA !Level+3 : BPL ..Active		;\
-		LDA $1B					; | Lightning staRTL at screen 0x02
-		CMP #$02 : BCC ..Return			; |
-		STZ !Level+3				;/
-
-		..Active
-		LDA !Level+2				;\ Decrement timer
-		BEQ $03 : DEC !Level+2			;/
-		LDA !Level+3 : BEQ ..Wait
-		CMP #$01 : BEQ ..Strike
-		CMP #$02 : BEQ ..Striking
-
-		..Return
-		PLB
 		PLP
-		RTL
-
-
-		..Wait
-		LDA #$00
-		STA !VineDestroyTimer+$00
-		STA !VineDestroyPage
-		LDA !Level+2 : BNE ..Return
-		INC !Level+3
-		LDA #$40 : STA !Level+2
-		LDA !P2XPosLo-$80 : STA !Level+4
-		LDA !P2XPosHi-$80 : STA !Level+5
-
-		..Strike
-		LDA !Level+2 : BEQ ++
-		CMP #$30 : BCS +
-		CMP #$08 : BNE ..Return
-		LDA #$18 : STA !SPC4
 		PLB
-		PLP
 		RTL
-
-	++	INC !Level+3
-		LDA #$10 : STA !Level+2
-
-		..Striking
-		LDA !Level+2 : BNE +
-		STZ !Level+3
-		LDA #$80 : STA !Level+2
-	+	LDA !Level+4 : STA $0C
-		LDA !Level+5 : STA $0D
-		LDA #$C0 : STA $0E
-		STZ $0F
-
-		LDY !Level+3
-		LDA ..BoltTime,y
-		SEC : SBC !Level+2
-		BPL $02 : LDA #$00
-		REP #$20
-		AND #$00FF
-		LSR #2
-		XBA
-		CMP #$0200
-		BCC $03 : ADC #$01FF
-		STA $00
-		SEP #$20
-		JSL levelinitA_GFX
-		JSL LightningBolt
-		PLB
-		PLP
-		RTL
-
-	..BoltTime
-	db $8E,$3E,$0E
 
 
 levelB:
+		RTL
+
 		LDA #$07
 		LDX $1B
 		CPX #$0B : BCC .Nah			;\ vines are destroyed slower between these screens
@@ -1288,8 +1166,8 @@ levelE:
 		STZ $88
 		STZ $89
 		LDA #$10
-		TRB $6D9D
-		TRB $6D9E
+		TRB !MainScreen
+		TRB !SubScreen
 		RTL
 
 
@@ -1527,9 +1405,7 @@ level29:
 		CMP #$0F : BCS .NoExit
 		LDA #$01 : STA !SideExit
 		REP #$20
-		LDA #$01F8				;\
-		LDY #$01				; | Regular exit
-		JML END_Right				;/
+		LDA #$01F8 : JML END_Right		; exit
 
 		.NoExit
 		STZ !SideExit

@@ -62,6 +62,9 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 	%MapDef(CharMenuCount,		1)	; |
 	%MapDef(CharMenuBaseX,		1)	;/
 
+	%MapDef(MapBG2X,		2)
+	%MapDef(MapBG2Y,		2)
+
 	%MapDef(WarpPipe,		1)
 	%MapDef(WarpPipeP2X,		2)
 	%MapDef(WarpPipeP2Y,		2)
@@ -442,7 +445,7 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 
 ; VRAM map:
 ; 0x0000 / $0000	16 KiB BG1 GFX		256 8bpp characters (128x128 px)
-; 0x4000 / $2000	16 KiB BG2 GFX		512 4bpp characters (128x512 px)
+; 0x4000 / $2000	16 KiB BG2 GFX		512 4bpp characters (128x256 px)
 ; 0x8000 / $4000	4 KiB BG1 tilemap	2 tilemaps, 64x32 tiles
 ; 0x9000 / $4800	4 KiB BG2 tilemap	2 tilemaps, 64x32 tiles, main part
 ; 0xA000 / $5000	2 KiB BG2 tilemap	1 tilemap, 32x32 tiles, HUD part
@@ -576,8 +579,8 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		AND #$00FF
 		DEC A
 		STA $0228,x
-		LDA $1A : STA $022B,x
-		LDA $1C : STA $022D,x
+		LDA $1E : STA $022B,x				;\ map part of BG2
+		LDA $20 : STA $022D,x				;/
 		BRA ..updatemirrors
 
 		..40						;\
@@ -595,8 +598,8 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		LDA #$01 : STA $0225,x				;/
 		STZ $022A,x					; end BG2 coords table
 		REP #$20					;\
-		LDA $1A : STA $0226,x				; | make sure map part has the correct BG2 coords
-		LDA $1C : STA $0228,x				;/
+		LDA $1E : STA $0226,x				; | make sure map part has the correct BG2 coords
+		LDA $20 : STA $0228,x				;/
 
 		..updatemirrors
 		TXA
@@ -852,7 +855,6 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		..nowarppipe						;\
 		JSR OverworldSprites					; | otherwise, sprites first to let them control the camera during events
 		JSR Player						;/
-
 		..drawstuff
 		PHP
 		SEP #$20
@@ -911,15 +913,25 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 
 		SEP #$10				;\ regs: A 16-bit, index 8-bit
 		REP #$20				;/
-		LDA $1A : STA $1E			;\ layer 2 positions
-		LDA $1C : STA $20			;/
+
+		LDA $14
+		AND #$0003 : BNE +
+		INC !MapBG2X				; scroll BG2
+		+
+
+		LDA $1A					;\
+		CLC : ADC !MapBG2X			; |
+		STA $1E					; | layer 2 positions
+		LDA $1C					; |
+		CLC : ADC !MapBG2Y			; |
+		STA $20					;/
 
 		SEP #$20				; 8-bit A
 
 		LDA #$00 : STA !DizzyEffect		; cancel dizzy
 		LDA #$08 : TRB !2105
-		LDA #$1D : STA !MainScreen
-		STZ !SubScreen
+	;	LDA #$1D : STA !MainScreen
+	;	STZ !SubScreen
 
 		JSL CLEAR_MSG_SA1
 

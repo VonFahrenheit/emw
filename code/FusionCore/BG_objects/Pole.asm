@@ -113,8 +113,8 @@
 		PHB : PHK : PLB
 
 		.InteractP1
-		LDA !P2XPosLo-$80 : JSR .GetMapIndex		; get height map index (also use for bounce, so it has to be before the BCC ..done)
 		LSR $00 : BCC ..done				;\
+		LDA !P2XPosLo-$80 : JSR .GetMapIndex		; get height map index
 		LDA !P2DropDownTimer-$80-1 : BMI ..fail		; |
 		LDA !P2YPosLo-$80				; |
 		SEC : SBC #$0008				; | has to touch while moving down (no interaction during drop down)
@@ -127,7 +127,7 @@
 		BRA ..done					;/
 		..ontop						;\
 		SEP #$20					; | set platform bit
-		LDA #$04 : STA !P2ExtraBlock-$80		; |
+		LDA #$04 : TSB !P2ExtraBlock-$80		; |
 		REP #$20					;/
 		CPY #$0004*2 : BCS ..setcoords			; inner half -> no pressure
 		LDA $410000+!BG_object_Misc,x			;\
@@ -148,6 +148,43 @@
 		STA $96						; |
 		..done						;/
 
+		.InteractP2
+		LSR $00 : BCC ..done				;\
+		LDA !P2XPosLo : JSR .GetMapIndex		; get height map index
+		LDA !P2DropDownTimer-1 : BMI ..fail		; |
+		LDA !P2YPosLo					; |
+		SEC : SBC #$0008				; | has to touch while moving down (no interaction during drop down)
+		CMP $410000+!BG_object_Y,x : BPL ..fail		; |
+		LDA !P2YSpeed-1					; |
+		CLC : ADC !P2VectorY-1				; |
+		BPL ..ontop					;/
+		..fail						;\
+		LDA #$0002 : TRB $0E				; | otherwise, clear interaction bit
+		BRA ..done					;/
+		..ontop						;\
+		SEP #$20					; | set platform bit
+		LDA #$04 : TSB !P2ExtraBlock			; |
+		REP #$20					;/
+		CPY #$0004*2 : BCS ..setcoords			; inner half -> no pressure
+		LDA $410000+!BG_object_Misc,x			;\
+		AND #$0002 : BNE ..nolanding			; |
+		LDA !ApexP2 : JSR .SetLanding			; | outer half -> set animation
+		BRA ..setcoords					; |
+		..nolanding					; |
+		LDA #$0007 : JSR .SetAnim			;/
+		..setcoords					;\
+		LDA $410000+!BG_object_Y,x			; |
+		AND #$FFF0					; |
+		CLC : ADC ($02),y				; |
+		STA !P2YPosLo					; |
+		LDA !P2Character				; | update player Y coord
+		AND #$00FF : BNE ..done				; |
+		LDA !P2YPosLo					; |
+		SEC : SBC #$0010				; |
+		STA $96						; |
+		..done						;/
+
+
 		LDA $0E : TSB $0C				; update collision flags
 
 		LDA $410000+!BG_object_Type,x			;\
@@ -160,8 +197,10 @@
 	+	STA $0A						;/
 
 		.BounceP1
-		LSR $0C : BCC ..done				;\ must be moving off of pole
+		LDA $0C						;\
+		AND #$0001 : BEQ ..done				; | must be moving off of pole
 		LDA !P2YSpeed-$80-1 : BPL ..done		;/
+		LDA !P2XPosLo-$80 : JSR .GetMapIndex		; get height map index
 		STZ $2250					;\
 		LDA ($02),y					; |
 		BPL $03 : LDA #$0000				; > negative -> 0
@@ -201,57 +240,11 @@
 		REP #$20					; |
 		..done						;/
 
-
-		.InteractP2
-		LDA !P2XPosLo : JSR .GetMapIndex		; get height map index (also use for bounce, so it has to be before the BCC ..done)
-		LSR $00 : BCC ..done				;\
-		LDA !P2DropDownTimer-1 : BMI ..fail		; |
-		LDA !P2YPosLo					; |
-		SEC : SBC #$0008				; | has to touch while moving down (no interaction during drop down)
-		CMP $410000+!BG_object_Y,x : BPL ..fail		; |
-		LDA !P2YSpeed-1					; |
-		CLC : ADC !P2VectorY-1				; |
-		BPL ..ontop					;/
-		..fail						;\
-		LDA #$0001 : TRB $0E				; | otherwise, clear interaction bit
-		BRA ..done					;/
-		..ontop						;\
-		SEP #$20					; | set platform bit
-		LDA #$04 : STA !P2ExtraBlock			; |
-		REP #$20					;/
-		CPY #$0004*2 : BCS ..setcoords			; inner half -> no pressure
-		LDA $410000+!BG_object_Misc,x			;\
-		AND #$0001 : BNE ..nolanding			; |
-		LDA !ApexP2 : JSR .SetLanding			; | outer half -> set animation
-		BRA ..setcoords					; |
-		..nolanding					; |
-		LDA #$0007 : JSR .SetAnim			;/
-		..setcoords					;\
-		LDA $410000+!BG_object_Y,x			; |
-		AND #$FFF0					; |
-		CLC : ADC ($02),y				; |
-		STA !P2YPosLo					; |
-		LDA !P2Character				; | update player Y coord
-		AND #$00FF : BNE ..done				; |
-		LDA !P2YPosLo					; |
-		SEC : SBC #$0010				; |
-		STA $96						; |
-		..done						;/
-
-		LDA $0E : TSB $0C				; update collision flags
-
-		LDA $410000+!BG_object_Type,x			;\
-		AND #$00FF					; |
-		CMP #$0005 : BNE ..faceright			; |
-		..faceleft					; | update x speed bonus
-		LDA #$FFF4 : BRA +				; |
-		..faceright					; |
-		LDA #$000C					; |
-	+	STA $0A						;/
-
 		.BounceP2
-		LSR $0C : BCC ..done				;\ must be moving off of pole
+		LDA $0C						;\
+		AND #$0002 : BEQ ..done				; | must be moving off of pole
 		LDA !P2YSpeed-1 : BPL ..done			;/
+		LDA !P2XPosLo : JSR .GetMapIndex		; get height map index
 		STZ $2250					;\
 		LDA ($02),y					; |
 		BPL $03 : LDA #$0000				; > negative -> 0
@@ -410,8 +403,9 @@
 	..1	dw $0004,$0004,$0003,$0003,$0002,$0002,$0001,$0001
 	..2	dw $0008,$0005,$0003,$0002,$0002,$0002,$0001,$0001
 	..3	dw $0008,$0005,$0003,$0002,$0002,$0002,$0001,$0001
-	..4	dw $FFF7,$FFF7,$FFF7,$FFFC,$FFFF,$0000,$0001,$0001
+	..4	dw $0000,$FFFE,$FFFF,$FFFF,$0000,$0000,$0001,$0001
 	..5	dw $FFF7,$FFF7,$FFF7,$FFFC,$FFFF,$0000,$0001,$0001
+	..6	dw $FFF7,$FFF7,$FFF7,$FFFC,$FFFF,$0000,$0001,$0001
 
 
 
@@ -421,10 +415,6 @@
 		CMP.w #-$0030 : BCS ..return
 		..set2
 		LDA #$000F : JSR .SetAnim
-		AND #$00FC
-		ASL #2
-		ADC.w #.HeightMap
-		STA $02
 		..return
 		RTS
 
@@ -455,6 +445,11 @@
 		SEP #$20
 		CMP $410000+!BG_object_Timer,x : BCC ..return
 		STA $410000+!BG_object_Timer,x
+		REP #$20
+		AND #$00FC
+		ASL #2
+		ADC.w #.HeightMap
+		STA $02
 		..return
 		REP #$20
 		RTS

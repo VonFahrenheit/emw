@@ -4304,8 +4304,8 @@ IRQ:
 		LDA #$0020 : STA $05			; |
 		STY $420B				;/
 		LDA #$2202 : STA $00			;\
-		LDA.w #.StatusPal : STA $02		; |
-		LDX.b #.StatusPal>>16 : STX $04		; | upload status bar palette
+		LDA.w #!StatusBarColors : STA $02	; |
+		STZ $04					; | upload status bar palette
 		LDA #$000E : STA $05			; |
 		STY $2121				; |
 		STY $420B				;/
@@ -4336,9 +4336,6 @@ IRQ:
 		PLP					; |
 		RTI					;/
 
-
-.StatusPal
-incbin "../../PaletteData/statusbar.mw3":2-10
 
 
 .GameModeEnable

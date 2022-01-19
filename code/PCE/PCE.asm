@@ -285,6 +285,8 @@ sa1rom
 		STA !P2YPosLo
 		LDA !MultiPlayer
 		AND #$00FF : BEQ +
+		LDA $741A
+		AND #$00FF : BNE +
 		LDA !P2XPosLo
 		SEC : SBC #$0008
 		STA !P2XPosLo
@@ -423,7 +425,8 @@ sa1rom
 
 		LDA !PlayerBonusHP : PHA
 		LDA !P2TempHP
-		BEQ $03 : INC !PlayerBonusHP
+		CLC : ADC !PlayerBonusHP
+		STA !PlayerBonusHP
 		JSR (..List,x)				; > run code for player 1
 		PLA : STA !PlayerBonusHP
 
@@ -558,7 +561,8 @@ sa1rom
 
 		LDA !PlayerBonusHP : PHA
 		LDA !P2TempHP
-		BEQ $03 : INC !PlayerBonusHP
+		CLC : ADC !PlayerBonusHP
+		STA !PlayerBonusHP
 		JSR (..List,x)				; > run code for player 2
 		PLA : STA !PlayerBonusHP
 

@@ -319,3 +319,8 @@ db $00,$1F,$30,$A6,$39,$47
 db $36
 db $00,$1F,$30,$A6,$39,$47
 %AddToList(AirshipDisplay, $00)
+
+; -- Sprite 37 --
+db $36
+db $00,$1F,$36,$A6,$39,$47
+%AddToList(Lightning, $00)

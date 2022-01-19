@@ -685,6 +685,7 @@ CaptainWarrior:
 		REP #$20						; | hitbox + hurt
 		LDA .HitboxTable,y : JSL LOAD_HITBOX			; |
 		SEC : JSL !PlayerClipping : BCC ..nocontact		; |
+		LDY #$04 : STY !dmg					; > 1 full heart of damage
 		JSL !HurtPlayers					; |
 		..nocontact						;/
 		LDA $3330,x						;\

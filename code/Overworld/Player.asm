@@ -773,24 +773,24 @@
 		AND #$000F : TAY
 
 		CPY #$0005 : BNE +
-		LDA !BigRAM+$02
-		CMP !BigRAM+$0A : BNE +
-		CMP #$0002*$400 : BEQ ++
+		LDA #$0002*$400
+		CMP !BigRAM+$02 : BEQ ++
+		CMP !BigRAM+$0A : BEQ ++
 		+
 		CPY #$0006 : BNE +
-		LDA !BigRAM+$06
-		CMP !BigRAM+$08 : BNE +
-		CMP #$0003*$400 : BEQ ++
+		LDA #$0003*$400
+		CMP !BigRAM+$06 : BEQ ++
+		CMP !BigRAM+$08 : BEQ ++
 		+
 		CPY #$0009 : BNE +
-		LDA !BigRAM+$00
-		CMP !BigRAM+$0E : BNE +
-		CMP #$0004*$400 : BEQ ++
+		LDA #$0004*$400
+		CMP !BigRAM+$00 : BEQ ++
+		CMP !BigRAM+$0E : BEQ ++
 		+
 		CPY #$000A : BNE +
-		LDA !BigRAM+$04
+		LDA #$0005*$400
+		CMP !BigRAM+$04 : BEQ ++
 		CMP !BigRAM+$0C : BNE +
-		CMP #$0005*$400 : BNE +
 	++	SEP #$20
 		STZ !P1MapXSpeed,x
 		STZ !P1MapYSpeed,x
@@ -1355,7 +1355,8 @@
 	.TriangleOpen
 		LDX $02					; X = player index
 		LDY $08					; Y = direction index
-		SEP #$02				; z = 1 (zero), no collision
+		LDA #$0000 : STA !BigRAM,y
+	;	SEP #$02				; z = 1 (zero), no collision
 		RTS
 
 

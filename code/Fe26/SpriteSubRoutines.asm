@@ -1649,6 +1649,7 @@ SPRITE_OFF_SCREEN:
 		SEC
 
 		.NoContact
+		STZ !dmg				; make sure damage value is always used up (AFTER both damage calls)
 		LDA !BigRAM+$7E
 		RTL
 
@@ -1688,10 +1689,12 @@ SPRITE_OFF_SCREEN:
 
 		.HurtPlayer
 		LDA #$0F : JSL DontInteract		; interaction disable when hurt by sprite: 15 frames
-		TYA
-		CLC : ROL #2
-		INC A
-		JSL !HurtPlayers
+		LDA !dmg : PHA				;\
+		TYA					; |
+		CLC : ROL #2				; | hurt (make sure damage value is applied to both players!)
+		INC A					; |
+		JSL !HurtPlayers			; |
+		PLA : STA !dmg				;/
 		RTS
 
 ; input:
@@ -1747,6 +1750,7 @@ SPRITE_OFF_SCREEN:
 		JSL !HurtPlayers
 
 		.NoContact
+		STZ !dmg				; make sure damage value is always used up
 		RTL
 
 

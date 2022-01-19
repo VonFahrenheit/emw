@@ -49,10 +49,8 @@ LifeShroom:
 
 	Heal:
 		JSL CheckInteract : BNE .Return
-		LDA !P2MaxHP-$80,y
-		INC A
-		STA !P2HP-$80,y
-		LDA #$01 : STA !P2TempHP-$80,y
+		LDA !P2MaxHP-$80,y : STA !P2HP-$80,y		; full heal
+		LDA #$04 : STA !P2TempHP-$80,y			; +1 temp heart
 		LDA #$74 : STA !P2FlashPal-$80,y
 		STZ $3230,x
 

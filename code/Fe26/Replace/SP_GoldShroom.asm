@@ -23,9 +23,10 @@ org $01C6C9
 		DEC A					; |
 		LSR A					; |
 		ROR A					; |
-		TAX					; |
+		TAX					; | flash white + heal
 		LDA #$14 : STA !P2FlashPal-$80,x	; |
-		LDA !P2HP-$80,x				; | flash white + heal
+		LDA !P2TempHP-$80,x : BNE ..return	; > no heal with temp HP up
+		LDA !P2HP-$80,x				; |
 		CLC : ADC #$04				; |
 		CMP !P2MaxHP-$80,x : BCC +		; |
 		LDA !P2MaxHP-$80,x			; |
@@ -38,6 +39,7 @@ org $01C6C9
 		STZ !SPC1				; | no sfx
 		STZ !SPC4				;/
 		PHX					;\
+		LDA !SpriteXSpeed,x : BNE ..nomem	; > don't use index mem if moving
 		LDA !HeaderItemMem			; |
 		CMP #$03 : BCS ..nomem			; |
 		JSL GetItemMem				; |
@@ -57,7 +59,7 @@ org $01C6C9
 		LDA !CurrentMario			; |
 		DEC A					; | 100 coins + full heal + flash gold
 		LSR A					; |
-		ROL A					; |
+		ROR A					; |
 		TAX					; |
 		LDA !P2MaxHP-$80,x : STA !P2HP-$80,x	; |
 		LDA #$B4 : STA !P2FlashPal-$80,x	; |

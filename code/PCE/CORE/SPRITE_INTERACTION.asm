@@ -1372,35 +1372,36 @@ CHUCK_PUSH:	db $20,$E0
 		RTS
 
 		.Process
-		STZ $01				; > Don't include kill count
-		STZ $3230,x			; Erase powerup
+		STZ $01					; > Don't include kill count
+		STZ $3230,x				; Erase powerup
 		LDA $3200,x
-		CMP #$78 : BEQ .1UP		; > Branch if 1-up
+		CMP #$78 : BEQ .1UP			; > Branch if 1-up
 		CMP #$7F : BEQ .1UP
-		CMP #$76 : BNE .Powerup		; > Branch unless star
-		LDA #$FF : STA !StarTimer	; > Set star timer
+		CMP #$76 : BNE .Powerup			; > Branch unless star
+		LDA #$FF : STA !StarTimer		; > Set star timer
 		BRA .Shared
 
-.Powerup	LDA !P2HP			;\
-		CLC : ADC #$04			; |
-		CMP !P2MaxHP : BCC +		; | heal 1 heart
-		LDA !P2MaxHP			; |
-	+	STA !P2HP			;/
+.Powerup	LDA !P2TempHP : BNE .Shared		; no healing with temp HP
+		LDA !P2HP				;\
+		CLC : ADC #$04				; |
+		CMP !P2MaxHP : BCC +			; | heal 1 heart
+		LDA !P2MaxHP				; |
+	+	STA !P2HP				;/
 
 .Shared		LDA #$0A : STA !SPC1
-		LDA #$14 : STA !P2FlashPal	; flash pal
+		LDA #$14 : STA !P2FlashPal		; flash pal
 		RTS
 
 .1UP		LDA #$0D : STA $00
-		LDA !P2MaxHP : STA !P2HP	; full heal
-		LDA !CurrentPlayer		;\
-		TAY				; |
-		LDA !P1CoinIncrease,y		; | increase coins
-		CLC : ADC #$64			; |
-		STA !P1CoinIncrease,y		;/
+		LDA !P2MaxHP : STA !P2HP		; full heal
+		LDA !CurrentPlayer			;\
+		TAY					; |
+		LDA !P1CoinIncrease,y			; | increase coins
+		CLC : ADC #$64				; |
+		STA !P1CoinIncrease,y			;/
 
-		LDA #$B4 : STA !P2FlashPal	; flash pal
-
+		LDA #$B4 : STA !P2FlashPal		; flash pal
+		LDA !SpriteXSpeed,x : BNE ..nomem	; no item mem if moving version
 		LDA !HeaderItemMem
 		CMP #$03 : BCS ..nomem
 		JSR GetItemMem

@@ -189,17 +189,19 @@
 
 		STZ $6DDA					; clear backup music reg
 		; bunch of obsolete code at $00A0BC-$00A0E3 (opcode ends at $00A3E5)
-		LDA #$03 : STA !2130				; sick
-		LDA #$15
-		STA $212C
-		STA $212E
-		LDA #$02
-		STA $212D
-		STA $212F
-		STZ $2131
-		STZ !2131
+		LDA #$02 : STA !2130				; sick
+	;	LDA #$15
+	;	STA $212C
+	;	STA $212E
+	;	LDA #$02
+	;	STA $212D
+	;	STA $212F
+	;	STZ $2131
+		LDA #$22 : STA !2131
+		LDA #$E0 : STA $2132
 
 		REP #$20					; A 16-bit
+		STZ !2132_RGB					; clear backdrop color
 		LDA #$4000 : STA !BG1Address			; BG1 tilemap address
 		LDA #$4800 : STA !BG2Address			; BG2 tilemap address
 		STZ $1A						;\
@@ -271,17 +273,18 @@
 		LDA #$1801 : STA $4310				; word writes to 2118-2119
 
 
+
 		; generate tilemap for BG2 HUD
 		REP #$10
 		LDX #$0000
-		LDA #$3E00
+		LDA #$3F00
 	-	STA !DecompBuffer+$000,x
 		INC A
 		INX #2
 		CPX #$0100 : BCC -
 
 		LDX #$0000
-		LDA #$3E80
+		LDA #$3F80
 		CLC
 	-	STA !DecompBuffer+$100,x
 		ADC #$0010
@@ -302,13 +305,84 @@
 		INX #2
 		CPX #$0020 : BCC -
 
+		SEP #$10					;\
+		LDA.w #!DecompBuffer : STA $4312		; |
+		LDA.w #!DecompBuffer>>8 : STA $4313		; | upload BG2 HUD tilemap
+		LDA #$0200 : STA $4315				; |
+		LDA #$5000 : STA $2116				; |
+		LDX #$02 : STX $420B				;/
+
+
+		REP #$10
+
+		LDA.w #!DecompBuffer+$2000 : STA $00
+		LDA.w #!DecompBuffer+$2000>>8 : STA $01
+		LDA.w #$B09 : JSL !DecompressFile
+
+
+		LDA.w #!DecompBuffer : STA $00
+		LDA.w #!DecompBuffer>>8 : STA $01
+		LDA.w #$029 : JSL !DecompressFile
+
+		PHB
+		PEA $4040 : PLB : PLB
+		LDX #$0FFE
+	-	LDA.w !DecompBuffer+$2000,x
+		AND #$00FF
+		CMP #$0014 : BNE +
+		LDA.w !DecompBuffer+$2000,x
+		ORA #$02FF : BRA ++
+	+	LDA.w !DecompBuffer+$2000,x
+		ORA #$2200
+	++	STA.w !DecompBuffer+$2000,x
+		DEX #2 : BPL -
+
+		LDX #$0000
+		LDY #$0000
+	-	LDA.w !DecompBuffer+$00,y : STA.w !DecompBuffer+$1000,x
+		LDA.w !DecompBuffer+$02,y : STA.w !DecompBuffer+$1002,x
+		LDA.w !DecompBuffer+$04,y : STA.w !DecompBuffer+$1004,x
+		LDA.w !DecompBuffer+$06,y : STA.w !DecompBuffer+$1006,x
+		LDA.w !DecompBuffer+$08,y : STA.w !DecompBuffer+$1008,x
+		LDA.w !DecompBuffer+$0A,y : STA.w !DecompBuffer+$100A,x
+		LDA.w !DecompBuffer+$0C,y : STA.w !DecompBuffer+$100C,x
+		LDA.w !DecompBuffer+$0E,y : STA.w !DecompBuffer+$100E,x
+		STZ.w !DecompBuffer+$1010,x
+		STZ.w !DecompBuffer+$1012,x
+		STZ.w !DecompBuffer+$1014,x
+		STZ.w !DecompBuffer+$1016,x
+		STZ.w !DecompBuffer+$1018,x
+		STZ.w !DecompBuffer+$101A,x
+		STZ.w !DecompBuffer+$101C,x
+		STZ.w !DecompBuffer+$101E,x
+		TYA
+		CLC : ADC #$0010
+		TAY
+		TXA
+		CLC : ADC #$0020
+		TAX
+		CPX #$1000 : BCC -
+		PLB
+
+
 		SEP #$10
+		LDX #$02
 		LDA #$1801 : STA $4310
-		LDA.w #!DecompBuffer : STA $4312
-		LDA.w #!DecompBuffer>>8 : STA $4313
-		LDA #$0200 : STA $4315
-		LDA #$5000 : STA $2116
-		LDX #$02 : STX $420B
+
+		LDA.w #!DecompBuffer+$2000 : STA $4312
+		LDA.w #!DecompBuffer+$2000>>8 : STA $4313
+		LDA #$1000 : STA $4315
+		LDA #$4800 : STA $2116
+		STX $420B
+
+
+		LDA.w #!DecompBuffer+$1000 : STA $4312
+		LDA.w #!DecompBuffer+$1000>>8 : STA $4313
+		LDA #$1000 : STA $4315
+		LDA #$2800 : STA $2116
+		STX $420B
+
+
 
 
 	; debug: clear out BG1 GFX area
@@ -334,20 +408,15 @@
 	endif
 
 
-		; upload BG2 tilemap to 0x9000/$4800 here
-
-
-
 		LDA.w #!DecompBuffer : STA $00			;\ decompression destination
 		LDA.w #!DecompBuffer>>8 : STA $01		;/
-		LDA #$2800 : STA $2116				;\
+		LDA #$3800 : STA $2116				;\
 		LDA.w #$00A : JSL !DecompressFile		; |
 		LDA #$1801 : STA $4310				; |
-		LDA.w #!DecompBuffer : STA $4312		; | upload file 00A
+		LDA.w #!DecompBuffer : STA $4312		; | upload file 00A (character select BG2 GFX)
 		LDA.w #!DecompBuffer>>8 : STA $4313		; |
 		LDA #$1000 : STA $4315				; |
 		STX $420B					;/
-
 
 
 
@@ -396,33 +465,6 @@
 		LDA.w #!AN2 : STA $2181				; |
 		LDA.w #!AN2>>8 : STA $2182			; |
 		STX $420B					;/
-
-		STZ $2115					;\
-		REP #$20					; |
-		LDA #$1808 : STA $4310				; |
-		LDA.w #.Tilemap : STA $4312			; | tile numbers for first half of BG2
-		LDX.b #.Tilemap>>16 : STX $4314			; |
-		LDA #$0200 : STA $4315				; |
-		LDA #$4800 : STA $2116				; |
-		LDX #$02 : STX $420B				;/
-		LDA #$1808 : STA $4310				;\
-		LDA.w #.Tilemap+2 : STA $4312			; |
-		LDX.b #.Tilemap>>16 : STX $4314			; | tile numbers for second half of BG2
-		LDA #$0200 : STA $4315				; |
-		LDX #$02 : STX $420B				;/
-		LDX #$80 : STX $2115				;\
-		LDA #$1908 : STA $4310				; |
-		LDA.w #.Tilemap+1 : STA $4312			; |
-		LDX.b #.Tilemap>>16 : STX $4314			; | YXPCCCTT for first half of BG2
-		LDA #$0200 : STA $4315				; |
-		LDA #$4800 : STA $2116				; |
-		LDX #$02 : STX $420B				;/
-		LDA #$1908 : STA $4310				;\
-		LDA.w #.Tilemap+3 : STA $4312			; |
-		LDX.b #.Tilemap>>16 : STX $4314			; | YXPCCCTT for second half of BG2
-		LDA #$0200 : STA $4315				; |
-		LDX #$02 : STX $420B				;/
-
 
 
 	.InitSprites
@@ -842,8 +884,8 @@
 		; PHK : PLB
 
 		SEP #$30
-		LDA #$3F : TRB $40		;\ no color math
-		STZ $44				;/
+	;	LDA #$3F : TRB $40		;\ no color math
+	;	STZ $44				;/
 		LDA #$22 : STA $41		;\ hide BG1/BG2 inside window, show BG3 ONLY inside window
 		LDA #$03 : STA $42		;/
 		STZ $43				; > enable sprites within window
@@ -913,9 +955,9 @@
 
 
 ; $0200		0x20
-; $0201		mainscreen value (4 bytes)
+; $0201		mainscreen/subscreen values (4 bytes)
 ; $0205		0x01
-; $0206		mainscreen value (4 bytes)
+; $0206		mainscreen/subscreen values (4 bytes)
 ; $020A		0x00
 ;
 ;
@@ -936,7 +978,8 @@
 
 
 	.End
-
+		LDA #$00 : STA !MainScreen				;\ main/sub settings
+		LDA #$11 : STA !SubScreen				;/
 		LDX #$00
 		..loop
 		LDA #$20
@@ -957,7 +1000,7 @@
 		LDA #$0012
 		STA $0201,x
 		STA $0203,x
-		LDA #$0013
+		LDA !MainScreen
 		STA $0206,x
 		STA $0208,x
 		STZ $0221,x

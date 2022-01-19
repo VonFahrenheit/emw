@@ -33,7 +33,20 @@
 		JSR (.Ptr,x)				; |
 		PLX					;/
 
-		STZ !P2TempHP				; remove temp HP
+		.TempHP					;\
+		LDA !P2TempHP				; |
+		CMP !dmg : BCC ..remove			; |
+		SBC !dmg				; | if temp HP >= dmg, 0 dmg and reduce temp HP
+		STA !P2TempHP				; |
+		STZ !dmg				; |
+		BRA ..done				;/
+		..remove				;\
+		LDA !dmg				; |
+		SEC : SBC !P2TempHP			; | remaining temp HP buffers against dmg
+		STA !dmg				; |
+		STZ !P2TempHP				; |
+		..done					;/
+
 		LDA #$0F : STA !P2HurtTimer		; set hurt animation timer
 		LDA !P2HP				;\
 		SEC : SBC !dmg				; |
@@ -41,6 +54,7 @@
 		STA !P2HP				; |
 		CMP #$00 : BEQ .Kill			;/
 		STZ !dmg				; damage value used
+		.Return
 		RTL					; return
 
 .Kill		LDA #$01 : STA !P2Status		; > this player dies
@@ -59,7 +73,7 @@
 		INC A : STA !P1DeathCounter
 		SEP #$20
 		STZ !dmg				; damage value used
-.Return		RTL
+		RTL
 
 
 		.Ptr

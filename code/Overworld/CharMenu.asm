@@ -15,7 +15,9 @@
 		LDA !OAMindex_p3 : TAX
 		CLC : ADC #$0004
 		STA !OAMindex_p3
-		LDA !CharMenuOtherPlayerX : STA !OAM_p3+$000,x
+		LDA !CharMenuOtherPlayerX
+		SEC : SBC #$0100			; Y - 1
+		STA !OAM_p3+$000,x
 		LDA !SelectingPlayer
 		AND #$00FF
 		BEQ $03 : LDA #$0202

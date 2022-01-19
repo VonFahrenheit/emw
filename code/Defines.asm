@@ -855,8 +855,15 @@ endmacro
 		; Coin hoard is with SRAM stuff
 
 
-		!StatusX		= $6ACA			; 1 byte, x position of status bar (0 for mega levels, FC for normal levels)
 		!StatusBar		= $6EF9			; 32 bytes, tile numbers for status bar
+		!StatusX		= $6F19			; 1 byte, x position of status bar (0 for mega levels, FC for normal levels)
+		!StatusBarP1Hearts	= $6F1A			; 1 byte, used for heart animations
+		!HeartTimerP1		= $6F1B			; 2 bytes, used for heart animations
+		!StatusBarP2Hearts	= $6F1D			; 1 byte, used for heart animations
+		!HeartTimerP2		= $6F1E			; 2 bytes, used for heart animations
+		!StatusBarColors	= $6F20			; 14 bytes
+		; 2 bytes free
+
 		!StatusProp		= $0080			; 32 bytes, tile prop for status bar
 
 
@@ -1871,6 +1878,7 @@ endmacro
 	%def_particle_simple(sparkle)
 	%def_particle_simple(leaf)
 	%def_particle_simple(tinycoin)
+	%def_particle_simple(flash)
 
 
 
@@ -2118,7 +2126,7 @@ endmacro
 		!3D_TilemapPointer	= !3D_Base+$400
 		!3D_BankCache		= !3D_Base+$402
 
-		!3D_TilemapCache	= $6DDF		; 278 bytes
+		!3D_TilemapCache	= $6DDF		; 278 bytes (MUST BE REMAPPED)
 
 		!3D_Cache		= $F0		; DP is used for faster access
 		!3D_Cache1		= !3D_Cache+$0

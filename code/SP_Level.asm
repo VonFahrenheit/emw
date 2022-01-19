@@ -32,7 +32,7 @@ incsrc "Defines.asm"
 		STY $4354			;/
 		SEP #$20			; > A 8 bit
 		LDA #$38			;\ Enable HDMA on channels 3, 4, and 5
-		TSB $6D9F			;/
+		TSB !HDMA			;/
 	endmacro
 
 	macro GradientGB(table)
@@ -50,7 +50,7 @@ incsrc "Defines.asm"
 		STY $4344			;/
 		SEP #$20			; > A 8 bit
 		LDA #$18			;\ Enable HDMA on channels 3 and 4
-		TSB $6D9F			;/
+		TSB !HDMA			;/
 	endmacro
 
 
@@ -588,6 +588,9 @@ print "Level code handler inserted at $", pc, "."
 	-	LDA .StatusProp_megalevel,x : STA !StatusProp,x
 		DEX : BPL -
 		..done
+		LDX #$0E
+	-	LDA .StatusBarColors,x : STA !StatusBarColors,x
+		DEX : BPL -
 		JSL $008E1A				; status bar
 
 
@@ -895,19 +898,22 @@ print "Level code handler inserted at $", pc, "."
 
 	.StatusProp
 		..megalevel
-		db $24,$24,$24,$24,$24				; P1 coins
+		db $20,$20,$20,$20,$20				; P1 coins
 		db $20,$20,$20,$20,$20,$20			; P1 hearts
-		db $24,$24,$24,$24,$24				;\ Yoshi coins
-		db $24,$24,$24,$24,$24				;/
-		db $20,$20,$20,$20,$20,$20			; P2 hearts
+		db $20,$20,$20,$20,$20				;\ Yoshi coins
+		db $20,$20,$20,$20,$20				;/
+		db $64,$64,$64,$64,$64,$64			; P2 hearts
 		db $24,$24,$24,$24,$24				; P2 coins
 		..normallevel
-		db $24,$24,$24,$24,$24				; P1 coins
+		db $20,$20,$20,$20,$20				; P1 coins
 		db $20,$20,$20,$20,$20,$20			; P1 hearts
-		db $24,$24,$24,$24,$24				;\ Yoshi coins
-		db $24,$24,$24,$24,$24				;/
-		db $20,$20,$20,$20,$20				; P2 hearts
+		db $20,$20,$20,$20,$20				;\ Yoshi coins
+		db $20,$20,$20,$20,$20				;/
+		db $64,$64,$64,$64,$64				; P2 hearts
 		db $24,$24,$24,$24,$24,$24			; P2 coins
+
+	.StatusBarColors
+		incbin "../PaletteData/StatusBar.mw3":2-10
 
 
 

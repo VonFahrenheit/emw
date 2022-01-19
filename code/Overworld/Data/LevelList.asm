@@ -33,7 +33,12 @@ endmacro
 
 LevelList:
 	.Screen11
-	; levels here
+		%level(16, 32, 0, 0,		$007)	; crossroad plains
+		%level(32, 32, 0, 0,		$008)	; melody's mountain
+		%level(48, 32, 0, 0,		$00B)	; living garden
+		%level(64, 32, 0, 0,		$00A)	; path of thunder
+		%level(80, 32, 0, 0,		$00E)	; tower of storms
+		%level(96, 32, 0, 0,		$00D)	; sunken city
 	..end
 	.Screen12
 	; levels here

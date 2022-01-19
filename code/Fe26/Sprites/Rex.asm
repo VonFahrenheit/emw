@@ -11,6 +11,7 @@
 	!RexChase		= $3280
 	!RexConga		= $3290
 	!RexDensity		= $32A0		; 0 = normal rex, 1 = dense rex
+	!RexTarget		= $32B0		; 0 = P1, 80 = P2
 
 
 Rex:
@@ -116,7 +117,9 @@ Rex:
 
 
 		.Alert
-		LDA !RexChase,x : BNE ..nochase
+		LDA !RexChase,x : BEQ ..checkchase
+		JMP ..nochase
+		..checkchase
 		LDY #$00
 		LDA !RexDensity,x : BNE ..1				; this sight box for dense rex
 		LDA !ExtraProp1,x					;\ chase if carrying sword
@@ -148,6 +151,9 @@ Rex:
 		LDA DATA_SightW,y : STA $06
 		LDA #$40 : STA $07
 		SEC : JSL !PlayerClipping : BCC ..nochase
+		DEC A
+		ROR #2
+		AND #$80 : STA !RexTarget,x				; remember which player was seen
 		LDA #$01 : STA !RexChase,x
 		LDA $BE,x : BNE ..nosfx
 		LDA #$1E : STA !SPC4					; chase SFX
@@ -219,7 +225,7 @@ Rex:
 		ASL A
 		BRA +
 		..canturn
-		JSL SUB_HORZ_POS
+		LDY !RexTarget,x : JSL SUB_HORZ_POS_Target
 		TYA : STA $3320,x
 		LDA !Difficulty
 	+	ASL A

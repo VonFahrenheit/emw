@@ -93,9 +93,9 @@
 		BCC .EndVert
 
 		.OffVert
-		LDA !Difficulty
-		AND #$03 : BNE ..die
-		JSL CORE_HURT			;\ easy mode: pits do 1 damage instead of instant death
+		LDA !Difficulty : BNE ..die
+		LDA #$05 : STA !dmg		; > 1 full heart of damage (+1 because easy armor)
+		JSL CORE_HURT			;\ easy mode: pits do damage instead of instant death
 		LDA !P2Status : BNE ..die	;/
 		LDA !P2Character : BNE +	;\
 		LDA !MarioAnim			; | check if mario just died
@@ -108,8 +108,7 @@
 		BRA .EndVert
 		..die
 		LDA #$02 : STA !P2Status
-		LDA !Difficulty			;\ prevent easy mode pit kill from counting as 2 deaths
-		AND #$03 : BEQ .EndVert		;/
+		LDA !Difficulty : BEQ .EndVert	; prevent easy mode pit kill from counting as 2 deaths
 		LDA !CurrentPlayer : BNE ..p2
 		..p1
 		REP #$20

@@ -374,15 +374,15 @@ endif
 	!SkullTile		= $0F
 
 
-	org $008DAC					; Code that uploads the status bar
-		RTS					; > Return
+	org $008DAC						; code that uploads the status bar
+		RTS						; > return
 	warnpc $008DFE
 
 
 	org $00A5D5
 		JSR STATUS_BAR_Coins
 
-	org $008E1A					; Code that handles the status bar
+	org $008E1A						; code that handles the status bar
 	STATUS_BAR:
 		PHB : PHK : PLB
 		JSR .Main
@@ -390,58 +390,15 @@ endif
 		RTL
 
 	.Main
-		LDA !Difficulty_full			;\ see if timer is enabled
-		AND.b #!TimeMode : BEQ .NoTimer		;/
+		LDA !Difficulty_full				;\ see if timer is enabled
+		AND.b #!TimeMode : BEQ .NoTimer			;/
+		JSL UPDATE_TIMER				;\ run timer
+		.NoTimer					;/
 
-		LDA !TimerSeconds+1 : BMI .NoTimer	; don't process if negative
-
-		LDA !Mosaic				;\ not during level fades
-		AND #$F0 : BNE .NoTimer			;/
-		LDA !MsgTrigger				;\
-		ORA !MsgTrigger+1			; | skip this stuff when a text box is open
-		BNE .NoTimer				;/
-
-		INC !TimeElapsedFrames			; 1 more frame has passed
-		DEC !TimerFrames : BNE .DrawTimer	;\ timer (frames per second)
-		LDA.b #60 : STA !TimerFrames		;/
-		STZ !TimeElapsedFrames			;\
-		LDA !TimeElapsedSeconds			; |
-		INC A					; |
-		CMP #60					; |
-		BCC $02 : LDA #$00			; | on a new second tick, clear frames elapsed and tick up seconds/minutes
-		STA !TimeElapsedSeconds			; |
-		BNE .UpCountDone			; |
-		INC !TimeElapsedMinutes			; |
-		.UpCountDone				;/
-
-		REP #$20				;\
-		LDA !TimerSeconds			; |
-		CMP.w #100 : BNE +			; |
-		LDX #$80 : STX !SPC1			; > speed up music tempo
-		LDX #$1D : STX !SPC4			; > running out of time SFX
-	+	LDA !TimerSeconds : BEQ .DrawTimer	; |
-		DEC !TimerSeconds			; | timer (seconds)
-		SEP #$20				; |
-		BNE .TimerUpdate			;/
-		LDA #$01				;\
-		LDY !P2Status-$80			; |
-		BNE $03 : STA !P2Status-$80		; | kill players when timer hits 0
-		LDY !P2Status				; |
-		BNE $03 : STA !P2Status			;/
-
-		.TimerUpdate
-		JSL UPDATE_TIMER
-
-		.DrawTimer
-		JSL DRAW_TIMER
-		.NoTimer
-
-
-
-
-.Coins		LDA !CoinSound
+	.Coins
+		LDA !CoinSound
 		BEQ $03 : DEC !CoinSound
-		REP #$20				; > A 16 bit
+		REP #$20					; > A 16 bit
 		LDX !P1CoinIncrease : BEQ .Next
 	.P1	DEC !P1CoinIncrease
 		INC !P1Coins
@@ -450,192 +407,269 @@ endif
 	.P2	DEC !P2CoinIncrease
 		INC !P2Coins
 		JSR CoinSound
-	.Nope	LDA #$270F				;\
-		CMP !P1Coins				; |
-		BCS $03 : STA !P1Coins			; | cap coins at 9999
-		CMP !P2Coins				; |
-		BCS $03 : STA !P2Coins			;/
+	.Nope	LDA #$270F					;\
+		CMP !P1Coins					; |
+		BCS $03 : STA !P1Coins				; | cap coins at 9999
+		CMP !P2Coins					; |
+		BCS $03 : STA !P2Coins				;/
 
-		LDA !P1Coins				;\
-		JSR Thousands				; |
-		STY !StatusBar+$01			; |
-		STX !StatusBar+$02			; | P1 coin counter
-		JSR HexToDec				; |
-		STX !StatusBar+$03			; |
-		STA !StatusBar+$04			;/
+		LDA !P1Coins : JSR HexToDec			;\
+		STA !StatusBar+$04				; |
+		LDA $00 : STA !StatusBar+$03			; | P1 coin counter
+		LDA $01 : STA !StatusBar+$02			; |
+		LDA $02 : STA !StatusBar+$01			;/
 
-		LDA !MultiPlayer : BEQ .SinglePlayer	;\
-		LDA !StatusX				; | see which type of P2 counter should be used (if any)
+		LDA #$14					;\
+		STA !StatusBar+$19				; | clear these tiles (in case they're not overwritten)
+		STA !StatusBar+$1A				; |
+		STA !StatusBar+$1F				;/
+		LDA !MultiPlayer : BEQ .SinglePlayer		;\
+		LDA !StatusX					; |
+		BEQ $02 : LDA #$01				; | index to P2 coin counter
+		EOR #$01					; |
+		TAX						;/
+		REP #$20					;\
+		LDA !P2Coins : JSR HexToDec			; |
+		STA !StatusBar+$1E,x				; | P2 coin counter
+		LDA $00 : STA !StatusBar+$1D,x			; |
+		LDA $01 : STA !StatusBar+$1C,x			; |
+		LDA $02 : STA !StatusBar+$1B,x			;/
+		LDA.b #!CoinTile : STA !StatusBar+$1A,x		; coin tile
+		BRA .MultiPlayer
+
+		.SinglePlayer					;\
+		REP #$20					; |
+		LDA #$1414					; | empty space on single player
+		STA !StatusBar+$1A				; |
+		STA !StatusBar+$1C				; |
+		STA !StatusBar+$1E				;/
+
+		.MultiPlayer					;\
+		REP #$20					; |
+		LDA #$1414					; |
+		STA !StatusBar+$05				; |
+		STA !StatusBar+$07				; |
+		STA !StatusBar+$09				; |
+		STA !StatusBar+$0B				; |
+		STA !StatusBar+$0D				; | empty space
+		STA !StatusBar+$0F				; |
+		STA !StatusBar+$11				; |
+		STA !StatusBar+$13				; |
+		STA !StatusBar+$15				; |
+		STA !StatusBar+$17				; |
+		SEP #$20					;/
+		LDA.b #!CoinTile : STA !StatusBar+$00		; P1 coin symbols
+
+
+	.YoshiCoins
+		LDA !MegaLevelID : BEQ ..normallevelinit	;\
+		..megalevelinit					; |
+		TAX						; | check for and draw mega level coins
+		LDY #$0A : STY $01				; |
+		LDY #$05					; |
+		BRA ..draw					;/
+		..normallevelinit				;\
+		LDY #$07 : STY $01				; | settings for normal coins
+		LDY #$02					; |
+		..loadnormal					;/
+		LDX !Translevel : BEQ ..done			; return if on intro level / home base
+		..draw						;\ get coins to draw
+		LDA !LevelTable1,x : STA $00			;/
+		..loop						;\
+		LDA.b #!DashTile				; |
+		LSR $00						; |
+		BCC $02 : LDA.b #!YoshiCoinTile			; | draw coins
+		STA !StatusBar+$0B,y				; |
+		INY						; |
+		CPY $01 : BCC ..loop				;/
+		CPY #$0A : BNE ..done				;\
+		LDY #$05 : STY $01				; |
+		LDY #$00					; | if on mega level, also draw normal coins
+		BRA ..loadnormal				; |
+		..done						;/
+
+
+	.Player1HP
+		LDX #$00
+		LDY #$06
+		JSR DrawHearts
+
+	.Player2HP
+		LDA !MultiPlayer : BEQ ..done
+		LDX #$80
+		LDY #$18
+		LDA !MegaLevelID
+		BEQ $01 : INY
+		JSR DrawHearts
+		..done
+
+	.Return
+		RTS					; > Return
+
+
+
+
+
+; input:
+;	X = player index
+;	Y = status bar index (x06 for player 1, x18 for player 2 on normal levels / x19 on mega levels)
+	DrawHearts:
+		.CriticalMode				;\
+		LDA !Difficulty_full			; |
+		AND.b #!CriticalMode : BEQ ..done	; | on critical mode, just draw the skull icon and return
+		LDA.b #!SkullTile : STA !StatusBar+1,y	; |
+		RTS					; |
+		..done					;/
+
+
+		STY $0F					; $0F = index to status bar tilemap
+
+		.CheckStatus				;\
+		LDA !P2Status-$80,x : BEQ ..notdead	; | clear HP + temp HP if dead
+		STZ !P2HP-$80,x				; |
+		STZ !P2TempHP-$80,x			;/
+		..notdead				;\
+		LDA !P2Entrance-$80,x			; |
+		CMP #$20 : BCC ..done			; | wait for entrance animation
+		RTS					; |
+		..done					;/
+
+		LDA #$01				;\
+		LDY #$00				; |
+		CPX #$80 : BNE +			; | index to heart timer + status bar hearts
+		LDA #$FF				; | + index change (+1 for P1, -1 for P2)
+		LDY #$03				; |
+	+	STA $0E					;/
+
+		.CheckTemp				;\
+		LDA !P2TempHP-$80,x : BEQ ..done	; | heart timer
+		LDA #$1F : STA !HeartTimerP1,y		; |
+		..done					;/
+
+
+		.UpdateTimer				;\
+		LDA $14					; |
+		AND #$03 : BNE ..done			; |
+		LDA !P2HP-$80,x				; |
+		CLC : ADC !P2TempHP-$80,x		; |
+		CMP !StatusBarP1Hearts,y		; |
+		BEQ ..done				; | heart displays moves 1 step towards actual heart count every 4 frames
+		BCS ..inc				; |
+	..dec	LDA !StatusBarP1Hearts,y		; |
+		DEC A : STA !StatusBarP1Hearts,y	; |
+		BRA ..done				; |
+	..inc	LDA !StatusBarP1Hearts,y		; |
+		INC A : STA !StatusBarP1Hearts,y	; |
+		LDA #$1B : STA !HeartTimerP1,y		; |
+		..done					;/
+
+
+
+
+; $0D = counting HP
+; $0E = index change
+; $0F = tilemap index
+
+		.DrawHearts				;\
+		LDA !P2MaxHP-$80,x : BEQ ..done		; |
+		CLC : ADC #$03				; |
+		LSR #2					; |
+		BIT $0E					; |
+		BPL $03 : EOR #$FF : INC A		; |
+		CLC : ADC $0F				; | setup
+		STA $00					; |
+		LDA !StatusBarP1Hearts,y		; |
+		LDY $0F					; |
+		STA $0D					;/
+		..loop					;\
+		CMP #$04 : BCC ..fraction		; |
+		SBC #$04				; |
+		STA $0D					; |
+		LDA.b #!HeartTile_full : BRA ..draw	; |
+		..fraction				; |
+		ADC.b #!HeartTile			; |
+		STZ $0D					; | draw hearts
+		..draw					; |
+		STA !StatusBar+$00,y			; |
+		TYA					; |
+		CLC : ADC $0E				; |
+		TAY					; |
+		LDA $0D					; |
+		CPY $00 : BNE ..loop			; |
+		..done					;/
+
+
+		LDY #$00				;\
+		CPX #$80				; | index to heart timer + status bar hearts
+		BNE $02 : LDY #$03			;/
+
+		.GetColor				;\
 		REP #$20				; |
-		BEQ ..megalevel				;/
-		..normallevel				;\
-		LDA !P2Coins				; |
-		JSR Thousands				; |
-		STY !StatusBar+$1B			; |
-		STX !StatusBar+$1C			; |
-		JSR HexToDec				; | P2 coin counter on normal levels
-		STX !StatusBar+$1D			; |
-		STA !StatusBar+$1E			; |
-		SEP #$20				; |
-		LDA #$14 : STA !StatusBar+$1F		; > empty space
-		LDA.b #!CoinTile : STA !StatusBar+$1A	; > P2 coin symbol
-		BRA .MultiPlayer			;/
-		..megalevel				;\
-		LDA !P2Coins				; |
-		JSR Thousands				; |
-		STY !StatusBar+$1C			; |
-		STX !StatusBar+$1D			; |
-		JSR HexToDec				; | P2 coin counter on mega levels
-		STX !StatusBar+$1E			; |
-		STA !StatusBar+$1F			; |
-		SEP #$20				; |
-		LDA #$14 : STA !StatusBar+$1A		; |
-		LDA.b #!CoinTile : STA !StatusBar+$1B	; > P2 coin symbol
-		BRA .MultiPlayer			;/
-
-		.SinglePlayer				;\
-		REP #$20				; |
-		LDA #$1414				; | empty space on single player
-		STA !StatusBar+$1A			; |
-		STA !StatusBar+$1C			; |
-		STA !StatusBar+$1E			;/
-
-		.MultiPlayer				;\
-		REP #$20				; |
-		LDA #$1414				; |
-		STA !StatusBar+$05			; |
-		STA !StatusBar+$07			; |
-		STA !StatusBar+$09			; |
-		STA !StatusBar+$0B			; |
-		STA !StatusBar+$0D			; | empty space
-		STA !StatusBar+$0F			; |
-		STA !StatusBar+$11			; |
-		STA !StatusBar+$13			; |
-		STA !StatusBar+$15			; |
-		STA !StatusBar+$17			; |
-		STA !StatusBar+$18			; |
+		LDA !HeartTimerP1,y : BEQ ..nodec	; |
+		DEC A : STA !HeartTimerP1,y		; |
+		..nodec					; |
+		ASL #5					; |
+		STA $00					; |
+		ASL #5					; |
+		STA $02					; |
+		LDA #$0007*$20				; |
+		CMP $00					; |
+		BCS $02 : LDA $00			; | update heart color
+		STA $00					; |
+		LDA #$0003*$20*$20			; |
+		CMP $02					; |
+		BCS $02 : LDA $02			; |
+		ORA $00					; |
+		ORA #$001B				; |
+		LDY #$00				; |
+		CPX #$80				; |
+		BNE $02 : LDY #$08			; |
+		STA !StatusBarColors+$02,y		; |
 		SEP #$20				;/
-		LDA.b #!CoinTile : STA !StatusBar+$00	; P1 coin symbols
 
-.YoshiCoins	LDA !Translevel : BEQ .Player1HP	; no yoshi coins on index 0
-		LDA !MegaLevelID : BEQ +		; check for mega level
-		TAX
-		LDA #$0A : STA $01			; index to stop at
-		LDY #$05
-		BRA ..Start
-
-	+	LDX !Translevel
-		LDA #$07 : STA $01
-		LDY #$02
-
-	..Start	LDA !LevelTable1,x			; Load Yoshi Coins collected table
-		STA $00
-	-	LDX #$00				;\
-		ROR $00					; | Proper index
-		BCC $01 : INX				;/
-		LDA.w .YoshiCoinGFX,x			; Load tile to use
-		STA !StatusBar+$0B,y			; Base address of Yoshi Coins on status bar
-		INY
-		CPY $01 : BNE -				; Loop
-		CPY #$0A : BNE +
-		LDX !Translevel
-		LDA #$05 : STA $01
-		LDY #$00
-		BRA ..Start
-		+
+		RTS					; return
 
 
-.Player1HP	LDA !P2Status-$80 : BNE .Player2HP	; don't write player 1 HP if player 1 is dead
 
-		LDA !Difficulty_full			;\
-		AND.b #!CriticalMode : BEQ ..notcrit	; |
-		LDA.b #!SkullTile : STA !StatusBar+$07	; | skull icon on critical mode
-		BRA .Player2HP				; |
-		..notcrit				;/
-
-
-	LDA !P2MaxHP-$80
-	LSR #2
-	STA $00
-	LDX #$00
-	LDA.b #!HeartTile_full : XBA
-	LDA !P2HP-$80
--	CMP #$04 : BCC +
-	SBC #$04
-	XBA : BRA ++
-+	XBA : LDA #$00
-	XBA : ADC.b #!HeartTile
-++	STA !StatusBar+$06,x
-	XBA
-	INX
-	CPX $00 : BCC -
-
-
-;		LDX !P2HP-$80				;\
-;		CPX !P2MaxHP-$80			; |
-;		BCC $03 : LDX !P2MaxHP-$80		; |
-;		BEQ .Player2HP				; | write player 1 HP
-;		DEX					; |
-;		PHX					; > push
-;		LDA.b #!HeartTile_full			; |
-;	-	STA !StatusBar+$06,x			; |
-;		DEX : BPL -				;/
-;		PLX					; > pull
-;		LDA !P2TempHP-$80 : BEQ .Player2HP	;\ player 1 temp HP icon
-;		LDA #$0E : STA !StatusBar+$06,x		;/
-
-
-.Player2HP	LDA !P2Status : BNE .Return		; don't write player 2 HP if player 2 is dead
-		LDA !MultiPlayer : BEQ .Return		; don't write player 2 HP on singleplayer
-		LDA !Difficulty_full			;\
-		AND.b #!CriticalMode : BEQ ..notcrit	; |
-		LDA.b #!SkullTile : STA !StatusBar+$18	; | skull icon on critical mode
-		BRA .Return				; |
-		..notcrit				;/
-
-		LDY #$18				; > index on normal levels = 0x16
-		LDA !StatusX				;\ index on mega levels = 0x17
-		BNE $02 : LDY #$19			;/
-
-		LDX !P2HP				;\
-		CPX !P2MaxHP				; |
-		BCC $03 : LDX !P2MaxHP			; |
-		BEQ .Return				; | write player 2 HP
-		DEX					; |
-		LDA.b #!HeartTile_full			; |
-	-	STA !StatusBar,y			; |
-		DEY					; |
-		DEX : BPL -				;/	
-		LDA !P2TempHP : BEQ .Return		;\
-		INY					; | player 2 temp HP icon
-		LDA #$0E : STA !StatusBar,y		;/
-
-.Return		RTS					; > Return
-
-
-.YoshiCoinGFX:	db !DashTile,!YoshiCoinTile		; not collected, collected
-
-	Thousands:
-		LDX #$00
-		LDY #$00
-	.1000	CMP #$03E8 : BCC .100
-		SBC #$03E8
-		INY
-		BRA .1000
-	.100	CMP #$0064 : BCC .10
-		SBC #$0064
-		INX
-		BRA .100
-	.10	SEP #$20
-		RTS
-
+; input:
+;	A = 16-bit number to convert to dec
+; output
+;	A 8-bit
+;	A = 1s digit
+;	$00 = 10s digit
+;	$01 = 100s digit
+;	$02 = 1000s digit
 	HexToDec:
-		LDX #$00
-	.10	CMP #$0A : BCC .1
-		INX
-		SBC #$0A
-		BRA .10
-	.1	RTS
+		.1000
+		LDY #$00
+		..loop
+		CMP #$03E8 : BCC ..store
+		SBC #$03E8
+		INY : BRA ..loop
+		..store
+		STY $02
+
+		.100
+		LDY #$00
+		..loop
+		CMP #$0064 : BCC ..store
+		SBC #$0064
+		INY : BRA ..loop
+		..store
+		STY $01
+
+		.10
+		LDY #$00
+		..loop
+		CMP #$000A : BCC ..store
+		SBC #$000A
+		INY : BRA ..loop
+		..store
+		STY $00
+
+		.1
+		SEP #$20
+		RTS
 
 	CoinSound:
 		LDX !CoinSound : BNE .ManyCoins
@@ -1511,6 +1545,49 @@ endmacro
 ;UPDATE TIMER GFX;
 ;================;
 	UPDATE_TIMER:
+		LDA !TimerSeconds+1 : BMI .NoTimer	; don't process if negative
+
+		LDA !Mosaic				;\ not during level fades
+		AND #$F0 : BNE .NoTimer			;/
+		LDA !MsgTrigger				;\
+		ORA !MsgTrigger+1			; | skip this stuff when a text box is open
+		BEQ .Process				;/
+
+		.NoTimer
+		RTL
+
+		.Process
+		INC !TimeElapsedFrames			; 1 more frame has passed
+		DEC !TimerFrames : BEQ .NewSecond	;\
+	-	JMP .DrawTimer				; | timer (frames per second)
+		.NewSecond				; |
+		LDA.b #60 : STA !TimerFrames		;/
+		STZ !TimeElapsedFrames			;\
+		LDA !TimeElapsedSeconds			; |
+		INC A					; |
+		CMP #60					; |
+		BCC $02 : LDA #$00			; | on a new second tick, clear frames elapsed and tick up seconds/minutes
+		STA !TimeElapsedSeconds			; |
+		BNE .UpCountDone			; |
+		INC !TimeElapsedMinutes			; |
+		.UpCountDone				;/
+
+		REP #$20				;\
+		LDA !TimerSeconds			; |
+		CMP.w #100 : BNE +			; |
+		LDX #$80 : STX !SPC1			; > speed up music tempo
+		LDX #$1D : STX !SPC4			; > running out of time SFX
+	+	LDA !TimerSeconds : BEQ -		; |
+		DEC !TimerSeconds			; | timer (seconds)
+		SEP #$20				; |
+		BNE .TimerUpdate			;/
+		LDA #$01				;\
+		LDY !P2Status-$80			; |
+		BNE $03 : STA !P2Status-$80		; | kill players when timer hits 0
+		LDY !P2Status				; |
+		BNE $03 : STA !P2Status			;/
+
+		.TimerUpdate
 		REP #$20				; A 16-bit
 		STZ $00					; 100s
 		STZ $02					; 10s
@@ -1567,9 +1644,8 @@ endmacro
 		LDA #$6520 : STA !VRAMtable+$13,x	;/
 
 		PLB					; restore bank
-		RTL					; return
 
-	DRAW_TIMER:
+		.DrawTimer
 		SEP #$20
 		LDA !MegaLevelID : BNE .MegaLevel
 
@@ -4449,7 +4525,6 @@ MAIN_MENU:
 		STA !DecompBuffer+$100,x		;/
 		DEY #2 : BPL -
 
-	STZ $7FFF
 		PHB
 		LDA.b #!VRAMbank
 		PHA : PLB
@@ -5629,208 +5704,6 @@ endmacro
 		RTL
 
 
-
-;
-; THIS IS LEGACY CODE KEPT FOR REFERENCE 
-;
-;	CUSTOM_MENU:
-;		LDA !GameMode
-;		CMP #$0E : BNE .Menu
-;		JMP .Overworld
-;
-;		.Menu
-;		LDA $610A				; Load save file number
-;		XBA
-;		LDA #$00
-;		REP #$10				; Index 16 bit
-;		TAX					; X = start of SRAM index
-;		LDA !FreeSRAM,x
-;		CMP #$01
-;		BEQ .UpdateStripe
-;		JMP .CleanFile				; Don't update stripe if selecting a clean file
-;
-;.UpdateStripe	PHB					;\
-;		PHK					; | Bank wrapper
-;		PLB					;/
-;
-;		LDX #!CustomSize			;\
-;.LoopC		LDA CustomStripe,x			; | Upload custom stripe image table to RAM
-;		STA !FreeBNK*$10000+!FreeRAM,x		; |
-;		DEX					; |
-;		BPL .LoopC				;/
-;
-;		LDA $610A				;\
-;		BEQ .Data1				; |
-;		DEC A					; |
-;		BEQ .Data2				; |
-;.Data3		LDA #$4E				; | Update file number graphic
-;		STA !FreeBNK*$10000+!FreeRAM+$26	; |
-;		LDA #$30				; |
-;		STA !FreeBNK*$10000+!FreeRAM+$27	; |
-;		BRA .Data1				; |
-;.Data2		LDA #$6E				; |
-;		STA !FreeBNK*$10000+!FreeRAM+$26	;/
-;
-;.Data1		LDA $610A				;\
-;		XBA					; |
-;		LDA #$00				; |
-;		REP #$10				; |
-;		TAX					; |
-;		LDA !FreeSRAM+$01,x			; |
-;		SEP #$10				; |
-;		AND #$03				; | Update difficulty graphic
-;		BEQ .EASY				; |
-;		DEC A					; |
-;		BEQ .NORMAL				; |
-;.INSANE		LDX #$0F				; |
-;.LoopI		LDA Custom_INSANE,x			; |
-;		STA !FreeBNK*$10000+!FreeRAM+$28,x	; |
-;		DEX					; |
-;		BPL .LoopI				; |
-;		BRA .EASY				; |
-;.NORMAL		LDX #$0F				; |
-;.LoopN		LDA Custom_NORMAL,x			; |
-;		STA !FreeBNK*$10000+!FreeRAM+$28,x	; |
-;		DEX					; |
-;		BPL .LoopN				;/
-;
-;.EASY		LDA $610A
-;		SEP #$10
-;		TAX
-;		LDA $009CCB,x
-;		XBA
-;		LDA $009CCE,x
-;		REP #$10
-;		TAX					; X = SMW SRAM index
-;		LDA $41C08C,x				; Load number of exits found
-;		SEP #$10
-;
-;		LDX #$00				;\
-;.HexToDec8a	CMP #$0A				; |
-;		BCC .WriteExits				; | Convert to Dec (8 bit)
-;		SBC #$0A				; |
-;		INX					; |
-;		BRA .HexToDec8a				;/
-;
-;.WriteExits	PHA					; Preserve 1s digit
-;		TXA					;\
-;		AND #$0F				; |
-;		BEQ .Digit1				; | Update number of exits found, shown on screen
-;		STA !FreeBNK*$10000+!FreeRAM+$44	; |
-;.Digit1		PLA					; |
-;		STA !FreeBNK*$10000+!FreeRAM+$46	;/
-;
-;		LDA $610A				;\ Get save file number in hi byte
-;		XBA					;/
-;		LDA #$05				; Get Yoshi Coin address in lo byte
-;		REP #$10
-;		TAX
-;		LDA !FreeSRAM+$01,x			;\
-;		XBA					; | Load number of Yoshi Coins collected
-;		LDA !FreeSRAM+$00,x			; |
-;		REP #$20				;/
-;
-;		LDX #$0000				;\
-;.HexToDec16	CMP #$000A				; |
-;		BCC .WriteYC1				; | Convert to Dec (16 bit)
-;		SBC #$000A				; |
-;		INX					; |
-;		BRA .HexToDec16				;/
-;
-;.WriteYC1	SEP #$30				; A and index 8 bit
-;		STA !FreeBNK*$10000+!FreeRAM+$56	; Write 1s digit of Yoshi Coin
-;
-;		TXA					;\
-;		LDX #$00				; |
-;.HexToDec8b	CMP #$0A				; |
-;		BCC .WriteYC2				; | Convert to Dec (8 bit)
-;		SBC #$0A				; |
-;		INX					; |
-;		BRA .HexToDec8b				;/
-;
-;.WriteYC2	PHX					;\
-;		TAX					; | Swap A and X, so that A = 100s, X = 10s
-;		PLA					;/
-;		BEQ .WriteYC3
-;		STA !FreeBNK*$10000+!FreeRAM+$52	; Write 100s digit of Yoshi Coin
-;.WriteYC3	TXA
-;		BEQ .CoinHoard
-;		STA !FreeBNK*$10000+!FreeRAM+$54	; Write 10s digit of Yoshi Coin
-;
-;.CoinHoard	LDA.l $00610A : XBA
-;		LDA #!FreeBNK				;\ Switch to bank 0x40
-;		PHA : PLB				;/
-;		LDA #$00
-;		REP #$30
-;		TAX
-;		PHY
-;		PHP
-;
-;		PEI ($00)				;\ Back these up since I don't know if they're important
-;		PEI ($02)				;/
-;
-;		LDA.l !FreeSRAM+$93,x			;\
-;		STA $00					; |
-;		LDA.l !FreeSRAM+$95,x			; | Store hoard as a 32-bit number in $00-$03
-;		AND #$00FF				; |
-;		STA $02					;/
-;		SEP #$10				; > Index 8 bit
-;
-;		LDY #$00				; > Base number in 100000 slot
-;	-	CMP #$0001 : BNE +			;\
-;		LDA $00					; |
-;		CMP #$86A0				; |
-;	+	BCC .100000done				; |
-;		SBC #$86A0				; | 32-bit math to count 100000s
-;		STA $00					; |
-;		LDA $02					; |
-;		SBC #$0001				; |
-;		STA $02					;/
-;		INY					;\ Add 100000 and loop
-;		BRA -					;/
-;
-;		.100000done
-;		STY.w !FreeRAM+$5C			; > Store 100000 digit
-;		LDA $00					;\
-;		LDY #$00				; | Count 10000s
-;	-	CMP #$2710 : BCC .10000done		; |
-;		SBC #$2710				;/
-;		INY					;\ Add 10000 and loop
-;		BRA -					;/
-;
-;		.10000done
-;		STY.w !FreeRAM+$5E			; > Store 10000 digit
-;		JSL Thousands				; > Calculate 1000s and 100s
-;		SEP #$20				; > A 8 bit
-;		STY.w !FreeRAM+$60			; > Store 1000 digit
-;		STX.w !FreeRAM+$62			; > Store 100 digit
-;		JSL HexToDec				; > Calculate last two digits
-;		STX.w !FreeRAM+$64			; > Store 10 digit
-;		STA.w !FreeRAM+$66			; > Store 1 digit
-;		REP #$20				;\
-;		PLA : STA $02				; | Restore these probably useless numbers
-;		PLA : STA $00				;/
-;		PLP					; > Restore processor
-;		PLY					; > Restore Y
-;		SEP #$20				; > A 8 bit
-;
-;
-;.Return		PLB					; Restore bank
-;		SEP #$10				; Index 8 bit
-;.Overworld	STY $12					; Load difficulty select stripe
-;		LDX #$00				; Overwritten code
-;		RTL
-;
-;.CleanFile	LDX #!DifficultySize			;\
-;.Loop		LDA Difficulty,x			; |
-;		STA !FreeBNK*$10000+!FreeRAM,x		; | Upload stripe image table to RAM
-;		DEX					; |
-;		BPL .Loop				;/
-;
-;		SEP #$10				; Index 8 bit
-;		STY $12					; Load difficulty select stripe
-;		LDX #$00				; Overwritten code
-;		RTL
 
 
 ;==================;

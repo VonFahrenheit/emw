@@ -1655,8 +1655,8 @@ endmacro
 		RTS
 
 		.Lava
-		LDA !Difficulty					;\
-		AND #$03 : BNE ..die				; |
+		LDA !Difficulty : BNE ..die			;\
+		LDA #$05 : STA !dmg				; > 1 full heart of damage (+1 because easy armor)
 		JSL CORE_HURT					; |
 		LDA !P2Status : BNE ..return			; |
 		LDA #$80					; | easy mode: bounce on lava
@@ -2028,7 +2028,7 @@ endmacro
 		LDA !P2Character
 		CMP #$02 : BCS ..shatter
 		LDA !P2HP				;\ mario/luigi need to be big to break brick
-		CMP #$02 : BCS ..shatter		;/
+		CMP #$05 : BCS ..shatter		;/
 	..bop	%BounceSprite($01, $0C)			; brick -> brick
 		BRA ..bonk
 		..shatter

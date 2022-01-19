@@ -2009,7 +2009,6 @@ print "-- BANK $17 --"
 %InsertSprite(EliteKoopa)
 
 
-
 BANK17End:
 
 print "Bank $17 ends at $", pc, ". ($", hex($180000-BANK17End), " bytes left)"
@@ -2035,6 +2034,7 @@ print "-- BANK $1A --"
 %InsertSprite(GigaThwomp)
 %InsertSprite(BooHoo)
 %InsertSprite(MoleWizard)
+%InsertSprite(Lightning)
 
 
 BANK1AEnd:

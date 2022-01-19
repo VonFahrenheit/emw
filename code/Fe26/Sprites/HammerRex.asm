@@ -356,7 +356,7 @@ HammerRex:
 
 	; free arc on insane
 		.FlexArc
-		LDA !RNG,x					;\
+		LDA !RNGtable,x					;\
 		AND #$80					; |
 		ORA.b #!P2YPosLo-$80				; | target a random player
 		STA $00						; |
@@ -392,7 +392,7 @@ HammerRex:
 		AND #$01
 		STA $3320,x
 
-	; limit arc on normal
+	; limited flex arc on normal
 		LDA !Difficulty
 		CMP #$02 : BEQ .Return
 		.LimitArc

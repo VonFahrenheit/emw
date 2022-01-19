@@ -1365,6 +1365,8 @@ INIT_PARTICLE:
 		BNE $03 : LDY #$0007				;/
 		CMP #!prt_tinycoin				;\ timer for tiny coin particle = 0x20
 		BNE $03 : LDY #$0020				;/
+		CMP #!prt_flash					;\ timer for flash particle = 0x20
+		BNE $03 : LDY #$0020				;/
 		TYA
 		RTS
 
@@ -1422,7 +1424,21 @@ HurtP1:		LDA !P2Invinc-$80,y			;\
 		JSR (.Ptr,x)				; |
 		PLX					;/
 
-		LDA #$00 : STA !P2TempHP-$80,y		; remove temp HP
+
+		.TempHP					;\
+		LDA !P2TempHP-$80,y			; |
+		CMP !dmg : BCC ..remove			; |
+		SBC !dmg				; | if temp HP >= dmg, 0 dmg and reduce temp HP
+		STA !P2TempHP-$80,y			; |
+		STZ !dmg				; |
+		BRA ..done				;/
+		..remove				;\
+		LDA !dmg				; |
+		SEC : SBC !P2TempHP-$80,y		; | remaining temp HP buffers against dmg
+		STA !dmg				; |
+		LDA #$00 : STA !P2TempHP-$80,y		; |
+		..done					;/
+
 		LDA #$0F : STA !P2HurtTimer-$80,y	; set hurt animation timer
 		LDA !P2HP-$80,y				;\
 		SEC : SBC !dmg				; |
@@ -1491,6 +1507,7 @@ HurtP1:		LDA !P2Invinc-$80,y			;\
 		CMP #$05 : BCS ..nosizechange		; |
 		LDA #$1F : STA !P2ShrinkTimer		; |
 		..nosizechange				;/
+		LDA #$00
 		STA !P2FireTimer-$80,y			; reset fire timer
 		STA !P2PickUp-$80,y			; end pickup animation
 		STA !P2SpinAttack-$80,y			; end spin attack

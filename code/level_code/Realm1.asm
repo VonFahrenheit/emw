@@ -1,3 +1,5 @@
+
+
 levelinit1:
 		%GradientRGB(HDMA_BlueSky)
 		INC !SideExit
@@ -65,8 +67,8 @@ levelinit3:
 		LDA #$02 : STA !BG2ModeH
 		LDA #$04 : STA !BG2ModeV
 		%GradientRGB(HDMA_BlueSky)
-		LDA #$BA : STA !Level+4			; > negative 0x3F
-		LDA #$07 : STA !Level+5			; > Size of chunks
+		LDA #$B9 : STA !Level+4			; > base offset
+		LDA #$07 : STA !Level+5			; > size of chunks
 		JML levelinit5_HDMA
 
 
@@ -810,6 +812,11 @@ level2:
 		RTL
 
 
+
+
+; TODO:
+;	give this parallax a proper offset table input
+;	tie .HDMA codes to backgrounds
 
 
 level3:
@@ -2905,33 +2912,6 @@ level2D:
 		.KeepFighting				;\
 		LDA #$E0 : STA !Level+4			; | if boss is alive, keep timer up
 		.Stall					;/
-
-	if !Debug = 1
-	REP #$20
-	LDA !P2Hitbox1XLo-$80 : PHA
-	LDA !P2Hitbox1YLo-$80 : PHA
-	LDA !P2Hitbox1W-$80 : PHA
-	LDA !P2Hitbox2XLo-$80 : PHA
-	LDA !P2Hitbox2YLo-$80 : PHA
-	LDA !P2Hitbox2W-$80 : PHA
-	LDA $41CC00 : STA !P2Hitbox1X-$80
-	LDA $41CC02 : STA !P2Hitbox1Y-$80
-	LDA $41CC04 : STA !P2Hitbox1W-$80
-	LDA $41CC06 : STA !P2Hitbox2X-$80
-	LDA $41CC08 : STA !P2Hitbox2Y-$80
-	LDA $41CC0A : STA !P2Hitbox2W-$80
-	SEP #$20
-	JSL DisplayHitbox1_Main
-	JSL DisplayHitbox2_Main
-	REP #$20
-	PLA : STA !P2Hitbox2W-$80
-	PLA : STA !P2Hitbox2YLo-$80
-	PLA : STA !P2Hitbox2XLo-$80
-	PLA : STA !P2Hitbox1W-$80
-	PLA : STA !P2Hitbox1YLo-$80
-	PLA : STA !P2Hitbox1XLo-$80
-	SEP #$20
-	endif
 		LDA.b #.HDMA : STA !HDMAptr+0
 		LDA.b #.HDMA>>8 : STA !HDMAptr+1
 		LDA.b #.HDMA>>16 : STA !HDMAptr+2

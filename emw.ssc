@@ -517,3 +517,6 @@ F1	0002	0,0,420
 
 36	0020	Airship Display
 36	0022	0,16,*Airship\nDisplay* 0,0,420
+
+37	0020	Lightning Generator\n\nThis is a generator that produces lightning strikes targeting the player. If the lightning strikes a brick, it will break it. The lightning is also able to destroy most sprites.
+37	0022	0,16,*Lightning\nGenerator* 0,0,420

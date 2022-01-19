@@ -86,14 +86,18 @@ LOAD_TILEMAP:	STZ !BigRAM+$7E				; this reg ACTUALLY controls priority bits duri
 		LDA #$0E : STA $0B			;/
 	+	REP #$30
 		LDA !P2Entrance
-		AND #$00FF : BEQ +
+		AND #$00FF : BEQ ..entrancedone
 		SEC : SBC #$0021
 		BPL +
 		JSR .EntranceSmoke
 		LDA #$0000
 	+	ASL #3
+		LDY !P2Direction-1
+		CPY #$0100 : BCC +
+		..entrancedone
 		EOR #$FFFF
-		SEC : ADC !P2XPosLo
+		SEC
+	+	ADC !P2XPosLo
 		SEC : SBC $1A
 		STA $00
 		LDA !P2Entrance
