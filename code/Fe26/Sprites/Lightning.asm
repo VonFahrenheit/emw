@@ -15,8 +15,16 @@ Lightning:
 
 
 	INIT:
-		PHB : PHK : PLB
+		PHB : PHK : PLB						; bank wrapper start
+		LDY #$0F						;\
+	-	CPY !SpriteIndex : BEQ +				; |
+		LDA $3230,y : BEQ +					; | don't spawn if there already is a lightning bolt
+		LDA !NewSpriteNum,y					; |
+		CMP !NewSpriteNum,x : BEQ .Fail				; |
+	+	DEY : BPL -						;/
+
 		LDA #$03 : JSL GET_SQUARE : BCS .Return
+		.Fail
 		STZ $3230,x
 		.Return
 		LDA #$FF : STA !PrevAnim,x
@@ -25,7 +33,7 @@ Lightning:
 		LDA.b #.ZapDynamo>>8 : STA $0D
 		LDY.b #!File_Sprite_BG_1 : CLC : JSL !UpdateFromFile
 
-		PLB
+		PLB							; bank wrapper end
 		RTL
 
 
@@ -137,6 +145,8 @@ Lightning:
 		..init							;\
 		ORA #$80 : STA !LightningState,x			; | set timer for strike
 		LDA #$17 : STA !LightningTimer,x			;/
+	; HERE: run ..main first so sprites can block brick destruction
+	JSR ..main
 		LDA #$18 : STA !SPC4					; thunder SFX
 		LDA #$FF						;\
 		STA !LightR+1						; | super bright flash
@@ -151,57 +161,18 @@ Lightning:
 		SEP #$20						; |
 		BNE ..main						;/
 		JSR .BreakBrick						; > break brick on strike init
-		..main							;\
-		STZ !BigRAM						; |
-		LDA !3DWater : BEQ ..nowaterzap				; |
-		LDA !SpriteYHi,x : XBA					; |
-		LDA !SpriteYLo,x					; |
-		REP #$20						; |
-		CMP !Level+2						; |
-		SEP #$20						; | use !BigRAM as water zap flag (if lightning bolt tip is below 3D water)
-		BCC ..nowaterzap					; |
-		INC !BigRAM						; | if water zap flag is set, zap players in water
-		LDA !P2Water-$80					; |
-		BEQ $02 : LDA #$01					; |
-		STA $00							; |
-		LDA !P2Water						; |
-		BEQ $02 : LDA #$02					; |
-		ORA $00							; |
-		JSL !HurtPlayers					;/
-		LDA #$02 : STA $0D					;\
-		LDA $14							; |
-		AND #$02 : TAY						; |
-		REP #$20						; |
-		LDA .WaterZapPtr,y : STA $02				; |
-		LDA ($02) : STA $0E					; |
-		INC $02							; |
-		INC $02							; |
-		LDA !Level+2						; | load water zap tilemap as sprite HUD
-		SEC : SBC $1C						; |
-		BMI ..nowaterzap					; |
-		CMP #$00D8 : BCS ..nowaterzap				; |
-		XBA : AND #$FF00					; |
-		STA $00							; |
-		SEP #$20						; |
-		JSL !SpriteHUD						; |
-		LDX !SpriteIndex					; > X = sprite index
-		..nowaterzap						;/
-		REP #$20						;\
-		LDA.w #.HITBOX : JSL LOAD_HITBOX			; |
-		LDA !SpriteYHi,x : XBA					; |
-		LDA !SpriteYLo,x					; |
-		REP #$20						; |
-		SEC : SBC $1C						; |
-		BPL $03 : LDA #$0000					; | load hitbox
-		CMP #$00FF						; |
-		BCC $03 : LDA #$00FF					; |
-		SEP #$20						; |
-		STA $07							; |
-		LDA $1C : STA $05					; |
-		LDA $1D : STA $0B					;/
-		SEC : JSL !PlayerClipping : BCC ..nocontact		;\
-		JSL !HurtPlayers					; | hurt players upon contact
-		..nocontact						;/
+		..main
+
+		; check contact with sprites (adjust hitbox)
+		; check contact with players (do not adjust hitbox)
+		; check water contact
+		;	- zap sprites
+		;	- zap players
+		;	- load zap tilemap
+
+
+
+		JSR .LoadHitbox						; load hitbox
 
 		..zapsprites						;\ check all sprites
 		LDX #$0F						;/
@@ -215,19 +186,75 @@ Lightning:
 		CMP #$30 : BEQ ..nextsprite				; | check tweaker for what lightning can destroy
 		LDA !SpriteTweaker4,x					; |
 		AND #$02 : BNE ..nextsprite				;/
-		LDA !BigRAM : BEQ ..checkspritecontact			;\ check water (only if water zap flag is set)
-		LDA !SpriteWater,x : BNE ..destroysprite		;/
 		..checkspritecontact					;\
 		JSL !GetSpriteClipping00				; | check for contact
 		JSL !Contact16 : BCC ..nextsprite			;/
 		..destroysprite						;\
 		LDA #$04 : STA $3230,x					; | destroy sprite
 		LDA #$1F : STA $32D0,x					;/
+		LDY !SpriteIndex					;\
+		LDA $01 : STA !SpriteYLo,y				; | move lightning tip up
+		LDA $09 : STA !SpriteYHi,y				;/
 		..nextsprite						;\ loop
 		DEX : BPL ..loop					;/
-
-
 		LDX !SpriteIndex					; X = sprite index
+
+		JSR .LoadHitbox						; reload hitbox
+
+		SEC : JSL !PlayerClipping : BCC ..nocontact		;\
+		JSL !HurtPlayers					; | hurt players upon contact
+		..nocontact						;/
+
+		LDA !3DWater : BNE $03 : JMP ..nowaterzap		;\
+		LDA !SpriteYHi,x : XBA					; |
+		LDA !SpriteYLo,x					; |
+		REP #$20						; |
+		CMP !Level+2						; |
+		SEP #$20						; | use !BigRAM as water zap flag (if lightning bolt tip is below 3D water)
+		BCC ..nowaterzap					; |
+		LDA !P2Water-$80					; |
+		BEQ $02 : LDA #$01					; |
+		STA $00							; |
+		LDA !P2Water						; |
+		BEQ $02 : LDA #$02					; |
+		ORA $00							; |
+		JSL !HurtPlayers					;/
+
+		LDY #$0F						;\
+	-	LDA $3230,y						; |
+		CMP #$08 : BCC +					; |
+		CMP #$0C : BCS +					; |
+		LDA !SpriteWater,y : BEQ +				; |
+		LDA !SpriteTweaker3,y					; |
+		AND #$30						; | zap underwater sprites
+		CMP #$30 : BEQ +					; |
+		LDA !SpriteTweaker4,y					; |
+		AND #$02 : BNE +					; |
+		LDA #$04 : STA $3230,y					; |
+		LDA #$1F : STA $32D0,y					; |
+	+	DEY : BPL -						;/
+
+		LDA #$02 : STA $0D					;\
+		LDA $14							; |
+		AND #$02 : TAY						; |
+		REP #$20						; |
+		LDA .WaterZapPtr,y : STA $02				; |
+		LDA ($02) : STA $0E					; |
+		INC $02							; |
+		INC $02							; |
+		LDA !Level+2						; | load water zap tilemap as sprite HUD
+		SEC : SBC #$0010					; |
+		SEC : SBC $1C						; |
+		BMI ..nowaterzap					; |
+		CMP #$00D8 : BCS ..nowaterzap				; |
+		XBA : AND #$FF00					; |
+		STA $00							; |
+		SEP #$20						; |
+		JSL !SpriteHUD						; |
+		LDX !SpriteIndex					; > X = sprite index
+		..nowaterzap						;/
+		SEP #$20
+
 		LDA !LightningTimer,x : BEQ ..end			;\
 		CMP #$10 : BNE .Graphics				; |
 		LDA #$01						; |
@@ -385,6 +412,23 @@ Lightning:
 		%SquareDyn($04A)
 		%SquareDyn($04C)
 		..end
+
+
+	.LoadHitbox
+		REP #$20						;\
+		LDA.w #.HITBOX : JSL LOAD_HITBOX			; |
+		LDA !SpriteYHi,x : XBA					; |
+		LDA !SpriteYLo,x					; |
+		REP #$20						; |
+		SEC : SBC $1C						; |
+		BPL $03 : LDA #$0000					; | load hitbox
+		CMP #$00FF						; |
+		BCC $03 : LDA #$00FF					; |
+		SEP #$20						; |
+		STA $07							; |
+		LDA $1C : STA $05					; |
+		LDA $1D : STA $0B					;/
+		RTS							; return
 
 
 	.BreakBrick

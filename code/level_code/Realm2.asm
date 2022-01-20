@@ -48,6 +48,8 @@ levelinitA:
 
 
 levelinitB:
+		RTL
+
 		INC !SideExit
 
 		JSL VineDestroy_INIT

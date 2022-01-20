@@ -5603,7 +5603,6 @@ GET_DIVISION:	NOP #2
 
 
 VineDestroy:
-
 		.INIT
 		LDX #$17					;\
 		LDA #$FF					; | Write 0xFF ("off") to all vine destroy regs

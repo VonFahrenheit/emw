@@ -3,15 +3,27 @@ PlantHead:
 
 	namespace PlantHead
 
-		!PlantHeadRotation	= $BE,x		; target angle, anim index is currently displayed angle
-		!PlantHeadState		= $3280,x	; 0 = closed mouth, 1 = open mouth, 2 = shrink a bit, 3 = shrink a lot
-		!PlantHeadMouth		= $3290,x	; timer for how long to hold mouth open
-		!PlantHeadClosestPlayer	= $32B0,x
-		!PlantHeadPulse		= $32D0,x	; timer for how long to display pulse animation
-		!PlantHeadMode		= $3310,x	; 00 = up, 06 = left, 0C = right, 12 = down, FF = all range mode
+		!PlantHeadRotation	= $BE		; target angle, anim index is currently displayed angle
+		!PlantHeadState		= $3280		; 0 = closed mouth, 1 = open mouth, 2 = shrink a bit, 3 = shrink a lot
+		!PlantHeadMouth		= $3290		; timer for how long to hold mouth open
+		!PlantHeadClosestPlayer	= $32B0
+		!PlantHeadPulse		= $32D0		; timer for how long to display pulse animation
+		!PlantHeadMode		= $3310		; 00 = up, 06 = left, 0C = right, 12 = down, FF = all range mode
 
-		!PlantHeadHP		= $32A0,x
-		!PlantHeadInvinc	= $35D0,x
+		!PlantHeadHP		= $32A0
+		!PlantHeadInvinc	= $35D0
+
+
+
+; changes:
+;	,x on all regs
+;	target closest player
+;	rotation + target rotation (separate regs)
+;	mouth + size = normal sprite anim
+;	merge VineDestroy code into plant head
+
+
+
 
 
 	INIT:
@@ -20,8 +32,7 @@ PlantHead:
 		LDA !ExtraBits,x
 		AND #$04 : BEQ .NoAlt
 		LDA !Difficulty
-		INC A
-		STA !PlantHeadHP		; alt HP depends on difficulty
+		INC A : STA !PlantHeadHP,x		; alt HP depends on difficulty
 		.NoAlt
 
 
@@ -81,7 +92,7 @@ PlantHead:
 		CPY.b #!VineDestroyVertTile12 : BNE $03 : JMP .Vert
 
 		.AllRangeMode
-		LDA #$FF : STA !PlantHeadMode
+		LDA #$FF : STA !PlantHeadMode,x
 		BRA +
 
 		.Horz
@@ -104,7 +115,7 @@ PlantHead:
 		LDA #$06
 
 		.EndInit
-		STA !PlantHeadMode
+		STA !PlantHeadMode,x
 		+
 
 		LDA #$03 : JSL GET_SQUARE : BCC .Return
@@ -190,138 +201,78 @@ PlantHead:
 		.LeftRight
 		db $03,$09
 
-		.22
-		db $01,$0F,$05,$0B	; indexed by Yflag*2 + Xflag
-
-		.45
-		db $02,$0E,$06,$0A	; indexed by Yflag*2 + Xflag
-
-		.68
-		db $03,$0D,$07,$09	; indexed by Yflag*2 + Xflag
-
 
 
 	PHYSICS:
+		%decreg(!PlantHeadMouth)
+		%decreg(!PlantHeadInvinc)
 
-		LDA !PlantHeadMouth
-		BEQ $03 : DEC !PlantHeadMouth
 
-		LDA !PlantHeadInvinc
-		BEQ $03 : DEC !PlantHeadInvinc
-
-		LDA $14
-		AND #$7F : BNE +			;\
-		LDA !ExtraBits,x			; |
-		AND #$04 : BEQ +			; | Attack every 128 frames if extra bit is set
-	;	LDA !PlantHeadMode : BMI +		; | (but not in all-range mode)
-		JSR Attack				; |
-		+					;/
 
 
 	INTERACTION:
 
-		LDA $3220,x : STA $00			; Figure out which player is closest based on DX + DY
-		LDA $3250,x : STA $01			; (because division and roots are too much)
-		LDA $3210,x : STA $02
-		LDA $3240,x : STA $03
-		REP #$20
-		LDA !P2XPosLo-$80
-		SEC : SBC $00
-		BPL $03 : EOR #$FFFF
-		STA $04
-		LDA !P2YPosLo-$80
-		SEC : SBC $02
-		BPL $03 : EOR #$FFFF
-		CLC : ADC $04
-		STA $04
-		LDA !P2XPosLo
-		SEC : SBC $00
-		BPL $03 : EOR #$FFFF
-		STA $00
-		LDA !P2YPosLo
-		SEC : SBC $02
-		BPL $03 : EOR #$FFFF
-		CLC : ADC $00
-		CMP $04
-		SEP #$20
-		BCS .P1Closest
+		STZ $2250					; prepare multiplication
 
-		.P2Closest
-		LDA #$80
-		BRA .Close
+		LDA !SpriteXLo,x : STA $00			;\
+		LDA !SpriteXHi,x : STA $01			; | get sprite coords
+		LDA !SpriteYLo,x : STA $02			; |
+		LDA !SpriteYHi,x : STA $03			;/
+		REP #$20					;\
+		LDA !P2XPosLo-$80				; |
+		SEC : SBC $00					; |
+		BPL $03 : EOR #$FFFF				; |
+		CMP #$00FF					; |
+		BCC $03 : LDA #$00FF				; |
+		STA $2251					; |
+		STA $2253					; |
+		LDA !P2YPosLo-$80				; | calculate |DX|^2 and |DY|^2 for player 1
+		SEC : SBC $02					; |
+		BPL $03 : EOR #$FFFF				; |
+		CMP #$00FF					; |
+		BCC $03 : LDA #$00FF				; |
+		STA $06						; |
+		LDA $2306 : STA $04				; |
+		LDA $06						; |
+		STA $2251					; |
+		STA $2253					;/
+		NOP						;\
+		LDA $04						; | calculate sqrt(|DX|^2 + |DY|^2)
+		CLC : ADC $2306					; |
+		JSL !GetRoot : STA $0C				;/
+		REP #$20					;\
+		LDA !P2XPosLo					; |
+		SEC : SBC $00					; |
+		BPL $03 : EOR #$FFFF				; |
+		CMP #$00FF					; |
+		BCC $03 : LDA #$00FF				; |
+		STA $2251					; |
+		STA $2253					; |
+		LDA !P2YPosLo					; | calculate |DX|^2 and |DY|^2 for player 2
+		SEC : SBC $02					; |
+		BPL $03 : EOR #$FFFF				; |
+		CMP #$00FF					; |
+		BCC $03 : LDA #$00FF				; |
+		STA $06						; |
+		LDA $2306 : STA $04				; |
+		LDA $06						; |
+		STA $2251					; |
+		STA $2253					;/
+		NOP						;\
+		LDA $04						; | calculate sqrt(|DX|^2 + |DY|^2)
+		CLC : ADC $2306					; |
+		JSL !GetRoot					;/
 
-		.P1Closest
-		LDA #$00
-	.Close	STA !PlantHeadClosestPlayer
+		CMP $0C						;\
+		SEP #$20					; |
+		BCC .P2Closest					; |
+		.P1Closest					; | closest player
+		LDA #$00 : BRA +				; |
+		.P2Closest					; |
+		LDA #$80					; |
+	+	STA !PlantHeadClosestPlayer,x			;/
 
 
-		LDY !PlantHeadRotation
-		LDA $3220,x
-		CLC : ADC DATA_HitBoxOffsetX,y
-		STA $04
-		LDA $3250,x
-		ADC DATA_HitBoxHiX,y
-		STA $0A
-		LDA $3210,x
-		CLC : ADC DATA_HitBoxOffsetY,y
-		STA $05
-		LDA $3240,x
-		ADC DATA_HitBoxHiY,y
-		STA $0B
-		LDA #$14
-		STA $06
-		STA $07
-
-		LDY #$0F				;\
-	-	LDA $3230,y				; |
-		CMP #$09 : BCC .No			; |
-		CMP #$0B : BCS .No			; |
-		PHX					; |
-		TYX					; | Plant can be killed by thrown objects
-		JSL !GetSpriteClipping00		; |
-		PLX					; |
-		JSL !CheckContact : BCS .Kill		; |
-	.No	DEY : BPL -				;/
-
-		LDY #$00				;\
-		REP #$20				; |
-	-	LDA !P2Hitbox1+4-$80,y : BEQ .Next	; |
-		STA $02					; |
-		LDA !P2Hitbox1+0-$80,y			; |
-		STA $00					; |
-		XBA : STA $08				; |
-		LDA !P2Hitbox1+2-$80,y			; | Any attack kills the plant head
-		SEP #$20				; |
-		STA $01					; |
-		XBA : STA $09				; |
-		JSL !CheckContact : BCS .Kill		; |
-	.Next	CPY #$80 : BEQ +			; |
-		LDY #$80 : BRA -			; |
-	+	SEP #$20				;/
-
-		JSL FireballContact
-		BCC .NoFireball
-		LDA #$0F : STA !Ex_Data2,y			;\ Destroy fireball
-		LDA #$01+!ExtendedOffset : STA !Ex_Num,y	;/
-	.Kill	JSR DestroyPlant
-		BRA +
-		.NoFireball
-
-		PHX
-		LDX #$01				; smaller hurtbox
-	-	LDA $04,x
-		CLC : ADC #$03
-		STA $04,x
-		LDA $0A,x
-		ADC #$00
-		STA $0A,x
-		LDA #$0E : STA $06,x
-		DEX : BPL -
-		PLX
-
-		SEC : JSL !PlayerClipping : BCC +	; interact with players
-		JSL !HurtPlayers
-		+
 
 
 ;
@@ -347,45 +298,9 @@ PlantHead:
 
 
 	GRAPHICS:
+		JSR CheckAngle				; > calculate and analyze |DY|/|DX|
 
-		STZ !PlantHeadState
-		LDA !PlantHeadMouth : BEQ .Closed
-		INC !PlantHeadState
-		.Closed
-		LDA !PlantHeadPulse : BEQ .NoPulse
-		LSR #2
-		AND #$03
-		TAY
-		LDA DATA_Pulse,y : STA !PlantHeadState
-		.NoPulse
-
-
-		.Normal
-		LDY !PlantHeadClosestPlayer	; Y = index
-		LDA #$01 : STA $2250		; Enable division
-		LDA $3220,x : STA $02
-		LDA $3250,x : STA $03
-		LDA $3240,x : XBA
-		LDA $3210,x
-		REP #$20
-		STZ $00				; > $00 and $01 determine if DX and DY are positive or negative
-		SEC : SBC !P2YPosLo-$80,y	;\
-		STA !BigRAM+$40			; |
-		BPL +				; |
-		EOR #$FFFF : INC A		; | Calculate dividend
-		INC $01				;/
-	+	STA $2251			; > Dividend = |DY|
-		LDA $02				;\
-		SEC : SBC !P2XPosLo-$80,y	; |
-		STA !BigRAM+$42			; |
-		BPL +				; | Calculate divisor
-		EOR #$FFFF : INC A		; |
-		INC $00				;/
-	+	STA $2253			; > Divisor = |DX|
-
-		JSR CheckAngle			; > Analyze |DY|/|DX|
-
-
+		; ???????
 		PHX
 		LDA $01
 		ASL A
@@ -406,6 +321,38 @@ PlantHead:
 		LDA DATA_Limit+5,y
 	+	AND #$0F
 		STA !SpriteAnimIndex
+
+
+
+
+; dynamo format:
+;	header (16-bit)
+;	for each tile: address offset
+
+
+		.GenerateDynamo
+		REP #$20
+		LDA #$000A : STA !BigRAM+$00				; 10 bytes
+		LDA.w #!SD_PlantHead_offset|$E000 : STA !BigRAM+$02	; super-dynamic file
+		LDA !PlantHeadRotation,x
+		AND #$00FF
+		ASL A : TAY
+		LDA ANIM_RotationOffset,y : STA !BigRAM+$04
+		CLC : ADC #$0080
+		STA !BigRAM+$06
+		CLC : ADC #$0800-$0080
+		STA !BigRAM+$08
+		CLC : ADC #$0080
+		STA !BigRAM+$0A
+
+
+
+		LDA.w #!BigRAM : STA $0C
+		SEP #$20
+		JSL LOAD_SQUARE_DYNAMO_Main				; load
+
+
+
 
 
 
@@ -546,9 +493,39 @@ PlantHead:
 
 
 
+		.RotationOffset
+		dw $0000,$0080,$0100,$0180
+		dw $0800,$0880,$0900,$0980
+		dw $1000,$1080,$1100,$1180
+		dw $1800,$1880,$1900,$1980
+
+
+
 
 
 	CheckAngle:
+		LDY !PlantHeadClosestPlayer,x		; Y = index
+		LDA #$01 : STA $2250			; prepare division
+		LDA !SpriteXLo,x : STA $02
+		LDA !SpriteXHi,x : STA $03
+		LDA !SpriteYHi,x : XBA
+		LDA !SpriteYLo,x
+		REP #$20
+		STZ $00					; > $00 and $01 determine if DX and DY are positive or negative
+		SEC : SBC !P2YPosLo-$80,y		;\
+		STA !BigRAM+$40				; |
+		BPL +					; |
+		EOR #$FFFF : INC A			; | calculate dividend
+		INC $01					;/
+	+	STA $2251				; > dividend = |DY|
+		LDA $02					;\
+		SEC : SBC !P2XPosLo-$80,y		; |
+		STA !BigRAM+$42				; |
+		BPL +					; | calculate divisor
+		EOR #$FFFF : INC A			; |
+		INC $00					;/
+	+	STA $2253				; > divisor = |DX|
+
 		CMP #$0000 : BNE .NotInfinity
 		LDY #$00
 		BRA .0
@@ -572,7 +549,6 @@ PlantHead:
 		BCS $01 : INC A
 		AND #$00FF
 		ORA $04
-
 ; possible angles (quadrant 1)
 ;	- 00
 ;	- 22.5
@@ -580,15 +556,11 @@ PlantHead:
 ;	- 67.5
 ;	- 90
 
-
 ; cutoff angles:
 ;	- 11.25
 ;	- 33.75
 ;	- 56.5
 ;	- 78.75
-
-
-
 		CMP #$0507 : BCS .0
 		CMP #$0183 : BCS .1
 		CMP #$00AB : BCS .2
@@ -600,39 +572,6 @@ PlantHead:
 	.0	SEP #$20			; Vastly dominant Y (A < 15)
 		RTS
 
-
-	DestroyPlant:
-		LDA !PlantHeadInvinc : BNE .Fail
-		LDA #$28 : STA !SPC4
-		LDA !PlantHeadHP : BEQ .Kill
-		DEC !PlantHeadHP
-		LDA #$80 : STA !PlantHeadInvinc
-	.Fail	RTS
-
-		.Kill
-		LDA #$04 : STA $3230,x
-		LDA #$1F : STA $32D0,x
-		TXY
-		LDX #$03
-	-	LDA !VineDestroyXHi,x
-		CMP #$FF : BEQ .FoundSlot
-		DEX : BPL -
-		BRA .End
-
-		.FoundSlot
-		LDA $3220,y : AND #$F0 : STA !VineDestroyXLo,x
-		LDA $3250,y : STA !VineDestroyXHi,x
-		LDA $3210,y : AND #$F0 : STA !VineDestroyYLo,x
-		LDA $3240,y : STA !VineDestroyYHi,x
-		LDA $3310,y
-		TAY
-		LDA.w DATA_Vine,y
-		STA !VineDestroyDirection,x
-		LDA !VineDestroyBaseTime : STA !VineDestroyTimer,x
-
-		.End
-		LDX !SpriteIndex
-		RTS
 
 
 	Attack:
@@ -649,10 +588,10 @@ PlantHead:
 
 		.Spawn
 		LDA #$0C+!ExtendedOffset : STA !Ex_Num,y
-		LDA $3210,x : STA !Ex_YLo,y
-		LDA $3220,x : STA !Ex_XLo,y
-		LDA $3240,x : STA !Ex_YHi,y
-		LDA $3250,x : STA !Ex_XHi,y
+		LDA !SpriteYLo,x : STA !Ex_YLo,y
+		LDA !SpriteXLo,x : STA !Ex_XLo,y
+		LDA !SpriteYHi,x : STA !Ex_YHi,y
+		LDA !SpriteXHi,x : STA !Ex_XHi,y
 		LDX $01
 		LDA .SpeedY,x : STA !Ex_YSpeed,y
 		LDA .SpeedX,x : STA !Ex_XSpeed,y
@@ -674,6 +613,17 @@ PlantHead:
 		db $F0,$00,$10
 		db $10,$20,$10
 
+
+
+
+
+
+
+
+; MAKE THIS A SHARED ROUTINE!!
+;	- comment it
+;	- add output description
+;
 ; input:
 ;	A: radius of circle
 ;	$0C: DX

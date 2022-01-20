@@ -189,9 +189,8 @@ endmacro
 		AND #$0F					; | apply extra collision
 		STA $3330,x					;/
 		LDA !SpriteExtraCollision,x			;\
-		ASL A						; |
-		ROL A						; | apply extra water flag
-		AND #$01					; |
+		AND #$40					; | apply extra water flag
+		BEQ $02 : LDA #$01				; |
 		STA !SpriteWater,x				;/
 		STZ !SpriteExtraCollision,x			; clear after it's applied
 		RTL

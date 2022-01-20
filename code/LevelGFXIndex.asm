@@ -2694,41 +2694,47 @@ ReadLevelData:
 		JMP .Next
 
 
-; solved??? i don't know
-; error:
-; - file 1 is processed properly
-; - file 2 then has its first chunk uploaded properly
-; - the other chunks are then stored over file 1's chunks
-; - the garbage in the space file 2 should be using is then converted to character data
-
-
 
 	.SA1
+		PHB : PHK : PLB
 		PHP
 		SEP #$20
 		STZ $223F					; 4 bpp mode
 		STZ $2250					; prepare multiplication
 
-		JSR .ChunkFile
+		REP #$30					; all regs 16-bit
+		LDY #$0007					;\
+		LDA ($00),y					; |
+		AND #$FF00					; |
+		XBA : STA $2251					; |
+		LDA ($00),y					; |
+		AND #$00FF					; | byte count of chunk
+		STA $2253					; |
+		STA $08						; > store chunk width in $08
+		NOP						; |
+		LDA $2306					;/
+		STA $04						; get byte count
+
 		JSR .Commands
 		JSR .Convert
 		PLP
+		PLB
 		RTL
 
 
 
 
 ; 00 - 16-bit pointer to file
-; 02 - RAM location index
+; 02 - RAM location index (used for various purposes during .Commands)
 ; 04 - byte count of chunk (later holds bbpppppp)
-; 06 - loop counter for chunk
+; 06 - loop counter for chunk loader
 ; 08 - chunk width
-; 0A - loop counter for rows
-; 0D - 24-bit pointer to source GFX
+; 0A - 24-bit pointer to source GFX (read)
+; 0D - 24-bit pointer to source GFX (write)
 ; !BigRAM	- keeps track of memory areas for SD graphics
 ; !BigRAM+$10	- upload address
-; !BigRAM+$12	- source GFX index
-; !BigRAM+$14	- number of chunks
+; !BigRAM+$12	- UNUSED
+; !BigRAM+$14	- UNUSED
 ; !BigRAM+$6C	- copy of $0D from start of operation
 ; !BigRAM+$6E	- total number of iterations
 ; !BigRAM+$70	- total copies for current iteration
@@ -2741,135 +2747,130 @@ ReadLevelData:
 ; !BigRAM+$7E	- bbpppppp
 
 
-	.ChunkFile
-		PHB : PHK : PLB
-		PHP
-		REP #$30
+
 
 ; NOTE: only SNES can call !DecompressFile, so it can't be done here
 
-		LDA.w #!DecompBuffer : STA $0D		;\ pointer = decompressed file
-		LDA.w #!DecompBuffer>>8 : STA $0E	;/
+
+	.Commands
+
+	STZ $7FFF
+
+		REP #$30				; all regs 16-bit
+		LDA !BigRAM+$74				;\
+		STA $0A					; |
+		STA $0D					; |
+		SEP #$20				; | $0A = 24-bit read pointer
+		LDX $02					; | $0D = 24-bit write pointer
+		LDA .RAMprop,x				; |
+		STA $0C					; |
+		STA $0F					;/
+		PEI ($02)				; preserve $02
+		LDY #$0009				; Y = index to first command
 
 
-	;	LDA ($00),y : TAY
-	;	JSL !GetFileAddress
-	;	LDA !FileAddress : STA $0D
-	;	LDA !FileAddress+1 : STA $0E
+		..Loop
+		REP #$20
+		LDA $0D : STA !BigRAM+$6C
+		SEP #$20
+		LDA ($00),y : BEQ ..LoadChunk		; 00 = load chunk
+		CMP #$01 : BEQ ..RJump			; 01 = rotate
+		CMP #$02 : BEQ ..SJump			; 02 = scale
+							; all other values just end
+		..Done
+		PLY : STY $02				; restore $02
+		RTS
+
+		..RJump
+		JMP ..Rotate
+
+		..SJump
+		JMP ..Scale
 
 
-		LDY #$0007				;\
-		LDA ($00),y				; | number of chunks
-		AND #$00FF				; |
-		STA !BigRAM+$14 : STA !BigRAM+$7C	;/
-		LDY #$0008				;\
+	..LoadChunk
+		REP #$20
+		INY
+
+		LDA.w #!DecompBuffer : STA $0A
+		LDA.w #!DecompBuffer>>8 : STA $0B
+
+
+
+		LDA ($00)				;\ check format
+		CMP $08 : BEQ +				;/
+
+
+	; WIDE FORMAT
+		LDX #$0000				;\
+	-	LSR A					; |
+		INX					; | $02 = W/w
+		CMP $08 : BNE -				; |
+		LDA ...data-1,x				; |
+		AND #$00FF : STA $02			;/
+
+
+		LDX #$0000				;\
 		LDA ($00),y				; |
-		AND #$FF00				; |
-		XBA : STA $2251				; |
-		LDA ($00),y				; |
-		AND #$00FF				; | byte count of chunk
-		STA $2253				; |
-		STA $08					; > store chunk width in $08
-		NOP					; |
-		LDA $2306				;/
-		STA $04					;\ get byte count + loop counter
-		STA $06					;/ $06 will be the loop counter for the chunk, whereas $04 is not overwritten
-		STZ !BigRAM+$12				; index to source GFX
+		AND #$00FF				; | A = chunk num mod W/w
+	-	CMP $02 : BCC ++			; | X = which chunk row is being read from
+		SBC $02					; |
+		INX : BRA -				; |
+		++					;/
+
+		STA $2251				;\ calc h offset
+		LDA $08 : STA $2253			;/
+		NOP
+		LDA.w #!DecompBuffer			;\
+		CLC : ADC $2306				; | update pointer to include h offset
+		STA $0A					;/
+
+		STX $2251				;\
+		LDA $04 : STA $2253			; |
+		STA $06					; > $06 = loop counter
+		BRA $00					; | calc v offset (chunk row * W/w * chunk size)
+		LDA $2306 : STA $2251			; |
+		LDA $02 : STA $2253			;/
+		BRA ++
+
+		...data
+		db $02,$04,$08,$10,$20,$40,$80
 
 
-; get w bytes from 128 x [row number]
-; store to w x [row number]
+	; SLIM FORMAT
+	+	LDA ($00),y
+		AND #$00FF
+		STA $2251
+		LDA $04 : STA $2253
+		STA $06					; $06 = loop counter
 
-	.GetFreshChunk
-		LDA $08 : STA $0A			; loop counter for row
+	++	INY
+		LDA $08 : STA $02			; loop counter for row
 		LDX #$0000				; index to cache
-		LDY !BigRAM+$12				; index to source GFX
-	-	LDA [$0D],y : STA !GFX_buffer,x		;\
+		PHY
+		LDY $2306				; index to source GFX
+
+
+
+	-	LDA [$0A],y : STA !GFX_buffer,x		;\
 		INX #2					; | copy row
 		INY #2					;/
 		DEC $06 : DEC $06 : BEQ +		; > check for end of chunk
-		DEC $0A : DEC $0A : BNE -		; > check for end of row
+		DEC $02 : DEC $02 : BNE -		; > check for end of row
 		TYA					;\
 		SEC : SBC $08				; |
 		CLC : ADC ($00)				; | get index to next row by adding width encoding
 		TAY					; |
-		LDA $08 : STA $0A			; > reset row loop counter
+		LDA $08 : STA $02			; > reset row loop counter
 		BRA -					;/
-
 	; formatted chunk is now stored in cache
-	+	PEI ($0E)
-		PEI ($0C)
-		LDX $02
-		LDA .RAMprop,x				;\
-		AND #$00FF				; | get bank to upload to
-		XBA					; |
-		STA $0E					;/
-		LDA !BigRAM+$10 : STA $0D		; address to upload to
+	+	PLY
 		JSR DownloadChunk
-
-
-	.ChunkDone
-		PLA : STA $0C				;\ restore GFX pointers
-		PLA : STA $0E				;/
-		LDA !BigRAM+$10				;\
-		CLC : ADC $04				; | update upload address
-		STA !BigRAM+$10				;/
-		LDA !BigRAM+$12				;\
-		CLC : ADC $08				; | get next chunk to the right
-		STA !BigRAM+$12				;/
-		LDA ($00)				;\
-		DEC A					; | check for end of row
-		AND !BigRAM+$12 : BNE +			;/
-		LDA ($00) : STA $2251			;\
-		LDY #$0009				; | calculate byte count of size in source file
-		LDA ($00),y				; |
-		STA $2253				;/
-		LDA !BigRAM+$12				;\
-		SEC : SBC $08				; | recalculate source file index
-		CLC : ADC $2306				; |
-		STA !BigRAM+$12				;/
-	+	DEC !BigRAM+$14 : BEQ +			; decrement number of chunks to get
-		LDA $04 : STA $06
-		JMP .GetFreshChunk			; keep getting chunks until done
-
-	+	PLP
-		PLB
-		RTS
-
-
-	.Commands
-		PHB : PHK : PLB
-		PHP
-		REP #$30
-		LDX $02
-		LDA $04 : STA $2251
-		LDY #$0007
-		LDA ($00),y
-		AND #$00FF
-		STA $2253
-		STA !BigRAM+$72
-		LDA !BigRAM+$74
-		CLC : ADC $2306
+		LDA $0D
+		CLC : ADC $04
 		STA $0D
-		SEP #$20
-		LDA .RAMprop,x : STA $0F
-		LDY #$000A
-
-
-	..Loop	REP #$20
-		LDA $0D : STA !BigRAM+$6C
-		SEP #$20
-		LDA ($00),y : BEQ ..Rotate		; 00 = rotate
-		CMP #$01 : BEQ ..SJump			; 01 = scale
-							; all other values just end
-	..Done	PLP
-		PLB
-		RTS
-
-	..Next	INY #5
-		BRA ..Loop
-
-	..SJump	JMP ..Scale
+		INC !BigRAM+$7C				; +1 total chunk
+		JMP ..Loop
 
 
 	..Rotate
@@ -2888,17 +2889,15 @@ ReadLevelData:
 		STA !BigRAM+$6E				;/
 
 	--	LDA !BigRAM+$7A				;\
-		CLC : ADC $2306				; |
-		PEI ($0D)				; | update chunk address
-		STA $0D					; |
-		JSR ChunkToCache			; |
-		PLA : STA $0D				;/
+		CLC : ADC $2306				; | get chunk
+		STA $0A					; |
+		JSR ChunkToCache			;/
 
 		INY					;\
 		LDA ($00),y				; | angle
 		AND #$00FF				; |
 		STA !BigRAM+$0E				; |
-		STA $0A					;/
+		STA $02					;/
 		INY					;\
 		LDA ($00),y				; | copies
 		AND #$00FF				; |
@@ -2925,18 +2924,18 @@ ReadLevelData:
 		LDA #$0020 : JSL !TransformGFX		; rotate with fixed size
 
 
-		LDA !BigRAM+$70
-		SEC : SBC $06
-		STA $2251				; copy (current)
-		LDA !BigRAM+$72 : STA $2253		; x base number of chunks (in file)
-		LDA !BigRAM+$76				; + chunk (current)
-		CLC : ADC $2306
-		STA $2251
-		LDA $04 : STA $2253			; () x chunk size
-		NOP : BRA $00
-		LDA $2306
-		CLC : ADC !BigRAM+$74			; + base upload address
-		STA $0D
+		; LDA !BigRAM+$70
+		; SEC : SBC $06
+		; STA $2251				; copy (current)
+		; LDA !BigRAM+$72 : STA $2253		; x base number of chunks (in file)
+		; LDA !BigRAM+$76				; + chunk (current)
+		; CLC : ADC $2306
+		; STA $2251
+		; LDA $04 : STA $2253			; () x chunk size
+		; NOP : BRA $00
+		; LDA $2306
+		; CLC : ADC !BigRAM+$74			; + base upload address
+		; STA $0D
 
 
 		JSR DownloadChunk			; get chunk from output buffer
@@ -2944,21 +2943,21 @@ ReadLevelData:
 		CLC : ADC $04				; | adjust address
 		STA $0D					;/
 		LDA !BigRAM+$0E				;\
-		CLC : ADC $0A				; | adjust angle
+		CLC : ADC $02				; | adjust angle
 		STA !BigRAM+$0E				;/
 		BRA -					; next copy
 
 
 	..RotateDone
-		LDA !BigRAM+$70 : STA $2251
-		LDA !BigRAM+$6E : STA $2253
-		NOP : BRA $00
-		LDA $2306 : STA $2251
-		LDA $04 : STA $2253
-		LDA !BigRAM+$6C
-		NOP
-		CLC : ADC $2306
-		STA $0D
+		; LDA !BigRAM+$70 : STA $2251
+		; LDA !BigRAM+$6E : STA $2253
+		; NOP : BRA $00
+		; LDA $2306 : STA $2251
+		; LDA $04 : STA $2253
+		; LDA !BigRAM+$6C
+		; NOP
+		; CLC : ADC $2306
+		; STA $0D
 		JMP ..Loop
 
 
@@ -2977,11 +2976,9 @@ ReadLevelData:
 		STA !BigRAM+$78				;/
 
 	-	LDA !BigRAM+$7A				;\
-		CLC : ADC $2306				; | update chunk address
-		PEI ($0D)				; |
-		STA $0D					; |
-		JSR ChunkToCache			; |
-		PLA : STA $0D				;/
+		CLC : ADC $2306				; | get chunk
+		STA $0A					; |
+		JSR ChunkToCache			;/
 
 		INY					;\
 		LDA ($00),y				; | x scaling
@@ -3021,15 +3018,15 @@ ReadLevelData:
 
 
 	.Convert
-		PHB : PHK : PLB
-		PHP
 		REP #$30				; all regs 16-bit
 		LDX $02					;\
 		LDA .RAMprop,x				; |
-		AND #$00FF				; | RAM address
-		XBA					; |
+		AND #$00FF				; |
+		XBA					; | RAM address
 		STA $0E					; |
-		LDA !BigRAM+$7A : STA $0D		;/
+		LDA !BigRAM+$7A				; |
+		STA $0A					; |
+		STA $0D					;/
 		LDA !BigRAM+$7C : STA $06		; number of chunks
 
 	..Loop	JSR ChunkToCache			; upload chunk to cache
@@ -3040,14 +3037,13 @@ ReadLevelData:
 		LDA #$0004 : JSL !TransformGFX		; convert to planar
 		JSR DownloadChunk			; put converted chunk back in RAM
 		DEC $06 : BEQ ..Done			;\
-		LDA $0D					; |
+		LDA $0A					; |
 		CLC : ADC $04				; | loop through all chunks
+		STA $0A					; |
 		STA $0D					; |
 		BRA ..Loop				;/
 
-	..Done	PLP
-		PLB
-		RTS
+	..Done	RTS
 
 
 
@@ -3131,124 +3127,188 @@ ReadLevelData:
 ; for example, a 16px wide chunk is marked as 8
 ; note: file size MUST be rounded up to closest KB ($400 B)
 
+
+; commands:
+;	00 = load chunk
+;	01 = rotate
+;	02 = scale
+;	FF = end file, convert to SNES format
+
+
+
 macro size(size)
-dw $0000|(((<size>)+$3FF)&$FC00)	; for some reason asar sets high byte to 0xFF without the $0000|
+	dw $0000|(((<size>)+$3FF)&$FC00)	; for some reason asar sets high byte to 0xFF without the $0000|
+endmacro
+
+macro loadchunk(chunk)
+	db $00
+	db <chunk>
+endmacro
+
+macro rotate(chunk, iterations, copies, angle)
+	db $01
+	db <chunk>
+	db <iterations>
+	db <angle>
+	db <copies>
+endmacro
+
+macro scale(chunk, iterations, x, y)
+	db $02
+	db <chunk>
+	db <iterations>
+	db <x>
+	db <y>
 endmacro
 
 
+
 .Hammer
-dw $0008			; 00: width encoding
-%size($80*16)			; 02: size: 16 16x16 chunks
-dw $E00				; 04: source ExGFX
-db $00				; 06: SD GFX status index
-db $01				; 07: 1 chunk
-db $08,$10			; 08: chunk dimensions (16x16)
-db $00,$00,$01,$20,$0F		; 0A: rotate: chunk 0, iterations 1, angle 20, copies 15
-db $FF				; end file
+..header
+dw $0008				; width encoding
+%size($80*16)				; size: 16 16x16 chunks
+dw $E00					; source ExGFX
+db !SD_Hammer_offset			; SD GFX status index
+db $08,$10				; chunk dimensions (16x16)
+..commands
+%loadchunk($00)				; load chunk 0
+%rotate($00, 1, 15, $20)		; rotate: chunk 0, iterations 1, copies 15, angle $20
+..end
+db $FF					; end file
 
 .PlantHead
-dw $0040			; 00: width encoding
-%size($200*64)			; 02: size: 64 32x32 chunks
-dw $E01				; 04: source ExGFX
-db $01				; 06: SD GFX status index
-db $02				; 07: source file has 2 chunks
-db $10,$20			; 08: chunk dimensions (32x32)
-db $00,$00,$02,$20,$0F		; 0A: rotate: chunk 0, iterations 2, angle 20, copies 15
-db $01,$00,$01,$E0,$E0		; 0F: scale: chunk 0, iterations 1, x 82%, y 82%
-db $01,$02,$0F,$E0,$E0		; 14: scale: chunk 2, iterations 15, x 82%, y 82%
-db $01,$00,$01,$C0,$C0		; 19: scale: chunk 0, iterations 1, x 75%, y 75%
-db $01,$02,$0F,$C0,$C0		; 1E: scale: chunk 2, iterations 15, x 75%, y 75%
-db $FF				; end file
+..header
+dw $0040				; width encoding
+%size($200*64)				; size: 64 32x32 chunks
+dw $E01					; source ExGFX
+db !SD_PlantHead_offset			; SD GFX status index
+db $10,$20				; chunk dimensions (32x32)
+..commands
+%loadchunk($00)				; load chunk 0 (mouth closed)
+%rotate($00, 1, 15, $20)		; rotate: chunk 0, iterations 1, copies 15, angle $20
+%loadchunk($01)				; load chunk 1 (mouth open)
+%rotate($10, 1, 15, $20)		; rotate: chunk 16, iterations 1, copies 15, angle $20
+%scale($00, 16, $E0, $E0)		; scale: chunk 0, iterations 16, x 82%, y 82%
+%scale($00, 16, $C0, $C0)		; scale: chunk 0, iterations 16, x 75%, y 75%
+..end
+db $FF					; end file
 
 .Bone
-dw $0008			; 00: width encoding
-%size($80*16)			; 02: size: 16 16x16 chunks
-dw $E02				; 04: source ExGFX
-db $02				; 06: SD GFX status index
-db $01				; 07: 1 chunk
-db $08,$10			; 08: chunk dimensions (16x16)
-db $00,$00,$01,$20,$0F		; 0A: rotate: chunk 0, iterations 1, angle 20, copies 15
-db $FF				; end file
+..header
+dw $0008				; width encoding
+%size($80*16)				; size: 16 16x16 chunks
+dw $E02					; source ExGFX
+db !SD_Bone_offset			; SD GFX status index
+db $08,$10				; chunk dimensions (16x16)
+..commands
+%loadchunk($00)				; load chunk 0
+%rotate($00, 1, 15, $20)		; rotate: chunk 0, iterations 1, copies 15, angle $20
+..end
+db $FF					; end file
 
 .Fireball8x8
-dw $0004			; 00: width encoding
-%size($20*16)			; 02: size: 16 8x8 chunks
-dw $E03				; 04: source ExGFX
-db $03				; 06: SD GFX status index
-db $01				; 07: 1 chunk
-db $04,$08			; 08: chunk dimensions (8x8)
-db $00,$00,$01,$20,$0F		; 0A: rotate: chunk 0, iterations 1, angle 20, copies 15
-db $FF				; end file
+..header
+dw $0004				; width encoding
+%size($20*16)				; size: 16 8x8 chunks
+dw $E03					; source ExGFX
+db !SD_Fireball8x8_offset		; SD GFX status index
+db $04,$08				; chunk dimensions (8x8)
+..commands
+%loadchunk($00)				; load chunk 0
+%rotate($00, 1, 15, $20)		; rotate: chunk 0, iterations 1, copies 15, angle $20
+..end
+db $FF					; end file
 
 .Fireball16x16
-dw $0008			; 00: width encoding
-%size($80*16)			; 02: size: 16 16x16 chunks
-dw $E04				; 04: source ExGFX
-db $04				; 06: SD GFX status index
-db $01				; 07: 1 chunk
-db $08,$10			; 08: chunk dimensions (16x16)
-db $00,$00,$01,$20,$0F		; 0A: rotate: chunk 0, iterations 1, angle 20, copies 15
-db $FF				; end file
+..header
+dw $0008				; width encoding
+%size($80*16)				; size: 16 16x16 chunks
+dw $E04					; source ExGFX
+db !SD_Fireball16x16_offset		; SD GFX status index
+db $08,$10				; chunk dimensions (16x16)
+..commands
+%loadchunk($00)				; load chunk 0
+%rotate($00, 1, 15, $20)		; rotate: chunk 0, iterations 1, copies 15, angle $20
+..end
+db $FF					; end file
 
 .Goomba
-dw $0008			; 00: width encoding
-%size($80*16)			; 02: size: 16 16x16 chunks
-dw $E05				; 04: source ExGFX
-db $05				; 06: SD GFX status index
-db $01				; 07: 1 chunk
-db $08,$10			; 08: chunk dimensions (16x16)
-db $00,$00,$01,$20,$0F		; 0A: rotate: chunk 0, iterations 1, angle 20, copies 15
-db $FF				; end file
+..header
+dw $0008				; width encoding
+%size($80*16)				; size: 16 16x16 chunks
+dw $E05					; source ExGFX
+db !SD_Goomba_offset			; SD GFX status index
+db $08,$10				; chunk dimensions (16x16)
+..commands
+%loadchunk($00)				; load chunk 0
+%rotate($00, 1, 15, $20)		; rotate: chunk 0, iterations 1, copies 15, angle $20
+..end
+db $FF					; end file
 
 .LuigiFireball
-dw $0004			; 00: width encoding
-%size($20*16)			; 02: size: 16 8x8 chunks
-dw $E06				; 04: source ExGFX
-db $06				; 06: SD GFX status index
-db $01				; 07: 1 chunk
-db $04,$08			; 08: chunk dimensions (8x8)
-db $00,$00,$01,$20,$0F		; 0A: rotate: chunk 0, iterations 1, angle 20, copies 15
-db $FF				; end file
+..header
+dw $0004				; width encoding
+%size($20*16)				; size: 16 8x8 chunks
+dw $E06					; source ExGFX
+db !SD_LuigiFireball_offset		; SD GFX status index
+db $04,$08				; chunk dimensions (8x8)
+..commands
+%loadchunk($00)				; load chunk 0
+%rotate($00, 1, 15, $20)		; rotate: chunk 0, iterations 1, copies 15, angle $20
+..end
+db $FF					; end file
 
 .Baseball
-dw $0004			; 00: width encoding
-%size($20*16)			; 02: size: 16 8x8 chunks
-dw $E07				; 04: source ExGFX
-db $07				; 06: SD GFX status index
-db $01				; 07: 1 chunk
-db $04,$08			; 08: chunk dimensions (8x8)
-db $00,$00,$01,$20,$0F		; 0A: rotate: chunk 0, iterations 1, angle 20, copies 15
-db $FF				; end file
+..header
+dw $0004				; width encoding
+%size($20*16)				; size: 16 8x8 chunks
+dw $E07					; source ExGFX
+db !SD_Baseball_offset			; SD GFX status index
+db $04,$08				; chunk dimensions (8x8)
+..commands
+%loadchunk($00)				; load chunk 0
+%rotate($00, 1, 15, $20)		; rotate: chunk 0, iterations 1, copies 15, angle $20
+..end
+db $FF					; end file
 
 .KadaalSwim
-dw $0040			; 00: width encoding
-%size($80*20)			; 02: size: 20 16x16 chunks
-dw $E08				; 04: source ExGFX
-db $08				; 06: SD GFX status index
-db $04				; 07: source file has 3 chunks
-db $08,$10			; 08: chunk dimensions (16x16)
-db $00,$00,$04,$10,$04		; 0A: rotate: chunk 0, iterations 4, angle 10, copies 4
-db $FF				; end file
+..header
+dw $0040				; width encoding
+%size($80*20)				; size: 20 16x16 chunks
+dw $E08					; source ExGFX
+db !SD_KadaalLinear_offset		; SD GFX status index
+db $08,$10				; chunk dimensions (16x16)
+..commands
+%loadchunk($00)				; load chunk 0
+%rotate($00, 4, 4, $10)			; rotate: chunk 0, iterations 4, copies 4, angle $10
+..end
+db $FF					; end file
 
 .Fireball32x32
-dw $0010			; 00: width encoding
-%size($200*16)			; 02: size: 16 32x32 chunks
-dw $E09				; 04: source ExGFX
-db $09				; 06: SD GFX status index
-db $01				; 07: 1 chunk
-db $10,$20			; 08: chunk dimensions (32x32)
-db $00,$00,$01,$20,$0F		; 0A: rotate: chunk 0, iterations 1, angle 20, copies 15
-db $FF				; end file
+..header
+dw $0010				; width encoding
+%size($200*16)				; size: 16 32x32 chunks
+dw $E09					; source ExGFX
+db !SD_Fireball32x32_offset		; SD GFX status index
+db $10,$20				; chunk dimensions (32x32)
+..commands
+%loadchunk($00)				; load chunk 0
+%rotate($00, 1, 15, $20)		; rotate: chunk 0, iterations 1, copies 15, angle $20
+..end
+db $FF					; end file
 
 .EnemyFireball16x16
-dw $0010			; 00: width encoding
-%size($80*16)			; 02: size: 16 16x16 chunks
-dw $E0A				; 04: source ExGFX
-db $0A				; 06: SD GFX status index
-db $01				; 07: 1 chunk at a time
-db $08,$10			; 08: chunk dimensions (16x16)
-db $00,$00,$01,$20,$0F		; 0A: rotate: chunk 0, iterations 1, angle 20, copies 15
-db $FF				; end file
+..header
+dw $0010				; width encoding
+%size($80*16)				; size: 16 16x16 chunks
+dw $E0A					; source ExGFX
+db !SD_EnemyFireball16x16_offset	; SD GFX status index
+db $08,$10				; chunk dimensions (16x16)
+..commands
+%loadchunk($00)				; load chunk 0
+%rotate($00, 1, 15, $20)		; rotate: chunk 0, iterations 1, copies 15, angle $20
+..end
+db $FF					; end file
 
 
 
@@ -3257,17 +3317,14 @@ db $FF				; end file
 ; chunk copier routines below
 ; should be called by SA-1
 ; input:
-;	X = RAM index
 ;	$04 = byte count of chunk
-;	$0D = 24-bit pointer to target RAM
-
-
+;	$0A = 24-bit pointer to target RAM (read)
+;	$0D = 24-bit pointer to target RAM (write)
 
 	ChunkToCache:
 		PHY
-		LDX $02
-		LDA SuperDynamicFiles_RAMprop,x
-		CMP #$0100 : BCC .CPU
+		LDA $0C-1				;\ 7E/7F = DMA
+		CMP #$007E : BCC .CPU			;/ 40/41 = CPU
 
 	.DMA
 		LDA.w #..SNES : STA $0183		;\
@@ -3285,8 +3342,8 @@ db $FF				; end file
 		PHP					;\
 		REP #$20				; |
 		SEP #$10				; |
-		LDA $0D : STA $2181			; |
-		LDX $0F : STX $2183			; |
+		LDA $0A : STA $2181			; |
+		LDX $0C : STX $2183			; |
 		LDA #$8080 : STA $4300			; | DMA chunk
 		LDA.w #!ImageCache : STA $4302		; |
 		LDX.b #!ImageCache>>16 : STX $4304	; |
@@ -3299,7 +3356,7 @@ db $FF				; end file
 		LDX $04					;\
 		DEX #2					; |
 		TXY					; | transfer chunk
-	-	LDA [$0D],y : STA !ImageCache,x		; |
+	-	LDA [$0A],y : STA !ImageCache,x		; |
 		DEX #2					; |
 		TXY : BPL -				;/
 		PLY
@@ -3308,9 +3365,8 @@ db $FF				; end file
 
 	DownloadChunk:
 		PHY
-		LDX $02
-		LDA SuperDynamicFiles_RAMprop,x
-		CMP #$0100 : BCC .CPU
+		LDA $0F-1				;\ 7E/7F = DMA
+		CMP #$007E : BCC .CPU			;/ 40/41 = CPU
 
 	.DMA
 		LDA.w #..SNES : STA $0183		;\
@@ -3351,9 +3407,8 @@ db $FF				; end file
 
 	DownloadScaledChunk:
 		PHY
-		LDX $02
-		LDA SuperDynamicFiles_RAMprop,x
-		CMP #$0100 : BCC .CPU
+		LDA $0F-1				;\ 7E/7F = DMA
+		CMP #$007E : BCC .CPU			;/ 40/41 = CPU
 
 	.DMA
 		LDA.w #..SNES : STA $0183		;\

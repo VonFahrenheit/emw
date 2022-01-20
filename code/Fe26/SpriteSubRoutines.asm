@@ -2657,15 +2657,45 @@ SPRITE_OFF_SCREEN:
 
 		.Loop							;\ return if at end of dynamo
 		CPY $02 : BCS .Return					;/
-		LDA ($0C),y : BPL .LoadTile				;\ check type
-		CMP #$C000 : BCC .GetFile				;/
+		LDA ($0C),y : BPL .LoadTile				; check tile
+		INY #2							; Y+2 for command
+		CMP #$C000 : BCC .GetFile				; check file address update
+		CMP #$E000 : BCC .SkipTiles				; check tile skip
+
+
+		.SuperDynamicAddress					;\
+		PHX							; |
+		AND #$00FF : TAX					; |
+		LDA !SD_status,x					; |
+		SEP #$20						; |
+		AND #$C0 : BEQ ..7E					; |
+		CMP #$40 : BEQ ..7F					; | get bank
+		CMP #$80 : BEQ ..40					; |
+	..41	LDA #$41 : BRA ..setbank				; |
+	..40	LDA #$40 : BRA ..setbank				; |
+	..7F	LDA #$7F : BRA ..setbank				; |
+	..7E	LDA #$7E						; |
+		..setbank						; |
+		STA !FileAddress+2					;/
+		REP #$20						;\
+		LDA !SD_status-1,x					; |
+		AND #$3F00						; | get address
+		ASL #2							; |
+		STA !FileAddress					;/
+		PLX							;\ loop
+		BRA .Loop						;/
+
+
+		.Return							;\
+		PLP							; | pull stuff
+		PLX							;/
+		RTL							; return
 
 		.SkipTiles						;\
-		INY #2							; |
 		AND #$000F : BEQ .Loop					; |
 		PHA							; |
-		PEI ($04)						; | add skip count * 4 to X
-		STX $04							; |
+		PEI ($04)						; |
+		STX $04							; | add skip count * 4 to X
 		ASL #2							; |
 		ADC $04							; |
 		TAX							; |
@@ -2677,11 +2707,10 @@ SPRITE_OFF_SCREEN:
 
 		.GetFile						;\
 		PHY							; |
-		AND #$7FFF : TAY					; |
-		JSL !GetFileAddress					; | get file address
+		AND #$7FFF : TAY					; | get file address
+		JSL !GetFileAddress					; |
 		PLY							; |
-		INY #2							; |
-		BRA .Loop						;/
+		JMP .Loop						;/
 
 		.LoadTile						;\ see if tile is in use
 	..loop	LSR $00 : BCC ..nextone					;/
@@ -2694,13 +2723,12 @@ SPRITE_OFF_SCREEN:
 		INY #2							; increment index
 		INX #4							;\ increment output index and return if at end
 		CPX #$0040 : BCS .Return				;/
-		BRA .Loop						; loop
+		JMP .Loop						; loop
 		..nextone						;\
 		INX #4							; | otherwise loop until all tiles have been checked
 		CPX #$0040 : BCC ..loop					;/
 
-		.Return							;\
-		PLP							; | pull stuff
+		PLP							;\ pull stuff
 		PLX							;/
 		RTL							; return
 

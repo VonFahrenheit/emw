@@ -645,8 +645,7 @@ endmacro
 		%def_GFX(ExplodingBlock)
 
 
-
-
+	; GFX status format:
 	; each file has a marker for where it is loaded (unloaded = 0)
 	; format: pyyyxxxx
 	; p is highest bit of num (T in prop)
@@ -656,6 +655,9 @@ endmacro
 	; start of SP2 is 0x40
 	; start of SP3 is 0x80
 	; start of SP4 is 0xC0
+
+
+
 
 
 		macro def_SD(name)
@@ -671,12 +673,11 @@ endmacro
 		%def_SD(Fireball8x8)
 		%def_SD(Fireball16x16)
 		%def_SD(Goomba)
-		%def_SD(LuigiFIreball)
+		%def_SD(LuigiFireball)
 		%def_SD(Baseball)
 		%def_SD(KadaalLinear)
 		%def_SD(Fireball32x32)
 		%def_SD(EnemyFireball16x16)
-
 
 	; super dynamic format:
 	; bbpppppp
@@ -1515,17 +1516,24 @@ endmacro
 	endmacro
 
 
-
+	; upload this tile
 	macro SquareDyn(tilenum)
 		dw <tilenum>*$20
 	endmacro
 
+	; update source file address
 	macro SquareFile(file)
 		dw $8000|<file>
 	endmacro
 
+	; skip forward that number of tiles (used to update later claimed tiles without updating earlier ones)
 	macro SquareSkipTiles(tiles)
 		dw $C000|<tiles>
+	endmacro
+
+	; update source file address to a super-dynamic one
+	macro SquareSuperDynamic(ID)
+		dw $E000|<ID>
 	endmacro
 
 
