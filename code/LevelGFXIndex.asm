@@ -646,7 +646,7 @@ PalsetDefaults:
 		LDA #$0A					; |
 	++	STA !GFX_ReznorFireball_tile			; |
 		LDA #$00 : STA !GFX_ReznorFireball_prop		; |
-		LDA #$01 : STA !SD_Mark+$04			; |
+		LDA #$01 : STA !SD_Mark+!SD_Fireball16x16_offset; |
 		.NoMarioFire					;/
 
 		LDA !MultiPlayer : BEQ +			;\
@@ -660,7 +660,7 @@ PalsetDefaults:
 		LDA #$0D					; |
 	++	STA !GFX_LuigiFireball_tile			; |
 		LDA #$00 : STA !GFX_LuigiFireball_prop		; |
-		LDA #$01 : STA !SD_Mark+$06			; |
+		LDA #$01 : STA !SD_Mark+!SD_LuigiFireball_offset; |
 		.NoLuigiFire					;/
 
 		LDA !MultiPlayer : BEQ +			;\
@@ -670,7 +670,7 @@ PalsetDefaults:
 	+	LDA !Characters					; | super-dynamic kadaal swim frames
 		AND #$F0					; |
 		CMP #$20 : BNE .NoKadaalSwim			; |
-	++	LDA #$01 : STA !SD_Mark+$08			; |
+	++	LDA #$01 : STA !SD_Mark+!SD_KadaalLinear_offset	; |
 		.NoKadaalSwim					;/
 
 
@@ -1483,7 +1483,7 @@ endmacro
 ;=============;
 ;===============================================================
 .Goomba		%cmd($F03, $00, $08, Goomba, 0)
-		%super($05)
+		%super(!SD_Goomba_offset)
 		db $FF
 ;===============================================================
 .GoombaSlave	%src($F80, $00, $14, GoombaSlave, 2)
@@ -1695,12 +1695,12 @@ endmacro
 ;===============================================================
 .SmallFireball	%cmd($F5E, $00, $01, SmallFireball, 0)
 		%defaultpal(C)
-		%super($03)
+		%super(!SD_Fireball8x8_offset)
 		db $FF
 ;===============================================================
 .ReznorFireball	%cmd($F5F, $00, $02, ReznorFireball, 0)
 		%defaultpal(C)
-		%super($04)
+		%super(!SD_Fireball16x16_offset)
 		db $FF
 ;===============================================================
 .LotusPollen	%cmd($F60, $00, $01, LotusPollen, 0)
@@ -1709,7 +1709,7 @@ endmacro
 ;===============================================================
 .Baseball	%cmd($F61, $00, $01, Baseball, 0)
 		%defaultpal(C)
-		%super($07)
+		%super(!SD_Baseball_offset)
 		db $FF
 ;===============================================================
 .WaterEffects	%src($F62, $00, $05, WaterEffects, 0)
@@ -1736,7 +1736,7 @@ endmacro
 ;===============================================================
 .Hammer		%cmd($F5D, $00, $02, Hammer, 0)
 		%defaultpal(B)
-		%super($00)
+		%super(!SD_Hammer_offset)
 		db $FF
 ;===============================================================
 .DinoFire	%cmd($F6A, $00, $10, DinoFire, 0)
@@ -1751,7 +1751,7 @@ endmacro
 .FelMagic	%src($F83, $45, $0B, FelMagic, 0)
 ;===============================================================
 .Bone		%cmd($F65, $00, $04, Bone, 0)		; first tile is super-dynamic, second is static and used by dry bones tilemap
-		%super($02)
+		%super(!SD_Bone_offset)
 		db $FF
 ;===============================================================
 .SkeletonRubble	%src($F64, $00, $06, SkeletonRubble, 0)
@@ -1868,7 +1868,7 @@ endmacro
 		%mark(Football)
 		%mark(ChuckRock)
 		%mark(Baseball)
-		%super($07)
+		%super(!SD_Baseball_offset)
 		db $FF
 ;===============================================================
 .AmazingHammerBro
@@ -2620,26 +2620,24 @@ ReadLevelData:
 		LDY #$02
 		PHX
 		LDX.b #.RAMaddress-.RAMsize-2
+
 	-	LDA .RAMsize,x					;\
 		SEC : SBC !BigRAM,x				; |
 		BEQ .nextM					; |
 		BCS .thisM					; | look for a good spot in memory
-	.nextM	DEX #2 : BMI .Return				; |
-		BRA -						; |
+	.nextM	DEX #2 : BPL -					; |
+		BRA .Return					; |
 	.thisM	CMP ($00),y : BCC .nextM			;/
 		LDA !BigRAM,x					;\
-		CLC : ADC .RAMaddress,x				; | address to start uploading to
+		CLC : ADC .RAMaddress,x				; | address to start uploading to (assume lo byte is always 0)
 		STA !BigRAM+$10					;/
-		STA !BigRAM+$74					; > remember this!
-
+		STA !BigRAM+$74					; > store for later to use with linear -> planar conversion
 		LDA ($00),y					;\
 		CLC : ADC !BigRAM,x				; | mark memory as used
 		STA !BigRAM,x					;/
 
 		LDA !BigRAM+$11					;\
-		AND #$00FF					; |
-		LSR #2						; |
-		STA $02						; > (note that this clear of $03 is necessary)
+		AND #$00FF : STA $02				; > (note that this clear of $03 is necessary)
 		LDA .RAMprop,x					; |
 		LDY #$00					; |
 		AND #$00FF					; |
@@ -2650,8 +2648,6 @@ ReadLevelData:
 		CMP #$0040 : BEQ +				; |
 		LDY #$03					; |
 	+	TYA						; |
-		ASL $02						; |
-		ASL $02						; |
 		ORA $02						; |
 		STA !BigRAM+$7E					;/
 
@@ -2704,6 +2700,7 @@ ReadLevelData:
 		STZ $223F					; 4 bpp mode
 		STZ $2250					; prepare multiplication
 
+	; read header
 		REP #$30					; all regs 16-bit
 		LDY #$0007					;\
 		LDA ($00),y					; |
@@ -2716,9 +2713,55 @@ ReadLevelData:
 		NOP						; |
 		LDA $2306					;/
 		STA $04						; get byte count
+		STZ !BigRAM+$7C					; reset number of chunks in memory
 
-		JSR .Commands
-		JSR .Convert
+	; handle commands
+		LDA !BigRAM+$74					;\
+		STA $0A						; |
+		STA $0D						; |
+		SEP #$20					; | $0A = 24-bit read pointer
+		LDX $02						; | $0D = 24-bit write pointer
+		LDA .RAMprop,x					; |
+		STA $0C						; |
+		STA $0F						;/
+		PEI ($02)					; preserve $02
+		LDY #$0009					; Y = index to first command
+		..nextcommand					;\
+		REP #$20					; | read and prepare command
+		LDA $0D : STA !BigRAM+$6C			; |
+		SEP #$20					;/
+		LDA ($00),y : BEQ ..LoadChunk			; 00 = load chunk
+		CMP #$01 : BEQ ..RJump				; 01 = rotate
+		CMP #$02 : BEQ ..SJump				; 02 = scale
+		..commandsdone					; all other values just end
+		PLY : STY $02					; restore $02
+
+	; convert linear -> planar
+		REP #$30					; all regs 16-bit
+		LDX $02						;\
+		LDA .RAMprop-1,x				; |
+		AND #$FF00					; |
+		STA $0C-1					; | RAM address
+		STA $0F-1					; | (read = write)
+		LDA !BigRAM+$7A					; |
+		STA $0A						; |
+		STA $0D						;/
+		LDA !BigRAM+$7C : STA $06			; number of chunks
+		..loop
+		JSR ChunkToCache				; upload chunk to cache
+		LDA.w #!V_cache : STA !BigRAM+$00		; image to convert
+		LDA $08						;\
+		ASL A						; | width of image
+		STA !BigRAM+$02					;/
+		LDA #$0004 : JSL !TransformGFX			; convert to planar
+		JSR DownloadChunk				; put converted chunk back in RAM
+		DEC $06 : BEQ ..done				;\
+		LDA $0A						; |
+		CLC : ADC $04					; | loop through all chunks
+		STA $0A						; |
+		STA $0D						; |
+		BRA ..loop					;/
+		..done
 		PLP
 		PLB
 		RTL
@@ -2754,32 +2797,6 @@ ReadLevelData:
 ; NOTE: only SNES can call !DecompressFile, so it can't be done here
 
 
-	.Commands
-		REP #$30				; all regs 16-bit
-		LDA !BigRAM+$74				;\
-		STA $0A					; |
-		STA $0D					; |
-		SEP #$20				; | $0A = 24-bit read pointer
-		LDX $02					; | $0D = 24-bit write pointer
-		LDA .RAMprop,x				; |
-		STA $0C					; |
-		STA $0F					;/
-		PEI ($02)				; preserve $02
-		LDY #$0009				; Y = index to first command
-
-
-		..Loop
-		REP #$20
-		LDA $0D : STA !BigRAM+$6C
-		SEP #$20
-		LDA ($00),y : BEQ ..LoadChunk		; 00 = load chunk
-		CMP #$01 : BEQ ..RJump			; 01 = rotate
-		CMP #$02 : BEQ ..SJump			; 02 = scale
-							; all other values just end
-		..Done
-		PLY : STY $02				; restore $02
-		RTS
-
 		..RJump
 		JMP ..Rotate
 
@@ -2793,8 +2810,6 @@ ReadLevelData:
 
 		LDA.w #!DecompBuffer : STA $0A
 		LDA.w #!DecompBuffer>>8 : STA $0B
-
-
 
 		LDA ($00)				;\ check format
 		CMP $08 : BEQ +				;/
@@ -2869,7 +2884,7 @@ ReadLevelData:
 		CLC : ADC $04
 		STA $0D
 		INC !BigRAM+$7C				; +1 total chunk
-		JMP ..Loop
+		JMP ..nextcommand
 
 
 	..Rotate
@@ -2887,14 +2902,15 @@ ReadLevelData:
 		STA !BigRAM+$78				; |
 		STA !BigRAM+$6E				;/
 
-	--	LDA !BigRAM+$7A				;\
+	--	LDA $0F-1 : STA $0C-1			; read bank
+		LDA !BigRAM+$7A				;\
 		CLC : ADC $2306				; | get chunk
 		STA $0A					; |
 		JSR ChunkToCache			;/
 
 		INY					;\
-		LDA ($00),y				; | angle
-		AND #$00FF				; |
+		LDA ($00),y				; |
+		AND #$00FF				; | angle
 		STA !BigRAM+$0E				; |
 		STA $02					;/
 		INY					;\
@@ -2902,12 +2918,15 @@ ReadLevelData:
 		AND #$00FF				; |
 		STA $06					;/
 		STA !BigRAM+$70				; > total copies
-		CLC : ADC !BigRAM+$7C			;\ add to number of chunks
-		STA !BigRAM+$7C				;/
 		INY					; adjust index
 
 		LDA !BigRAM+$78 : BEQ ..RotateDone	; check iterations
 		DEC !BigRAM+$78				; start a new iteration
+
+		LDA !BigRAM+$70				;\
+		CLC : ADC !BigRAM+$7C			; | add copies to number of chunks
+		STA !BigRAM+$7C				;/
+
 	-	LDA $06 : BNE +				; check copies
 		DEY #3					;\
 		INC !BigRAM+$76				; |
@@ -2957,7 +2976,7 @@ ReadLevelData:
 		; NOP
 		; CLC : ADC $2306
 		; STA $0D
-		JMP ..Loop
+		JMP ..nextcommand
 
 
 	..Scale
@@ -2974,7 +2993,8 @@ ReadLevelData:
 		AND #$00FF				; |
 		STA !BigRAM+$78				;/
 
-	-	LDA !BigRAM+$7A				;\
+	-	LDA $0F-1 : STA $0C-1			; read bank
+		LDA !BigRAM+$7A				;\
 		CLC : ADC $2306				; | get chunk
 		STA $0A					; |
 		JSR ChunkToCache			;/
@@ -3013,36 +3033,8 @@ ReadLevelData:
 		BRA -					;/
 
 	..ScaleDone
-		JMP ..Loop
+		JMP ..nextcommand
 
-
-	.Convert
-		REP #$30				; all regs 16-bit
-		LDX $02					;\
-		LDA .RAMprop,x				; |
-		AND #$00FF				; |
-		XBA					; | RAM address
-		STA $0E					; |
-		LDA !BigRAM+$7A				; |
-		STA $0A					; |
-		STA $0D					;/
-		LDA !BigRAM+$7C : STA $06		; number of chunks
-
-	..Loop	JSR ChunkToCache			; upload chunk to cache
-		LDA.w #!V_cache : STA !BigRAM+$00	; image to convert
-		LDA $08
-		ASL A
-		STA !BigRAM+$02				; width of image
-		LDA #$0004 : JSL !TransformGFX		; convert to planar
-		JSR DownloadChunk			; put converted chunk back in RAM
-		DEC $06 : BEQ ..Done			;\
-		LDA $0A					; |
-		CLC : ADC $04				; | loop through all chunks
-		STA $0A					; |
-		STA $0D					; |
-		BRA ..Loop				;/
-
-	..Done	RTS
 
 
 
@@ -3052,7 +3044,7 @@ ReadLevelData:
 		dw $3800
 		dw $8000
 		dw $8000
-		dw $8D00	; 8D00 should be the size... unknown why setting this to something larger than FFF causes issues
+		dw $8D00	; 8D00 should be the size... ($2000-$ACFF)
 	.RAMaddress
 		dw $C800
 		dw $A000
@@ -3060,7 +3052,7 @@ ReadLevelData:
 		dw $0000
 		dw $0000
 		dw $2000
-	.RAMprop	; lo byte = bank, hi byte = DMA allowed (0 = no, 1 = yes)
+	.RAMprop		; lo byte = bank, hi byte = DMA allowed (0 = no, 1 = yes)
 		dw $017E
 		dw $0040
 		dw $017F
@@ -3071,9 +3063,9 @@ ReadLevelData:
 
 
 		.Lookup
-		dw $10D : db $01	; plant head
-		dw $110 : db $09	; kingking, fireball 32x32
-		dw $110 : db $0A	; kingking, enemy fireball 16x16
+		dw $10D : db !SD_PlantHead_offset		; plant head
+		dw $110 : db !SD_Fireball32x32_offset		; kingking, fireball 32x32
+		dw $110 : db !SD_EnemyFireball16x16_offset	; kingking, enemy fireball 16x16
 		..End
 
 
@@ -3279,7 +3271,13 @@ db !SD_KadaalLinear_offset		; SD GFX status index
 db $08,$10				; chunk dimensions (16x16)
 ..commands
 %loadchunk($00)				; load chunk 0
-%rotate($00, 4, 4, $10)			; rotate: chunk 0, iterations 4, copies 4, angle $10
+%loadchunk($01)				; load chunk 1
+%loadchunk($02)				; load chunk 2
+%loadchunk($03)				; load chunk 3
+%rotate($00, 4, 1, $10)			; rotate: chunk 0, iterations 4 (chunks 0-3), copies 1, angle $10
+%rotate($00, 4, 1, $20)			; rotate: chunk 0, iterations 4 (chunks 0-3), copies 1, angle $20
+%rotate($00, 4, 1, $30)			; rotate: chunk 0, iterations 4 (chunks 0-3), copies 1, angle $30
+%rotate($00, 4, 1, $40)			; rotate: chunk 0, iterations 4 (chunks 0-3), copies 1, angle $40
 ..end
 db $FF					; end file
 
@@ -3323,7 +3321,7 @@ db $FF					; end file
 	ChunkToCache:
 		PHY
 		LDA $0C-1				;\ 7E/7F = DMA
-		CMP #$007E : BCC .CPU			;/ 40/41 = CPU
+		CMP #$7E00 : BCC .CPU			;/ 40/41 = CPU
 
 	.DMA
 		LDA.w #..SNES : STA $0183		;\
@@ -3352,20 +3350,25 @@ db $FF					; end file
 		RTL					;/
 
 	.CPU
+		PHB					;\
+		SEP #$20				; | bank wrapper start
+		LDA $0C : PHA : PLB			; |
+		REP #$20				;/
 		LDX $04					;\
 		DEX #2					; |
 		TXY					; | transfer chunk
-	-	LDA [$0A],y : STA !ImageCache,x		; |
+	-	LDA ($0A),y : STA.l !ImageCache,x	; |
 		DEX #2					; |
 		TXY : BPL -				;/
-		PLY
-		RTS
+		PLB					; bank wrapper end
+		PLY					; restore command index
+		RTS					; return
 
 
 	DownloadChunk:
 		PHY
 		LDA $0F-1				;\ 7E/7F = DMA
-		CMP #$007E : BCC .CPU			;/ 40/41 = CPU
+		CMP #$7E00 : BCC .CPU			;/ 40/41 = CPU
 
 	.DMA
 		LDA.w #..SNES : STA $0183		;\
@@ -3412,7 +3415,7 @@ db $FF					; end file
 	DownloadScaledChunk:
 		PHY
 		LDA $0F-1				;\ 7E/7F = DMA
-		CMP #$007E : BCC .CPU			;/ 40/41 = CPU
+		CMP #$7E00 : BCC .CPU			;/ 40/41 = CPU
 
 	.DMA
 		LDA.w #..SNES : STA $0183		;\

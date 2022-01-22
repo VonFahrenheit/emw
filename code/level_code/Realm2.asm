@@ -48,21 +48,11 @@ levelinitA:
 
 
 levelinitB:
-		RTL
-
 		INC !SideExit
-
-		JSL VineDestroy_INIT
-
-		LDA #$0E : STA !VineDestroyPage		; > page of vines
 
 		LDA #$07				;\
 		STA !BG2ModeH				; | 75% BG2 scroll rate
 		STA !BG2ModeV				;/
-		STZ !BG2BaseV				;\ Base BG2 Vscroll = 0x00 (0x90 - 0x90)
-		STZ !BG2BaseV+1				;/
-		LDA #$C0 : STA !Level+2			;\ Base BG3 Vscroll = +0xC0
-		STZ !Level+3				;/
 
 		JSL levelB_HDMA
 		SEP #$20
@@ -474,73 +464,12 @@ levelA:
 
 
 levelB:
+		REP #$20
+		LDA.w #.HDMA : STA !HDMAptr+0		; > set lo-mid bytes of HDMA pointer
+		LDA #$1FE8				;\ do this now so I don't have to SEP #20
+		JSL END_Right				;/
+		LDA.b #.HDMA>>16 : STA !HDMAptr+2	; > set hi byte of HDMA pointer
 		RTL
-
-		LDA #$07
-		LDX $1B
-		CPX #$0B : BCC .Nah			;\ vines are destroyed slower between these screens
-		CPX #$0F : BCS .Nah			;/
-		LDA #$0F
-		.Nah
-		STA !VineDestroyBaseTime
-
-		LDA !Level+4 : BNE .Nope		; Only do this once
-		LDA $1B
-		CMP #$0A : BCC .Nope
-		REP #$10				;\
-		LDX.w #155*16				; |
-		LDY.w #15*16				; | This is what you do to get the pointer
-		JSL $138018				; |
-		SEP #$30				;/
-		LDY #$32				;\
-	-	LDA #$0E : STA [$05],y			; |
-		DEY : STA [$05],y			; |
-		DEY : STA [$05],y			; | Hi bytes are usually the same so this is pretty fast
-		TYA					; |
-		SEC : SBC #$0E				; |
-		TAY					; |
-		BPL -					;/
-		DEC $07					; > Change banks
-		LDY #$32				;\
-		LDX #$03*3				; |
-	-	LDA .VineTable+2,x : STA [$05],y	; |
-		DEY					; |
-		LDA .VineTable+1,x : STA [$05],y	; |
-		DEY					; | This size can probably be cut a lot with some kind of indirect addressing
-		LDA .VineTable+0,x : STA [$05],y	; |
-		DEX #3					; |
-		TYA					; |
-		SEC : SBC #$0E				; |
-		TAY					; |
-		BPL -					;/
-		REP #$20				;\
-		LDA.w #.Dynamo : STA $0C		; | Load dynamo
-		CLC : JSL !UpdateGFX			; |
-		SEP #$20				;/
-		LDA #$01 : STA !Level+4			; Don't repeat this
-		.Nope
-
-
-		REP #$20				; > A 16 bit
-		LDA $14					;\ Only move fog vertically once every 8 frames
-		AND #$0007 : BNE .FogDone		;/
-		LDA !Level+2				;\ Don't stop raising fog once it staRTL
-		CMP #$00C0 : BNE .RaiseFog		;/
-		LDA $1A					;\ Threshold for fog rising is screen 0x10
-		CMP #$0B80 : BCC .FogDone		;/
-
-		.RaiseFog
-		LDA !Level+2				;\
-		BEQ .FogDone				; | Raise fog until it's at BG1's position
-		DEC !Level+2				;/
-
-		.FogDone
-		LDA.w #.HDMA : STA !HDMAptr+0		; > Set lo-mid bytes of HDMA pointer
-		LDY #$01				;\
-		LDA #$1FE8				; | Do this now so I don't have to SEP #20
-		JSL END_Right				;/ (normal exit at 0x1DE8
-		LDA.b #.HDMA>>16 : STA !HDMAptr+2	; > Set hi byte of HDMA pointer
-		JML VineDestroy_MAIN			; > Handle vines
 
 		.HDMA
 		PHP
@@ -550,40 +479,23 @@ levelB:
 		LDA $1B : BEQ +
 		LDA #$8F : STA $1E
 		LDA #$0A : STA $1F
-	+	PLP
-
-		LDA !Level+2				;\
-		CMP #$00C0 : BNE +			; | Invisible until a certain point
-	-	LDA #$0000 : BRA ++			;/
-	+	LDA $1C					;\
-		SEC : SBC !Level+2			; | Set BG3 Vscroll
-	++	STA $24					;/
-		BMI -					; > Make sure it's not visible at the top
+	+	REP #$20
 		LDA $1E : STA $4204			;\
 		LDX #$90 : STX $4206			; |
-		JSL GET_DIVISION			; | Divide BG2 Hscroll by 0x90 and set it to the remainder
-		LDA $4216				; | to make sure it loops every 9 tiles
-		STA $1E					; |
+
+		LDA $14
+		AND #$0007 : BNE +
+		INC !Level+2
+	+	LDA $1A
+		CLC : ADC !Level+2
+		STA $22
+
+		NOP #3
+
+		LDA $4216 : STA $1E			; | to make sure it loops every 9 tiles
+		PLP					; |
 		RTL					;/
 
-
-
-		.VineTable
-		db $E0,$E1,$E2
-		db $F0,$F1,$F2
-		db $E0,$E1,$E2
-		db $F0,$F1,$F2
-
-		.Dynamo			; puts volcano lotus fire on tiles 0x160 and 0x170
-		dw ..End-..Start
-		..Start
-		dw $0020
-		dl $31ECC0
-		dw $7600
-		dw $0020
-		dl $31EEC0
-		dw $7700
-		..End
 
 
 levelD:

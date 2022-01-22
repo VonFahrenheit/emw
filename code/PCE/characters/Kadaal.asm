@@ -1445,26 +1445,21 @@ namespace Kadaal
 ; cccccccccc:	character (formatted for source address)
 ; ttttt:	tile number (shift left 1 then add VRAM offset)
 
-		LDY.w #!File_Kadaal
-		JSL !GetFileAddress
+		LDY.w #!File_Kadaal : JSL !GetFileAddress
 
 		SEP #$20
 		STZ $2250
 		LDA !P2Anim
 		CMP.b #!Kad_Swim : BCC +
 		CMP.b #!Kad_Swim_over : BCS +
-		LDA !SD_KadaalLinear : STA $02
-		AND #$C0 : BMI .40
-	.7E	LDA #$7E : BRA ++
-	.40	LDA #$40
-	++	BIT $02
-		BVC $01 : INC A
-		STA !FileAddress+2
+		LDA #$00 : XBA					; we live in a society
+		LDA !SD_KadaalLinear : STA $03
+		AND #$03 : TRB $03
+		STZ $02
+		TAX
+		LDA.l CORE_SD_BANK,x : STA !FileAddress+2
 		REP #$20
-		LDA !SD_KadaalLinear-1
-		AND #$3F00
-		ASL #2
-		STA !FileAddress+0
+		LDA $02 : STA !FileAddress+0
 
 		LDA $785F
 		BPL $04 : EOR #$FFFF : INC A
