@@ -2644,12 +2644,14 @@ ReadLevelData:
 		LDY #$00					; |
 		AND #$00FF					; |
 		CMP #$007E : BEQ +				; |
-		LDY #$40					; | bbpppppp
+		LDY #$01					; | ppppppbb
 		CMP #$007F : BEQ +				; |
-		LDY #$80					; |
+		LDY #$02					; |
 		CMP #$0040 : BEQ +				; |
-		LDY #$C0					; |
+		LDY #$03					; |
 	+	TYA						; |
+		ASL $02						; |
+		ASL $02						; |
 		ORA $02						; |
 		STA !BigRAM+$7E					;/
 
@@ -2678,7 +2680,7 @@ ReadLevelData:
 		SEP #$30					; |
 		JSR $1E80					;/
 		LDY #$06					;\
-		LDA ($00),y : TAX				; | store bbpppppp
+		LDA ($00),y : TAX				; | store ppppppbb
 		LDA !BigRAM+$7E : STA !SD_status,x		;/
 
 		REP #$20
@@ -2744,7 +2746,7 @@ ReadLevelData:
 ; !BigRAM+$78	- iterations left (used with transformations)
 ; !BigRAM+$7A	- base upload address
 ; !BigRAM+$7C	- total chunks
-; !BigRAM+$7E	- bbpppppp
+; !BigRAM+$7E	- ppppppbb
 
 
 
@@ -2753,9 +2755,6 @@ ReadLevelData:
 
 
 	.Commands
-
-	STZ $7FFF
-
 		REP #$30				; all regs 16-bit
 		LDA !BigRAM+$74				;\
 		STA $0A					; |
@@ -3395,14 +3394,19 @@ db $FF					; end file
 		RTL					;/
 
 	.CPU
+		PHB					;\
+		SEP #$20				; | bank wrapper start
+		LDA $0F : PHA : PLB			; |
+		REP #$20				;/
 		LDX $04					;\
 		DEX #2					; |
 		TXY					; | transfer chunk
-	-	LDA !GFX_buffer,x : STA [$0D],y		; |
+	-	LDA.l !GFX_buffer,x : STA ($0D),y	; |
 		DEX #2					; |
 		TXY : BPL -				;/
-		PLY
-		RTS
+		PLB					; bank wrapper end
+		PLY					; restore command index
+		RTS					; return
 
 
 	DownloadScaledChunk:
@@ -3437,14 +3441,19 @@ db $FF					; end file
 		RTL					;/
 
 	.CPU
+		PHB					;\
+		SEP #$20				; | bank wrapper start
+		LDA $0F : PHA : PLB			; |
+		REP #$20				;/
 		LDX $04					;\
 		DEX #2					; |
 		TXY					; | transfer chunk
-	-	LDA !GFX_buffer+$800,x : STA [$0D],y	; |
+	-	LDA.l !GFX_buffer+$800,x : STA ($0D),y	; |
 		DEX #2					; |
 		TXY : BPL -				;/
-		PLY
-		RTS
+		PLB					; bank wrapper end
+		PLY					; restore command index
+		RTS					; return
 
 
 

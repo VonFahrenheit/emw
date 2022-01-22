@@ -680,7 +680,7 @@ endmacro
 		%def_SD(EnemyFireball16x16)
 
 	; super dynamic format:
-	; bbpppppp
+	; ppppppbb
 	; bb = bank
 	; 00 = $7E
 	; 01 = $7F
@@ -688,7 +688,7 @@ endmacro
 	; 11 = $41
 	; pppppp = location in bank (KB)
 	;
-	; address of GFX = bank [bb], hi byte [pppppp * 4], lo byte 0
+	; address of GFX = bank [bb translated], hi byte [pppppp--], lo byte 0
 
 
 		!Palset8		= $6028

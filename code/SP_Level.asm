@@ -2109,6 +2109,14 @@ HandleGraphics:
 
 
 
+; RAM
+; $00	9-bit tile num
+; $02	SD status: page address
+; $04	size
+; $06	animation rate (n/v flag triggers)
+; $08	rotation direction
+; $0A	SD status: bank
+
 	; handler for simple rotation graphics
 	.RotateSimple
 		STZ $2250
@@ -2125,8 +2133,11 @@ HandleGraphics:
 		STA $00					; | $00 = tile num (000-1FF)
 		XBA : STA $01				;/
 		LDA .RotationData+2,y : TAX		;\
-		LDA !SD_status,x : STA $02		; | $02 = SD status
-		STZ $03					;/
+		LDA !SD_status,x : STA $03		; |
+		AND #$03 : TRB $03			; | $02 = SD page address
+		TAX					; | $0A = SD bank
+		LDA .SuperDynamicBank,x : STA $0A	; |
+		STZ $02					;/
 		LDA .RotationData+3,y : STA $04		;\ $04 = size
 		STZ $05					;/
 		LDA .RotationData+4,y : STA $07		; $06 = animation rate (n/v flag triggers)
@@ -2143,11 +2154,6 @@ HandleGraphics:
 		STA.w !VRAMtable+$05,x
 		CLC : ADC #$0100
 		STA.w !VRAMtable+$0C,x
-		LDA $02
-		AND #$003F
-		ASL #2
-		XBA
-		STA $0E
 		LDA $14
 		BIT $06
 		BPL $01 : LSR A
@@ -2157,7 +2163,7 @@ HandleGraphics:
 		STA.l $2251
 		LDA $04 : STA.l $2253
 		NOP
-		LDA $0E
+		LDA $02
 		CLC : ADC.l $2306
 		STA.w !VRAMtable+$02,x
 		ADC #$0040
@@ -2172,16 +2178,7 @@ HandleGraphics:
 		STA.w !VRAMtable+$07,x
 		..shared
 		SEP #$20
-		LDY #$7E
-		LDA $02
-		AND #$C0 : BEQ ..writebank
-		LDY #$7F
-		CMP #$40 : BEQ ..writebank
-		LDY #$40
-		CMP #$80 : BEQ ..writebank
-		LDY #$41
-		..writebank
-		TYA
+		LDA $0A
 		STA.w !VRAMtable+$04,x
 		STA.w !VRAMtable+$0B,x
 		PLB
@@ -2194,6 +2191,11 @@ HandleGraphics:
 		JMP ..loop
 		..return
 		RTS
+
+
+	.SuperDynamicBank
+		db $7E,$7F,$40,$41
+
 
 	; format:
 	; - GFX status index
