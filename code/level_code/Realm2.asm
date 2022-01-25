@@ -54,6 +54,12 @@ levelinitB:
 		STA !BG2ModeH				; | 75% BG2 scroll rate
 		STA !BG2ModeV				;/
 
+		REP #$20
+		LDA !BG2BaseV
+		CLC : ADC #$0040
+		STA !BG2BaseV
+		SEP #$20
+
 		JSL levelB_HDMA
 		SEP #$20
 		JML levelB
@@ -480,19 +486,19 @@ levelB:
 		LDA #$8F : STA $1E
 		LDA #$0A : STA $1F
 	+	REP #$20
-		LDA $1E : STA $4204			;\
-		LDX #$90 : STX $4206			; |
+		LDA $1E : STA $4204			;\ BG2 X has to loop every 9 tiles
+		LDX #$90 : STX $4206			;/
 
-		LDA $14
-		AND #$0007 : BNE +
-		INC !Level+2
-	+	LDA $1A
-		CLC : ADC !Level+2
-		STA $22
+		LDA $14					;\
+		AND #$0007 : BNE +			; |
+		INC !Level+2				; | BG3 X
+	+	LDA $1A					; |
+		CLC : ADC !Level+2			; |
+		STA $22					;/
+		NOP #3					; finish division
 
-		NOP #3
+		LDA $4216 : STA $1E			; write BG2 X to make sure it loops every 9 tiles
 
-		LDA $4216 : STA $1E			; | to make sure it loops every 9 tiles
 		PLP					; |
 		RTL					;/
 
