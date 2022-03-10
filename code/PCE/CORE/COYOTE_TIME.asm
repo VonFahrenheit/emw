@@ -1,5 +1,10 @@
-COYOTE_TIME:
 
+COYOTE_TIME:
+		LDA !P2CoyoteDisable : BEQ .NotDisabled
+		DEC !P2CoyoteDisable
+		BRA .Clear
+
+		.NotDisabled
 		LDA !P2Blocked
 		AND #$04 : BNE .Ground
 
@@ -28,6 +33,4 @@ COYOTE_TIME:
 		CMP #$FF : BEQ .Clear
 		STA !P2CoyoteTime
 		RTL
-
-
 

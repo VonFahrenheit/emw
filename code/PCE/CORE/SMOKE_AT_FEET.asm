@@ -1,3 +1,4 @@
+
 SMOKE_AT_FEET:
 		PHP
 		SEP #$30
@@ -34,8 +35,8 @@ SMOKE_AT_FEET:
 		PLP
 		RTL
 
-	.Aerial	PHP
+	.Always	PHP
 		SEP #$30
-		BRA .Speed
+		BRA .Frame
 
 

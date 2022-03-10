@@ -158,9 +158,9 @@
 
 
 		LDA !Particle_Timer,x
-		LSR A
-		AND #$0002
-		CLC : ADC #$3458
+		LSR #2
+		AND #$0001
+		ORA #$3458
 		STA !Particle_TileTemp
 
 		STZ !Particle_TileTemp+2

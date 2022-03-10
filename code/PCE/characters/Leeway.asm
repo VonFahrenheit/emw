@@ -1265,8 +1265,7 @@ namespace Leeway
 		SEP #$20
 		LDA !P2AnimTimer
 		INC A
-		CMP ANIM+$02,y
-		BNE .NoUpdate
+		CMP ANIM+$02,y : BCC .NoUpdate
 		LDA ANIM+$03,y
 		STA !P2Anim
 		REP #$20
@@ -1304,55 +1303,45 @@ namespace Leeway
 		LDA ANIM+$04,y : STA $00		; (we're gonna overwrite $00-$03 soon so this is fine)
 
 
-; -- dynamo format --
-;
-; 1 byte header (size)
-; for each upload:
-; 	cccssss-
-; 	Bccccccc
-; 	ttttt---
-;
-; ssss:		DMA size (shift left 3)
-; cccccccccc:	character (shift left 1 for source address)
-; B:		bank (add 1 to source bank when set)
-; ttttt:	tile number (shift left 1 then add VRAM offset)
-
-
 		PHY
-		LDA ($00)				;\
-		AND #$00FF				; |
-		STA $02					; |
-		LDX #$0000				; |
-		LDY #$0000				; |
-		INC $00					; |
-	-	LDA ($00),y				; |
-		AND #$001E				; |
-		ASL #4					; |
-		STA !BigRAM+$00+2,x			; |
-		LDA ($00),y : BPL .Swd			; |
-	.Body	AND #$7FE0				; |
-		ORA #$8000				; |
-		STA !BigRAM+$02+2,x			; |
-		LDA #$0035 : BRA .Shared		; |
-	.Swd	AND #$7FE0				; |
-		ORA #$8008				; |
-		STA !BigRAM+$02+2,x			; |
-		LDA #$0034				; | unpack dynamo data
-	.Shared	STA !BigRAM+$04+2,x			; |
-		INY #2					; |
-		LDA ($00),y				; |
-		ASL A					; |
-		AND #$01F0				; |
-		ORA #$6200				; |
-		STA !BigRAM+$05+2,x			; |
-		INY					; |
-		TXA					; |
-		CLC : ADC #$0007			; |
-		TAX					; |
-		CPY $02 : BCC -				;/
-		STX !BigRAM+0				; > set size
+		; LDA ($00)				;\
+		; AND #$00FF				; |
+		; STA $02					; |
+		; LDX #$0000				; |
+		; LDY #$0000				; |
+		; INC $00					; |
+	; -	LDA ($00),y				; |
+		; AND #$001E				; |
+		; ASL #4					; |
+		; STA !BigRAM+$00+2,x			; |
+		; LDA ($00),y : BPL .Swd			; |
+	; .Body	AND #$7FE0				; |
+		; ORA #$8000				; |
+		; STA !BigRAM+$02+2,x			; |
+		; LDA #$0035 : BRA .Shared		; |
+	; .Swd	AND #$7FE0				; |
+		; ORA #$8008				; |
+		; STA !BigRAM+$02+2,x			; |
+		; LDA #$0034				; | unpack dynamo data
+	; .Shared	STA !BigRAM+$04+2,x			; |
+		; INY #2					; |
+		; LDA ($00),y				; |
+		; ASL A					; |
+		; AND #$01F0				; |
+		; ORA #$6200				; |
+		; STA !BigRAM+$05+2,x			; |
+		; INY					; |
+		; TXA					; |
+		; CLC : ADC #$0007			; |
+		; TAX					; |
+		; CPY $02 : BCC -				;/
+		; STX !BigRAM+0				; > set size
 
-		LDA.w #!BigRAM : JSL CORE_GENERATE_RAMCODE
+	;	LDA.w #!BigRAM : JSL CORE_GENERATE_RAMCODE
+	LDY.w #!File_Leeway : JSL !GetFileAddress	; primary file
+	LDA.w #!File_Leeway_Sword : STA !FileAddress+4	; second file
+	LDA $00 : JSL CORE_GENERATE_RAMCODE_24bit
+
 		REP #$30
 		PLY
 		LDA SWORD+$00,y : STA $00		;\ Sword data in $00-$03
@@ -1365,12 +1354,14 @@ namespace Leeway
 		SEP #$30
 		LDA !P2HurtTimer : BNE .DrawTiles
 		LDA !P2ComboDisable : BNE .DrawTiles	; always draw during combo dash invinc
-		LDA !P2Invinc
-		BEQ .DrawTiles
-		AND #$06
-		BNE .DrawTiles
-		JMP OUTPUT_HURTBOX
+		LDA !P2Invinc : BEQ .DrawTiles
 
+		.Flash
+		LDA !P2Invinc : BEQ .DrawTiles
+		LSR #3 : TAX
+		LDA.l $00E292,x
+		AND !P2Invinc : BNE .DrawTiles
+		JMP OUTPUT_HURTBOX
 
 		.DrawTiles
 		REP #$30				; > Regs 16 bit
@@ -2430,836 +2421,827 @@ namespace Leeway
 
 	.IdleTM
 	dw $000C
-	db $2E,$FC,$F0,!P2Tile1
-	db $2E,$FC,$00,!P2Tile2
-	db $2E,$04,$00,!P2Tile2+$01
+	db $20,$FC,$F0,!P1Tile1
+	db $20,$FC,$00,!P1Tile2
+	db $20,$04,$00,!P1Tile2+$01
 
 	.WalkTM0
 	dw $0010
-	db $2E,$FC,$F0,!P2Tile1
-	db $2E,$0C,$F0,!P2Tile2
-	db $2E,$FC,$00,!P2Tile3
-	db $2E,$0C,$00,!P2Tile4
+	db $20,$FC,$F0,!P1Tile1
+	db $20,$0C,$F0,!P1Tile2
+	db $20,$FC,$00,!P1Tile3
+	db $20,$0C,$00,!P1Tile4
 	.WalkTM1
 	dw $0010
-	db $2E,$FC,$F0,!P2Tile1
-	db $2E,$04,$F0,!P2Tile1+$01
-	db $2E,$FC,$00,!P2Tile3
-	db $2E,$04,$00,!P2Tile3+$01
+	db $20,$FC,$F0,!P1Tile1
+	db $20,$04,$F0,!P1Tile1+$01
+	db $20,$FC,$00,!P1Tile3
+	db $20,$04,$00,!P1Tile3+$01
 
 
 
 	.40x16TM
 	dw $000C
-	db $2E,$00,$00,!P2Tile1
-	db $2E,$10,$00,!P2Tile2
-	db $2E,$18,$00,!P2Tile2+$01
+	db $20,$00,$00,!P1Tile1
+	db $20,$10,$00,!P1Tile2
+	db $20,$18,$00,!P1Tile2+$01
 
 	.32x24TM
 	dw $0010
-	db $2E,$00,$F8,!P2Tile1
-	db $2E,$10,$F8,!P2Tile2
-	db $2E,$00,$00,!P2Tile3
-	db $2E,$10,$00,!P2Tile4
+	db $20,$00,$F8,!P1Tile1
+	db $20,$10,$F8,!P1Tile2
+	db $20,$00,$00,!P1Tile3
+	db $20,$10,$00,!P1Tile4
 
 	.32x16TM
 	dw $0008
-	db $2E,$00,$00,!P2Tile1
-	db $2E,$10,$00,!P2Tile2
+	db $20,$00,$00,!P1Tile1
+	db $20,$10,$00,!P1Tile2
 
 	.32x32TM
 	dw $0010
-	db $2E,$FC,$F0,!P2Tile1
-	db $2E,$0C,$F0,!P2Tile2
-	db $2E,$FC,$00,!P2Tile3
-	db $2E,$0C,$00,!P2Tile4
+	db $20,$FC,$F0,!P1Tile1
+	db $20,$0C,$F0,!P1Tile2
+	db $20,$FC,$00,!P1Tile3
+	db $20,$0C,$00,!P1Tile4
 	..Forward
 	dw $0010
-	db $2E,$F4,$F0,!P2Tile1
-	db $2E,$04,$F0,!P2Tile2
-	db $2E,$F4,$00,!P2Tile3
-	db $2E,$04,$00,!P2Tile4
+	db $20,$F4,$F0,!P1Tile1
+	db $20,$04,$F0,!P1Tile2
+	db $20,$F4,$00,!P1Tile3
+	db $20,$04,$00,!P1Tile4
 	..Back
 	dw $0010
-	db $2E,$00,$F0,!P2Tile1
-	db $2E,$10,$F0,!P2Tile2
-	db $2E,$00,$00,!P2Tile3
-	db $2E,$10,$00,!P2Tile4
+	db $20,$00,$F0,!P1Tile1
+	db $20,$10,$F0,!P1Tile2
+	db $20,$00,$00,!P1Tile3
+	db $20,$10,$00,!P1Tile4
 
 	.24x32TM
 	dw $0010
-	db $2E,$FC,$F0,!P2Tile1
-	db $2E,$04,$F0,!P2Tile1+$01
-	db $2E,$FC,$00,!P2Tile3
-	db $2E,$04,$00,!P2Tile3+$01
+	db $20,$FC,$F0,!P1Tile1
+	db $20,$04,$F0,!P1Tile1+$01
+	db $20,$FC,$00,!P1Tile3
+	db $20,$04,$00,!P1Tile3+$01
 	..Back
 	dw $0010
-	db $2E,$00,$F0,!P2Tile1
-	db $2E,$08,$F0,!P2Tile1+$01
-	db $2E,$00,$00,!P2Tile3
-	db $2E,$08,$00,!P2Tile3+$01
+	db $20,$00,$F0,!P1Tile1
+	db $20,$08,$F0,!P1Tile1+$01
+	db $20,$00,$00,!P1Tile3
+	db $20,$08,$00,!P1Tile3+$01
 	..F3
 	dw $0010
-	db $2E,$F9,$F0,!P2Tile1
-	db $2E,$01,$F0,!P2Tile1+$01
-	db $2E,$F9,$00,!P2Tile3
-	db $2E,$01,$00,!P2Tile3+$01
+	db $20,$F9,$F0,!P1Tile1
+	db $20,$01,$F0,!P1Tile1+$01
+	db $20,$F9,$00,!P1Tile3
+	db $20,$01,$00,!P1Tile3+$01
 	..X
 	dw $0010
-	db $6E,$04,$F0,!P2Tile1
-	db $6E,$FC,$F0,!P2Tile1+$01
-	db $6E,$04,$00,!P2Tile3
-	db $6E,$FC,$00,!P2Tile3+$01
+	db $60,$04,$F0,!P1Tile1
+	db $60,$FC,$F0,!P1Tile1+$01
+	db $60,$04,$00,!P1Tile3
+	db $60,$FC,$00,!P1Tile3+$01
 
 	.24x40TM
 	dw $0018
-	db $2E,$FC,$F0,!P2Tile1
-	db $2E,$04,$F0,!P2Tile1+$01
-	db $2E,$FC,$00,!P2Tile2+$01
-	db $2E,$04,$00,!P2Tile3
-	db $2E,$FC,$08,!P2Tile4
-	db $2E,$04,$08,!P2Tile4+$01
+	db $20,$FC,$F0,!P1Tile1
+	db $20,$04,$F0,!P1Tile1+$01
+	db $20,$FC,$00,!P1Tile2+$01
+	db $20,$04,$00,!P1Tile3
+	db $20,$FC,$08,!P1Tile4
+	db $20,$04,$08,!P1Tile4+$01
 	..Up
 	dw $0018
-	db $2E,$FC,$EC,!P2Tile1
-	db $2E,$04,$EC,!P2Tile1+$01
-	db $2E,$FC,$FC,!P2Tile2+$01
-	db $2E,$04,$FC,!P2Tile3
-	db $2E,$FC,$04,!P2Tile4
-	db $2E,$04,$04,!P2Tile4+$01
+	db $20,$FC,$EC,!P1Tile1
+	db $20,$04,$EC,!P1Tile1+$01
+	db $20,$FC,$FC,!P1Tile2+$01
+	db $20,$04,$FC,!P1Tile3
+	db $20,$FC,$04,!P1Tile4
+	db $20,$04,$04,!P1Tile4+$01
 
 
-
-;macro LeeDyn(TileCount, TileNumber, Dest)
-;	dw <TileCount>*$20
-;	dl <TileNumber>*$20+$358000
-;	dw <Dest>*$10+$6000
-;endmacro
-
-;macro SwdDyn(TileCount, TileNumber, Dest)
-;	dw <TileCount>*$20
-;	dl <TileNumber>*$20+$348008
-;	dw <Dest>*$10+$6000
-;endmacro
 
 
 macro LeeDyn(TileCount, TileNumber, Dest)
 	db (<TileCount>*2)|((<TileNumber>&$07)<<5)
-	db ((<TileNumber>>>3)&$7F)|$80
+	db ((<TileNumber>>>3)&$7F)
 	db <Dest>*8
 endmacro
 
 macro SwdDyn(TileCount, TileNumber, Dest)
 	db (<TileCount>*2)|((<TileNumber>&$07)<<5)
-	db (<TileNumber>>>3)&$7F
+	db (<TileNumber>>>3)&$7F|$80
 	db <Dest>*8
 endmacro
 
 
-; -- possible change --
+; -- dynamo format --
 ;
 ; 1 byte header (size)
 ; for each upload:
 ; 	cccssss-
-; 	Bccccccc
+; 	Fccccccc
 ; 	ttttt---
 ;
 ; ssss:		DMA size (shift left 4)
 ; cccccccccc:	character (shift left 1 for source address)
-; B:		bank (add 1 to source bank when set)
+; F:		second file flag (when set, file stored at !FileAddress+4 should be used for the rest of the dynamo)
 ; ttttt:	tile number (shift left 1 then add VRAM offset)
 
 
+; NOTE: leeway dynamo has to be stored before sword dynamo!
+
+
 	.IdleDynamo0
-	db ..End-..Start
-	..Start
-	%LeeDyn(2, $000, !P2Tile1)
-	%LeeDyn(2, $010, !P2Tile1+$10)
-	%LeeDyn(3, $020, !P2Tile2)
-	%LeeDyn(3, $030, !P2Tile2+$10)
-	%SwdDyn(3, $008, !P2Tile5)
-	%SwdDyn(3, $018, !P2Tile5+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(2, $000, !P1Tile1)
+	%LeeDyn(2, $010, !P1Tile1+$10)
+	%LeeDyn(3, $020, !P1Tile2)
+	%LeeDyn(3, $030, !P1Tile2+$10)
+	%SwdDyn(3, $008, !P1Tile5)
+	%SwdDyn(3, $018, !P1Tile5+$10)
+	..end
 	.IdleDynamo1
-	db ..End-..Start
-	..Start
-	%LeeDyn(2, $000, !P2Tile1)
-	%LeeDyn(2, $010, !P2Tile1+$10)
-	%LeeDyn(3, $023, !P2Tile2)
-	%LeeDyn(3, $033, !P2Tile2+$10)
-	%SwdDyn(3, $008, !P2Tile5)
-	%SwdDyn(3, $018, !P2Tile5+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(2, $000, !P1Tile1)
+	%LeeDyn(2, $010, !P1Tile1+$10)
+	%LeeDyn(3, $023, !P1Tile2)
+	%LeeDyn(3, $033, !P1Tile2+$10)
+	%SwdDyn(3, $008, !P1Tile5)
+	%SwdDyn(3, $018, !P1Tile5+$10)
+	..end
 	.IdleDynamo2
-	db ..End-..Start
-	..Start
-	%LeeDyn(2, $000, !P2Tile1)
-	%LeeDyn(2, $010, !P2Tile1+$10)
-	%LeeDyn(3, $026, !P2Tile2)
-	%LeeDyn(3, $036, !P2Tile2+$10)
-	%SwdDyn(3, $008, !P2Tile5)
-	%SwdDyn(3, $018, !P2Tile5+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(2, $000, !P1Tile1)
+	%LeeDyn(2, $010, !P1Tile1+$10)
+	%LeeDyn(3, $026, !P1Tile2)
+	%LeeDyn(3, $036, !P1Tile2+$10)
+	%SwdDyn(3, $008, !P1Tile5)
+	%SwdDyn(3, $018, !P1Tile5+$10)
+	..end
 
 	.WalkDynamo0
-	db ..End-..Start
-	..Start
-	%LeeDyn(4, $040, !P2Tile1)
-	%LeeDyn(4, $050, !P2Tile1+$10)
-	%LeeDyn(4, $060, !P2Tile3)
-	%LeeDyn(4, $070, !P2Tile3+$10)
-	%SwdDyn(3, $008, !P2Tile5)
-	%SwdDyn(3, $018, !P2Tile5+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(4, $040, !P1Tile1)
+	%LeeDyn(4, $050, !P1Tile1+$10)
+	%LeeDyn(4, $060, !P1Tile3)
+	%LeeDyn(4, $070, !P1Tile3+$10)
+	%SwdDyn(3, $008, !P1Tile5)
+	%SwdDyn(3, $018, !P1Tile5+$10)
+	..end
 	.WalkDynamo1
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $044, !P2Tile1)
-	%LeeDyn(3, $054, !P2Tile1+$10)
-	%LeeDyn(3, $064, !P2Tile3)
-	%LeeDyn(3, $074, !P2Tile3+$10)
-	%SwdDyn(3, $028, !P2Tile5)
-	%SwdDyn(3, $038, !P2Tile5+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $044, !P1Tile1)
+	%LeeDyn(3, $054, !P1Tile1+$10)
+	%LeeDyn(3, $064, !P1Tile3)
+	%LeeDyn(3, $074, !P1Tile3+$10)
+	%SwdDyn(3, $028, !P1Tile5)
+	%SwdDyn(3, $038, !P1Tile5+$10)
+	..end
 	.WalkDynamo2
-	db ..End-..Start
-	..Start
-	%LeeDyn(4, $047, !P2Tile1)
-	%LeeDyn(4, $057, !P2Tile1+$10)
-	%LeeDyn(4, $067, !P2Tile3)
-	%LeeDyn(4, $077, !P2Tile3+$10)
-	%SwdDyn(3, $028, !P2Tile5)
-	%SwdDyn(3, $038, !P2Tile5+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(4, $047, !P1Tile1)
+	%LeeDyn(4, $057, !P1Tile1+$10)
+	%LeeDyn(4, $067, !P1Tile3)
+	%LeeDyn(4, $077, !P1Tile3+$10)
+	%SwdDyn(3, $028, !P1Tile5)
+	%SwdDyn(3, $038, !P1Tile5+$10)
+	..end
 	.WalkDynamo3
-	db ..End-..Start
-	..Start
-	%LeeDyn(4, $04B, !P2Tile1)
-	%LeeDyn(4, $05B, !P2Tile1+$10)
-	%LeeDyn(4, $06B, !P2Tile3)
-	%LeeDyn(4, $07B, !P2Tile3+$10)
-	%SwdDyn(3, $008, !P2Tile5)
-	%SwdDyn(3, $018, !P2Tile5+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(4, $04B, !P1Tile1)
+	%LeeDyn(4, $05B, !P1Tile1+$10)
+	%LeeDyn(4, $06B, !P1Tile3)
+	%LeeDyn(4, $07B, !P1Tile3+$10)
+	%SwdDyn(3, $008, !P1Tile5)
+	%SwdDyn(3, $018, !P1Tile5+$10)
+	..end
 
 	.CutStartDynamo
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $00C, !P2Tile1)
-	%LeeDyn(3, $01C, !P2Tile1+$10)
-	%LeeDyn(3, $02C, !P2Tile3)
-	%LeeDyn(3, $03C, !P2Tile3+$10)
-	%SwdDyn(3, $008, !P2Tile5)
-	%SwdDyn(3, $018, !P2Tile5+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $00C, !P1Tile1)
+	%LeeDyn(3, $01C, !P1Tile1+$10)
+	%LeeDyn(3, $02C, !P1Tile3)
+	%LeeDyn(3, $03C, !P1Tile3+$10)
+	%SwdDyn(3, $008, !P1Tile5)
+	%SwdDyn(3, $018, !P1Tile5+$10)
+	..end
 
 	.CutDynamo0
-	db ..End-..Start
-	..Start
-	%LeeDyn(4, $080, !P2Tile1)
-	%LeeDyn(4, $090, !P2Tile1+$10)
-	%LeeDyn(4, $0A0, !P2Tile3)
-	%LeeDyn(4, $0B0, !P2Tile3+$10)
-	%SwdDyn(8, $038, !P2Tile5)
-	%SwdDyn(8, $048, !P2Tile5+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(4, $080, !P1Tile1)
+	%LeeDyn(4, $090, !P1Tile1+$10)
+	%LeeDyn(4, $0A0, !P1Tile3)
+	%LeeDyn(4, $0B0, !P1Tile3+$10)
+	%SwdDyn(8, $038, !P1Tile5)
+	%SwdDyn(8, $048, !P1Tile5+$10)
+	..end
 	.CutDynamo1
-	db ..End-..Start
-	..Start
-	%LeeDyn(4, $084, !P2Tile1)
-	%LeeDyn(4, $094, !P2Tile1+$10)
-	%LeeDyn(4, $0A4, !P2Tile3)
-	%LeeDyn(4, $0B4, !P2Tile3+$10)
-	%SwdDyn(6, $057, !P2Tile5)
-	%SwdDyn(6, $067, !P2Tile5+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(4, $084, !P1Tile1)
+	%LeeDyn(4, $094, !P1Tile1+$10)
+	%LeeDyn(4, $0A4, !P1Tile3)
+	%LeeDyn(4, $0B4, !P1Tile3+$10)
+	%SwdDyn(6, $057, !P1Tile5)
+	%SwdDyn(6, $067, !P1Tile5+$10)
+	..end
 	.CutDynamo2
-	db ..End-..Start
-	..Start
-	%LeeDyn(4, $088, !P2Tile1)
-	%LeeDyn(4, $098, !P2Tile1+$10)
-	%LeeDyn(4, $0A8, !P2Tile3)
-	%LeeDyn(4, $0B8, !P2Tile3+$10)
-	%SwdDyn(3, $05D, !P2Tile6)
-	%SwdDyn(3, $06D, !P2Tile6+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(4, $088, !P1Tile1)
+	%LeeDyn(4, $098, !P1Tile1+$10)
+	%LeeDyn(4, $0A8, !P1Tile3)
+	%LeeDyn(4, $0B8, !P1Tile3+$10)
+	%SwdDyn(3, $05D, !P1Tile6)
+	%SwdDyn(3, $06D, !P1Tile6+$10)
+	..end
 	.CutDynamo3
-	db ..End-..Start
-	..Start
-	%LeeDyn(4, $08C, !P2Tile1)
-	%LeeDyn(4, $09C, !P2Tile1+$10)
-	%LeeDyn(4, $0AC, !P2Tile3)
-	%LeeDyn(4, $0BC, !P2Tile3+$10)
-	%SwdDyn(3, $05D, !P2Tile6)
-	%SwdDyn(3, $06D, !P2Tile6+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(4, $08C, !P1Tile1)
+	%LeeDyn(4, $09C, !P1Tile1+$10)
+	%LeeDyn(4, $0AC, !P1Tile3)
+	%LeeDyn(4, $0BC, !P1Tile3+$10)
+	%SwdDyn(3, $05D, !P1Tile6)
+	%SwdDyn(3, $06D, !P1Tile6+$10)
+	..end
 
 	.SlashDynamo0
-	db ..End-..Start
-	..Start
-	%LeeDyn(4, $0C0, !P2Tile1)
-	%LeeDyn(4, $0D0, !P2Tile1+$10)
-	%LeeDyn(4, $0E0, !P2Tile3)
-	%LeeDyn(4, $0F0, !P2Tile3+$10)
-	%SwdDyn(2, $000, !P2Tile5)
-	%SwdDyn(2, $010, !P2Tile5+$10)
-	%SwdDyn(5, $011, !P2Tile6)
-	%SwdDyn(5, $021, !P2Tile6+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(4, $0C0, !P1Tile1)
+	%LeeDyn(4, $0D0, !P1Tile1+$10)
+	%LeeDyn(4, $0E0, !P1Tile3)
+	%LeeDyn(4, $0F0, !P1Tile3+$10)
+	%SwdDyn(2, $000, !P1Tile5)
+	%SwdDyn(2, $010, !P1Tile5+$10)
+	%SwdDyn(5, $011, !P1Tile6)
+	%SwdDyn(5, $021, !P1Tile6+$10)
+	..end
 	.SlashDynamo1
-	db ..End-..Start
-	..Start
-	%LeeDyn(4, $0C4, !P2Tile1)
-	%LeeDyn(4, $0D4, !P2Tile1+$10)
-	%LeeDyn(4, $0E4, !P2Tile3)
-	%LeeDyn(4, $0F4, !P2Tile3+$10)
-	%SwdDyn(5, $040, !P2Tile5)
-	%SwdDyn(5, $050, !P2Tile5+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(4, $0C4, !P1Tile1)
+	%LeeDyn(4, $0D4, !P1Tile1+$10)
+	%LeeDyn(4, $0E4, !P1Tile3)
+	%LeeDyn(4, $0F4, !P1Tile3+$10)
+	%SwdDyn(5, $040, !P1Tile5)
+	%SwdDyn(5, $050, !P1Tile5+$10)
+	..end
 	.SlashDynamo2
-	db ..End-..Start
-	..Start
-	%LeeDyn(4, $0C8, !P2Tile1)
-	%LeeDyn(4, $0D8, !P2Tile1+$10)
-	%LeeDyn(4, $0E8, !P2Tile3)
-	%LeeDyn(4, $0F8, !P2Tile3+$10)
-	%SwdDyn(2, $00C, !P2Tile7)
-	%SwdDyn(2, $01C, !P2Tile7+$10)
-	%SwdDyn(2, $01B, !P2Tile8)
-	%SwdDyn(2, $02B, !P2Tile8+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(4, $0C8, !P1Tile1)
+	%LeeDyn(4, $0D8, !P1Tile1+$10)
+	%LeeDyn(4, $0E8, !P1Tile3)
+	%LeeDyn(4, $0F8, !P1Tile3+$10)
+	%SwdDyn(2, $00C, !P1Tile7)
+	%SwdDyn(2, $01C, !P1Tile7+$10)
+	%SwdDyn(2, $01B, !P1Tile8)
+	%SwdDyn(2, $02B, !P1Tile8+$10)
+	..end
 	.SlashDynamo3
-	db ..End-..Start
-	..Start
-	%LeeDyn(4, $0CC, !P2Tile1)
-	%LeeDyn(4, $0DC, !P2Tile1+$10)
-	%LeeDyn(4, $0EC, !P2Tile3)
-	%LeeDyn(4, $0FC, !P2Tile3+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(4, $0CC, !P1Tile1)
+	%LeeDyn(4, $0DC, !P1Tile1+$10)
+	%LeeDyn(4, $0EC, !P1Tile3)
+	%LeeDyn(4, $0FC, !P1Tile3+$10)
+	..end
 
 
 	.DashDynamo0
-	db ..End-..Start
-	..Start
-	%LeeDyn(4, $100, !P2Tile1)
-	%LeeDyn(4, $110, !P2Tile1+$10)
-	%LeeDyn(4, $120, !P2Tile3)
-	%LeeDyn(4, $130, !P2Tile3+$10)
-	%SwdDyn(3, $008, !P2Tile5)
-	%SwdDyn(3, $018, !P2Tile5+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(4, $100, !P1Tile1)
+	%LeeDyn(4, $110, !P1Tile1+$10)
+	%LeeDyn(4, $120, !P1Tile3)
+	%LeeDyn(4, $130, !P1Tile3+$10)
+	%SwdDyn(3, $008, !P1Tile5)
+	%SwdDyn(3, $018, !P1Tile5+$10)
+	..end
 	.DashDynamo1
-	db ..End-..Start
-	..Start
-	%LeeDyn(4, $104, !P2Tile1)
-	%LeeDyn(4, $114, !P2Tile1+$10)
-	%LeeDyn(4, $124, !P2Tile3)
-	%LeeDyn(4, $134, !P2Tile3+$10)
-	%SwdDyn(3, $008, !P2Tile5)
-	%SwdDyn(3, $018, !P2Tile5+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(4, $104, !P1Tile1)
+	%LeeDyn(4, $114, !P1Tile1+$10)
+	%LeeDyn(4, $124, !P1Tile3)
+	%LeeDyn(4, $134, !P1Tile3+$10)
+	%SwdDyn(3, $008, !P1Tile5)
+	%SwdDyn(3, $018, !P1Tile5+$10)
+	..end
 	.DashDynamo2
-	db ..End-..Start
-	..Start
-	%LeeDyn(4, $108, !P2Tile1)
-	%LeeDyn(4, $118, !P2Tile1+$10)
-	%LeeDyn(4, $128, !P2Tile3)
-	%LeeDyn(4, $138, !P2Tile3+$10)
-	%SwdDyn(3, $008, !P2Tile5)
-	%SwdDyn(3, $018, !P2Tile5+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(4, $108, !P1Tile1)
+	%LeeDyn(4, $118, !P1Tile1+$10)
+	%LeeDyn(4, $128, !P1Tile3)
+	%LeeDyn(4, $138, !P1Tile3+$10)
+	%SwdDyn(3, $008, !P1Tile5)
+	%SwdDyn(3, $018, !P1Tile5+$10)
+	..end
 	.DashSlashDynamo0
-	db ..End-..Start
-	..Start
-	%LeeDyn(4, $10C, !P2Tile1)
-	%LeeDyn(4, $11C, !P2Tile1+$10)
-	%LeeDyn(4, $12C, !P2Tile3)
-	%LeeDyn(4, $13C, !P2Tile3+$10)
-	%SwdDyn(3, $008, !P2Tile5)
-	%SwdDyn(3, $018, !P2Tile5+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(4, $10C, !P1Tile1)
+	%LeeDyn(4, $11C, !P1Tile1+$10)
+	%LeeDyn(4, $12C, !P1Tile3)
+	%LeeDyn(4, $13C, !P1Tile3+$10)
+	%SwdDyn(3, $008, !P1Tile5)
+	%SwdDyn(3, $018, !P1Tile5+$10)
+	..end
 	.DashSlashDynamo1
-	db ..End-..Start
-	..Start
-	%LeeDyn(4, $140, !P2Tile1)
-	%LeeDyn(4, $150, !P2Tile1+$10)
-	%LeeDyn(4, $160, !P2Tile3)
-	%LeeDyn(4, $170, !P2Tile3+$10)
-	%SwdDyn(8, $038, !P2Tile5)
-	%SwdDyn(8, $048, !P2Tile5+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(4, $140, !P1Tile1)
+	%LeeDyn(4, $150, !P1Tile1+$10)
+	%LeeDyn(4, $160, !P1Tile3)
+	%LeeDyn(4, $170, !P1Tile3+$10)
+	%SwdDyn(8, $038, !P1Tile5)
+	%SwdDyn(8, $048, !P1Tile5+$10)
+	..end
 	.DashSlashDynamo2
-	db ..End-..Start
-	..Start
-	%LeeDyn(4, $144, !P2Tile1)
-	%LeeDyn(4, $154, !P2Tile1+$10)
-	%LeeDyn(4, $164, !P2Tile3)
-	%LeeDyn(4, $174, !P2Tile3+$10)
-	%SwdDyn(6, $057, !P2Tile5)
-	%SwdDyn(6, $067, !P2Tile5+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(4, $144, !P1Tile1)
+	%LeeDyn(4, $154, !P1Tile1+$10)
+	%LeeDyn(4, $164, !P1Tile3)
+	%LeeDyn(4, $174, !P1Tile3+$10)
+	%SwdDyn(6, $057, !P1Tile5)
+	%SwdDyn(6, $067, !P1Tile5+$10)
+	..end
 	.DashSlashDynamo3
-	db ..End-..Start
-	..Start
-	%LeeDyn(4, $148, !P2Tile1)
-	%LeeDyn(4, $158, !P2Tile1+$10)
-	%LeeDyn(4, $168, !P2Tile3)
-	%LeeDyn(4, $178, !P2Tile3+$10)
-	%SwdDyn(3, $05D, !P2Tile6)
-	%SwdDyn(3, $06D, !P2Tile6+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(4, $148, !P1Tile1)
+	%LeeDyn(4, $158, !P1Tile1+$10)
+	%LeeDyn(4, $168, !P1Tile3)
+	%LeeDyn(4, $178, !P1Tile3+$10)
+	%SwdDyn(3, $05D, !P1Tile6)
+	%SwdDyn(3, $06D, !P1Tile6+$10)
+	..end
 	.DashSlashDynamo4
-	db ..End-..Start
-	..Start
-	%LeeDyn(4, $14C, !P2Tile1)
-	%LeeDyn(4, $15C, !P2Tile1+$10)
-	%LeeDyn(4, $16C, !P2Tile3)
-	%LeeDyn(4, $17C, !P2Tile3+$10)
-	%SwdDyn(3, $05D, !P2Tile6)
-	%SwdDyn(3, $06D, !P2Tile6+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(4, $14C, !P1Tile1)
+	%LeeDyn(4, $15C, !P1Tile1+$10)
+	%LeeDyn(4, $16C, !P1Tile3)
+	%LeeDyn(4, $17C, !P1Tile3+$10)
+	%SwdDyn(3, $05D, !P1Tile6)
+	%SwdDyn(3, $06D, !P1Tile6+$10)
+	..end
 
 	.JumpDynamo
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $190, !P2Tile1)
-	%LeeDyn(3, $1A0, !P2Tile1+$10)
-	%LeeDyn(3, $1B0, !P2Tile3)
-	%LeeDyn(3, $1C0, !P2Tile3+$10)
-	%SwdDyn(3, $05D, !P2Tile6)
-	%SwdDyn(3, $06D, !P2Tile6+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $190, !P1Tile1)
+	%LeeDyn(3, $1A0, !P1Tile1+$10)
+	%LeeDyn(3, $1B0, !P1Tile3)
+	%LeeDyn(3, $1C0, !P1Tile3+$10)
+	%SwdDyn(3, $05D, !P1Tile6)
+	%SwdDyn(3, $06D, !P1Tile6+$10)
+	..end
 
 	.FallDynamo0
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $183, !P2Tile1)
-	%LeeDyn(3, $193, !P2Tile1+$10)
-	%LeeDyn(3, $1A3, !P2Tile2+$01)
-	%LeeDyn(3, $1B3, !P2Tile2+$11)
-	%LeeDyn(3, $1B3, !P2Tile4)
-	%LeeDyn(3, $1C3, !P2Tile4+$10)
-	%SwdDyn(2, $006, !P2Tile5+$01)
-	%SwdDyn(2, $016, !P2Tile5+$11)
-	%SwdDyn(2, $016, !P2Tile6+$01)
-	%SwdDyn(2, $026, !P2Tile6+$11)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $183, !P1Tile1)
+	%LeeDyn(3, $193, !P1Tile1+$10)
+	%LeeDyn(3, $1A3, !P1Tile2+$01)
+	%LeeDyn(3, $1B3, !P1Tile2+$11)
+	%LeeDyn(3, $1B3, !P1Tile4)
+	%LeeDyn(3, $1C3, !P1Tile4+$10)
+	%SwdDyn(2, $006, !P1Tile5+$01)
+	%SwdDyn(2, $016, !P1Tile5+$11)
+	%SwdDyn(2, $016, !P1Tile6+$01)
+	%SwdDyn(2, $026, !P1Tile6+$11)
+	..end
 	.FallDynamo1
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $186, !P2Tile1)
-	%LeeDyn(3, $196, !P2Tile1+$10)
-	%LeeDyn(3, $1A6, !P2Tile2+$01)
-	%LeeDyn(3, $1B6, !P2Tile2+$11)
-	%LeeDyn(3, $1B6, !P2Tile4)
-	%LeeDyn(3, $1C6, !P2Tile4+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $186, !P1Tile1)
+	%LeeDyn(3, $196, !P1Tile1+$10)
+	%LeeDyn(3, $1A6, !P1Tile2+$01)
+	%LeeDyn(3, $1B6, !P1Tile2+$11)
+	%LeeDyn(3, $1B6, !P1Tile4)
+	%LeeDyn(3, $1C6, !P1Tile4+$10)
+	..end
 
 	.SlowFallDynamo0
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $1E0, !P2Tile1)
-	%LeeDyn(3, $1F0, !P2Tile1+$10)
-	%LeeDyn(3, $200, !P2Tile3)
-	%LeeDyn(3, $210, !P2Tile3+$10)
-	%SwdDyn(2, $00C, !P2Tile7)
-	%SwdDyn(2, $01C, !P2Tile7+$10)
-	%SwdDyn(2, $01B, !P2Tile8)
-	%SwdDyn(2, $02B, !P2Tile8+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $1E0, !P1Tile1)
+	%LeeDyn(3, $1F0, !P1Tile1+$10)
+	%LeeDyn(3, $200, !P1Tile3)
+	%LeeDyn(3, $210, !P1Tile3+$10)
+	%SwdDyn(2, $00C, !P1Tile7)
+	%SwdDyn(2, $01C, !P1Tile7+$10)
+	%SwdDyn(2, $01B, !P1Tile8)
+	%SwdDyn(2, $02B, !P1Tile8+$10)
+	..end
 	.SlowFallDynamo1
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $1E3, !P2Tile1)
-	%LeeDyn(3, $1F3, !P2Tile1+$10)
-	%LeeDyn(3, $203, !P2Tile3)
-	%LeeDyn(3, $213, !P2Tile3+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $1E3, !P1Tile1)
+	%LeeDyn(3, $1F3, !P1Tile1+$10)
+	%LeeDyn(3, $203, !P1Tile3)
+	%LeeDyn(3, $213, !P1Tile3+$10)
+	..end
 	.SlowFallDynamo2
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $1E6, !P2Tile1)
-	%LeeDyn(3, $1F6, !P2Tile1+$10)
-	%LeeDyn(3, $206, !P2Tile3)
-	%LeeDyn(3, $216, !P2Tile3+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $1E6, !P1Tile1)
+	%LeeDyn(3, $1F6, !P1Tile1+$10)
+	%LeeDyn(3, $206, !P1Tile3)
+	%LeeDyn(3, $216, !P1Tile3+$10)
+	..end
 
 	.CeilingClimbDynamo0
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $1CA, !P2Tile1)
-	%LeeDyn(3, $1DA, !P2Tile1+$10)
-	%LeeDyn(3, $1EA, !P2Tile3)
-	%LeeDyn(3, $1FA, !P2Tile3+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $1CA, !P1Tile1)
+	%LeeDyn(3, $1DA, !P1Tile1+$10)
+	%LeeDyn(3, $1EA, !P1Tile3)
+	%LeeDyn(3, $1FA, !P1Tile3+$10)
+	..end
 	.CeilingClimbDynamo1
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $1CD, !P2Tile1)
-	%LeeDyn(3, $1DD, !P2Tile1+$10)
-	%LeeDyn(3, $1ED, !P2Tile2+$01)
-	%LeeDyn(3, $1FD, !P2Tile2+$11)
-	%LeeDyn(3, $1FD, !P2Tile4)
-	%LeeDyn(3, $20D, !P2Tile4+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $1CD, !P1Tile1)
+	%LeeDyn(3, $1DD, !P1Tile1+$10)
+	%LeeDyn(3, $1ED, !P1Tile2+$01)
+	%LeeDyn(3, $1FD, !P1Tile2+$11)
+	%LeeDyn(3, $1FD, !P1Tile4)
+	%LeeDyn(3, $20D, !P1Tile4+$10)
+	..end
 	.CeilingClimbDynamo2
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $21A, !P2Tile1)
-	%LeeDyn(3, $22A, !P2Tile1+$10)
-	%LeeDyn(3, $23A, !P2Tile2+$01)
-	%LeeDyn(3, $24A, !P2Tile2+$11)
-	%LeeDyn(3, $24A, !P2Tile4)
-	%LeeDyn(3, $25A, !P2Tile4+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $21A, !P1Tile1)
+	%LeeDyn(3, $22A, !P1Tile1+$10)
+	%LeeDyn(3, $23A, !P1Tile2+$01)
+	%LeeDyn(3, $24A, !P1Tile2+$11)
+	%LeeDyn(3, $24A, !P1Tile4)
+	%LeeDyn(3, $25A, !P1Tile4+$10)
+	..end
 	.CeilingClimbDynamo3
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $21D, !P2Tile1)
-	%LeeDyn(3, $22D, !P2Tile1+$10)
-	%LeeDyn(3, $23D, !P2Tile2+$01)
-	%LeeDyn(3, $24D, !P2Tile2+$11)
-	%LeeDyn(3, $24D, !P2Tile4)
-	%LeeDyn(3, $25D, !P2Tile4+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $21D, !P1Tile1)
+	%LeeDyn(3, $22D, !P1Tile1+$10)
+	%LeeDyn(3, $23D, !P1Tile2+$01)
+	%LeeDyn(3, $24D, !P1Tile2+$11)
+	%LeeDyn(3, $24D, !P1Tile4)
+	%LeeDyn(3, $25D, !P1Tile4+$10)
+	..end
 	.CeilingClimbDynamo4
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $26A, !P2Tile1)
-	%LeeDyn(3, $27A, !P2Tile1+$10)
-	%LeeDyn(3, $28A, !P2Tile2+$01)
-	%LeeDyn(3, $29A, !P2Tile2+$11)
-	%LeeDyn(3, $29A, !P2Tile4)
-	%LeeDyn(3, $2AA, !P2Tile4+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $26A, !P1Tile1)
+	%LeeDyn(3, $27A, !P1Tile1+$10)
+	%LeeDyn(3, $28A, !P1Tile2+$01)
+	%LeeDyn(3, $29A, !P1Tile2+$11)
+	%LeeDyn(3, $29A, !P1Tile4)
+	%LeeDyn(3, $2AA, !P1Tile4+$10)
+	..end
 	.CeilingClimbDynamo5
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $26D, !P2Tile1)
-	%LeeDyn(3, $27D, !P2Tile1+$10)
-	%LeeDyn(3, $28D, !P2Tile2+$01)
-	%LeeDyn(3, $29D, !P2Tile2+$11)
-	%LeeDyn(3, $29D, !P2Tile4)
-	%LeeDyn(3, $2AD, !P2Tile4+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $26D, !P1Tile1)
+	%LeeDyn(3, $27D, !P1Tile1+$10)
+	%LeeDyn(3, $28D, !P1Tile2+$01)
+	%LeeDyn(3, $29D, !P1Tile2+$11)
+	%LeeDyn(3, $29D, !P1Tile4)
+	%LeeDyn(3, $2AD, !P1Tile4+$10)
+	..end
 
 	.CrouchStartDynamo0
-	db ..End-..Start
-	..Start
-	%LeeDyn(4, $189, !P2Tile1)
-	%LeeDyn(4, $199, !P2Tile1+$10)
-	%LeeDyn(4, $1A9, !P2Tile3)
-	%LeeDyn(4, $1B9, !P2Tile3+$10)
-	%SwdDyn(3, $008, !P2Tile5)
-	%SwdDyn(3, $018, !P2Tile5+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(4, $189, !P1Tile1)
+	%LeeDyn(4, $199, !P1Tile1+$10)
+	%LeeDyn(4, $1A9, !P1Tile3)
+	%LeeDyn(4, $1B9, !P1Tile3+$10)
+	%SwdDyn(3, $008, !P1Tile5)
+	%SwdDyn(3, $018, !P1Tile5+$10)
+	..end
 	.CrouchStartDynamo1
-	db ..End-..Start
-	..Start
-	%LeeDyn(4, $265, !P2Tile1)
-	%LeeDyn(4, $275, !P2Tile1+$10)
-	%LeeDyn(4, $275, !P2Tile3)
-	%LeeDyn(4, $285, !P2Tile3+$10)
-	%SwdDyn(3, $028, !P2Tile5)
-	%SwdDyn(3, $038, !P2Tile5+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(4, $265, !P1Tile1)
+	%LeeDyn(4, $275, !P1Tile1+$10)
+	%LeeDyn(4, $275, !P1Tile3)
+	%LeeDyn(4, $285, !P1Tile3+$10)
+	%SwdDyn(3, $028, !P1Tile5)
+	%SwdDyn(3, $038, !P1Tile5+$10)
+	..end
 	.CrawlDynamo0
-	db ..End-..Start
-	..Start
-	%LeeDyn(4, $260, !P2Tile1)
-	%LeeDyn(4, $270, !P2Tile1+$10)
-	%LeeDyn(4, $270, !P2Tile3)
-	%LeeDyn(4, $280, !P2Tile3+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(4, $260, !P1Tile1)
+	%LeeDyn(4, $270, !P1Tile1+$10)
+	%LeeDyn(4, $270, !P1Tile3)
+	%LeeDyn(4, $280, !P1Tile3+$10)
+	..end
 	.CrawlDynamo1
-	db ..End-..Start
-	..Start
-	%LeeDyn(5, $290, !P2Tile1)
-	%LeeDyn(5, $2A0, !P2Tile1+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(5, $290, !P1Tile1)
+	%LeeDyn(5, $2A0, !P1Tile1+$10)
+	..end
 	.CrawlDynamo2
-	db ..End-..Start
-	..Start
-	%LeeDyn(4, $295, !P2Tile1)
-	%LeeDyn(4, $2A5, !P2Tile1+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(4, $295, !P1Tile1)
+	%LeeDyn(4, $2A5, !P1Tile1+$10)
+	..end
 	.CrouchEndDynamo
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $18D, !P2Tile1)
-	%LeeDyn(3, $19D, !P2Tile1+$10)
-	%LeeDyn(3, $1AD, !P2Tile3)
-	%LeeDyn(3, $1BD, !P2Tile3+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $18D, !P1Tile1)
+	%LeeDyn(3, $19D, !P1Tile1+$10)
+	%LeeDyn(3, $1AD, !P1Tile3)
+	%LeeDyn(3, $1BD, !P1Tile3+$10)
+	..end
 
 	.AirSlashDynamo0
-	db ..End-..Start
-	..Start
-	%LeeDyn(4, $3C7, !P2Tile1)
-	%LeeDyn(4, $3D7, !P2Tile1+$10)
-	%LeeDyn(4, $3E7, !P2Tile3)
-	%LeeDyn(4, $3F7, !P2Tile3+$10)
-	%SwdDyn(3, $008, !P2Tile5)
-	%SwdDyn(3, $018, !P2Tile5+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(4, $3C7, !P1Tile1)
+	%LeeDyn(4, $3D7, !P1Tile1+$10)
+	%LeeDyn(4, $3E7, !P1Tile3)
+	%LeeDyn(4, $3F7, !P1Tile3+$10)
+	%SwdDyn(3, $008, !P1Tile5)
+	%SwdDyn(3, $018, !P1Tile5+$10)
+	..end
 	.AirSlashDynamo1
-	db ..End-..Start
-	..Start
-	%LeeDyn(4, $220, !P2Tile1)
-	%LeeDyn(4, $230, !P2Tile1+$10)
-	%LeeDyn(4, $240, !P2Tile3)
-	%LeeDyn(4, $250, !P2Tile3+$10)
-	%SwdDyn(2, $000, !P2Tile5)
-	%SwdDyn(2, $010, !P2Tile5+$10)
-	%SwdDyn(5, $011, !P2Tile6)
-	%SwdDyn(5, $021, !P2Tile6+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(4, $220, !P1Tile1)
+	%LeeDyn(4, $230, !P1Tile1+$10)
+	%LeeDyn(4, $240, !P1Tile3)
+	%LeeDyn(4, $250, !P1Tile3+$10)
+	%SwdDyn(2, $000, !P1Tile5)
+	%SwdDyn(2, $010, !P1Tile5+$10)
+	%SwdDyn(5, $011, !P1Tile6)
+	%SwdDyn(5, $021, !P1Tile6+$10)
+	..end
 	.AirSlashDynamo2
-	db ..End-..Start
-	..Start
-	%LeeDyn(4, $224, !P2Tile1)
-	%LeeDyn(4, $234, !P2Tile1+$10)
-	%LeeDyn(4, $244, !P2Tile3)
-	%LeeDyn(4, $254, !P2Tile3+$10)
-	%SwdDyn(5, $040, !P2Tile5)
-	%SwdDyn(5, $050, !P2Tile5+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(4, $224, !P1Tile1)
+	%LeeDyn(4, $234, !P1Tile1+$10)
+	%LeeDyn(4, $244, !P1Tile3)
+	%LeeDyn(4, $254, !P1Tile3+$10)
+	%SwdDyn(5, $040, !P1Tile5)
+	%SwdDyn(5, $050, !P1Tile5+$10)
+	..end
 	.AirSlashDynamo3
-	db ..End-..Start
-	..Start
-	%LeeDyn(4, $224, !P2Tile1)
-	%LeeDyn(4, $234, !P2Tile1+$10)
-	%LeeDyn(4, $244, !P2Tile3)
-	%LeeDyn(4, $254, !P2Tile3+$10)
-	%SwdDyn(2, $00C, !P2Tile7)
-	%SwdDyn(2, $01C, !P2Tile7+$10)
-	%SwdDyn(2, $01B, !P2Tile8)
-	%SwdDyn(2, $02B, !P2Tile8+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(4, $224, !P1Tile1)
+	%LeeDyn(4, $234, !P1Tile1+$10)
+	%LeeDyn(4, $244, !P1Tile3)
+	%LeeDyn(4, $254, !P1Tile3+$10)
+	%SwdDyn(2, $00C, !P1Tile7)
+	%SwdDyn(2, $01C, !P1Tile7+$10)
+	%SwdDyn(2, $01B, !P1Tile8)
+	%SwdDyn(2, $02B, !P1Tile8+$10)
+	..end
 
 	.HangDynamo
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $2B0, !P2Tile1)
-	%LeeDyn(3, $2C0, !P2Tile1+$10)
-	%LeeDyn(3, $2D0, !P2Tile3)
-	%LeeDyn(3, $2E0, !P2Tile3+$10)
-	%SwdDyn(2, $00C, !P2Tile7)
-	%SwdDyn(2, $01C, !P2Tile7+$10)
-	%SwdDyn(2, $01B, !P2Tile8)
-	%SwdDyn(2, $02B, !P2Tile8+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $2B0, !P1Tile1)
+	%LeeDyn(3, $2C0, !P1Tile1+$10)
+	%LeeDyn(3, $2D0, !P1Tile3)
+	%LeeDyn(3, $2E0, !P1Tile3+$10)
+	%SwdDyn(2, $00C, !P1Tile7)
+	%SwdDyn(2, $01C, !P1Tile7+$10)
+	%SwdDyn(2, $01B, !P1Tile8)
+	%SwdDyn(2, $02B, !P1Tile8+$10)
+	..end
 
 	.HangSlashDynamo0
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $2B3, !P2Tile1)
-	%LeeDyn(3, $2C3, !P2Tile1+$10)
-	%LeeDyn(3, $2D3, !P2Tile2+$01)
-	%LeeDyn(3, $2E3, !P2Tile2+$11)
-	%LeeDyn(3, $2E3, !P2Tile4)
-	%LeeDyn(3, $2F3, !P2Tile4+$10)
-	%SwdDyn(3, $05D, !P2Tile6)
-	%SwdDyn(3, $06D, !P2Tile6+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $2B3, !P1Tile1)
+	%LeeDyn(3, $2C3, !P1Tile1+$10)
+	%LeeDyn(3, $2D3, !P1Tile2+$01)
+	%LeeDyn(3, $2E3, !P1Tile2+$11)
+	%LeeDyn(3, $2E3, !P1Tile4)
+	%LeeDyn(3, $2F3, !P1Tile4+$10)
+	%SwdDyn(3, $05D, !P1Tile6)
+	%SwdDyn(3, $06D, !P1Tile6+$10)
+	..end
 	.HangSlashDynamo1
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $2B6, !P2Tile1)
-	%LeeDyn(3, $2C6, !P2Tile1+$10)
-	%LeeDyn(3, $2D6, !P2Tile3)
-	%LeeDyn(3, $2E6, !P2Tile3+$10)
-	%SwdDyn(2, $000, !P2Tile5)
-	%SwdDyn(2, $010, !P2Tile5+$10)
-	%SwdDyn(5, $011, !P2Tile6)
-	%SwdDyn(5, $021, !P2Tile6+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $2B6, !P1Tile1)
+	%LeeDyn(3, $2C6, !P1Tile1+$10)
+	%LeeDyn(3, $2D6, !P1Tile3)
+	%LeeDyn(3, $2E6, !P1Tile3+$10)
+	%SwdDyn(2, $000, !P1Tile5)
+	%SwdDyn(2, $010, !P1Tile5+$10)
+	%SwdDyn(5, $011, !P1Tile6)
+	%SwdDyn(5, $021, !P1Tile6+$10)
+	..end
 	.HangSlashDynamo2
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $2B9, !P2Tile1)
-	%LeeDyn(3, $2C9, !P2Tile1+$10)
-	%LeeDyn(3, $2D9, !P2Tile3)
-	%LeeDyn(3, $2E9, !P2Tile3+$10)
-	%SwdDyn(5, $040, !P2Tile5)
-	%SwdDyn(5, $050, !P2Tile5+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $2B9, !P1Tile1)
+	%LeeDyn(3, $2C9, !P1Tile1+$10)
+	%LeeDyn(3, $2D9, !P1Tile3)
+	%LeeDyn(3, $2E9, !P1Tile3+$10)
+	%SwdDyn(5, $040, !P1Tile5)
+	%SwdDyn(5, $050, !P1Tile5+$10)
+	..end
 	.HangSlashDynamo3
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $2BC, !P2Tile1)
-	%LeeDyn(3, $2CC, !P2Tile1+$10)
-	%LeeDyn(3, $2DC, !P2Tile2+$01)
-	%LeeDyn(3, $2EC, !P2Tile2+$11)
-	%LeeDyn(3, $2EC, !P2Tile4)
-	%LeeDyn(3, $2FC, !P2Tile4+$10)
-	%SwdDyn(2, $00C, !P2Tile7)
-	%SwdDyn(2, $01C, !P2Tile7+$10)
-	%SwdDyn(2, $01B, !P2Tile8)
-	%SwdDyn(2, $02B, !P2Tile8+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $2BC, !P1Tile1)
+	%LeeDyn(3, $2CC, !P1Tile1+$10)
+	%LeeDyn(3, $2DC, !P1Tile2+$01)
+	%LeeDyn(3, $2EC, !P1Tile2+$11)
+	%LeeDyn(3, $2EC, !P1Tile4)
+	%LeeDyn(3, $2FC, !P1Tile4+$10)
+	%SwdDyn(2, $00C, !P1Tile7)
+	%SwdDyn(2, $01C, !P1Tile7+$10)
+	%SwdDyn(2, $01B, !P1Tile8)
+	%SwdDyn(2, $02B, !P1Tile8+$10)
+	..end
 
 	.WallClingDynamo
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $300, !P2Tile1)
-	%LeeDyn(3, $310, !P2Tile1+$10)
-	%LeeDyn(3, $320, !P2Tile3)
-	%LeeDyn(3, $330, !P2Tile3+$10)
-	%SwdDyn(3, $028, !P2Tile5)
-	%SwdDyn(3, $038, !P2Tile5+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $300, !P1Tile1)
+	%LeeDyn(3, $310, !P1Tile1+$10)
+	%LeeDyn(3, $320, !P1Tile3)
+	%LeeDyn(3, $330, !P1Tile3+$10)
+	%SwdDyn(3, $028, !P1Tile5)
+	%SwdDyn(3, $038, !P1Tile5+$10)
+	..end
 
 	.WallSlashDynamo0
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $303, !P2Tile1)
-	%LeeDyn(3, $313, !P2Tile1+$10)
-	%LeeDyn(3, $323, !P2Tile3)
-	%LeeDyn(3, $333, !P2Tile3+$10)
-	%SwdDyn(3, $05D, !P2Tile6)
-	%SwdDyn(3, $06D, !P2Tile6+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $303, !P1Tile1)
+	%LeeDyn(3, $313, !P1Tile1+$10)
+	%LeeDyn(3, $323, !P1Tile3)
+	%LeeDyn(3, $333, !P1Tile3+$10)
+	%SwdDyn(3, $05D, !P1Tile6)
+	%SwdDyn(3, $06D, !P1Tile6+$10)
+	..end
 	.WallSlashDynamo1
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $306, !P2Tile1)
-	%LeeDyn(3, $316, !P2Tile1+$10)
-	%LeeDyn(3, $326, !P2Tile3)
-	%LeeDyn(3, $336, !P2Tile3+$10)
-	%SwdDyn(2, $000, !P2Tile5)
-	%SwdDyn(2, $010, !P2Tile5+$10)
-	%SwdDyn(5, $011, !P2Tile6)
-	%SwdDyn(5, $021, !P2Tile6+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $306, !P1Tile1)
+	%LeeDyn(3, $316, !P1Tile1+$10)
+	%LeeDyn(3, $326, !P1Tile3)
+	%LeeDyn(3, $336, !P1Tile3+$10)
+	%SwdDyn(2, $000, !P1Tile5)
+	%SwdDyn(2, $010, !P1Tile5+$10)
+	%SwdDyn(5, $011, !P1Tile6)
+	%SwdDyn(5, $021, !P1Tile6+$10)
+	..end
 	.WallSlashDynamo2
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $309, !P2Tile1)
-	%LeeDyn(3, $319, !P2Tile1+$10)
-	%LeeDyn(3, $329, !P2Tile3)
-	%LeeDyn(3, $339, !P2Tile3+$10)
-	%SwdDyn(5, $040, !P2Tile5)
-	%SwdDyn(5, $050, !P2Tile5+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $309, !P1Tile1)
+	%LeeDyn(3, $319, !P1Tile1+$10)
+	%LeeDyn(3, $329, !P1Tile3)
+	%LeeDyn(3, $339, !P1Tile3+$10)
+	%SwdDyn(5, $040, !P1Tile5)
+	%SwdDyn(5, $050, !P1Tile5+$10)
+	..end
 	.WallSlashDynamo3
-	db ..End-..Start
-	..Start
-	%SwdDyn(2, $00C, !P2Tile7)
-	%SwdDyn(2, $01C, !P2Tile7+$10)
-	%SwdDyn(2, $01B, !P2Tile8)
-	%SwdDyn(2, $02B, !P2Tile8+$10)
-	..End
+	db ..end-..start
+	..start
+	%SwdDyn(2, $00C, !P1Tile7)
+	%SwdDyn(2, $01C, !P1Tile7+$10)
+	%SwdDyn(2, $01B, !P1Tile8)
+	%SwdDyn(2, $02B, !P1Tile8+$10)
+	..end
 
 	.WallClimbDynamo0
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $340, !P2Tile1)
-	%LeeDyn(3, $350, !P2Tile1+$10)
-	%LeeDyn(3, $360, !P2Tile3)
-	%LeeDyn(3, $370, !P2Tile3+$10)
-	%SwdDyn(2, $00C, !P2Tile7)
-	%SwdDyn(2, $01C, !P2Tile7+$10)
-	%SwdDyn(2, $01B, !P2Tile8)
-	%SwdDyn(2, $02B, !P2Tile8+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $340, !P1Tile1)
+	%LeeDyn(3, $350, !P1Tile1+$10)
+	%LeeDyn(3, $360, !P1Tile3)
+	%LeeDyn(3, $370, !P1Tile3+$10)
+	%SwdDyn(2, $00C, !P1Tile7)
+	%SwdDyn(2, $01C, !P1Tile7+$10)
+	%SwdDyn(2, $01B, !P1Tile8)
+	%SwdDyn(2, $02B, !P1Tile8+$10)
+	..end
 	.WallClimbDynamo1
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $343, !P2Tile1)
-	%LeeDyn(3, $353, !P2Tile1+$10)
-	%LeeDyn(3, $363, !P2Tile3)
-	%LeeDyn(3, $373, !P2Tile3+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $343, !P1Tile1)
+	%LeeDyn(3, $353, !P1Tile1+$10)
+	%LeeDyn(3, $363, !P1Tile3)
+	%LeeDyn(3, $373, !P1Tile3+$10)
+	..end
 	.WallClimbDynamo2
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $346, !P2Tile1)
-	%LeeDyn(3, $356, !P2Tile1+$10)
-	%LeeDyn(3, $366, !P2Tile3)
-	%LeeDyn(3, $376, !P2Tile3+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $346, !P1Tile1)
+	%LeeDyn(3, $356, !P1Tile1+$10)
+	%LeeDyn(3, $366, !P1Tile3)
+	%LeeDyn(3, $376, !P1Tile3+$10)
+	..end
 	.WallClimbDynamo3
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $349, !P2Tile1)
-	%LeeDyn(3, $359, !P2Tile1+$10)
-	%LeeDyn(3, $369, !P2Tile3)
-	%LeeDyn(3, $379, !P2Tile3+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $349, !P1Tile1)
+	%LeeDyn(3, $359, !P1Tile1+$10)
+	%LeeDyn(3, $369, !P1Tile3)
+	%LeeDyn(3, $379, !P1Tile3+$10)
+	..end
 
 	.ClimbTopDynamo
-	db ..End-..Start
-	..Start
-	%LeeDyn(4, $387, !P2Tile1)
-	%LeeDyn(4, $397, !P2Tile1+$10)
-	%LeeDyn(4, $3A7, !P2Tile3)
-	%LeeDyn(4, $3B7, !P2Tile3+$10)
-	%SwdDyn(3, $008, !P2Tile5)
-	%SwdDyn(3, $018, !P2Tile5+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(4, $387, !P1Tile1)
+	%LeeDyn(4, $397, !P1Tile1+$10)
+	%LeeDyn(4, $3A7, !P1Tile3)
+	%LeeDyn(4, $3B7, !P1Tile3+$10)
+	%SwdDyn(3, $008, !P1Tile5)
+	%SwdDyn(3, $018, !P1Tile5+$10)
+	..end
 
 	.ClimbBGDynamo
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $39B, !P2Tile1)
-	%LeeDyn(3, $3AB, !P2Tile1+$10)
-	%LeeDyn(3, $3BB, !P2Tile3)
-	%LeeDyn(3, $3CB, !P2Tile3+$10)
-	%SwdDyn(2, $00C, !P2Tile7)
-	%SwdDyn(2, $01C, !P2Tile7+$10)
-	%SwdDyn(2, $01B, !P2Tile8)
-	%SwdDyn(2, $02B, !P2Tile8+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $39B, !P1Tile1)
+	%LeeDyn(3, $3AB, !P1Tile1+$10)
+	%LeeDyn(3, $3BB, !P1Tile3)
+	%LeeDyn(3, $3CB, !P1Tile3+$10)
+	%SwdDyn(2, $00C, !P1Tile7)
+	%SwdDyn(2, $01C, !P1Tile7+$10)
+	%SwdDyn(2, $01B, !P1Tile8)
+	%SwdDyn(2, $02B, !P1Tile8+$10)
+	..end
 
 	.HurtDynamo
-	db ..End-..Start
-	..Start
-	%LeeDyn(4, $393, !P2Tile1)
-	%LeeDyn(4, $3A3, !P2Tile1+$10)
-	%LeeDyn(4, $3B3, !P2Tile3)
-	%LeeDyn(4, $3C3, !P2Tile3+$10)
-	%SwdDyn(2, $00C, !P2Tile7)
-	%SwdDyn(2, $01C, !P2Tile7+$10)
-	%SwdDyn(2, $01B, !P2Tile8)
-	%SwdDyn(2, $02B, !P2Tile8+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(4, $393, !P1Tile1)
+	%LeeDyn(4, $3A3, !P1Tile1+$10)
+	%LeeDyn(4, $3B3, !P1Tile3)
+	%LeeDyn(4, $3C3, !P1Tile3+$10)
+	%SwdDyn(2, $00C, !P1Tile7)
+	%SwdDyn(2, $01C, !P1Tile7+$10)
+	%SwdDyn(2, $01B, !P1Tile8)
+	%SwdDyn(2, $02B, !P1Tile8+$10)
+	..end
 
 	.DeadDynamo
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $390, !P2Tile1)
-	%LeeDyn(3, $3A0, !P2Tile1+$10)
-	%LeeDyn(3, $3B0, !P2Tile3)
-	%LeeDyn(3, $3C0, !P2Tile3+$10)
-	%SwdDyn(3, $05D, !P2Tile6)
-	%SwdDyn(3, $06D, !P2Tile6+$10)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $390, !P1Tile1)
+	%LeeDyn(3, $3A0, !P1Tile1+$10)
+	%LeeDyn(3, $3B0, !P1Tile3)
+	%LeeDyn(3, $3C0, !P1Tile3+$10)
+	%SwdDyn(3, $05D, !P1Tile6)
+	%SwdDyn(3, $06D, !P1Tile6+$10)
+	..end
 
 	.VictoryDynamo0
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $30C, !P2Tile1)
-	%LeeDyn(3, $31C, !P2Tile1+$10)
-	%LeeDyn(3, $32C, !P2Tile3)
-	%LeeDyn(3, $33C, !P2Tile3+$10)
-	%SwdDyn(2, $006, !P2Tile5+$01)
-	%SwdDyn(2, $016, !P2Tile5+$11)
-	%SwdDyn(2, $016, !P2Tile6+$01)
-	%SwdDyn(2, $026, !P2Tile6+$11)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $30C, !P1Tile1)
+	%LeeDyn(3, $31C, !P1Tile1+$10)
+	%LeeDyn(3, $32C, !P1Tile3)
+	%LeeDyn(3, $33C, !P1Tile3+$10)
+	%SwdDyn(2, $006, !P1Tile5+$01)
+	%SwdDyn(2, $016, !P1Tile5+$11)
+	%SwdDyn(2, $016, !P1Tile6+$01)
+	%SwdDyn(2, $026, !P1Tile6+$11)
+	..end
 	.VictoryDynamo1
-	db ..End-..Start
-	..Start
-	%LeeDyn(3, $34C, !P2Tile1)
-	%LeeDyn(3, $35C, !P2Tile1+$10)
-	%LeeDyn(3, $36C, !P2Tile3)
-	%LeeDyn(3, $37C, !P2Tile3+$10)
-	%SwdDyn(2, $006, !P2Tile5+$01)
-	%SwdDyn(2, $016, !P2Tile5+$11)
-	%SwdDyn(2, $016, !P2Tile6+$01)
-	%SwdDyn(2, $026, !P2Tile6+$11)
-	..End
+	db ..end-..start
+	..start
+	%LeeDyn(3, $34C, !P1Tile1)
+	%LeeDyn(3, $35C, !P1Tile1+$10)
+	%LeeDyn(3, $36C, !P1Tile3)
+	%LeeDyn(3, $37C, !P1Tile3+$10)
+	%SwdDyn(2, $006, !P1Tile5+$01)
+	%SwdDyn(2, $016, !P1Tile5+$11)
+	%SwdDyn(2, $016, !P1Tile6+$01)
+	%SwdDyn(2, $026, !P1Tile6+$11)
+	..end
 
 
 	.ClippingStandard
@@ -3574,105 +3556,105 @@ print "  - clipping data: $", hex(.End-.ClippingStandard), " bytes (", dec((.End
 
 	.HorzTM
 	dw $0008
-	db $2E,$00,$00,!P2Tile5
-	db $2E,$08,$00,!P2Tile5+$01
+	db $20,$00,$00,!P1Tile5
+	db $20,$08,$00,!P1Tile5+$01
 
 	.DiaTM
 	dw $0008
-	db $2E,$00,$00,!P2Tile7
-	db $2E,$F8,$08,!P2Tile8
+	db $20,$00,$00,!P1Tile7
+	db $20,$F8,$08,!P1Tile8
 
 	.PrepTM
 	dw $0008
-	db $6E,$00,$00,!P2Tile5
-	db $6E,$F8,$00,!P2Tile5+$01
+	db $60,$00,$00,!P1Tile5
+	db $60,$F8,$00,!P1Tile5+$01
 
 	.CutTM0
 	dw $0010
-	db $2E,$00,$00,!P2Tile5
-	db $2E,$10,$00,!P2Tile6
-	db $2E,$20,$00,!P2Tile7
-	db $2E,$30,$00,!P2Tile8
+	db $20,$00,$00,!P1Tile5
+	db $20,$10,$00,!P1Tile6
+	db $20,$20,$00,!P1Tile7
+	db $20,$30,$00,!P1Tile8
 	.CutTM1
 	dw $000C
-	db $2E,$00,$00,!P2Tile5
-	db $2E,$10,$00,!P2Tile6
-	db $2E,$20,$00,!P2Tile7
+	db $20,$00,$00,!P1Tile5
+	db $20,$10,$00,!P1Tile6
+	db $20,$20,$00,!P1Tile7
 
 	.HoldBackTM
 	dw $0008
-	db $2E,$00,$00,!P2Tile6
-	db $2E,$08,$00,!P2Tile6+$01
+	db $20,$00,$00,!P1Tile6
+	db $20,$08,$00,!P1Tile6+$01
 
 
 	.SmallSlashTM
 	dw $0010
-	db $2E,$00,$00,!P2Tile5
-	db $2E,$08,$08,!P2Tile6
-	db $2E,$18,$08,!P2Tile7
-	db $2E,$20,$08,!P2Tile7+$01
+	db $20,$00,$00,!P1Tile5
+	db $20,$08,$08,!P1Tile6
+	db $20,$18,$08,!P1Tile7
+	db $20,$20,$08,!P1Tile7+$01
 	.SlashTM0
 	dw $001C
-	db $2E,$00,$00,!P2Tile5
-	db $2E,$08,$08,!P2Tile6
-	db $2E,$18,$08,!P2Tile7
-	db $2E,$20,$08,!P2Tile7+$01
-	db $2E,$08,$E8,$4B
-	db $2F,$18,$E8,$4D
-	db $2F,$20,$E8,$4E
+	db $20,$00,$00,!P1Tile5
+	db $20,$08,$08,!P1Tile6
+	db $20,$18,$08,!P1Tile7
+	db $20,$20,$08,!P1Tile7+$01
+	db $20,$08,$E8,$4B
+	db $21,$18,$E8,$4D
+	db $21,$20,$E8,$4E
 	.SlashTM1
 	dw $000C
-	db $2E,$00,$00,!P2Tile5
-	db $2E,$10,$00,!P2Tile6
-	db $2E,$18,$00,!P2Tile6+$01
+	db $20,$00,$00,!P1Tile5
+	db $20,$10,$00,!P1Tile6
+	db $20,$18,$00,!P1Tile6+$01
 
 	.WHorzTM
 	dw $0008
-	db $6E,$00,$00,!P2Tile5
-	db $6E,$F8,$00,!P2Tile5+$01
+	db $60,$00,$00,!P1Tile5
+	db $60,$F8,$00,!P1Tile5+$01
 
 	.WSlashTM0
 	dw $001C
-	db $6E,$00,$00,!P2Tile5
-	db $6E,$F8,$08,!P2Tile6
-	db $6E,$E8,$08,!P2Tile7
-	db $6E,$E0,$08,!P2Tile7+$01
-	db $6E,$F8,$E8,$4B
-	db $6F,$F0,$E8,$4D
-	db $6F,$E8,$E8,$4E
+	db $60,$00,$00,!P1Tile5
+	db $60,$F8,$08,!P1Tile6
+	db $60,$E8,$08,!P1Tile7
+	db $60,$E0,$08,!P1Tile7+$01
+	db $60,$F8,$E8,$4B
+	db $61,$F0,$E8,$4D
+	db $61,$E8,$E8,$4E
 	.WSlashTM1
 	dw $000C
-	db $6E,$00,$00,!P2Tile5
-	db $6E,$F0,$00,!P2Tile6
-	db $6E,$E8,$00,!P2Tile6+$01
+	db $60,$00,$00,!P1Tile5
+	db $60,$F0,$00,!P1Tile6
+	db $60,$E8,$00,!P1Tile6+$01
 	.WDiaTM
 	dw $0008
-	db $6E,$00,$00,!P2Tile7
-	db $6E,$08,$08,!P2Tile8
+	db $60,$00,$00,!P1Tile7
+	db $60,$08,$08,!P1Tile8
 	.WHoldBackTM
 	dw $0008
-	db $4E,$00,$00,!P2Tile6
-	db $4E,$F8,$00,!P2Tile6+$01
+	db $40,$00,$00,!P1Tile6
+	db $40,$F8,$00,!P1Tile6+$01
 
 	.HoldDownTM
 	dw $0008
-	db $2E,$00,$00,!P2Tile5
-	db $2E,$08,$00,!P2Tile5+$01
+	db $20,$00,$00,!P1Tile5
+	db $20,$08,$00,!P1Tile5+$01
 
 	.HoldUpTM
 	dw $0008
-	db $2E,$00,$00,!P2Tile5+$01
-	db $2E,$00,$08,!P2Tile6+$01
+	db $20,$00,$00,!P1Tile5+$01
+	db $20,$00,$08,!P1Tile6+$01
 
 	.FallTM
 	dw $0008
-	db $AE,$00,$08,!P2Tile5+$01
-	db $AE,$00,$00,!P2Tile6+$01
+	db $A0,$00,$08,!P1Tile5+$01
+	db $A0,$00,$00,!P1Tile6+$01
 
 	.ClimbTM
 	dw $0008
-	db $6E,$00,$00,!P2Tile7
-	db $6E,$08,$08,!P2Tile8
+	db $60,$00,$00,!P1Tile7
+	db $60,$08,$08,!P1Tile8
 
 	.NoTM
 	dw $0000

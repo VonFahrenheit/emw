@@ -136,7 +136,6 @@ NPC:
 		.Kadaal
 		LDX !SpriteIndex
 		LDA !ExtraProp2,x
-		AND #$3F
 		CMP #$07 : BNE +
 		LDA #$08 : STA !SpriteAnimIndex
 		+
@@ -204,14 +203,12 @@ NPC:
 		.Toad
 		LDX !SpriteIndex
 		LDA #$01 : JSL GET_SQUARE
-		LDA.b #!palset_special_toad
-		BRA .FinishPalset
+		LDA.b #!palset_special_toad : BRA .FinishPalset
 
 		.Melody
 		LDX !SpriteIndex
 		LDA #$01 : JSL GET_SQUARE
-		LDA.b #!palset_special_melody
-		BRA .FinishPalset
+		LDA.b #!palset_special_melody : BRA .FinishPalset
 
 
 		.Unused
@@ -316,7 +313,6 @@ NPC:
 
 		.RunCharCode
 		LDA !ExtraProp2,x
-		AND #$3F
 		CMP #$3E							;\ 0x3E -> swap p1
 		BNE $02 : LDA.b #((.CommandPtr_end-.CommandPtr)/2)-2		;/
 		CMP #$3F							;\ 0x3F -> swap p2
@@ -479,7 +475,6 @@ NPC:
 		AND #$04 : BEQ ..done
 		STZ !SpriteXSpeed,x
 		LDA !ExtraProp2,x
-		AND #$3F
 		CMP #$07 : BEQ ..done
 		LDA !SpriteAnimIndex
 		CMP #$04 : BCC ..done
@@ -494,7 +489,6 @@ NPC:
 
 		..spymode
 		LDA !ExtraProp2,x
-		AND #$3F
 		CMP #$07 : BEQ ..spying
 		..normal
 		LDA !SpriteXSpeed,x : BEQ ..done
@@ -1992,7 +1986,8 @@ NPC:
 		AND #$0F					; |
 		ORA $00						; |
 		STA !Characters					;/
-		LDA !ExtraProp1,x : STA !Palset8		; reload palset
+		LDA !ExtraProp1,x				;\ reload palset
+		INC A : STA !Palset8				;/
 		LDY #$00
 		BRA Unload
 
@@ -2012,7 +2007,8 @@ NPC:
 		AND #$F0					; |
 		ORA $00						; |
 		STA !Characters					;/
-		LDA !ExtraProp1,x : STA !Palset9		; reload palset
+		LDA !ExtraProp1,x				;\ reload palset
+		INC A : STA !Palset9				;/
 		LDY #$80
 
 	Unload:

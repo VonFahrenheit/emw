@@ -7,6 +7,24 @@ COLLISION:
 		CLC : ADC #$0008			; | collision point pointers
 		STA $F3					;/
 
+
+		; SEP #$20
+		; LDA #$01 : STA $2250				; set division
+		; REP #$20					;\
+		; LDA $78D7					; |
+		; BPL $04 : EOR #$FFFF : INC A			; |
+		; ASL #4						; |
+		; STA $2251					; |
+		; LDA $785F					; | 256 * |DY| / |DX|
+		; BPL $04 : EOR #$FFFF : INC A			; |
+		; LSR #4						; | (regs only support unsigned)
+		; STA $2253					; |
+		; NOP : BRA $00					; |
+		; LDA $2306					;/
+		; STA !P1Coins
+
+
+
 		LDA !Map16ActsLike+0 : STA $06		;\
 		LDA !Map16ActsLike+1 : STA $07		; |
 		LDA !Map16ActsLike40+0 : STA $09	; | 24-bit pointers to map16 acts like tables
@@ -74,32 +92,41 @@ COLLISION:
 		SEP #$20				;/
 
 		LDA !P2Water : PHA
-
 		STZ !P2Water				; clear water flag
+
+		; LAYER 1
 		STZ !CurrentLayer			; processing layer 1
 		JSR INTERACT_LAYER			; interact with layer 1
 
+		; LAYER 2
 		BIT !RAM_ScreenMode : BPL .End		;\
 		REP #$20				; |
-		LDA !P2XPosLo : PHA			; |
-		CLC : ADC $26				; |
+		LDA !P2XPosLo				; |
+		CLC : ADC $26				; > probably deprecated (?)
 		STA !P2XPosLo				; |
-		LDA !P2YPosLo : PHA			; |
-		CLC : ADC $28				; | layer 2
+		LDA !P2YPosLo				; |
+		CLC : ADC $28				; > probably deprecated (?)
 		STA !P2YPosLo				; |
 		SEP #$20				; |
 		INC !CurrentLayer			; > processing layer 2 flag (Z)
 		LDA #$80 : TSB $0F			; > processing layer 2 flag (N)
 		JSR INTERACT_LAYER			; |
 		REP #$20				; |
-		PLA : STA !P2YPosLo			; |
-		PLA : STA !P2XPosLo			; |
+		LDA !P2XPosLo				; |
+		SEC : SBC $26				; |
+		STA !P2XPosLo				; |
+		LDA !P2YPosLo				; |
+		SEC : SBC $28				; |
+		STA !P2YPosLo				; |
 		SEP #$20				;/
 
 		.End
 
-		LDA !P2Entrance
-		CMP #$20 : BCC ..noentrance
+		LDA !P2Entrance : BPL +
+		LDA $0F
+		AND #$04 : BEQ ..noentrance
+		LDA #$20 : STA !P2Entrance
+	+	CMP #$20 : BCC ..noentrance
 		LDA #$04 : TRB $0F
 		..noentrance
 
@@ -114,10 +141,7 @@ COLLISION:
 ;	80 -> 10 (water center)
 
 
-	;	LDA !P2ExtraBlock			;\
-	;	AND #$1F				; | layer collision flags
-		LDA $0F					; |
-		STA !P2BlockedLayer			;/
+		LDA $0F : STA !P2BlockedLayer		; layer collision flags
 		LDA !P2ExtraBlock			;\ extra blocked bits
 		AND #$1F				;/
 		ORA $0F					; add blocked status from layer
@@ -1273,6 +1297,7 @@ endmacro
 	;	LDA #$40 : STA !P2YSpeed			; |
 		..noadjust					;/
 
+		BIT $78D7+1 : BMI +				; skip check if moving up
 		BIT $0D : BMI +					; skip check if supersteep up tile
 		LDA $98
 		AND #$0F
@@ -1299,6 +1324,8 @@ endmacro
 		INC #2
 		BIT $0C
 		BPL $04 : SEC : SBC #$0010
+		BIT $78D7					;\ up 2 px if moving up already
+		BPL $02 : DEC #2				;/
 		CPY #$05 : BEQ ..point5
 		..point4
 		STA !BigRAM+0
@@ -1324,39 +1351,34 @@ endmacro
 		TSB $0E
 		RTS
 
+
+; already know that the player is moving up and towards the top of the slope
 		..checkangle
 		LDA $98						;\
 		AND #$0F					; | don't angle snap if above slope
 		CMP $0C : BCC ..nosnap				;/
+
 		LDA $05						;\
 		CLC : ADC #$04					; | X = index to slope angle table
-		ASL A						; |
-		TAX						;/
+		ASL A : TAX					;/
 		LDA #$01 : STA $2250				; set division
 		REP #$20					;\
 		LDA $78D7					; |
 		BPL $04 : EOR #$FFFF : INC A			; |
-		ASL #3						; |
+		ASL #4						; |
 		STA $2251					; |
 		LDA $785F					; | 256 * |DY| / |DX|
 		BPL $04 : EOR #$FFFF : INC A			; |
 		LSR #4						; | (regs only support unsigned)
 		STA $2253					; |
 		NOP : BRA $00					; |
-		LDA $2306					; |
-		ASL A						;/
-		BIT $785F					;\
-		BPL $04 : EOR #$FFFF : INC A			; | apply minus
-		BIT $78D7					; |
-		BPL $04 : EOR #$FFFF : INC A			;/
-		CMP #$0000 : BPL +				;\
-		CMP .SlopeAngle,x : BCC ..nosnap		; |
-		..snap						; |
+		LDA $2306					;/
+		CMP .SlopeAngle,x				;\
 		SEP #$20					; |
-		JMP ..adjust					; | compare to slope thresholds
-	+	CMP .SlopeAngle,x : BCC ..snap			; |
+		BCS ..nosnap					; |
+		STZ !P2YSpeed
+		JMP ..adjust					; | compare to slope threshold
 		..nosnap					; |
-		SEP #$20					; |
 		RTS						;/
 
 
@@ -1389,7 +1411,7 @@ endmacro
 
 		; index by (slope + 4) * 2
 		.SlopeAngle
-		dw $FE00,$FF00,$FF80,$FFC0	; left slopes
+		dw $0200,$0100,$0080,$0040	; left slopes
 		dw $0000			; no slope (really a dummy value)
 		dw $0040,$0080,$0100,$0200	; right slopes
 
@@ -1711,21 +1733,31 @@ endmacro
 
 
 		.SilverDoor
-		LDA !PSwitchTimer : BEQ .Door_r	; P must be active for silver door to activate
+		LDA !PSwitchTimer : BEQ .Door_r			; P must be active for silver door to activate
 		.Door
-		LDA $0F				;\ player must be on ground this frame
-		AND #$04 : BEQ ..r		;/
-		LDA $6DA7			;\ player must press up this frame
-		AND #$08 : BEQ ..r		;/
-		CPY #$07 : BNE ..r		; > has to touch with center point
-		LDA $741A			;\
-		INC A				; | increment room counter, but cap it at 255
-		BNE $01 : DEC A			; | (no wrap)
-		STA $741A			;/
-		LDA #$0F : STA !SPC4		; door SFX
-		LDA #$0F : STA !GameMode	; load level
-		LDA #$0D : STA !MarioAnim	; enter door animation
+		LDA $0F						;\ player must be on ground this frame
+		AND #$04 : BEQ ..r				;/
+		LDA $6DA7					;\ player must press up this frame
+		AND #$08 : BEQ ..r				;/
+		CPY #$07 : BNE ..r				; > has to touch with center point
+
+		LDA #$0F : STA !SPC4				; door SFX
+		LDA !MultiPlayer : BEQ ..enter			;\
+		LDA !PlayerWaiting : BEQ ..godormant		; | handle multiplayer
+		..enter						;/
+		INC $741A					; +1 door count
+		BNE $03 : DEC $741A				; stay at 255 instead of wrapping around to 0
+		LDA #$0F : STA !GameMode			; load level
+		LDA #$0D : STA !MarioAnim			; enter door animation
+		LDA !P2XPosLo : STA !MarioXPosLo		;\ set mario coords to make sure the transition goes into the correct level
+		LDA !P2XPosHi : STA !MarioXPosHi		;/
 	..r	RTS
+
+		..godormant					;\
+		LDA !CurrentPlayer				; | wait for the other player in the door
+		INC A : TSB !PlayerWaiting			;/
+		RTS
+
 
 
 		.BrownBlock
@@ -2470,7 +2502,8 @@ endmacro
 		BCC $02 : LDA $00			; |
 		STA $9A					;/
 		SEP #$20				; A 8-bit
-		STZ $0F					; layer 1
+		STZ $0F					; clear collision
+		STZ !CurrentLayer			; layer 1
 
 		%SetMap16Index()
 		%GetActsLike()

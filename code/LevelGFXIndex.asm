@@ -571,6 +571,7 @@ PalsetDefaults:
 
 
 	!FileMark	= $410000			; might be overwritten by super-dynamic GFX
+	!BG_Mark	= $412000			; might be overwritten by super-dynamic GFX
 	!SD_Mark	= $418800			; wiggler data, unused during GFX load
 
 	!TempSpriteMark	= $414000			; used to generate sprites that are carried over by players
@@ -594,17 +595,14 @@ PalsetDefaults:
 		STZ !PalsetE					; |
 		STZ !PalsetF					;/
 		LDA.b #ReadLevelData : STA $3180		;\
-		LDA.b #ReadLevelData>>8 : STA $3181		; |
-		LDA.b #ReadLevelData>>16 : STA $3182		; | have SA-1 scan level
-		JSR $1E80					; |
-		PLP						;/
+		LDA.b #ReadLevelData>>8 : STA $3181		; | have SA-1 scan level
+		LDA.b #ReadLevelData>>16 : STA $3182		; |
+		JSR $1E80					;/
 		JSR GetFiles					; upload files
 
 
 	; allocate dynamic tiles
-
 	.AllocateDynamic
-		PHP
 		REP #$20
 		SEP #$10
 		LDX #$1E					;\
@@ -629,18 +627,117 @@ PalsetDefaults:
 		..nextrow					;\
 		INX #2						; | if row is full, go to next row
 		CPX #$18 : BCC ..loop				;/
-		..end						;\ done
-		PLP						;/
+		..end						; done
+
+
+	; allocate BG objects
+		; load as streams of 8x8 tiles
+		; this will work perfectly as all BG objects use exclusively 8x8 tiles
+
+	.AllocateBG
+	; object -> file
+		PHB						; bank wrapper start
+		REP #$30					;\
+		LDA #$FFFF : STA !BG_status			; |
+		LDA #$00FE					; | default values = 0xFF
+		LDX.w #!BG_status+0				; |
+		LDY.w #!BG_status+1				; |
+		MVN !BG_status>>16,!BG_status>>16		;/
+		SEP #$30					;\
+		LDA.b #!BG_Mark>>16				; | switch bank
+		PHA : PLB					;/
+		LDY #$00					; 0x00-0xFF
+	-	LDX.w !BG_Mark+$000,y : BEQ +			; if BG_object isn't marked, go to next
+		LDA.l BG_objectFiles_Index,x : BEQ +		; if BG_object has no associated file, go to next
+		TAX						;\ mark file as load
+		INC.w !BG_Mark+$100,x				;/
+	+	INY : BNE -					; loop
+		PLB						; bank wrapper end
+
+	; load files
+		REP #$20
+		LDA #$0100 : STA !BigRAM			; space remaining
+		STZ !BigRAM+2					; currently decompressed GFX file
+		LDA #$3000 : STA $2116				; starting VRAM (auto-incremented)
+		LDA #$1801 : STA $4300				; DMA mode (words -> 2118)
+		LDX.b #!DecompBuffer>>16 : STX $4304		; source bank
+		LDA.w #!DecompBuffer : STA $00			;\ decompression address
+		LDX.b #!DecompBuffer>>16 : STX $02		;/
+		LDX #$00					; 0x00-0xFF
+
+		..loop						;\
+		LDA.l !BG_Mark+$100,x				; | check if file is marked for loading
+		AND #$00FF : BEQ ..next				;/
+		TXA						;\
+		ASL A : TAY					; | check if the file exists
+		LDA.w BG_objectFiles_List,y : BEQ ..next	;/
+		STA $0E						;\
+		LDA ($0E)					; | check if file is already decompressed
+		CMP !BigRAM+2 : BEQ ..loadfromfile		;/
+		..decompressfile				;\
+		STA !BigRAM+2					; |
+		PEI ($0E)					; | decompress file if necessary
+		JSL !DecompressFile				; |
+		PLA : STA $0E					;/
+		..loadfromfile					;\ prepare to load tiles from file
+		LDY #$02					;/
+		..loadtilestring				;\
+		LDA ($0E),y					; | check entry (tile string, status, or file end)
+		AND #$00FF : BEQ ..next				; |
+		CMP #$00FF : BNE ..fittiles			;/
+
+		..status					;\
+		INY						; |
+		SEP #$20					; |
+		PHX						; |
+		LDA ($0E),y : TAX				; |
+		LDA !BigRAM					; | mark where this part is loaded
+		EOR #$FF : INC A				; |
+		STA !BG_status,x				; |
+		PLX						; |
+		REP #$20					; |
+		INY : BRA ..loadtilestring			;/
+
+		..fittiles					;\
+		CMP !BigRAM					; |
+		BEQ ..upload					; |
+		BCS ..next					; |
+		..upload					; |
+		STA $0C						; |
+		SEC : SBC !BigRAM				; |
+		EOR #$FFFF : INC A				; |
+		STA !BigRAM					; |
+		LDA $0C						; | load all tile strings from file
+		ASL #5 : STA $4305				; |
+		INY						; |
+		LDA ($0E),y					; |
+		AND #$00FF					; |
+		ASL #5						; |
+		ADC.w #!DecompBuffer				; |
+		STA $4302					; |
+		LDA #$0001 : STA $420B				; |
+		INY : BRA ..loadtilestring			;/
+
+		..next						;\
+		INX : BEQ ..done				; | loop over all entries
+		JMP ..loop					; |
+		..done						;/
+
+
+		SEP #$30
+		LDA.b #.GenerateMap16 : STA $3180
+		LDA.b #.GenerateMap16>>8 : STA $3181
+		LDA.b #.GenerateMap16>>16 : STA $3182
+		JSR $1E80
 
 
 	; stuff loaded with players
-		PHP						;\
-		SEP #$20					; |
+		SEP #$20					;\
 		LDA !GFX_ReznorFireball : BNE .NoMarioFire	; |
 		LDA !MultiPlayer : BEQ +			; |
 		LDA !Characters					; |
-		AND #$0F : BNE +				; | mario fireball can be included in mario's file
-		LDA #$2A : BRA ++				; |
+		AND #$0F : BNE +				; |
+		LDA #$2A : BRA ++				; | mario fireball can be included in mario's file
 	+	LDA !Characters					; |
 		AND #$F0 : BNE .NoMarioFire			; |
 		LDA #$0A					; |
@@ -674,9 +771,7 @@ PalsetDefaults:
 		.NoKadaalSwim					;/
 
 
-		PLP						;
 		JSR SuperDynamicFiles				; upload super-dynamic files
-		PHP
 		SEP #$30
 
 		LDY #$07					;\
@@ -723,6 +818,161 @@ PalsetDefaults:
 		dw $0080,$00A0,$00C0,$00E0	; SP2
 		dw $0100,$0120,$0140,$0160	; SP3
 		dw $0180,$01A0,$01C0,$01E0	; SP4
+
+
+
+
+; $00 = location of source GFX (tile in VRAM)
+; $01 = width (added to tile num to get nums of lower half of block)
+; $02 = xflip (x ordering is inverted if set)
+
+	; generate map16
+	.GenerateMap16
+		PHB						; bank wrapper start
+		PHP						; reg wrapper start
+		REP #$30					; all regs 16-bit
+
+		LDA #$0300*2 : JSL $06F540			;\
+		STA $E0						; |
+		INC A : STA $E2					; |
+		INC A : STA $E4					; |
+		INC A : STA $E6					; | full pointer setup for map16 tile data
+		INC A : STA $E8					; |
+		INC A : STA $EA					; |
+		INC A : STA $EC					; |
+		INC A : STA $EE					;/
+		LDA #$0000					; > clear B
+		SEP #$20
+		LDA $0C
+		PHA : PLB
+		LDY #$0000					; starting index = 0
+
+		..loop						;\
+		LDA ($E8),y : TAX				; | check if file is loaded
+		LDA !BG_status,x				; |
+		CMP #$FF : BEQ ..next				;/
+		STA $00						; $00 = location of source GFX (tile in VRAM)
+
+		LDA ($E0),y : STA $02				;\
+		AND #$3F					; | get width ($01) and xflip ($02)
+		TRB $02						; |
+		STA $01						;/
+
+		LDA ($E4),y					; read base tile
+		CLC : ADC $00					; add offset from VRAM location
+		CLC						; clear C
+		TYX						; X = index (same as Y)
+		BIT $02 : BVS ..flip				; check flip
+		..noflip					;\
+		STA !Map16Page3+$00,x				; |
+		INC A						; |
+		STA !Map16Page3+$04,x				; |
+		ADC $01						; | get tile nums for map16 block (no flip)
+		STA !Map16Page3+$06,x				; |
+		DEC A						; |
+		STA !Map16Page3+$02,x				; |
+		BRA ..next					;/
+		..flip						;\
+		STA !Map16Page3+$04,x				; |
+		INC A						; |
+		STA !Map16Page3+$00,x				; | get tile nums for map16 block (with flip)
+		ADC $01						; |
+		STA !Map16Page3+$02,x				; |
+		DEC A						; |
+		STA !Map16Page3+$06,x				;/
+		..next						;\
+		TYX						; |
+		LDA ($E2),y					; |
+		ORA #$03 : STA !Map16Page3+$01,x		; |
+		LDA ($E6),y					; | get property bytes from LM's map16 data
+		ORA #$03 : STA !Map16Page3+$03,x		; |
+		LDA ($EA),y					; |
+		ORA #$03 : STA !Map16Page3+$05,x		; |
+		LDA ($EE),y					; |
+		ORA #$03 : STA !Map16Page3+$07,x		;/
+		REP #$20					;\
+		TYA						; |
+		CLC : ADC #$0008				; | loop through entire map16 page
+		TAY						; |
+		LDA #$0000					; > clear B
+		SEP #$20					; |
+		CPY.w #$0100*8 : BCC ..loop			;/
+
+		REP #$20
+		LDA #$00F8					;\
+		STA !Map16Page3+($70*8)+$00			; |
+		STA !Map16Page3+($70*8)+$04			; | these tiles in the trashcan are clear
+		STA !Map16Page3+($82*8)+$00			; |
+		STA !Map16Page3+($82*8)+$04			;/
+		STA !Map16Page3+($50*8)+$02			;\ these tiles in the cable tile are clear
+		STA !Map16Page3+($50*8)+$06			;/
+
+		PLP						; reg wrapper end
+		PLB						; bank wrapper end
+		RTL						; return
+
+
+
+; address of page3 tiles:
+; tile num * 8 + read2($6F552+1) + (read1($06F555+2)<<16)
+
+print "$", hex(($300*8)+read2($6F552+1)+(read1($06F555+2)<<16))
+;
+; org ($300*8)+read2($6F552+1)+(read1($06F555+2)<<16)+0
+; org ($300*8)+read2($6F552+1)+(read1($06F555+2)<<16)+2
+; org ($300*8)+read2($6F552+1)+(read1($06F555+2)<<16)+4
+; org ($300*8)+read2($6F552+1)+(read1($06F555+2)<<16)+6
+;
+;
+
+
+macro TileInfo(map16, width, tile, gfx)
+	pushpc
+		org (($300+<map16>)*8)+read2($6F552+1)+(read1($06F555+2)<<16)+0
+			db <width>
+		org (($300+<map16>)*8)+read2($6F552+1)+(read1($06F555+2)<<16)+2
+			db <tile>
+		org (($300+<map16>)*8)+read2($6F552+1)+(read1($06F555+2)<<16)+4
+			db <gfx>
+		org (($300+<map16>)*8)+read2($6F552+1)+(read1($06F555+2)<<16)+6
+			; unused
+	pullpc
+endmacro
+
+		; bush
+		%TileInfo($00, $04, $00, !GFX_BushFrame1)
+		%TileInfo($01, $04, $02, !GFX_BushFrame1)
+
+		; windows
+		%TileInfo($10, $04, $00, !GFX_Window)
+		%TileInfo($11, $04, $02, !GFX_Window)
+		%TileInfo($20, $04, $08, !GFX_Window)
+		%TileInfo($21, $04, $0A, !GFX_Window)
+		%TileInfo($12, $04, $00, !GFX_WindowBroken)
+		%TileInfo($13, $04, $02, !GFX_WindowBroken)
+		%TileInfo($22, $04, $08, !GFX_WindowBroken)
+		%TileInfo($23, $04, $0A, !GFX_WindowBroken)
+
+		; cannon
+		%TileInfo($30, $04, $00, !GFX_CannonIdle)
+		%TileInfo($31, $04, $02, !GFX_CannonIdle)
+		%TileInfo($40, $04, $08, !GFX_CannonIdle)
+		%TileInfo($41, $04, $0A, !GFX_CannonIdle)
+		%TileInfo($32, $04, $00, !GFX_CannonIdle)
+		%TileInfo($33, $04, $02, !GFX_CannonIdle)
+		%TileInfo($42, $04, $08, !GFX_CannonIdle)
+		%TileInfo($43, $04, $0A, !GFX_CannonIdle)
+
+		; trashcan
+		%TileInfo($70, $02, -$02, !GFX_TrashCan) ; -2 because we only want the first 2 tiles, but they have to end up in the bottom half
+		%TileInfo($80, $02, $04, !GFX_TrashCan)
+		%TileInfo($71, $42, $08, !GFX_TrashCan)
+		%TileInfo($81, $02, $08, !GFX_TrashCan)
+		%TileInfo($82, $02, $00, !GFX_TrashCan)
+
+
+
+
 
 
 ; file format:
@@ -2026,7 +2276,8 @@ ReadLevelData:
 		LDA.b #$41 : PHA			; push DB
 		LDA #$00				;\
 		STA.l !FileMark+0			; |
-		STA.l !SD_Mark+0			; | set up clears
+		STA.l !BG_Mark+0			; | set up clears
+		STA.l !SD_Mark+0			; |
 		STA.l !GFX_status+0			; |
 		STA.l !CableUpdateData+0		;/
 		REP #$30				; all regs 16-bit
@@ -2034,6 +2285,10 @@ ReadLevelData:
 		LDX.w #!FileMark+0			; | wipe file mark
 		LDY.w #!FileMark+1			; |
 		MVN !FileMark>>16,!FileMark>>16		;/
+		LDA #$01FE				;\
+		LDX.w #!BG_Mark+0			; | wipe BG mark
+		LDY.w #!BG_Mark+1			; |
+		MVN !BG_Mark>>16,!BG_Mark>>16		;/
 		LDA #$00FE				;\
 		LDX.w #!SD_Mark+0			; | wipe SD mark
 		LDY.w #!SD_Mark+1			; |
@@ -2069,58 +2324,59 @@ ReadLevelData:
 		SEP #$20
 		LDA #$00 : STA.l !BigRAM		; clear brick flag
 		LDX #$0000
+
 	.TileLoop
 		LDA $40C800,x				;\
 		ASL A					; |
 		STA $0E					; |
-		LDA $C800,x				; |
+		LDA $C800,x				; | get map16 tile (check if it's block 0x00-0x3F or 0x40-0x7F)
 		ROL A					; |
 		STA $0F					; |
-		BMI ..40				; |
-	..00	LDY $0E					; | scan map16 data for spawnables
-		CPY.w #$0300*2 : BEQ ..bush
-		CPY.w #$0310*2 : BEQ ..window
-		CPY.w #$0330*2 : BEQ ..cannon
-		CPY.w #$0332*2 : BEQ ..cannon
-		CPY.w #$0350*2 : BEQ ..cable
-		CPY.w #$0360*2 : BEQ ..poleleft
-		CPY.w #$0362*2 : BEQ ..poleright
-		CPY.w #$0370*2 : BNE ..noBG_object
-		..trashcan
-		LDA #$08 : BRA ..spawnBG_object
-		..poleright
-		LDA #$06 : BRA ..spawnBG_object
-		..poleleft
-		LDA #$05 : BRA ..spawnBG_object
-		..cable
-		LDA #$04 : BRA ..spawnBG_object
-		..cannon
-		LDA #$03 : BRA ..spawnBG_object
-		..window
-		LDA #$02 : BRA ..spawnBG_object
-		..bush
-		LDA #$01 : %filemark(LeafParticle)
-		LDA #$01
-		..spawnBG_object
-		JSR .SpawnBG_object
-		..noBG_object
+		BMI ..40				;/
 
-		LDA [$03],y : BEQ +			; |
+		..checkBG_object
+		LDA $0F					;\
+		CMP #$03*2 : BNE ..noBG_object		; |
+		PHX					; |
+		LDA #$00 : XBA				; |
+		LDA $0E					; | check for BG object spawn
+		LSR A : TAX				; |
+		LDA.l .BG_objectList,x			; |
+		PLX					; |
+		CMP #$00 : BEQ ..noBG_object		; |
+		CMP #$FF : BEQ ..noBG_object		;/
+		CMP #$01 : BNE ..spawnBG_object		;\
+		%filemark(LeafParticle)			; | load leaf particle for bush
+		LDA #$01				;/
+		..spawnBG_object			;\
+		JSR SpawnBG_object			; | spawn BG object
+		..noBG_object				;/
+
+		..00					;\
+		LDY $0E					; > = 16-bit map16 number * 2
+		LDA [$03],y : BEQ +			; | check lo block
 		LDA [$00],y : BRA .Page1		; |
-	+	LDA [$00],y : BRA .Page0		; |
-	..40	LDY $0E					; |
-		LDA [$09],y : BEQ +			; |
+	+	LDA [$00],y : BRA .Page0		;/
+
+		..40					;\
+		LDY $0E					; > = 16-bit map16 number * 2
+		LDA [$09],y : BEQ +			; | check hi block
 		LDA [$06],y : BRA .Page1		; |
-	+	LDA [$06],y				; |
-	.Page0	CMP #$04 : BCS ..nowater		; |
+	+	LDA [$06],y				;/
+
+
+		.Page0					;\
+		CMP #$04 : BCS ..nowater		; |
 		LDA #$01 : %filemark(WaterEffects)	; > mark water effects for loading
 		..nowater				; |
 		JMP .NextTile				;/
 
-	.Page1	CMP #$14 : BCC ..noblock
+		.Page1
+		CMP #$14 : BCC ..noblock
 		CMP #$40 : BEQ ..block
 		CMP #$29 : BCS ..noblock
-	..block	XBA
+		..block
+		XBA
 		LDA #$01 : STA.l !PalsetA		; always load palset A if there are blocks
 		XBA
 		..noblock
@@ -2414,10 +2670,51 @@ ReadLevelData:
 
 
 
-	.SpawnBG_object
+
+
+
+; index = lo byte of map16 tile num
+
+; key:
+; 0x00 - part of a BG object, but not the origin (does nothing but signals that the tile is used)
+; 0xFF - unused, does nothing
+; any other number - BG object to spawn
+
+	.BG_objectList
+
+	; | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | A | B | C | D | E | F |
+	db $01,$00,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF	; 0
+	db $02,$00,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF	; 1
+	db $00,$00,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF	; 2
+	db $03,$00,$03,$00,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF	; 3
+	db $00,$00,$00,$00,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF	; 4
+	db $04,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF	; 5
+	db $05,$00,$06,$00,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF	; 6
+	db $08,$00,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF	; 7
+	db $00,$00,$00,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF	; 8
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF	; 9
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF	; A
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF	; B
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF	; C
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF	; D
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF	; E
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF	; F
+
+
+
+
+
+
+	SpawnBG_object:
 		PHY
 		PHX
 		PHA					; BG object num
+
+		.Main
+		XBA					;\
+		LDA #$00 : XBA				; | mark BG object for loading
+		TAY					; |
+		STA.w !BG_Mark,y			;/
 
 		REP #$20				;\
 		TXA					; |
@@ -2463,13 +2760,13 @@ ReadLevelData:
 
 		SEP #$20
 		PLA : STA !BG_object_Type,x
-		CMP #$04 : BEQ ..cable
+		CMP #$04 : BEQ .Cable
 		PHX
 		REP #$20
 		AND #$00FF
 		ASL A
 		TAX
-		LDA.l ..size-2,x
+		LDA.l .Size-2,x
 		PLX
 		STA !BG_object_W,x
 		SEP #$20
@@ -2478,11 +2775,13 @@ ReadLevelData:
 		RTS
 
 
-		..cable
-		TXY					; Y = index to BG object
+
+
 ; ...yeah
 ; search all other slots for cables
 ; if any existing cable overlaps this spot, this cable can not spawn
+		.Cable
+		TXY					; Y = index to BG object
 		REP #$20
 		STY $0E					; $0E = slot we're trying to spawn into
 		LDX #$0000
@@ -2496,7 +2795,7 @@ ReadLevelData:
 		AND #$00FF				; |
 		ASL #3					; | check for X overlap
 		CLC : ADC !BG_object_X,x		; |
-		CMP !BG_object_X,y : BCS ..cablefail	;/
+		CMP !BG_object_X,y : BCS ..fail		;/
 	+	TXA
 		CLC : ADC.w #!BG_object_Size
 		TAX
@@ -2518,21 +2817,19 @@ ReadLevelData:
 		TAX
 		SEP #$20
 	+	LDA $C800,x
-		CMP #$03 : BNE ..cutcable
+		CMP #$03 : BNE ..cut
 		LDA $40C800,x
 		CMP #$50 : BEQ -
-		..cutcable
+		..cut
 		LDA $0E
-		CMP #$03 : BCC ..cablefail
-		CMP #$10+1 : BCS ..cablefail
+		CMP #$03 : BCC ..fail
+		CMP #$10+1 : BCS ..fail
 		ASL A
 		STA !BG_object_W,y
 		PLX					; restore X
 		PLY : STY $0E				; restore Y + $0E
 		RTS
-
-
-		..cablefail
+		..fail
 		SEP #$20
 		TYX
 		STZ !BG_object_Type,x
@@ -2541,7 +2838,7 @@ ReadLevelData:
 		RTS
 
 
-		..size
+		.Size
 		db $04,$02	; bush
 		db $04,$04	; window
 		db $04,$04	; cannon
@@ -2551,6 +2848,131 @@ ReadLevelData:
 		db $10,$10	; keyhole (dummy values, actually spawned by sprite)
 		db $02,$04	; trash can
 
+
+
+
+
+BG_objectFiles:
+
+
+	; which entry on the list each BG object has
+	.Index
+	db $00			; 00, EMPTY
+	db $01			; 01, bush
+	db $02			; 02, window
+	db $03			; 03, cannon
+	db $04			; 04, cable
+	db $05			; 05, pole
+	db $05			; 06, pole
+	db $00			; 07, keyhole
+	db $06			; 08, trashcan
+
+
+	; pointers to upload data
+	.List
+	dw $0000		; 00, EMPTY
+	dw .Bush		; 01
+	dw .Window		; 02
+	dw .Cannon		; 03
+	dw .Cable		; 04
+	dw .Pole		; 05
+	dw .TrashCan		; 06
+
+
+; format:
+; first word is the (Ex)GFX num
+; for each upload:
+; - 1 byte tile count
+; - 1 byte source tile in file
+; exceptions:
+; - if tile count is 0x00, end the file
+; - if tile count is 0xFF, next byte is the !GFX_status offset of the part that the next tile string belongs to
+
+	.Bush
+	dw $020
+	db $FF,!GFX_BushFrame1_offset
+	db $04,$00
+	db $04,$10
+	db $FF,!GFX_BushFrame2_offset
+	db $04,$04
+	db $04,$14
+	db $FF,!GFX_BushFrame3_offset
+	db $04,$08
+	db $04,$18
+	db $00
+
+	.Window
+	dw $021
+	db $FF,!GFX_Window_offset
+	db $04,$44
+	db $04,$54
+	db $04,$64
+	db $04,$74
+	db $FF,!GFX_WindowBroken_offset
+	db $04,$48
+	db $04,$58
+	db $04,$68
+	db $04,$78
+	db $00
+
+	.Cannon
+	dw $021
+	db $FF,!GFX_CannonIdle_offset
+	db $04,$00
+	db $04,$10
+	db $04,$20
+	db $04,$30
+	db $FF,!GFX_CannonTilt2_offset
+	db $04,$04
+	db $04,$14
+	db $04,$24
+	db $04,$34
+	db $FF,!GFX_CannonFire1_offset
+	db $04,$08
+	db $04,$18
+	db $04,$28
+	db $04,$38
+	db $FF,!GFX_CannonFire2_offset
+	db $04,$0C
+	db $04,$1C
+	db $04,$2C
+	db $04,$3C
+	db $FF,!GFX_CannonTilt1_offset
+	db $04,$40
+	db $04,$50
+	db $04,$60
+	db $04,$70
+	db $00
+
+	.Cable
+	dw $020
+	db $FF,!GFX_CableTiles_offset
+	db $40,$20
+	db $00
+
+	.Pole
+	dw $020
+	db $FF,!GFX_PoleFrame1_offset
+	db $04,$60
+	db $04,$70
+	db $FF,!GFX_PoleFrame2_offset
+	db $04,$64
+	db $04,$74
+	db $FF,!GFX_PoleFrame3_offset
+	db $04,$68
+	db $04,$78
+	db $00
+
+	.TrashCan
+	dw $020
+	db $FF,!GFX_TrashCan_offset
+	db $02,$0C
+	db $02,$1C
+	db $02,$0E
+	db $02,$1E
+	db $02,$6C
+	db $02,$7C
+	db $00
 
 
 

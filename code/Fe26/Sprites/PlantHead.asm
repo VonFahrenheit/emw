@@ -121,10 +121,8 @@ PlantHead:
 		..setdir					;\ set direction
 		STA !ExtraProp1,x				;/
 		..settimer					;\
-		LDA !ExtraProp2,x : STA $00			; |
-		AND #$3F : TRB $00				; | if timer = 0, default to 8
+		LDA !ExtraProp2,x				; | if timer = 0, default to 8
 		BNE $02 : LDA #$08				; |
-		ORA $00						; |
 		STA !ExtraProp2,x				;/
 
 		PLB
@@ -167,9 +165,8 @@ PlantHead:
 
 		; destruction direction = !ExtraProp1
 		.DestroyVine
-		LDA $32D0,x : BNE ..return				;\
-		LDA !ExtraProp2,x					; | handle timer
-		AND #$3F : STA $32D0,x					;/
+		LDA $32D0,x : BNE ..return				;\ handle timer
+		LDA !ExtraProp2,x : STA $32D0,x				;/
 		REP #$30
 		LDY #$0000
 		LDA #$0000
@@ -737,8 +734,7 @@ PlantHead:
 		LDA !PlantHeadYLo,x : STA !SpriteYLo,x
 		LDA !PlantHeadYHi,x : STA !SpriteYHi,x
 		JSL BigPuff
-		LDA !ExtraProp2,x				;\ set initial timer
-		AND #$3F : STA $32D0,x				;/
+		LDA !ExtraProp2,x : STA $32D0,x			; set initial timer
 		.Return
 		RTS
 

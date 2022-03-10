@@ -7,7 +7,7 @@
 		Bank $11	MSG
 	*	Bank $12	SP_Menu, VR3
 		Bank $13	SP_Patch
-		Bank $14	FusionCore (includes particle engine)
+		Bank $14	FusionCore (fusion sprites, BG objects, particles)
 		Bank $15	PCE
 		Bank $16	Fe26
 		Bank $17	Fe26
@@ -70,122 +70,208 @@
 
 	-- WRAM map --
 		LoRAM:
-		$0000-$001F:	32 B	SNES scratch RAM (used by shader).
-		$0020-$007F:	96 B	----
-		$0080-$009F:	32 B	prop for status bar
-		$00A0-$00AD:	14 B	Colors 0x01-0x07 for dynamic BG3 palette.
-		$00AE-$00FF:	52 B	----
-		$0100-$01FF:	256 B	SNES DP for MPU operation
-		$0200-$03FF:	512 B	Table for HDMA channel 2 (message box).
-		$0400-$05FF:	512 B	Table for HDMA channel 3.
-		$0600-$07FF:	512 B	Table for HDMA channel 4.
-		$0800-$09FF:	512 B	Table for HDMA channel 5.
-		$0A00-$0BFF:	512 B	Table for HDMA channel 6.
-		$0C00-$0DFF:	512 B	Table for HDMA channel 7.
-		$0E00-$0FFF:	512 B	RAM code for SNES to apply lighting in background mode
-		$1000-$1DFF:	3.4 KB	backup for layer 3 GFX during text box (normal = $900 bytes, cinematic = $D90 bytes)
-		$1E00-$1E1F:	32 B	shader regs
-		$1E20-$1E7F:	96 B	----
-		$1E80-$1EA5:	38 B	Vitor's RAM codes
-		$1EA6-$1EFF:	90 B	custom RAM codes (see SP_Menu.asm)
-		$1F00-$1F0B:	12 B	$43X2 mirrors for HDMA channels 2-7, 2 bytes each
-		$1F0C:		1 B	HDMA enable double mirror (set at the end of each frame, used to minimize errors caused by lag)
-		$1F0D-$1FFF:	243 B	SNES stack.
+		$0000-$001F:	32 B		SNES scratch RAM (used by shader)
+		$0020-$007F:	96 B		----
+		$0080-$009F:	32 B		prop for status bar
+		$00A0-$00AD:	14 B		colors 0x01-0x07 for dynamic BG3 palette
+		$00AE-$00FF:	52 B		----
+		$0100-$01FF:	256 B		SNES DP for MPU operation
+		$0200-$03FF:	512 B		table for HDMA channel 2 (message box)
+		$0400-$05FF:	512 B		table for HDMA channel 3
+		$0600-$07FF:	512 B		table for HDMA channel 4
+		$0800-$09FF:	512 B		table for HDMA channel 5
+		$0A00-$0BFF:	512 B		table for HDMA channel 6
+		$0C00-$0DFF:	512 B		table for HDMA channel 7
+		$0E00-$0FFF:	512 B		RAM code for SNES to apply lighting in background mode
+		$1000-$1DFF:	3.4 KiB		backup for layer 3 GFX during text box (normal = $900 bytes, cinematic = $D90 bytes)
+		$1E00-$1E1F:	32 B		shader regs
+		$1E20-$1E7F:	96 B		----
+		$1E80-$1EA5:	38 B		Vitor's RAM codes
+		$1EA6-$1EFF:	90 B		custom RAM codes (see SP_Menu.asm)
+		$1F00-$1F0B:	12 B		$43X2 mirrors for HDMA channels 2-7, 2 bytes each
+		$1F0C:		1 B		HDMA enable double mirror (set at the end of each frame, used to minimize errors caused by lag)
+		$1F0D-$1FFF:	243 B		SNES stack
 
 		Bank $7E:
-		$0000-$1FFF:	8 KB	LoRAM
-		$2000-$ACFF:	35 KB	super-dynamic GFX area 1
-		$AD00-$B0FF:	1 KB	start of AN2 file, extends all the way to $C7FF
-		$B100-$B37F:	640 B	----
-		$B380-$B67F:	768 B	decompressed Game Over graphics.
-		$B680-$B8FF:	640 B	---- this area is used as an intermediate for compression
-		$B900-$BCFF:	1 KB	---- (it likely holds the GFX while SA-1 keeps decompressing to $410000)
-		$BD00-$BFFF:	1 KB	---- (lots of stuff is written here during loading)
-		$C000-$C7FF:	2 KB	used for Lunar Magic exanimation
-		$C800-$FBFF:	13 KB	super-dynamic GFX area 6
-		$FC00-$FFFF:	1 KB	lighting data
+		$0000-$1FFF:	8 KiB		LoRAM
+		$2000-$ACFF:	35 KiB		super-dynamic GFX area 1
+		$AD00-$B0FF:	1 KiB		start of AN2 file, extends all the way to $C7FF
+		$B100-$B37F:	640 B		----
+		$B380-$B67F:	768 B		decompressed Game Over graphics.
+		$B680-$B8FF:	640 B		---- this area is used as an intermediate for compression
+		$B900-$BCFF:	1 KiB		---- (it likely holds the GFX while SA-1 keeps decompressing to $410000)
+		$BD00-$BFFF:	1 KiB		---- (lots of stuff is written here during loading)
+		$C000-$C7FF:	2 KiB		used for Lunar Magic exanimation
+		$C800-$FBFF:	13 KiB		super-dynamic GFX area 6
+		$FC00-$FFFF:	1 KiB		lighting data
 		Bank $7F:
-		$0000-$7FFF:	32 KB	super-dynamic GFX area 3
-		$8000-$8182:	387 B	----
-		$8183-$837A:	504 B	Lunar Magic animation stuff (details unknown)
-		$837B-$977A:	4.9 KB	Stripe Image table
-		$977B-$9A7A:	768 B	sprite text GFX, decompressed (Start, Game Over, etc.)
-		$9A7B-$9C7A:	512 B	----
-		$9C7B-$AFFF:	4.9 KB	misc. (mostly unused, details unknown)
-		$B000-$B3FF:	1 KB	AddmusicK data
-		$B400-$BBFF:	2 KB	misc. (mostly unused, details unknown)
-		$BC00-$BFFF:	1 KB	----
-		$C000-$C0FF:	256 B	used by Lunar Magic for animation functions, see comments in VR3.asm for more details
-		$C100-$C2FF:	512 B	---- (seemingly unused)
-		$C300-$C6FF:	1 KB	----
-		$C700-$C7FF:	256 B	unknown, mostly unused
-		$C800-$FFFF:	14 KB	super-dynamic GFX area 4
+		$0000-$7FFF:	32 KiB		super-dynamic GFX area 3
+		$8000-$8182:	387 B		----
+		$8183-$837A:	504 B		Lunar Magic animation stuff (details unknown)
+		$837B-$977A:	4.9 KiB		Stripe Image table
+		$977B-$9A7A:	768 B		sprite text GFX, decompressed (Start, Game Over, etc.)
+		$9A7B-$9C7A:	512 B		----
+		$9C7B-$AFFF:	4.9 KiB		misc. (mostly unused, details unknown)
+		$B000-$B3FF:	1 KiB		AddmusicK data
+		$B400-$BBFF:	2 KiB		misc. (mostly unused, details unknown)
+		$BC00-$BFFF:	1 KiB		----
+		$C000-$C0FF:	256 B		used by Lunar Magic for animation functions, see comments in VR3.asm for more details
+		$C100-$C2FF:	512 B		---- (seemingly unused)
+		$C300-$C6FF:	1 KiB		----
+		$C700-$C7FF:	256 B		unknown, mostly unused
+		$C800-$FFFF:	14 KiB		super-dynamic GFX area 4
+
+
+
+	-- DP map --
+		$00-0F:		16 B		scratch
+		$10:		1 B		lag flag
+		$11:		1 B		irq flag
+		$12:		1 B		----
+		$13:		1 B		frame counter
+		$14:		1 B		game loop counter
+		$15-18:		4 B		inputs
+		$19:		1 B		----
+		$1A-25:		12 B		BG1/BG2/BG3 coords
+		$26-29:		4 B		seem useless? written but seemingly never read
+		$2A-3D:		20 B		mode 7 regs, can easily be moved somewhere else
+		$3E:		1 B		2105 mirror
+		$3F:		1 B		2102 mirror (unused?)
+		$40:		1 B		2131 mirror
+		$41:		1 B		2123 mirror
+		$42:		1 B		2124 mirror
+		$43:		1 B		2125 mirror
+		$44:		1 B		2130 mirror
+		$45-$54:	16 B		zip box coordinates (BG1, BG2)
+		$55:		1 B		used for BG1 camera
+		$56:		1 B		used for BG2 camera
+		$57:		1 B		only used during level load?
+		$58:		1 B		----
+		$59:		1 B		only used during level load?
+		$5A:		1 B		only used during level load?
+		$5B:		1 B		level mode (BG2 settings + vertical level flag)
+		$5C:		1 B		----
+		$5D:		1 B		number of screens in level
+		$5E:		1 B		level width
+		$5F:		1 B		----
+		$60-$63:	4 B		----
+		$64:		1 B		global YXPPCCCT
+		$65-$67:	3 B		24-bit pointer to BG1 data
+		$68-$6A:	3 B		24-bit pointer to BG2 data
+		$6B-$6D:	3 B		24-bit pointer to map16 data (lo) only used during level load?
+		$6E-$70:	3 B		24-bit pointer to map16 data (hi) only used during level load?
+		$71:		1 B		mario anim
+		$72:		1 B		mario in air
+		$73:		1 B		mario ducking
+		$74:		1 B		mario climbing
+		$75:		1 B		mario in water
+		$76:		1 B		mario direction
+		$77:		1 B		mario blocked
+		$78:		1 B		flags for hiding mario (unused?)
+		$79:		1 B		----
+		$7A-$7B:	2 B		mario x speed (16-bit)
+		$7C:		1 B		----
+		$7D:		1 B		mario y speed (8-bit)
+		$7E-$7F:	2 B		mario x pos on screen (16-bi)
+		$80-$81:	2 B		mario y pos on screen (16-bi)
+		$82-$84:	3 B		24-bit pointer to slope data
+		$85:		1 B		water level flag
+		$86:		1 B		ice level flag
+		$87:		1 B		sprite num cache
+		$88:		1 B		pipe timer
+		$89:		1 B		pipe action (?)
+		$8A-$8C:	3 B		24-bit pointer to compressed GFX (various other purposes as well, not always a pointer)
+		$8D-$8F:	3 B		24-bit pointer to decompressed GFX
+		$90:		1 B		mario y pos within a block
+		$91:		1 B		mario head/feet y pos within a block
+		$92:		1 B		mario x pos within a block
+		$93:		1 B		mario: which side of a block he's on
+		$94-$95:	2 B		mario x pos in level (16-bit)
+		$96-$97:	2 B		mario y pos in level (16-bit)
+		$98-$99:	2 B		y pos in level of current interaction point (16-bit)
+		$9A-$9B:	2 B		x pos in level of current interaction point (16-bit)
+		$9C:		1 B		input for $00BEB0
+		$9D:		1 B		timer to freeze gamemode 14 (negative values apply slow motion)
+		$9E-$AD:	16 B		sprite y speed
+		$AE-$BD:	16 B		sprite x speed
+		$BE-$CD:	16 B		misc sprite table
+		$CE-$D0:	3 B		24-bit pointer to level's sprite data
+		$D1-$D2:	2 B		copy of $94 from previous frame
+		$D3-$D4:	2 B		copy of $96 from previous frame
+		$D5-$D7:	3 B		24-bit pointer to wiggler RAM
+		$D8-$D9:	2 B		16-bit pointer to current sprite's $3200 (sprite num)
+		$DA-$DB:	2 B		16-bit pointer to current sprite's $3210 (sprite y pos lo)
+		$DC:		1 B		????????
+		$DD:		1 B		????????
+		$DE-$DF:	2 B		16-bit pointer to current sprite's $3220 (sprite x pos lo)
+		$E0-$EF:	16 B		----
+		$F0-$FF:	16 B		used for palette load, can be used as scratch during levels
 
 
 	-- I-RAM map --
-		$3000-$30FF:	256 B	SNES/SA-1 DP
-		$3100-$313F:	64 B	SA-1 DP for MPU operation
-		$3140-$3147:	8 B	VRAM remap registers, see Defines
-		$3148-$314F:	8 B	camera backup (4 bytes), camera movement (2 slots, 2 bytes each)
-		$3150:		1 B	NMI flag for MPU
-		$3151-$315F:	15 B	----
-		$3160-$316F:	16 B	light list, 1 byte for each palette row, determines color handling
-		$3170:		1 B	----
-		$3171:		1 B	which buffer is currently being written to by shader
-		$3172-$3175:	4 B	start/end index for dynamic lighting
-		$3176-$317B:	6 B	lighting RGB values
-		$317C:		1 B	dynamic lighting process flag (0 = start new, 1 = processing, 2 = done, highest bit signals that an upload is ready)
-		$317D:		1 B	SNES status in dual thread operation
-		$317E:		1 B	SA-1 status in dual thread operation
-		$317F:		1 B	CCDMA slots in use
-		$3180-$3182:	3 B	code pointer for SNES -> SA-1 call
-		$3183-$3185:	3 B	code pointer for SA-1 -> SNES call
-		$3186-$3188:	3 B	code pointer for SA-1 background mode
-		$3189:		1 B	set to 1 when SNES -> SA-1 call is finished
-		$318A:		1 B	set to 1 when SA-1 -> SNES call is finished
-		$318B:		1 B	background mode flag
-		$318C:		1 B	set to 1 when SA-1 DMA is finished
-		$318D:		1 B	set to 1 when SA-1 is ready for CCDMA
-		$318E:		1 B	emulator flags
-		$318F:		1 B	mirror of $2225 (BWRAM mirror register)
-		$3190-$31DF:	80 B	CCDMA table (10 slots of 8 bytes each)
-		$31E0-$31FF:	32 B	reserved for SA-1 background mode
-		$3200-$35FF:	1024 B	Sprite data, expanded by physics+
-		$3600-$367F:	128 B	Player 1 data
-		$3680-$36FF:	128 B	Player 2 data
-		$3700-$377F:	128 B	CCDMA buffer (also used to pass tilemap data from SNES to SA-1)
-		$3780-$37FF:	128 B	SA-1 stack
+		$3000-$30FF:	256 B		SNES/SA-1 DP
+		$3100-$313F:	64 B		SA-1 DP for MPU operation
+		$3140-$3147:	8 B		VRAM remap registers, see Defines
+		$3148-$314F:	8 B		camera backup (4 bytes), camera movement (2 slots, 2 bytes each)
+		$3150:		1 B		NMI flag for MPU
+		$3151-$315F:	15 B		----
+		$3160-$316F:	16 B		light list, 1 byte for each palette row, determines color handling
+		$3170:		1 B		----
+		$3171:		1 B		which buffer is currently being written to by shader
+		$3172-$3175:	4 B		start/end index for dynamic lighting
+		$3176-$317B:	6 B		lighting RGB values
+		$317C:		1 B		dynamic lighting process flag (0 = start new, 1 = processing, 2 = done, highest bit signals that an upload is ready)
+		$317D:		1 B		SNES status in dual thread operation
+		$317E:		1 B		SA-1 status in dual thread operation
+		$317F:		1 B		CCDMA slots in use
+		$3180-$3182:	3 B		code pointer for SNES -> SA-1 call
+		$3183-$3185:	3 B		code pointer for SA-1 -> SNES call
+		$3186-$3188:	3 B		code pointer for SA-1 background mode
+		$3189:		1 B		set to 1 when SNES -> SA-1 call is finished
+		$318A:		1 B		set to 1 when SA-1 -> SNES call is finished
+		$318B:		1 B		background mode flag
+		$318C:		1 B		set to 1 when SA-1 DMA is finished
+		$318D:		1 B		set to 1 when SA-1 is ready for CCDMA
+		$318E:		1 B		emulator flags
+		$318F:		1 B		mirror of $2225 (BWRAM mirror register)
+		$3190-$31DF:	80 B		CCDMA table (10 slots of 8 bytes each)
+		$31E0-$31FF:	32 B		reserved for SA-1 background mode
+		$3200-$35FF:	1024 B		Sprite data, expanded by physics+
+		$3600-$367F:	128 B		Player 1 data
+		$3680-$36FF:	128 B		Player 2 data
+		$3700-$377F:	128 B		CCDMA buffer (also used to pass tilemap data from SNES to SA-1)
+		$3780-$37FF:	128 B		SA-1 stack
 
 	-- BW-RAM --
 		Image:
-		$6000-$601F:	32 B	scratch
-		$6020-$6021:	2 B	RAMcode flag (0x1234 = go, anything else = disable)
-		$6022-$6023:	2 B	RAMcode offset
-		$6024-$6027:	4 B	global light auto-mixing regs
-		$6028-$602F:	8 B	sprite palset options (highest bit = loaded, rest is index to palset data)
-		$6030-$604F:	32 B	sprite tables used for dynamic file loading
-		$6050-$6074:	37 B	palset information for FusionCore sprites
-		$6075:		1 B	which palset row to start searching at (default = 0x07, all)
-		$6076:		1 B	VRAM map mode
-		$6077-$607F:	9 B	----
-		$6080-$60FF:	128 B	!BigRAM (extended scratch)
-		$6100-$610F:	16 B	SMW's $0100-$010F
-		$6110-$6113:	4 B	Assume that level code uses this
-		$6114-$611B:	8 B	----
-		$611C-$611F:	4 B	apex of players' jumps (used by cable)
-		$6120-$617F:	96 B	best rank score for each level (level data byte 3)
-		$6180-$61EF:	112 B	light point data during levels
-		$61F0-$61FF:	16 B	used during layer tilemap update
-		$6200-$63FF:	512 B	OAM, lo table
-		$6400-$641F:	32 B	OAM, hi table
-		$6420-$649F:	128 B	OAM, hi table buffer
-		$64A0-$665F:	448 B	used as an HDMA table on for message boxes and on title screen
-		$6660-$667F:	32 B	RNG table
-		$6680-$7FFF:	6.4 KB	SMW's $0680-$1FFF
+		$6000-$601F:	32 B		scratch
+		$6020-$6021:	2 B		RAMcode flag (0x1234 = go, anything else = disable)
+		$6022-$6023:	2 B		RAMcode offset
+		$6024-$6027:	4 B		global light auto-mixing regs
+		$6028-$602F:	8 B		sprite palset options (highest bit = loaded, rest is index to palset data)
+		$6030-$604F:	32 B		sprite tables used for dynamic file loading
+		$6050-$6074:	37 B		palset information for FusionCore sprites
+		$6075:		1 B		which palset row to start searching at (default = 0x07, all)
+		$6076:		1 B		VRAM map mode
+		$6077-$607F:	9 B		----
+		$6080-$60FF:	128 B		!BigRAM (extended scratch)
+		$6100-$610F:	16 B		SMW's $0100-$010F
+		$6110-$6113:	4 B		Assume that level code uses this
+		$6114-$611B:	8 B		----
+		$611C-$611F:	4 B		apex of players' jumps (used by cable)
+		$6120-$617F:	96 B		best rank score for each level (level data byte 3)
+		$6180-$61EF:	112 B		light point data during levels
+		$61F0-$61FF:	16 B		used during layer tilemap update
+		$6200-$63FF:	512 B			OAM, lo table
+		$6400-$641F:	32 B		OAM, hi table
+		$6420-$649F:	128 B		OAM, hi table buffer
+		$64A0-$665F:	448 B		used as an HDMA table on for message boxes and on title screen
+		$6660-$667F:	32 B		RNG table
+		$6680-$7FFF:	6.4 KiB		SMW's $0680-$1FFF
 		-- some info --
-		$6703-$6902:	512 B	entire palette (SNES RGB format), fed into shader
-		$6903-$6904:	2 B	mirror of color 0, updated each v-blank (usually black)
-		$6905-$6AF4:	496 B	SMW's work area for overworld palette animations, unused
+		$6703-$6902:	512 B		entire palette (SNES RGB format), fed into shader
+		$6903-$6904:	2 B		mirror of color 0, updated each v-blank (usually black)
+		$6905-$6AF4:	496 B		SMW's work area for overworld palette animations, unused
 					; lunar magic actually tries to write here... scary!
 					Instead, I use it like this:
 					$6905-$6906: 2 B, layer 2 map16 offset when layer 2 is set to level
@@ -226,88 +312,91 @@
 
 
 		areas free due to moving sprites to I-RAM:
-		$74C8-$75E8:	289 B	last byte unused in vanilla, next byte is !SpriteIndex
-		$75EA-$7691:	167 B	next byte is sprite memory setting (from header)
-		$786C-$7877:	12 B	sprite off screen flag, vertical
-		$787B-$7886:	12 B	sprite stomp immunity flag
-		$790F-$791B:	13 B	tweaker 6, last byte is unused in vanilla
-		$7FD6-$7FED:	24 B	unused sprite table and misc (water/cape etc) timer
+		$74C8-$75E8:	289 B		last byte unused in vanilla, next byte is !SpriteIndex
+		$75EA-$7691:	167 B		next byte is sprite memory setting (from header)
+		$786C-$7877:	12 B		sprite off screen flag, vertical
+		$787B-$7886:	12 B		sprite stomp immunity flag
+		$790F-$791B:	13 B		tweaker 6, last byte is unused in vanilla
+		$7FD6-$7FED:	24 B		unused sprite table and misc (water/cape etc) timer
 
 		used like this:
-		$74C8-$74FF:	56 B	----
-		$7500-$75DF:	224 B	PhysicsPlus sprite tables
-		$75E0-$75E8:	9 B	----
-		$75E9:		1 B	sprite index (unchanged)
-		$75EA-$75FF:	22 B	----
-		$7600-$761F:	32 B	each sprite's claim to dynamic tiles
-		$7620-$763F:	32 B	where each dynamic tile is placed in VRAM
-		$7640-$764F:	16 B	hi bit of tile num for dynamic sprites, written per tile
-		$7650-$7651:	2 B	dynamic tile status (1 bit per tile)
-		$7652-$7653:	2 B	how many dynamic tiles were loaded this frame
-		$7654-$7691:	62 B	----
-		$7692:		1 B	sprite memory setting from header (unchanged)
+		$74C8-$74FF:	56 B		----
+		$7500-$75DF:	224 B		PhysicsPlus sprite tables
+		$75E0-$75E8:	9 B		----
+		$75E9:		1 B		sprite index (unchanged)
+		$75EA-$75FF:	22 B		----
+		$7600-$761F:	32 B		each sprite's claim to dynamic tiles
+		$7620-$763F:	32 B		where each dynamic tile is placed in VRAM
+		$7640-$764F:	16 B		hi bit of tile num for dynamic sprites, written per tile
+		$7650-$7651:	2 B		dynamic tile status (1 bit per tile)
+		$7652-$7653:	2 B		how many dynamic tiles were loaded this frame
+		$7654-$7691:	62 B		----
+		$7692:		1 B		sprite memory setting from header (unchanged)
 		; bunch of other stuff here
-		$786C:		1 B	max HP bonus (calculated from save file)
-		$786D:		1 B	mode 7 settings
-		$786E-$7877:	10 B	----
-		$787B-$7886:	12 B	----
-		$790F-$791B:	13 B	----
-		$7FD6-$7FED:	24 B	----
+		$786C:		1 B		mode 7 settings
+		$786D:		1 B		max HP bonus (calculated from save file)
+		$786E:		1 B		how much damage the player should take from the next attack (0 = default)
+		$786F:		1 B		difficulty setting (only lowest 2 bits)
+		$7870:		1 B		difficulty byte from SRAM (full byte)
+		$7871:		1 B		players waiting in door/pipe flags
+		$7872-$787A:	9 B		----
+		$787B-$7886:	12 B		----
+		$790F-$791B:	13 B		----
+		$7FD6-$7FED:	24 B		----
 
 
 		Bank $40:
-		$0000-$1FFF:	8 KB	BW-RAM image
-		$2000-$3FFF:	8 KB	reserved for CCDMA uploads
-		$4000-$43FF:	1024 B	last KB of image cache, usually only used as a backup for layer 3 tilemap
-		$4400-$447F:	128 B	message box data
-		$4480-$44AF:	48 B	----
-		$44B0-$44BF:	16 B	shader row disable, 1 op, set by VR2-type uploads
-		$44C0-$44FF:	64 B	square dynamo table (4 bytes per dynamic tile)
-		$4500-$48FF:	1024 B	VR3 RAM
-		$4900-$49FF:	256 B	DEBUG: CPU performance data
-		$4A00-$4DFF:	1024 B	RAM code area for fast upload
-		$4E00-$4E7F:	128 B	player backup data
-		$4E80:		1 B	multiplayer flag
-		$4E81:		1 B	current player during PCE/menu processing
-		$4E82-$4E83:	2 B	----
-		$4E84-$6FFF:	8.3 KB	misc, check !Defines ($404EB8 holds rendering backup regs, $404EF8 is 1KB area for HSL colors)
-		$7000-$AFFF:	16 KB	decompression buffer (during levels, $9000-$AFFF holds the layer 2 background tilemap)
-		$B000-$C7FF:	6 KB	super-dynamic GFX area 5 ($A000-$C7FF)
-		$C800-$FFFF:	14 KB	Map16 lo byte table
+		$0000-$1FFF:	8 KiB		BW-RAM image
+		$2000-$3FFF:	8 KiB		reserved for CCDMA uploads
+		$4000-$43FF:	1024 B		last KiB of image cache, usually only used as a backup for layer 3 tilemap
+		$4400-$447F:	128 B		message box data
+		$4480-$44AF:	48 B		----
+		$44B0-$44BF:	16 B		shader row disable, 1 op, set by VR2-type uploads
+		$44C0-$44FF:	64 B		square dynamo table (4 bytes per dynamic tile)
+		$4500-$48FF:	1024 B		VR3 RAM
+		$4900-$49FF:	256 B		DEBUG: CPU performance data
+		$4A00-$4DFF:	1024 B		RAM code area for fast upload
+		$4E00-$4E7F:	128 B		player backup data
+		$4E80:		1 B		multiplayer flag
+		$4E81:		1 B		current player during PCE/menu processing
+		$4E82-$4E83:	2 B		----
+		$4E84-$6FFF:	8.3 KiB		misc, check !Defines ($404EB8 holds rendering backup regs, $404EF8 is 1KiB area for HSL colors)
+		$7000-$AFFF:	16 KiB		decompression buffer (during levels, $9000-$AFFF holds the layer 2 background tilemap)
+		$B000-$C7FF:	6 KiB		super-dynamic GFX area 5 ($A000-$C7FF)
+		$C800-$FFFF:	14 KiB		Map16 lo byte table
 
 		Bank $41:
-		$0000-$7FFF:	32 KB	super-dynamic GFX area 2
-		$8000-$80FF:	256 B	Map16 remap table (see !Defines for details)
-		$8100-$84FF:	1 KB	GFX load status table (512 parts, 2 bytes each)
-		$8500-$85FF:	256 B	GFX load status table (128 sets, 2 bytes each)
-		$8600-$867F:	128 B	GFX load status table (64 supersets, 2 bytes each)
-		$8680-$86FF:	128 B	palette load status (128 entries, 1 byte each)
-		$8700-$87FF:	256 B	super-dynamic load WRAM location (256 entries, 1 byte each)
-		$8800-$89FF:	512 B	wiggler data
-		$8A00-$8AFE:	255 B	sprite/shooter load status (00: reload, EE: never reload)
-		$8AFF:		1 B	----
-		$8B00-$8B5F:	96 B	shield box data
-		$8B60:		1 B	shield exists flag (0 = no, 1 = yes)
-		$8B61-$8B64:	4 B	shield hit by hitbox flags
-		$8B65-$8EFF:	923 B	----
-		$8F00-$8FBF:	192 B	platform data
-		$8FC0:		1 B	platform exists flag (0 = no, 1 = yes)
-		$8FC1-$8FF7:	55 B	----
-		$8FF8-$8FFF:	8 B	index to OAM mirrors, 16-bit index to each table
-		$9000-$99FF:	2.5 KB	OAM mirrors (p0-p3, 4 lo tables followed by 4 hi tables, decompressed)
-		$9A00-$A0A3:	1.7 KB	particle data (17 bytes / particle, total 100 particles)
-		$A0A4-$A0AF:	12 B	reserved for shared particle settings
-		$A0B0: 		???	BG object data
-
-		$A0B0-$AFFF:	3.8 KB	----
-
-		$B000-$B2FF:	768 B	save file 1
-		$B300-$B5FF:	768 B	save file 2
-		$B600-$B8FF:	768 B	save file 3
-		$B900-$BBFF:	768 B	permanent SRAM
-		$BC00-$BFFF	1 KB	SRAM buffer
-		$C000-$C7FF:	2 KB	2D/3D Cluster Joint data
-		$C800-$FFFF:	14 KB	Map16 hi byte table
+		$0000-$7FFF:	32 KiB		super-dynamic GFX area 2
+		$8000-$83FF:	1 KiB		GFX load status table (512 parts, 2 bytes each)
+		$8400-$84FF:	256 B		GFX load status table (128 sets, 2 bytes each)
+		$8500-$857F:	128 B		GFX load status table (64 supersets, 2 bytes each)
+		$8580-$85FF:	128 B		palette load status (128 entries, 1 byte each)
+		$8600-$86FF:	256 B		GFX load status for BG objects (256 entries, 1 byte each)
+		$8700-$87FF:	256 B		super-dynamic load RAM location (256 entries, 1 byte each)
+		$8800-$89FF:	512 B		wiggler data
+		$8A00-$8AFE:	255 B		sprite/shooter load status (00: reload, EE: never reload)
+		$8AFF:		1 B		----
+		$8B00-$8B5F:	96 B		shield box data
+		$8B60:		1 B		shield exists flag (0 = no, 1 = yes)
+		$8B61-$8B64:	4 B		shield hit by hitbox flags
+		$8B65-$8EFF:	923 B		----
+		$8F00-$8FBF:	192 B		platform data
+		$8FC0:		1 B		platform exists flag (0 = no, 1 = yes)
+		$8FC1-$8FF7:	55 B		----
+		$8FF8-$8FFF:	8 B		index to OAM mirrors, 16-bit index to each table
+		$9000-$99FF:	2.5 KiB		OAM mirrors (p0-p3, 4 lo tables followed by 4 hi tables, decompressed)
+		$9A00-$A0A3:	1.7 KiB		particle data (17 bytes / particle, total 100 particles)
+		$A0A4-$A0AF:	12 B		reserved for shared particle settings
+		$A0B0-$A5AF:	1.2 KiB		BG object data
+		$A5B0-$ADAF:	2 KiB		YXPCCCTT tttttttt for each map16 tile on page 3
+		$ADB0-$AFFF:	592 B		----
+		$B000-$B2FF:	768 B		save file 1
+		$B300-$B5FF:	768 B		save file 2
+		$B600-$B8FF:	768 B		save file 3
+		$B900-$BBFF:	768 B		permanent SRAM
+		$BC00-$BFFF	1 KiB		SRAM buffer
+		$C000-$C7FF:	2 KiB		2D/3D Cluster Joint data
+		$C800-$FFFF:	14 KiB		Map16 hi byte table
 
 		save file layout:
 			16 bytes of misc data (first 16 bytes of SRAM buffer)

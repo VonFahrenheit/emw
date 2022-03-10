@@ -79,7 +79,7 @@ HappySlime:
 		!Happiness		= $3390,x
 
 		!TargetQuadrant		= $35A0,x
-		!BounceOffset		= $35B0,x
+		!SlimeBounceOffset	= $35B0,x
 		!Goal1			= $35D0,x
 		!Goal2			= $35E0,x
 
@@ -260,7 +260,7 @@ HappySlime:
 		LSR A
 		STA $00
 		STZ $01
-		LDA !BounceOffset : STA $02
+		LDA !SlimeBounceOffset : STA $02
 		STZ $03
 		LDA $3240,x : XBA
 		LDA $3210,x
@@ -323,7 +323,7 @@ HappySlime:
 
 		LDA $3210,x				; store bounce offset so animation will look smooth
 		SEC : SBC $3210,y
-		STA !BounceOffset
+		STA !SlimeBounceOffset
 
 		LDA #!HappySlime_Bounce+1 : STA !SpriteAnimIndex
 		STZ !SpriteAnimTimer

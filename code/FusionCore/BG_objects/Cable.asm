@@ -19,224 +19,242 @@
 ;	a - anim index
 ;	2 - contact with player 2
 ;	1 - contact with player 1
-;
+
+; scratch
+; $00
+; $02 - 24-bit pointer to anim table, also used for various other purposes
+; $06 - left limit during interaction
+; $08 - right limit during interaction
+; $0A
+; $0C - 21 bits from misc
+; $0E - aaaaaa bits from misc
+
+; other DP
+; $F4	8-bit	number of cables that have been rendered
+; $F5	8-bit	how many cables have been processed (increments by 1 before each cable code call)
+; $F6	16-bit	current tile being rendered to (carries across multiple cables)
+
+
+
 
 
 
 	Cable:
 
 
-		; get update data for this cable
-		LDA $52
-		AND #$00FF
-		DEC A
-		STA $02
-		ASL #2
-		ADC $02
-		TAX
-		LDA !CableUpdateData+0,x : STA !CableUpdateMinus2
-		LDA !CableUpdateData+2,x : STA !CableUpdate0
-		LDA !CableUpdateData+3,x : STA !CableUpdatePlus1
+	; update data for this cable
+		LDA $F5							;\
+		AND #$00FF						; |
+		DEC A							; |
+		STA $02							; | index = ID * 5
+		ASL #2							; |
+		ADC $02							; |
+		TAX							;/
+		LDA !CableUpdateData+0,x : STA !CableUpdateMinus2	;\
+		LDA !CableUpdateData+2,x : STA !CableUpdate0		; | get data from previous frame
+		LDA !CableUpdateData+3,x : STA !CableUpdatePlus1	;/
 
 
-		LDX $00
+		LDX $00							; X = BG object index
+
+
+	; physics
+		PHX							;\ wrapper for physics
+		PHP							;/
+
+
+		.GetClipping						;\
+		LDA !BG_object_X,x					; |
+		STA $04							; |
+		STA $09							; |
+		LDA !BG_object_H,x					; |
+		AND #$00FF						; |
+		CMP #$0080 : BCC +					; |
+		LDA #$FFE0 : BRA ++					; |
+	+	LDA #$FFFE						; |
+	++	CLC : ADC !BG_object_Y,x				; |
+		SEP #$20						; | cable clipping
+		STA $05							; |
+		XBA : STA $0B						; |
+		LDA !BG_object_W,x					; |
+		ASL #3							; |
+		BNE $01 : DEC A						; |
+		STA $06							; |
+		LDA !BG_object_H,x : BPL +				; |
+		LDA #$23 : BRA ++					; |
+	+	LDA #$05						; |
+	++	STA $07							;/
+
+
+		.Timer							;\
+		LDA !BG_object_Timer,x : BEQ ..update			; |
+		DEC !BG_object_Timer,x					; | timer (update anim upon hitting 0)
+		BRA ..notimer						; |
+		..update						;/
+		REP #$30						;\
+		LDA !BG_object_Misc,x					; |
+		AND #$00FF : STA $0C					; |
+		AND #$00FC : TRB $0C					; |
+		STA $0E							; | get anim pointer
+		TAY							; |
+		INY							; |
+		LDA.w #.AnimTable+2 : STA $00				; |
+		LDA.w #.AnimTable>>16 : STA $02				; |
+		SEP #$20						;/> B already clear due to >>16
+		LDA [$00],y						;\
+		CMP $0E : BEQ ..notimer					; | check if this animation has a timed component
+		..nextanim						;/
+		STA $0E							;\
+		TAY							; |
+		LDA !BG_object_Misc,x					; | get bits for misc
+		AND #$03						; |
+		ORA $0E							;/
+		CPY #$0005*4 : BNE ..notlastboost			;\
+		BIT #$03 : BNE ..invalid				; | go into bounce0 instead of boost0 if at least one player is still on the cable
+		..notlastboost						;/
+		BIT #$03 : BEQ ..valid					;\
+		CMP #$04 : BCS ..valid					; |
+		..invalid						; |
+		LDA #$04						; | go into bounce0 instead of resting if at least one player is still on the cable
+		ORA $0C							; |
+		LDY #$0004						; |
+		..valid							;/
+		STA !BG_object_Misc,x					;\
+		LDA [$00],y : STA !BG_object_Timer,x			; | update anim
+		..notimer						;/
+
+
+		.AdjustPositions					;\
+		REP #$20						; | $02 = timer
+		LDA !BG_object_Timer,x					; |
+		AND #$00FF : STA $02					;/
+		LDA !BG_object_Misc,x					;\
+		AND #$00FF : STA $08					; | $04 = contact bits from previous frame
+		AND #$00FC : TRB $08					;/
+		TAY							; Y = anim table index
+		PHB : PHK : PLB						; > bank wrapper start
+		LDA.w .AnimTable,y : STA $00				; $00 = main pointer
+		LDY $02							;\
+		LDA ($00),y						; |
+		INY							; |
+		SEC : SBC ($00),y					; | $00 = Y delta
+		AND #$00FF						; |
+		CMP #$0080						; |
+		BCC $03 : ORA #$FF00					; |
+		STA $00							;/
+		LSR $08 : BCC ..p2					;\
+		..p1							; |
+		LDA !P2YPosLo-$80					; |
+		CLC : ADC $00						; |
+		STA !P2YPosLo-$80					; | apply Y delta to player 1
+		LDY !P2Character-$80-1					; |
+		CPY #$0100 : BCS ..p2					; |
+		SEC : SBC #$0010					; |
+		STA $96							;/
+		..p2							;\
+		LSR $08 : BCC ..done					; |
+		LDA !P2YPosLo						; |
+		CLC : ADC $00						; |
+		STA !P2YPosLo						; | apply Y delta to player 2
+		LDY !P2Character-1					; |
+		CPY #$0100 : BCS ..done					; |
+		SEC : SBC #$0010					; |
+		STA $96							; |
+		..done							;/
+
+
+		SEP #$30						;\
+		SEC : JSL !PlayerClipping				; | check contact (store contact bits in $00)
+		STA $0E							;/
+		PLB							; > bank wrapper end
+		PLP							;\ reg wrapper end
+		PLX							;/
+		STA $00							; also store a copy of contact bits in $0E
 
 
 
-		.GetClipping
-		PHX
-		PHP
-		LDA !BG_object_X,x				;\
-		STA $04						; |
-		STA $09						; |
-		LDA !BG_object_H,x
-		AND #$00FF
-		CMP #$0080 : BCC +
-		LDA #$FFE0 : BRA ++
-	+	LDA #$FFFE
-	++	CLC : ADC !BG_object_Y,x			; |
-		SEP #$20					; |
-		STA $05						; | clipping
-		XBA : STA $0B					; |
-		LDA !BG_object_W,x				; |
-		ASL #3						; |
-		BNE $01 : DEC A					; |
-		STA $06						; |
-		LDA !BG_object_H,x : BPL +
-		LDA #$23 : BRA ++
-	+	LDA #$05
-	++	STA $07						;/
 
-		.Timer
-		LDA !BG_object_Timer,x : BEQ ..update
-		DEC !BG_object_Timer,x
-		BRA ..notimer
-
-		..update
-		REP #$30
-		LDA !BG_object_Misc,x
-		AND #$00FF : STA $0C
-		AND #$00FC : TRB $0C
-		STA $0E
-		TAY
-		INY
-		LDA.w #.AnimTable+2 : STA $00
-		LDA.w #.AnimTable>>16 : STA $02
-		SEP #$20
-		; B already clear due to >>16
-		LDA [$00],y
-		CMP $0E : BEQ ..notimer
-		..nextanim
-		STA $0E
-		TAY
-		LDA !BG_object_Misc,x
-		AND #$03
-		ORA $0E
-		CPY #$0005*4 : BNE ..notlastboost		;\
-		BIT #$03 : BNE ..invalid			; | go into bounce0 instead of boost0 if at least one player is still on the cable
-		..notlastboost					;/
-		BIT #$03 : BEQ ..valid				;\
-		CMP #$04 : BCS ..valid				; |
-		..invalid					; |
-		LDA #$04					; | go into bounce0 instead of resting if at least one player is still on the cable
-		ORA $0C						; |
-		LDY #$0004					; |
-		..valid						;/
-		STA !BG_object_Misc,x
-		LDA [$00],y : STA !BG_object_Timer,x
-		..notimer
-
-
-		.AdjustPositions				;\
-		REP #$20					; | $02 = timer
-		LDA !BG_object_Timer,x				; |
-		AND #$00FF : STA $02				;/
-		LDA !BG_object_Misc,x				;\
-		AND #$00FF : STA $08				; | $04 = contact bits from previous frame
-		AND #$00FC : TRB $08				;/
-		TAY						; Y = anim table index
-		PHB : PHK : PLB					; bank wrapper
-		LDA.w .AnimTable,y : STA $00			; $00 = main pointer
-		LDY $02						;\
-		LDA ($00),y					; |
-		INY						; |
-		SEC : SBC ($00),y				; | $00 = Y delta
-		AND #$00FF					; |
-		CMP #$0080					; |
-		BCC $03 : ORA #$FF00				; |
-		STA $00						;/
-		LSR $08 : BCC ..p2				;\
-		..p1						; |
-		LDA !P2YPosLo-$80				; |
-		CLC : ADC $00					; |
-		STA !P2YPosLo-$80				; | apply Y delta to player 1
-		LDY !P2Character-$80-1				; |
-		CPY #$0100 : BCS ..p2				; |
-		SEC : SBC #$0010				; |
-		STA $96						;/
-		..p2						;\
-		LSR $08 : BCC ..done				; |
-		LDA !P2YPosLo					; |
-		CLC : ADC $00					; |
-		STA !P2YPosLo					; | apply Y delta to player 2
-		LDY !P2Character-1				; |
-		CPY #$0100 : BCS ..done				; |
-		SEC : SBC #$0010				; |
-		STA $96						; |
-		..done						;/
-
-
-
-		SEP #$30
-		SEC : JSL !PlayerClipping
-		STA $0E
-		PLB
-		PLP
-		PLX
-		STA $00
-
-		LDA !BG_object_W,x				;\
-		AND #$00FF					; |
-		ASL #3						; | $08 = right limit
-		ADC !BG_object_X,x				; |
-		SEC : SBC #$0015				; |
-		STA $08						;/
-		LDA !BG_object_X,x				;\
-		CLC : ADC #$0008				; | $06 = left limit
-		STA $06						;/
+	; interaction
+		LDA !BG_object_W,x					;\
+		AND #$00FF						; |
+		ASL #3							; | $08 = right limit
+		ADC !BG_object_X,x					; |
+		SEC : SBC #$0015					; |
+		STA $08							;/
+		LDA !BG_object_X,x					;\
+		CLC : ADC #$0008					; | $06 = left limit
+		STA $06							;/
 		; .SetLandingWobble uses $02-$05
 
 
-		.InteractP1
-		LSR $00 : BCC ..done
-		SEP #$20
-		LDA.l !P2DropDownTimer-$80 : BMI ..fail
-		LDA.l !P2YSpeed-$80
-		CLC : ADC.l !P2VectorY-$80
-		BPL ..interact
-		..fail
-		LDA #$01 : TRB $0E
-		BRA ..done
-		..interact
-		LDA !BG_object_Misc,x
-		AND #$01 : BNE ..noland
-		REP #$20
-		LDA !ApexP1
-		JSR .SetLandingWobble
-		..noland
-		LDA #$04 : STA.l !P2ExtraBlock-$80
-		LDA #$10 : STA.l !P2YSpeed-$80
-		LDA !BG_object_Misc,x
-		ORA #$01
-		STA !BG_object_Misc,x
-		REP #$20
-		LDA.l !P2XPosLo-$80
-		CMP $06
-		BCS $02 : LDA $06
-		CMP $08
-		BCC $02 : LDA $08
-		STA.l !P2XPosLo-$80
-		..done
+		.InteractP1						;\ check for player 1 contact
+		LSR $00 : BCC ..done					;/
+		SEP #$20						;\
+		LDA.l !P2DropDownTimer-$80 : BMI ..fail			; |
+		LDA.l !P2YSpeed-$80					; |
+		CLC : ADC.l !P2VectorY-$80				; | clear interaction bit if player 1 is moving up or dropping through
+		BPL ..interact						; |
+		..fail							; |
+		LDA #$01 : TRB $0E					; |
+		BRA ..done						;/
+		..interact						;\
+		LDA !BG_object_Misc,x					; |
+		AND #$01 : BNE ..noland					; |
+		REP #$20						; | landing code
+		LDA !ApexP1						; |
+		JSR .SetLandingWobble					; |
+		..noland						;/
+		LDA #$04 : STA.l !P2ExtraBlock-$80			;\
+		LDA #$10 : STA.l !P2YSpeed-$80				; |
+		LDA !BG_object_Misc,x					; |
+		ORA #$01 : STA !BG_object_Misc,x			; |
+		REP #$20						; |
+		LDA.l !P2XPosLo-$80					; | enforce left/right limit for player 1
+		CMP $06							; |
+		BCS $02 : LDA $06					; |
+		CMP $08							; |
+		BCC $02 : LDA $08					; |
+		STA.l !P2XPosLo-$80					; |
+		..done							;/
 
-		.InteractP2
-		LSR $00 : BCC ..done
-		SEP #$20
-		LDA.l !P2DropDownTimer : BMI ..fail
-		LDA.l !P2YSpeed
-		CLC : ADC.l !P2VectorY
-		BPL ..interact
-		..fail
-		LDA #$02 : TRB $0E
-		BRA ..done
-		..interact
-		LDA !BG_object_Misc,x
-		AND #$02 : BNE ..noland
-		REP #$20
-		LDA !ApexP1
-		JSR .SetLandingWobble
-		..noland
-		LDA #$04 : STA.l !P2ExtraBlock
-		LDA #$10 : STA.l !P2YSpeed
-		LDA !BG_object_Misc,x
-		ORA #$02
-		STA !BG_object_Misc,x
-		REP #$20
-		LDA.l !P2XPosLo
-		CMP $06
-		BCS $02 : LDA $06
-		CMP $08
-		BCC $02 : LDA $08
-		STA.l !P2XPosLo
-		..done
+		.InteractP2						;\ check for player 2 contact
+		LSR $00 : BCC ..done					;/
+		SEP #$20						;\
+		LDA.l !P2DropDownTimer : BMI ..fail			; |
+		LDA.l !P2YSpeed						; |
+		CLC : ADC.l !P2VectorY					; | clear interaction bit if player 2 is moving up or dropping through
+		BPL ..interact						; |
+		..fail							; |
+		LDA #$02 : TRB $0E					; |
+		BRA ..done						;/
+		..interact						;\
+		LDA !BG_object_Misc,x					; |
+		AND #$02 : BNE ..noland					; |
+		REP #$20						; | landing code
+		LDA !ApexP2						; |
+		JSR .SetLandingWobble					; |
+		..noland						;/
+		LDA #$04 : STA.l !P2ExtraBlock				;\
+		LDA #$10 : STA.l !P2YSpeed				; |
+		LDA !BG_object_Misc,x					; |
+		ORA #$02 : STA !BG_object_Misc,x			; |
+		REP #$20						; |
+		LDA.l !P2XPosLo						; | enforce left/right limit for player 2
+		CMP $06							; |
+		BCS $02 : LDA $06					; |
+		CMP $08							; |
+		BCC $02 : LDA $08					; |
+		STA.l !P2XPosLo						; |
+		..done							;/
 
 ; $00 AND
 ; changed: 1
 ; off: 1
 
-		REP #$30
-		LDA $0E : STA $02
-		EOR #$0003
-		STA $00
+		REP #$30						;\
+		LDA $0E : STA $02					; | update interaction bits
+		EOR #$0003						; |
+		STA $00							;/
 
 ; $00	interaction flags
 ; $02	scratch
@@ -254,7 +272,7 @@
 		AND $00
 		AND #$0003
 		STA $00
-		PHB : PHK : PLB
+		PHB : PHK : PLB						; > bank wrapper start
 		SEP #$20
 		LDA #$01*4 : STA $0C
 		LDA $06
@@ -264,269 +282,271 @@
 	+	STZ $0D
 
 
-		.BoostP1
-		LSR $00 : BCS $03 : JMP ..done
-		LDA !P2YSpeed-$80 : BMI ..bounce
-		LDA #$05*4 : STA $04
-		BRA ..setanim
-		..bounce
-		LDA #$04 : TRB !P2ExtraBlock-$80
-		LDA $0A
-		CMP #$0A : BCC ..reduce
-		REP #$20
-		LDA !ApexP1 : BMI ..reduce
-		SEC : SBC $410000+!BG_object_Y,x
-		BPL ..reduce
-		CMP.w #-!BoostThreshold
-		SEP #$20
-		BCS ..normal
-		..boost
-		LDY.w #$07*4
-		LDA !P2YSpeed-$80
-		EOR #$FF
-		CMP #$54
-		BCC $02 : LDA #$54
-		STA $02
-		LSR A
-		ADC $02
-		EOR #$FF
-		BRA ..set
-		..normal
-		LDY.w #$06*4
-		LDA !P2YSpeed-$80 : BRA ..set
-		..reduce
-		SEP #$20
-		LDY $0C
-		LDA !P2YSpeed-$80
-		EOR #$FF
-		STA $02
-		LSR #2
-		SBC $02
-		..set
-		STY $04
-		STA !P2YSpeed-$80
-		LDA #$08 : STA !SPC4
-		..setanim
-		LDA $06
-		AND #$03
-		ORA $04
-		STA $410000+!BG_object_Misc,x
-		REP #$20
-		AND #$00FC : TAY
-		LDA.w #.AnimTable+2 : STA $02
-		SEP #$20
-		LDA ($02),y : STA $410000+!BG_object_Timer,x
-		LDA !P2Character-$80 : BNE ..done
-		LDA !P2YSpeed-$80 : STA !MarioYSpeed
-		..done
+		.BoostP1						;\ check for player 1 boost
+		LSR $00 : BCS $03 : JMP ..done				;/
+		LDA !P2YSpeed-$80 : BMI ..bounce			;\
+		LDA #$05*4 : STA $04					; |
+		BRA ..setanim						; |
+		..bounce						; |
+		LDA #$04 : TRB !P2ExtraBlock-$80			; | reduce jump height if:
+		LDA $0A							; | - height disp < 0x0A
+		CMP #$0A : BCC ..reduce					; | - apex < 0
+		REP #$20						; | - apex > cable Y
+		LDA !ApexP1 : BMI ..reduce				; |
+		SEC : SBC $410000+!BG_object_Y,x			; |
+		BPL ..reduce						;/
+		CMP.w #-!BoostThreshold					;\
+		SEP #$20						; | boost if apex - cable Y is greater than some threshold (otherwise normal, do nothing)
+		BCS ..normal						;/
+		..boost							;\
+		LDY.w #$07*4						; |
+		LDA !P2YSpeed-$80					; |
+		EOR #$FF						; |
+		CMP #$54						; |
+		BCC $02 : LDA #$54					; | boost: increase Y speed by 50% (cap to not turn into downwards speed)
+		STA $02							; |
+		LSR A							; |
+		ADC $02							; |
+		EOR #$FF						; |
+		BRA ..set						;/
+		..normal						;\
+		LDY.w #$06*4						; | normal: 100% of Y speed
+		LDA !P2YSpeed-$80 : BRA ..set				;/
+		..reduce						;\
+		SEP #$20						; |
+		LDY $0C							; |
+		LDA !P2YSpeed-$80					; | reduce: decrease Y speed by 25%
+		EOR #$FF						; |
+		STA $02							; |
+		LSR #2							; |
+		SBC $02							;/
+		..set							;\
+		STY $04							; | update player 1 speed
+		STA !P2YSpeed-$80					;/
+		LDA #$08 : STA !SPC4					; > bounce SFX
+		..setanim						;\
+		LDA $06							; |
+		AND #$03						; |
+		ORA $04							; |
+		STA $410000+!BG_object_Misc,x				; | update anim
+		REP #$20						; |
+		AND #$00FC : TAY					; |
+		LDA.w #.AnimTable+2 : STA $02				; |
+		SEP #$20						; |
+		LDA ($02),y : STA $410000+!BG_object_Timer,x		;/
+		LDA !P2Character-$80 : BNE ..done			;\
+		LDA !P2YSpeed-$80 : STA !MarioYSpeed			; | player 1 mario check
+		..done							;/
 
 
-		.BoostP2
-		LSR $00 : BCS $03 : JMP ..done
-		LDA !P2YSpeed : BMI ..bounce
-		LDA #$05*4 : STA $04
-		BRA ..setanim
-		..bounce
-		LDA #$04 : TRB !P2ExtraBlock
-		LDA $0A
-		CMP #$0A : BCC ..reduce
-		REP #$20
-		LDA !ApexP2 : BMI ..reduce
-		SEC : SBC $410000+!BG_object_Y,x
-		BPL ..reduce
-		CMP.w #-!BoostThreshold
-		SEP #$20
-		BCS ..normal
-		..boost
-		LDY.w #$07*4
-		LDA !P2YSpeed
-		EOR #$FF
-		CMP #$54
-		BCC $02 : LDA #$54
-		STA $02
-		LSR A
-		ADC $02
-		EOR #$FF
-		BRA ..set
-		..normal
-		LDY.w #$06*4
-		LDA !P2YSpeed : BRA ..set
-		..reduce
-		SEP #$20
-		LDY $0C
-		LDA !P2YSpeed
-		EOR #$FF
-		STA $02
-		LSR #2
-		SBC $02
-		..set
-		STY $04
-		STA !P2YSpeed
-		LDA #$08 : STA !SPC4
-		..setanim
-		LDA $06
-		AND #$03
-		ORA $04
-		STA $410000+!BG_object_Misc,x
-		REP #$20
-		AND #$00FC : TAY
-		LDA.w #.AnimTable+2 : STA $02
-		SEP #$20
-		LDA ($02),y : STA $410000+!BG_object_Timer,x
-		LDA !P2Character : BNE ..done
-		LDA !P2YSpeed : STA !MarioYSpeed
-		..done
+		.BoostP2						;\ check for player 2 boost
+		LSR $00 : BCS $03 : JMP ..done				;/
+		LDA !P2YSpeed : BMI ..bounce				;\
+		LDA #$05*4 : STA $04					; |
+		BRA ..setanim						; |
+		..bounce						; |
+		LDA #$04 : TRB !P2ExtraBlock				; | reduce jump height if:
+		LDA $0A							; | - height disp < 0x0A
+		CMP #$0A : BCC ..reduce					; | - apex < 0
+		REP #$20						; | - apex > cable Y
+		LDA !ApexP2 : BMI ..reduce				; |
+		SEC : SBC $410000+!BG_object_Y,x			; |
+		BPL ..reduce						;/
+		CMP.w #-!BoostThreshold					;\
+		SEP #$20						; | boost if apex - cable Y is greater than some threshold (otherwise normal, do nothing)
+		BCS ..normal						;/
+		..boost							;\
+		LDY.w #$07*4						; |
+		LDA !P2YSpeed						; |
+		EOR #$FF						; |
+		CMP #$54						; |
+		BCC $02 : LDA #$54					; | boost: increase Y speed by 50% (cap to not turn into downwards speed)
+		STA $02							; |
+		LSR A							; |
+		ADC $02							; |
+		EOR #$FF						; |
+		BRA ..set						;/
+		..normal						;\
+		LDY.w #$06*4						; | normal: 100% of Y speed
+		LDA !P2YSpeed : BRA ..set				;/
+		..reduce						;\
+		SEP #$20						; |
+		LDY $0C							; |
+		LDA !P2YSpeed						; | reduce: decrease Y speed by 25%
+		EOR #$FF						; |
+		STA $02							; |
+		LSR #2							; |
+		SBC $02							;/
+		..set							;\
+		STY $04							; | update player 2 speed
+		STA !P2YSpeed						;/
+		LDA #$08 : STA !SPC4					; > bounce SFX
+		..setanim						;\
+		LDA $06							; |
+		AND #$03						; |
+		ORA $04							; |
+		STA $410000+!BG_object_Misc,x				; | update anim
+		REP #$20						; |
+		AND #$00FC : TAY					; |
+		LDA.w #.AnimTable+2 : STA $02				; |
+		SEP #$20						; |
+		LDA ($02),y : STA $410000+!BG_object_Timer,x		;/
+		LDA !P2Character : BNE ..done				;\
+		LDA !P2YSpeed : STA !MarioYSpeed			; | player 2 mario check
+		..done							;/
 
-		REP #$30
-		PLB
-		LDA !BG_object_Misc,x
-		EOR $0E
-		AND #$0003 : STA $00
-		SEP #$20
-		LDA !BG_object_Misc,x
-		AND.b #$03^$FF
-		ORA $0E
-		STA !BG_object_Misc,x
-		REP #$20
 
+		PLB							; > bank wrapper end
+		REP #$30						;\
+		LDA !BG_object_Misc,x					; |
+		EOR $0E							; |
+		AND #$0003 : STA $00					; |
+		SEP #$20						; | update collision flags
+		LDA !BG_object_Misc,x					; |
+		AND.b #$03^$FF						; |
+		ORA $0E							; |
+		STA !BG_object_Misc,x					; |
+		REP #$20						;/
+
+
+
+
+	; graphics
 
 		.Anim
-		LDA $53 : BMI +
-		CMP #$0080 : BCS ..justupdateheight
-	+	LDA !BG_object_Misc,x
-		BIT #$0003 : BNE ..render
-		AND #$00FC
-		CMP #$0005*4 : BCS ..render
-		JMP ..norender
-
-		..render
-		JSR RenderCable
-		LDA $53
-		CMP #$0080 : BCS ..justupdateheight
-
-		PHX
-		LDA !BG_object_H,x
-		SEP #$30
-		STA $00
-		PHB
-		LDA #$40
-		PHA : PLB
-		LDA $00 : BPL ..0
-		CMP #$F8 : BCS ..up1
-	..up2	LDX #$02 : BRA +
-	..up1	LDX #$03 : BRA +
-	..0	LDX #$04
-	+	LDY #$02
-	-	LDA.w !CableRenderLineTemp,y : BEQ +
-		LDA.w !CableUpdateMinus2,x
-		ORA #$01
-		STA.w !CableUpdateMinus2,x
-	+	DEX
-		DEY : BPL -
-		PLB
-		REP #$30
-		PLX
-
-		JSR .TilemapUpdate
-		..justupdateheight
-		LDA.w #.AnimTable : STA $02
-		LDA.w #.AnimTable>>16 : STA $04
-		LDA !BG_object_Misc,x
-		AND #$0003 : STA $00
-		LDA !BG_object_Misc,x
-		AND #$00FC
-		TAY
-		LDA [$02],y : STA $02
-		LDA !BG_object_Timer,x
-		AND #$00FF : TAY
-		LDA [$02],y
-		SEP #$20
-		LDY $00
-		CPY #$0003
-		BNE $02 : ADC #$04
-		STA !BG_object_H,x
-		REP #$20
-		LDA $53
-		CMP #$0080 : BCC ..done			; if this was set, actually go into ..norender
-
-		..norender
-	; handle bounce animation here
-	; update tiles into static catenary here
-		SEP #$20
-		LDA #$04 : STA !BG_object_H,x
-		REP #$20
-
-		JSR RenderCable_GetStaticTilemap
-		JSR .TilemapUpdate
-		..done
+		LDA $F6 : BMI +						;\ don't render if all tiles are used
+		CMP #$0080 : BCS ..justupdateheight			;/
+	+	LDA !BG_object_Misc,x					;\ render if a player is touching the cable
+		BIT #$0003 : BNE ..render				;/
+		AND #$00FC						;\ render if anim >= 4
+		CMP #$0005*4 : BCS ..render				;/
+		JMP ..norender						; otherwise don't render
+		..render						;\ render cable
+		JSR RenderCable						;/
+		LDA $F6							;\ if there weren't enough tiles, default to static tilemap
+		CMP #$0080 : BCS ..justupdateheight			;/
+		PHX							;\
+		LDA !BG_object_H,x					; |
+		SEP #$30						; |
+		STA $00							; |
+		PHB							; |
+		LDA #$40						; |
+		PHA : PLB						; |
+		LDA $00 : BPL ..0					; |
+		CMP #$F8 : BCS ..up1					; |
+	..up2	LDX #$02 : BRA +					; |
+	..up1	LDX #$03 : BRA +					; | get dynamic form tilemap
+	..0	LDX #$04						; |
+	+	LDY #$02						; |
+	-	LDA.w !CableRenderLineTemp,y : BEQ +			; |
+		LDA.w !CableUpdateMinus2,x				; |
+		ORA #$01						; |
+		STA.w !CableUpdateMinus2,x				; |
+	+	DEX							; |
+		DEY : BPL -						; |
+		PLB							; |
+		REP #$30						; |
+		PLX							; |
+		JSR .TilemapUpdate					;/
 
 
-		; store update data for this cable
-		STX $00
-		LDA $52
-		AND #$00FF
-		DEC A
-		STA $02
-		ASL #2
-		ADC $02
-		TAX
-		LDA !CableUpdateMinus2 : STA !CableUpdateData+0,x
-		LDA !CableUpdate0 : STA !CableUpdateData+2,x
-		LDA !CableUpdatePlus1 : STA !CableUpdateData+3,x
-		LDA !CableTilemapIndex				;\
-		CLC : ADC #$00C0				; | tilemap index +0xC0
-		STA !CableTilemapIndex				;/
+		..justupdateheight					;\
+		LDA.w #.AnimTable : STA $02				; |
+		LDA.w #.AnimTable>>16 : STA $04				; |
+		LDA !BG_object_Misc,x					; |
+		AND #$0003 : STA $00					; |
+		LDA !BG_object_Misc,x					; |
+		AND #$00FC						; |
+		TAY							; | update height
+		LDA [$02],y : STA $02					; | anim determines which table to load, and timer indexes it to get a height value
+		LDA !BG_object_Timer,x					; |
+		AND #$00FF : TAY					; |
+		LDA [$02],y						; |
+		SEP #$20						; |
+		LDY $00							; |
+		CPY #$0003						; |
+		BNE $02 : ADC #$04					; |
+		STA !BG_object_H,x					; |
+		REP #$20						;/
+		LDA $F6							;\ done, unless all tiles are used
+		CMP #$0080 : BCC ..done					;/
+
+		..norender						;\
+		SEP #$20						; |
+		LDA #$04 : STA !BG_object_H,x				; |
+		REP #$20						; | if render is invalid (conditions not met OR all tiles are used), load static tilemap
+		JSR RenderCable_GetStaticTilemap			; |
+		JSR .TilemapUpdate					; |
+		..done							;/
 
 
-		.SetCoordsP1
-		LDX $00
-		LDA !BG_object_Misc,x
-		AND #$0003
-		LSR A
-		STA $00
-		BCC ..done
-		LDA !BG_object_Y,x
-		AND #$FFF0
-		DEC A
-		AND #$FFF0
-		STA $02
-		LDA !BG_object_H,x
-		AND #$00FF
-		CMP #$0080
-		BCC $03 : ORA #$FF00
-		CLC : ADC $02
-		STA.l !P2YPosLo-$80
-		LDA.l !P2Character-$80
-		AND #$00FF : BNE ..done
-		LDA.l !P2YPosLo-$80
-		SEC : SBC #$0010
-		STA $96
-		LDA.l !P2XPosLo-$80 : STA $94
-		..done
-
-		.SetCoordsP2
-		LSR $00 : BCC ..done
-		LDA !BG_object_Y,x
-		AND #$FFF0
-		DEC A
-		AND #$FFF0
-		STA $02
-		LDA !BG_object_H,x
-		AND #$00FF
-		CMP #$0080
-		BCC $03 : ORA #$FF00
-		CLC : ADC $02
-		STA.l !P2YPosLo
-		LDA.l !P2Character
-		AND #$00FF : BNE ..done
-		LDA.l !P2YPosLo
-		SEC : SBC #$0010
-		STA $96
-		LDA.l !P2XPosLo : STA $94
-		..done
+		STX $00							;\
+		LDA $F5							; |
+		AND #$00FF						; |
+		DEC A							; | index = cable ID * 5
+		STA $02							; |
+		ASL #2							; |
+		ADC $02							; |
+		TAX							;/
+		LDA !CableUpdateMinus2 : STA !CableUpdateData+0,x	;\
+		LDA !CableUpdate0 : STA !CableUpdateData+2,x		; | pass update data for this cable
+		LDA !CableUpdatePlus1 : STA !CableUpdateData+3,x	;/
+		LDA !CableTilemapIndex					;\
+		CLC : ADC #$00C0					; | tilemap index +0xC0
+		STA !CableTilemapIndex					;/
 
 
 
+	; set y for players (done last to sync with render)
+		.SetCoordsP1						;\
+		LDX $00							; |
+		LDA !BG_object_Misc,x					; |
+		AND #$0003						; | check if player 1 should be updated
+		LSR A							; |
+		STA $00							; |
+		BCC ..done						;/
+		LDA !BG_object_Y,x					;\
+		AND #$FFF0						; |
+		DEC A							; |
+		AND #$FFF0						; |
+		STA $02							; |
+		LDA !BG_object_H,x					; | update player 1 y
+		AND #$00FF						; |
+		CMP #$0080						; |
+		BCC $03 : ORA #$FF00					; |
+		CLC : ADC $02						; |
+		STA.l !P2YPosLo-$80					;/
+		LDA.l !P2Character-$80					;\
+		AND #$00FF : BNE ..done					; |
+		LDA.l !P2YPosLo-$80					; |
+		SEC : SBC #$0010					; | mario check
+		STA $96							; |
+		LDA.l !P2XPosLo-$80 : STA $94				; |
+		..done							;/
+
+		.SetCoordsP2						;\ check if player 2 should be updated
+		LSR $00 : BCC ..done					;/
+		LDA !BG_object_Y,x					;\
+		AND #$FFF0						; |
+		DEC A							; |
+		AND #$FFF0						; |
+		STA $02							; |
+		LDA !BG_object_H,x					; | update player 2 y
+		AND #$00FF						; |
+		CMP #$0080						; |
+		BCC $03 : ORA #$FF00					; |
+		CLC : ADC $02						; |
+		STA.l !P2YPosLo						;/
+		LDA.l !P2Character					;\
+		AND #$00FF : BNE ..done					; |
+		LDA.l !P2YPosLo						; |
+		SEC : SBC #$0010					; | mario check
+		STA $96							; |
+		LDA.l !P2XPosLo : STA $94				; |
+		..done							;/
+
+
+	; return
 		RTS
 
 
@@ -589,8 +609,8 @@
 
 
 
-; $4D	amount to add to source address (bytes)
-; $4F	overflow past right border (bytes)
+; $F0	amount to add to source address (bytes)
+; $F2	overflow past right border (bytes)
 
 
 
@@ -600,22 +620,22 @@
 		PHX
 		PHP
 
-		STZ $4D						; no source offset
+		STZ $F0						; no source offset
 		LDA !BG_object_X,x				;\
-		CMP $45 : BCS ..noadd				; |
-		LDA $45						; |
+		CMP !BG1ZipBoxL : BCS ..noadd			; |
+		LDA !BG1ZipBoxL					; |
 		SEC : SBC !BG_object_X,x			; | source offset if sticking out past left border
 		LSR #3						; |
 		ASL A						; |
-		STA $4D						;/
+		STA $F0						;/
 		LDA !BG_object_W,x				;\
 		AND #$00FF					; |
 		ASL #3						; | at least 1 tile must be within bounds
 		ADC !BG_object_X,x				; |
-		CMP $45 : BCC ..fail				;/
-		LDA $45						; starting xpos when sticking out past left border
+		CMP !BG1ZipBoxL : BCC ..fail			;/
+		LDA !BG1ZipBoxL					; starting xpos when sticking out past left border
 		..noadd
-		CMP $47 : BCC ..okx
+		CMP !BG1ZipBoxR : BCC ..okx
 		..fail
 		PLP
 		PLX
@@ -631,18 +651,18 @@
 		AND #$00FF					; |
 		ASL #3						; |
 		ADC !BG_object_X,x				; |
-		SEC : SBC $47					; | amount to cut off of right side (if it sticks out past right border)
+		SEC : SBC !BG1ZipBoxR				; | amount to cut off of right side (if it sticks out past right border)
 		BPL $03 : LDA #$0000				; |
 		LSR #3						; |
 		ASL A						; |
-		ADC $4D						; |
-		STA $4F						;/
+		ADC $F0						; |
+		STA $F2						;/
 
 		LDA !BG_object_Y,x				;\
 		SEC : SBC #$0010				; | base y position (adjusted for minus2 position)
-		CMP $4B : BCS ..fail				; > instant fail if below bottom line
+		CMP !BG1ZipBoxD : BCS ..fail			; > instant fail if below bottom line
 		STA $98						;/
-		LDA $4D						;\
+		LDA $F0						;\
 		ASL #2						; | > x offset can change which tilemap this starts on
 		ADC !BG_object_X,x				; |
 		AND #$0100					; | tilemap bits of address
@@ -652,7 +672,7 @@
 		LDA !BG_object_W,x				;\
 		AND #$00FF					; | byte count of rows
 		ASL A						; |
-		SEC : SBC $4F					; > minus offset
+		SEC : SBC $F2					; > minus offset
 		BEQ ..fail					; > ALWAYS FAIL IF SIZE = 0
 		STA $06						;/
 		ASL #2						;\
@@ -670,8 +690,8 @@
 		LDA $98						; ypos
 
 		..loop						;\
-		CMP $49 : BCC ..outofbounds			; |
-		CMP $4B : BCS ..outofbounds			; | y bits of address
+		CMP !BG1ZipBoxU : BCC ..outofbounds		; |
+		CMP !BG1ZipBoxD : BCS ..outofbounds		; | y bits of address
 		ASL #2						; |
 		AND #$03E0					; |
 		TSB $02						;/
@@ -712,7 +732,7 @@
 
 		..up2
 		LDA.l ..transfersource+6,x : BEQ ..clear
-		CLC : ADC $4D
+		CLC : ADC $F0
 		CLC : ADC $04
 		STA $0A
 		LDA.l ..transfersource+8,x
@@ -720,7 +740,7 @@
 
 		..up1
 		LDA.l ..transfersource+3,x : BEQ ..clear
-		CLC : ADC $4D
+		CLC : ADC $F0
 		CLC : ADC $04
 		STA $0A
 		LDA.l ..transfersource+5,x
@@ -728,7 +748,7 @@
 
 		..normaloffset
 		LDA.l ..transfersource+0,x : BEQ ..clear
-		CLC : ADC $4D
+		CLC : ADC $F0
 		CLC : ADC $04
 		STA $0A
 		LDA.l ..transfersource+2,x
@@ -886,10 +906,8 @@ endmacro
 		CMP.w #-!BoostThreshold
 		SEP #$20
 		BCC ..4
-
 		..1
 		LDA #$01*4 : BRA ..set
-
 		..reset
 		SEP #$20
 		LDA !BG_object_Misc,x
@@ -898,10 +916,8 @@ endmacro
 		STA !BG_object_Misc,x
 		STZ !BG_object_Timer,x
 		RTS
-
 		..4
 		LDA #$04*4
-
 		..set
 		STA $02
 		LDA #$00 : XBA
@@ -921,10 +937,19 @@ endmacro
 
 
 
+; pixels are rendered 4 at a time, a unit i call a "quadpixel"
+; quadpixels can be stacked on each other vertically depending on the cable's thickness
+; when a new tile is started, it is cleared and appended to the tilemap buffer
+; tiles are placed in VRAM in the same order that they are rendered
+; if crossing into a tile vertically (for example, when rendering to height 7 with thickness = 2), that tile might already exist
+; if that tile already exists, the new pixels are superimposed on it, otherwise a new tile is generated for those pixels
+; this is called "overflow"
+
+
 ; texture map:
 ;	- copy up to 8 chunks into buffer (offset 000-00F)
 ;	- draw chunks as a 4px wide column
-;	- $4D holds size
+;	- $F0 holds size
 ;		00 = 4x1
 ;		02 = 4x2
 ;		04 = 4x3
@@ -945,14 +970,14 @@ endmacro
 
 ; example code for texture mapping
 ;
-;		LDX $53
+;		LDX $F6
 ;		LDA $00
 ;		ORA $02
 ;		AND #$0707
 ;		ORA.l .TileCCIndex,x
 ;		LSR A
 ;		TAY
-;		LDX $4D
+;		LDX $F0
 ;		JMP (..ptr,x)
 ;		..ptr
 ;		dw ..8
@@ -992,8 +1017,8 @@ endmacro
 ; $0C	latent growth
 ; $0E	Xpos to stop rendering the current line at
 ;
-; $4F	safe stack pointer
-; $53	which tile is next to be rendered
+; $F2	safe stack pointer
+; $F6	which tile is next to be rendered
 
 
 ; still need:
@@ -1001,476 +1026,470 @@ endmacro
 
 
 
+
+
+
 	RenderCable:
-		LDA !BG_object_H,x
-		AND #$00FF
-		XBA
-		STA $06
+		LDA !BG_object_H,x				;\
+		AND #$00FF					; | deepest Y default to cable height disp
+		XBA						; |
+		STA $06						;/
 
-		LDA !BG_object_W,x			;\
-		ASL #3					; | prepare to push ending Xpos of last line
-		AND #$01FF				; |
-		CLC : ADC !CableCacheX			; > add cached X
-		STA $02					;/
+		LDA !BG_object_W,x				;\
+		ASL #3						; | prepare to push ending Xpos of last line (width of cable)
+		AND #$01FF					; |
+		CLC : ADC !CableCacheX				; > add cached X
+		STA $02						;/
 
-		LDA #$0010 : STA $04			; default width of middle line
-
-
-
-		LDA !BG_object_Misc,x			;\
-		AND #$0003 : BNE +			; | use last offset if there is no player contact
-
-		.AdjustCenter
-		LDA #$0007 : STA $0C
-		LDA !BG_object_W,x
-		AND #$00FF
-		CMP #$000A
-		BCC $04 : ASL $04 : ASL $0C
-		SEP #$20
-		LDA !BG_object_W,x
-		ASL #2
-		SBC $0C
-		CMP !BG_object_Tile,x
-		BEQ ..go
-		BCC ..dec
-	..inc	INC !BG_object_Tile,x : BRA ..go
-	..dec	DEC !BG_object_Tile,x
-		..go
-		REP #$20
-		STZ $0C
-		LDA $06 : BEQ ..nocurve
-		LDA !BG_object_W,x
-		AND #$00FF
-		ASL #2
-		STA $00
-		LDA !BG_object_Tile,x
-		AND #$00FF
-		ASL A
-		ADC $04
-		LSR A
-		SEC : SBC $00
-		BPL $04 : EOR #$FFFF : INC A
-		CMP #$0028 : BCS ..nocurve
-		CMP #$0010 : BCS ..curve1
-		..curve2
-		LDA #$0002 : BRA ..setcurve
-		..curve1
-		LDA $00
-		CMP #$0050 : BCS ..nocurve
-		LDA #$0001
-		..setcurve
-		BIT $06
-		BPL $04 : EOR #$FFFF : INC A
-		STA $0C
-		..nocurve
-		LDA !BG_object_Tile,x : BRA ++		;/
-
-	+	STZ $0C
-		CMP #$0003 : BEQ .Double
-		CMP #$0002 : BEQ .P2
-
-		.P1
-		LDA.l !P2XPosLo-$80 : BRA +
-
-		.P2
-		LDA.l !P2XPosLo				;\
-	+	SEC : SBC !BG_object_X,x		; |
-		BPL $03 : LDA #$0000			; |
-		SEP #$20				; | calculate ending Xpos of first line
-		STA !BG_object_Tile,x			; |
-		REP #$20				; |
-		BRA ++
-
-		.Double
-		LDA.l !P2XPosLo-$80
-		SEC : SBC.l !P2XPosLo
-		PHP
-		BPL $04 : EOR #$FFFF : INC A
-		CLC :  ADC $04
-		STA $04
-		PLP : BPL .P2
-		BRA .P1
-
-	++	AND #$00FC				; |
-		CLC : ADC !CableCacheX			; > add cached X
-		CMP #$0008
-		BCS $03 : LDA #$0008
-		STA $0E					;/
-		CLC : ADC $04				;\
-		AND #$00FC				; | prepare to push ending Xpos of second line
-		STA $00					;/
-
-		LDA $02					;\
-		SEC : SBC #$0009
-		CMP $00 : BCS ..nocap			; |
-		PHA					; | cap coords to maintain smoothness
-		SEC : SBC $00				; |
-		CLC : ADC $0E				; |
-		STA $0E					; |
-		PLA : STA $00				; |
-		..nocap					;/
-
-		PHX
-		PHP
-		PHB : PHK : PLB
-		TSC : STA $4F				; save stack pointer
-
-		LDA $02					;\
-		SEC : SBC $00				; | push dx for line 3
-		PHA					;/
-		PEI ($02)				; push ending Xpos of line 3
-		PEI ($00)				; push ending Xpos of line 2
-
-		SEP #$20
-		LDA #$40 : PHA
-		LDA #$01 : STA $2250			; prep division
-		STZ $223F				; project 4bpp bitmap
-		REP #$20
-		LDA #$FFFF : STA $0A			; start with an invalid hash so first tile always counts as new
+		LDA #$0010 : STA $04				; default width of middle line
 
 
 
+		LDA !BG_object_Misc,x				;\ check for player contact
+		AND #$0003 : BNE .PlayerContact			;/
+
+
+		.AdjustCenter					;\
+		LDA #$0007 : STA $0C				; |
+		LDA !BG_object_W,x				; |
+		AND #$00FF					; |
+		CMP #$000A					; |
+		BCC $04 : ASL $04 : ASL $0C			; |
+		SEP #$20					; |
+		LDA !BG_object_W,x				; | no contact: center of curve gets pulled towards center of cable
+		ASL #2						; |
+		SBC $0C						; |
+		CMP !BG_object_Tile,x				; |
+		BEQ ..go					; |
+		BCC ..dec					; |
+	..inc	INC !BG_object_Tile,x : BRA ..go		; |
+	..dec	DEC !BG_object_Tile,x				; |
+		..go						;/
+		REP #$20					;\
+		STZ $0C						; |
+		LDA $06 : BEQ ..nocurve				; |
+		LDA !BG_object_W,x				; |
+		AND #$00FF					; |
+		ASL #2						; |
+		STA $00						; |
+		LDA !BG_object_Tile,x				; |
+		AND #$00FF					; |
+		ASL A						; |
+		ADC $04						; |
+		LSR A						; |
+		SEC : SBC $00					; |
+		BPL $04 : EOR #$FFFF : INC A			; | calculate approximate curvature to make dynamic -> static catenary transformation more smooth
+		CMP #$0028 : BCS ..nocurve			; |
+		CMP #$0010 : BCS ..curve1			; |
+		..curve2					; |
+		LDA #$0002 : BRA ..setcurve			; |
+		..curve1					; |
+		LDA $00						; |
+		CMP #$0050 : BCS ..nocurve			; |
+		LDA #$0001					; |
+		..setcurve					; |
+		BIT $06						; |
+		BPL $04 : EOR #$FFFF : INC A			; |
+		STA $0C						; |
+		..nocurve					; |
+		LDA !BG_object_Tile,x : BRA .SetLimit		;/
+
+
+
+		.PlayerContact					;\
+		STZ $0C						; |
+		CMP #$0003 : BEQ ..double			; |
+		CMP #$0002 : BEQ ..p2				; | determine which player's Xpos to use
+		..p1						; |
+		LDA.l !P2XPosLo-$80 : BRA +			; |
+		..p2						; |
+		LDA.l !P2XPosLo					;/
+	+	SEC : SBC !BG_object_X,x			;\
+		BPL $03 : LDA #$0000				; |
+		SEP #$20					; | calculate ending Xpos of first line
+		STA !BG_object_Tile,x				; |
+		REP #$20					; |
+		BRA .SetLimit					;/
+		..double					;\
+		LDA.l !P2XPosLo-$80				; |
+		SEC : SBC.l !P2XPosLo				; |
+		PHP						; | if both players are on the cable:
+		BPL $04 : EOR #$FFFF : INC A			; | - the leftmost player determines where the first line ends
+		CLC :  ADC $04					; | - the rightmost player determines where the second line ends
+		STA $04						; |
+		PLP : BPL ..p2					; |
+		BRA ..p1					;/
+
+
+		.SetLimit					;\
+		AND #$00FC					; |
+		CLC : ADC !CableCacheX				; > add cached X
+		CMP #$0008					; | get ending Xpos of first line
+		BCS $03 : LDA #$0008				; |
+		STA $0E						;/
+		CLC : ADC $04					;\
+		AND #$00FC					; | prepare to push ending Xpos of second line
+		STA $00						;/
+		LDA $02						;\
+		SEC : SBC #$0009				; |
+		CMP $00 : BCS ..nocap				; |
+		PHA						; | cap coords to maintain smoothness
+		SEC : SBC $00					; |
+		CLC : ADC $0E					; |
+		STA $0E						; |
+		PLA : STA $00					; |
+		..nocap						;/
+
+
+
+		PHX						;\ reg wrapper start
+		PHP						;/
+		PHB : PHK : PLB					; bank wrapper start
+		TSC : STA $F2					; save stack pointer (REP #$20 : LDA $F2 : TCS : PLB : PLP : PLX can be used as a full restore wherever)
+
+
+		LDA $02						;\
+		SEC : SBC $00					; | push dx for line 3
+		PHA						;/
+		PEI ($02)					; push ending Xpos of line 3
+		PEI ($00)					; push ending Xpos of line 2
+
+		SEP #$20					;\ push 0x40 (bank)
+		LDA #$40 : PHA					;/
+		LDA #$01 : STA $2250				; prep division
+		STZ $223F					; project 4bpp bitmap
+		REP #$20					;\ start with an invalid hash so first tile always counts as new
+		LDA #$FFFF : STA $0A				;/
+
+
+
+	; first line: slanted line on the left
 	.FirstLine
-		LDA $06 : BPL ..pos
+		LDA $06 : BPL ..pos				; check direction (up/down)
 
-		..neg
-		EOR #$FFFF : INC A
-		STA $2251
-		LDA $0E
-		SEC : SBC !CableCacheX			; | /dx
-		STA $2253
-		LDA !CableCacheX : STA $00
-		LDA $06
-		AND #$F800
-		EOR #$FFFF : INC A
-		STA $02
-		STA $04
-		LDA $2306
-		ASL #2
-		EOR #$FFFF : INC A
-		BRA ..go
+		..neg						;\
+		EOR #$FFFF : INC A				; |
+		STA $2251					; | 256 dy / dx
+		LDA $0E						; |
+		SEC : SBC !CableCacheX				; |
+		STA $2253					;/
+		LDA !CableCacheX : STA $00			;\
+		LDA $06						; |
+		AND #$F800					; | starting Y coord
+		EOR #$FFFF : INC A				; |
+		STA $02						; |
+		STA $04						;/
+		LDA $2306					;\
+		ASL #2						; | k factor
+		EOR #$FFFF : INC A				; |
+		BRA ..go					;/
 
 		..pos
-		STA $2251				; 256 * dy
-		LDA $0E					;\
-		SEC : SBC !CableCacheX			; | /dx
-		STA $2253				;/
-		LDA !CableCacheX : STA $00		;\
-		STZ $02					; | starting coords
-		STZ $04					;/
-		LDA $2306				;\
-		ASL #2					; | k factor
-		..go
-		STA $08					;/
-		PLB
+		STA $2251					;\
+		LDA $0E						; | 256 dy / dx
+		SEC : SBC !CableCacheX				; |
+		STA $2253					;/
+		LDA !CableCacheX : STA $00			;\
+		STZ $02						; | starting coords
+		STZ $04						;/
+		LDA $2306					;\ k factor
+		ASL #2						;/
 
-		STZ.w !CableRenderLineTemp+0		;\ reset temp update regs
-		STZ.w !CableRenderLineTemp+1		;/
-		LDA #$8000
-		STA.w !CableConnectionHash		; give connection hash an initially invalid number (still not 0xFFFF since that would trigger false positive)
-
-		LDX #$003E				;\
-		LDA.w !CableTilemapIndex		; |
-		ORA #$003E				; |
-		TAY					; |
-		LDA #$00F8				; |
-	-	STA.w !CableTilemapBuffer+$00,y		; | all tiles are empty and none have been rendered to
-		STA.w !CableTilemapBuffer+$40,y		; | (these don't use the same index, but we'll still clear them both here)
-		STA.w !CableTilemapBuffer+$80,y		; |
-		STZ.w !CableTileOverflow+$00,x		; |
-		STZ.w !CableTileOverflow+$40,x		; |
-		DEY #2					; |
-		DEX #2 : BPL -				;/
-
-		..loop
-		LDA $00
-		ORA $02
-		AND #$0707^$FFFF
-		CMP $0A : BEQ ..sametile
-		JSR .NewTile
-		..sametile
-		LDX $53
-		LDA $00
-		ORA $02
-		AND #$0707
-		ORA.l .TileCCIndex,x
-		LSR A
-		TAX
-		LDA #$2222
-		STA.w (!CableRenderBuffer)/2,x
-	;	LDA #$1111
-		STA.w (!CableRenderBuffer+$100)/2,x
-	;	LDA #$1111
-	;	STA.w (!CableRenderBuffer+$200)/2,x
-	;	LDA #$2222
-	;	STA.w (!CableRenderBuffer+$300)/2,x
-		TXA
-		AND #$0700/2
-		CMP #$0700/2 : BCC ..nooverflow
-		JSR .OverflowTile
-		..nooverflow
-		LDA $04
-		CLC : ADC $08
-		BPL $03 : LDA #$0000
-		STA $04
-		AND #$FF00 : STA $02
-		LDA $08
-		SEC : SBC $0C
-		TAX
-		EOR $08
-		BMI $02 : STX $08
-		LDA $00
-		CLC : ADC #$0004
-		STA $00
-		CMP $0E : BCC ..loop
+		..go						;\ store k factor
+		STA $08						;/
+		PLB						; go into bank 0x40
+		STZ.w !CableRenderLineTemp+0			;\ reset temp update regs
+		STZ.w !CableRenderLineTemp+1			;/
+		LDA #$8000 : STA.w !CableConnectionHash		; give connection hash an initially invalid number (not 0xFFFF since that could trigger false positive)
+		LDX #$003E					;\
+		LDA.w !CableTilemapIndex			; |
+		ORA #$003E					; |
+		TAY						; |
+		LDA #$00F8					; |
+	-	STA.w !CableTilemapBuffer+$00,y			; | all tiles are empty and none have been rendered to
+		STA.w !CableTilemapBuffer+$40,y			; | (these don't use the same index, but we'll still clear them both here)
+		STA.w !CableTilemapBuffer+$80,y			; |
+		STZ.w !CableTileOverflow+$00,x			; |
+		STZ.w !CableTileOverflow+$40,x			; |
+		DEY #2						; |
+		DEX #2 : BPL -					;/
 
 
+		..loop						;\
+		LDA $00						; |
+		ORA $02						; |
+		AND #$0707^$FFFF				; | compare hash to check for new tile
+		CMP $0A : BEQ ..sametile			; |
+		JSR .NewTile					; |
+		..sametile					;/
+		LDX $F6						;\
+		LDA $00						; |
+		ORA $02						; | get rendering index (hash + CC index)
+		AND #$0707					; |
+		ORA.l .TileCCIndex,x				; |
+		LSR A : TAX					;/
+		LDA #$2222					;\
+		STA.w (!CableRenderBuffer)/2,x			; | render 4 pixels of color 2
+		STA.w (!CableRenderBuffer+$100)/2,x		;/
+		TXA						;\
+		AND #$0700/2					; |
+		CMP #$0700/2 : BCC ..nooverflow			; | check for overflow
+		JSR .OverflowTile				; |
+		..nooverflow					;/
+		LDA $04						;\
+		CLC : ADC $08					; |
+		BPL $03 : LDA #$0000				; | Y = Y + k
+		STA $04						; |
+		AND #$FF00 : STA $02				; |
+		LDA $08						;/
+		SEC : SBC $0C					;\
+		TAX						; | apply latent growth
+		EOR $08						; |
+		BMI $02 : STX $08				;/
+		LDA $00						;\
+		CLC : ADC #$0004				; | update X coord and loop until reaching the end of the line
+		STA $00						; |
+		CMP $0E : BCC ..loop				;/
+
+
+	; second line: horizontal line in the middle
 	.MiddleLine
-		PLA : STA $0E				; pull ending Xpos of second line
-		LDA $0C : BNE ..loop
-		LDA $06 : BMI ..loop
-		STA $02
-		STA $04
-		..loop
-		LDA $00
-		ORA $02
-		AND #$0707^$FFFF
-		CMP $0A : BEQ ..sametile
-		JSR .NewTile
-		..sametile
-		LDX $53
-		LDA $00
-		ORA $02
-		AND #$0707
-		ORA.l .TileCCIndex,x
-		LSR A
-		TAX
-		LDA $53 : STA.w !CableConnectionIndex	; update with last index
-		LDA #$2222
-		STA.w (!CableRenderBuffer)/2,x
-	;	LDA #$1111
-		STA.w (!CableRenderBuffer+$100)/2,x
-	;	LDA #$1111
-	;	STA.w (!CableRenderBuffer+$200)/2,x
-	;	LDA #$2222
-	;	STA.w (!CableRenderBuffer+$300)/2,x
-		TXA
-		AND #$0700/2
-		CMP #$0700/2 : BCC ..nooverflow
-		JSR .OverflowTile
-		..nooverflow
-		LDA $00
-		CLC : ADC #$0004
-		STA $00
-		CMP $0E : BCC ..loop
-
-		LDA $0A : STA.w !CableConnectionHash
-		LDX $53
-		CPX #$0080 : BCC +
-		LDA $4F : TCS
-		PLB
-		PLP
-		PLX
-		RTS
-		+
-		LDA.w !CableTileOverflow,x : BEQ ..done
-		INX #2
-		STX $53
-		..done
-
-		LDA #$FFFF : STA $0A
+		PLA : STA $0E					; pull ending Xpos of second line
+		LDA $0C : BNE ..loop				;\
+		LDA $06 : BMI ..loop				; | if there's no latent growth and deepest Y is valid (positive), set second line starting Y = deepest Y
+		STA $02						; |
+		STA $04						;/
 
 
+		..loop						;\
+		LDA $00						; |
+		ORA $02						; |
+		AND #$0707^$FFFF				; | compare hash to check for new tile
+		CMP $0A : BEQ ..sametile			; |
+		JSR .NewTile					; |
+		..sametile					;/
+		LDX $F6						;\
+		LDA $00						; |
+		ORA $02						; | get rendering index (hash + CC index)
+		AND #$0707					; |
+		ORA.l .TileCCIndex,x				; |
+		LSR A : TAX					;/
+		LDA $F6 : STA.w !CableConnectionIndex		; update connection index (last line will use this)
+		LDA #$2222					;\
+		STA.w (!CableRenderBuffer)/2,x			; | render 4 pixels of color 2
+		STA.w (!CableRenderBuffer+$100)/2,x		;/
+		TXA						;\
+		AND #$0700/2					; |
+		CMP #$0700/2 : BCC ..nooverflow			; | check for overflow
+		JSR .OverflowTile				; |
+		..nooverflow					;/
+		LDA $00						;\
+		CLC : ADC #$0004				; | update X coord and loop until reaching the end of the line
+		STA $00						; |
+		CMP $0E : BCC ..loop				;/
+
+
+		LDA $0A : STA.w !CableConnectionHash		; get connection hash (last line will use this)
+		LDX $F6						;\
+		CPX #$0080 : BCC ..valid			; |
+		LDA $F2 : TCS					; |
+		PLB						; | return if all tiles have been used up
+		PLP						; |
+		PLX						; |
+		RTS						;/
+		..valid						;\
+		LDA.w !CableTileOverflow,x : BEQ ..done		; |
+		INX #2						; | increase rendering index if last tile overflowed
+		STX $F6						; |
+		..done						;/
+		LDA #$FFFF : STA $0A				; hash = 0xFFFF (-1)
+
+
+	; last line: slanted line on the right side
 	.LastLine
-		LDA $00 : STA $0E
-		PLA
-		SEC : SBC #$0004
-		STA $00				; pull ending Xpos of last line
-		LDA $06 : BPL ..pos
+		LDA $00 : STA $0E				; > last line is rendered right -> left, so ending Xpos is the last Xpos from middle line
+		PLA						;\
+		SEC : SBC #$0004				; | starting Xpos of last line = width of cable - 4
+		STA $00						;/
+		LDA $06 : BPL ..pos				; check direction (up/down)
 
-		..neg
-		EOR #$FFFF : INC A
-		STA.l $2251
-		PLA : STA.l $2253
-		LDA $06
-		AND #$F800
-		EOR #$FFFF : INC A
-		STA $02
-		ORA #$00FF
-		STA $04
-		LDA.l $2306
-		ASL #2
-		EOR #$FFFF : INC A
-		BRA ..go
+		..neg						;\
+		EOR #$FFFF : INC A				; | 256 dy / dx
+		STA.l $2251					; |
+		PLA : STA.l $2253				;/
+		LDA $06						;\
+		AND #$F800					; |
+		EOR #$FFFF : INC A				; | starting Y coord
+		STA $02						; |
+		ORA #$00FF					; |
+		STA $04						;/
+		LDA.l $2306					;\
+		ASL #2						; | k factor
+		EOR #$FFFF : INC A				; |
+		BRA ..go					;/
 
-		..pos
-		STA.l $2251				; 256 * dy
-		PLA : STA.l $2253			; /dx
-		STZ $02
-		STZ $04
-		NOP
-		LDA.l $2306				;\
-		ASL #2					; | k factor
-		..go
-		STA $08					;/
+		..pos						;\
+		STA.l $2251					; | 256 dy / dx
+		PLA : STA.l $2253				;/
+		STZ $02						;\
+		STZ $04						; | starting Y coord = 0x00
+		NOP						;/
+		LDA.l $2306					;\ k factor
+		ASL #2						;/
 
-		..loop
-		LDA $00
-		ORA $02
-		AND #$0707^$FFFF
-		CMP $0A : BEQ ..sametile
-		JSR .NewTile
-		..sametile
-		LDA.w !CableTilemapBuffer,y		; last line has to get the index this way to account for variations in end point
-		AND #$003F
-		ASL A
-		TAX
-		..finaltile
-		LDA $00
-		ORA $02
-		AND #$0707
-		ORA.l .TileCCIndex,x
-		LSR A
-		TAX
-		LDA #$2222
-		STA.w (!CableRenderBuffer)/2,x
-	;	LDA #$1111
-		STA.w (!CableRenderBuffer+$100)/2,x
-	;	LDA #$1111
-	;	STA.w (!CableRenderBuffer+$200)/2,x
-	;	LDA #$2222
-	;	STA.w (!CableRenderBuffer+$300)/2,x
-		TXA
-		AND #$0700/2
-		CMP #$0700/2 : BCC ..nooverflow
-		PHY
-		JSR .OverflowTile
-		PLY
-		..nooverflow
-		LDA $04
-		CLC : ADC $08
-		BPL $03 : LDA #$0000
-		STA $04
-		AND #$FF00 : STA $02
-		LDA $08
-		SEC : SBC $0C
-		TAX
-		EOR $08
-		BMI $02 : STX $08
-		LDA $00
-		SEC : SBC #$0004
-		STA $00
-		CMP $0E : BCS ..loop
+		..go						;\ store k factor
+		STA $08						;/
 
-		LDX $53					;\
-		CPX #$0080 : BCC +
-		LDA $4F : TCS
-		PLB
-		PLP
-		PLX
-		RTS
-		+
-		LDA.w !CableTileOverflow,x : BEQ ..end	; |
-		LDA $0A					; |
-		SEC : SBC.w !CablePrevHash		; | if last tile overflowed, make sure it's still appended to CCDMA
-		CMP #$0800 : BEQ ..end			; | (if last hash diff indicated crossing up only, this tile is already appended)
-		INX #2					; |
-		STX $53					;/
+
+		..loop						;\
+		LDA $00						; |
+		ORA $02						; |
+		AND #$0707^$FFFF				; | compare hash to check for new tile
+		CMP $0A : BEQ ..sametile			; |
+		JSR .NewTile					; |
+		..sametile					;/
+		LDA.w !CableTilemapBuffer,y			;\
+		AND #$003F					; | last line has to get the index this way to account for variations in end point
+		ASL A : TAX					;/
+		..finaltile					; > this label is actually used, don't touch
+		LDA $00						;\
+		ORA $02						; |
+		AND #$0707					; | get rendering index (hash + CC index)
+		ORA.l .TileCCIndex,x				; |
+		LSR A : TAX					;/
+		LDA #$2222					;\
+		STA.w (!CableRenderBuffer)/2,x			; | render 4 pixels of color 2
+		STA.w (!CableRenderBuffer+$100)/2,x		;/
+		TXA						;\
+		AND #$0700/2					; |
+		CMP #$0700/2 : BCC ..nooverflow			; |
+		PHY						; | check for overflow
+		JSR .OverflowTile				; |
+		PLY						; |
+		..nooverflow					;/
+		LDA $04						;\
+		CLC : ADC $08					; |
+		BPL $03 : LDA #$0000				; | Y = Y + k
+		STA $04						; |
+		AND #$FF00 : STA $02				;/
+		LDA $08						;\
+		SEC : SBC $0C					; |
+		TAX						; | apply latent growth
+		EOR $08						; |
+		BMI $02 : STX $08				;/
+		LDA $00						;\
+		SEC : SBC #$0004				; | update X and loop until reaching the end of the line
+		STA $00						; |
+		CMP $0E : BCS ..loop				;/
+
+		LDX $F6						;\
+		CPX #$0080 : BCC ..valid			; |
+		LDA $F2 : TCS					; |
+		PLB						; | return if all tiles have been used up
+		PLP						; |
+		PLX						; |
+		RTS						;/
+		..valid						;\
+		LDA.w !CableTileOverflow,x : BEQ ..end		; |
+		LDA $0A						; |
+		SEC : SBC.w !CablePrevHash			; | if last tile overflowed, make sure it's still appended to CCDMA
+		CMP #$0800 : BEQ ..end				; | (if last hash diff indicated crossing up only, this tile is already appended)
+		INX #2						; |
+		STX $F6						;/
 
 		..end
-		INC $51					; +1 render
-		LDA $0E
-		CLC : ADC #$0004
-		AND #$FFF8
-		STA.w !CableCacheX			; cache ending X
+		INC $F4						; +1 render
+		LDA $0E						;\
+		CLC : ADC #$0004				; | cache ending X
+		AND #$FFF8					; |
+		STA.w !CableCacheX				;/
 
-		PLB
-		PLP
-		PLX
-		RTS
+		PLB						; bank wrapper end
+		PLP						;\ reg wrapper end
+		PLX						;/
+		RTS						; return
 
 
 
 	.NewTile
-		LDX $0A : STX.w !CablePrevHash
-		STA $0A
-		CMP.w !CableConnectionHash : BNE ..normal
-		..finalhash
-		LDX $53					;\
-		CPX #$0080 : BCC +
-		LDA $4F : TCS
-		PLB
-		PLP
-		PLX
-		RTS
-		+
-		LDA.w !CableTileOverflow,x : BEQ +	; | register overflow of penultimate tile
-		INX #2					; |
-		STX $53					;/
-	+	LDX.w !CableConnectionIndex
-		PLA					; kill RTS
-		JMP .LastLine_finaltile
+		LDX $0A : STX.w !CablePrevHash			;\ update hash
+		STA $0A						;/
+		CMP.w !CableConnectionHash : BNE ..normal	; > check for final tile (connecting middle line and last line)
+		..finalhash					;\
+		LDX $F6						; |
+		CPX #$0080 : BCC ..validfinal			; |
+		LDA $F2 : TCS					; | return if all tiles are used up
+		PLB						; |
+		PLP						; |
+		PLX						; |
+		RTS						;/
+		..validfinal					;\
+		LDA.w !CableTileOverflow,x : BEQ +		; | register overflow of penultimate tile
+		INX #2						; |
+		STX $F6						;/
+	+	LDX.w !CableConnectionIndex			; get index of connection tile
+		PLA						; kill RTS
+		JMP .LastLine_finaltile				; jump to render last tile
 
-		..normal
-		TXA
-		LDX $53 : BMI +
-		CPX #$0080 : BCC +
-		LDA $4F : TCS
-		PLB
-		PLP
-		PLX
-		RTS
-		+
+		..normal					;\ A = previous hash
+		TXA						;/
+		LDX $F6 : BMI ..validnormal			;\
+		CPX #$0080 : BCC ..validnormal			; |
+		LDA $F2 : TCS					; |
+		PLB						; | return if all tiles are used up
+		PLP						; |
+		PLX						; |
+		RTS						;/
+		..validnormal					;\
+		EOR $0A						; | check crossing drection
+		AND #$0008 : BNE ..horizontal			; |
+		BRA ..vertical					;/
+		..horizontal					;\
+		LDA.w !CableTileOverflow,x			; | extra +2 unless this tile already has overflow
+		BEQ $02 : INX #2				;/
+		..vertical					;\
+		INX #2						; | +2
+		STX $F6						;/
 
-		EOR $0A
-		AND #$0008 : BNE ..sideways
-		BRA +
-		..sideways
-		LDA.w !CableTileOverflow,x : BEQ +
-		INX #2
-	+	INX #2
-		STX $53
-
-		LDA $00
-		SEC : SBC.w !CableCacheX
-		ORA $02
-		AND #$18FF
-		LSR #3
-		BIT #$0100
-		BEQ $03 : ORA #$0020
-		BIT #$0200
-		BEQ $03 : ORA #$0040
-		AND #$00FF
-		ASL A
-		ADC.w !CableTilemapIndex
-		TAY
-		LDA.w !CableTilemapBuffer,y
-		CMP #$00F8 : BNE ..append
-		..createnew
-		LDX $53
-		LDA.l .TileCCIndex,x
-		LSR A
-		TAX
-		STZ.w (!CableRenderBuffer/2)+$000,x
-		STZ.w (!CableRenderBuffer/2)+$002,x
-		STZ.w (!CableRenderBuffer/2)+$080,x
-		STZ.w (!CableRenderBuffer/2)+$082,x
-		STZ.w (!CableRenderBuffer/2)+$100,x
-		STZ.w (!CableRenderBuffer/2)+$102,x
-		STZ.w (!CableRenderBuffer/2)+$180,x
-		STZ.w (!CableRenderBuffer/2)+$182,x
-		STZ.w (!CableRenderBuffer/2)+$200,x
-		STZ.w (!CableRenderBuffer/2)+$202,x
-		STZ.w (!CableRenderBuffer/2)+$280,x
-		STZ.w (!CableRenderBuffer/2)+$282,x
-		STZ.w (!CableRenderBuffer/2)+$300,x
-		STZ.w (!CableRenderBuffer/2)+$302,x
-		STZ.w (!CableRenderBuffer/2)+$380,x
-		STZ.w (!CableRenderBuffer/2)+$382,x
-		LDA $53
-		LSR A
-		ORA #$1FC0
-		STA.w !CableTilemapBuffer,y
+		LDA $00						;\
+		SEC : SBC.w !CableCacheX			; |
+		ORA $02						; |
+		AND #$18FF					; |
+		LSR #3						; |
+		BIT #$0100					; |
+		BEQ $03 : ORA #$0020				; | get tilemap index
+		BIT #$0200					; |
+		BEQ $03 : ORA #$0040				; |
+		AND #$00FF					; |
+		ASL A						; |
+		ADC.w !CableTilemapIndex			; |
+		TAY						;/
+		LDA.w !CableTilemapBuffer,y			;\ if tile is empty, create a new one, otherwise just append pixels to it
+		CMP #$00F8 : BNE ..append			;/
+		..createnew					;\
+		LDX $F6						; | rendering index
+		LDA.l .TileCCIndex,x				; |
+		LSR A : TAX					;/
+		STZ.w (!CableRenderBuffer/2)+$000,x		;\
+		STZ.w (!CableRenderBuffer/2)+$002,x		; |
+		STZ.w (!CableRenderBuffer/2)+$080,x		; |
+		STZ.w (!CableRenderBuffer/2)+$082,x		; |
+		STZ.w (!CableRenderBuffer/2)+$100,x		; |
+		STZ.w (!CableRenderBuffer/2)+$102,x		; |
+		STZ.w (!CableRenderBuffer/2)+$180,x		; |
+		STZ.w (!CableRenderBuffer/2)+$182,x		; | wipe tile
+		STZ.w (!CableRenderBuffer/2)+$200,x		; |
+		STZ.w (!CableRenderBuffer/2)+$202,x		; |
+		STZ.w (!CableRenderBuffer/2)+$280,x		; |
+		STZ.w (!CableRenderBuffer/2)+$282,x		; |
+		STZ.w (!CableRenderBuffer/2)+$300,x		; |
+		STZ.w (!CableRenderBuffer/2)+$302,x		; |
+		STZ.w (!CableRenderBuffer/2)+$380,x		; |
+		STZ.w (!CableRenderBuffer/2)+$382,x		;/
+		LDA $F6						;\
+		LSR A						; | update tilemap buffer (pair pixel data with tilemap data)
+		ORA #$1FC0					; |
+		STA.w !CableTilemapBuffer,y			;/
 
 		LDA $02+1					;\
 		AND #$00FF					; |
@@ -1482,53 +1501,54 @@ endmacro
 		RTS
 
 
-	.OverflowTile
-		PHA
+
 ; if tile border was crossed from below, we have to overflow into the previous tile
 ; in any other case, we have to overflow into the next tile
 ; (we know direction by checking hash diff)
-		LDA $00
-		SEC : SBC.w !CableCacheX
-		ORA $02
-		AND #$08FF
-		LSR #3
-		BIT #$0100
-		BEQ $03 : ORA #$0020
-		AND #$00FF
-		CLC : ADC #$0020
-		ASL A
-		ADC.w !CableTilemapIndex
-		TAY
-		LDA.w !CableTilemapBuffer,y
-		CMP #$00F8 : BNE ..append
-		..createnew
-		LDA $53
-		LSR A
-		INC A
-		ORA #$1FC0
-		STA.w !CableTilemapBuffer,y
-		LDX $53
-		INC.w !CableTileOverflow,x			; this tile has overflown
-		INX #2
-		LDA.l .TileCCIndex,x
-		LSR A
-		TAX
-		STZ.w (!CableRenderBuffer/2)+$000,x
-		STZ.w (!CableRenderBuffer/2)+$002,x
-		STZ.w (!CableRenderBuffer/2)+$080,x
-		STZ.w (!CableRenderBuffer/2)+$082,x
-		STZ.w (!CableRenderBuffer/2)+$100,x
-		STZ.w (!CableRenderBuffer/2)+$102,x
-		STZ.w (!CableRenderBuffer/2)+$180,x
-		STZ.w (!CableRenderBuffer/2)+$182,x
-		STZ.w (!CableRenderBuffer/2)+$200,x
-		STZ.w (!CableRenderBuffer/2)+$202,x
-		STZ.w (!CableRenderBuffer/2)+$280,x
-		STZ.w (!CableRenderBuffer/2)+$282,x
-		STZ.w (!CableRenderBuffer/2)+$300,x
-		STZ.w (!CableRenderBuffer/2)+$302,x
-		STZ.w (!CableRenderBuffer/2)+$380,x
-		STZ.w (!CableRenderBuffer/2)+$382,x
+	.OverflowTile
+		PHA						; push Y bits of rendering index
+
+		LDA $00						;\
+		SEC : SBC.w !CableCacheX			; |
+		ORA $02						; |
+		AND #$08FF					; |
+		LSR #3						; |
+		BIT #$0100					; | get tilemap index
+		BEQ $03 : ORA #$0020				; |
+		AND #$00FF					; |
+		CLC : ADC #$0020				; |
+		ASL A						; |
+		ADC.w !CableTilemapIndex			; |
+		TAY						;/
+		LDA.w !CableTilemapBuffer,y			;\ if tile is empty, create a new one, otherwise just append pixels to it
+		CMP #$00F8 : BNE ..append			;/
+		..createnew					;\
+		LDA $F6						; |
+		LSR A						; | add a new tile to tilemap buffer
+		INC A						; |
+		ORA #$1FC0					; |
+		STA.w !CableTilemapBuffer,y			;/
+		LDX $F6						;\ mark this tile as overflown
+		INC.w !CableTileOverflow,x			;/
+		INX #2						;\
+		LDA.l .TileCCIndex,x				; | rendering index
+		LSR A : TAX					;/
+		STZ.w (!CableRenderBuffer/2)+$000,x		;\
+		STZ.w (!CableRenderBuffer/2)+$002,x		; |
+		STZ.w (!CableRenderBuffer/2)+$080,x		; |
+		STZ.w (!CableRenderBuffer/2)+$082,x		; |
+		STZ.w (!CableRenderBuffer/2)+$100,x		; |
+		STZ.w (!CableRenderBuffer/2)+$102,x		; |
+		STZ.w (!CableRenderBuffer/2)+$180,x		; |
+		STZ.w (!CableRenderBuffer/2)+$182,x		; | wipe tile
+		STZ.w (!CableRenderBuffer/2)+$200,x		; |
+		STZ.w (!CableRenderBuffer/2)+$202,x		; |
+		STZ.w (!CableRenderBuffer/2)+$280,x		; |
+		STZ.w (!CableRenderBuffer/2)+$282,x		; |
+		STZ.w (!CableRenderBuffer/2)+$300,x		; |
+		STZ.w (!CableRenderBuffer/2)+$302,x		; |
+		STZ.w (!CableRenderBuffer/2)+$380,x		; |
+		STZ.w (!CableRenderBuffer/2)+$382,x		;/
 
 		LDA $02+1					;\
 		AND #$00FF					; |
@@ -1536,24 +1556,24 @@ endmacro
 		TAX						; |
 		INX						; |
 		INC.w !CableRenderLineTemp,x			;/
+		LDA.w !CableTilemapBuffer,y			; get tile num
 
-		LDA.w !CableTilemapBuffer,y
-		..append
-		AND #$003F
-		ASL A
-		TAX
+		..append					;\
+		AND #$003F					; | tile num * 2
+		ASL A : TAX					;/
 
-		..draw
-		LDA $00
-		AND #$0007
-		ORA.l .TileCCIndex,x
-		LSR A
-		TAX
+		..draw						;\
+		LDA $00						; |
+		AND #$0007					; | X = rendering index
+		ORA.l .TileCCIndex,x				; |
+		LSR A						; |
+		TAX						;/
 
-		PLA
+		PLA						; pull Y bits of rendering index
+
+	; kept as reference in case i want to change cable thickness later
 		; CMP #$0600/2 : BCC ..overflow1
 		; CMP #$0700/2 : BCC ..overflow2
-
 		; ..overflow3
 		; LDA #$1111
 		; STA.w (!CableRenderBuffer+$000)/2,x
@@ -1561,14 +1581,12 @@ endmacro
 		; LDA #$2222
 		; STA.w (!CableRenderBuffer+$200)/2,x
 		; RTS
-
 		; ..overflow2
 		; LDA #$1111
 		; STA.w (!CableRenderBuffer+$000)/2,x
 		; LDA #$2222
 		; STA.w (!CableRenderBuffer+$100)/2,x
 		; RTS
-
 		..overflow1
 		LDA #$2222
 		STA.w (!CableRenderBuffer+$000)/2,x
@@ -1595,24 +1613,23 @@ endmacro
 ; 0xF0		3 copy, 2x src3, 1 copy, 3x src4, 1 copy, 5x src5
 ; 0x100		3 copy, 2x src3, 1 copy, 4x src4, 1 copy, 5x src5
 
-	!Temp = $20
 	; base tile of each cable type
 
 	.BaseTile
-	db !Temp+$00	; 3 blocks wide
-	db !Temp+$02	; 4 blocks wide
-	db !Temp+$05	; 5 blocks wide
-	db !Temp+$08	; 6 blocks wide
-	db !Temp+$0B	; 7 blocks wide
-	db !Temp+$10	; 8 blocks wide
-	db !Temp+$14	; 9 blocks wide
-	db !Temp+$18	; 10 blocks wide
-	db !Temp+$1C	; 11 blocks wide
-	db !Temp+$20	; 12 blocks wide
-	db !Temp+$24	; 13 blocks wide
-	db !Temp+$29	; 14 blocks wide
-	db !Temp+$30	; 15 blocks wide
-	db !Temp+$35	; 16 blocks wide
+	db $00	; 3 blocks wide
+	db $02	; 4 blocks wide
+	db $05	; 5 blocks wide
+	db $08	; 6 blocks wide
+	db $0B	; 7 blocks wide
+	db $10	; 8 blocks wide
+	db $14	; 9 blocks wide
+	db $18	; 10 blocks wide
+	db $1C	; 11 blocks wide
+	db $20	; 12 blocks wide
+	db $24	; 13 blocks wide
+	db $29	; 14 blocks wide
+	db $30	; 15 blocks wide
+	db $35	; 16 blocks wide
 
 
 ; commands:
@@ -1683,6 +1700,7 @@ endmacro
 		PHB : PHK : PLB
 		LDA .WidthTable,x : STA $00
 		LDA .BaseTile,y
+		CLC : ADC !GFX_CableTiles
 		AND #$00FF
 		ORA #$1F00
 		STA $02
@@ -1712,7 +1730,9 @@ endmacro
 
 		..src5
 		REP #$20
-		LDA #$1F3D+!Temp
+		LDA !GFX_CableTiles
+		AND #$00FF
+		CLC : ADC #$1F3D
 	-	STA !CableTilemapBuffer,x
 		INX #2
 		DEC $06 : BNE -
@@ -1720,7 +1740,9 @@ endmacro
 
 		..src4
 		REP #$20
-		LDA #$1F3E+!Temp
+		LDA !GFX_CableTiles
+		AND #$00FF
+		CLC : ADC #$1F3E
 	-	STA !CableTilemapBuffer,x
 		INX #2
 		DEC $06 : BNE -
@@ -1728,7 +1750,9 @@ endmacro
 
 		..src3
 		REP #$20
-		LDA #$1F3F+!Temp
+		LDA !GFX_CableTiles
+		AND #$00FF
+		CLC : ADC #$1F3F
 	-	STA !CableTilemapBuffer,x
 		INX #2
 		DEC $06 : BNE -

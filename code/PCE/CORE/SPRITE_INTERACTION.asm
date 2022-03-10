@@ -105,8 +105,6 @@ SPRITE_INTERACTION:
 		CMP #$09 : BNE .NoCarry
 		LDA !P2Carry : BNE .NoCarry
 		LDA !P2Climbing : BNE .NoCarry
-	STZ $7FFF
-
 		INC !P2TouchingItem			; this flag prevents attacks
 		LDA $3330,x
 		AND #$04 : BNE +
@@ -1372,36 +1370,51 @@ CHUCK_PUSH:	db $20,$E0
 		RTS
 
 		.Process
-		STZ $01					; > Don't include kill count
-		STZ $3230,x				; Erase powerup
+		STZ $01						; > Don't include kill count
+		STZ $3230,x					; Erase powerup
 		LDA $3200,x
-		CMP #$78 : BEQ .1UP			; > Branch if 1-up
+		CMP #$78 : BEQ .1UP				; > Branch if 1-up
 		CMP #$7F : BEQ .1UP
-		CMP #$76 : BNE .Powerup			; > Branch unless star
-		LDA #$FF : STA !StarTimer		; > Set star timer
+		CMP #$76 : BNE .Powerup				; > Branch unless star
+		LDA #$FF : STA !StarTimer			; > Set star timer
 		BRA .Shared
 
-.Powerup	LDA !P2TempHP : BNE .Shared		; no healing with temp HP
-		LDA !P2HP				;\
-		CLC : ADC #$04				; |
-		CMP !P2MaxHP : BCC +			; | heal 1 heart
-		LDA !P2MaxHP				; |
-	+	STA !P2HP				;/
+.Powerup	LDA !P2TempHP : BNE .Shared			; no healing with temp HP
+		LDA !P2HP					;\
+		CLC : ADC #$04					; |
+		CMP !P2MaxHP : BCC +				; | heal 1 heart
+		LDA !P2MaxHP					; |
+	+	STA !P2HP					;/
 
 .Shared		LDA #$0A : STA !SPC1
-		LDA #$14 : STA !P2FlashPal		; flash pal
+		LDA #$14 : STA !P2FlashPal			; flash pal
 		RTS
 
 .1UP		LDA #$0D : STA $00
-		LDA !P2MaxHP : STA !P2HP		; full heal
-		LDA !CurrentPlayer			;\
-		TAY					; |
-		LDA !P1CoinIncrease,y			; | increase coins
-		CLC : ADC #$64				; |
-		STA !P1CoinIncrease,y			;/
+		LDA !P2MaxHP : STA !P2HP			; full heal
+		LDA !CurrentPlayer				;\
+		TAY						; |
+		LDA !P1CoinIncrease,y				; | increase coins
+		CLC : ADC #$64					; |
+		STA !P1CoinIncrease,y				;/
 
-		LDA #$B4 : STA !P2FlashPal		; flash pal
-		LDA !SpriteXSpeed,x : BNE ..nomem	; no item mem if moving version
+		LDA !StoryFlags+$02				;\
+		AND #$02 : BNE ..nomsg				; |
+		ORA #$02 : STA !StoryFlags+$02			; |
+		REP #$20					; | first time that a gold shroom is collected, a message is displayed
+		LDA.w #!MSG_FirstGoldShroom : STA !MsgTrigger	; |
+		SEP #$20					; |
+		..nomsg						;/
+
+		REP #$20					;\
+		STZ $00						; |
+		STZ $04						; | spawn particle
+		SEP #$20					; |
+		LDA.b #!prt_text100 : JSL SpawnParticle		;/
+
+
+		LDA #$B4 : STA !P2FlashPal			; flash pal
+		LDA !SpriteXSpeed,x : BNE ..nomem		; no item mem if moving version
 		LDA !HeaderItemMem
 		CMP #$03 : BCS ..nomem
 		JSR GetItemMem
@@ -1418,47 +1431,47 @@ CHUCK_PUSH:	db $20,$E0
 
 
 	GetItemMem:
-		LDA !HeaderItemMem			;\ return if invalid index
-		CMP #$03 : BCC .Search			;/
-		LDA #$00				;\ return with null output
-		RTS					;/
+		LDA !HeaderItemMem				;\ return if invalid index
+		CMP #$03 : BCC .Search				;/
+		LDA #$00					;\ return with null output
+		RTS						;/
 
 		.Search
-		PHX					; push X
-		STA $00					; $00 = index (will be converted to 00 or 80)
-		LSR A					;\ $01 = -------I
-		STA $01					;/
-		STZ $2250				;\
-		REP #$20				; |
-		LDA !SpriteYHi,x			; | y screen * level width
-		AND #$00FF : STA $2251			; |
-		LDA !LevelWidth				; |
-		AND #$00FF : STA $2253			;/
-		SEP #$20				;\
-		LDA !SpriteXHi,x			; | + x screen
-		CLC : ADC $2306				;/
-		ASL A					; * 2
-		BIT !SpriteXLo,x			;\ +1 on right half
-		BPL $01 : INC A				;/
-		ASL A					;\
-		LSR $00					; | get highest bit from index
-		ROR A					;/
-		STA $00					; $00 = iSSSSSSx
+		PHX						; push X
+		STA $00						; $00 = index (will be converted to 00 or 80)
+		LSR A						;\ $01 = -------I
+		STA $01						;/
+		STZ $2250					;\
+		REP #$20					; |
+		LDA !SpriteYHi,x				; | y screen * level width
+		AND #$00FF : STA $2251				; |
+		LDA !LevelWidth					; |
+		AND #$00FF : STA $2253				;/
+		SEP #$20					;\
+		LDA !SpriteXHi,x				; | + x screen
+		CLC : ADC $2306					;/
+		ASL A						; * 2
+		BIT !SpriteXLo,x				;\ +1 on right half
+		BPL $01 : INC A					;/
+		ASL A						;\
+		LSR $00						; | get highest bit from index
+		ROR A						;/
+		STA $00						; $00 = iSSSSSSx
 
-		LDA !SpriteXLo,x			;\
-		AND #$70				; |
-		LSR #4					; | get bit (reverse order because of course it is)
-		TAX					; |
-		LDA .Bits,x : STA $02			;/
-		REP #$10				;\
-		LDX $00					; | read item memory bit
-		AND !ItemMem0,x				; |
-		SEP #$10				;/
+		LDA !SpriteXLo,x				;\
+		AND #$70					; |
+		LSR #4						; | get bit (reverse order because of course it is)
+		TAX						; |
+		LDA .Bits,x : STA $02				;/
+		REP #$10					;\
+		LDX $00						; | read item memory bit
+		AND !ItemMem0,x					; |
+		SEP #$10					;/
 
 		.Return
-		PLX					; pull X
-		CMP #$00				; z
-		RTS					; return
+		PLX						; pull X
+		CMP #$00					; z
+		RTS						; return
 
 		.Bits
 		db $80,$40,$20,$10,$08,$04,$02,$01

@@ -36,6 +36,9 @@
 	+	LDA !P1MapZ
 		ORA !P1MapZ+1 : BNE .Draw
 	++	STZ !Translevel
+		STZ !Translevel+1
+		STZ $6109
+		STZ $7F11
 		LDA #$15 : STA !GameMode
 		LDA #$80 : STA !SPC3
 		REP #$20

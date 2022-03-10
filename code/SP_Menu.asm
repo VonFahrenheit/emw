@@ -1,3 +1,4 @@
+
 header
 sa1rom
 
@@ -1179,13 +1180,19 @@ Mode7Presents:
 		STA !HDMAptr+1
 		%ReloadOAMData()
 
+		STZ !HDMA2source
+		STZ !HDMA3source
+		STZ !HDMA4source
+		STZ !HDMA5source
+		STZ !HDMA6source
+		STZ !HDMA7source
+
 		SEP #$20
 		REP #$10
 
-		LDX #$00FF						;\
-		LDA #$FF						; | extra clear on map16remap for title screen
-	-	STA !Map16Remap,x					; |
-		DEX : BPL -						;/
+		STZ $420C						; HDMA reg
+		STZ !HDMA						; HDMA mirror 1
+		STZ $1F0C						; HDMA mirror 2
 
 
 		LDX #$8000 : STX $4300					;\
@@ -1731,7 +1738,7 @@ MAIN_MENU:
 		PHB : PHK : PLB
 		PHP
 		SEP #$30
-
+		INC $14
 
 
 		REP #$30
@@ -1776,7 +1783,7 @@ MAIN_MENU:
 		BCC $02 : LDA $06
 		STA $04
 
-		LDA $13
+		LDA $14
 		AND #$0001
 		BEQ $03 : LDA #$0080
 		TAX
@@ -1863,7 +1870,7 @@ MAIN_MENU:
 		BCC $02 : LDA $06
 		STA $04
 
-		LDA $13
+		LDA $14
 		AND #$0001
 		BEQ $03 : LDA #$0080
 		TAX
@@ -1911,7 +1918,7 @@ MAIN_MENU:
 
 
 		SEP #$30
-		LDA $13
+		LDA $14
 		AND #$01
 		BEQ $02 : LDA #$80
 		STA !HDMA6source
@@ -1940,7 +1947,7 @@ MAIN_MENU:
 		SEP #$20
 		LDA #$4C : STA $00
 
-		LDA $13
+		LDA $14
 		LSR #3
 		AND #$07
 		SEC : SBC #$04
@@ -1997,7 +2004,7 @@ MAIN_MENU:
 
 		LDA !MenuEraseTimer : BEQ .RestoreWindow
 		LDY $610A
-		LDA $13
+		LDA $14
 		AND #$01
 		BEQ $02 : LDA #$10
 		ORA #$80
@@ -2012,7 +2019,7 @@ MAIN_MENU:
 		BRA .NoWindow
 
 		.RestoreWindow
-		LDA $13
+		LDA $14
 		AND #$01
 		BEQ $02 : LDA #$10
 		TAX
@@ -2557,7 +2564,7 @@ MAIN_MENU:
 
 
 		LDX $610A
-		LDA $13
+		LDA $14
 		LSR #3
 		AND #$07
 		SEC : SBC #$04
@@ -2795,7 +2802,7 @@ MAIN_MENU:
 		SEP #$20
 		JSR HandleBG3Files
 
-		LDA $13
+		LDA $14
 		AND #$01
 		BEQ $02 : LDA #$10
 		TAX
@@ -2880,7 +2887,7 @@ MAIN_MENU:
 
 
 		; draw hand
-		LDA $13
+		LDA $14
 		LSR #3
 		AND #$07
 		SEC : SBC #$04
@@ -3052,7 +3059,7 @@ MAIN_MENU:
 
 
 		; draw hand
-		LDA $13
+		LDA $14
 		LSR #3
 		AND #$07
 		SEC : SBC #$04
@@ -3093,7 +3100,7 @@ MAIN_MENU:
 		STZ $0D
 		LDA #$10 : STA $0E
 		JSL !SpriteHUD
-		LDA $13					;\ flash start button
+		LDA $14					;\ flash start button
 		AND.b #$1C : BEQ +			;/
 		REP #$20
 		LDA.w #.StartTilemap1 : STA $02
@@ -3221,7 +3228,7 @@ MAIN_MENU:
 
 	++	INC !TimerSeconds
 
-	+	LDA $13
+	+	LDA $14
 		AND #$01
 		BEQ $02 : LDA #$10
 		TAX
@@ -4164,7 +4171,7 @@ MAIN_MENU:
 		STZ $6DA4
 		STZ $6DA6
 		STZ $6DA8
-		LDA $13
+		LDA $14
 		AND #$01
 		BEQ $02 : LDA #$10
 		TAX
@@ -4305,7 +4312,7 @@ MAIN_MENU:
 		REP #$20
 		INC !TimerSeconds
 		DEC $1C
-		LDA $13
+		LDA $14
 		LSR A
 		BCC $02 : DEC $20
 
@@ -4414,7 +4421,7 @@ MAIN_MENU:
 		SEP #$30
 
 		.Layer3
-		LDA $13
+		LDA $14
 		AND #$03 : BNE ..done
 		LDA !MainScreen
 		ORA !SubScreen
@@ -4428,9 +4435,8 @@ MAIN_MENU:
 		.FinalTimer
 		..doublebuffer
 		REP #$30
-		LDA #$0040
-		STA !Mode7CenterX
-		STA !Mode7CenterY
+		LDA #$0045 : STA !Mode7CenterX
+		LDA #$004A : STA !Mode7CenterY
 		LDA !TimerSeconds
 		CMP #$0980 : BEQ ..kill
 		CMP #$0780 : BCS ..move
@@ -4494,7 +4500,7 @@ MAIN_MENU:
 	; 1*2 tiles -> jet 2
 	.UpdateMode7
 		REP #$30				;\
-		LDA $13					; |
+		LDA $14					; |
 		BIT #$0007 : BEQ ..update
 		RTS
 
@@ -5126,7 +5132,7 @@ MAIN_MENU:
 
 
 	HandleBG3Files:
-		LDA $13
+		LDA $14
 		AND #$01
 		BEQ $02 : LDA #$20
 		TAX

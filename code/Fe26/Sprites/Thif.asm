@@ -237,7 +237,7 @@ Thif:
 		JSL SPRITE_A_SPRITE_B_COORDS		; coords
 		PHX
 		TYX
-		JSL $07F7D2				; | > Reset sprite tables
+		JSL !ResetSprite			; | > Reset sprite tables
 		LDA #$04 : STA !ExtraBits,x
 		TXY					;\
 		PLX					; |

@@ -2797,11 +2797,6 @@
 ;		CLC : ADC !Tile_Bone
 ;		RTL
 
-	TinySparkle:
-	pushpc
-	org $028ECC
-		db $5D,$5A,$58
-	pullpc
 
 
 ;	WaterSplash:

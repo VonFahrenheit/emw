@@ -168,13 +168,14 @@ Projectile:
 
 	Homing:
 		LDX !SpriteIndex				; X = sprite index
-		LDA !ExtraBits,x : BMI .Main			;\
+		LDA !ExtraBits,x				;\
+		BIT #$20 : BNE .Main				; |
 		.Init						; |
-		ORA #$80 : STA !ExtraBits,x			; |
+		ORA #$20 : STA !ExtraBits,x			; |
 		LDA !RNG					; |
 		AND #$80					; |
-		TAY						; |
-		LDA !P2Status-$80,y : BEQ ..target		; | init random target player
+		TAY						; | init random target player
+		LDA !P2Status-$80,y : BEQ ..target		; | (extra bit 0x20 used for init)
 		TYA						; |
 		EOR #$80					; |
 		TAY						; |

@@ -4,19 +4,20 @@
 
 
 	PIPE:
+		LDA !PlayerWaiting
+		CMP #$03 : BNE $03 : JMP .Transition
 		LDX !P2Pipe : BEQ .NoPipe
+		LDA #$04 : STA !SPC1		; pipe SFX
 		LDA $14
-	;	AND #$0F : BNE +
-		LDY #$04 : STY !SPC1		; pipe SFX
-	+	LSR A : BCC +
-		DEX
-		STX !P2Pipe
+		LSR A : BCC +
+		DEX : STX !P2Pipe
 	+	TXA
 		AND #$3F : BNE .NoExit
 		STZ !P2Pipe
 		.NoPipe
 		CLC
 		RTL
+
 
 		.NoExit
 		CMP #$20 : BEQ .Load
@@ -25,7 +26,7 @@
 		BMI .VertPipe
 
 		.HorzPipe
-		LDA $13
+		LDA $14
 		AND #$0001
 		BEQ .Return16
 		BVC .LeftPipe
@@ -33,7 +34,9 @@
 		.RightPipe
 		LDX #$01 : STX !P2Direction
 		INC !P2XPosLo
-		BRA .Return16
+		.Return16
+		SEP #$21			; also set C
+		RTL
 
 		.LeftPipe
 		LDX #$00 : STX !P2Direction
@@ -58,21 +61,25 @@
 		BRA .Return16
 
 		.Load
-		LDA !P2Pipe
-		AND #$20^$FF
-		ORA #$01
-		STA !P2Pipe
-		INC $741A
-		REP #$20
-		LDA !P2XPosLo : STA $94		;\ Player 1 coords
-		LDA !P2YPosLo : STA $96		;/
-		LDX #$06 : STX $71		; > $71 = 06
-		STZ $88				; > Wipe $88-$89
-		LDX #$0F : STX !GameMode
-		LDX #$01 : STX $741D
+		LDA !P2Pipe					;\
+		AND #$20^$FF					; | make sure pipe timer stays trigger happy
+		ORA #$01 : STA !P2Pipe				;/
+		LDA !MultiPlayer : BEQ .Transition		;\
+		LDA !CurrentPlayer				; |
+		INC A						; | wait for both players on multiplayer
+		ORA !PlayerWaiting				; |
+		STA !PlayerWaiting				; |
+		CMP #$03 : BNE .Return16			;/
 
-		.Return16
-		SEP #$20
-		SEC
-		RTL
+		.Transition
+		INC $741A					; +1 door count
+		BNE $03 : DEC $741A				; stay at 255 instead of wrapping around to 0
+		REP #$20
+		LDA !P2XPosLo : STA !MarioXPosLo		;\ mario coords
+		LDA !P2YPosLo : STA !MarioYPosLo		;/
+		LDX #$0D : STX !MarioAnim			; > $71 = 06
+	;	STZ $88						; > wipe $88-$89
+		LDX #$0F : STX !GameMode
+		LDX #$01 : STX $741D				; disable "MARIO START !" message
+		BRA .Return16
 

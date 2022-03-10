@@ -11,21 +11,19 @@
 		PHX							;\
 		LDA !Particle_Timer,x					; |
 		AND #$00FF						; |
-		LSR #2							; | get tile num
-		TAX							; |
+		LSR #2							; |
+		TAX							; | get tile num
 		LDA.l $0296D8,x						; |
 		AND #$00FF						; |
-		CMP #$0066 : BEQ .8x8					;/
-	.16x16	ORA #$3400						;\
-		STA !Particle_TileTemp					; | 16x16 size
-		PLX							;/
+		ORA #$3400						; |
+		STA !Particle_TileTemp					; |
+		CMP #$3460 : BCC .8x8					;/
+	.16x16	PLX							; restore index
 		LDA #$0002 : STA !Particle_TileTemp+2			; oam size bit
 		JSR ParticleDrawSimple_BG1				; draw particle without ratio
 		JMP ParticleDespawn					; off-screen check
 
-	.8x8	LDA #$345E						;\
-		STA !Particle_TileTemp					; | 8x8 size
-		PLX							;/
+	.8x8	PLX							; restore index
 		STZ !Particle_TileTemp+2				; oam size bit
 		LDA !Particle_XLo,x : PHA				;\
 		CLC : ADC #$0004					; |
@@ -45,6 +43,13 @@
 		REP #$20						; | then return
 		TXA : STA.l !Particle_Index				; |
 		RTS							;/
+
+
+	pushpc
+	org $0296D8
+		db $5F,$5F,$5E,$5D,$5D,$60,$60
+	warnpc $0296DF
+	pullpc
 
 
 

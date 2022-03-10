@@ -96,10 +96,7 @@ Rex:
 		STA !ExtraProp1,y					;/
 		LDA #$04 : STA $33C0,x					; set palette
 		LDA #$01 : STA !ExtraProp1,x				; bandit bag
-		LDA !ExtraProp2,x					;\
-		AND #$C0						; | bandit hat
-		ORA #$05						; |
-		STA !ExtraProp2,x					;/
+		LDA #$05 : STA !ExtraProp2,x				; bandit hat
 		LDA !SpriteTweaker4,x					;\
 		ORA #$04						; | bandit can't despawn
 		STA !SpriteTweaker4,x					;/
@@ -126,7 +123,6 @@ Rex:
 		CMP #$05 : BEQ ..chase					;/
 		CMP #$01 : BNE ..nochase				;\
 		LDA !ExtraProp2,x					; | reverse chase is carrying sack and bandit bandana
-		AND #$3F						; |
 		CMP #$05 : BNE ..nochase				;/
 		..chase
 		LDA !ExtraProp1,x
@@ -456,8 +452,7 @@ Rex:
 		.NoDrop
 
 
-		LDA !ExtraProp2,x
-		AND #$3F : BEQ .NoDropHat
+		LDA !ExtraProp2,x : BEQ .NoDropHat
 		LDY !SpriteAnimIndex
 		CPY.b #!Rex_Dead : BEQ +
 
@@ -467,10 +462,7 @@ Rex:
 		CPY #$04 : BEQ +
 		CMP #$05 : BEQ .NoDropHat
 		CMP #$06 : BNE +
-		LDA !ExtraProp2,x
-		AND #$C0
-		ORA #$09
-		STA !ExtraProp2,x
+		LDA #$09 : STA !ExtraProp2,x
 		BRA .NoDropHat
 	+	JSR DropHat
 		.NoDropHat
@@ -560,9 +552,7 @@ Rex:
 		SEP #$20
 		JSL LOAD_PSUEDO_DYNAMIC_p1
 		REP #$20
-		LDA $04
-		CLC : ADC $08
-		STA $04
+		LDA $08 : STA $04
 		LDA ($04)
 		SEP #$20
 		BMI .BagDone
@@ -574,10 +564,8 @@ Rex:
 
 
 	; draw hat
-		LDA !ExtraProp2,x
-		AND #$3F : BEQ .NoHat
-		ASL A
-		TAY
+		LDA !ExtraProp2,x : BEQ .NoHat
+		ASL A : TAY
 		LDA !SpriteTile,x : PHA
 		LDA !SpriteProp,x : PHA
 
@@ -597,7 +585,6 @@ Rex:
 		REP #$20
 		LDA ANIM_HatIndex-2,y : JSL LoadGFXIndex
 		LDA !ExtraProp2,x
-		AND #$3F
 		DEC A
 		ASL #2
 		TAY
@@ -639,9 +626,7 @@ Rex:
 		BEQ $02 : INC #2
 		JSL LoadGFXIndex
 		REP #$20
-		LDA $04
-		CLC : ADC $08
-		STA $04
+		LDA $08 : STA $04
 		LDA ($04)
 		SEP #$20
 		BMI .Return
@@ -942,7 +927,6 @@ Rex:
 		LDA !SpriteProp,x : PHA					;/
 
 		LDA !ExtraProp2,x					;\
-		AND #$3F						; |
 		DEC A							; |
 		ASL A							; |
 		PHA							; |
@@ -953,9 +937,7 @@ Rex:
 		PLY							; |
 		LDA.w ANIM_HatIndex,y : JSL LoadGFXIndex		;/
 
-		LDA !ExtraProp2,x					;\
-		AND #$3F^$FF						; | clear hat
-		STA !ExtraProp2,x					;/
+		STZ !ExtraProp2,x					; clear hat
 
 		STZ $00
 		LDA #$18 : STA $01
@@ -1004,7 +986,6 @@ Rex:
 		LDY $08 : BNE .Again
 
 		LDA !ExtraProp2,x
-		AND #$3F
 		CMP #$05 : BNE ..nobandit
 		LDY #$0F
 	-	PHY

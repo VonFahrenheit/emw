@@ -12,7 +12,7 @@
 ;	$0C:		copy of xflip flag from player direction
 ;	$0E:		0xFFFF if tilemap is x-flipped, otherwise 0x0000
 
-; $0A/$0B are based on Player 2, so they are subtracted for Player 1
+; $0A/$0B are based on Player 1, so they are added for Player 2
 
 LOAD_TILEMAP:	STZ !BigRAM+$7E				; this reg ACTUALLY controls priority bits during this routine!
 							; at the end, it's set to the number of bytes written to OAM
@@ -79,14 +79,15 @@ LOAD_TILEMAP:	STZ !BigRAM+$7E				; this reg ACTUALLY controls priority bits duri
 
 		.HiPrio
 		STZ $0A					;\
-		LDA #$0C : STA $0B			; |
-		LDA !CurrentPlayer			; | set up tile/palette offsets for player
-		BNE +					; |
+		STZ $0B					; |
+		LDA !CurrentPlayer : BEQ +		; | tile/palette offsets for player
 		LDA #$20 : STA $0A			; |
-		LDA #$0E : STA $0B			;/
-	+	REP #$30
+		LDA #$02 : STA $0B			; |
+		+					;/
+
+		REP #$30
 		LDA !P2Entrance
-		AND #$00FF : BEQ ..entrancedone
+		AND #$007F : BEQ ..entrancedone
 		SEC : SBC #$0021
 		BPL +
 		JSR .EntranceSmoke
@@ -101,7 +102,7 @@ LOAD_TILEMAP:	STZ !BigRAM+$7E				; this reg ACTUALLY controls priority bits duri
 		SEC : SBC $1A
 		STA $00
 		LDA !P2Entrance
-		AND #$00FF
+		AND #$007F
 		SEC : SBC #$0021
 		BPL $03 : LDA #$0000
 		ASL #2
@@ -112,6 +113,7 @@ LOAD_TILEMAP:	STZ !BigRAM+$7E				; this reg ACTUALLY controls priority bits duri
 
 		LDA ($04)
 		AND #$00FF
+	CLC : ADC $04
 		STA $08
 		INC $04
 		INC $04
@@ -122,25 +124,29 @@ LOAD_TILEMAP:	STZ !BigRAM+$7E				; this reg ACTUALLY controls priority bits duri
 		LDA #$0040 : STA $0C
 		DEC $0E
 	+	LDA !OAMindex_p1 : TAX
-		LDY #$0000
+	;	LDY #$0000
+	LDY $04
 		SEP #$20
 
 
 		.Loop
-		LDA ($04),y
+	;	LDA ($04),y
+	LDA $0000,y
 		AND #$01
 		BEQ $02 : LDA #$80
 		STA !BigRAM+$7F
-		LDA ($04),y
+	;	LDA ($04),y
+	LDA $0000,y
 		AND #$FE
 		EOR $0C
 		SEC : SBC !BigRAM+$7E
-		SEC : SBC $0B				; subtract player palette offset
+		ORA $0B					; player palette
 		STA !OAM_p1+$003,x
 		REP #$20
 		INY
 
-		LDA ($04),y
+	;	LDA ($04),y
+	LDA $0000,y
 		AND #$00FF
 		CMP #$0080
 		BMI $03 : ORA #$FF00
@@ -148,7 +154,7 @@ LOAD_TILEMAP:	STZ !BigRAM+$7E				; this reg ACTUALLY controls priority bits duri
 		BIT $0E : BPL +
 		INC A					; add 1 for pixel perfect mirroring
 		BIT !BigRAM+$7F-1 : BPL +
-		CLC : ADC #$0008
+		CLC : ADC #$0008			; add 8 when mirroring an 8x8 tile
 	+	CLC : ADC $00
 		CMP #$0100 : BCC .GoodX
 		CMP #$FFF0 : BCS .GoodX
@@ -160,7 +166,8 @@ LOAD_TILEMAP:	STZ !BigRAM+$7E				; this reg ACTUALLY controls priority bits duri
 		.GoodX
 		STA $06					; save tile xpos
 		INY
-		LDA ($04),y
+	;	LDA ($04),y
+	LDA $0000,y
 		AND #$00FF
 		CMP #$0080
 		BMI $03 : ORA #$FF00
@@ -177,9 +184,10 @@ LOAD_TILEMAP:	STZ !BigRAM+$7E				; this reg ACTUALLY controls priority bits duri
 		STA !OAM_p1+$001,x
 		LDA $06 : STA !OAM_p1+$000,x
 		INY
-		LDA ($04),y
+	;	LDA ($04),y
+	LDA $0000,y
 		CMP #$40 : BCS +
-		SEC : SBC $0A				; subtract player offset unless it's Leeway's slashy thing
+		ADC $0A					; add player offset unless it's Leeway's slashy thing
 	+	STA !OAM_p1+$002,x
 		INY
 		PHX

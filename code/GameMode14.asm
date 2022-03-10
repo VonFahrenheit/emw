@@ -204,12 +204,13 @@ namespace GAMEMODE14
 	.SNES
 	; SNES phase 1, executed on DP 0
 		JSR MAIN_Level				; SNES thread is just MAIN level code
-		JSL Camera				; camera (ran in accelerator mode)
+		JSL Camera				; camera (run in accelerator mode)
 		%MPU_SNES($01)				; end of SNES phase 1
 
 	; SNES phase 2, executed on DP $0100
 		PHD					; push DP
 		%MPU_copy()				; set up SNES MPU DP
+
 		JSL read3($00A2A5+1)			; call animation setup routine
 		PLD					; restore DP
 		JSR !MPU_light				; SNES will process light shader while SA-1 is running the main game
@@ -227,7 +228,10 @@ namespace GAMEMODE14
 	; SA-1 phase 1, executed on DP $0100
 		PHD					; push DP
 		%MPU_copy()				; set up SA-1 MPU DP
+
 		JSL $008E1A				; status bar
+		LDA #$01 : JSL !ProcessYoshiCoins	; > handle Yoshi Coins
+
 		LDA $14					;\
 		AND #$1F				; |
 		TAY					; | index RNG table
@@ -650,8 +654,8 @@ Camera:
 		REP #$20					;\
 		LDA !P2XPosLo-$80				; |
 		CLC : ADC !P2XPosLo				; |
-		ROR A						; | composite coords
-		STA $0C						; |
+		ROR A						; |
+		STA $0C						; | composite coords
 		LDA !P2YPosLo-$80				; |
 		CLC : ADC !P2YPosLo				; |
 		ROR A						; |
@@ -666,7 +670,7 @@ Camera:
 	+	LDA !P2Status-$80
 		CMP #$02 : BNE .Composite
 		; both alive: composite
-		; only P2 alive: P2
+		; only P2 alive: flow to P2
 
 		.P2
 		LDY #$80 : JSR .GetPlayerCoord
@@ -675,6 +679,12 @@ Camera:
 		.P1
 		LDY #$00 : JSR .GetPlayerCoord
 	++	REP #$20
+
+		LDA $0C						;\
+		BPL $02 : STZ $0C				; | don't allow negative coords
+		LDA $0E						; |
+		BPL $02 : STZ $0E				;/
+
 
 		LDX !GameMode
 		CPX #$14 : BEQ +

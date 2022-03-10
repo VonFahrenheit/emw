@@ -7,14 +7,14 @@
 ;	TO DO!!!
 ;
 ; text:
-;	text is entered with db "text here" (including the citation marks)
+;	text is entered with db "type whatever text you want here" (including the citation marks, but whatever is between them is up to you)
 ;	the text engine automatically fits the text to the width of the window, meaning that you do not have to insert any line breaks
 ;	if you enter a long string on a single line, it will appear across multiple lines in-game
 ;	automatic line breaks replace the spaces in front of words that are too long to fit on the current line, meaning that words never start rendering on the wrong line before having to be moved
 ;	this also means that words will not be cut off by hitting the window border
 ;	basically, don't worry about it!
 ;	you can enter your text all on one line or on multiple lines, it makes no difference in-game
-;	but what if you WANT to insert a line break at a specific point?
+;	but what if you WANT to insert a line break at a specific point, regardless of the window border?
 ;	well, that brings us to...
 ;
 ; commands:
@@ -22,8 +22,9 @@
 ;	commands are used via macros. for example, the speed command (which changes the current text speed) is used by typing "%speed(X)", where X is the desired speed
 ;	each command corresponds to a certain byte, meaning that commands can also be inserted as db $XX
 ;	this has no impact in-game, but it is preferable to use the macros since they are more easily readable and also ensure that text data remain compatible after updates to MSG.asm
-;	all commands placed before the text of a message will be processed before the message starts rendering
+;	all commands placed before the first text of a message will be processed before the message starts rendering
 ;	this area before the text is called the "header" of the message
+;	commands that affect rendering (such as border, cinematic, fillercolor, and so on) should almost always be placed in the header
 ;
 ;
 ; list of commands:
@@ -42,6 +43,12 @@
 ;	- takes no input
 ;	- immediately ends the message
 ;	- when the message is marked as ended, the window will close upon a player pressing a button
+;
+;	newsection()
+;	- can also be shortened to n()
+;	- takes no input
+;	- waits for player input, then scrolls all text off-screen, then clears the box
+;	- it's effectively %waitforinput() and %scrollfull() in one command, but using this one is better since it makes text data smaller
 ;
 ;	font(X)
 ;	- takes a value 0-15 ($00-$0F)
@@ -179,19 +186,6 @@
 ;	- if input was 0, the player simply leaves the level
 ;	- if input was 1, the player beats the level
 ;
-;
-;	headersettings(X, XX, XX, X, X, X, X)
-;	- it is recommended to use this command in the message header only (before any text) as it changes how the window is rendered
-;	- because this command is meant to be used from the header, it skips any input equal to 0
-;	- see below for how to use one of these commands more freely
-;	- 1st input: display type, 0 = normal mode, 1 = cinematic mode top of screen, 2 = cinematic mode bottom of screen
-;	- 2nd input: message width in 8x8 tiles (0-31 / $00-$1F)
-;	- 3rd input: vertical offset, window is moved up 2px for each unit here (0-63 / $00-$3F)
-;	- 4th input: border settings, 0 = disable border, 1 = enable border
-;	- 5th input: mode, 0 = pause game, 1 = pause physics but enable animations, 2 = enable everything
-;	- 6th input: color to replace transparency with when rendering text (0 = transparency, 3 = white, 1-2 depend on the level palette)
-;	- 7th input: important, 0 = message can be skipped with start, 1 = message can not be skipped with start
-;
 ;	cinematic(X)
 ;	- takes a value 0-2
 ;	- 0 = normal mode, 1 = cinematic mode top of screen, 2 = cinematic mode bottom of screen
@@ -211,7 +205,7 @@
 ;
 ;	mode(X)
 ;	- takes a value 0-2
-;	- 0 = pause game, 1 = pause physics but enable animations, 2 = enable everything
+;	- 0 = pause game, 1 = pause physics but enable animations, 2 = don't pause anything
 ;
 ;	color(X)
 ;	- takes a value 0-3
@@ -291,6 +285,54 @@ macro speed(value)
 		endif
 		endmacro
 
+macro cinematic(setting)
+		db $E0,<setting>
+		endmacro
+
+macro width(setting)
+	if <setting> < 32
+		db $E1,<setting>
+	else
+		db $E1,$1F
+	endif
+		endmacro
+
+macro verticaloffset(setting)
+	if <setting> < 64
+		db $E2,<setting>
+	else
+		db $E2,$3F
+	endif
+		endmacro
+
+macro borderon()
+		db $E3
+		endmacro
+
+macro borderoff()
+		db $E4
+		endmacro
+
+macro mode(setting)
+		db $E5,<setting>
+		endmacro
+
+macro color(setting)
+		db $E6,<setting>
+		endmacro
+
+macro important(setting)
+		db $E7,<setting>
+		endmacro
+
+macro n()
+		db $F0
+		endmacro
+
+macro newsection()
+		db $F0
+		endmacro
+
 macro clearbox()
 		db $F2
 		endmacro
@@ -338,7 +380,6 @@ macro playerexpression(expression, xflip)
 		endif
 		db !<expression>
 		endmacro
-
 
 macro scroll(lines)
 		db $F5,<lines>
@@ -394,78 +435,6 @@ macro linebreak()
 		endmacro
 
 macro endmessage()
-		db $FF
-		endmacro
-
-
-;======================;
-;HEADER SETTINGS MACROS;
-;======================;
-macro headersettings(cinematic, width, verticaloffset, border, mode, color, important)
-		db $F0			; start macro
-	if <cinematic> != 0
-		db $00,<cinematic>
-		endif
-	if <width> != 0
-		db $01,<width>
-		endif
-	if <verticaloffset> != 0
-		db $02,<verticaloffset>
-		endif
-	if <border> != 0
-		db $03,<border>
-		endif
-	if <mode> != 0
-		db $04,<mode>
-		endif
-	if <color> != 0
-		db $05,<color>
-		endif
-	if <important> != 0
-		db $06,<important>
-		endif
-		db $FF			; end macro
-		endmacro
-
-macro cinematic(setting)
-		db $F0
-		db $00,<setting>
-		db $FF
-		endmacro
-
-macro width(setting)
-		db $F0
-		db $01,<setting>
-		db $FF
-		endmacro
-
-macro verticaloffset(setting)
-		db $F0
-		db $02,<setting>
-		db $FF
-		endmacro
-
-macro border(setting)
-		db $F0
-		db $03,<setting>
-		db $FF
-		endmacro
-
-macro mode(setting)
-		db $F0
-		db $04,<setting>
-		db $FF
-		endmacro
-
-macro color(setting)
-		db $F0
-		db $05,<setting>
-		db $FF
-		endmacro
-
-macro important(setting)
-		db $F0
-		db $06,<setting>
 		db $FF
 		endmacro
 

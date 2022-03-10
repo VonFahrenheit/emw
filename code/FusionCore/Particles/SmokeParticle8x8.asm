@@ -30,5 +30,11 @@
 		TXA : STA.l !Particle_Index				; |
 		RTS							;/
 
+	pushpc
+	org $029922
+		db $5F,$5F,$5E,$5D,$5D
+	warnpc $029927
+	pullpc
+
 
 

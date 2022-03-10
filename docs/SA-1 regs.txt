@@ -318,8 +318,8 @@
 
 		$230C			; VARIABLE-LENGTH DATA READ PORT (VDP) lo byte
 		$230D			; VARIABLE-LENGTH DATA READ PORT (VDP) hi byte
-		16-bit data resulting from barrel-shifting the values stored in $2258.
-
+		16-bit data resulting from barrel-shifting operation
+		the data from address [$2259] is shifted based on $2258
 
 
 

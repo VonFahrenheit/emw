@@ -109,7 +109,7 @@ ShopObject:
 
 		LDA $3320,x : STA $3320,y
 		LDA !ExtraBits,y
-		AND #$08 : BEQ +
+		AND.b #!CustomBit : BEQ +
 		LDA #$00 : STA !SpriteAnimTimerY
 		+
 		JSL SPRITE_A_SPRITE_B_COORDS

@@ -478,6 +478,8 @@
 		STZ !OW_sprite_Z,x
 		STZ !OW_sprite_XSpeed,x
 		STZ !OW_sprite_ZSpeed,x
+		STZ !OW_sprite_Direction,x
+		STZ !OW_sprite_Tilemap,x
 		TXA
 		CLC : ADC.w #!OW_sprite_Size
 		TAX
@@ -562,6 +564,7 @@
 	; otherwise the player could get soft-locked by resetting the game during the cutscene...
 		.CannonCutscene
 		LDA !StoryFlags+$00
+	STZ $7FFF
 		AND #$00FF
 		CMP #$0003 : BNE ..done
 		SEP #$20

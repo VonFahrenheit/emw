@@ -95,6 +95,16 @@
 
 		LDA !BG_object_Misc,x : STA $0C
 
+		LDA !BG_object_Type,x				;\
+		AND #$00FF					; |
+		CMP #$0005 : BNE ..faceright			; |
+		..faceleft					; | update x speed bonus
+		LDA #$FFF4 : BRA +				; |
+		..faceright					; |
+		LDA #$000C					; |
+	+	STA $0A						;/
+
+
 
 ; states:
 ;	00 - straight form
@@ -127,7 +137,8 @@
 		BRA ..done					;/
 		..ontop						;\
 		SEP #$20					; | set platform bit
-		LDA #$04 : TSB !P2ExtraBlock-$80		; |
+		LDA #$04 : TSB !P2ExtraBlock-$80		;/
+		LDA #$0F : STA !P2CoyoteDisable-$80		;\ kill coyote time
 		REP #$20					;/
 		CPY #$0004*2 : BCS ..setcoords			; inner half -> no pressure
 		LDA $410000+!BG_object_Misc,x			;\
@@ -163,7 +174,8 @@
 		BRA ..done					;/
 		..ontop						;\
 		SEP #$20					; | set platform bit
-		LDA #$04 : TSB !P2ExtraBlock			; |
+		LDA #$04 : TSB !P2ExtraBlock			;/
+		LDA #$0F : STA !P2CoyoteDisable			;\ kill coyote time
 		REP #$20					;/
 		CPY #$0004*2 : BCS ..setcoords			; inner half -> no pressure
 		LDA $410000+!BG_object_Misc,x			;\
@@ -187,14 +199,6 @@
 
 		LDA $0E : TSB $0C				; update collision flags
 
-		LDA $410000+!BG_object_Type,x			;\
-		AND #$00FF					; |
-		CMP #$0005 : BNE ..faceright			; |
-		..faceleft					; | update x speed bonus
-		LDA #$FFF4 : BRA +				; |
-		..faceright					; |
-		LDA #$000C					; |
-	+	STA $0A						;/
 
 		.BounceP1
 		LDA $0C						;\
@@ -219,6 +223,7 @@
 		LDA !P2XSpeed-$80				; | x speed calc
 		CLC : ADC $0A					; |
 		STA !P2XSpeed-$80				;/
+		LSR $0A						; > just in case they both bounce on the same frame
 		LDA #$08 : STA !SPC4				; > SFX
 		LDA $410000+!BG_object_Timer,x			;\
 		CMP #$08 : BCS ..bigbounce			; |
@@ -299,33 +304,36 @@
 		RTS						;/
 
 		.Valid						;\
-		PHX						; |
-		LDA !BG_object_Type,x
-		AND #$00FF
-		CMP #$0006 : BEQ ..faceright
+		LDA !GFX_PoleFrame1				; |
+		AND #$00FF					; | base tile + base prop
+		ORA #$1700					; |
+		STA $0E						;/
 
-		..faceleft
+		PHX						;\
+		LDA !BG_object_Type,x				; | check facing direction
+		AND #$00FF					; |
+		CMP #$0006 : BEQ ..faceright			;/
+
+		..faceleft					;\
 		LDA !BG_object_Timer,x				; |
 		AND #$00FF : BEQ +				; |
-		DEC !BG_object_Timer,x				; | animate
-	+	LSR #2						; |
+		DEC !BG_object_Timer,x				; |
+	+	LSR #2						; | animate left-facing pole
 		ASL A						; |
 		TAX						; |
 		LDA.l .TilePointer,x : STA $00			; |
 		PLX						; |
-		STZ $0E						; palette included in tile table
 		JMP TileUpdate					;/
 
-		..faceright
+		..faceright					;\
 		LDA !BG_object_Timer,x				; |
 		AND #$00FF : BEQ +				; |
-		DEC !BG_object_Timer,x				; | animate
-	+	LSR #2						; |
+		DEC !BG_object_Timer,x				; |
+	+	LSR #2						; | animate right-facing pole
 		ASL A						; |
 		TAX						; |
 		LDA.l .TilePointerX,x : STA $00			; |
 		PLX						; |
-		STZ $0E						; palette included in tile table
 		JMP TileUpdate					;/
 
 
@@ -339,27 +347,27 @@
 		dw .Pole6
 
 		.Pole0
-		dw $1410,$1410,$1410,$1410
-		dw $1400,$1401,$1402,$1403
-		dw $1410,$1411,$1412,$1413
+		db $04,$04,$04,$04
+		db $00,$01,$02,$03
+		db $04,$05,$06,$07
 		.Pole1
-		dw $1410,$1410,$1410,$1410
-		dw $1404,$1405,$1406,$1407
-		dw $1414,$1415,$1416,$1417
+		db $04,$04,$04,$04
+		db $08,$09,$0A,$0B
+		db $0C,$0D,$0E,$0F
 		.Pole2
 		.Pole3
-		dw $1410,$1410,$1410,$1410
-		dw $1408,$1409,$140A,$140B
-		dw $1418,$1419,$141A,$141B
+		db $04,$04,$04,$04
+		db $10,$11,$12,$13
+		db $14,$15,$16,$17
 		.Pole4
-		dw $9414,$9415,$9416,$9417
-		dw $9404,$9405,$9406,$9407
-		dw $1410,$1410,$1410,$1410
+		db $8C,$8D,$8E,$8F
+		db $88,$89,$8A,$8B
+		db $04,$04,$04,$04
 		.Pole5
 		.Pole6
-		dw $9418,$9419,$941A,$941B
-		dw $9408,$9409,$940A,$940B
-		dw $1410,$1410,$1410,$1410
+		db $94,$95,$96,$97
+		db $90,$91,$92,$93
+		db $04,$04,$04,$04
 
 
 		.TilePointerX
@@ -372,27 +380,27 @@
 		dw .Pole6X
 
 		.Pole0X
-		dw $1410,$1410,$1410,$1410
-		dw $5403,$5402,$5401,$5400
-		dw $5413,$5412,$5411,$5410
+		db $04,$04,$04,$04
+		db $43,$42,$41,$40
+		db $47,$46,$45,$44
 		.Pole1X
-		dw $1410,$1410,$1410,$1410
-		dw $5407,$5406,$5405,$5404
-		dw $5417,$5416,$5415,$5414
+		db $04,$04,$04,$04
+		db $4B,$4A,$49,$48
+		db $4F,$4E,$4D,$4C
 		.Pole2X
 		.Pole3X
-		dw $1410,$1410,$1410,$1410
-		dw $540B,$540A,$5409,$5408
-		dw $541B,$541A,$5419,$5418
+		db $04,$04,$04,$04
+		db $53,$52,$51,$50
+		db $57,$56,$55,$54
 		.Pole4X
-		dw $D417,$D416,$D415,$D414
-		dw $D407,$D406,$D405,$D404
-		dw $1410,$1410,$1410,$1410
+		db $CF,$CE,$CD,$CC
+		db $CB,$CA,$C9,$C8
+		db $04,$04,$04,$04
 		.Pole5X
 		.Pole6X
-		dw $D41B,$D41A,$D419,$D418
-		dw $D40B,$D40A,$D409,$D408
-		dw $1410,$1410,$1410,$1410
+		db $D7,$D6,$D5,$D4
+		db $D3,$D2,$D1,$D0
+		db $04,$04,$04,$04
 
 
 

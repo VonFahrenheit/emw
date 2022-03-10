@@ -1,3 +1,4 @@
+
 print "OVERWORLD INSERTED AT $", pc, "!"
 
 	namespace Overworld
@@ -39,7 +40,7 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 
 
 	macro MapDef(name, size)
-	print "<name>: $", hex(!OverworldBase+!Temp)
+	print "    <name>: $", hex(!OverworldBase+!Temp)
 
 		!<name>	:= !OverworldBase+!Temp
 		!Temp	:= !Temp+<size>
@@ -144,7 +145,7 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 	!OverworldSpriteBase = $6DDF
 
 	macro MapSpriteDef(name, size)
-	print "<name>: $", hex(!OverworldSpriteBase+!Temp)
+	print "    <name>: $", hex(!OverworldSpriteBase+!Temp)
 		!<name>	:= !OverworldSpriteBase+!Temp
 		!Temp	:= !Temp+<size>
 	endmacro
@@ -933,7 +934,10 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 	;	LDA #$1D : STA !MainScreen
 	;	STZ !SubScreen
 
-		JSL CLEAR_MSG_SA1
+		LDX #$7F
+		LDA #$00
+	-	STA $400000+!MsgRAM,x
+		DEX : BPL -
 
 		LDA !GameMode				;\
 		CMP #$0E : BEQ +			; |

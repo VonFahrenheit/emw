@@ -113,12 +113,9 @@
 
 		INY #2						;\
 		LDA [$03],y					; | LT3: DDFF----
-		AND #$3000					; |
-		CMP #$3000					; |
-		BNE $03 : LDA #$0000				; | $0A = size of BG3 tilemap
+		AND #$3000					; | $0A = size of BG3 tilemap
 		XBA						; |
-		LSR #3						; |
-		TAX						; |
+		LSR #3 : TAX					; |
 		LDA.l .BG3TilemapSize,x : STA $0A		;/
 
 		INY #2						;\
@@ -268,14 +265,25 @@
 		CLC : ADC #$0010				; |
 		TAX						;/
 
+
+		STZ !BigRAM+2					;\
+		LDA $06 : BEQ +					; | mark whether files 0x02A and 0x02B can be loaded
+		LDA #$8000 : STA !BigRAM+2			; |
+		+						;/
+
+
 	.Loop	INY #2						;\
 		LDA [$03],y					; |
 		AND #$0FFF					; |
-		CMP #$007F : BEQ .NoDecomp			; | if there is a file, decompress it
+		CMP #$007F : BEQ .NoDecomp			; | files that are not allowed to be decompressed
 		CMP #$0001 : BEQ .NoDecomp			; |
 		CMP #$0002 : BEQ .NoDecomp			; |
-		CMP #$0003 : BEQ .NoDecomp			; |
-		JSL !DecompressFile				;/
+		CMP #$0003 : BEQ .NoDecomp			;/
+		BIT !BigRAM+2 : BPL ..allow_bg3			;\
+		CMP #$002A : BEQ .NoDecomp			; | in expanded VRAM maps, files 0x02A and 0x02B are ignored
+		CMP #$002B : BEQ .NoDecomp			; |
+		..allow_bg3					;/
+		JSL !DecompressFile				; > decompress
 		LDA #$1801 : STA $4310				;\
 		LDA.w #!DecompBuffer : STA $4312		; |
 		LDA.w #!DecompBuffer>>8 : STA $4313		; |
@@ -417,6 +425,7 @@
 		dw $2000
 		dw $1000
 		dw $0800
+		dw $2000			; UNUSED, here just in case
 
 
 
@@ -838,7 +847,7 @@
 		BEQ $03 : LDA #$0800
 		ORA #$003C
 		TAX
-		JSR ..complementcolumn
+		JSR .ComplementColumn
 		..leftdone
 
 		..complementright
@@ -868,14 +877,14 @@
 		EOR #$0100
 		BEQ $03 : LDA #$0800
 		TAX
-		JSR ..complementcolumn
+		JSR .ComplementColumn
 		LDA #$0004 : STA $00
 		LDA $94
 		AND #$0100
 		EOR #$0100
 		BEQ $03 : LDA #$0800
 		TAX
-		JSR ..complementcolumn
+		JSR .ComplementColumn
 
 
 
@@ -885,14 +894,7 @@
 		RTL						; return
 
 		..loop						;\
-		LDX $00						; |
-		LDA $41C800,x					; |
-		AND #$00FF					; | $04 = remap value
-		TAX						; |
-		LDA.l !Map16Remap-1,x				; |
-		AND #$FF00					; |
-		STA $04						;/
-		SEP #$20					;\
+		SEP #$20					; |
 		LDX $00						; |
 		LDA $41C800,x : XBA				; |
 		LDA $40C800,x					; | get 16-bit map16 tile number
@@ -900,40 +902,29 @@
 		REP #$20					; |
 		STX $00						; |
 		ASL A						;/
+		CMP.w #$0300*2 : BCC ..noremap
+		CMP.w #$0400*2 : BCS ..noremap
+		..remap
+		ASL #2
+		AND #$07FF
+		ADC.w #!Map16Page3
+		STA $0A
+		LDA.w #!Map16Page3>>16 : STA $0C
+		TYX
+		BRA ..readtile
+		..noremap
 		PHY						;\
 		PHP						; |
 		JSL $06F540					; | get pointer to map16 tilemap data
 		PLP						; |
-		PLX						;/ > pull Y with X to index !DecompBuffer
-		STA $0A						;\ prepare to read pointer
+		PLX						; > pull Y with X to index !DecompBuffer
+		STA $0A						;/
+		..readtile					;\ prepare to read pointer
 		LDY #$0000					;/
-		BIT $04 : BMI ..noremap				;\
-		..remap						; |
-		LDA [$0A],y					; |
-		AND #$FCFF					; |
-		ORA $04						; |
-		STA !DecompBuffer+$00,x				; |
+		LDA [$0A],y : STA !DecompBuffer+$00,x		;\
 		LDY #$0002					; |
-		LDA [$0A],y					; |
-		AND #$FCFF					; |
-		ORA $04						; | get map16 tilemap data (with remap)
-		STA !DecompBuffer+$40,x				; |
-		LDY #$0004					; |
-		LDA [$0A],y					; |
-		AND #$FCFF					; |
-		ORA $04						; |
-		STA !DecompBuffer+$02,x				; |
-		LDY #$0006					; |
-		LDA [$0A],y					; |
-		AND #$FCFF					; |
-		ORA $04						; |
-		STA !DecompBuffer+$42,x				; |
-		BRA ..next					;/
-		..noremap					;\
-		LDA [$0A],y : STA !DecompBuffer+$00,x		; |
-		LDY #$0002					; |
-		LDA [$0A],y : STA !DecompBuffer+$40,x		; | get map16 tilemap data (no remap)
-		LDY #$0004					; |
+		LDA [$0A],y : STA !DecompBuffer+$40,x		; |
+		LDY #$0004					; | get map16 tilemap data
 		LDA [$0A],y : STA !DecompBuffer+$02,x		; |
 		LDY #$0006					; |
 		LDA [$0A],y : STA !DecompBuffer+$42,x		;/
@@ -946,7 +937,7 @@
 		CLC : ADC #$0040				; |
 		TAY						; |
 	..same	INY #4						;/
-		CPY !BigRAM+0 : BCS $03 : JMP ..loop		;\ loop
+		CPY !BigRAM+0 : BCC ..loop			;\ loop
 		RTS						; return
 
 
@@ -961,7 +952,7 @@
 ; 03E
 ; 83C
 ; 83E
-		..complementcolumn
+		.ComplementColumn
 		LDA $00
 		BEQ $02 : INX #2
 		LDA $1C
@@ -976,35 +967,35 @@
 		LDA #$41 : STA $07
 		PHX
 		LDA #$00 : XBA
-		LDA [$05],y : TAX
-		XBA
-		LDA !Map16Remap,x : STA $03
-		STZ $02
+		LDA [$05],y : XBA
 		DEC $07
 		LDA [$05],y
 		REP #$20
 		ASL A
+		CMP.w #$0300*2 : BCC ..noremap
+		CMP.w #$0400*2 : BCS ..noremap
+		..remap
+		ASL #2
+		AND #$07FF
+		ADC.w #!Map16Page3
+		PHA
+		LDA.w #!Map16Page3>>16 : STA $0C
+		PLA : BRA ..readtile
+		..noremap
 		PHY
 		PHP
 		JSL $06F540				; this will store the bank byte to $0C and return with the address in A
 		PLP
 		PLY
+		..readtile
 		LDX $00
 		BEQ $04 : CLC : ADC #$0004
 		PLX
 		STA $0A
-		LDA [$0A]
-		BIT $02 : BMI +
-		AND #$0300^$FFFF
-		ORA $02
-	+	STA !DecompBuffer+$00,x
+		LDA [$0A] : STA !DecompBuffer+$00,x
 		INC $0A
 		INC $0A
-		LDA [$0A]
-		BIT $02 : BMI +
-		AND #$0300^$FFFF
-		ORA $02
-	+	STA !DecompBuffer+$40,x
+		LDA [$0A] : STA !DecompBuffer+$40,x
 
 		STX $0A
 		TXA
@@ -1143,12 +1134,24 @@
 		REP #$20					; |
 		STX $00						; |
 		ASL A						;/
+		CMP.w #$0300*2 : BCC ..noremap
+		CMP.w #$0400*2 : BCS ..noremap
+		..remap
+		ASL #2
+		AND #$07FF
+		ADC.w #!Map16Page3
+		STA $0A
+		LDA.w #!Map16Page3>>16 : STA $0C
+		TYX
+		BRA ..readtile
+		..noremap
 		PHY						;\
 		PHP						; |
 		JSL $06F540					; | get pointer to map16 tilemap data
 		PLP						; |
-		PLX						;/ > pull Y with X to index !DecompBuffer
-		STA $0A						;\ prepare to read pointer
+		PLX						; > pull Y with X to index !DecompBuffer
+		STA $0A						;/
+		..readtile					;\ prepare to read pointer
 		LDY #$0000					;/
 		LDA [$0A],y : STA !DecompBuffer+$00,x		;\
 		LDY #$0002					; |

@@ -374,6 +374,8 @@ endmacro
 
 
 
+		; these are set by VR3, but not used by it
+		; instead, these define the area (level coords) that block updates may occur in
 		!BG1ZipBoxL		= $45
 		!BG1ZipBoxR		= $47
 		!BG1ZipBoxU		= $49
@@ -427,12 +429,13 @@ endmacro
 
 
 
-		!GFX_status		= $418100
+		!GFX_status		= $418000
 		!Part_status		= !GFX_status+$000	; 512 entries for parts (9-bit, 2 bytes each)
 		!Set_status		= !GFX_status+$400	; 128 entries for sets (9-bit, 2 bytes each)
 		!SuperSet_status	= !GFX_status+$500	; 64 entries for super sets (9-bit, 2 bytes each)
 		!Palset_status		= !GFX_status+$580	; 128 entries for palsets, 7+1 bit, 1 byte each
-		!SD_status		= !GFX_status+$600	; 256 entries for super-dynamic files, 6+2 bit, 1 byte each
+		!BG_status		= !GFX_status+$600	; 256 entries for BG objects (8-bit, 1 byte each)
+		!SD_status		= !GFX_status+$700	; 256 entries for super-dynamic files, 6+2 bit, 1 byte each
 
 
 		macro def_GFX(name)
@@ -441,6 +444,12 @@ endmacro
 			!GFX_<name>_prop := !GFX_<name>+1
 			!GFX_<name>_offset := !Temp
 			!Temp := !Temp+2
+		endmacro
+
+		macro def_BG(name)
+			!GFX_<name> := !GFX_status+!Temp
+			!GFX_<name>_offset := !Temp
+			!Temp := !Temp+1
 		endmacro
 
 
@@ -645,20 +654,38 @@ endmacro
 		%def_GFX(ExplodingBlock)
 
 
-	; GFX status format:
-	; each file has a marker for where it is loaded (unloaded = 0)
-	; format: pyyyxxxx
-	; p is highest bit of num (T in prop)
-	; yyy is which 16px row it starts at (double to get hi nybble of num)
-	; xxxx is which tile it starts on (lo nybble of num)
-	; 0 means start of SP1, which is why that means unloaded
-	; start of SP2 is 0x40
-	; start of SP3 is 0x80
-	; start of SP4 is 0xC0
+
+
+	; BG objects
+		!Temp = $600
+		%def_BG(BushFrame1)
+		%def_BG(BushFrame2)
+		%def_BG(BushFrame3)
+		%def_BG(Window)
+		%def_BG(WindowBroken)
+		%def_BG(CannonIdle)
+		%def_BG(CannonTilt1)
+		%def_BG(CannonTilt2)
+		%def_BG(CannonFire1)
+		%def_BG(CannonFire2)
+		%def_BG(CableTiles)
+		%def_BG(PoleFrame1)
+		%def_BG(PoleFrame2)
+		%def_BG(PoleFrame3)
+		%def_BG(TrashCan)
 
 
 
-
+	; super dynamic format:
+	; ppppppbb
+	; bb = bank
+	; 00 = $7E
+	; 01 = $7F
+	; 10 = $40
+	; 11 = $41
+	; pppppp = location in bank (KB)
+	;
+	; address of GFX = bank [bb translated], hi byte [pppppp--], lo byte 0
 
 		macro def_SD(name)
 			!SD_<name> := !SD_status+!Temp
@@ -679,16 +706,61 @@ endmacro
 		%def_SD(Fireball32x32)
 		%def_SD(EnemyFireball16x16)
 
-	; super dynamic format:
-	; ppppppbb
-	; bb = bank
-	; 00 = $7E
-	; 01 = $7F
-	; 10 = $40
-	; 11 = $41
-	; pppppp = location in bank (KB)
+
+
+
+
+
+	; palset list
 	;
-	; address of GFX = bank [bb translated], hi byte [pppppp--], lo byte 0
+	; make sure the order matches the order of palsets in SP_Files
+
+	macro def_palset(name)
+		!palset_<name> := !temppalset
+		!addr_palset_<name> := !Palset_status+!temppalset
+		!temppalset := !temppalset+1
+	endmacro
+
+		!temppalset = 1
+
+		; player palsets
+		%def_palset(mario)
+		%def_palset(luigi)
+		%def_palset(kadaal)
+		%def_palset(leeway)
+		%def_palset(alter)
+		%def_palset(peach)
+		%def_palset(placeholder4)
+		%def_palset(placeholder5)
+		%def_palset(mario_fire)
+
+		; default palsets
+		%def_palset(default_yellow)
+		%def_palset(default_blue)
+		%def_palset(default_red)
+		%def_palset(default_green)
+
+		; generic palsets
+		%def_palset(generic_grey)
+		%def_palset(generic_ghost_blue)
+		%def_palset(generic_lightblue)
+
+		; special palsets
+		%def_palset(special_wizrex)
+
+		%def_palset(special_flash_white)
+		%def_palset(special_flash_black)
+		%def_palset(special_flash_red)
+		%def_palset(special_flash_green)
+		%def_palset(special_flash_blue)
+		%def_palset(special_flash_yellow)
+		%def_palset(special_flash_caster)
+		%def_palset(special_kingking_blue)
+		%def_palset(special_kingking_red)
+
+		%def_palset(special_toad)
+		%def_palset(special_melody)
+
 
 
 		!Palset8		= $6028
@@ -766,67 +838,6 @@ endmacro
 		%def_file(Overworld_Anim)
 
 
-	; palset list
-	;
-	; make sure the order matches the order of palsets in SP_Files
-
-	macro def_palset(name)
-		!palset_<name> := !temppalset
-		!addr_palset_<name> := !Palset_status+!temppalset
-		!temppalset := !temppalset+1
-	endmacro
-
-		!temppalset = 0
-
-		; player palsets
-		%def_palset(mario)
-		%def_palset(luigi)
-		%def_palset(kadaal)
-		%def_palset(leeway)
-		%def_palset(placeholder1)
-		%def_palset(placeholder2)
-		%def_palset(placeholder3)
-		%def_palset(placeholder4)
-		%def_palset(placeholder5)
-		%def_palset(mario_fire)
-
-		; default palsets
-		%def_palset(default_yellow)
-		%def_palset(default_blue)
-		%def_palset(default_red)
-		%def_palset(default_green)
-
-		; generic palsets
-		%def_palset(generic_grey)
-		%def_palset(generic_ghost_blue)
-		%def_palset(generic_lightblue)
-
-		; special palsets
-		%def_palset(special_wizrex)
-
-		%def_palset(special_flash_white)
-		%def_palset(special_flash_black)
-		%def_palset(special_flash_red)
-		%def_palset(special_flash_green)
-		%def_palset(special_flash_blue)
-		%def_palset(special_flash_yellow)
-		%def_palset(special_flash_caster)
-		%def_palset(special_kingking_blue)
-		%def_palset(special_kingking_red)
-
-		%def_palset(special_toad)
-		%def_palset(special_melody)
-
-
-
-
-		!Map16Remap		= $418000
-			; 256 bytes, 1 for each map16 page
-			; format: d-----tt
-			; d - disable remap
-			; tt - tt bits to use for remapped pages
-			; if d is clear, the tile's tt bits are replaced by the remap tt bits
-			; by default, page 3 is set to 3, meaning it uses the extra files enabled in map modes 1 and 2
 
 
 		!BigRAM			= $6080			; if this is moved to $3700, !TransformGFX has to be recoded
@@ -890,6 +901,9 @@ endmacro
 		!dmg			= !PlayerDamage			; alt name
 		!DefaultDamage		= $02				; used if !dmg is not specified when calling !HurtPlayers
 
+		!PlayerWaiting		= $7871				; 00 = no wait, 01 = P1 waiting, 02 = P2 waiting, 03 = trigger exit
+
+
 		!ApexTimerP1		= $611A				;\ resets apex 8 frames after landing
 		!ApexTimerP2		= $611B				;/
 		!ApexP1			= $611C				;\ highest point of current jump
@@ -921,7 +935,7 @@ endmacro
 
 		!P2Basics		= !P2Base+$00
 		!P2Physics		= !P2Base+$20
-		!P2Hitbox		= !P2Base+$40
+		!P2Hitbox		= !P2Base+$41
 		!P2Custom		= !P2Base+$60		; last byte is temp HP
 
 
@@ -1031,10 +1045,13 @@ endmacro
 			; if t is nonzero, the character can jump even in midair
 			; when the character is on the ground, t is set to 3
 			; when the character presses jump in midair, j is set and t is set to 3
-		!P2Ducking		= !P2Physics+$1C		; 0 = not ducking, 4 = ducking
-		!P2Climbing		= !P2Physics+$1D		; 0 = not climbing, 1 = climbing
+		!P2CoyoteDisable	= !P2Physics+$1C		; speed added to player when using coyote jump, cleared when coyote is cleared (yyyyxxxx)
 
-		!P2Pipe			= !P2Physics+$1E		; pipe status
+
+		!P2Ducking		= !P2Physics+$1D		; 0 = not ducking, 4 = ducking
+		!P2Climbing		= !P2Physics+$1E		; 0 = not climbing, 1 = climbing
+
+		!P2Pipe			= !P2Physics+$1F		; pipe status
 			; format:
 			;	ddettttt
 			; dd = direction:
@@ -1044,7 +1061,7 @@ endmacro
 			;	03 (C0) down
 			; e = enter (1) / exit (0)
 			; t = timer (0x00-0x1F) 
-		!P2SlantPipe		= !P2Physics+$1F		; timer (decrements) for shooting out of slant pipe
+		!P2SlantPipe		= !P2Physics+$20		; timer (decrements) for shooting out of slant pipe
 
 
 	; --HITBOXES--
@@ -1234,8 +1251,9 @@ endmacro
 
 
 	!Temp = 0
-	%def_anim(Lui_Idle, 1)
-	%def_anim(Lui_Walk, 3)
+	%def_anim(Lui_Idle, 1)			;\
+	%def_anim(Lui_Walk, 3)			; | these use ice animation speed
+	%def_anim(Lui_Run, 3)			;/
 	%def_anim(Lui_LookUp, 1)
 	%def_anim(Lui_Crouch, 1)
 	%def_anim(Lui_Jump, 2)
@@ -1243,7 +1261,6 @@ endmacro
 	%def_anim(Lui_FaceBack, 1)
 	%def_anim(Lui_FaceFront, 1)
 	%def_anim(Lui_Kick, 1)
-	%def_anim(Lui_Run, 3)
 	%def_anim(Lui_LongJump, 1)
 	%def_anim(Lui_Turn, 1)
 	%def_anim(Lui_Victory, 1)
@@ -1260,9 +1277,12 @@ endmacro
 	%def_anim(Lui_Shrink, 2)
 	%def_anim(Lui_Dead, 1)
 
+
+
 	!Temp = 0
-	%def_anim(Kad_Idle, 4)
-	%def_anim(Kad_Walk, 4)
+	%def_anim(Kad_Idle, 4)			;\
+	%def_anim(Kad_Walk, 4)			; | these use ice animation speed
+	%def_anim(Kad_Dash, 6)			;/
 	%def_anim(Kad_Spin, 4)
 	%def_anim(Kad_Squat, 1)
 	%def_anim(Kad_Rise, 1)
@@ -1273,7 +1293,6 @@ endmacro
 	%def_anim(Kad_Punch, 4)
 	%def_anim(Kad_Hurt, 1)
 	%def_anim(Kad_Dead, 1)
-	%def_anim(Kad_Dash, 6)
 	%def_anim(Kad_Climb, 2)
 	%def_anim(Kad_Duck, 2)
 	%def_anim(Kad_Swim, 4)
@@ -1282,6 +1301,7 @@ endmacro
 	%def_anim(Kad_Carry, 3)
 	%def_anim(Kad_Throw, 1)
 	%def_anim(Kad_Victory, 1)
+
 
 
 
@@ -1471,7 +1491,7 @@ endmacro
 		;
 		; +02:
 		;	01 shopkeeper (0 = alive, 1 = killed)
-		;	02 ----
+		;	02 golden mushroom has been collected
 		;	04 ----
 		;	08 ----
 		;	10 ----
@@ -1830,6 +1850,11 @@ endmacro
 		!Particle_YHi		= !Particle_Base+$0E	;/
 		!Particle_YSpeed	= !Particle_Base+$0F	; 16-bit Y speed
 
+		!Particle_X		= !Particle_XLo		;\ alt names
+		!Particle_Y		= !Particle_YLo		;/
+
+
+
 		; bank 41 mirrors
 		!41_Particle_Type	= $410000+!Particle_Type
 		!41_Particle_Tile	= $410000+!Particle_Tile
@@ -1847,7 +1872,8 @@ endmacro
 		!41_Particle_YSpeed	= $410000+!Particle_YSpeed
 		!41_Particle_YAcc	= $410000+!Particle_YAcc
 
-
+		!41_Particle_X		= !41_Particle_XLo	;\ alt names
+		!41_Particle_Y		= !41_Particle_YLo	;/
 
 
 		; these are used as scratch during the drawing routine
@@ -1887,6 +1913,7 @@ endmacro
 	%def_particle_simple(leaf)
 	%def_particle_simple(tinycoin)
 	%def_particle_simple(flash)
+	%def_particle_simple(text100)
 
 
 
@@ -1909,6 +1936,11 @@ endmacro
 		!BG_object_H		= !BG_object_Base+$07	; how many 8x8 tiles tall this object is
 		!BG_object_Tile		= !BG_object_Base+$08	; position on page 3
 		!BG_object_Misc		= !BG_object_Base+$09	; reg that can be used for various purposes
+
+	; BG_object map16
+		!BG_object_Map16	= $41A5B0		; 2 KiB right after BG object data
+		!Map16Page3		= !BG_object_Map16	;\ alt names
+		!Map16_Page3		= !BG_object_Map16	;/
 
 
 	; cable regs
@@ -2048,19 +2080,25 @@ endmacro
 		!DizzyEffect		= $405DF8		; when enabled, table at $40A040 must be used to adjust sprite heights
 
 		!3DWater_Color		= $405DF9		; 16-bit, should be set at level init
-		!FileAddress		= $405DFB		; 24-bit, scratch pointer to file
 
 
-		!NPC_Talk		= $405DFE		; 256 word entries (512 B), 1 for each NPC ID, index with NPC ID * 2 to get input for !MsgTrigger
-		!NPC_TalkCap		= $405FFE		; same format as previous table, cap for auto-incrementing function
+		!FileAddress		= $E0			; 24-bit, scratch pointer to file ($E3 kept free so !FileAddress+2 can be accessed in 16-bit mode)
+
+		; 4 bytes free at $405DFB-$405DFE!
+
+
+		!NPC_Talk		= $405DFF		; 256 word entries (512 B), 1 for each NPC ID, index with NPC ID * 2 to get input for !MsgTrigger
+		!NPC_TalkCap		= $405FFF		; same format as previous table, cap for auto-incrementing function
+
+
+		!LoadCheckpoint		= $4061FF		; 00 = don't load checkpoint, 01 = load checkpoint
+		!ShakeBG3		= $406200		; same as !ShakeTimer but for BG3
 
 
 
-		!LoadCheckpoint		= $4061FE		; 00 = don't load checkpoint, 01 = load checkpoint
-		!ShakeBG3		= $4061FF		; same as !ShakeTimer but for BG3
 
+	; next entry at $406201
 
-	; next entry at $406200
 
 
 		; these are values not addresses
@@ -2379,8 +2417,8 @@ endmacro
 		!MsgOptionRow		= !MsgRAM+$04		; 1 byte, which row the dialogue options start on
 		!MsgDestination		= !MsgRAM+$05		; 1 byte, determines what !MsgArrow writes to
 		!MsgVertOffset		= !MsgRAM+$06		; 1 byte, number of pixels to move window down (doubled)
-								;	  highest bit toggles portrait to top-right of screen
 								;	  second highest bit disables border and window
+								;	  highest bit toggles portrait to top-right of screen
 		!MsgSequence		= !MsgRAM+$07		; 14 bytes, read backwards.
 		!MsgCutout		= !MsgRAM+$15		; 1 byte, set if window is currently cut for portrait
 		!MsgScroll		= !MsgRAM+$16		; 1 byte, current scroll value
@@ -2432,6 +2470,7 @@ endmacro
 								; 2 = angry
 								; 3 = distressed
 								; 4 = sad
+		!MsgCommandCycle	= !MsgRAM+$50		; 1 byte, which cycle of the command is being processed (most commands only use cycle 0), effectively a form of compression
 
 
 
@@ -2567,6 +2606,7 @@ endmacro
 		!2132_RGB		= $6701
 		!PaletteRGB		= $6703
 		!Color0			= $6903
+		!Layer2LevelMap16Addr	= $6C26
 		!LevelMode		= $6D9B
 		!MainScreen		= $6D9D
 		!SubScreen		= $6D9E
@@ -2639,7 +2679,7 @@ endmacro
 		!GeneratorNum		= $78B9
 		!MarioStunTimer		= $78BD
 		!HeaderTileset		= $7931
-		!CurrentLayer		= $7933		; 0 = BG1, 1 = BG2/BG3
+		!CurrentLayer		= $7933		; 0x00 = BG1, 0x80 = BG2/BG3
 		!WindowDir		= $7B88
 		!WindowSize		= $7B89
 		!SideExit		= $7B96
@@ -2829,15 +2869,23 @@ endmacro
 		!ClimbRightSpeed	= $10
 
 	; -- Graphics --
+		!P1Tile1		= $00		;\
+		!P1Tile2		= $02		; |
+		!P1Tile3		= $04		; |
+		!P1Tile4		= $06		; | first row in SP1
+		!P1Tile5		= $08		; |
+		!P1Tile6		= $0A		; |
+		!P1Tile7		= $0C		; |
+		!P1Tile8		= $0E		;/
 
 		!P2Tile1		= $20		;\
-		!P2Tile2		= $22		; | Located in SP1
+		!P2Tile2		= $22		; |
 		!P2Tile3		= $24		; |
-		!P2Tile4		= $26		;/
-		!P2Tile5		= $28
-		!P2Tile6		= $2A
-		!P2Tile7		= $2C
-		!P2Tile8		= $2E
+		!P2Tile4		= $26		; | second row in SP1
+		!P2Tile5		= $28		; |
+		!P2Tile6		= $2A		; |
+		!P2Tile7		= $2C		; |
+		!P2Tile8		= $2E		;/
 
 		!SP1			= $6000
 		!SP2			= $6800

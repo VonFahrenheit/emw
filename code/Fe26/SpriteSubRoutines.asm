@@ -1901,16 +1901,20 @@ SPRITE_OFF_SCREEN:
 		LDA $00
 		SEC : SBC $1A
 		STA $00
-		LDA ($04) : STA $08
+	;	LDA ($04) : STA $08
+	LDA ($04)
 		INC $04
 		INC $04
+	CLC : ADC $04
+	STA $08
 		STZ $0C
 		STZ $0E
 		LDA $3320,x
 		LSR A : BCS +
 		LDA #$0040 : STA $0C
 		DEC $0E
-	+	LDY #$0000
+	+	;LDY #$0000
+	LDY $04
 		LDX !ActiveOAM
 		LDA !OAMindex_offset,x
 		CLC : ADC #$0200
@@ -1935,16 +1939,19 @@ SPRITE_OFF_SCREEN:
 		RTS
 
 		.WithinBounds
-		LDA ($04),y				;\
+	;	LDA ($04),y				;\
+	LDA $0000,y
 		AND #$20				; |
 		STA $0A					; | YXP-CCCT
-		LDA ($04),y				; | (lower P bit is size bit)
+	;	LDA ($04),y				; | (lower P bit is size bit)
+	LDA $0000,y
 		AND.b #$10^$FF				; |
 		ORA $0A					; |
 		EOR $0C					; |
 		STA !OAM_p0+$003,x			;/
 
-		LDA ($04),y				;\
+	;	LDA ($04),y				;\
+	LDA $0000,y
 		AND #$10				; | tile size bit
 		BEQ $02 : LDA #$02			; |
 		STA $0A					;/
@@ -1954,7 +1961,8 @@ SPRITE_OFF_SCREEN:
 		REP #$20
 		INY
 
-		LDA ($04),y
+	;	LDA ($04),y
+	LDA $0000,y
 		AND #$00FF
 		CMP #$0080
 		BMI $03 : ORA #$FF00
@@ -1976,7 +1984,8 @@ SPRITE_OFF_SCREEN:
 		.GoodX
 		STA $06					; temp tile xpos
 		INY
-		LDA ($04),y
+	;	LDA ($04),y
+	LDA $0000,y
 		AND #$00FF
 		CMP #$0080
 		BMI $03 : ORA #$FF00
@@ -1989,7 +1998,8 @@ SPRITE_OFF_SCREEN:
 		STA !OAM_p0+$001,x
 		LDA $06 : STA !OAM_p0+$000,x
 		INY
-		LDA ($04),y : STA !OAM_p0+$002,x
+	;	LDA ($04),y : STA !OAM_p0+$002,x
+	LDA $0000,y : STA !OAM_p0+$002,x
 		INY
 		PHX
 		REP #$20
@@ -2034,9 +2044,12 @@ SPRITE_OFF_SCREEN:
 		LDA $00
 		SEC : SBC $1A
 		STA $00
-		LDA ($04) : STA $08
+	;	LDA ($04) : STA $08
+	LDA ($04)
 		INC $04
 		INC $04
+	CLC : ADC $04
+	STA $08
 		STZ $0C
 		STZ $0E
 		LDA $3320,x
@@ -2045,7 +2058,8 @@ SPRITE_OFF_SCREEN:
 		DEC $0E
 	+	LDA $33C0,x
 		AND #$000E : TSB $0C
-		LDY #$0000
+	;	LDY #$0000
+	LDY $04
 		LDX !ActiveOAM
 		LDA !OAMindex_offset,x
 		CLC : ADC #$0200
@@ -2070,11 +2084,13 @@ SPRITE_OFF_SCREEN:
 		RTS
 
 		.WithinBounds
-		LDA ($04),y				;\
+	;	LDA ($04),y				;\
+	LDA $0000,y
 		AND #$02 : STA $0A			; |
 		STZ $0B					;\ n flag trigger (for size bit)
 		BEQ $02 : DEC $0B			;/
-		LDA ($04),y				; | YXPP--ST
+	;	LDA ($04),y				; | YXPP--ST
+	LDA $0000,y
 		AND.b #$0E^$FF				; |
 		EOR $0C					; |
 		STA !OAM_p0+$003,x			;/
@@ -2083,7 +2099,8 @@ SPRITE_OFF_SCREEN:
 		REP #$20
 		INY
 
-		LDA ($04),y
+	;	LDA ($04),y
+	LDA $0000,y
 		AND #$00FF
 		CMP #$0080
 		BMI $03 : ORA #$FF00
@@ -2105,7 +2122,8 @@ SPRITE_OFF_SCREEN:
 		.GoodX
 		STA $06					; temp tile xpos
 		INY
-		LDA ($04),y
+	;	LDA ($04),y
+	LDA $0000,y
 		AND #$00FF
 		CMP #$0080
 		BMI $03 : ORA #$FF00
@@ -2118,7 +2136,8 @@ SPRITE_OFF_SCREEN:
 		STA !OAM_p0+$001,x
 		LDA $06 : STA !OAM_p0+$000,x
 		INY
-		LDA ($04),y : STA !OAM_p0+$002,x
+	;	LDA ($04),y : STA !OAM_p0+$002,x
+	LDA $0000,y : STA !OAM_p0+$002,x
 		INY
 		PHX
 		REP #$20
@@ -2213,9 +2232,12 @@ SPRITE_OFF_SCREEN:
 		LDA $00
 		SEC : SBC $1A
 		STA $00
-		LDA ($04) : STA $08
+	;	LDA ($04) : STA $08
+	LDA ($04)
 		INC $04
 		INC $04
+	CLC : ADC $04
+	STA $08
 		LDA !SpriteProp,x			;\
 		ORA $33C0,x				; | prop base
 		AND #$00FF				; |
@@ -2225,7 +2247,8 @@ SPRITE_OFF_SCREEN:
 		LSR A : BCS +
 		LDA #$0040 : TSB $0C
 		DEC $0E
-	+	LDY #$0000
+	+	;LDY #$0000
+	LDY $04
 		LDA !SpriteTile,x			;\
 		AND #$00FF				; | dynamic tile
 		STA !BigRAM+$7C				;/
@@ -2253,7 +2276,8 @@ SPRITE_OFF_SCREEN:
 		RTS
 
 		.WithinBounds
-		LDA ($04),y				; read prop byte
+	;	LDA ($04),y				; read prop byte
+	LDA $0000,y
 		BIT #$01 : BEQ ..dynamicprop		; check which format this is
 
 		..staticprop				;\
@@ -2277,7 +2301,8 @@ SPRITE_OFF_SCREEN:
 		EOR $0C					; | get dynamic prop
 		ORA $64					; |
 		STA !OAM_p0+$003,x			;/
-		LDA ($04),y				;\ S bit
+	;	LDA ($04),y				;\ S bit
+	LDA $0000,y
 		AND #$02				;/
 
 		..propdone
@@ -2288,7 +2313,8 @@ SPRITE_OFF_SCREEN:
 		REP #$20
 		INY
 
-		LDA ($04),y
+	;	LDA ($04),y
+	LDA $0000,y
 		AND #$00FF
 		CMP #$0080
 		BMI $03 : ORA #$FF00
@@ -2310,7 +2336,8 @@ SPRITE_OFF_SCREEN:
 		.GoodX
 		STA $06					; $06 = 16-bit tile xpos
 		INY
-		LDA ($04),y
+	;	LDA ($04),y
+	LDA $0000,y
 		AND #$00FF
 		CMP #$0080
 		BMI $03 : ORA #$FF00
@@ -2324,7 +2351,8 @@ SPRITE_OFF_SCREEN:
 		STA !OAM_p0+$001,x
 		LDA $06 : STA !OAM_p0+$000,x		; lo byte of tile xpos
 		INY
-		LDA ($04),y
+	;	LDA ($04),y
+	LDA $0000,y
 		CLC : ADC !BigRAM+$7C
 		STA !OAM_p0+$002,x
 		INY
@@ -2371,9 +2399,12 @@ SPRITE_OFF_SCREEN:
 		LDA $00
 		SEC : SBC $1A
 		STA $00
-		LDA ($04) : STA $08
+	;	LDA ($04) : STA $08
+	LDA ($04)
 		INC $04
 		INC $04
+	CLC : ADC $04
+	STA $08
 		LDA $33C0,x
 		AND #$000E
 		STA $0C
@@ -2384,7 +2415,8 @@ SPRITE_OFF_SCREEN:
 		DEC $0E
 	+	;LDA !GFX_Dynamic-1
 		;BPL $02 : INC $0C
-		LDY #$0000
+	;	LDY #$0000
+	LDY $04
 		LDX !ActiveOAM
 		LDA !OAMindex_offset,x
 		CLC : ADC #$0200
@@ -2409,7 +2441,8 @@ SPRITE_OFF_SCREEN:
 		RTS
 
 		.WithinBounds
-		LDA ($04),y				; read prop byte
+	;	LDA ($04),y				; read prop byte
+	LDA $0000,y
 		BIT #$01 : BEQ ..dynamicprop		; check which format this is
 
 		..staticprop				;\
@@ -2433,7 +2466,8 @@ SPRITE_OFF_SCREEN:
 		EOR $0C					; | get dynamic prop
 		ORA $64					; |
 		STA !OAM_p0+$003,x			;/
-		LDA ($04),y				;\ S bit
+	;	LDA ($04),y				;\ S bit
+	LDA $0000,y
 		AND #$02				;/
 
 		..propdone
@@ -2443,7 +2477,8 @@ SPRITE_OFF_SCREEN:
 
 		REP #$20
 		INY
-		LDA ($04),y
+	;	LDA ($04),y
+	LDA $0000,y
 		AND #$00FF
 		CMP #$0080
 		BMI $03 : ORA #$FF00
@@ -2465,7 +2500,8 @@ SPRITE_OFF_SCREEN:
 		.GoodX
 		STA $06					; tile xpos
 		INY
-		LDA ($04),y
+	;	LDA ($04),y
+	LDA $0000,y
 		AND #$00FF
 		CMP #$0080
 		BMI $03 : ORA #$FF00
@@ -2480,7 +2516,8 @@ SPRITE_OFF_SCREEN:
 		LDA $06 : STA !OAM_p0+$000,x
 		INY
 		PHX
-		LDA ($04),y : TAX
+	;	LDA ($04),y : TAX
+	LDA $0000,y : TAX				; X hi has to be clear
 		LDA !DynamicProp,x : STA $06		; -------T flip for dynamic tile
 		LDA $F0,x
 		PLX
@@ -2541,33 +2578,25 @@ SPRITE_OFF_SCREEN:
 		PHP
 		SEP #$30
 		TXA
-		ASL A
-		TAX
+		ASL A : TAX
 		REP #$20
 		LDA !DynamicList,x : STA $00
-		SEP #$20
-		LDA #$00						; starting dynamic tile number
+		LDY #$00						; starting dynamic tile number
 		LDX #$00						; starting tile number
 
-		.Block1							;\
-	..loop	STA $F0,x						; |
-		LSR $00							; | dynamic tile nums for first 8 possible tiles
+		.Loop							;\
+		STY $F0,x						; |
+		LSR $00							; | dynamic tile nums for all 16 possible tiles
 		BCC $01 : INX						; |
-		INC #2							; |
-		CMP #$10 : BCC ..loop					;/
-
-		.Block2							;\
-		LDY $01 : STY $00					; |
-	..loop	STA $F0,x						; |
-		LSR $00							; | dynamic tile nums for remaining 8 possible tiles
-		BCC $01 : INX						; |
-		INC #2							; |
-		CMP #$20 : BCC ..loop					;/
+		INY #2							; |
+		CPY #$20 : BCC .Loop					;/
 
 		.Complete
-		LDX #$0F						;\
-	..loop	LDY $F0,x						; |
-		LDA !DynamicMatrix+0,y : STA $F0,x			; | get full tile numbers from matrix
+		SEP #$20						;\
+		LDX #$0F						; |
+		..loop							; |
+		LDY $F0,x						; | get full tile numbers from matrix
+		LDA !DynamicMatrix+0,y : STA $F0,x			; |
 		LDA !DynamicMatrix+1,y : STA !DynamicProp,x		; |
 		DEX : BPL ..loop					;/
 		PLP
@@ -2648,43 +2677,35 @@ SPRITE_OFF_SCREEN:
 		TAX							;/
 		LDA !DynamicList,x : STA $00				; $00 = which dynamic tiles are in use
 		LDX #$0000						; X = square table index
-		LDY #$0000						; Y = pointer index
 		LDA ($0C) : BEQ .Return					; if size = 0, return
-		STA $02							;\
-		INC $0C							; | otherwise store size to $02 and set up pointer
-		INC $0C							;/
-
+		INC $0C							;\
+		INC $0C							; | $02 = ending index
+		CLC : ADC $0C						; | Y = addr,y index
+		STA $02							; |
+		LDY $0C							;/
 
 		.Loop							;\ return if at end of dynamo
 		CPY $02 : BCS .Return					;/
-		LDA ($0C),y : BPL .LoadTile				; check tile
+		LDA $0000,y : BPL .LoadTile				; check tile
 		INY #2							; Y+2 for command
 		CMP #$C000 : BCC .GetFile				; check file address update
 		CMP #$E000 : BCC .SkipTiles				; check tile skip
 
 
 		.SuperDynamicAddress					;\
-		PHX							; |
-		AND #$00FF : TAX					; |
-		LDA !SD_status,x					; |
-		SEP #$20						; |
-		AND #$C0 : BEQ ..7E					; |
-		CMP #$40 : BEQ ..7F					; | get bank
-		CMP #$80 : BEQ ..40					; |
-	..41	LDA #$41 : BRA ..setbank				; |
-	..40	LDA #$40 : BRA ..setbank				; |
-	..7F	LDA #$7F : BRA ..setbank				; |
-	..7E	LDA #$7E						; |
-		..setbank						; |
-		STA !FileAddress+2					;/
-		REP #$20						;\
-		LDA !SD_status-1,x					; |
-		AND #$3F00						; | get address
-		ASL #2							; |
+		PHX							; | SD index
+		AND #$00FF : TAX					;/
+		LDA !SD_status-1,x					;\
+		AND #$FC00						; | get address
 		STA !FileAddress					;/
+		LDA !SD_status,x					;\
+		AND #$0003 : TAX					; | get bank
+		LDA.l .SD_bank,x : STA !FileAddress+2			;/
 		PLX							;\ loop
 		BRA .Loop						;/
 
+		.SD_bank
+		db $7E,$7F,$40,$41
 
 		.Return							;\
 		PLP							; | pull stuff
@@ -2694,12 +2715,10 @@ SPRITE_OFF_SCREEN:
 		.SkipTiles						;\
 		AND #$000F : BEQ .Loop					; |
 		PHA							; |
-		PEI ($04)						; |
-		STX $04							; | add skip count * 4 to X
+		STX $0C							; | add skip count * 4 to X
 		ASL #2							; |
-		ADC $04							; |
-		TAX							; |
-		PLA : STA $04						;/
+		ADC $0C							; |
+		TAX							;/
 		PLA							;\
 	-	LSR $00							; | shift $00 once per skip count
 		DEC A : BEQ .Loop					; |
@@ -2716,7 +2735,7 @@ SPRITE_OFF_SCREEN:
 	..loop	LSR $00 : BCC ..nextone					;/
 		..thisone						;\ source bank
 		LDA !FileAddress+1 : STA !VRAMbase+!SquareTable+1,x	;/
-		LDA ($0C),y						;\
+		LDA $0000,y						;\
 		CLC : ADC !FileAddress+0				; | source address
 		STA !VRAMbase+!SquareTable+0,x				;/
 		INC !DynamicCount					; 1 more tile in use

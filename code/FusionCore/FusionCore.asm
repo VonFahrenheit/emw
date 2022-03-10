@@ -1,17 +1,11 @@
+
 header
 sa1rom
 
-print " "
-print "FusionCore V1.2"
+	incsrc "../Defines.asm"
 
-; done:
-; - make DAMN sure no score sprites can write anything anywhere
-; - reprogram engines to subtract their offset value
-; - look at all the reads and make sure number comparisons are correct
-; - reprogram bounce sprites a bit to fit 2 extra tables, and to add their offset (gotta hijack to do that)
-; - lots and lots of bug testing
 
-incsrc "../Defines.asm"
+print "-- FusionCore --"
 
 ; list:
 ;	00 -- EMPTY --
@@ -1103,7 +1097,7 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 
 	; -- coin gfx fix --
 	org $029A08
-	Coin:
+	ExCoin:
 		PEI ($1A)				;\ preserve BG1 coords
 		PEI ($1C)				;/
 		REP #$20				;\
@@ -1173,18 +1167,28 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		db $00,$00,$00,$00
 		LDA $00 : BEQ .Return
 		LDA !Ex_Data1,x
-		LSR #3
-		TAY
+		LSR #3 : TAY
+		CPY #$02
+		BCC $02 : LDY #$02
 		LDA !Ex_Num,x
 		CMP #$02+!MinorOffset : BEQ .SmallStar
 		.BlueSparkle
 		INY #3
 		.SmallStar
-		LDA $8ECC,y				; same table but different offsets
+		LDA.w SparkleTiles,y			; same table but different offsets
 		LDY #$02
 		STA [$02],y
 	.Return	RTS
 	warnpc $028F2B
+
+
+	org $028ECC
+	SparkleTiles:
+		db $5A,$59,$58
+		db $4A,$49,$48
+	warnpc $028ED2
+
+
 
 	org $028F4D
 	FireParticle:
@@ -1238,19 +1242,14 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		TAY
 		LDA $8D42,y : BEQ .Water00
 		CMP #$02 : BEQ .Water02
-		CMP #$66 : BNE .Smoke16x16		; catch 8x8 smoke tile
+		CMP #$60 : BEQ .Smoke16x16		; catch 8x8 smoke tile
 		.Smoke8x8
 		JMP Smoke01_8
 		.Smoke16x16
-		PHA
 		JSL DisplayGFX
 		%TilemapHeader(1, $FFF, 0)
-		db $00,$00,$00,$02
-		PLA
-		LDY $00 : BEQ .Return
-		LDY #$02
-		STA [$02],y
-	.Return	RTS
+		db $00,$00,$60,$02
+		RTS
 		.Water00
 		JSL DisplayGFX
 		%TilemapHeader(1, !GFX_WaterEffects_offset, 0)
@@ -1295,21 +1294,24 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		LSR #2
 		TAY
 		LDA $A347,y
-		CMP #$66 : BNE .16
+		CMP #$60 : BEQ .16
 	.8	JMP Smoke01_8
 
-	.16	JSL DisplayGFX
+	.16	PHA
+		JSL DisplayGFX
 		%TilemapHeader(1, $FFF, 0)
 		db $00,$00,$00,$02
-		LDA $00 : BEQ .Return
-		LDA !Ex_Data2,x
-		LSR #2
-		TAY
-		LDA $A347,y
+		PLA
+		LDY $00 : BEQ .Return
 		LDY #$02
 		STA [$02],y
 	.Return	RTS
 	warnpc $02A3AE
+	org $02A347
+		db $5F,$5E,$5D,$60
+	warnpc $02A34B
+
+
 
 	org $02A178
 	EnemyFireball:
@@ -1531,14 +1533,14 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 	SpinJumpStars:
 		JSL DisplayGFX
 		%TilemapHeader(1, $FFF, 0)
-		db $00,$00,$48,$00
+		db $00,$00,$4F,$00
 		BRA .Done
 	warnpc $029C98
 	org $029C98
 		.Done
 
 	org $029F2A
-	Bubble:
+	ExBubble:
 		LDA !Ex_Data1,x
 		LSR #2
 		AND #$03
@@ -1583,39 +1585,48 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		LSR #2
 		TAY
 		LDA $96D8,y
-		CMP #$66 : BNE .16
-	.8	JSL DisplayGFX
+		CMP #$60 : BEQ .16
+	.8	PHA
+		JSL DisplayGFX
 		%TilemapHeader(1, $FFF, 0)
 		db $04,$04,$5E,$00
-		RTS
-
-	.16	JSL DisplayGFX
-		%TilemapHeader(1, $FFF, 0)
-		db $00,$00,$00,$02
-		LDA $00 : BEQ .Return
-		LDA !Ex_Data1,x
-		LSR #2
-		TAY
-		LDA $96D8,y
+		PLA
+		LDY $00 : BEQ .Return
 		LDY #$02
 		STA [$02],y
 	.Return	RTS
+
+	.16	JSL DisplayGFX
+		%TilemapHeader(1, $FFF, 0)
+		db $00,$00,$60,$02
+		RTS
 	warnpc $02974A
 	org $02974A
 		JMP Smoke01
 
+
 	org $0297B2
 	ContactGFX:
-		JSL DisplayGFX
-		%TilemapHeader(1, $FFF, 0)
-		db $00,$00,$66,$02
-		LDA $00 : BEQ .Return
-		LDY !Ex_Data1,x
-		LDA.w .Tiles,y
-		LDY #$02
-		STA [$02],y
-	.Return	RTS
-	.Tiles	db $6A,$6A,$6A,$68,$68,$68,$66,$66
+		PHB							;\
+		STX $00							; |
+		STZ $01							; |
+		JSL !GetParticleIndex					; |
+		PLB							; |
+		SEP #$20						; |
+		LDY $00							; |
+		LDA !Ex_XLo,y : STA !41_Particle_XLo,x			; |
+		LDA !Ex_XHi,y : STA !41_Particle_XHi,x			; | turn into particle form
+		LDA !Ex_YLo,y : STA !41_Particle_YLo,x			; |
+		LDA !Ex_YHi,y : STA !41_Particle_YHi,x			; |
+		LDA #$C0 : STA !41_Particle_Prop,x			; |
+		LDA #$07 : STA !41_Particle_Timer,x			; |
+		LDA.b #!prt_contact : STA !41_Particle_Type,x		; |
+		JSL !InitParticle : STA !41_Particle_Timer,x		; > store particle timer
+		SEP #$30						; |
+		LDX $00							; |
+		STZ !Ex_Num,x						; |
+		RTS							;/
+	warnpc $029837
 
 	org $029936
 		JMP $9793		; skip a pointless code that just writes 0xF0 to OAM Y

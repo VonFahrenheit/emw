@@ -1,5 +1,3 @@
-header
-sa1rom
 
 
 macro BRK()
@@ -20,12 +18,6 @@ macro BRK()
 	?End:
 endmacro
 
-
-	; -- Defines --
-
-	incsrc "../Defines.asm"
-	!CompileText = 0
-	incsrc "../MSG/TextData.asm"
 
 
 
@@ -888,24 +880,26 @@ endmacro
 		LDA $1C : STA $6BEF			; |
 	.NoSmart					;/
 
-; for large levels, pushing/pulling these is faster than using addr regs
-; $45	left border of spawn box
-; $47	right border of spawn box
-; $49	top border of spawn box
-; $4B	bottom border of spawn box
-; $4D	left border of forbiddance box
-; $4F	right border of forbiddance box
-; $51	top border of forbiddance box
-; $53	bottom border of forbiddance box
+; $F0	left border of spawn box
+; $F2	right border of spawn box
+; $F4	top border of spawn box
+; $F6	bottom border of spawn box
+; $F8	left border of forbiddance box
+; $FA	right border of forbiddance box
+; $FC	top border of forbiddance box
+; $FE	bottom border of forbiddance box
 
-		; PEI ($45)
-		; PEI ($47)
-		; PEI ($49)
-		; PEI ($4B)
-		; PEI ($4D)
-		; PEI ($4F)
-		; PEI ($51)
-		; PEI ($53)
+		LDA !GameMode
+		CMP #$14 : BEQ ..nobackup
+		PEI ($F0)
+		PEI ($F2)
+		PEI ($F4)
+		PEI ($F6)
+		PEI ($F8)
+		PEI ($FA)
+		PEI ($FC)
+		PEI ($FE)
+		..nobackup
 		SEP #$30
 		LDA $6BF4
 		AND #$03
@@ -917,43 +911,43 @@ endmacro
 		AND #$FFF0					;
 		SEC : SBC #$0030				;\
 		BPL $03 : LDA #$0000				; | left border spawn box (-0x30)
-		STA $45						;/
+		STA $F0						;/
 		CLC : ADC #$0151				;\ right border spawn box (+0x121)
-		STA $47						;/
+		STA $F2						;/
 		SEC : SBC #$0141				;\ left border forbiddance box (-0x20)
-		STA $4D						;/
+		STA $F8						;/
 		CLC : ADC #$0131				;\ right border forbiddance box (+0x111)
-		STA $4F						;/
+		STA $FA						;/
 		LDA $1C						;\
 		AND #$FFF0					; | top border spawn box
 		STA $00						; > store
 		CLC : ADC.w InitSpriteEngine_min_y_range,x	; |
-		STA $49						;/
+		STA $F4						;/
 		LDA $00						;\
 		CLC : ADC.w InitSpriteEngine_max_y_range,x	; | bottom border spawn box
-		STA $4B						;/
+		STA $F6						;/
 		LDA $00						;\
 		SEC : SBC #$0020				; | top border forbiddance box
-		STA $51						;/
+		STA $FC						;/
 		CLC : ADC #$0111				;\ bottom border forbiddance box
-		STA $53						;/
+		STA $FE						;/
 
-		%NegZero($45)					;\
-		%NegZero($47)					; |
-		%NegZero($49)					; |
-		%NegZero($4B)					; | no negative coordinates allowed
-		%NegZero($4D)					; |
-		%NegZero($4F)					; |
-		%NegZero($51)					; |
-		%NegZero($53)					;/
+		%NegZero($F0)					;\
+		%NegZero($F2)					; |
+		%NegZero($F4)					; |
+		%NegZero($F6)					; | no negative coordinates allowed
+		%NegZero($F8)					; |
+		%NegZero($FA)					; |
+		%NegZero($FC)					; |
+		%NegZero($FE)					;/
 
 		LDA !GameMode					;\
 		AND #$00FF					; |
 		CMP #$0014 : BEQ .SpawnBoxReady			; |
-		STZ $4D						; | if in any game mode other than 0x14, disable forbiddance box
-		STZ $4F						; | this way all sprites on-screen can be loaded immediately
-		STZ $51						; |
-		STZ $53						; |
+		STZ $F8						; | if in any game mode other than 0x14, disable forbiddance box
+		STZ $FA						; | this way all sprites on-screen can be loaded immediately
+		STZ $FC						; |
+		STZ $FE						; |
 	.SpawnBoxReady						;/
 
 
@@ -1032,16 +1026,16 @@ endmacro
 		PLX
 	endif
 		LDA $00					; |
-		CMP $45 : BCC .OutOfBounds		; |
-		CMP $47 : BCS .OutOfBounds		; | has to be within spawn box
+		CMP $F0 : BCC .OutOfBounds		; |
+		CMP $F2 : BCS .OutOfBounds		; | has to be within spawn box
 		LDA $02					; |
-		CMP $49 : BCC .OutOfBounds		; |
-		CMP $4B : BCS .OutOfBounds		;/
-		CMP $51 : BCC .GoodXY			;\
-		CMP $53 : BCS .GoodXY			; |
+		CMP $F4 : BCC .OutOfBounds		; |
+		CMP $F6 : BCS .OutOfBounds		;/
+		CMP $FC : BCC .GoodXY			;\
+		CMP $FE : BCS .GoodXY			; |
 		LDA $00					; | has to be outside of forbiddance box
-		CMP $4D : BCC .GoodXY			; |
-		CMP $4F : BCC .OutOfBounds		; |
+		CMP $F8 : BCC .GoodXY			; |
+		CMP $FA : BCC .OutOfBounds		; |
 	.GoodXY	SEP #$20				;/
 
 		PHX					;\
@@ -1062,10 +1056,8 @@ endmacro
 		LDA [$CE],y : STA !NewSpriteNum,x	; sprite num
 		INY					;\ prop 1
 		LDA [$CE],y : STA !ExtraProp1,x		;/
-		INY					;\
-		LDA [$CE],y				; | prop 2
-		AND #$3F				; | (highest 2 bits from static sprite data)
-		STA !ExtraProp2,x			;/
+		INY					;\ prop 2
+		LDA [$CE],y : STA !ExtraProp2,x		;/
 		JMP .INIT				; go to INIT
 	.NotCustom
 
@@ -1228,7 +1220,7 @@ endmacro
 		LDA $04 : STA $3230,x			; state
 		LDA $01,s : STA $33F0,x			; sprite index to level table, sprite level ID
 		LDA !ExtraBits,x			;\
-		AND #$08 : BEQ .NoInit			; |
+		AND.b #!CustomBit : BEQ .NoInit		; |
 		PHY					; |
 		PHP					; |
 		SEP #$30				; | run INIT routine of custom sprites right away (no, this breaks too many sprites)
@@ -1247,15 +1239,19 @@ endmacro
 		JMP .LoadNewSprite			;/
 
 		.Return
-		; REP #$20
-		; PLA : STA $53
-		; PLA : STA $51
-		; PLA : STA $4F
-		; PLA : STA $4D
-		; PLA : STA $4B
-		; PLA : STA $49
-		; PLA : STA $47
-		; PLA : STA $45
+		REP #$20
+		LDA !GameMode
+		AND #$00FF
+		CMP #$0014 : BEQ ..done
+		PLA : STA $FE
+		PLA : STA $FC
+		PLA : STA $FA
+		PLA : STA $F8
+		PLA : STA $F6
+		PLA : STA $F4
+		PLA : STA $F2
+		PLA : STA $F0
+		..done
 		PLP
 		RTS
 
@@ -1427,13 +1423,13 @@ endmacro
 
 		.DynamicList
 		PHX
+		PHP
+		REP #$30
 		TXA
-		ASL A
-		TAX
-		REP #$20
+		ASL A : TAX
 		LDA !DynamicList+0,x : TRB !DynamicTile+0
 		STZ !DynamicList+0,x
-		SEP #$20
+		PLP
 		PLX
 		RTL
 
@@ -1461,7 +1457,7 @@ endmacro
 
 	SetSpriteTables:
 		LDA !ExtraBits,x			;\ see if custom
-		AND #$08 : BNE .Custom			;/
+		AND.b #!CustomBit : BNE .Custom		;/
 
 		.Vanilla
 		PHY
@@ -1503,13 +1499,10 @@ endmacro
 		LDA SpriteData+$07,y : STA $00			; | INIT pointer
 		SEP #$20					; |
 		LDA SpriteData+$09,y : STA $02			;/
-		LDA !ExtraProp2,x				;\
-		AND #$3F					; |
-		STA !ExtraProp2,x				; |
-		LDA SpriteData+$0D,y				; | highest 2 bits of prop2
-		AND #$C0					; |
-		ORA !ExtraProp2,x				; |
-		STA !ExtraProp2,x				;/
+		LDA SpriteData+$0D,y				;\
+		AND #$C0					; | highest 2 bits of extra bits
+		ORA !ExtraBits,x				; |
+		STA !ExtraBits,x				;/
 		PLP
 		PLY
 		PLB
@@ -1639,7 +1632,7 @@ endmacro
 		RTL						; return
 
 		.Custom
-		LDA !ExtraProp2,x : BMI .CallMain
+		LDA !ExtraBits,x : BMI .CallMain
 		PHA
 		LDA $02,s
 		JSL $01D43E
@@ -1929,8 +1922,6 @@ incsrc "GFX_expand.asm"
 print "Fe26 Sprite Engine ends at $", pc, "."
 
 print "Sprite data inserted at $", pc, "."
-print " "
-print "-- SPRITE LIST --"
 
 incsrc "Replace/SP_spring_board.asm"
 incsrc "Replace/SP_Koopa.asm"

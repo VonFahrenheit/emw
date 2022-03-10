@@ -791,6 +791,26 @@ Build_RAM_Code:
 
 	.Main
 		REP #$20
+
+
+		; for checking if dynamic tilemap updates are within bounds
+		; the coords are the same as the zip offsets + 1 tile away from the screen
+		LDA $1A					;\
+		AND #$FFF8				; |
+		SEC : SBC #$0010			; | L = -16
+		BPL $03 : LDA #$0000			; |
+		STA !BG1ZipBoxL				;/
+		CLC : ADC #$0128			;\ R = +280
+		STA !BG1ZipBoxR				;/
+		LDA $1C					;\
+		AND #$FFF8				; |
+		SEC : SBC #$000C			; | U = -12
+		BPL $03 : LDA #$0000			; |
+		STA !BG1ZipBoxU				;/
+		CLC : ADC #$0100			;\ D = +244
+		STA !BG1ZipBoxD				;/
+
+
 		LDA #$0000
 		STA !OAMindex					; clear OAM index regs
 		STA.l !OAMindex_p0
@@ -1129,16 +1149,6 @@ Build_RAM_Code:
 		BEQ $03 : JSR .AppendSMW0D7E			;/
 		LDA.l $6D80					;\ update slot 3
 		BEQ $03 : JSR .AppendSMW0D80			;/
-
-
-	; removed for shader compatibility
-	;	LDA #$0100					;\
-	;	CMP.l !LightR : BNE ..coinshine			; |
-	;	CMP.l !LightG : BNE ..coinshine			; |
-	;	CMP.l !LightB : BEQ ..nocoinshine		; | coin shine, unless there's a lighting effect
-	;	..coinshine					; |
-	;	JSR .AppendSMWPalette				; |
-	;	..nocoinshine					;/
 		.SkipSMW
 
 
@@ -2442,32 +2452,6 @@ Build_RAM_Code:
 		..end
 
 
-	; .AppendSMWPalette
-		; !Temp = 0					; new RAM code
-		; %makecode($64A2)				; LDX #$64
-		; %makecode($218E)				; STX $xx21
-		; %makecode($A221)				; $21xx : LDX #
-		; LDA $14						;\
-		; AND #$001C					; |
-		; LSR A						; | read color data
-		; TAX						; |
-		; LDA.l $00B60C,x					;/
-		; STA.w !RAMcode+$06,y				; > first half of color (lo byte)
-		; STA.w !RAMcode+$0B-1,y				; > second half of color (hi byte)
-		; !Temp := !Temp+1				; skip 1 byte (8-bit color value)
-		; %makecode($228E)				; STX $xx22
-		; %makecode($A221)				; $21xx : LDX #
-		; !Temp := !Temp+1				; skip 1 byte (8-bit color value)
-		; %makecode($008E)				; STX $xxxx
-		; !Temp := !Temp-1				; prevent overflow
-		; %makecode($2122)				; $2122
-		; TYA						;\
-		; CLC : ADC.w #!Temp				; | increment RAM code index
-		; TAY						;/
-		; RTS
-
-
-
 	.AppendLight
 		%DMAsettings($2202)
 		%sourcebank(!LightData_SNES>>16)
@@ -2850,7 +2834,7 @@ Build_RAM_Code:
 ;	  or, more streamlined:
 ;		[level height] * ([level width] + 15)
 ;
-; or you can just use the $6C26 pointer, which *supposedly* points to the start of the layer 2 data
+; or you can just use the $6C26 pointer (!Layer2LevelMap16Addr), which *supposedly* points to the start of the layer 2 data
 ; (only on horizontal levels though, on vertical levels layer 2 data always starts at address $E400 / offset $1C00)
 ;
 
@@ -3156,22 +3140,6 @@ GetTilemapData:
 		BPL $03 : LDA #$0000			; > no negative numbers allowed
 		STA !BG1ZipRowX				;/
 
-
-		; what are these for???
-		LDA $1A					;\
-		SEC : SBC #$0010			; | L = -16
-		BPL $03 : LDA #$0000			; |
-		STA !BG1ZipBoxL				;/
-		CLC : ADC #$0120			;\ R = +272
-		STA !BG1ZipBoxR				;/
-		LDA $1C					;\
-		SEC : SBC #$0008			; | U = -8
-		BPL $03 : LDA #$0000			; |
-		STA !BG1ZipBoxU				;/
-		CLC : ADC #$00F8			;\ D = +240
-		STA !BG1ZipBoxD				;/
-
-
 		LDA $7925				;\
 		AND #$00FF : BEQ .Layer2BG		; |
 		CMP #$0003 : BCC .Layer2Level		; |
@@ -3262,13 +3230,7 @@ GetTilemapData:
 
 
 	.Column	LDA #$41 : STA $07			; $07 = map16 bank
-		LDA [$05]
-		PHX					;
-		TAX : XBA				; get hi byte of map16 into B and X
-		LDA !Map16Remap,x			;\
-		STA $03					; | map16 remap
-		STZ $02					;/
-		PLX					;
+		LDA [$05] : XBA
 		DEC $07
 		LDA [$05]
 		REP #$30				; A = 16-bit map16 number
@@ -3282,24 +3244,27 @@ GetTilemapData:
 	+	PLA
 	endif
 		ASL A					; double to index 16-bit pointer
+		CMP.w #$0300*2 : BCC ..noremap
+		CMP.w #$0400*2 : BCS ..noremap
+		..remap
+		ASL #2
+		AND #$07FF
+		ADC.w #!Map16Page3
+		STA $0A
+		LDA.w #!Map16Page3>>16 : STA $0C
+		BRA ..readtile
+		..noremap
 		PHX
 		PHP
 		JSL $06F540				; this will store the bank byte to $0C and return with the address in A
 		PLP
 		PLX
 		STA $0A
+		..readtile
 		LDY $00					;\ > left or right half
-		LDA [$0A],y				; |
-		BIT $02 : BMI +				; |
-		AND #$0300^$FFFF			; |
-		ORA $02					; |
-	+	STA $6910+$00,x				; | get layer 1 column tilemap data from map16 tile
+		LDA [$0A],y : STA $6910+$00,x		; | get layer 1 column tilemap data from map16 tile
 		INY #2					; |
-		LDA [$0A],y				; |
-		BIT $02 : BMI +				; |
-		AND #$0300^$FFFF			; |
-		ORA $02					; |
-	+	STA $6910+$02,x				;/
+		LDA [$0A],y : STA $6910+$02,x		;/
 
 		INX #4					; increment X
 		SEP #$30				; all regs 8-bit
@@ -3320,13 +3285,7 @@ GetTilemapData:
 	.Done	RTS
 
 	.Row	LDA #$41 : STA $07
-		LDA [$05]
-		PHX					;
-		TAX : XBA				; get hi byte of map16 into B and X
-		LDA !Map16Remap,x			;\
-		STA $03					; | map16 remap
-		STZ $02					;/
-		PLX					;
+		LDA [$05] : XBA
 		DEC $07
 		LDA [$05]
 		REP #$30
@@ -3340,24 +3299,27 @@ GetTilemapData:
 	+	PLA
 	endif
 		ASL A
+		CMP.w #$0300*2 : BCC ..noremap
+		CMP.w #$0400*2 : BCS ..noremap
+		..remap
+		ASL #2
+		AND #$07FF
+		ADC.w #!Map16Page3
+		STA $0A
+		LDA.w #!Map16Page3>>16 : STA $0C
+		BRA ..readtile
+		..noremap
 		PHX
 		PHP
 		JSL $06F540
 		PLP
 		PLX
 		STA $0A
+		..readtile
 		LDY $00					;\ > upper or lower half
-		LDA [$0A],y				; |
-		BIT $02 : BMI +				; |
-		AND #$0300^$FFFF			; |
-		ORA $02					; |
-	+	STA $6950+$00,x				; | get layer 1 row tilemap data from map16 tile
+		LDA [$0A],y : STA $6950+$00,x		; | get layer 1 row tilemap data from map16 tile
 		INY #4					; |
-		LDA [$0A],y				; |
-		BIT $02 : BMI +				; |
-		AND #$0300^$FFFF			; |
-		ORA $02					; |
-	+	STA $6950+$02,x				;/
+		LDA [$0A],y : STA $6950+$02,x		;/
 
 		INX #4
 		SEP #$30
@@ -3591,13 +3553,7 @@ Layer2Level:
 		JSR .AddOffset
 
 	.Column	LDA #$41 : STA $07			; $07 = map16 bank
-		LDA [$05]
-		PHX					;
-		TAX : XBA				; get hi byte of map16 into B and X
-		LDA !Map16Remap,x			;\
-		STA $03					; | map16 remap
-		STZ $02					;/
-		PLX					;
+		LDA [$05] : XBA
 		DEC $07
 		LDA [$05]
 		REP #$30				; A = 16-bit map16 number
@@ -3611,24 +3567,27 @@ Layer2Level:
 	+	PLA
 	endif
 		ASL A					; double to index 16-bit pointer
+		CMP.w #$0300*2 : BCC ..noremap
+		CMP.w #$0400*2 : BCS ..noremap
+		..remap
+		ASL #2
+		AND #$07FF
+		ADC.w #!Map16Page3
+		STA $0A
+		LDA.w #!Map16Page3>>16 : STA $0C
+		BRA ..readtile
+		..noremap
 		PHX
 		PHP
 		JSL $06F540				; this will store the bank byte to $0C and return with the address in A
 		PLP
 		PLX
 		STA $0A
+		..readtile
 		LDY $00					;\ > left or right half
-		LDA [$0A],y				; |
-		BIT $02 : BMI +				; |
-		AND #$0300^$FFFF			; |
-		ORA $02					; |
-	+	STA $69A0+$00,x				; | get layer 2 column tilemap data from map16 tile
+		LDA [$0A],y : STA $69A0+$00,x		; | get layer 2 column tilemap data from map16 tile
 		INY #2					; |
-		LDA [$0A],y				; |
-		BIT $02 : BMI +				; |
-		AND #$0300^$FFFF			; |
-		ORA $02					; |
-	+	STA $69A0+$02,x				;/
+		LDA [$0A],y : STA $69A0+$02,x		;/
 
 		INX #4					; increment X
 		SEP #$30				; all regs 8-bit
@@ -3649,13 +3608,7 @@ Layer2Level:
 	.Done	RTS
 
 	.Row	LDA #$41 : STA $07
-		LDA [$05]
-		PHX					;
-		TAX : XBA				; get hi byte of map16 into B and X
-		LDA !Map16Remap,x			;\
-		STA $03					; | map16 remap
-		STZ $02					;/
-		PLX					;
+		LDA [$05] : XBA
 		DEC $07
 		LDA [$05]
 		REP #$30
@@ -3669,24 +3622,27 @@ Layer2Level:
 	+	PLA
 	endif
 		ASL A
+		CMP.w #$0300*2 : BCC ..noremap
+		CMP.w #$0400*2 : BCS ..noremap
+		..remap
+		ASL #2
+		AND #$07FF
+		ADC.w #!Map16Page3
+		STA $0A
+		LDA.w #!Map16Page3>>16 : STA $0C
+		BRA ..readtile
+		..noremap
 		PHX
 		PHP
 		JSL $06F540
 		PLP
 		PLX
 		STA $0A
+		..readtile
 		LDY $00					;\ > upper or lower half
-		LDA [$0A],y				; |
-		BIT $02 : BMI +				; |
-		AND #$0300^$FFFF			; |
-		ORA $02					; |
-	+	STA $69E0+$00,x				; | get layer 2 row tilemap data from map16 tile
+		LDA [$0A],y : STA $69E0+$00,x		; | get layer 2 row tilemap data from map16 tile
 		INY #4					; |
-		LDA [$0A],y				; |
-		BIT $02 : BMI +				; |
-		AND #$0300^$FFFF			; |
-		ORA $02					; |
-	+	STA $69E0+$02,x				;/
+		LDA [$0A],y : STA $69E0+$02,x		;/
 
 		INX #4
 		SEP #$30
@@ -3726,7 +3682,7 @@ Layer2Level:
 		SEP #$20				;/
 		RTS
 
-	..Horz	LDA $6C26				;\
+	..Horz	LDA !Layer2LevelMap16Addr		;\
 		SEC : SBC #$C800			; > only offset
 		CLC : ADC $05				; | add layer 2 map16 data offset from LM pointer
 		STA $05					; |

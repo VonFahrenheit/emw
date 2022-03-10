@@ -21,8 +21,9 @@ Portal:
 
 	INIT:
 		PHB : PHK : PLB
-		LDA !ExtraBits,x : BMI .Main
-		ORA #$80 : STA !ExtraBits,x
+		LDA !ExtraBits,x					;\
+		BIT #$20 : BNE .Main					; | extra bit 0x20 used for portal init
+		ORA #$20 : STA !ExtraBits,x				;/
 		LDA #$0F : STA !PortalLeniency				; a sprite must be eaten within 15 frames
 		LDA !ExtraProp1,x					;\
 		DEC A							; | default wait time is 255 frames (4.25 seconds)
@@ -161,7 +162,7 @@ Portal:
 		TYX							; | spawn sprite from portal
 		JSL !ResetSprite					; |
 		LDA !ExtraBits,x					; |
-		AND #$08 : BEQ .Vanilla					; |
+		AND.b #!CustomBit : BEQ .Vanilla			; |
 		JSL !ResetSpriteExtra					; |
 		.Vanilla						;/
 

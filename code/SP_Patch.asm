@@ -1,3 +1,4 @@
+
 header
 sa1rom
 
@@ -1063,27 +1064,34 @@ CHANGE_MAP16:
 		LDA $0F : STA $410000,x
 		XBA
 		LDA $0E : STA $400000,x
-		REP #$20
-		PHA
-		SEP #$10
-		LDX $0F
-		LDA !Map16Remap-1,x
-		AND #$FF00 : STA $0E					; $0E = remap data
 		REP #$30
-		PLA
+
+
+		.GetPointer
 		ASL A
+		CMP.w #$0300*2 : BCC ..noremap
+		CMP.w #$0400*2 : BCS ..noremap
+		..remap
+		ASL #2
+		AND #$07FF
+		ADC.w #!Map16Page3
+		STA $0A
+		LDA.w #!Map16Page3>>16 : STA $0C
+		BRA ..updatetile
+		..noremap
 		PHP
 		JSL $06F540
 		PLP
 		STA $0A
-
-		LDA $9A : BMI .Fail
-		CMP $45 : BCC .Fail
-		CMP $47 : BCS .Fail
-		LDA $98 : BMI .Fail
-		CMP $49 : BCC .Fail
-		CMP $4B : BCC .WithinScreen
-	.Fail	PLP
+		..updatetile
+		LDA $9A : BMI ..fail
+		CMP !BG1ZipBoxL : BCC ..fail
+		CMP !BG1ZipBoxR : BCS ..fail
+		LDA $98 : BMI ..fail
+		CMP !BG1ZipBoxU : BCC ..fail
+		CMP !BG1ZipBoxD : BCC .WithinScreen
+		..fail
+		PLP
 		RTS
 
 
@@ -1120,31 +1128,10 @@ CHANGE_MAP16:
 		LDX !TileUpdateTable
 		LDY #$0000
 
-		BIT $0E : BMI ..noremap
-
-		..remap							;\
-		LDA [$0A],y						; |
-		AND #$0300^$FFFF					; |
-		ORA $0E : STA !TileUpdateTable+$04,x			; |
+		LDA [$0A],y : STA !TileUpdateTable+$04,x		;\
 		LDY #$0002						; |
-		LDA [$0A],y						; |
-		AND #$0300^$FFFF					; |
-		ORA $0E : STA !TileUpdateTable+$0C,x			; |
+		LDA [$0A],y : STA !TileUpdateTable+$0C,x		; |
 		LDY #$0004						; | tile data
-		LDA [$0A],y						; | (with remap)
-		AND #$0300^$FFFF					; |
-		ORA $0E : STA !TileUpdateTable+$08,x			; |
-		LDY #$0006						; |
-		LDA [$0A],y						; |
-		AND #$0300^$FFFF					; |
-		ORA $0E : STA !TileUpdateTable+$10,x			; |
-		BRA ..next						;/
-
-		..noremap						;\
-		LDA [$0A],y : STA !TileUpdateTable+$04,x		; |
-		LDY #$0002						; |
-		LDA [$0A],y : STA !TileUpdateTable+$0C,x		; | tile data
-		LDY #$0004						; | (without remap)
 		LDA [$0A],y : STA !TileUpdateTable+$08,x		; |
 		LDY #$0006						; |
 		LDA [$0A],y : STA !TileUpdateTable+$10,x		;/
@@ -1355,17 +1342,17 @@ SPAWN_PARTICLE_BLOCK:
 ;	particle timer is set to its proper initial value
 INIT_PARTICLE:
 		LDY #$00FF					; default timer = 0xFF
-		CMP #!prt_smoke8x8				;\ timer for 8x8 smoke = 0x13
+		CMP.b #!prt_smoke8x8				;\ timer for 8x8 smoke = 0x13
 		BNE $03 : LDY #$0013				;/
-		CMP #!prt_smoke16x16				;\ timer for 16x16 = 0x17
+		CMP.b #!prt_smoke16x16				;\ timer for 16x16 smoke = 0x17
 		BNE $03 : LDY #$0017				;/
-		CMP #!prt_sparkle				;\ timer for sparkle = 0x20
+		CMP.b #!prt_sparkle				;\ timer for sparkle = 0x20
 		BNE $03 : LDY #$0020				;/
-		CMP #!prt_contact				;\ timer for contact particle = 0x07
-		BNE $03 : LDY #$0007				;/
-		CMP #!prt_tinycoin				;\ timer for tiny coin particle = 0x20
+		CMP.b #!prt_contact				;\ timer for contact particle = 0x00
+		BNE $03 : LDY #$0000				;/
+		CMP.b #!prt_tinycoin				;\ timer for tiny coin particle = 0x20
 		BNE $03 : LDY #$0020				;/
-		CMP #!prt_flash					;\ timer for flash particle = 0x20
+		CMP.b #!prt_flash				;\ timer for flash particle = 0x20
 		BNE $03 : LDY #$0020				;/
 		TYA
 		RTS
@@ -1485,6 +1472,7 @@ HurtP1:		LDA !P2Invinc-$80,y			;\
 		LDA #$01 : STA !MarioAnim
 		STZ $19
 		LDA #$2F : STA !MarioAnimTimer
+		LDA #$1F : STA !P2ShrinkTimer-$80,y	; > shrink timer
 		..noshrink
 		LDA #$F8 : STA !MarioYSpeed
 		LDA !P2Invinc-$80,y : STA !MarioFlashTimer
@@ -1500,12 +1488,14 @@ HurtP1:		LDA !P2Invinc-$80,y			;\
 		STA !P2YSpeed-$80,y
 		RTS
 
+
 		.Luigi
 		LDA !P2HP-$80,y				;\
 		CMP #$05 : BCC ..nosizechange		; |
 		SBC !dmg				; | set shrink timer when size changes from big to small
 		CMP #$05 : BCS ..nosizechange		; |
-		LDA #$1F : STA !P2ShrinkTimer		; |
+		LDA #$1F : STA !P2ShrinkTimer-$80,y	; |
+		LDA #$04 : STA !SPC1			; > shrink sfx
 		..nosizechange				;/
 		LDA #$00
 		STA !P2FireTimer-$80,y			; reset fire timer
@@ -1549,10 +1539,6 @@ HurtP1:		LDA !P2Invinc-$80,y			;\
 
 		.Peach
 		RTS
-
-
-
-
 
 
 ; Clipping 1:
@@ -1608,95 +1594,6 @@ CONTACT16:
 		RTS
 
 		.Return
-		CLC
-		SEP #$20
-		RTS
-
-		LDA $00 : STA $0C
-		LDA $08 : STA $0D
-		LDA $0A : XBA
-		LDA $04
-		REP #$20
-		STA $0E
-		LDA $02
-		AND #$00FF
-		CLC : ADC $0C
-		CMP $0E
-		BMI .Return
-		LDA $06
-		AND #$00FF
-		CLC : ADC $0E
-		CMP $0C
-		BMI .Return
-		SEP #$20
-
-		LDA $01 : STA $0C
-		LDA $09 : STA $0D
-		LDA $0B : XBA
-		LDA $05
-		REP #$20
-		STA $0E
-		LDA $03
-		AND #$00FF
-		CLC : ADC $0C
-		CMP $0E
-		BMI .Return
-		LDA $07
-		AND #$00FF
-		CLC : ADC $0E
-		CMP $0C
-		BMI .Return
-
-
-; $08 -> $01 (X1 hi -> next to X1 lo)
-; $01 -> $08 (Y1 lo -> next to Y1 hi)
-; $03 -> $0C (H1 -> free area)
-
-; $0A -> $05 (X2 hi -> next to X2 lo)
-; $05 -> $0A (Y2 lo -> next to Y2 hi)
-; $07 -> $0E (H2 -> free area)
-
-
-; $00 - X1
-; $02 - W1
-; $04 - X2
-; $06 - W2
-; $08 - Y1
-; $0A - Y2
-; $0C - H1
-; $0E - H2
-
-	!X1	= $00
-	!W1	= $02
-	!X2	= $04
-	!W2	= $06
-	!Y1	= $08
-	!Y2	= $0A
-	!H1	= $0C
-	!H2	= $0E
-
-
-		REP #$20
-		LDA !X1
-		CLC : ADC !W1
-		CMP !X2 : BMI .Fail
-		LDA !X2
-		CLC : ADC !W2
-		CMP !X1 : BMI .Fail
-		LDA !Y1
-		CLC : ADC !H1
-		CMP !Y2 : BMI .Fail
-		LDA !Y2
-		CLC : ADC !H2
-		CMP !Y1 : BMI .Fail
-
-		.Contact
-		SEC
-		SEP #$20
-		RTS
-
-
-		.Fail
 		CLC
 		SEP #$20
 		RTS
@@ -2672,23 +2569,27 @@ UPDATE_3D_CLUSTER:
 
 	; can only be called by SA-1
 
-	; input: A = xflip bit (usually from $3320,x, 0 to not use)
-
-	; $00-$01: parent X position (16-bit)
-	; $02-$03: parent Y position (16-bit)
-	; $04-$05: parent Z position (16-bit)
-	; $06-$07: calculating X position (16-bit)
-	; $08-$09: calculating Y position (16-bit)
-	; $0A-$0B: calculating Z position (16-bit)
-
-	; Each parent position is pushed on the stack, then loaded into $06-$0B
+	; input: A = xflip bit (usually just sprite direction, 0 to not use)
 
 
-; Start processing from index 0 and go all the way up
-; The core has to be the first (lowest index) object of each cluster.
-; Only the core has a true X/Y/Z coordinate.
-; When an attachment is processed, its X/Y/Z coordinates are stored based on the parent's X/Y/Z coordinates.
-; Therefore, each attachment must be processed after its parent.
+; RAM use
+; $00-$01: parent X position (16-bit)
+; $02-$03: parent Y position (16-bit)
+; $04-$05: parent Z position (16-bit)
+; $06-$07: calculating X position (16-bit)
+; $08-$09: calculating Y position (16-bit)
+; $0A-$0B: calculating Z position (16-bit)
+
+
+; each parent position is pushed on the stack, then loaded into $06-$0B
+
+
+; method:
+;	- start processing from index 0 and go all the way up to the final index
+;	- the core has to be the first (lowest index) object of each cluster
+;	- only the core has a true X/Y/Z coordinate (core is defined as a node that is its own parent)
+;	- when an attachment is processed, its X/Y/Z coordinates are written based on the parent's X/Y/Z coordinates
+;	- therefore, each attachment must be processed after its parent
 
 		LSR A					;\
 		ROR A					; |
@@ -3306,8 +3207,9 @@ GET_FILE_ADDRESS:
 		SEP #$20
 		LDA.b #$30 : PHA : PLB				; bank
 		REP #$20
-		LDA.w $8409,y : STA.l !FileAddress+1
-		LDA.w $8408,y : STA.l !FileAddress
+		LDA.w $840A,y					;\ bank is stored as a 16-bit number to make some processes faster
+		AND #$00FF : STA !FileAddress+2			;/
+		LDA.w $8408,y : STA !FileAddress+0
 		PLP
 		PLB
 		RTS
@@ -3588,13 +3490,6 @@ SPRITE_BG:
 		PLP
 		RTS
 
-
-;===========;
-;LOAD SCREEN;
-;===========;
-LOAD_SCREEN:
-
-
 ;========;
 ;HDMA FIX;
 ;========;
@@ -3621,27 +3516,6 @@ HDMA_FIX:
 	..Nope	LDY #$00 : STY $420C
 		LDA #$00 : STA !DizzyEffect
 		RTL
-
-
-
-;================;
-;CLEAR CHARACTERS;
-;================;
-;CLEAR_CHARACTERS:
-;
-;		LDA #$00			;\ Clear player 1 and 2 characters
-;		STA !Characters			;/
-;		STA !HDMAptr+0
-;		STA !HDMAptr+1
-;		STA !HDMAptr+2
-;		STA !MultiPlayer		; > Disable Multiplayer
-;
-;		JSR CLEAR_VR2
-;
-;		LDY #$0C			;\ Overwritten code
-;		LDX #$03			;/
-;		RTL
-
 
 
 ;=========;
@@ -3672,30 +3546,6 @@ KEEP_DATA:
 
 
 
-;=========;
-;CLEAR MSG;
-;=========;
-CLEAR_MSG:
-		LDA.b #.SA1 : STA $3180			;\
-		LDA.b #.SA1>>8 : STA $3181		; | have SA-1 clear message box RAM
-		LDA.b #.SA1>>16 : STA $3182		; |
-		JMP $1E80				;/
-
-		.SA1
-		PHP
-		PHB
-		LDA #$40
-		PHA : PLB
-		STZ.w !MsgRAM+$7F
-		REP #$30
-		LDA.w #$007E
-		LDX.w #!MsgRAM+$7F
-		LDY.w #!MsgRAM+$7E
-		MVP $40,$40
-		PLB
-		PLP
-		RTL
-
 
 ;==========;
 ;FIX MIDWAY;
@@ -3719,7 +3569,6 @@ FIX_MIDWAY:
 ;==========;
 ;1-UP BLOCK;
 ;==========;
-
 	UpBlock:
 		CPY #$0C : BNE .028905		;\ Replace Yoshi with 1-up
 		LDY #$05 : STY $05		;/
@@ -4938,8 +4787,8 @@ org $05D80B
 	JSL EntranceFix			; org: STA $1C : LDA $00 (need to update camera backup here)
 
 org $05D89B
-	JSL LOAD_HIDEOUT_Load		; Hijack level load init
-
+	JSL LOAD_HIDEOUT_Load		; hijack level load init (i don't really remember what this does but messing with it easily breaks the game)
+					; org: LDA $7ED000,x (or $40D000,x, i don't really know)
 
 
 ;==========;

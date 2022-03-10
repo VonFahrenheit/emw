@@ -8,7 +8,7 @@
 ; $06 - Tweaker 6		($34B0)
 ; $07 - 24-bit INIT pointer
 ; $0A - 24-bit MAIN pointer
-; $0D - highest 2 bits of extra prop 2	($35B0)
+; $0D - highest 2 bits of extra bits	($3590)
 
 !temp_sprite_list = 0
 

@@ -63,7 +63,7 @@ namespace Kadaal
 		LDA !CurrentPlayer
 		AND #$00FF
 		BEQ $03 : LDA #$0200
-		CLC : ADC.w #((!P2Tile6-$20)*$10)+$6000
+		CLC : ADC.w #(!P1Tile6*$10)+$6000
 		STA !VRAMtable+$05,x
 		CLC : ADC #$0100
 		STA !VRAMtable+$0C,x
@@ -917,42 +917,70 @@ namespace Kadaal
 		LDA #$03 : TSB $6DA3		;/
 
 		.Friction
-		LDA !P2ShellSlide : BEQ +	;\ Clear shell speed upon touching the ground without shell slide
+		LDA !P2ShellSlide : BEQ +	; return if sliding in shell
 		RTS
 		+
 		STZ !P2ShellSpeed
 		LDA !P2Slope
 		CLC : ADC #$04
 		TAX
-		LDA .SlopeSpeed,x
 		LDY #$02
+		LDA !IceLevel : BEQ ..notice	;\
+		LDA !P2InAir : BNE ..notice	; |
+		LDA $14				; | 25% accel on icy ground
+		AND #$01 : TAY			; |
+		..notice			;/
+		LDA .SlopeSpeed,x
 		JSL CORE_ACCEL_X
 		RTS
 
+
 		.Right
+		LDA #$01 : STA !P2Direction	; face right
 		LDA !P2ShellSpeed : BNE ..fast
 		LDA !P2DashTimerR1 : BEQ ..fast
 		LDX #$00
 		..fast
-		LDA .XSpeedRight,x
 		LDY #$03
 		BIT !P2XSpeed
 		BMI $02 : LDY #$06
-		JSL CORE_ACCEL_X
-		LDA #$01 : STA !P2Direction
-		RTS
+		LDA .XSpeedRight,x : BRA .HorzAccel
 
 		.Left
+		STZ !P2Direction		; face left
 		LDA !P2ShellSpeed : BNE ..fast
 		LDA !P2DashTimerL1 : BEQ ..fast
 		LDX #$00
 		..fast
-		LDA .XSpeedLeft,x
 		LDY #$03
 		BIT !P2XSpeed
 		BPL $02 : LDY #$06
-		JSL CORE_ACCEL_X
-		STZ !P2Direction
+		LDA .XSpeedLeft,x
+
+		.HorzAccel
+		STA $00
+		LDA !IceLevel : BEQ ..notice	;\
+		LDA !P2InAir : BNE ..notice	; |
+		TYA				; | 50% accel on icy ground
+		LSR A				; |
+		TAY				; |
+		LDA $00				; |
+		CMP !P2XSpeed : BEQ ..return	; |
+		LDX !P2Anim
+		CPX.b #!Kad_Dash_over : BCS +
+		INC !P2AnimTimer		; > animate faster when accelerating on icy ground
+		CPX.b #!Kad_Walk_over : BCC +
+		PHA
+		PHY
+		JSL CORE_SMOKE_AT_FEET_Always
+		PLY
+		PLA
+	+	JSL CORE_ACCEL_X		; |
+		RTS				;/
+		..notice			;\
+		LDA $00				; | full accel on normal ground and in midair
+		JSL CORE_ACCEL_X		;/
+		..return
 		RTS
 
 
@@ -1397,8 +1425,7 @@ namespace Kadaal
 		SEP #$20
 		LDA !P2AnimTimer
 		INC A
-		CMP ANIM+$02,y
-		BNE .NoUpdate
+		CMP ANIM+$02,y : BCC .NoUpdate
 		LDA ANIM+$03,y
 		STA !P2Anim
 		REP #$20
@@ -1437,74 +1464,84 @@ namespace Kadaal
 ;
 ; 1 byte header (size)
 ; for each upload:
-; 	cccssss-
-; 	-ccccccc
-; 	ttttt---
+; +00 	cccssss-
+; +01	Fccccccc
+; +02	ttttt---
 ;
 ; ssss:		DMA size (shift left 4)
 ; cccccccccc:	character (formatted for source address)
+; F:		second file flag (when set, file stored at !FileAddress+4 should be used for the rest of the dynamo)
 ; ttttt:	tile number (shift left 1 then add VRAM offset)
 
 		LDY.w #!File_Kadaal : JSL !GetFileAddress
 
-		SEP #$20
-		STZ $2250
-		LDA !P2Anim
-		CMP.b #!Kad_Swim : BCC +
-		CMP.b #!Kad_Swim_over : BCS +
-		LDA #$00 : XBA					; we live in a society
-		LDA !SD_KadaalLinear : STA $03
-		AND #$03 : TRB $03
-		STZ $02
-		TAX
-		LDA.l CORE_SD_BANK,x : STA !FileAddress+2
-		REP #$20
-		LDA $02 : STA !FileAddress+0
+		; SEP #$20
+		; STZ $2250
+		; LDA !P2Anim
+		; CMP.b #!Kad_Swim : BCC +
+		; CMP.b #!Kad_Swim_over : BCS +
+		; LDA #$00 : XBA					; we live in a society
+		; LDA !SD_KadaalLinear : STA $03
+		; AND #$03 : TRB $03
+		; STZ $02
+		; TAX
+		; LDA.l CORE_SD_BANK,x : STA !FileAddress+2
+		; REP #$20
+		; LDA $02 : STA !FileAddress+0
 
-		LDA $785F
-		BPL $04 : EOR #$FFFF : INC A
-		XBA
-		AND #$00FF
-		STA $2251
-		LDA #$0200 : STA $2253
-		LDA !FileAddress+0
-		CLC : ADC $2306
-		STA !FileAddress+0
+		; LDA $785F
+		; BPL $04 : EOR #$FFFF : INC A
+		; XBA
+		; AND #$00FF
+		; STA $2251
+		; LDA #$0200 : STA $2253
+		; LDA !FileAddress+0
+		; CLC : ADC $2306
+		; STA !FileAddress+0
 
-	+	REP #$20
+	; +	REP #$20
 
 
-		LDA ($00)					;\
-		AND #$00FF					; |
-		STA $02						; |
-		LDX #$0000					; |
-		LDY #$0000					; |
-		INC $00						; |
-	-	LDA ($00),y					; |
-		AND #$001E					; |
-		ASL #4						; |
-		STA !BigRAM+$00+2,x				; |
-		LDA ($00),y					; |
-		AND #$7FE0					; |
-		CLC : ADC !FileAddress				; |
-		STA !BigRAM+$02+2,x				; | unpack dynamo data
-		LDA !FileAddress+2 : STA !BigRAM+$04+2,x	; |
-		INY #2						; |
-		LDA ($00),y					; |
-		ASL A						; |
-		AND #$01F0					; |
-		ORA #$6200					; |
-		STA !BigRAM+$05+2,x				; |
-		INY						; |
-		TXA						; |
-		CLC : ADC #$0007				; |
-		TAX						; |
-		CPY $02 : BCC -					;/
-		STX !BigRAM+0					; > set size
+		; LDA ($00)					;\
+		; AND #$00FF					; |
+		; STA $02						; |
+		; LDX #$0000					; |
+		; LDY #$0000					; |
+		; INC $00						; |
+	; -	LDA ($00),y					; |
+		; AND #$001E					; |
+		; ASL #4						; |
+		; STA !BigRAM+$00+2,x				; |
+		; LDA ($00),y					; |
+		; AND #$7FE0					; |
+		; CLC : ADC !FileAddress				; |
+		; STA !BigRAM+$02+2,x				; | unpack dynamo data
+		; LDA !FileAddress+2 : STA !BigRAM+$04+2,x	; |
+		; INY #2						; |
+		; LDA ($00),y					; |
+		; ASL A						; |
+		; AND #$01F0					; |
+		; ORA #$6200					; |
+		; STA !BigRAM+$05+2,x				; |
+		; INY						; |
+		; TXA						; |
+		; CLC : ADC #$0007				; |
+		; TAX						; |
+		; CPY $02 : BCC -					;/
+		; STX !BigRAM+0					; > set size
 
-		LDA.w #!BigRAM : JSL CORE_GENERATE_RAMCODE
+
+;		LDA.w #!BigRAM : JSL CORE_GENERATE_RAMCODE
+
+	LDA $00 : JSL CORE_GENERATE_RAMCODE_24bit
+
 		SEP #$30
 		LDA !P2Anim : STA !P2Anim2
+
+
+
+
+
 
 
 	GRAPHICS:
@@ -1517,8 +1554,11 @@ namespace Kadaal
 		CMP #!Kad_Spin_over : BCC .DrawTiles
 		+
 
+		.Flash
 		LDA !P2Invinc : BEQ .DrawTiles
-		AND #$06 : BEQ OUTPUT_HURTBOX
+		LSR #3 : TAX
+		LDA.l $00E292,x
+		AND !P2Invinc : BEQ OUTPUT_HURTBOX
 
 		.DrawTiles
 		LDA $0E : STA $04
@@ -2354,6 +2394,32 @@ namespace Kadaal
 		dw .WalkDynamo3
 		dw .ClippingStandard
 
+	; dash
+		.Dash0
+		dw .DashTM : db $06,!Kad_Dash+1
+		dw .DashDynamo0
+		dw .ClippingDash
+		.Dash1
+		dw .DashTMU3 : db $06,!Kad_Dash+2
+		dw .DashDynamo1
+		dw .ClippingDash
+		.Dash2
+		dw .DashTMU2 : db $06,!Kad_Dash+3
+		dw .DashDynamo2
+		dw .ClippingDash
+		.Dash3
+		dw .DashTM : db $06,!Kad_Dash+4
+		dw .DashDynamo0
+		dw .ClippingDash
+		.Dash4
+		dw .DashTMU3 : db $06,!Kad_Dash+5
+		dw .DashDynamo3
+		dw .ClippingDash
+		.Dash5
+		dw .DashTMU2 : db $06,!Kad_Dash
+		dw .DashDynamo4
+		dw .ClippingDash
+
 	; spin
 		.Spin0
 		dw .SpinTM0 : db $02,!Kad_Spin+1
@@ -2457,32 +2523,6 @@ namespace Kadaal
 		dw .IdleTM : db $FF,!Kad_Dead
 		dw .DeadDynamo
 		dw .ClippingStandard
-
-	; dash
-		.Dash0
-		dw .DashTM : db $06,!Kad_Dash+1
-		dw .DashDynamo0
-		dw .ClippingDash
-		.Dash1
-		dw .DashTMU3 : db $06,!Kad_Dash+2
-		dw .DashDynamo1
-		dw .ClippingDash
-		.Dash2
-		dw .DashTMU2 : db $06,!Kad_Dash+3
-		dw .DashDynamo2
-		dw .ClippingDash
-		.Dash3
-		dw .DashTM : db $06,!Kad_Dash+4
-		dw .DashDynamo0
-		dw .ClippingDash
-		.Dash4
-		dw .DashTMU3 : db $06,!Kad_Dash+5
-		dw .DashDynamo3
-		dw .ClippingDash
-		.Dash5
-		dw .DashTMU2 : db $06,!Kad_Dash
-		dw .DashDynamo4
-		dw .ClippingDash
 
 	; climb
 		.Climb0
@@ -2592,124 +2632,119 @@ namespace Kadaal
 
 	.IdleTM
 	dw $0008
-	db $2E,$00,$F0,!P2Tile1
-	db $2E,$00,$00,!P2Tile2
+	db $20,$00,$F0,!P1Tile1
+	db $20,$00,$00,!P1Tile2
 
 	.WalkTM
 	dw $0008
-	db $2E,$00,$EF,!P2Tile1
-	db $2E,$00,$FF,!P2Tile2
+	db $20,$00,$EF,!P1Tile1
+	db $20,$00,$FF,!P1Tile2
 
 	.DashTM
 	dw $0010
-	db $2E,$F4,$F8,!P2Tile1
-	db $2E,$FC,$F8,!P2Tile1+1
-	db $2E,$F4,$00,!P2Tile3
-	db $2E,$FC,$00,!P2Tile3+1
+	db $20,$F4,$F8,!P1Tile1
+	db $20,$FC,$F8,!P1Tile1+1
+	db $20,$F4,$00,!P1Tile3
+	db $20,$FC,$00,!P1Tile3+1
 	.DashTMU2
 	dw $0010
-	db $2E,$F4,$F6,!P2Tile1
-	db $2E,$FC,$F6,!P2Tile1+1
-	db $2E,$F4,$FE,!P2Tile3
-	db $2E,$FC,$FE,!P2Tile3+1
+	db $20,$F4,$F6,!P1Tile1
+	db $20,$FC,$F6,!P1Tile1+1
+	db $20,$F4,$FE,!P1Tile3
+	db $20,$FC,$FE,!P1Tile3+1
 	.DashTMU3
 	dw $0010
-	db $2E,$F4,$F5,!P2Tile1
-	db $2E,$FC,$F5,!P2Tile1+1
-	db $2E,$F4,$FD,!P2Tile3
-	db $2E,$FC,$FD,!P2Tile3+1
+	db $20,$F4,$F5,!P1Tile1
+	db $20,$FC,$F5,!P1Tile1+1
+	db $20,$F4,$FD,!P1Tile3
+	db $20,$FC,$FD,!P1Tile3+1
 
 	.TurnTM
 	dw $0010
-	db $2E,$F8,$F8,!P2Tile1
-	db $2E,$00,$F8,!P2Tile1+1
-	db $2E,$F8,$00,!P2Tile3
-	db $2E,$00,$00,!P2Tile3+1
+	db $20,$F8,$F8,!P1Tile1
+	db $20,$00,$F8,!P1Tile1+1
+	db $20,$F8,$00,!P1Tile3
+	db $20,$00,$00,!P1Tile3+1
 
 	.SquatTM
 	dw $0008
-	db $2E,$00,$F8,!P2Tile1
-	db $2E,$00,$00,!P2Tile2
+	db $20,$00,$F8,!P1Tile1
+	db $20,$00,$00,!P1Tile2
 
 	.ShellTM
 	dw $0004
-	db $2E,$00,$00,!P2Tile1
+	db $20,$00,$00,!P1Tile1
 	.ShellTMX
 	dw $0004
-	db $6E,$00,$00,!P2Tile1
+	db $60,$00,$00,!P1Tile1
 
 	.PunchTM
 	dw $0010
-	db $2E,$F8,$F0,!P2Tile1
-	db $2E,$00,$F0,!P2Tile1+1
-	db $2E,$F8,$00,!P2Tile3
-	db $2E,$00,$00,!P2Tile3+1
+	db $20,$F8,$F0,!P1Tile1
+	db $20,$00,$F0,!P1Tile1+1
+	db $20,$F8,$00,!P1Tile3
+	db $20,$00,$00,!P1Tile3+1
 
 	.HeadbuttTM
 	dw $0008
-	db $2E,$F0,$F8,!P2Tile1
-	db $2E,$00,$F8,!P2Tile2
+	db $20,$F0,$F8,!P1Tile1
+	db $20,$00,$F8,!P1Tile2
 
 	.SpinTM0
 	dw $0008
-	db $2E,$FC,$00,!P2Tile1
-	db $2E,$04,$00,!P2Tile1+1
+	db $20,$FC,$00,!P1Tile1
+	db $20,$04,$00,!P1Tile1+1
 	.SpinTM1
 	dw $0010
-	db $2E,$08,$09,!P2Tile6
-	db $2E,$FC,$00,!P2Tile1
-	db $2E,$04,$00,!P2Tile1+1
-	db $6E,$F8,$03,!P2Tile6
+	db $20,$08,$09,!P1Tile6
+	db $20,$FC,$00,!P1Tile1
+	db $20,$04,$00,!P1Tile1+1
+	db $60,$F8,$03,!P1Tile6
 	.SpinTM2
 	dw $0008
-	db $6E,$04,$00,!P2Tile1
-	db $6E,$FC,$00,!P2Tile1+1
+	db $60,$04,$00,!P1Tile1
+	db $60,$FC,$00,!P1Tile1+1
 	.SpinTM3
 	dw $0010
-	db $6E,$F8,$07,!P2Tile6
-	db $6E,$04,$00,!P2Tile1
-	db $6E,$FC,$00,!P2Tile1+1
-	db $2E,$08,$01,!P2Tile6
+	db $60,$F8,$07,!P1Tile6
+	db $60,$04,$00,!P1Tile1
+	db $60,$FC,$00,!P1Tile1+1
+	db $20,$08,$01,!P1Tile6
 
 	.ClimbTM
 	dw $0008
-	db $6E,$00,$F0,!P2Tile1
-	db $6E,$00,$00,!P2Tile2
+	db $60,$00,$F0,!P1Tile1
+	db $60,$00,$00,!P1Tile2
 
 	.SmashTM0
 	dw $0010
-	db $6E,$04,$F8,!P2Tile1
-	db $6E,$FC,$F8,!P2Tile1+1
-	db $6E,$04,$00,!P2Tile3
-	db $6E,$FC,$00,!P2Tile3+1
+	db $60,$04,$F8,!P1Tile1
+	db $60,$FC,$F8,!P1Tile1+1
+	db $60,$04,$00,!P1Tile3
+	db $60,$FC,$00,!P1Tile3+1
 	.SmashTM1
 	dw $0008
-	db $6E,$00,$F0,!P2Tile1
-	db $6E,$00,$00,!P2Tile2
+	db $60,$00,$F0,!P1Tile1
+	db $60,$00,$00,!P1Tile2
 
 	.CarryWalkTM0
 	dw $0010
-	db $2E,$FF,$F0,!P2Tile1
-	db $2E,$07,$F0,!P2Tile1+1
-	db $2E,$FF,$00,!P2Tile3
-	db $2E,$07,$00,!P2Tile3+1
+	db $20,$FF,$F0,!P1Tile1
+	db $20,$07,$F0,!P1Tile1+1
+	db $20,$FF,$00,!P1Tile3
+	db $20,$07,$00,!P1Tile3+1
 	.CarryWalkTM1
 	dw $0010
-	db $2E,$FE,$EE,!P2Tile1
-	db $2E,$06,$EE,!P2Tile1+1
-	db $2E,$FE,$FE,!P2Tile3
-	db $2E,$06,$FE,!P2Tile3+1
+	db $20,$FE,$EE,!P1Tile1
+	db $20,$06,$EE,!P1Tile1+1
+	db $20,$FE,$FE,!P1Tile3
+	db $20,$06,$FE,!P1Tile3+1
 
 
-;macro KadDyn(TileCount, TileNumber, Dest)
-;	dw <TileCount>*$20
-;	dl <TileNumber>*$20+$328008
-;	dw <Dest>*$10+$6000
-;endmacro
 
 macro KadDyn(TileCount, TileNumber, Dest)
 	db (<TileCount>*2)|((<TileNumber>&$07)<<5)
-	db <TileNumber>>>3
+	db (<TileNumber>>>3)&$7F
 	db <Dest>*8
 endmacro
 
@@ -2719,120 +2754,120 @@ endmacro
 		.IdleDynamo0
 		db ..end-..start
 		..start
-		%KadDyn(2, $000, !P2Tile1)
-		%KadDyn(2, $010, !P2Tile1+$10)
-		%KadDyn(2, $020, !P2Tile2)
-		%KadDyn(2, $030, !P2Tile2+$10)
+		%KadDyn(2, $000, !P1Tile1)
+		%KadDyn(2, $010, !P1Tile1+$10)
+		%KadDyn(2, $020, !P1Tile2)
+		%KadDyn(2, $030, !P1Tile2+$10)
 		..end
 		.IdleDynamo1
 		db ..end-..start
 		..start
-		%KadDyn(2, $002, !P2Tile1)
-		%KadDyn(2, $012, !P2Tile1+$10)
-		%KadDyn(2, $022, !P2Tile2)
-		%KadDyn(2, $032, !P2Tile2+$10)
+		%KadDyn(2, $002, !P1Tile1)
+		%KadDyn(2, $012, !P1Tile1+$10)
+		%KadDyn(2, $022, !P1Tile2)
+		%KadDyn(2, $032, !P1Tile2+$10)
 		..end
 		.IdleDynamo2
 		db ..end-..start
 		..start
-		%KadDyn(2, $004, !P2Tile1)
-		%KadDyn(2, $014, !P2Tile1+$10)
-		%KadDyn(2, $024, !P2Tile2)
-		%KadDyn(2, $034, !P2Tile2+$10)
+		%KadDyn(2, $004, !P1Tile1)
+		%KadDyn(2, $014, !P1Tile1+$10)
+		%KadDyn(2, $024, !P1Tile2)
+		%KadDyn(2, $034, !P1Tile2+$10)
 		..end
 		.IdleDynamo3
 		db ..end-..start
 		..start
-		%KadDyn(2, $006, !P2Tile1)
-		%KadDyn(2, $016, !P2Tile1+$10)
-		%KadDyn(2, $026, !P2Tile2)
-		%KadDyn(2, $036, !P2Tile2+$10)
+		%KadDyn(2, $006, !P1Tile1)
+		%KadDyn(2, $016, !P1Tile1+$10)
+		%KadDyn(2, $026, !P1Tile2)
+		%KadDyn(2, $036, !P1Tile2+$10)
 		..end
 
 	; walk
 		.WalkDynamo0
 		db ..end-..start
 		..start
-		%KadDyn(2, $008, !P2Tile1)
-		%KadDyn(2, $018, !P2Tile1+$10)
-		%KadDyn(2, $028, !P2Tile2)
-		%KadDyn(2, $038, !P2Tile2+$10)
+		%KadDyn(2, $008, !P1Tile1)
+		%KadDyn(2, $018, !P1Tile1+$10)
+		%KadDyn(2, $028, !P1Tile2)
+		%KadDyn(2, $038, !P1Tile2+$10)
 		..end
 		.WalkDynamo1
 		db ..end-..start
 		..start
-		%KadDyn(2, $00A, !P2Tile1)
-		%KadDyn(2, $01A, !P2Tile1+$10)
-		%KadDyn(2, $02A, !P2Tile2)
-		%KadDyn(2, $03A, !P2Tile2+$10)
+		%KadDyn(2, $00A, !P1Tile1)
+		%KadDyn(2, $01A, !P1Tile1+$10)
+		%KadDyn(2, $02A, !P1Tile2)
+		%KadDyn(2, $03A, !P1Tile2+$10)
 		..end
 		.WalkDynamo2
 		db ..end-..start
 		..start
-		%KadDyn(2, $00C, !P2Tile1)
-		%KadDyn(2, $01C, !P2Tile1+$10)
-		%KadDyn(2, $02C, !P2Tile2)
-		%KadDyn(2, $03C, !P2Tile2+$10)
+		%KadDyn(2, $00C, !P1Tile1)
+		%KadDyn(2, $01C, !P1Tile1+$10)
+		%KadDyn(2, $02C, !P1Tile2)
+		%KadDyn(2, $03C, !P1Tile2+$10)
 		..end
 		.WalkDynamo3
 		db ..end-..start
 		..start
-		%KadDyn(2, $00E, !P2Tile1)
-		%KadDyn(2, $01E, !P2Tile1+$10)
-		%KadDyn(2, $02E, !P2Tile2)
-		%KadDyn(2, $03E, !P2Tile2+$10)
+		%KadDyn(2, $00E, !P1Tile1)
+		%KadDyn(2, $01E, !P1Tile1+$10)
+		%KadDyn(2, $02E, !P1Tile2)
+		%KadDyn(2, $03E, !P1Tile2+$10)
 		..end
 
 	; dash
 		.DashDynamo0				; Used by frames 0, 3
 		db ..end-..start
 		..start
-		%KadDyn(3, $083, !P2Tile1)
-		%KadDyn(3, $093, !P2Tile1+$10)
-		%KadDyn(3, $093, !P2Tile3)
-		%KadDyn(3, $0A3, !P2Tile3+$10)
+		%KadDyn(3, $083, !P1Tile1)
+		%KadDyn(3, $093, !P1Tile1+$10)
+		%KadDyn(3, $093, !P1Tile3)
+		%KadDyn(3, $0A3, !P1Tile3+$10)
 		..end
 		.DashDynamo1				; Used by frame 1
 		db ..end-..start
 		..start
-		%KadDyn(3, $086, !P2Tile1)
-		%KadDyn(3, $096, !P2Tile1+$10)
-		%KadDyn(3, $096, !P2Tile3)
-		%KadDyn(3, $0A6, !P2Tile3+$10)
+		%KadDyn(3, $086, !P1Tile1)
+		%KadDyn(3, $096, !P1Tile1+$10)
+		%KadDyn(3, $096, !P1Tile3)
+		%KadDyn(3, $0A6, !P1Tile3+$10)
 		..end
 		.DashDynamo2				; Used by frame 2
 		db ..end-..start
 		..start
-		%KadDyn(3, $089, !P2Tile1)
-		%KadDyn(3, $099, !P2Tile1+$10)
-		%KadDyn(3, $099, !P2Tile3)
-		%KadDyn(3, $0A9, !P2Tile3+$10)
+		%KadDyn(3, $089, !P1Tile1)
+		%KadDyn(3, $099, !P1Tile1+$10)
+		%KadDyn(3, $099, !P1Tile3)
+		%KadDyn(3, $0A9, !P1Tile3+$10)
 		..end
 		.DashDynamo3				; Used by frame 4
 		db ..end-..start
 		..start
-		%KadDyn(3, $0B0, !P2Tile1)
-		%KadDyn(3, $0C0, !P2Tile1+$10)
-		%KadDyn(3, $0C0, !P2Tile3)
-		%KadDyn(3, $0D0, !P2Tile3+$10)
+		%KadDyn(3, $0B0, !P1Tile1)
+		%KadDyn(3, $0C0, !P1Tile1+$10)
+		%KadDyn(3, $0C0, !P1Tile3)
+		%KadDyn(3, $0D0, !P1Tile3+$10)
 		..end
 		.DashDynamo4				; Used by frame 5
 		db ..end-..start
 		..start
-		%KadDyn(3, $0B3, !P2Tile1)
-		%KadDyn(3, $0C3, !P2Tile1+$10)
-		%KadDyn(3, $0C3, !P2Tile3)
-		%KadDyn(3, $0D3, !P2Tile3+$10)
+		%KadDyn(3, $0B3, !P1Tile1)
+		%KadDyn(3, $0C3, !P1Tile1+$10)
+		%KadDyn(3, $0C3, !P1Tile3)
+		%KadDyn(3, $0D3, !P1Tile3+$10)
 		..end
 
 	; squat
 		.SquatDynamo				; Also used by .Duck0
 		db ..end-..start
 		..start
-		%KadDyn(2, $08E, !P2Tile1)
-		%KadDyn(2, $09E, !P2Tile1+$10)
-		%KadDyn(2, $09E, !P2Tile2)
-		%KadDyn(2, $0AE, !P2Tile2+$10)
+		%KadDyn(2, $08E, !P1Tile1)
+		%KadDyn(2, $09E, !P1Tile1+$10)
+		%KadDyn(2, $09E, !P1Tile2)
+		%KadDyn(2, $0AE, !P1Tile2+$10)
 		..end
 
 
@@ -2840,58 +2875,58 @@ endmacro
 		.ShellDynamo0				; Also used by .Duck1
 		db ..end-..start
 		..start
-		%KadDyn(2, $0BA, !P2Tile1)
-		%KadDyn(2, $0CA, !P2Tile1+$10)
+		%KadDyn(2, $0BA, !P1Tile1)
+		%KadDyn(2, $0CA, !P1Tile1+$10)
 		..end
 		.ShellDynamo1
 		db ..end-..start
 		..start
-		%KadDyn(2, $0BC, !P2Tile1)
-		%KadDyn(2, $0CC, !P2Tile1+$10)
+		%KadDyn(2, $0BC, !P1Tile1)
+		%KadDyn(2, $0CC, !P1Tile1+$10)
 		..end
 		.ShellDynamo2
 		db ..end-..start
 		..start
-		%KadDyn(2, $0BE, !P2Tile1)
-		%KadDyn(2, $0CE, !P2Tile1+$10)
+		%KadDyn(2, $0BE, !P1Tile1)
+		%KadDyn(2, $0CE, !P1Tile1+$10)
 		..end
 
 	; fall
 		.FallDynamo0
 		db ..end-..start
 		..start
-		%KadDyn(2, $04A, !P2Tile1)
-		%KadDyn(2, $05A, !P2Tile1+$10)
-		%KadDyn(2, $06A, !P2Tile2)
-		%KadDyn(2, $07A, !P2Tile2+$10)
+		%KadDyn(2, $04A, !P1Tile1)
+		%KadDyn(2, $05A, !P1Tile1+$10)
+		%KadDyn(2, $06A, !P1Tile2)
+		%KadDyn(2, $07A, !P1Tile2+$10)
 		..end
 		.FallDynamo1
 		db ..end-..start
 		..start
-		%KadDyn(2, $04C, !P2Tile1)
-		%KadDyn(2, $05C, !P2Tile1+$10)
-		%KadDyn(2, $06C, !P2Tile2)
-		%KadDyn(2, $07C, !P2Tile2+$10)
+		%KadDyn(2, $04C, !P1Tile1)
+		%KadDyn(2, $05C, !P1Tile1+$10)
+		%KadDyn(2, $06C, !P1Tile2)
+		%KadDyn(2, $07C, !P1Tile2+$10)
 		..end
 
 	; turn
 		.TurnDynamo
 		db ..end-..start
 		..start
-		%KadDyn(4, $080, !P2Tile1)
-		%KadDyn(4, $090, !P2Tile1+$10)
-		%KadDyn(4, $090, !P2Tile3)
-		%KadDyn(4, $0A0, !P2Tile3+$10)
+		%KadDyn(4, $080, !P1Tile1)
+		%KadDyn(4, $090, !P1Tile1+$10)
+		%KadDyn(4, $090, !P1Tile3)
+		%KadDyn(4, $0A0, !P1Tile3+$10)
 		..end
 
 	; senku
 		.SenkuDynamo
 		db ..end-..start
 		..start
-		%KadDyn(2, $048, !P2Tile1)
-		%KadDyn(2, $058, !P2Tile1+$10)
-		%KadDyn(2, $068, !P2Tile2)
-		%KadDyn(2, $078, !P2Tile2+$10)
+		%KadDyn(2, $048, !P1Tile1)
+		%KadDyn(2, $058, !P1Tile1+$10)
+		%KadDyn(2, $068, !P1Tile2)
+		%KadDyn(2, $078, !P1Tile2+$10)
 		..end
 
 	; punch
@@ -2899,212 +2934,212 @@ endmacro
 		.PunchDynamo3
 		db ..end-..start
 		..start
-		%KadDyn(2, $046, !P2Tile1)
-		%KadDyn(2, $056, !P2Tile1+$10)
-		%KadDyn(2, $066, !P2Tile2)
-		%KadDyn(2, $076, !P2Tile2+$10)
+		%KadDyn(2, $046, !P1Tile1)
+		%KadDyn(2, $056, !P1Tile1+$10)
+		%KadDyn(2, $066, !P1Tile2)
+		%KadDyn(2, $076, !P1Tile2+$10)
 		..end
 		.PunchDynamo1
 		db ..end-..start
 		..start
-		%KadDyn(3, $040, !P2Tile1)
-		%KadDyn(3, $050, !P2Tile1+$10)
-		%KadDyn(3, $060, !P2Tile3)
-		%KadDyn(3, $070, !P2Tile3+$10)
+		%KadDyn(3, $040, !P1Tile1)
+		%KadDyn(3, $050, !P1Tile1+$10)
+		%KadDyn(3, $060, !P1Tile3)
+		%KadDyn(3, $070, !P1Tile3+$10)
 		..end
 		.PunchDynamo2
 		db ..end-..start
 		..start
-		%KadDyn(3, $043, !P2Tile1)
-		%KadDyn(3, $053, !P2Tile1+$10)
-		%KadDyn(3, $063, !P2Tile3)
-		%KadDyn(3, $073, !P2Tile3+$10)
+		%KadDyn(3, $043, !P1Tile1)
+		%KadDyn(3, $053, !P1Tile1+$10)
+		%KadDyn(3, $063, !P1Tile3)
+		%KadDyn(3, $073, !P1Tile3+$10)
 		..end
 
 	; hurt
 		.HurtDynamo
 		db ..end-..start
 		..start
-		%KadDyn(2, $04E, !P2Tile1)
-		%KadDyn(2, $05E, !P2Tile1+$10)
-		%KadDyn(2, $06E, !P2Tile2)
-		%KadDyn(2, $07E, !P2Tile2+$10)
+		%KadDyn(2, $04E, !P1Tile1)
+		%KadDyn(2, $05E, !P1Tile1+$10)
+		%KadDyn(2, $06E, !P1Tile2)
+		%KadDyn(2, $07E, !P1Tile2+$10)
 		..end
 
 	; dead
 		.DeadDynamo
 		db ..end-..start
 		..start
-		%KadDyn(2, $11A, !P2Tile1)
-		%KadDyn(2, $12A, !P2Tile1+$10)
-		%KadDyn(2, $13A, !P2Tile2)
-		%KadDyn(2, $14A, !P2Tile2+$10)
+		%KadDyn(2, $11A, !P1Tile1)
+		%KadDyn(2, $12A, !P1Tile1+$10)
+		%KadDyn(2, $13A, !P1Tile2)
+		%KadDyn(2, $14A, !P1Tile2+$10)
 		..end
 
 	; spin
 		.SpinDynamo0
 		db ..end-..start
 		..start
-		%KadDyn(3, $120, !P2Tile1)
-		%KadDyn(3, $130, !P2Tile1+$10)
+		%KadDyn(3, $120, !P1Tile1)
+		%KadDyn(3, $130, !P1Tile1+$10)
 		..end
 		.SpinDynamo1
 		db ..end-..start
 		..start
-		%KadDyn(3, $123, !P2Tile1)
-		%KadDyn(3, $133, !P2Tile1+$10)
+		%KadDyn(3, $123, !P1Tile1)
+		%KadDyn(3, $133, !P1Tile1+$10)
 		..end
 
 	; climb
 		.ClimbDynamo				; Used by both frames
 		db ..end-..start
 		..start
-		%KadDyn(2, $116, !P2Tile1)
-		%KadDyn(2, $126, !P2Tile1+$10)
-		%KadDyn(2, $136, !P2Tile2)
-		%KadDyn(2, $146, !P2Tile2+$10)
+		%KadDyn(2, $116, !P1Tile1)
+		%KadDyn(2, $126, !P1Tile1+$10)
+		%KadDyn(2, $136, !P1Tile2)
+		%KadDyn(2, $146, !P1Tile2+$10)
 		..end
 
 	; senku smash
 		.SenkuSmashDynamo0
 		db ..end-..start
 		..start
-		%KadDyn(3, $110, !P2Tile1)
-		%KadDyn(3, $120, !P2Tile1+$10)
-		%KadDyn(3, $120, !P2Tile3)
-		%KadDyn(3, $130, !P2Tile3+$10)
+		%KadDyn(3, $110, !P1Tile1)
+		%KadDyn(3, $120, !P1Tile1+$10)
+		%KadDyn(3, $120, !P1Tile3)
+		%KadDyn(3, $130, !P1Tile3+$10)
 		..end
 		.SenkuSmashDynamo1
 		db ..end-..start
 		..start
-		%KadDyn(3, $113, !P2Tile1)
-		%KadDyn(3, $123, !P2Tile1+$10)
-		%KadDyn(3, $123, !P2Tile3)
-		%KadDyn(3, $133, !P2Tile3+$10)
+		%KadDyn(3, $113, !P1Tile1)
+		%KadDyn(3, $123, !P1Tile1+$10)
+		%KadDyn(3, $123, !P1Tile3)
+		%KadDyn(3, $133, !P1Tile3+$10)
 		..end
 		.SenkuSmashDynamo2
 		db ..end-..start
 		..start
-		%KadDyn(3, $116, !P2Tile1)
-		%KadDyn(3, $126, !P2Tile1+$10)
-		%KadDyn(3, $126, !P2Tile3)
-		%KadDyn(3, $136, !P2Tile3+$10)
+		%KadDyn(3, $116, !P1Tile1)
+		%KadDyn(3, $126, !P1Tile1+$10)
+		%KadDyn(3, $126, !P1Tile3)
+		%KadDyn(3, $136, !P1Tile3+$10)
 		..end
 		.SenkuSmashDynamo3
 		db ..end-..start
 		..start
-		%KadDyn(3, $119, !P2Tile1)
-		%KadDyn(3, $129, !P2Tile1+$10)
-		%KadDyn(3, $129, !P2Tile3)
-		%KadDyn(3, $139, !P2Tile3+$10)
+		%KadDyn(3, $119, !P1Tile1)
+		%KadDyn(3, $129, !P1Tile1+$10)
+		%KadDyn(3, $129, !P1Tile3)
+		%KadDyn(3, $139, !P1Tile3+$10)
 		..end
 		.SenkuSmashDynamo4
 		db ..end-..start
 		..start
-		%KadDyn(2, $11C, !P2Tile1)
-		%KadDyn(2, $12C, !P2Tile1+$10)
-		%KadDyn(2, $13C, !P2Tile2)
-		%KadDyn(2, $14C, !P2Tile2+$10)
+		%KadDyn(2, $11C, !P1Tile1)
+		%KadDyn(2, $12C, !P1Tile1+$10)
+		%KadDyn(2, $13C, !P1Tile2)
+		%KadDyn(2, $14C, !P1Tile2+$10)
 		..end
 
 	; shell drill init
 		.ShellDrillDynamoInit
 		db ..end-..start
 		..start
-		%KadDyn(3, $119, !P2Tile1)
-		%KadDyn(3, $129, !P2Tile1+$10)
-		%KadDyn(3, $129, !P2Tile3)
-		%KadDyn(3, $139, !P2Tile3+$10)
-		%KadDyn(2, $0DA, !P2Tile7)
-		%KadDyn(2, $0EA, !P2Tile7+$10)
+		%KadDyn(3, $119, !P1Tile1)
+		%KadDyn(3, $129, !P1Tile1+$10)
+		%KadDyn(3, $129, !P1Tile3)
+		%KadDyn(3, $139, !P1Tile3+$10)
+		%KadDyn(2, $0DA, !P1Tile7)
+		%KadDyn(2, $0EA, !P1Tile7+$10)
 		..end
 
 	; swim
 		.SwimDynamo0
 		db ..end-..start
 		..start
-		%KadDyn(2, $00C, !P2Tile1)
-		%KadDyn(2, $00E, !P2Tile1+$10)
+		%KadDyn(2, $00C, !P1Tile1)
+		%KadDyn(2, $00E, !P1Tile1+$10)
 		..end
 		.SwimDynamo1
 		db ..end-..start
 		..start
-		%KadDyn(2, $008, !P2Tile1)
-		%KadDyn(2, $00A, !P2Tile1+$10)
+		%KadDyn(2, $008, !P1Tile1)
+		%KadDyn(2, $00A, !P1Tile1+$10)
 		..end
 		.SwimDynamo2
 		db ..end-..start
 		..start
-		%KadDyn(2, $004, !P2Tile1)
-		%KadDyn(2, $006, !P2Tile1+$10)
+		%KadDyn(2, $004, !P1Tile1)
+		%KadDyn(2, $006, !P1Tile1+$10)
 		..end
 		.SwimDynamo3
 		db ..end-..start
 		..start
-		%KadDyn(2, $000, !P2Tile1)
-		%KadDyn(2, $002, !P2Tile1+$10)
+		%KadDyn(2, $000, !P1Tile1)
+		%KadDyn(2, $002, !P1Tile1+$10)
 		..end
 
 	; dash attck
 		.HeadbuttDynamo0
 		db ..end-..start
 		..start
-		%KadDyn(2, $08C, !P2Tile1)
-		%KadDyn(2, $09C, !P2Tile1+$10)
-		%KadDyn(2, $09C, !P2Tile2)
-		%KadDyn(2, $0AC, !P2Tile2+$10)
+		%KadDyn(2, $08C, !P1Tile1)
+		%KadDyn(2, $09C, !P1Tile1+$10)
+		%KadDyn(2, $09C, !P1Tile2)
+		%KadDyn(2, $0AC, !P1Tile2+$10)
 		..end
 		.HeadbuttDynamo1
 		db ..end-..start
 		..start
-		%KadDyn(4, $0B6, !P2Tile1)
-		%KadDyn(4, $0C6, !P2Tile1+$10)
+		%KadDyn(4, $0B6, !P1Tile1)
+		%KadDyn(4, $0C6, !P1Tile1+$10)
 		..end
 
 	; carry
 		.CarryDynamo0
 		db ..end-..start
 		..start
-		%KadDyn(2, $11C, !P2Tile1)
-		%KadDyn(2, $12C, !P2Tile1+$10)
-		%KadDyn(2, $13C, !P2Tile2)
-		%KadDyn(2, $14C, !P2Tile2+$10)
+		%KadDyn(2, $11C, !P1Tile1)
+		%KadDyn(2, $12C, !P1Tile1+$10)
+		%KadDyn(2, $13C, !P1Tile2)
+		%KadDyn(2, $14C, !P1Tile2+$10)
 		..end
 		.CarryDynamo1
 		db ..end-..start
 		..start
-		%KadDyn(3, $160, !P2Tile1)
-		%KadDyn(3, $170, !P2Tile1+$10)
-		%KadDyn(3, $180, !P2Tile3)
-		%KadDyn(3, $190, !P2Tile3+$10)
+		%KadDyn(3, $160, !P1Tile1)
+		%KadDyn(3, $170, !P1Tile1+$10)
+		%KadDyn(3, $180, !P1Tile3)
+		%KadDyn(3, $190, !P1Tile3+$10)
 		..end
 		.CarryDynamo2
 		db ..end-..start
 		..start
-		%KadDyn(3, $163, !P2Tile1)
-		%KadDyn(3, $173, !P2Tile1+$10)
-		%KadDyn(3, $183, !P2Tile3)
-		%KadDyn(3, $193, !P2Tile3+$10)
+		%KadDyn(3, $163, !P1Tile1)
+		%KadDyn(3, $173, !P1Tile1+$10)
+		%KadDyn(3, $183, !P1Tile3)
+		%KadDyn(3, $193, !P1Tile3+$10)
 		..end
 
 	; throw
 		.ThrowDynamo
 		db ..end-..start
 		..start
-		%KadDyn(3, $166, !P2Tile1)
-		%KadDyn(3, $176, !P2Tile1+$10)
-		%KadDyn(3, $186, !P2Tile3)
-		%KadDyn(3, $196, !P2Tile3+$10)
+		%KadDyn(3, $166, !P1Tile1)
+		%KadDyn(3, $176, !P1Tile1+$10)
+		%KadDyn(3, $186, !P1Tile3)
+		%KadDyn(3, $196, !P1Tile3+$10)
 		..end
 
 	; victory
 		.VictoryDynamo
 		db ..end-..start
 		..start
-		%KadDyn(2, $118, !P2Tile1)
-		%KadDyn(2, $128, !P2Tile1+$10)
-		%KadDyn(2, $138, !P2Tile2)
-		%KadDyn(2, $148, !P2Tile2+$10)
+		%KadDyn(2, $118, !P1Tile1)
+		%KadDyn(2, $128, !P1Tile1+$10)
+		%KadDyn(2, $138, !P1Tile2)
+		%KadDyn(2, $148, !P1Tile2+$10)
 		..end
 
 

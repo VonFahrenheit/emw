@@ -22,8 +22,11 @@
 		LDA !BG_object_Timer,x				;\
 		AND #$00FF					; | see which code to run
 		STA.l !BigRAM					; > save this here for interaction check
-		BEQ .Interact					;/
-		CMP.w #.TilePointer_fire-.TilePointer-2 : BNE .HandleAnimation
+		BNE .Graphics					; |
+		JMP .Interact					;/
+
+		.Graphics
+		CMP.w #((.TileIndex_end-.TileIndex_fire)*2)-1 : BNE .HandleAnimation
 		SEP #$20
 		PHB : PHK : PLB
 		LDA #$09 : STA !SPC4
@@ -41,7 +44,6 @@
 		REP #$20
 		JSR .SpawnParticle
 
-
 		.HandleAnimation				;\
 		LDA !VRAMbase+!TileUpdateTable			; |
 		CMP #$00C0 : BCC .Valid				; | check if animation can be done
@@ -56,8 +58,8 @@
 		SEP #$20					; |
 		JSL !GetMap16					; |
 		REP #$30					; |
-		PLX						; |
-		LDA $03						; | get palette
+		PLX						; | get palette (---CCC-- bits)
+		LDA $03						; |
 		CMP #$0330 : BNE ..palette7			; |
 		..palette2					; |
 		LDA #$0002*$400 : BRA ..setpal			; |
@@ -68,11 +70,17 @@
 
 		DEC !BG_object_Timer,x				;\
 		PHX						; |
-		LDA.w #.TilePointer_end-.TilePointer-2		; |
-		SEC : SBC !BG_object_Timer,x			; | get pointer to tile data
-		AND #$00FE					; |
-		TAX						; |
-		LDA.l .TilePointer,x : STA $00			; |
+		LDA.w #((.TileIndex_end-.TileIndex)*2)-1	; |
+		SEC : SBC !BG_object_Timer,x			; |
+		AND #$00FF					; |
+		LSR A : TAX					; |
+		LDA.l .TileIndex,x				; | get tile information
+		AND #$00FF : TAX				; |
+		LDA !BG_status,x				; |
+		AND #$00FF					; |
+		ORA #$2300					; > base prop
+		TSB $0E						; |
+		LDA.w #.CannonTilemap : STA $00			; |
 		PLX						;/
 		JMP TileUpdate					; update tiles
 
@@ -152,7 +160,7 @@
 		CMP #$04 : BCC ..done
 		..fire
 		LDA #$80 : STA !BG_object_Misc,x
-		LDA.b #.TilePointer_end-.TilePointer-1 : STA !BG_object_Timer,x
+		LDA.b #((.TileIndex_end-.TileIndex)*2)-1 : STA !BG_object_Timer,x
 		LDA #$00
 		STA.l !P2Pipe-$80
 		STA.l !P2Pipe
@@ -341,63 +349,60 @@
 
 
 
-		.TilePointer
-		dw .CannonIdle
-		dw .CannonTilt1
-		dw .CannonTilt1
-		dw .CannonTilt1
-		dw .CannonTilt2
-		dw .CannonTilt2
-		dw .CannonTilt2
-		dw .CannonFire1
-		dw .CannonFire1
-		dw .CannonFire1
-		dw .CannonFire1
-		dw .CannonFire1
-		dw .CannonFire1
+		.TileIndex
+		db !GFX_CannonIdle_offset
+		db !GFX_CannonTilt1_offset
+		db !GFX_CannonTilt1_offset
+		db !GFX_CannonTilt1_offset
+		db !GFX_CannonTilt1_offset
+		db !GFX_CannonTilt1_offset
+		db !GFX_CannonTilt2_offset
+		db !GFX_CannonTilt2_offset
+		db !GFX_CannonTilt2_offset
+		db !GFX_CannonTilt2_offset
+		db !GFX_CannonTilt2_offset
+		db !GFX_CannonTilt2_offset
+		db !GFX_CannonTilt2_offset
+		db !GFX_CannonTilt2_offset
+		db !GFX_CannonTilt2_offset
+		db !GFX_CannonFire1_offset
+		db !GFX_CannonFire1_offset
+		db !GFX_CannonFire1_offset
+		db !GFX_CannonFire1_offset
+		db !GFX_CannonFire1_offset
+		db !GFX_CannonFire1_offset
+		db !GFX_CannonFire1_offset
+		db !GFX_CannonFire1_offset
+		db !GFX_CannonFire1_offset
+		db !GFX_CannonFire1_offset
+		db !GFX_CannonFire1_offset
+		db !GFX_CannonFire1_offset
+		db !GFX_CannonFire1_offset
+		db !GFX_CannonFire1_offset
+		db !GFX_CannonFire1_offset
 		..fire
-		dw .CannonFire2
-		dw .CannonFire2
-		dw .CannonFire2
-		dw .CannonFire2
-		dw .CannonFire2
-		dw .CannonFire2
-		dw .CannonFire2
-		dw .CannonFire2
-		dw .CannonFire2
-		dw .CannonFire2
-		dw .CannonFire2
-		dw .CannonFire2
-		dw .CannonFire2
-		dw .CannonTilt2
+		db !GFX_CannonFire2_offset
+		db !GFX_CannonFire2_offset
+		db !GFX_CannonFire2_offset
+		db !GFX_CannonFire2_offset
+		db !GFX_CannonFire2_offset
+		db !GFX_CannonFire2_offset
+		db !GFX_CannonFire2_offset
+		db !GFX_CannonFire2_offset
+		db !GFX_CannonFire2_offset
+		db !GFX_CannonFire2_offset
+		db !GFX_CannonFire2_offset
+		db !GFX_CannonFire2_offset
+		db !GFX_CannonFire2_offset
+		db !GFX_CannonTilt2_offset
 		..end
 
 
+		.CannonTilemap
+		db $00,$01,$02,$03
+		db $04,$05,$06,$07
+		db $08,$09,$0A,$0B
+		db $0C,$0D,$0E,$0F
 
-		.CannonIdle
-		dw $2000,$2001,$2002,$2003
-		dw $2010,$2011,$2012,$2013
-		dw $2020,$2021,$2022,$2023
-		dw $2030,$2031,$2032,$2033
-		.CannonTilt1
-		dw $2040,$2041,$2042,$2043
-		dw $2050,$2051,$2052,$2053
-		dw $2060,$2061,$2062,$2063
-		dw $2070,$2071,$2072,$2073
-		.CannonTilt2
-		dw $2004,$2005,$2006,$2007
-		dw $2014,$2015,$2016,$2017
-		dw $2024,$2025,$2026,$2027
-		dw $2034,$2035,$2036,$2037
-		.CannonFire1
-		dw $2008,$2009,$200A,$200B
-		dw $2018,$2019,$201A,$201B
-		dw $2028,$2029,$202A,$202B
-		dw $2038,$2039,$203A,$203B
-		.CannonFire2
-		dw $200C,$200D,$200E,$200F
-		dw $201C,$201D,$201E,$201F
-		dw $202C,$202D,$202E,$202F
-		dw $203C,$203D,$203E,$203F
 
 

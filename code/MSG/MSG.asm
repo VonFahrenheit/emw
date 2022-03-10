@@ -1093,6 +1093,7 @@ sa1rom
 
 		; read header
 		LDY #$0000 : STY !MsgIndex				; reset index
+		STZ !MsgCommandCycle					; make sure command cycle starts at 0
 	.Next	LDA [$08],y : BPL .HeaderDone				;\
 		CMP #$FE : BEQ .HeaderDone				; > line break also ends header
 		PEA.w .Next-1						; | keep applying commands until first text byte is hit
@@ -1357,21 +1358,18 @@ sa1rom
 	-	LDA [$08],y						; |
 		INY							; |
 		CMP #$FF : BEQ ..end					; |
-		CMP #$FE : BEQ ..end					; | calculate length of word (defined as a string ended by 7F, F2, F5, FE, or FF, ignoring values of 80-FD)
+		CMP #$FE : BEQ ..end					; | calculate length of word (defined as a string ended by 7F, F0, F2, F5, FE, or FF, ignoring values of 80-FD)
 		CMP #$F5 : BEQ ..end					; |
 		CMP #$F2 : BEQ ..end					; |
-		CMP #$7F : BEQ ..end					; | (commands 80-EF all have a length of 1 byte)
+		CMP #$F0 : BEQ ..end					; |
+		CMP #$7F : BEQ ..end					; | (commands 80-DF all have a length of 1 byte)
 		BCC ..char						; |
-		CMP #$F0 : BCC -					; |
-		BNE ..commandlength					;/
-	--	LDA [$08],y : BPL +					;\
-		INY : BRA -						; | command F0 has a variable length, ending at any value 80+
-	+	INY : BRA --						;/
+		CMP #$E0 : BCC -					;/
 		..commandlength						;\
 		REP #$20						; |
 		AND #$000F						; |
 		TAX							; |
-		STY $0E							; | read length for commands F1-FD
+		STY $0E							; | read length for commands E0-FD
 		LDA.l HANDLE_COMMANDS_CommandLength,x			; |
 		AND #$00FF						; |
 		CLC : ADC $0E						; |
@@ -1824,7 +1822,7 @@ endmacro
 
 		LDA !MsgPortraitExpression					;\
 		ASL A : TAY							; |
-		REP #$20							; | read expression
+		REP #$20							; | read expression (portrait variation)
 		LDA [$00],y : STA $00						; |
 		SEP #$20							;/
 
@@ -2410,14 +2408,14 @@ endmacro
 
 
 		.Ptr
-		dw .UNUSED		; E0
-		dw .UNUSED		; E1
-		dw .UNUSED		; E2
-		dw .UNUSED		; E3
-		dw .UNUSED		; E4
-		dw .UNUSED		; E5
-		dw .UNUSED		; E6
-		dw .UNUSED		; E7
+		dw .Cinematic		; E0
+		dw .Width		; E1
+		dw .VerticalOffset	; E2
+		dw .BorderOn		; E3
+		dw .BorderOff		; E4
+		dw .Mode		; E5
+		dw .FillerColor		; E6
+		dw .ImportantFlag	; E7
 		dw .UNUSED		; E8
 		dw .UNUSED		; E9
 		dw .UNUSED		; EA
@@ -2426,7 +2424,7 @@ endmacro
 		dw .PlayerPortraitL	; ED,XX
 		dw .PlayerExpressionR	; EE,XX,XX
 		dw .PlayerExpressionL	; EF,XX,XX
-		dw .HeaderSettings	; F0, variable length followup
+		dw .NewSection		; F0
 		dw .Expression		; F1,XX,XX
 		dw .ClearBox		; F2
 		dw .Music		; F3,XX
@@ -2462,7 +2460,7 @@ endmacro
 		db $00			; ED
 		db $01			; EE
 		db $01			; EF
-		db $FF			; F0, special variable length
+		db $00			; F0
 		db $02			; F1
 		db $00			; F2
 		db $01			; F3
@@ -2481,7 +2479,7 @@ endmacro
 
 
 ; returns with A = character in play (can be P1 or P2)
-.GetPlayer
+	.GetPlayer
 		LDA.l !P2Status-$80 : BNE ..p2			; try P2 if P1 is dead
 		..p1						;\
 		LDA.l !P2Character-$80				; | P1 char
@@ -2491,91 +2489,120 @@ endmacro
 		LDA.l !P2Character				;\ P2 char
 		RTS						;/
 
+	.Cinematic
+		INY						;\
+		LDA [$08],y : STA !MsgCinematic			; | cinematic mode
+		BEQ ..normal					; |
+		LDA !MsgPortrait : BEQ ..noportrait		;/
+		..portrait					;\ cinematic width with portrait = 26 tiles
+		LDA #$1A : BRA ..write				;/
+		..noportrait					;\ cinematic width with no portrait = 31 tiles
+		LDA #$1F : BRA ..write				;/
+		..normal					;\ normal mode width = 18 tiles
+		LDA #$12					;/
+		..write						;\ update width
+		STA !MsgWidth					;/
+		RTS						; return
 
-.HeaderSettings	INY
-		LDA [$08],y : BEQ ..cinematic
-		CMP #$01 : BEQ ..width
-		CMP #$02 : BEQ ..verticaloffset
-		CMP #$03 : BEQ ..border
-		CMP #$04 : BEQ ..mode
-		CMP #$05 : BEQ ..filler
-		CMP #$06 : BEQ ..important
-		RTS
-		..cinematic
-		INY
-		LDA [$08],y : STA !MsgCinematic
-		BEQ +					;\
-		LDA !MsgPortrait : BEQ ++		; |
-		LDA #$1A				; | cinematic width with portrait = 26 tiles
-		BRA +++					; |
-	++	LDA #$1F				; | cinematic width with no portrait = 31 tiles
-		BRA +++					; |
-	+	LDA #$12				; | normal mode width = 18 tiles
-	+++	STA !MsgWidth				;/
-		BRA .HeaderSettings
-		..width
+	.Width
 		INY
 		LDA [$08],y : STA !MsgWidth
-		BRA .HeaderSettings
-		..verticaloffset
+		RTS
+
+	.VerticalOffset
 		INY
-		LDA [$08],y
-		AND #$3F
-		STA $0F
 		LDA !MsgVertOffset
 		AND.b #$3F^$FF
-		ORA $0F
-		STA !MsgVertOffset
-		BRA .HeaderSettings
-		..border
-		INY
-		LDA [$08],y
-		BEQ $02 : LDA #$40
-		EOR #$40
-		STA $0F
-		LDA !MsgVertOffset
-		AND.b #$40^$FF
-		ORA $0F
-		STA !MsgVertOffset
-		BRA .HeaderSettings
-		..mode
+		ORA [$08],y : STA !MsgVertOffset
+		RTS
+
+	.BorderOn
+		LDA #$40 : TRB !MsgVertOffset
+		RTS
+
+	.BorderOff
+		LDA #$40 : TSB !MsgVertOffset
+		RTS
+
+	.Mode
 		INY
 		LDA [$08],y : STA !MsgMode
-		BRA .HeaderSettings
-		..filler
+		RTS
+
+	.FillerColor
 		INY
 		LDA [$08],y : STA !MsgFillerColor
-		BRA .HeaderSettings
-		..important
+		RTS
+
+	.ImportantFlag
 		INY
 		LDA [$08],y : STA !MsgImportant
-		JMP .HeaderSettings
+		RTS
+
 
 
 	.UNUSED
 
-.ClearBox	LDA #$01 : STA !MsgTerminateRender
+	.ClearBox
+		LDA #$01 : STA !MsgTerminateRender
 		JMP CLEAR_BOX
 
-.Music		INY
+	.Music
+		INY
 		LDA [$08],y : STA.l !SPC3
 		RTS
 
 
-.PlayerExpressionR
+	.NewSection
+		LDA !MsgCommandCycle : BEQ ..0
+		CMP #$01 : BEQ ..1
+
+		; clear box
+		..2
+		STZ !MsgCommandCycle
+		BRA .ClearBox
+
+		; scroll full
+		..1
+		LDA !MsgRow
+		INC A : STA $0F
+		ASL #3
+		ADC $0F
+		ADC !MsgTargScroll
+		STA !MsgTargScroll
+		LDA #$01 : STA !MsgTerminateRender
+		STZ !MsgInstantLine
+		LDA !MsgDelay : BNE ..return
+		INC !MsgDelay					; delay for 1 frame if none is set already
+		BRA ..return
+
+		; wait for input
+		..0
+		LDA #$01
+		STA !MsgWaitFlag
+		STA !MsgTerminateRender
+		STZ !MsgInstantLine
+		..return
+		DEY
+		INC !MsgCommandCycle
+		RTS
+
+
+
+	.PlayerExpressionR
 		JSR .PlayerPortraitR
 		BRA .SetExpression
 
-.PlayerExpressionL
+	.PlayerExpressionL
 		JSR .PlayerPortraitL
 		BRA .SetExpression
 
-.PlayerPortraitR
+	.PlayerPortraitR
 		JSR .GetPlayer
 		INC A
 		BRA .SetPlayerPortrait
 
-.PlayerPortraitL
+	.PlayerPortraitL
 		JSR .GetPlayer
 		INC A
 		ORA #$40
@@ -2584,54 +2611,60 @@ endmacro
 		STZ !MsgPortraitExpression
 		RTS
 
-.Expression	JSR .Portrait
+	.Expression
+		JSR .Portrait
 		.SetExpression
 		INY
 		LDA [$08],y : STA !MsgPortraitExpression
 		RTS
 
-.Portrait	INY
+	.Portrait
+		INY
 		LDA [$08],y
-		AND #$7F : STA !MsgPortrait		; load portrait
+		AND #$7F : STA !MsgPortrait			; load portrait
 		LDA !MsgVertOffset
 		AND.b #$80^$FF
 		STA !MsgVertOffset
 		LDA [$08],y
 		AND #$80
-		TSB !MsgVertOffset			; set "lock portrait to top-right corner" bit
+		TSB !MsgVertOffset				; set "lock portrait to top-right corner" bit
 		STZ !MsgPortraitExpression
 		RTS
 
-.Scroll		INY
+	.Scroll
+		INY
 		LDA [$08],y
-		CMP #$FF : BNE +			;\
-		LDA !MsgRow				; | special value 0xFF scroll just off-screen regardless of distance
-		INC A					;/
+		CMP #$FF : BNE +				;\
+		LDA !MsgRow					; | special value 0xFF scroll just off-screen regardless of distance
+		INC A						;/
 	+	STA $0F
 		ASL #3
-		CLC : ADC $0F
-		CLC : ADC !MsgTargScroll
+		ADC $0F
+		ADC !MsgTargScroll
 		STA !MsgTargScroll
 		LDA #$01 : STA !MsgTerminateRender
 		STZ !MsgInstantLine
 		LDA !MsgDelay : BNE ..return
-		INC !MsgDelay				; delay for 1 frame if none is set already
+		INC !MsgDelay					; delay for 1 frame if none is set already
 		..return
 		RTS
 
-.WaitForInput	LDA #$01
+	.WaitForInput
+		LDA #$01
 		STA !MsgWaitFlag
 		STA !MsgTerminateRender
 		STZ !MsgInstantLine
 		RTS
 
-.Delay		INY
+	.Delay
+		INY
 		LDA [$08],y : STA !MsgDelay
 		LDA #$01 : STA !MsgTerminateRender
 		STZ !MsgInstantLine
 		RTS
 
-.Dialogue	INY
+	.Dialogue
+		INY
 		LDA [$08],y
 		AND #$03
 		INC A
@@ -2645,7 +2678,7 @@ endmacro
 		RTS
 
 
-.PlayerNext
+	.PlayerNext
 		LDA !MsgCounter : TAX				; X = sequence index
 		JSR .GetPlayer
 		REP #$20					;\
@@ -2656,7 +2689,8 @@ endmacro
 		INC !MsgCounter					;/
 		RTS						; return
 
-.Next		LDA !MsgCounter
+	.Next
+		LDA !MsgCounter
 		TAX
 		INY
 		LDA [$08],y : STA !MsgSequence,x
@@ -2666,7 +2700,8 @@ endmacro
 		INC !MsgCounter
 		RTS
 
-.SetExit	PHX
+	.SetExit
+		PHX
 		PHB : PHK : PLB
 		INY
 		LDA [$08],y
@@ -2682,46 +2717,51 @@ endmacro
 		PLX
 		RTS
 
-.TriggerExit	LDA #$06 : STA $71
+	.TriggerExit
+		LDA #$06 : STA $71
 		STZ $88
 		STZ $89
 		RTS
 
-.EndLevel	PHB : PHK : PLB
+	.EndLevel
+		PHB : PHK : PLB
 		PHX
-		LDA #$02 : STA $73CE			; clear midway
-		STA $6DD5				; set exit
-		LDX !Translevel : BEQ ++		;\ > intro level does not count
-		LDA !LevelTable1,x : BMI +		; |
-		INC $7F2E				; > you've now beaten one more level (only once/level)
-		ORA #$80				; | set clear, remove midway
-	+	AND.b #$60^$FF				; > clear checkpoint
-		STA !LevelTable1,x			;/
-		STZ !LevelTable2,x			; > clear checkpoint level
-		STZ $73CE				; > clear midway flag
-	++	LDA #$0B : STA !GameMode		; > load realm select
-		INY					;\ 00 = leave level, 01+ = beat level
-		LDA [$08],y : BEQ ..R			;/
-		LDA #$00 : XBA				;\
-		LDX !Level				; |
-		LDA.l $188060,x				; |
-		TAX					; | unlock level
-		LDA !LevelTable4,x			; |
-		ORA #$80				; |
-		STA !LevelTable4,x			;/
+		LDA #$02 : STA $73CE				; clear midway
+		STA $6DD5					; set exit
+		LDX !Translevel : BEQ ++			;\ > intro level does not count
+		LDA !LevelTable1,x : BMI +			; |
+		INC $7F2E					; > you've now beaten one more level (only once/level)
+		ORA #$80					; | set clear, remove midway
+	+	AND.b #$60^$FF					; > clear checkpoint
+		STA !LevelTable1,x				;/
+		STZ !LevelTable2,x				; > clear checkpoint level
+		STZ $73CE					; > clear midway flag
+	++	LDA #$0B : STA !GameMode			; > load realm select
+		INY						;\ 00 = leave level, 01+ = beat level
+		LDA [$08],y : BEQ ..R				;/
+		LDA #$00 : XBA					;\
+		LDX !Level					; |
+		LDA.l $188060,x					; |
+		TAX						; | unlock level
+		LDA !LevelTable4,x				; |
+		ORA #$80					; |
+		STA !LevelTable4,x				;/
 	..R	PLX
 		PLB
 		RTS
 
-.InstantLine	LDA #$01 : STA !MsgInstantLine
+	.InstantLine
+		LDA #$01 : STA !MsgInstantLine
 		RTS
 
-.LineBreak	STZ !MsgX
+	.LineBreak
+		STZ !MsgX
 		INC !MsgRow
 		STZ !MsgInstantLine
 		RTS
 
-.End		LDA #$01 : STA !MsgEnd
+	.End
+		LDA #$01 : STA !MsgEnd
 		STZ !MsgInstantLine
 		STZ !MsgInputBuffer+4
 		STZ !MsgInputBuffer+5

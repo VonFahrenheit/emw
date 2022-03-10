@@ -663,13 +663,13 @@ macro storepal(name)
 endmacro
 
 PalsetData:
-	%storepal(player_mario)			; 00, mario palette
-	%storepal(player_luigi)			; 01, luigi palette
-	%storepal(player_kadaal)		; 02, kadaal palette
-	%storepal(player_leeway)		; 03, leeway palette
-	%storepal(player_alter)			; 04, alter palette
-	%storepal(player_peach)			; 05, peach palette
-	%storepal(placeholder3)			; 06, placeholder
+	; 00 is unused, as that signals the slot is empty
+	%storepal(player_mario)			; 01, mario palette
+	%storepal(player_luigi)			; 02, luigi palette
+	%storepal(player_kadaal)		; 03, kadaal palette
+	%storepal(player_leeway)		; 04, leeway palette
+	%storepal(player_alter)			; 05, alter palette
+	%storepal(player_peach)			; 06, peach palette
 	%storepal(placeholder4)			; 07, placeholder
 	%storepal(placeholder5)			; 08, placeholder
 	%storepal(player_mario_fire)		; 09, mario's fire power palette
@@ -693,11 +693,11 @@ PalsetData:
 	%storepal(special_flash_yellow)		; 17
 	%storepal(special_flash_caster)		; 18
 
-	%storepal(special_kingking_blue)
-	%storepal(special_kingking_red)
+	%storepal(special_kingking_blue)	; 1A
+	%storepal(special_kingking_red)		; 1B
 
-	%storepal(special_toad)
-	%storepal(special_melody)
+	%storepal(special_toad)			; 1C
+	%storepal(special_melody)		; 1D
 
 
 

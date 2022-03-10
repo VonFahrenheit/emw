@@ -13,12 +13,12 @@ levelinit1:
 
 
 levelinit2:
+
 		STZ !SideExit
-		LDA $741A : STA !Level+4
-		BNE +
-		DEC !MarioYPosHi
-		DEC !P2YPosHi-$80
-		DEC !P2YPosHi
+		LDA $741A : BNE +
+		LDA #$80
+		STA !P2Entrance-$80
+		STA !P2Entrance
 		+
 
 
@@ -87,7 +87,6 @@ levelinit4:
 		TRB !MainScreen
 		TRB !SubScreen
 		INC !SideExit
-		LDA #$03 : STA !Map16Remap+$0C	; remap page 0x0C to expanded GFX
 
 		REP #$20
 		LDA $1A
@@ -704,32 +703,6 @@ level1:
 
 
 level2:
-		.SpecialEntrance
-		LDA !Level+4 : BNE ..done
-		LDA !P2Status-$80 : BNE ..p1done
-		LDA !P2InAir-$80 : BEQ ..ground
-		..p1done
-		LDA !P2Status : BNE ..lock
-		LDA !P2InAir : BEQ ..ground
-		..lock
-		STZ !P2Entrance-$80
-		STZ !P2Entrance
-		STZ $6DA2
-		STZ $6DA3
-		STZ $6DA4
-		STZ $6DA5
-		STZ $6DA6
-		STZ $6DA7
-		STZ $6DA8
-		STZ $6DA9
-		BRA ..done
-		..ground
-		LDA #$20
-		STA !P2Entrance-$80
-		STA !P2Entrance
-		INC !Level+4
-		..done
-
 
 
 	if !Debug = 1					;\
@@ -2087,9 +2060,12 @@ levelC:
 		INC A : STA !ExtraProp1,x		; |
 		..done					;/
 
+
+	; squish dense on ground, but only underwater
 		LDX #$0F
 	-	LDA !NewSpriteNum,x
 		CMP #$34 : BNE +
+		LDA !SpriteWater,x : BEQ +
 		LDA $BE,x
 		CMP #$02 : BCS +
 		LDA $3330,x
@@ -2844,33 +2820,9 @@ level2C:
 		LDA #$0008 : TSB $6DF5
 		+
 
-		LDA !P2XPosLo-$80
-		CMP #$0148 : BCC .NoEntry1
-		CMP #$0168 : BCS .NoEntry1
-		SEP #$20
-		LDA $6DA6
-		AND #$08 : BEQ .NoEntry1
-		LDA !P2Blocked-$80
-		AND #$04 : BNE .Entry
+		REP #$30
+		LDY.w #.DoorBox : JSL DoorBox
 
-		.NoEntry1
-		REP #$20
-		LDA !P2XPosLo
-		CMP #$0148 : BCC .NoEntry2
-		CMP #$0168 : BCS .NoEntry2
-		SEP #$20
-		LDA $6DA7
-		AND #$08 : BEQ .NoEntry2
-		LDA !P2Blocked
-		AND #$04 : BEQ .NoEntry2
-
-		.Entry
-		LDA #$06 : STA $71
-		STZ $88
-		STZ $89
-		LDA #$80 : STA !SPC3
-		RTL
-		.NoEntry2
 
 		REP #$20
 		LDA !P2YPosLo
@@ -2884,6 +2836,9 @@ level2C:
 		LDA #$01
 		STA !EnableVScroll
 		RTL
+
+
+.DoorBox	dw $0140,$0030 : db $40,$90
 
 
 		.Table
@@ -3096,9 +3051,7 @@ level2F:
 		LDA !NewSpriteNum,x
 		CMP #$02 : BNE +
 		LDA #$05 : STA !ExtraProp1,x
-		LDA !ExtraProp2,x
-		AND #$C0
-		ORA #$08 : STA !ExtraProp2,x
+		LDA #$08 : STA !ExtraProp2,x
 	+	PLX
 		INX #3
 		CPX $0F : BCC ..nextspawn
@@ -4154,10 +4107,7 @@ level38:
 		LDA ..ylo,y : STA !SpriteYLo,x
 		LDA ..yhi,y : STA !SpriteYHi,x
 		LDA #$05 : STA !ExtraProp1,x
-		LDA !ExtraProp2,x
-		AND #$C0
-		ORA #$05
-		STA !ExtraProp2,x
+		LDA #$05 : STA !ExtraProp2,x
 		LDA #$03 : STA $3280,x
 		LDA #$C0 : STA !SpriteYSpeed,x
 		..return
@@ -4181,9 +4131,7 @@ level38:
 		CPX #$10 : BCS ..return
 		LDA #$03 : STA $3280,x
 		LDA #$05 : STA !ExtraProp1,x
-		LDA !ExtraProp2,x
-		AND #$C0
-		ORA #$05 : STA !ExtraProp2,x
+		LDA #$05 : STA !ExtraProp2,x
 		..return
 		RTS
 

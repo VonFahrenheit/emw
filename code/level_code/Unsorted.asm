@@ -397,8 +397,8 @@ UploadDecomp:
 LoadCameraBox:
 		STA $00
 		LDA.w #.SA1 : STA $3180
-		LDA.w #.SA1>>8 : STA $3181
 		SEP #$20
+		LDA.b #.SA1>>16 : STA $3182
 		PHB : PLA
 		STA $02
 		JSR $1E80
@@ -440,36 +440,54 @@ LoadCameraBox:
 		STZ !P2VectorAccX
 		.NoTransition
 
-
-
 		LDA !P2Status-$80 : BEQ .GetCoords
 		LDA !P2Status : BEQ .GetCoords
 		PLP
 		PLB
 		RTL
 
+
 		.GetCoords
+		LDA !MultiPlayer : BEQ ..p1
+		LDA !P2Status
+		CMP #$02 : BNE +
+		LDA !P2Status-$80
+		CMP #$02 : BNE ..p1
+		; only P1 alive: P1
+		; both dead: flow to composite
+		..composite
+		REP #$20					;\
+		LDA !P2XPosLo-$80				; |
+		CLC : ADC !P2XPosLo				; |
+		ROR A						; |
+		STA $00						; | composite coords
+		LDA !P2YPosLo-$80				; |
+		CLC : ADC !P2YPosLo				; |
+		ROR A						; |
+		STA $02						; |
+		BRA ++						;/
+
+	+	LDA !P2Status-$80
+		CMP #$02 : BNE ..composite
+		; both alive: composite
+		; only P2 alive: flow to P2
+		..p2
 		REP #$20
-		LDX !P2Status-$80
-		BEQ $02 : LDX #$80
-		LDA !P2XPosLo-$80,x : STA $00
-		LDA !P2YPosLo-$80,x : STA $02
-		LDX #$00
-		LDA !MultiPlayer
-		AND #$00FF
-		BEQ $02 : LDX #$80
-		LDY !P2Status-$80,x : BNE .CalcRoom
-		LDA !P2XPosLo-$80,x
-		CLC : ADC $00
-		ROR A
-		BPL $03 : LDA #$0000
-		XBA
-		STA $00
-		LDA !P2YPosLo-$80,x
-		CLC : ADC $02
-		ROR A
-		BPL $03 : LDA #$0000
-		STA $02
+		LDA !P2XPosLo : STA $00
+		LDA !P2YPosLo : STA $02
+		BRA ++
+		..p1
+		REP #$20
+		LDA !P2XPosLo-$80 : STA $00
+		LDA !P2YPosLo-$80 : STA $02
+		++
+
+		LDA $00						;\
+		BPL $03 : LDA #$0000				; |
+		XBA : STA $00					; | don't allow negative coords
+		LDA $02						; |
+		BPL $02 : STZ $02				;/
+
 
 		.CalcRoom
 		LDA $02
@@ -1025,6 +1043,50 @@ LoadCameraBox:
 		RTL
 		..next
 		DEX : BPL ..loop
+		RTL
+
+
+
+; input:
+;	Y = address of door box
+; output:
+;	void (subroutine fully handles door interaction)
+	DoorBox:
+		REP #$30
+		LDA $0002,y
+		STA $05
+		STA $0A
+		LDA $0004,y : STA $06
+		LDA $0000,y : STA $09
+		SEP #$30
+		STA $04
+		SEC : JSL !PlayerClipping : BCC .Return
+		LSR A : BCC .P2
+
+		.P1
+		STA $00
+		LDA !P2Blocked-$80
+		AND #$04 : BEQ ..done
+		LDA $6DA6
+		AND #$08 : BNE .EnterDoor
+		..done
+		LDA $00
+
+		.P2
+		LSR A : BCC .Return
+		LDA !P2Blocked
+		AND #$04 : BEQ .Return
+		LDA $6DA7
+		AND #$08 : BEQ .Return
+
+		.EnterDoor
+		LDA #$06 : STA $71
+		STZ $88
+		STZ $89
+		LDA #$80 : STA !SPC3
+		LDA #$0F : STA !SPC4		; door sfx
+
+		.Return
 		RTL
 
 
@@ -1630,7 +1692,6 @@ levelinit0:
 		CMP #$03 : BEQ +			;\
 	++	LDA #$30 : STA !SPC3			; | keep music if warp pipe has been obtained but cannon has not been used
 		+					;/
-
 
 		LDA #$06 : STA !PalsetStart
 
@@ -2888,6 +2949,14 @@ level0:
 	endif
 
 
+		.MsgPal
+		STZ !BorderPal
+		LDA $1B
+		CMP #$02 : BCC ..A1
+	..B1	LDA #$B1 : BRA ..w
+	..A1	LDA #$A1
+	..w	STA !MsgPal
+
 
 		LDA !P2SlantPipe-$80 : BEQ +	;\
 		LDA #$03 : STA !StoryFlags+$00	; | set cannon overworld cutscene when leaving with cannon
@@ -2899,7 +2968,7 @@ level0:
 		TRB !P2Pipe-$80
 		TRB !P2Pipe
 		LDA !P2Pipe-$80
-		ORA !P2Pipe-$80
+		ORA !P2Pipe
 		CMP #$C0 : BCC +
 		REP #$20
 		LDA #$00B0 : JSL END_Down
@@ -2923,9 +2992,7 @@ level0:
 		CMP #$80 : BCC +
 		STZ !SpriteXSpeed,x
 		STZ !SpriteAnimIndex
-		LDA !ExtraProp2,x
-		AND #$C0
-		ORA #$01 : STA !ExtraProp2,x
+		LDA #$01 : STA !ExtraProp2,x
 	+	DEX : BPL -
 
 
@@ -3894,14 +3961,12 @@ levelC6:
 		LDA #$0E : JSL SearchSprite_Custom
 		BMI +
 		LDA !ExtraProp2,x
-		AND #$3F
 		CMP #$07 : BNE +
 		LDA !SpriteXHi,x
 		CMP #$0E : BNE +
 		LDA !SpriteXLo,x
 		CMP #$90 : BCC +
-		LDA !ExtraProp2,x
-		AND #$C0 : STA !ExtraProp2,x
+		STZ !ExtraProp2,x
 		LDA #$08 : STA !SpriteAnimIndex
 		STZ !SpriteAnimTimer
 		LDA #$01 : STA $400000+!MsgTalk

@@ -1,3 +1,6 @@
+
+
+
 YoshiCoin:
 
 	namespace YoshiCoin

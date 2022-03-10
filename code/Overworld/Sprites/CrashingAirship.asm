@@ -35,9 +35,9 @@
 		CMP #$00B8 : BCS ..crash
 		CMP #$0090 : BEQ ..dropmario
 		BCC ..carrymario
-		LDA #$000F : STA !P1MapGhost
-		BIT !P1MapZSpeed-1 : BPL ..done
 		SEP #$20
+		LDA #$0F : STA !P1MapGhost
+		BIT !P1MapZSpeed : BPL ..done
 		LDA #$80 : STA !P1MapForceFlip
 		REP #$20
 		BRA ..done

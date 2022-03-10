@@ -41,9 +41,7 @@ HammerRex:
 		LDA #!Rex_Hurt : STA !SpriteAnimIndex
 		STZ !SpriteAnimTimer
 		STZ !ExtraProp1,x
-		LDA !ExtraProp2,x
-		AND #$C0
-		STA !ExtraProp2,x
+		STZ !ExtraProp2,x
 		INX						; process this sprite again
 
 		.Return

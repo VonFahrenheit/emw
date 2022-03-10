@@ -6,11 +6,11 @@
 ; $47	16-bit	right border
 ; $49	16-bit	top border
 ; $4B	16-bit	bottom border
-; $4D	16-bit	---- (can be used internally by BG objects)
-; $4F	16-bit	---- (can be used internally by BG objects)
-; $51	8-bit	number of cables that have been rendered
-; $52	8-bit	which cable (from level list) is being processed
-; $53	16-bit	current tile being rendered to (carries across multiple cables)
+; $F0	16-bit	---- (can be used internally by BG objects)
+; $F2	16-bit	---- (can be used internally by BG objects)
+; $F4	8-bit	number of cables that have been rendered
+; $F5	8-bit	how many cables have been processed (increments by 1 before each cable code call)
+; $F6	16-bit	current tile being rendered to (carries across multiple cables)
 
 
 
@@ -33,29 +33,30 @@ namespace BG_OBJECTS
 		PHA : PLB
 		REP #$30
 
-		LDA $1A						;\
-		AND #$FFF8					; |
-		SEC : SBC #$0010				; | +1
-		BPL $03 : LDA #$0000				; |
-		STA $45						; |
-		LDA $1A						; |
-		AND #$FFF8					; |
-		CLC : ADC #$0118				; | +1
-		STA $47						; |
-		LDA $1C						; |
-		AND #$FFF8					; | zip box border
-		SEC : SBC #$0004				; |
-		BPL $03 : LDA #$0000				; |
-		AND #$FFF8					; |
-		STA $49						; |
-		LDA $1C						; |
-		AND #$FFF8					; |
-		CLC : ADC #$00EC				; |
-		AND #$FFF8					; |
-		STA $4B						;/
+	; set by VR3
+		; LDA $1A						;\
+		; AND #$FFF8					; |
+		; SEC : SBC #$0010				; | +1
+		; BPL $03 : LDA #$0000				; |
+		; STA $45						; |
+		; LDA $1A						; |
+		; AND #$FFF8					; |
+		; CLC : ADC #$0118				; | +1
+		; STA $47						; |
+		; LDA $1C						; |
+		; AND #$FFF8					; | zip box border
+		; SEC : SBC #$0004				; |
+		; BPL $03 : LDA #$0000				; |
+		; AND #$FFF8					; |
+		; STA $49						; |
+		; LDA $1C						; |
+		; AND #$FFF8					; |
+		; CLC : ADC #$00EC				; |
+		; AND #$FFF8					; |
+		; STA $4B						;/
 
-		STZ $51						; clear number of cable renders
-		LDA #$FFFE : STA $53				; reset cable tile count
+		STZ $F4						; clear number of cable renders
+		LDA #$FFFE : STA $F6				; reset cable tile count
 		LDA #$0000
 		STA !CableCacheX
 		STA !CableTilemapIndex
@@ -65,7 +66,7 @@ namespace BG_OBJECTS
 		AND #$00FF : BEQ .Next
 		STA $00						; store type num
 		CMP #$0004 : BNE ..notcable
-		INC $52						; +1 cable call
+		INC $F5						; +1 cable call
 		..notcable
 		LDA !BG_object_X,x				;\
 		SBC $1A						; |
@@ -92,12 +93,12 @@ namespace BG_OBJECTS
 
 		.CCDMA						;\
 		SEP #$30					; |
-		LDA $53+1 : BMI ..fail				; |
+		LDA $F6+1 : BMI ..fail				; |
 		LDA.b #!VRAMbank				; |
 		PHA : PLB					; |
 		REP #$30					; |
 		JSL !GetBigCCDMA : BCS ..fail			; |
-		LDA $53						; |
+		LDA $F6						; |
 		CMP #$007E					; |
 		BCC $03 : LDA #$007E				; | run CCDMA if anything was rendered this frame
 		INC #2						; |
@@ -129,12 +130,6 @@ namespace BG_OBJECTS
 		dw TrashCan		; 08
 		..end
 
-
-
-; idea list:
-; - bush
-; - tall grass
-; - windows
 
 
 
@@ -174,7 +169,8 @@ incsrc "BG_objects/TrashCan.asm"
 
 ; input:
 ;	$00 = pointer to tile table
-;	$0E = base ---CCC-- -------- bits
+;	$0E = base tile (tttttttt), added to tile num from tilemap
+;	$0F = base prop (YXPCCCTT), used for entire tilemap (tilemap can specify X/Y flip, however)
 
 	TileUpdate:
 
@@ -212,12 +208,6 @@ incsrc "BG_objects/TrashCan.asm"
 		AND #$03E0					; |
 		STA $0C						;/
 
-		LDA !BG_object_Tile,x
-		AND #$00FF
-		ORA #$0300
-		TSB $0E
-		; HERE: GET LOCATION ON PAGE 3
-		; STORE TO $0E (tttttttt lo + ------TT hi)
 
 
 ; if...
@@ -245,19 +235,26 @@ incsrc "BG_objects/TrashCan.asm"
 		LDA $04 : STA $06				; start new row
 		..loop						;\
 		LDA $9A						; |
-		CMP $45 : BCC ..next				; |
-		CMP $47 : BCS ..next				; | check tiles individually
+		CMP !BG1ZipBoxL : BCC ..next			; |
+		CMP !BG1ZipBoxR : BCS ..next			; | check tiles individually
 		LDA $98						; |
-		CMP $49 : BCC ..next				; |
-		CMP $4B : BCS ..next				;/
+		CMP !BG1ZipBoxU : BCC ..next			; |
+		CMP !BG1ZipBoxD : BCS ..next			;/
 		..valid						;\
 		LDA $06						; |
 		ORA $02						; | write VRAM address
 		ORA !BG1Address					; |
 		STA !VRAMbase+!TileUpdateTable+2,x		;/
+		SEP #$20					;\
+		LDA ($00),y					; |
+		AND #$C0					; | get prop (yx------ ^ $0F)
+		EOR $0F						; |
+		XBA						;/
 		LDA ($00),y					;\
-		CLC : ADC $0E					; | tile number + yxpccctt
-		STA !VRAMbase+!TileUpdateTable+4,x		;/
+		AND #$3F					; | get tile num (--tttttt + $0E)
+		CLC : ADC $0E					; |
+		REP #$20					;/
+		STA !VRAMbase+!TileUpdateTable+4,x		; store to table
 		INX #4						; increment write index
 		..next						;\
 		LDA $9A						; | x+8
@@ -280,7 +277,7 @@ incsrc "BG_objects/TrashCan.asm"
 		STA $02						; |
 		LDA $04						; |
 	+	STA $06						;/
-		INY #2						; increment read index
+		INY						; increment read index
 		LDA $02						;\ if at the end, done
 		CMP $0C : BEQ ..done				;/
 		BRA ..loop					; loop

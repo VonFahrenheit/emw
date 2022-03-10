@@ -63,59 +63,41 @@
 		DEC !BG_object_Timer,x				; |
 		PHX						; |
 		LDA !BG_object_Timer,x				; |
-		AND #$00FF					; | get pointer to tile data
-		ASL A						; |
-		TAX						; |
-		LDA.l .TilePointer,x : STA $00			; |
+		AND #$00FF : TAX				; |
+		LDA.l .TileIndex,x				; | tile information
+		AND #$00FF : TAX				; |
+		LDA !BG_status,x				; |
+		AND #$00FF					; |
+		ORA #$3700					; > base prop
+		STA $0E						; |
+		LDA.w #.BushTilemap : STA $00			; |
 		PLX						;/
 
-		STZ $0E						; palette included in tile table
 		JMP TileUpdate
 
 
-		.TilePointer
-		dw .Bush0
-		dw .Bush1
-		dw .Bush2
-		dw .Bush3
-		dw .Bush4
-		dw .Bush5
-		dw .Bush6
-		dw .Bush7
-		dw .Bush8
-		dw .Bush9
-		dw .BushA
-		dw .BushB
-		dw .BushC
-		dw .BushD
-		dw .BushE
-		dw .BushF
+		.TileIndex
+		db !GFX_BushFrame1_offset
+		db !GFX_BushFrame1_offset
+		db !GFX_BushFrame1_offset
+		db !GFX_BushFrame1_offset
+		db !GFX_BushFrame2_offset
+		db !GFX_BushFrame2_offset
+		db !GFX_BushFrame2_offset
+		db !GFX_BushFrame2_offset
+		db !GFX_BushFrame3_offset
+		db !GFX_BushFrame3_offset
+		db !GFX_BushFrame3_offset
+		db !GFX_BushFrame3_offset
+		db !GFX_BushFrame2_offset
+		db !GFX_BushFrame2_offset
+		db !GFX_BushFrame2_offset
+		db !GFX_BushFrame2_offset
 
 
-		.Bush0
-		.Bush1
-		.Bush2
-		.Bush3
-		dw $3400,$3401,$3402,$3403
-		dw $3410,$3411,$3412,$3413
-		.Bush4
-		.Bush5
-		.Bush6
-		.Bush7
-		dw $3404,$3405,$3406,$3407
-		dw $3414,$3415,$3416,$3417
-		.Bush8
-		.Bush9
-		.BushA
-		.BushB
-		dw $3408,$3409,$340A,$340B
-		dw $3418,$3419,$341A,$341B
-		.BushC
-		.BushD
-		.BushE
-		.BushF
-		dw $3404,$3405,$3406,$3407
-		dw $3414,$3415,$3416,$3417
+		.BushTilemap
+		db $00,$01,$02,$03
+		db $04,$05,$06,$07
 
 
 

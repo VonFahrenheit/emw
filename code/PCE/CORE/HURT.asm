@@ -98,6 +98,7 @@
 		LDA #$01 : STA !MarioAnim
 		STZ $19
 		LDA #$2F : STA !MarioAnimTimer
+		LDA #$1F : STA !P2ShrinkTimer		; > shrink timer
 		..noshrink
 		LDA #$F8 : STA !MarioYSpeed
 		STZ !P2FastSwim				;\ end fast swim
@@ -117,6 +118,7 @@
 		SBC !dmg				; | set shrink timer when size changes from big to small
 		CMP #$05 : BCS ..nosizechange		; |
 		LDA #$1F : STA !P2ShrinkTimer		; |
+		LDA #$04 : STA !SPC1			; > shrink sfx
 		..nosizechange				;/
 		STZ !P2FireTimer			; reset fire timer
 		STZ !P2PickUp				; end pickup animation

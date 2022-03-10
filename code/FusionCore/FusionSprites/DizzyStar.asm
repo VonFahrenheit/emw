@@ -126,7 +126,7 @@
 		LDA !OAMindex_p1 : TAX
 		LDA $00 : STA !OAM_p1+$000,x
 		PLA : STA !OAM_p1+$001,x
-		LDA #$3448 : STA !OAM_p1+$002,x
+		LDA #$344F : STA !OAM_p1+$002,x
 		PHX
 		TXA
 		LSR #2
@@ -149,7 +149,7 @@
 		LDA !OAMindex_p3 : TAX
 		LDA $00 : STA !OAM_p3+$000,x
 		PLA : STA !OAM_p3+$001,x
-		LDA #$3448 : STA !OAM_p3+$002,x
+		LDA #$344F : STA !OAM_p3+$002,x
 		PHX
 		TXA
 		LSR #2

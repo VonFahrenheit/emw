@@ -1,3 +1,4 @@
+
 header
 sa1rom
 
@@ -5,7 +6,7 @@ print "-- SP_LEVEL --"
 
 ; --Defines--
 
-incsrc "Defines.asm"
+	incsrc "Defines.asm"
 	!CompileText = 0
 	incsrc "MSG/TextData.asm"		; get defines from TextData
 
@@ -292,6 +293,8 @@ print "Level code handler inserted at $", pc, "."
 		PHP
 		SEP #$30
 
+		STZ !PlayerWaiting				; clear wait flags
+
 		STZ !Cutscene					; kill cutscene
 		STZ !CutsceneSmoothness				; kill effect
 		STZ !CutsceneWait				; kill timer
@@ -322,10 +325,7 @@ print "Level code handler inserted at $", pc, "."
 		LDA #$FF					;\
 		STA !CameraBoxU+1				; | disable camera box
 		STA !CameraForbiddance				;/
-		LDX #$00					;\
-	-	STA !Map16Remap,x				; | default map16 remap = 0xFF (disabled)
-		INX : BNE -					;/
-		LDA #$03 : STA !Map16Remap+3			; > exception for page 3, which defaults to GFX page 3
+
 		LDA #$00 : JSL !ProcessYoshiCoins		; > load Yoshi Coins (A must be 0x00)
 		LDA.b #.SA1 : STA $3180				;\
 		LDA.b #.SA1>>8 : STA $3181			; | have SA-1 clear VR2 RAM
@@ -416,8 +416,8 @@ print "Level code handler inserted at $", pc, "."
 		LDA !Characters				; |
 		AND #$000F				; |
 		ASL #5					; |
-		CLC : ADC.w #!PalsetData		; |
-		STA $4302				; | f-blanked-wrapped CGRAM upload for P2 palette
+		CLC : ADC.w #!PalsetData		; | f-blanked-wrapped CGRAM upload for P2 palette
+		STA $4302				; |
 		LDX.b #!PalsetData>>16			; |
 		STX $4304				; |
 		LDA #$0020 : STA $4305			; |
@@ -427,8 +427,8 @@ print "Level code handler inserted at $", pc, "."
 		LDA !Characters				; |
 		AND #$00F0				; |
 		ASL A					; |
-		CLC : ADC.w #!PalsetData		; |
-		STA $4302				; | f-blanked-wrapped CGRAM upload for P1 palette
+		ADC.w #!PalsetData			; | f-blanked-wrapped CGRAM upload for P1 palette
+		STA $4302				; |
 		LDX.b #!PalsetData>>16			; |
 		STX $4304				; |
 		LDA #$0020 : STA $4305			; |
@@ -481,23 +481,25 @@ print "Level code handler inserted at $", pc, "."
 		LDA !Characters
 		LSR #4
 		AND #$000F
+		INC A
 		STA !Palset8
 		LDY #$0000
 		XBA
 		LSR #3
 		TAX
-	-	LDA.l !PalsetData,x : STA $6803,y
+	-	LDA.l !PalsetData-$20,x : STA $6803,y
 		INX #2
 		INY #2
 		CPY #$0020 : BCC -
 		LDA !Characters
 		AND #$000F
+		INC A
 		STA !Palset9
 		LDY #$0000
 		XBA
 		LSR #3
 		TAX
-	-	LDA.l !PalsetData,x : STA $6823,y
+	-	LDA.l !PalsetData-$20,x : STA $6823,y
 		INX #2
 		INY #2
 		CPY #$0020 : BCC -
@@ -656,6 +658,13 @@ print "Level code handler inserted at $", pc, "."
 		ORA !P2Pipe-$80
 		ORA !P2Pipe
 		BNE +
+		LDA !P2Entrance-$80 : BPL ++
+		LDA #$10 : STA !P2Stasis			; delay P2
+		DEC !MarioYPosHi
+		DEC !P2YPosHi-$80
+		DEC !P2YPosHi
+		BRA +
+		++
 		LDA #$3F : STA !P2Entrance-$80
 		LDA #$4F : STA !P2Entrance
 		+
@@ -959,6 +968,8 @@ print "Level code handler inserted at $", pc, "."
 		LDX #$00					;\
 		LDY #$00					; | get HSL format palette
 		JSL !RGBtoHSL					;/
+
+		SEP #$30					; all regs 8-bit
 		LDA #$41 : PHA					; push bank 0x41
 		LDA #$40					;\ switch to bank 0x40
 		PHA : PLB					;/
@@ -1526,9 +1537,6 @@ print "Level MAIN inserted at $", pc
 
 	MAIN_Level:
 		LDA #$01 : STA !LevelInitFlag		; set level MAIN
-
-		JSL !ProcessYoshiCoins			; > handle Yoshi Coins (A=1)
-
 		PHB : PHK : PLB				; > bank wrapper
 		REP #$30				; > all registers 16 bit
 		LDA !Level				;\
@@ -2602,7 +2610,7 @@ UpdatePalset:
 		LDA $00								; |
 		XBA								; | address for palset
 		LSR #3								; |
-		CLC : ADC.w #!PalsetData+2					;/
+		CLC : ADC.w #!PalsetData+2-$20					;/
 		STA $00								; also copy palette to RAM mirror
 		LDA.w #!PalsetData>>16 : STA $02				;\
 		PHX								; |

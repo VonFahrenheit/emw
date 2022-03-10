@@ -152,9 +152,8 @@ GoombaSlave:
 		LDA #$02 : STA !SPC1					; contact SFX
 		STZ $00							;\
 		LDA #$F0 : STA $01					; |
-		LDA !ExtraProp2,x					; |
 		CLC							; |
-		AND #$3F						; | spawn revealed sprite
+		LDA !ExtraProp2,x					; | spawn revealed sprite
 		BEQ $01 : SEC						; |
 		LDA !ExtraProp1,x					; |
 		JSL SpawnSprite						; |

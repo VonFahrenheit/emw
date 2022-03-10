@@ -22,7 +22,7 @@ DISPLAY_CONTACT:
 		PHP
 		PHB
 		JSL !GetParticleIndex
-		LDA #$0007 : STA !Particle_Timer,x
+		STZ !Particle_Timer,x
 		LDA.w #!prt_contact : STA !Particle_Type,x
 		LDA #$00C0 : STA !Particle_Prop,x
 		PLB

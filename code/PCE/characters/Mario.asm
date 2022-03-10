@@ -373,10 +373,15 @@ namespace Mario
 		..done						;/
 
 
-		LDA !P2HurtTimer
-		BEQ $03 : DEC !P2HurtTimer
-		LDA !P2Invinc
+
+		LDA !P2HurtTimer : BEQ +
+		DEC !P2HurtTimer
+		BRA ++
+	+	LDA !P2Invinc
 		BEQ $03 : DEC !P2Invinc
+		LDA !P2ShrinkTimer
+		BEQ $03 : DEC !P2ShrinkTimer
+		++
 
 
 		STZ $73DE					; clear "mario looking up" flag
@@ -774,6 +779,10 @@ namespace Mario
 		PEA $D7E4-1					; Y speed influence address
 
 
+		LDA !P2CoyoteDisable : BEQ +
+		DEC !P2CoyoteDisable
+		BRA ..normal
+		+
 		LDA !P2CoyoteTime : BMI ..normal		;\
 		AND #$7F : BEQ ..normal				; | check for coyote time
 		LDA !MarioInAir : BEQ ..normal			;/
@@ -987,29 +996,35 @@ MarioGraphics:
 		..noexternal					;/
 
 
-		LDA !P2HurtTimer : BEQ .NoHurt
-		LDA !P2HP : BNE .Hurt
-		STZ !P2ShrinkTimer
-		LDA #$3E : STA !MarioImg
-		BRA .Vanilla
-		.Hurt
+		.OverrideAnim
+		LDA !P2HP : BEQ ..dead
+		LDA !P2HurtTimer : BEQ ..nohurt
+		..hurt
 		LDA #$2F : STA !MarioAnimTimer
 		LDA !P2HurtTimer
 		CMP #$0C : BCC ..react
 		..anticipate
 		REP #$30
-		LDA.w #ANIM_16x32TM : STA $0E
-		LDA.w #ANIM_HurtDyn00 : BRA ++
+		LDY.w #$47*4 : BRA +
 		..react
 		REP #$30
-		LDA.w #ANIM_24x32TM : STA $0E
-		LDA.w #ANIM_HurtDyn01 : BRA ++
-		.NoHurt
-		LDA !P2HangFromLedge : BEQ .NoHang
+		LDY.w #$48*4 : BRA +
+		..nohurt
+		LDA !P2ShrinkTimer : BEQ ..noshrink
 		REP #$30
-		LDA.w #ANIM_16x32TM : STA $0E
-		LDA.w #ANIM_HangDyn : BRA ++
-		.NoHang
+		AND #$0002
+		BEQ $03 : LDA #$003D*4
+		TAY
+		BRA +
+		..noshrink
+		LDA !P2HangFromLedge : BEQ ..nohang
+		REP #$30
+		LDY.w #$49*4 : BRA +
+		..dead
+		STZ !P2ShrinkTimer				; clear shrink timer if mario is dead
+		LDA #$3E : STA !MarioImg			; dead img
+		BRA .Vanilla
+		..nohang
 
 
 		.Vanilla
@@ -1019,88 +1034,47 @@ MarioGraphics:
 		AND #$00FF
 		ASL #2
 		TAY
+	+
 	-	LDA.w ANIM+0,y : BNE +
 		LDY #$0000 : BRA -
 	+	STA $0E
-		LDA.w ANIM+2,y
-	++	STA $04
-		BNE .UpdateGFX
-		JMP GRAPHICS
+		LDA.w ANIM+2,y : STA $04
+		BEQ GRAPHICS
 
 
 		.UpdateGFX
-		LDY.w #!File_Mario				;\ get address
-		JSL !GetFileAddress				;/
-		SEP #$10					; index 8 bit
-		LDA !FileAddress+2				;\
-		STA !BigRAM+$06					; |
-		STA !BigRAM+$0D					; |
-		STA !BigRAM+$14					; |
-		STA !BigRAM+$1B					;/
+		SEP #$10
+		LDY.b #!File_Mario : JSL !GetFileAddress	; get file address
 
-		LDA ($04)					;\
-		AND #$0FFC					; | get source tile bits
-		ASL #3						;/
 
-		LDY !P2HurtTimer : BNE .BigAddress		; hurt animation always uses big mario address
-		LDY !P2ShrinkTimer : BNE .BigAddress		; shrink animation always uses big mario address
-
-		LDY !P2HP					;\
-		CPY #$05 : BCS .BigAddress			; |
-		STA $00						; |
+		LDY #$00					; Y = big format
+		LDA $04						;\
+		AND #$0FFC : ASL #3				; | get source tile bits
+		STA $02						;/
+		LDA !P2ShrinkTimer				;\ shrink anim check
+		AND #$0012 : BNE .BigAddress			;/
+		LDX !P2HP					;\ big address if mario has more than a full heart
+		CPX #$05 : BCS .BigAddress			;/
+		LDA $02 : STA $00				;\
 		AND #$01E0					; |
-		STA $02						; X tile
+		STA $02						; > x tile
 		LDA $00						; |
 		AND #$7E00					; | recalculate address for small mario
-		LSR #2						; |
+		LSR #2						; | (keep x tile offset, multiply y tile offset by 0.75, add starting offset)
 		STA $00						; |
 		ASL A						; |
 		CLC : ADC $00					; |
 		ORA $02						; |
-		CLC : ADC #$4800				; > this is gonna have to change later to make room for more animations...
+		CLC : ADC #$4800				; > offset of small mario
+		DEY						; > Y = small format
+		STA $02						; |
 		.BigAddress					;/
 
-		CLC : ADC !FileAddress				;\
-		STA !BigRAM+$04					; |
-		CLC : ADC #$0200				; | source address
-		STA !BigRAM+$0B					; | (add 0x800 while carrying)
-		CLC : ADC #$0200				; | (multiply by .75 and add 0x3800 for small ario)
-		STA !BigRAM+$12					; |
-		CLC : ADC #$0200				; |
-		STA !BigRAM+$19					;/
 
-		LDA.w #(!P2Tile1*$10)|$6000			;\ $6200
-		STA !BigRAM+$07					;/
-		LDA.w #(!P2Tile1*$10)|$6100			;\ $6300
-		STA !BigRAM+$0E					;/
-		LDA.w #(!P2Tile3*$10)|$6000			;\ $6240
-		STA !BigRAM+$15					;/
-		LDA.w #(!P2Tile3*$10)|$6100			;\ $6340
-		STA !BigRAM+$1C					;/
+		LDA $02						; store offset within file
+		LDA $04+1 : JSL CORE_GENERATE_RAMCODE_16bit	; compile RAM code
 
 
-		LDY !P2HurtTimer : BNE .BigFormat		;\
-		LDY !P2HP					; | conditions for big format
-		CPY #$05 : BCS .BigFormat			; |
-		LDY !P2ShrinkTimer : BNE .BigFormat		;/
-		LDA !BigRAM+$12 : STA !BigRAM+$19		; 3 -> 4
-		LDA !BigRAM+$0B : STA !BigRAM+$12		; 2 -> 3
-		.BigFormat
-
-		INC $04						;\
-		LDA ($04)					; |
-		AND #$00F0					; |
-		ASL A						; | upload size
-		STA !BigRAM+$02					; |
-		STA !BigRAM+$09					; |
-		STA !BigRAM+$10					; |
-		STA !BigRAM+$17					;/
-
-		LDA #$001C : STA !BigRAM+$00			; header
-
-
-		LDA.w #!BigRAM
-		JSL CORE_GENERATE_RAMCODE
 		LDA !P2Anim : STA !P2Anim2
 
 
@@ -1109,21 +1083,26 @@ MarioGraphics:
 		JSL CORE_FLASHPAL
 		LDA !P2Status : BNE .DrawTiles
 		LDA !P2HurtTimer : BNE .DrawTiles
-		LDA !P2Invinc
-		CMP #$02 : BCC .DrawTiles
-		AND #$06 : BEQ .FireFlash
+
+		.Flash
+		LDA !P2Invinc : BEQ .DrawTiles
+		LSR #3 : TAX
+		LDA.l $00E292,x
+		AND !P2Invinc : BEQ .FireFlash
 
 		.DrawTiles
 		REP #$20
 		LDA $0E : STA !P2BackupTilemap
 		BEQ .FireFlash
 		STA $04
-		LDY !P2HurtTimer : BNE .Big		;\
-		LDY !P2ShrinkTimer : BNE .Big		; | conditions for big mario tilemap
+
+		LDA !P2ShrinkTimer			;\
+		AND #$0012 : BNE .Big			; | conditions for small mario tilemap
 		LDY !P2HP				; |
 		CPY #$05 : BCS .Big			;/
-		CLC : ADC ($04)				;\
-		INC #2					; | small mario tilemap
+		LDA $04					;\
+		CLC : ADC ($04)				; | small mario tilemap
+		INC #2					; |
 		STA $04					;/
 
 	.Big	SEP #$20
@@ -1184,47 +1163,133 @@ MarioGraphics:
 
 
 
+macro MarDyn(TileCount, TileNumber)
+	dw <TileNumber><<2|(<TileCount><<12)
+endmacro
+
+
+	!IdleDyn	= %MarDyn(2, $000)
+	!WalkDyn00	= %MarDyn(2, $002)
+	!WalkDyn01	= %MarDyn(2, $004)
+
+	!LookUpDyn	= %MarDyn(2, $006)
+
+	!CrouchDyn	= %MarDyn(2, $008)
+
+	!RiseDyn	= %MarDyn(2, $00A)
+	!FallDyn	= %MarDyn(2, $00C)
+
+	!SlideDyn	= %MarDyn(2, $00E)
+
+	!CarryIdleDyn	= %MarDyn(2, $040)
+	!CarryWalkDyn00	= %MarDyn(2, $042)
+	!CarryWalkDyn01	= %MarDyn(2, $044)
+	!CarryLookUpDyn	= %MarDyn(2, $046)
+	!CarryCrouchDyn	= %MarDyn(2, $048)
+
+	!FaceBackDyn	= %MarDyn(2, $08E)
+
+	!FaceFrontDyn	= %MarDyn(2, $08C)
+
+	!KickDyn	= %MarDyn(2, $04E)
+
+	!RunDyn00	= %MarDyn(3, $080)
+	!RunDyn01	= %MarDyn(3, $083)
+	!RunDyn02	= %MarDyn(3, $086)
+
+	!LongJumpDyn	= %MarDyn(3, $089)
+
+	!TurnDyn	= %MarDyn(2, $04C)
+
+	!VictoryDyn	= %MarDyn(2, $04A)
+
+	!SwimDyn00	= %MarDyn(3, $0C0)
+	!SwimDyn01	= %MarDyn(3, $0C3)
+	!SwimDyn02	= %MarDyn(3, $0C6)
+	!SwimFastDyn00	= %MarDyn(3, $100)
+	!SwimFastDyn01	= %MarDyn(3, $103)
+	!SwimFastDyn02	= %MarDyn(3, $106)
+
+	!ClimbDyn	= %MarDyn(2, $10B)
+
+	!HammerDyn00	= %MarDyn(2, $140)
+	!HammerDyn01	= %MarDyn(2, $142)
+	!HammerDyn02	= %MarDyn(2, $144)
+
+	!CutsceneDyn00	= %MarDyn(2, $146)
+	!CutsceneDyn01	= %MarDyn(2, $148)
+	!CutsceneDyn02	= %MarDyn(2, $14A)
+	!CutsceneDyn03	= %MarDyn(2, $14C)
+	!CutsceneDyn04	= %MarDyn(2, $14E)
+	!CutsceneDyn05	= %MarDyn(2, $180)
+	!CutsceneDyn06	= %MarDyn(2, $182)
+
+	!BalloonDyn	= %MarDyn(4, $184)
+
+	!SpinDyn00	= %MarDyn(2, $1C0)
+	!SpinDyn01	= %MarDyn(4, $1C2)
+	!SpinDyn02	= %MarDyn(2, $1C6)
+	!SpinDyn03	= %MarDyn(4, $1C8)
+	!SpinDyn04	= %MarDyn(2, $1CC)
+	!SpinDyn05	= %MarDyn(2, $1CE)
+	!SpinDyn06	= %MarDyn(4, $200)
+
+	!FlutterDyn00	= %MarDyn(2, $204)
+	!FlutterDyn01	= %MarDyn(2, $206)
+	!FlutterDyn02	= %MarDyn(2, $208)
+
+	!HurtDyn00	= %MarDyn(2, $1C4)
+	!HurtDyn01	= %MarDyn(3, $188)
+	!ShrinkDyn	= %MarDyn(2, $18B)
+	!DeadDyn	= %MarDyn(2, $18E)
+
+	!FireThrowDyn	= %MarDyn(2, $1C0)
+
+	!HangDyn	= %MarDyn(2, $1C2)
+
+
+
 	ANIM:
 		; VANILLA STUFF
-		dw .16x32TM,.IdleDyn		; 00
-		dw .16x32TM,.WalkDyn00		; 01
-		dw .16x32TM,.WalkDyn01		; 02
-		dw .16x32TM,.LookUpDyn		; 03
-		dw .24x32TM,.RunDyn00		; 04
-		dw .24x32TM,.RunDyn01		; 05
-		dw .24x32TM,.RunDyn02		; 06
-		dw .16x32TM,.CarryIdleDyn	; 07
-		dw .16x32TM,.CarryWalkDyn00	; 08
-		dw .16x32TM,.CarryWalkDyn01	; 09
-		dw .16x32TM,.CarryLookUpDyn	; 0A
-		dw .16x32TM,.RiseDyn		; 0B
-		dw .24x32TM,.LongJumpDyn	; 0C
-		dw .16x32TM,.TurnDyn		; 0D
-		dw .16x32TM,.KickDyn		; 0E
-		dw .16x32TM,.FaceFrontDyn	; 0F
+		dw .16x32TM : !IdleDyn		; 00
+		dw .16x32TM : !WalkDyn00	; 01
+		dw .16x32TM : !WalkDyn01	; 02
+		dw .16x32TM : !LookUpDyn	; 03
+		dw .24x32TM : !RunDyn00		; 04
+		dw .24x32TM : !RunDyn01		; 05
+		dw .24x32TM : !RunDyn02		; 06
+		dw .16x32TM : !CarryIdleDyn	; 07
+		dw .16x32TM : !CarryWalkDyn00	; 08
+		dw .16x32TM : !CarryWalkDyn01	; 09
+		dw .16x32TM : !CarryLookUpDyn	; 0A
+		dw .16x32TM : !RiseDyn		; 0B
+		dw .24x32TM : !LongJumpDyn	; 0C
+		dw .16x32TM : !TurnDyn		; 0D
+		dw .16x32TM : !KickDyn		; 0E
+		dw .16x32TM : !FaceFrontDyn	; 0F
 		dw $0000,$0000			; 10
 		dw $0000,$0000			; 11
 		dw $0000,$0000			; 12
 		dw $0000,$0000			; 13
 		dw $0000,$0000			; 14
-		dw .16x32TM,.ClimbDyn		; 15
-		dw .24x32TM,.SwimDyn00		; 16
-		dw .24x32TM,.SwimFastDyn00	; 17
-		dw .24x32TM,.SwimDyn01		; 18
-		dw .24x32TM,.SwimFastDyn01	; 19
-		dw .24x32TM,.SwimDyn02		; 1A
-		dw .24x32TM,.SwimFastDyn02	; 1B
-		dw .16x32TM,.SlideDyn		; 1C
-		dw .16x32TM,.CarryCrouchDyn	; 1D
+		dw .16x32TM : !ClimbDyn		; 15
+		dw .24x32TM : !SwimDyn00	; 16
+		dw .24x32TM : !SwimFastDyn00	; 17
+		dw .24x32TM : !SwimDyn01	; 18
+		dw .24x32TM : !SwimFastDyn01	; 19
+		dw .24x32TM : !SwimDyn02	; 1A
+		dw .24x32TM : !SwimFastDyn02	; 1B
+		dw .16x32TM : !SlideDyn		; 1C
+		dw .16x32TM : !CarryCrouchDyn	; 1D
 		dw $0000,$0000			; 1E
 		dw $0000,$0000			; 1F
 		dw $0000,$0000			; 20
 		dw $0000,$0000			; 21
 		dw $0000,$0000			; 22
 		dw $0000,$0000			; 23
-		dw .16x32TM,.FallDyn		; 24
-		dw .16x32TM,.FaceBackDyn	; 25
-		dw .16x32TM,.VictoryDyn		; 26
+		dw .16x32TM : !FallDyn		; 24
+		dw .16x32TM : !FaceBackDyn	; 25
+		dw .16x32TM : !VictoryDyn	; 26
 		dw $0000,$0000			; 27
 		dw $0000,$0000			; 28
 		dw $0000,$0000			; 29
@@ -1234,163 +1299,78 @@ MarioGraphics:
 		dw $0000,$0000			; 2D
 		dw $0000,$0000			; 2E
 		dw $0000,$0000			; 2F
-		dw .16x32TM,.CutsceneDyn03	; 30 (exploded 1)
-		dw .16x32TM,.CutsceneDyn04	; 31 (exploded 2)
-		dw .16x32TM,.CutsceneDyn02	; 32 (action pose)
-		dw .16x32TM,.CutsceneDyn00	; 33 (looking off 1)
-		dw .16x32TM,.CutsceneDyn01	; 34 (looking off 2)
-		dw .16x32TM,.HammerDyn00	; 35
-		dw .16x32TM,.HammerDyn01	; 36
-		dw .16x32TM,.HammerDyn02	; 37
+		dw .16x32TM : !CutsceneDyn03	; 30 (exploded 1)
+		dw .16x32TM : !CutsceneDyn04	; 31 (exploded 2)
+		dw .16x32TM : !CutsceneDyn02	; 32 (action pose)
+		dw .16x32TM : !CutsceneDyn00	; 33 (looking off 1)
+		dw .16x32TM : !CutsceneDyn01	; 34 (looking off 2)
+		dw .16x32TM : !HammerDyn00	; 35
+		dw .16x32TM : !HammerDyn01	; 36
+		dw .16x32TM : !HammerDyn02	; 37
 		dw $0000,$0000			; 38
 		dw $0000,$0000			; 39
-		dw .16x32TM,.HammerDyn02	; 3A
-		dw .16x32TM,.HammerDyn02	; 3B
-		dw .16x32TM,.CrouchDyn		; 3C
-		dw .16x32TM,.ShrinkDyn		; 3D
-		dw .16x32TM,.DeadDyn		; 3E
-		dw .16x32TM,.FireThrowDyn	; 3F
+		dw .16x32TM : !HammerDyn02	; 3A
+		dw .16x32TM : !HammerDyn02	; 3B
+		dw .16x32TM : !CrouchDyn	; 3C
+		dw .16x32TM : !ShrinkDyn	; 3D
+		dw .16x32TM : !DeadDyn		; 3E
+		dw .16x32TM : !FireThrowDyn	; 3F
 		dw $0000,$0000			; 40
 		dw $0000,$0000			; 41
-		dw .32x32TM,.BalloonDyn		; 42
-		dw .32x32TM,.BalloonDyn		; 43
-		dw .16x32TM,.FaceBackDyn	; 44
-		dw .16x32TM,.FaceFrontDyn	; 45
-		dw .16x32TM,.IdleDyn		; 46
+		dw .32x32TM : !BalloonDyn	; 42
+		dw .32x32TM : !BalloonDyn	; 43
+		dw .16x32TM : !FaceBackDyn	; 44
+		dw .16x32TM : !FaceFrontDyn	; 45
+		dw .16x32TM : !IdleDyn		; 46
 
 		; CUSTOM STUFF
-		dw .16x32TM,.HurtDyn00		; 47
-		dw .24x32TM,.HurtDyn01		; 48
-		dw .16x32TM,.HangDyn		; 49
+		dw .16x32TM : !HurtDyn00	; 47
+		dw .24x32TM : !HurtDyn01	; 48
+		dw .16x32TM : !HangDyn		; 49
 
 
 
 
 	.16x32TM
 	dw $0008			; big mario
-	db $2E,$00,$F0,!P2Tile1
-	db $2E,$00,$00,!P2Tile3
+	db $20,$00,$F0,!P1Tile1
+	db $20,$00,$00,!P1Tile3
 	dw $0008			; small mario
-	db $2E,$00,$F8,!P2Tile1
-	db $2E,$00,$00,!P2Tile3
+	db $20,$00,$F8,!P1Tile1
+	db $20,$00,$00,!P1Tile3
 	.16x32TMX
 	dw $0008			; big mario
-	db $6E,$00,$F0,!P2Tile1
-	db $6E,$00,$00,!P2Tile3
+	db $60,$00,$F0,!P1Tile1
+	db $60,$00,$00,!P1Tile3
 	dw $0008			; small mario
-	db $6E,$00,$F8,!P2Tile1
-	db $6E,$00,$00,!P2Tile3
+	db $60,$00,$F8,!P1Tile1
+	db $60,$00,$00,!P1Tile3
 
 
 	.24x32TM
 	dw $0010			; big mario
-	db $2E,$00,$F0,!P2Tile1
-	db $2E,$08,$F0,!P2Tile1+1
-	db $2E,$00,$00,!P2Tile3
-	db $2E,$08,$00,!P2Tile3+1
+	db $20,$00,$F0,!P1Tile1
+	db $20,$08,$F0,!P1Tile1+1
+	db $20,$00,$00,!P1Tile3
+	db $20,$08,$00,!P1Tile3+1
 	dw $0010			; small mario
-	db $2E,$00,$F8,!P2Tile1
-	db $2E,$08,$F8,!P2Tile1+1
-	db $2E,$00,$00,!P2Tile3
-	db $2E,$08,$00,!P2Tile3+1
+	db $20,$00,$F8,!P1Tile1
+	db $20,$08,$F8,!P1Tile1+1
+	db $20,$00,$00,!P1Tile3
+	db $20,$08,$00,!P1Tile3+1
 
 
 	.32x32TM
 	dw $0010			; big mario
-	db $2E,$F8,$F0,!P2Tile1
-	db $2E,$08,$F0,!P2Tile2
-	db $2E,$F8,$00,!P2Tile3
-	db $2E,$08,$00,!P2Tile4
+	db $20,$F8,$F0,!P1Tile1
+	db $20,$08,$F0,!P1Tile2
+	db $20,$F8,$00,!P1Tile3
+	db $20,$08,$00,!P1Tile4
 	dw $0010			; small mario
-	db $2E,$F8,$F8,!P2Tile1
-	db $2E,$08,$F8,!P2Tile2
-	db $2E,$F8,$00,!P2Tile3
-	db $2E,$08,$00,!P2Tile4
-
-
-macro MarDyn(TileCount, TileNumber)
-	dw <TileNumber><<2|(<TileCount><<12)
-endmacro
-
-
-	.IdleDyn	%MarDyn(2, $000)
-	.WalkDyn00	%MarDyn(2, $002)
-	.WalkDyn01	%MarDyn(2, $004)
-
-	.LookUpDyn	%MarDyn(2, $006)
-
-	.CrouchDyn	%MarDyn(2, $008)
-
-	.RiseDyn	%MarDyn(2, $00A)
-	.FallDyn	%MarDyn(2, $00C)
-
-	.SlideDyn	%MarDyn(2, $00E)
-
-	.CarryIdleDyn	%MarDyn(2, $040)
-	.CarryWalkDyn00	%MarDyn(2, $042)
-	.CarryWalkDyn01	%MarDyn(2, $044)
-	.CarryLookUpDyn	%MarDyn(2, $046)
-	.CarryCrouchDyn	%MarDyn(2, $048)
-
-	.FaceBackDyn	%MarDyn(2, $08E)
-
-	.FaceFrontDyn	%MarDyn(2, $08C)
-
-	.KickDyn	%MarDyn(2, $04E)
-
-	.RunDyn00	%MarDyn(3, $080)
-	.RunDyn01	%MarDyn(3, $083)
-	.RunDyn02	%MarDyn(3, $086)
-
-	.LongJumpDyn	%MarDyn(3, $089)
-
-	.TurnDyn	%MarDyn(2, $04C)
-
-	.VictoryDyn	%MarDyn(2, $04A)
-
-	.SwimDyn00	%MarDyn(3, $0C0)
-	.SwimDyn01	%MarDyn(3, $0C3)
-	.SwimDyn02	%MarDyn(3, $0C6)
-	.SwimFastDyn00	%MarDyn(3, $100)
-	.SwimFastDyn01	%MarDyn(3, $103)
-	.SwimFastDyn02	%MarDyn(3, $106)
-
-	.ClimbDyn	%MarDyn(2, $10B)
-
-	.HammerDyn00	%MarDyn(2, $140)
-	.HammerDyn01	%MarDyn(2, $142)
-	.HammerDyn02	%MarDyn(2, $144)
-
-	.CutsceneDyn00	%MarDyn(2, $146)
-	.CutsceneDyn01	%MarDyn(2, $148)
-	.CutsceneDyn02	%MarDyn(2, $14A)
-	.CutsceneDyn03	%MarDyn(2, $14C)
-	.CutsceneDyn04	%MarDyn(2, $14E)
-	.CutsceneDyn05	%MarDyn(2, $180)
-	.CutsceneDyn06	%MarDyn(2, $182)
-
-	.BalloonDyn	%MarDyn(4, $184)
-
-	.SpinDyn00	%MarDyn(2, $1C0)
-	.SpinDyn01	%MarDyn(4, $1C2)
-	.SpinDyn02	%MarDyn(2, $1C6)
-	.SpinDyn03	%MarDyn(4, $1C8)
-	.SpinDyn04	%MarDyn(2, $1CC)
-	.SpinDyn05	%MarDyn(2, $1CE)
-	.SpinDyn06	%MarDyn(4, $200)
-
-	.FlutterDyn00	%MarDyn(2, $204)
-	.FlutterDyn01	%MarDyn(2, $206)
-	.FlutterDyn02	%MarDyn(2, $208)
-
-	.HurtDyn00	%MarDyn(2, $1C4)
-	.HurtDyn01	%MarDyn(3, $188)
-	.ShrinkDyn	%MarDyn(2, $18B)
-	.DeadDyn	%MarDyn(2, $18E)
-
-	.FireThrowDyn	%MarDyn(2, $1C0)
-
-	.HangDyn	%MarDyn(2, $1C2)
+	db $20,$F8,$F8,!P1Tile1
+	db $20,$08,$F8,!P1Tile2
+	db $20,$F8,$00,!P1Tile3
+	db $20,$08,$00,!P1Tile4
 
 
 
