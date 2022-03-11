@@ -1392,26 +1392,18 @@ CHUCK_PUSH:	db $20,$E0
 
 .1UP		LDA #$0D : STA $00
 		LDA !P2MaxHP : STA !P2HP			; full heal
-		LDA !CurrentPlayer				;\
-		TAY						; |
-		LDA !P1CoinIncrease,y				; | increase coins
-		CLC : ADC #$64					; |
-		STA !P1CoinIncrease,y				;/
-
-		LDA !StoryFlags+$02				;\
-		AND #$02 : BNE ..nomsg				; |
-		ORA #$02 : STA !StoryFlags+$02			; |
-		REP #$20					; | first time that a gold shroom is collected, a message is displayed
-		LDA.w #!MSG_FirstGoldShroom : STA !MsgTrigger	; |
-		SEP #$20					; |
-		..nomsg						;/
 
 		REP #$20					;\
 		STZ $00						; |
 		STZ $04						; | spawn particle
 		SEP #$20					; |
 		LDA.b #!prt_text100 : JSL SpawnParticle		;/
-
+		PHX						;\
+		REP #$10					; |
+		LDX $0E						; | particle owner
+		LDA !CurrentPlayer : STA !41_Particle_Tile,x	; |
+		SEP #$10					; |
+		PLX						;/
 
 		LDA #$B4 : STA !P2FlashPal			; flash pal
 		LDA !SpriteXSpeed,x : BNE ..nomem		; no item mem if moving version

@@ -1566,6 +1566,8 @@ namespace Kadaal
 		JSL CORE_LOAD_TILEMAP
 
 
+
+
 	OUTPUT_HURTBOX:
 
 		LDX !P2Carry : BEQ .NoCarry
@@ -1710,7 +1712,6 @@ namespace Kadaal
 		LDX #$0F
 
 		.Loop
-
 		LDY !P2ActiveHitbox				;\
 		CPX #$08 : BCS +				; |
 		LDA !P2Hitbox1IndexMem1,y : BRA ++		; | check index memory
@@ -1745,14 +1746,15 @@ namespace Kadaal
 		DEC A
 		PHA
 		SEP #$20
-		LDY !P2ActiveHitbox
 		LDA CORE_BITS,x
 		CPX #$08 : BCS ..8F
-	..07	ORA !P2Hitbox1IndexMem1,y
-		STA !P2Hitbox1IndexMem1,y
+	..07	ORA !P2Hitbox1IndexMem1
+		STA !P2Hitbox1IndexMem1
+		STA !P2Hitbox2IndexMem1
 		RTS
-	..8F	ORA !P2Hitbox1IndexMem2,y
-		STA !P2Hitbox1IndexMem2,y
+	..8F	ORA !P2Hitbox1IndexMem2
+		STA !P2Hitbox1IndexMem2
+		STA !P2Hitbox2IndexMem2
 		.ClippingFail
 		RTS
 
@@ -1762,7 +1764,7 @@ namespace Kadaal
 		SEP #$20
 
 		.LoopEnd
-		DEX : BPL .Loop
+		DEX : BMI $03 : JMP .Loop
 
 		.HammerCheck
 		LDX #!Ex_Amount-1

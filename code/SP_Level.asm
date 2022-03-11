@@ -2545,7 +2545,7 @@ HandleGraphics:
 ;==============;
 ;	input:
 ;	A:		sprite palset to load
-LoadPalset:
+	LoadPalset:
 		PHB : PHK : PLB
 		PHX							; push X
 		STA $0F							; store palset to load in $0F
@@ -2600,7 +2600,7 @@ LoadPalset:
 		RTL							; return
 
 
-UpdatePalset:
+	UpdatePalset:
 		REP #$30
 		STY $08								;\
 		JSL !GetCGRAM							; | get CGRAM table index

@@ -1143,6 +1143,8 @@ endmacro
 		!P2KickTimer		= !P2Custom+$09			; timer (decrements) after kicking objects like shells
 		!P2TurnTimer		= !P2Custom+$0A			; timer (decrements) for turning around
 
+
+		!P2ShowHP		= !P2Base+$7D
 		!P2TouchingItem		= !P2Base+$7E			; penultimate byte = set if touching a carryable item
 		!P2TempHP		= !P2Base+$7F			; last byte = temp HP
 

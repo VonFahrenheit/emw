@@ -26,14 +26,6 @@ if !CompileText = 1
 	%endmessage()
 endif
 ;====================================================================================================;
-%insertMSG(FirstGoldShroom)
-if !CompileText = 1
-	db "Gold mushrooms are worth 100 coins."
-	%linebreak()
-	db "They will also fully heal you! Pretty neat, huh?"
-	%endmessage()
-endif
-;====================================================================================================;
 %insertMSG(UnexploredHill_Mario)
 if !CompileText = 1
 	%important(1)

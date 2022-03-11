@@ -2,7 +2,6 @@
 ;GAME MODE 14 REWRITE;
 ;====================;
 
-;
 ; TO DO:
 ; TODO:
 ; - generators
@@ -13,13 +12,6 @@
 ; - trim:
 ;	- VR3 OAM handler
 ;	- Fe26 extra hijacks
-
-
-
-
-
-
-
 
 
 
@@ -306,11 +298,32 @@ namespace GAMEMODE14
 		DEX : BNE -				;/
 		+
 
+		LDA !P2HP-$80
+		CLC : ADC !P2TempHP-$80
+		PHA
+		LDA !P2HP
+		CLC : ADC !P2TempHP
+		PHA
+
 		JSL $158008				; call PCE
 		LDA #$01 : STA !ProcessingSprites	; mark sprites as currently processing
 		JSL $168000				; call Fe26 main loop
 		JSL $148000				; call FusionCore (fusion sprites + particles)
 		LDA #$00 : STA !ProcessingSprites	; mark sprites as no longer processing
+
+		PLA
+		SEC : SBC !P2TempHP
+		CMP !P2HP : BEQ +
+		LDA #$78 : STA !P2ShowHP
+		+
+		PLA
+		SEC : SBC !P2TempHP-$80
+		CMP !P2HP-$80 : BEQ +
+		LDA #$78 : STA !P2ShowHP-$80
+		+
+
+
+
 		REP #$20				;\
 		PLA : STA $1C				; | restore BG1 Y
 		SEP #$30				;/

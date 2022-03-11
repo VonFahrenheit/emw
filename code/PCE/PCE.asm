@@ -140,7 +140,6 @@
 
 
 	ProcessPlayer1:
-
 		LDA #$00 : STA !CurrentPlayer			; > processing P1
 
 		.CheckStatus					;\
@@ -292,6 +291,13 @@
 	+	SEP #$20					; A 8-bit
 
 
+		.ShowHearts
+		LDA !P2ShowHP : BEQ ..done
+		DEC !P2ShowHP
+		JSL CORE_SHOW_HEARTS
+		..done
+
+
 		PLA : STA $6DA9					;\
 		PLA : STA $6DA7					; | restore P2 input
 		PLA : STA $6DA5					; |
@@ -321,6 +327,10 @@
 	;	CMP #$0F : BEQ .CheckStatus_return
 
 		LDA #$01 : STA !CurrentPlayer			; > processing P2
+
+		LDA !P2ShowHP
+		BEQ $03 : DEC !P2ShowHP
+
 
 		REP #$20					;\
 		STZ !P2Hitbox1+4				; | clear hitboxes by setting size to 0
@@ -452,6 +462,14 @@
 		STZ !P2ExtraInput1				; |
 		STZ !P2ExtraInput3				;/
 	+	SEP #$20					; A 8-bit
+
+
+		.ShowHearts
+		LDA !P2ShowHP : BEQ ..done
+		DEC !P2ShowHP
+		JSL CORE_SHOW_HEARTS
+		..done
+
 
 		RTL						; > return
 
@@ -628,6 +646,7 @@ SD_BANK:
 	incsrc "CORE/CHECK_ABOVE.asm"
 	incsrc "CORE/RIPOSTE.asm"
 	incsrc "CORE/FLASHPAL.asm"
+	incsrc "CORE/SHOW_HEARTS.asm"
 	namespace off
 
 

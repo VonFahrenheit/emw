@@ -49,45 +49,37 @@ org $01C6C9
 		RTS						;/
 
 		.GoldShroom					;\
-
-		REP #$20
-		STZ $00
-		STZ $04
-		SEP #$20
-		LDA.w #!prt_text100 : JSL SpawnParticle
-
-		STZ !SPC1					; | no sfx
-		STZ !SPC4					;/
-		LDA !StoryFlags+$02				;\
-		AND #$02 : BNE ..nomsg				; |
-		ORA #$02 : STA !StoryFlags+$02			; |
-		REP #$20					; | first time that a gold shroom is collected, a message is displayed
-		LDA.w #!MSG_FirstGoldShroom : STA !MsgTrigger	; |
+		REP #$20					; |
+		STZ $00						; | "100" particle
+		STZ $04						; |
 		SEP #$20					; |
-		..nomsg						;/
+		LDA.b #!prt_text100 : JSL SpawnParticle		;/
+		PHX						;\
+		REP #$10					; |
+		LDX $0E						; |
+		LDA !CurrentMario				; | particle owner
+		DEC A : STA !41_Particle_Tile,x			; |
+		SEP #$10					; |
+		PLX						;/
+		STZ !SPC1					;\ no sfx
+		STZ !SPC4					;/
 		PHX						;\
 		LDA !SpriteXSpeed,x : BNE ..nomem		; > don't use index mem if moving
 		LDA !HeaderItemMem				; |
 		CMP #$03 : BCS ..nomem				; |
 		JSL GetItemMem					; |
-		REP #$10					; |
-		LDX $00						; | set item mem
+		REP #$10					; | set item mem
+		LDX $00						; |
 		LDA $02						; |
 		ORA !ItemMem0,x					; |
 		STA !ItemMem0,x					; |
 		SEP #$10					; |
 		..nomem						;/
-		LDA !CurrentMario : BEQ ..return		;\
+		LDA !CurrentMario				;\
 		DEC A						; |
-		TAX						; |
-		LDA !P1CoinIncrease,x				; |
-		CLC : ADC #$64					; |
-		STA !P1CoinIncrease,x				; |
-		LDA !CurrentMario				; |
-		DEC A						; | 100 coins + full heal + flash gold
 		LSR A						; |
 		ROR A						; |
-		TAX						; |
+		TAX						; | full heal + flash gold
 		LDA !P2MaxHP-$80,x : STA !P2HP-$80,x		; |
 		LDA #$B4 : STA !P2FlashPal-$80,x		; |
 		..return					; |

@@ -1354,6 +1354,8 @@ INIT_PARTICLE:
 		BNE $03 : LDY #$0020				;/
 		CMP.b #!prt_flash				;\ timer for flash particle = 0x20
 		BNE $03 : LDY #$0020				;/
+		CMP.b #!prt_text100				;\ timer for text 100 particle = 0x00
+		BNE $03 : LDY #$0000				;/
 		TYA
 		RTS
 

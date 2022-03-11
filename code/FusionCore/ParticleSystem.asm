@@ -122,7 +122,7 @@
 	.NoDizzy
 		..check
 		LDA !Particle_Type,x					;\
-		AND #$00FF : BNE ..call					; |
+		AND #$007F : BNE ..call					; |
 		..next							; |
 		TXA							; | loop through table and process all particles
 		CLC : ADC.w #!Particle_Size				; |
@@ -147,7 +147,7 @@
 	.IncludeDizzyEffect
 		..check
 		LDA !Particle_Type,x					;\
-		AND #$00FF : BNE ..call					; |
+		AND #$007F : BNE ..call					; |
 		..next							; |
 		TXA							; | loop through table and process all particles
 		CLC : ADC.w #!Particle_Size				; |

@@ -1,6 +1,11 @@
 
 	SpritePart:
 		LDX $00							; reload index
+		LDA !Particle_Type-1,x : BPL .Main			;\
+		.Stall							; |
+		AND #$7FFF : STA !Particle_Type-1,x			; | stall 1 frame if highest bit is set (instead of using air resistance)
+		RTS							; |
+		.Main							;/
 		SEP #$20						; 8-bit A
 		LDA !Particle_Timer,x : BEQ .NoTimer			;\ check and decrement timer
 		DEC !Particle_Timer,x					;/
@@ -15,7 +20,9 @@
 		JSR ParticleDrawSimple_BG1				; draw particle without ratio
 		JSR ParticleDespawn					; off-screen check
 		PLA : STA !Particle_Tile,x				; restore prop
-		RTS							; return
+
+		.Return							;\ return
+		RTS							;/
 
 		.NoTimer						;\
 		LDA.b #(ParticleMain_List_End-ParticleMain_List)/2	; |
@@ -23,3 +30,6 @@
 		REP #$20						; | then return
 		TXA : STA.l !Particle_Index				; |
 		RTS							;/
+
+
+
