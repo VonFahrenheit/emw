@@ -1,6 +1,14 @@
 ;===================;
 ; MANUAL .MW2 MAKER ;
 ;===================;
+
+macro vanillasprite(num, ex)
+	db $81|((<ex>&1)*4)
+	db $70
+	db $<num>
+endmacro
+
+
 macro sprite(num, ex)
 	db $89|((<ex>&1)*4)
 	db $70
@@ -25,6 +33,13 @@ endmacro
 norom
 org $000000
 db $00
+%vanillasprite(02, 1)		; smart kicker
+%vanillasprite(0E, 1)		; keyhole
+%vanillasprite(2E, 1)		; spiketop
+%vanillasprite(3D, 1)		; rip
+%vanillasprite(4D, 1)		; ground-dwelling monty mole
+%vanillasprite(4E, 1)		; ledge-dwelling monty mole
+
 %sprite(00, 0)			; Happy Slime
 %sprite(00, 1)			; Happy Slime
 %sprite(01, 0)			; Goomba Slave

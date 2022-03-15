@@ -52,6 +52,8 @@
 2C	0002	0,0,*BANNED*
 2D	0002	0,0,*BANNED*
 2E	0002	0,0,029
+2E	0010	Spike Tope that can be placed on walls.
+2E	0012	-8,0,402 8,0,403 0,0,029
 2F	0002	0,0,02A
 30	0002	0,-16,02B 8,-16,02D
 31	0002	0,0,02C
@@ -94,10 +96,18 @@
 4C	0102	0,0,00C -6,-6,043 14,-6,043 -6,14,043 14,14,043
 4C	0202	0,0,000 -6,-6,043 14,-6,043 -6,14,043 14,14,043
 4C	0302	0,0,004 -6,-6,043 14,-6,043 -6,14,043 14,14,043
-4D	0002	0,0,044
-4D	0102	0,0,044 0,-16,405
-4E	0002	0,0,045
+4D	0002	-8,0,402 8,0,403 0,0,044
+4D	0102	0,0,044 0,-16,404
+4D	0010	A ground dwelling monty mole that will explode from its hiding place and either follow the player or walk with a hop depending on its X position. Because the extra bit, this mole will take longer to emerge from the ground. It's currently set to walk with a hop.
+4D	0012	0,0,044 0,-16,404 -8,0,0DC
+4D	0110	A ground dwelling monty mole that will explode from its hiding place and either follow the player or walk with a hop depending on its X position. Because the extra bit, this mole will take longer to emerge from the ground. It's currently set to follow.
+4D	0112	-8,0,402 8,0,403 0,0,044 0,-8,0DC
+4E	0002	-8,0,402 8,0,403 0,0,045
 4E	0102	0,0,045 0,-16,404
+4E	0010	A ledge dwelling monty mole that will explode from its hiding place and either follow the player or walk with a hop depending on its X position. Because the extra bit is set, it will take longer to emerge from its block. It's currently set to walk with a hop.
+4E	0012	0,0,045 0,-16,404 -8,0,0DC
+4E	0110	A ledge dwelling monty mole that will explode from its hiding place and either follow the player or walk with a hop depending on its X position. Because the extra bit is set, it will take longer to emerge from its block. It's currently set to follow.
+4E	0112	-8,0,402 8,0,403 0,0,045 0,-8,0DC
 4F	0002	8,0,011
 50	0002	8,0,011 0,-8,046 24,-8,046
 51	0002	0,0,047
