@@ -39,7 +39,7 @@
 	.B0C	db !64x32	; castle ramparts (foreground)
 	.B0D	db !32x64	; rainstorm with river
 	.B0E	db !32x64	; clouds
-	.B0F	db !32x64	; temple interior
+	.B0F	db !64x32	; temple interior
 
 	.B10	db !64x64
 	.B11	db !64x64

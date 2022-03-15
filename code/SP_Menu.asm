@@ -558,10 +558,14 @@ endif
 		BCS ..inc				; |
 	..dec	LDA !StatusBarP1Hearts,y		; |
 		DEC A : STA !StatusBarP1Hearts,y	; |
+		BIT !P2ShowHP-$80,x : BPL ..done
+		LDA #$88 : STA !P2ShowHP-$80,x
 		BRA ..done				; |
 	..inc	LDA !StatusBarP1Hearts,y		; |
 		INC A : STA !StatusBarP1Hearts,y	; |
 		LDA #$1B : STA !HeartTimerP1,y		; |
+		BIT !P2ShowHP-$80,x : BPL ..done
+		LDA #$88 : STA !P2ShowHP-$80,x
 		..done					;/
 
 
@@ -678,7 +682,7 @@ endif
 		LDX #$04 : STX !CoinSound
 		.ManyCoins
 		RTS
-warnpc $009078
+warnpc $0090D1
 
 
 ;=================================;
@@ -2063,6 +2067,7 @@ MAIN_MENU:
 
 		..playerstuff
 		STZ !P2Entrance-$80				; > no entrance anim
+		LDA !P2HP-$80 : STA !P2ShowHP-$80		; don't show hearts
 		LDA #$00 : STA !MultiPlayer			;\
 		LDA #$02 : STA !MarioBehind			; |
 		LDA !GameMode : PHA				; |

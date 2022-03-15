@@ -1964,8 +1964,6 @@ Bank16Start:
 %InsertSprite(EpicBlock)
 %InsertSprite(ShopObject)
 %InsertSprite(LifeShroom)
-%InsertSprite(SmokeyBoy)
-%InsertSprite(AirshipDisplay)
 
 Bank16End:
 
@@ -1998,7 +1996,8 @@ print "-- BANK $17 --"
 %InsertSprite(CoinGolem)
 %InsertSprite(YoshiCoin)
 %InsertSprite(EliteKoopa)
-
+%InsertSprite(AirshipDisplay)
+%InsertSprite(SmokeyBoy)
 
 BANK17End:
 

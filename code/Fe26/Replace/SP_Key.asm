@@ -78,7 +78,11 @@
 		LDA !BG_object_Type,y
 		AND #$00FF : BNE .Next
 		SEP #$20
-		LDA #$07 : STA !BG_object_Type,y
+		LDA.l !ExtraBits,x				;\
+		AND #$04 : BEQ +				; |
+		LDA #$09 : BRA ++				; | type depends on extra bit
+	+	LDA #$07					; |
+	++	STA !BG_object_Type,y				;/
 		LDA.l !SpriteXLo,x : STA !BG_object_XLo,y
 		LDA.l !SpriteXHi,x : STA !BG_object_XHi,y
 		LDA.l !SpriteYLo,x : STA !BG_object_YLo,y
@@ -86,7 +90,7 @@
 		LDA $02 : STA !BG_object_Misc,y			;\
 		LDA $00 : STA !BG_object_W,y			; |
 		LDA $01 : STA !BG_object_H,y			;/
-		LDA !HeaderItemMem
+		LDA.l !HeaderItemMem
 		CMP #$03 : BCC .Return
 		LDA #$FF : STA !BG_object_H,y			; mark as invalid if item mem >= 3
 		BRA .Return

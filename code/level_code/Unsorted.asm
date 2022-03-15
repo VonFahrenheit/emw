@@ -508,88 +508,75 @@ LoadCameraBox:
 		TAY
 		LDA ($08),y
 		AND #$00FF
-		STA !BigRAM+0
-		TAY : STY !CameraBoxRoom		; store room index
+		STA !BigRAM+0					; !BigRAM+0 = room number
+		TAY : STY !CameraBoxRoom			; store room index
 
 
 	; door loader
+		.LoadDoors
 		PEI ($0A)
 		PHP
 		SEP #$20
-		LDA !CameraForceTimer : BEQ $03 : JMP .NoDoor
-		STZ $00
-		LDY #$00
-	--	LDA ($0C),y : BPL +
-		CMP #$80 : BNE ++
-		JMP .NoDoor
-	++	JMP .NextIndex
+		LDA !CameraForceTimer : BEQ $03 : JMP ..done
 
-	+
-	-	LDX $00
-		CPX !BigRAM+0 : BNE .NextDoor
-		TYX
-		TAY
-		LDA $00 : PHA
-		PEI ($0C)
-		PEI ($0E)
-		REP #$20
-		LDA ($0E),y
-		AND #$000F
-		XBA
-		SEC : SBC #$0018
-		STA $04
-		STA $09
-		LDA ($0E),y
-		AND #$00F0
-		STA $00
-		ASL #3
-		SEC : SBC $00
-		ASL A
-		CLC : ADC #$00A0
-		STA $05
-		XBA
-		STA $0B
-		SEP #$20
-		LDA #$30 : STA $06
-		LDA #$30 : STA $07
-		SEC : JSL !PlayerClipping
-		TXY
-		REP #$20
-		PLA : STA $0E
-		PLA : STA $0C
-		SEP #$20
-		PLA : STA $00
-		BCC .NextDoor
+		LDX #$00
+		LDY #$00					;\
+	-	CPX !BigRAM+0 : BEQ ++				; |
+		LDA ($0C),y : BPL +				; |
+		CMP #$80 : BNE $03 : JMP ..done			; > 0x80 = no doors at all
+		INX						; | get index to this room's doors
+	+	INY : BRA -					; |
+		++						;/
 
-		LDA $1B
-		CMP $0A
-		BEQ .Right
-		BCS .Left
-	.Right	LDA #$00 : BRA +
-	.Left	LDA #$02
-	+	STA !CameraForceDir
-		LDA #$20
-		STA !CameraForceTimer
-		STA !P2VectorTimeX-$80
-		STA !P2VectorTimeX
-		JSR .CameraChain
-		BRA .NoDoor
-
-	.NextDoor
-		INY
-		LDA ($0C),y : BMI +
-		JMP -
-	+	CMP #$80 : BEQ .NoDoor
-
-	.NextIndex
-		INY
-		INC $00
-		LDA $00
-		CMP !BigRAM+0 : BCS .NoDoor
-		JMP --
-
-
-	.NoDoor
+		..loop
+		TYX						; preserve Y index in X
+		LDA ($0C),y					;\ Y = index to door data
+		ASL A : TAY					;/
+		PEI ($0C)					;\ preserve pointers
+		PEI ($0E)					;/
+		REP #$20					;\
+		LDA ($0E),y					; |
+		STX $00						; |
+		AND #$00FE : TAX				; |
+		LDA.l .VerticalScreens,x			; | get door box X
+		LDX $00						; |
+		CLC : ADC #$00A0				; |
+		STA $05						; > lo byte -> $05
+		STA $0B-1					;/> hi byte -> $0B
+		LDA ($0E),y					;\
+		AND #$FF00					; |
+		SEC : SBC #$0018				; | get door box Y
+		STA $0A-1					; > hi byte -> $0A
+		SEP #$20					; |
+		STA $04						;/> lo byte -> $04
+		LDA #$30					;\
+		STA $06						; | door box size
+		STA $07						;/
+		SEC : JSL !PlayerClipping			; check for contact
+		TXY						; Y = index
+		INY						; index +1
+		REP #$20					;\
+		PLA : STA $0E					; | restore pointers
+		PLA : STA $0C					; |
+		SEP #$20					;/
+		BCC ..next					;\
+		LDA $1B						; |
+		CMP $0A						; |
+		BEQ ..r						; |
+		BCS ..l						; |
+	..r	LDA #$00 : BRA +				; |
+	..l	LDA #$02					; | enter door logic
+	+	STA !CameraForceDir				; |
+		LDA #$20					; |
+		STA !CameraForceTimer				; |
+		STA !P2VectorTimeX-$80				; |
+		STA !P2VectorTimeX				; |
+		JSR .CameraChain				; |
+		BRA ..done					;/
+		..next
+		LDA ($0C),y : BMI ..done			; negative = done
+		JMP ..loop					; otherwise loop
+		..done
 		PLP
 		PLA : STA $0A
 

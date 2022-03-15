@@ -128,6 +128,7 @@ namespace BG_OBJECTS
 		dw Pole			; 06
 		dw Keyhole		; 07 (invisible BG object spawned by sprite marker)
 		dw TrashCan		; 08
+		dw KeyBlock		; 09
 		..end
 
 
@@ -145,6 +146,7 @@ incsrc "BG_objects/Cable.asm"
 incsrc "BG_objects/Pole.asm"
 incsrc "BG_objects/Keyhole.asm"
 incsrc "BG_objects/TrashCan.asm"
+incsrc "BG_objects/KeyBlock.asm"
 
 
 
@@ -556,6 +558,72 @@ incsrc "BG_objects/TrashCan.asm"
 		PLX
 		SEC
 		RTS
+
+
+
+; input:
+;	regs 8-bit
+;	DB = K
+;	X = index to key sprite
+;	$02 = item memory bit of BG_object (8-bit)
+;	$0C = index to BG_object (16-bit)
+;	$0E = item memory index of BG_object (16-bit, negative means no index)
+
+; output:
+;	A 8-bit
+;	index 16-bit
+	UnlockObject:
+
+		.PuffKey
+		LDA #$04 : STA $3230,x				;\ puff key
+		LDA #$1F : STA $32D0,x				;/
+
+		.KeyMem
+		LDA !ExtraProp2,x				;\
+		AND #$03					; | check if key has an item mem bit
+		CMP #$03 : BEQ ..nomem				;/
+		XBA						;\
+		LDA !ExtraProp2,x				; |
+		LSR #2						; |
+		AND #$07 : TAY					; |
+		LDA #$01					; | unpack item memory bit
+		..loop						; |
+		DEY : BMI ..thisbit				; |
+		ASL A : BRA ..loop				; |
+		..thisbit					; |
+		STA $02						;/
+		LDA !ExtraProp1,x				;\
+		REP #$30					; |
+		TAX						; |
+		SEP #$20					; | set item memory bit for key
+		LDA $02						; |
+		ORA !ItemMem0,x : STA !ItemMem0,x		; |
+		SEP #$30					; |
+		..nomem						;/
+
+		.BG_Mem
+		REP #$10					;\
+		LDX $0E : BMI .Return				; | set item memory bit for BG_object
+		LDA $02						; |
+		ORA !ItemMem0,x : STA !ItemMem0,x		;/
+
+		.Return
+		RTS
+
+
+
+; input:
+;	$98 = Y coord
+;	$9A = X coord
+
+	PuffTile:
+		LDA #$0025 : JSL !ChangeMap16
+		STZ $00
+		STZ $02
+		STZ $04
+		LDA.w #!prt_smoke16x16 : JSL !SpawnParticleBlock
+		RTS
+
 
 
 namespace off

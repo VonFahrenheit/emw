@@ -189,6 +189,13 @@ endmacro
 
 
 
+macro generic_dynamo(tilecount, sourcetile, desttile)
+		dw <tilecount>*$20
+		dl <sourcetile>*$20
+		dw (<desttile>*$10)+$6000
+endmacro
+
+
 
 
 	; -- Free RAM --		; Point to unused addresses, please.
@@ -1330,7 +1337,7 @@ endmacro
 	%def_anim(Lee_ClimbTop, 1)
 	%def_anim(Lee_ClimbBG, 2)
 	%def_anim(Lee_Hurt, 1)
-	%def_anim(Lee_Dead, 1)
+	%def_anim(Lee_Dead, 2)
 	%def_anim(Lee_Victory, 2)
 
 
@@ -2695,7 +2702,7 @@ endmacro
 
 		!ItemMem0		= $79F8
 		!ItemMem1		= $7A78
-		!ItemMem2		= $7A38
+		!ItemMem2		= $7AF8
 
 
 		!LevelTable1		= $7EA2		; BCH54321 (beaten, checkpoint flag, checkpoint level number hi bit, yoshi coins 1-5)

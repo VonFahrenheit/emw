@@ -38,7 +38,12 @@ Wizrex:
 
 	INIT:
 
-		LDA #$07 : JSL GET_SQUARE : BCS .Process	;\
+
+		LDA !ExtraProp1,x : BEQ .Normal
+		LDA #$0B : BRA +				; +4 tiles with extra prop set
+		.Normal
+		LDA #$07
+	+	JSL GET_SQUARE : BCS .Process			;\
 		STZ $3230,x					; | get dynamic tiles
 		RTL						; |
 		.Process					;/
@@ -61,11 +66,17 @@ Wizrex:
 		REP #$20					; | get mask dynamo
 		LDA.w ANIM_MaskTable,y : STA $0C		; |
 		SEP #$20					; |
-		LDY.b #!File_Wizrex				; |
-		JSL LOAD_SQUARE_DYNAMO				;/
+		LDY.b #!File_Wizrex : JSL LOAD_SQUARE_DYNAMO	;/
 
-		LDX !SpriteIndex				;\
-		LDA #!palset_special_wizrex : JSL LoadPalset	; |
+		LDA !ExtraProp1,x : BEQ +			;\
+		REP #$20					; |
+		LDA.w #Mask3D_CarriedMaskDyn : STA $0C		; | special big mask slot
+		SEP #$20					; |
+		LDY.b #!File_Wizrex : JSL LOAD_SQUARE_DYNAMO	; |
+		+						;/
+
+
+		LDA #!palset_special_wizrex : JSL LoadPalset	;\
 		LDA !Palset_status+!palset_special_wizrex	; | get palset
 		ASL A						; |
 		STA $33C0,x					;/
@@ -78,7 +89,7 @@ Wizrex:
 		PHA : PLB
 		REP #$30
 		LDX.w #(!palset_special_wizrex)*$20
-		LDA !Palset_status+!palset_special_wizrex
+		LDA !addr_palset_special_wizrex
 		AND #$00FF
 		ORA #$0008
 		XBA
@@ -87,7 +98,7 @@ Wizrex:
 
 		LDA #$000E : STA $0E
 
-	-	LDA $3F8002,x : STA $04				; $04 = full color
+	-	LDA !PalsetData+2-$20,x : STA $04		; $04 = full color
 		AND #$001F
 		STA.l $2251
 		LDA #$0058 : STA.l $2253
@@ -161,6 +172,35 @@ Wizrex:
 
 		LDA !ExtraBits,x				;\ check for mask
 		AND #$04 : BNE .Mask				;/
+
+
+
+		LDA !ExtraProp1,x : BEQ .Normal			;\
+		LDA #$38 : STA !SpriteXSpeed,x			; |
+		LDA $14						; |
+		LSR #3						; |
+		AND #$0F
+		SEC : SBC #$08
+		BPL $03 : EOR #$FF : INC A
+		SEC : SBC #$04
+		STA !SpriteYSpeed,x				; |
+		STZ $3320,x					; |
+		LDA !SpriteAnimIndex				; |
+		CMP.b #!Wizrex_FDash : BCC +			; |
+		CMP.b #!Wizrex_FDash_over : BCC ++		; |
+	+	LDA.b #!Wizrex_FDash : STA !SpriteAnimIndex	; | special carrier mode
+		STZ !SpriteAnimTimer				; |
+	++	JSL !SpriteApplySpeed				; |
+		STZ !SpriteTweaker4,x				; |
+		JSL SPRITE_OFF_SCREEN				; |
+		JSL SETUP_SQUARE				; > set up dynamic draw
+		REP #$20					; |
+		LDA.w #ANIM_CarriedMaskTM : STA $04		; |
+		SEP #$20					; |
+		JSL LOAD_DYNAMIC_p3				; |
+		BRA GRAPHICS					;/
+		.Normal
+
 
 		LDA !WizrexState,x				;\
 		ASL A						; |
@@ -289,7 +329,7 @@ Wizrex:
 		PHY						; preserve ANIM index
 		STZ !BigRAM+0					;\ reset tilemap size
 		STZ !BigRAM+1					;/
-		LDA #$49 : STA $00				; base orb tile
+		LDA #$04 : STA $00				; base orb tile
 
 		LDA !WizrexCircleStatus,x : STA $06		; $06 = number of orbs
 		LDA !WizrexAttackTimer,x			;\
@@ -317,8 +357,8 @@ Wizrex:
 		CMP $04 : BCC ..next				;/
 		LDA $06 : BEQ ..big				; > last orb is always big
 		LDA $00						;\
-		CMP #$4F : BCS ..next				; |
-		CMP #$49 : BNE ..small				; |
+		CMP #$0A : BCS ..next				; |
+		CMP #$04 : BNE ..small				; |
 		..big						; |
 		LDA $03						; |
 		..small						; |
@@ -355,7 +395,7 @@ Wizrex:
 		db $12,$0C,$09
 
 		..bigorbtile
-		db $45,$47,$49
+		db $00,$02,$04
 
 
 
@@ -553,12 +593,11 @@ Wizrex:
 		STZ $07						; |
 		LDA #!prt_basic : JSL SpawnParticle		;/
 		LDA !SpriteProp,x				;\
-		ORA #$0A					; |
-		XBA						; |
+		ORA #$0A : XBA					; |
 		LDA !SpriteTile,x				; |
-		CLC : ADC #$5F					; |
+		CLC : ADC #$1A					; |
 		REP #$10					; | particle tile + prop
-		LDX $00						; |
+		LDX $0E						; |
 		STA !41_Particle_Tile,x				; |
 		XBA : STA !41_Particle_Prop,x			; |
 		SEP #$10					; |
@@ -568,7 +607,7 @@ Wizrex:
 		LDA !WizrexFlyTimer,x : BMI .Return		;\
 		LSR #2						; |
 		XBA						; |
-		LDA !Palset_status+!palset_special_wizrex	; |
+		LDA !addr_palset_special_wizrex			; |
 		ORA #$08					; |
 		ASL #4						; | blend RGB palset
 		TAX						; |
@@ -804,7 +843,7 @@ Wizrex:
 		STA $04						;/
 		LDA #$F0 : STA $05				; particle Y acc
 		LDA !SpriteTile,x				;\
-		CLC : ADC #$5F					; | particle tile
+		CLC : ADC #$1A					; | particle tile
 		STA $06						;/
 		LDA !SpriteProp,x				;\
 		ORA #$2A					; | particle prop
@@ -1247,12 +1286,12 @@ Wizrex:
 		db $3B,$FE,$F0,$07
 		dw $001C
 		db $32,$00,$F0,$00
-		db $72,$F0,$F8,$01
+		db $72,$10,$F8,$01
 		db $72,$00,$F8,$02
-		db $72,$08,$F8,$03
-		db $72,$F0,$00,$04
+		db $72,$F8,$F8,$03
+		db $72,$10,$00,$04
 		db $72,$00,$00,$05
-		db $72,$08,$00,$06
+		db $72,$F8,$00,$06
 
 	.BDashTM00
 	.BDashTM01
@@ -1269,22 +1308,30 @@ Wizrex:
 		db $32,$08,$00,$06
 
 
-	; these should use GFX index 0x83 (conjurex)
+	; these should use conjurex GFX index
 	; upload them to hi prio OAM before loading the FDash tilemap
 	.GrindTM00
 		dw $0004
-		db $3B,$0C,$FC,$45
+		db $3B,$0C,$FC,$00
 	.GrindTM01
 		dw $0004
-		db $3B,$0C,$FC,$47
+		db $3B,$0C,$FC,$02
 	.GrindTM02
 		dw $0004
-		db $3B,$0C,$FC,$49
+		db $3B,$0C,$FC,$04
 
 
 	.GrindCastTM00
 		dw $0004
-		db $3B,$FC,$EC,$49
+		db $3B,$FC,$EC,$04
+
+
+	.CarriedMaskTM
+		dw $0010
+		db $39,$08,$F0,$08
+		db $39,$18,$F0,$09
+		db $39,$08,$00,$0A
+		db $39,$18,$00,$0B
 
 
 
@@ -1576,7 +1623,7 @@ Wizrex:
 		JSL LOAD_DYNAMIC
 		RTS
 
-	; DO NOTE flow into GFX here! we need to call GFX before updating the 3D cluster and loading tilemap
+	; DO NOT flow into GFX here! we need to call GFX before updating the 3D cluster and loading tilemap
 
 		.GFX
 		PHP
@@ -1622,33 +1669,43 @@ Wizrex:
 		RTS
 
 
+		.CarriedMaskDyn
+		dw ..end-..start
+		..start
+		%SquareSkipTiles(8)
+		%SquareDyn($104)
+		%SquareDyn($106)
+		%SquareDyn($124)
+		%SquareDyn($126)
+		..end
+
 		.BigMaskDynInit
-		dw ..End-..Start
-		..Start
+		dw ..end-..start
+		..start
 		%SquareSkipTiles(4)
 		%SquareDyn($0E8)
 		%SquareDyn($0EA)
 		%SquareDyn($0EC)
 		%SquareDyn($0EE)
-		..End
+		..end
 
 		.BigMaskDynIdle
-		dw ..End-..Start
-		..Start
+		dw ..end-..start
+		..start
 		%SquareDyn($100)
 		%SquareDyn($102)
 		%SquareDyn($120)
 		%SquareDyn($122)
-		..End
+		..end
 
 		.BigMaskDynDash
-		dw ..End-..Start
-		..Start
+		dw ..end-..start
+		..start
 		%SquareDyn($104)
 		%SquareDyn($106)
 		%SquareDyn($124)
 		%SquareDyn($126)
-		..End
+		..end
 
 
 		.Ptr
@@ -1667,10 +1724,10 @@ Wizrex:
 		db $39,$08,$08,$03
 		.BigMaskX
 		dw $0010
-		db $79,$F8,$F8,$00
-		db $79,$08,$F8,$01
-		db $79,$F8,$08,$02
-		db $79,$08,$08,$03
+		db $79,$08,$F8,$00
+		db $79,$F8,$F8,$01
+		db $79,$08,$08,$02
+		db $79,$F8,$08,$03
 		.Mask1
 		dw $0004
 		db $35,$00,$00,$04
@@ -1739,9 +1796,7 @@ Wizrex:
 		JSL SpawnSprite					;/
 		CPY #$FF : BEQ .Return
 		LDA #$08 : STA $3230,y				; state = 8
-		LDA !SpriteTile,x				;\
-		CLC : ADC #$45					; | tile options
-		STA !SpriteTile,y				; |
+		LDA !SpriteTile,x : STA !SpriteTile,y		;\ tile options
 		LDA !SpriteProp,x : STA !SpriteProp,y		;/
 		LDA.w !SpriteXSpeed,y				;\
 		LSR A						; |
@@ -1759,7 +1814,7 @@ Wizrex:
 		ORA #$2A					; |
 		STA !ProjectilePrtProp,y			; | particle settings
 		LDA !SpriteTile,x				; |
-		CLC : ADC #$5F					; |
+		CLC : ADC #$1A					; |
 		STA !ProjectilePrtTile,y			;/
 
 		.Return

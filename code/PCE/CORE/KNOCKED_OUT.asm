@@ -10,8 +10,6 @@ KNOCKED_OUT:
 		JSL CORE_RIPOSTE
 		.NoRiposte
 
-
-
 		STZ !P2XSpeed
 		STZ !P2VectorX
 		STZ !P2VectorY
@@ -21,13 +19,21 @@ KNOCKED_OUT:
 		STZ !P2FlashPal
 		LDA #$03 : STA !P2Gravity
 		LDA #$46 : STA !P2FallSpeed
+
+		BIT !P2ShowHP				;\
+		BMI .Wait				; | wait for heart counter
+		BVS .Wait				;/
+
 		JSL CORE_UPDATE_SPEED
+
+		.Wait
 		REP #$20
 		LDA !P2YPosLo
 		SEC : SBC $1C
 		CMP #$0100
 		SEP #$20
 
+		.Return
 		RTL
 
 

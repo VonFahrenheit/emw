@@ -220,6 +220,13 @@ levelinit6:
 		LDA #$06 : STA !PalsetStart
 		INC !SideExit
 
+		REP #$20
+		LDA.w #.BigMaskDyn : STA $0C
+		LDY.b #!File_Wizrex
+		CLC : JSL !UpdateFromFile
+		SEP #$20
+
+
 	;	STZ $97
 	;	STZ !P2YPosHi-$80
 	;	STZ !P2YPosHi
@@ -374,13 +381,23 @@ levelinit6:
 		SEP #$20				; |
 		PLB					;/
 
-		JML level6
+		JML level6_Main
 
 		.ColorMathHDMA
 		db $4A,$22				;\ color math on backdrop + BG2
 		db $4A,$22				;/
 		db $01,$20				; color math on backdrop only
 		db $00					; end table
+
+
+	.BigMaskDyn
+		dw ..end-..start
+		..start
+		%generic_dynamo(4, $104, $1CA)
+		%generic_dynamo(4, $114, $1DA)
+		%generic_dynamo(4, $124, $1EA)
+		%generic_dynamo(4, $134, $1FA)
+		..end
 
 
 levelinitC:
@@ -601,20 +618,23 @@ levelinit32:
 		JSL levelinit6
 		LDA #$02 : STA $41				; enable window 1 on layer 1
 
+		LDA #$07 : STA !PalsetStart			; restore this
+
 		STZ $4324
 		STZ $4374
 		REP #$20
 		LDA #$0D03 : STA $4320
 		LDA #$0B00 : STA !HDMA2source
-		LDA #$2601 : STA $4370				;\ clipping window HDMA
-		LDA #$0C00 : STA !HDMA7source			;/
+	;	LDA #$2601 : STA $4370				;\ clipping window HDMA
+	;	LDA #$0C00 : STA !HDMA7source			;/
 
 		LDA #!CollapseStart : STA !Level+6		; set starting point for collapsing level
 		STA $0400					; also set for falling columns
 		STZ $0402
 
 		LDA.w #.BigMaskDyn : STA $0C
-		CLC : JSL !UpdateGFX
+		LDY.b #!File_Wizrex
+		CLC : JSL !UpdateFromFile
 		SEP #$20
 
 		STZ !Level+3
@@ -627,27 +647,21 @@ levelinit32:
 		LDA.w level6_BGColoursEnd		;\ set color 0x02
 		STA $00A2				;/
 		SEP #$20				; A 8-bit
-		LDA #$F4 : STA !HDMA			; Enable HDMA on channels 2 and 4 through 7
+	;	LDA #$F4 : STA !HDMA			; Enable HDMA on channels 2 and 4 through 7
+	LDA #$74 : STA !HDMA			; Enable HDMA on channels 2 and 4 through 6
 		STZ !SideExit
 		INC $14 : JSL level32_HDMA
 		DEC $14 : JSL level32_HDMA
 		JML level32
 
-
-macro AdeptDyn(TileCount, SourceTile, DestVRAM)
-	dw <TileCount>*$20
-	dl <SourceTile>*$20+$32B008
-	dw <DestVRAM>*$10+$6000
-endmacro
-
 	.BigMaskDyn
-		dw ..End-..Start
-		..Start
-		%AdeptDyn(4, $100, $1CC)	;\
-		%AdeptDyn(4, $110, $1DC)	; | big mask
-		%AdeptDyn(4, $120, $1EC)	; |
-		%AdeptDyn(4, $130, $1FC)	;/
-		..End
+		dw ..end-..start
+		..start
+		%generic_dynamo(4, $100, $1CC)
+		%generic_dynamo(4, $110, $1DC)
+		%generic_dynamo(4, $120, $1EC)
+		%generic_dynamo(4, $130, $1FC)
+		..end
 
 
 .ChunkTable	dw $02D0,$0110 : db $06		; X, Y, size
@@ -1674,12 +1688,31 @@ level5:
 
 level6:
 		REP #$20
-		LDA #$0FE8 : JSL EXIT_FADE_Right
+		LDA #$10E8 : JSL EXIT_FADE_Right
 
+
+		.CarriedMask
+		LDA !TranslevelFlags : BNE ..done
+		LDA $1A
+		ORA $1B : BEQ ..done
+		LDA !P2YPosHi-$80 : BEQ ..done
+		INC !TranslevelFlags
+		REP #$20
+		LDA #$FFE0 : STA $00
+		LDA #$00D0 : STA $02
+		SEP #$20
+		LDA #$06 : JSL SpawnSprite_Custom
+		INC !ExtraProp1,x
+		..done
+
+
+		.Main
 		LDA.b #.HDMA : STA !HDMAptr+0
 		LDA.b #.HDMA>>8 : STA !HDMAptr+1
 		LDA.b #.HDMA>>16 : STA !HDMAptr+2
+
 		RTL
+
 
 
 		.HDMA
@@ -3334,6 +3367,24 @@ level32:
 		REP #$30
 
 
+	SEP #$30
+	LDA $14
+	AND #$01
+	ASL #4
+	TAX
+	LDA $1F						;\
+	LSR A						; |
+	STA $0A08,x					; | Update BG2 Hscroll
+	LDA $1E						; |
+	ROR A						; |
+	STA $0A07,x					;/
+	STX !HDMA6source				; update source for BG2
+	PLP
+	PLB
+	RTL
+
+
+
 		LDA $0402 : BNE $03 : JMP .NotCollapsingYet
 		LDA $14
 		AND #$0003 : BEQ .Smoke
@@ -3874,16 +3925,48 @@ level32:
 
 level33:
 		STZ !SideExit
-		LDA !StoryFlags+$02
-		ORA #$80 : STA !StoryFlags+$02
-		LDA #$80 : TSB !LevelTable4+$03		; unlock dinolord's domain
+		; LDA !StoryFlags+$02
+		; ORA #$80 : STA !StoryFlags+$02
+		; LDA #$80 : TSB !LevelTable4+$03		; unlock dinolord's domain
 
+
+		; REP #$20
+		; LDA.w #350 : STA !SRAM_overworldX
+		; LDA.w #740 : STA !SRAM_overworldY
+		; LDA #$00A0 : JSL END_Up
 
 		REP #$20
-		LDA.w #350 : STA !SRAM_overworldX
-		LDA.w #740 : STA !SRAM_overworldY
-		LDA #$00A0 : JSL END_Up
-		RTL
+		LDA.w #.RoomPointers : JML LoadCameraBox
+
+
+		.RoomPointers
+		dw .ScreenMatrix
+		dw .BoxTable
+		dw .DoorList
+		dw .DoorTable
+
+;	Key ->	   X  Y  W  H  S  FX FY
+;		   |  |  |  |  |  |  |
+;		   V  V  V  V  V  V  V
+.BoxTable
+.Box0	%CameraBox(0, 0, 1, 0, $FF, 0, 0)
+.Box1	%CameraBox(2, 0, 0, 0, $FF, 0, 0)
+.Box2	%CameraBox(3, 0, 2, 0, $FF, 0, 0)
+.Box3	%CameraBox(2, 1, 0, 1, $FF, 0, 0)
+
+.ScreenMatrix	db $00,$00,$01,$02,$02,$02,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+		db $00,$00,$03,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+		db $00,$00,$03,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+
+.DoorList	db $00,$FF		; door 0 in room 0
+		db $00,$01,$FF		; doors 0 and 1 in room 1
+		db $01,$FF		; door 1 in room 2
+		db $80			; no more doors
+
+.DoorTable
+.Door0		%Door(2, 0)
+.Door1		%Door(3, 0)
+
 
 
 
@@ -4570,7 +4653,6 @@ level39:
 		db $FF,$FF,$01,$01
 
 .DoorList	db $80			; no doors (room 0)
-		db $80			; no doors (room 1)
 .DoorTable
 
 

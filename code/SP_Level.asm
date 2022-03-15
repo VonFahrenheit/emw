@@ -558,7 +558,9 @@ print "Level code handler inserted at $", pc, "."
 		STZ !P2Init-$80				;\ reset PCE init flags
 		STZ !P2Init				;/
 
-		LDA $741A : BNE +			; how many doors have been entered
+
+		.InitMainLevel
+		LDA $741A : BNE ..sublevel		; how many doors have been entered
 		LDX #$7F				;\
 	-	STZ !TranslevelFlags,x			; | clear translevel flags on first sublevel only
 		DEX : BPL -				;/
@@ -583,13 +585,13 @@ print "Level code handler inserted at $", pc, "."
 		LDX #$1F
 	-	LDA .StatusProp_normallevel,x : STA !StatusProp,x
 		DEX : BPL -
-		BRA ..done
+		BRA ..megadone
 		..megalevel
 		STZ !StatusX
 		LDX #$1F
 	-	LDA .StatusProp_megalevel,x : STA !StatusProp,x
 		DEX : BPL -
-		..done
+		..megadone
 		LDX #$0E
 	-	LDA .StatusBarColors,x : STA !StatusBarColors,x
 		DEX : BPL -
@@ -599,8 +601,17 @@ print "Level code handler inserted at $", pc, "."
 		LDA #$0F
 		STA !P2HP-$80
 		STA !P2HP
+		BRA ..done
 
-		+					;/
+		..sublevel				;/
+		LDA !P2HP-$80
+		CLC : ADC !P2TempHP-$80
+		STA !P2ShowHP-$80
+		LDA !P2HP
+		CLC : ADC !P2TempHP
+		STA !P2ShowHP
+		..done
+
 
 		LDA #$00 : STA !CurrentMario		; > No one plays Mario by default
 		LDA !Characters				;\
@@ -2725,7 +2736,7 @@ macro CameraBox(X, Y, W, H, S, FX, FY)
 endmacro
 
 macro Door(x, y)
-	db <x>|(<y><<4)
+	db <y>*2,<x>
 endmacro
 
 

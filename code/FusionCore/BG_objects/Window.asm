@@ -1,11 +1,6 @@
 
 	Window:
 		LDX $00						; X = BG object index
-		SEP #$20
-		LDA #$80 : STA !BG_object_Tile,x
-
-		REP #$20
-
 
 		LDA !BG_object_Misc,x				;\ check for queued break
 		AND #$00FF : BNE .Break				;/
@@ -13,6 +8,12 @@
 		RTS						;/
 
 		.Break
+		LDA !VRAMbase+!TileUpdateTable			;\
+		CMP #$00C0 : BCC ..yes				; |
+		..queue						; | queue if it can't update on this frame
+		INC !BG_object_Misc,x				; |
+		RTS						;/
+		..yes
 		LDA !BG_object_X,x : STA $9A
 		LDA !BG_object_Y,x : STA $98
 		PHX

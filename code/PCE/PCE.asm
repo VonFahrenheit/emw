@@ -255,6 +255,7 @@
 		JSL CORE_RIPOSTE				; |
 		..done						;/
 
+		JSL CORE_SHOW_HEARTS				; heart counter
 
 		.Apex
 		LDA !ApexTimerP1 : BEQ ..nodec			;\ decrement
@@ -291,13 +292,6 @@
 	+	SEP #$20					; A 8-bit
 
 
-		.ShowHearts
-		LDA !P2ShowHP : BEQ ..done
-		DEC !P2ShowHP
-		JSL CORE_SHOW_HEARTS
-		..done
-
-
 		PLA : STA $6DA9					;\
 		PLA : STA $6DA7					; | restore P2 input
 		PLA : STA $6DA5					; |
@@ -327,9 +321,6 @@
 	;	CMP #$0F : BEQ .CheckStatus_return
 
 		LDA #$01 : STA !CurrentPlayer			; > processing P2
-
-		LDA !P2ShowHP
-		BEQ $03 : DEC !P2ShowHP
 
 
 		REP #$20					;\
@@ -429,6 +420,9 @@
 		..done						;/
 
 
+		JSL CORE_SHOW_HEARTS				; heart counter
+
+
 		.Apex
 		LDA !ApexTimerP2 : BEQ ..nodec			;\ decrement
 		DEC !ApexTimerP2				;/
@@ -462,13 +456,6 @@
 		STZ !P2ExtraInput1				; |
 		STZ !P2ExtraInput3				;/
 	+	SEP #$20					; A 8-bit
-
-
-		.ShowHearts
-		LDA !P2ShowHP : BEQ ..done
-		DEC !P2ShowHP
-		JSL CORE_SHOW_HEARTS
-		..done
 
 
 		RTL						; > return

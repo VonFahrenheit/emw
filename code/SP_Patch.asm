@@ -3390,6 +3390,14 @@ LOAD_FILE:
 ;	$0D - size bit (same for all tiles)
 ;	$0E - byte count of tilemap
 
+; format:
+;	+00	X
+;	+01	Y
+;	+02	tile
+;	+03	prop
+
+
+
 SPRITE_HUD:
 		PHP
 		SEP #$20

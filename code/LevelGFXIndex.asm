@@ -791,7 +791,7 @@ PalsetDefaults:
 		CMP #$0080 : BEQ +				;/
 		AND #$007F					;\
 		ASL #5						; |
-		ADC.w #!PalsetData				; |
+		ADC.w #!PalsetData-$20				; |
 		STA $00						; |
 		LDY #$0000					; | pointer + indexes
 		PHX						; |
@@ -865,21 +865,17 @@ PalsetDefaults:
 		BIT $02 : BVS ..flip				; check flip
 		..noflip					;\
 		STA !Map16Page3+$00,x				; |
-		INC A						; |
-		STA !Map16Page3+$04,x				; |
+		INC A : STA !Map16Page3+$04,x			; |
 		ADC $01						; | get tile nums for map16 block (no flip)
 		STA !Map16Page3+$06,x				; |
-		DEC A						; |
-		STA !Map16Page3+$02,x				; |
+		DEC A : STA !Map16Page3+$02,x			; |
 		BRA ..next					;/
 		..flip						;\
 		STA !Map16Page3+$04,x				; |
-		INC A						; |
-		STA !Map16Page3+$00,x				; | get tile nums for map16 block (with flip)
+		INC A : STA !Map16Page3+$00,x			; | get tile nums for map16 block (with flip)
 		ADC $01						; |
 		STA !Map16Page3+$02,x				; |
-		DEC A						; |
-		STA !Map16Page3+$06,x				;/
+		DEC A : STA !Map16Page3+$06,x			;/
 		..next						;\
 		TYX						; |
 		LDA ($E2),y					; |
@@ -926,14 +922,14 @@ print "$", hex(($300*8)+read2($6F552+1)+(read1($06F555+2)<<16))
 ;
 
 
-macro TileInfo(map16, width, tile, gfx)
+macro TileInfo(map16, tilecount, basetile, gfxindex)
 	pushpc
 		org (($300+<map16>)*8)+read2($6F552+1)+(read1($06F555+2)<<16)+0
-			db <width>
+			db <tilecount>
 		org (($300+<map16>)*8)+read2($6F552+1)+(read1($06F555+2)<<16)+2
-			db <tile>
+			db <basetile>
 		org (($300+<map16>)*8)+read2($6F552+1)+(read1($06F555+2)<<16)+4
-			db <gfx>
+			db <gfxindex>
 		org (($300+<map16>)*8)+read2($6F552+1)+(read1($06F555+2)<<16)+6
 			; unused
 	pullpc
@@ -1998,7 +1994,9 @@ endmacro
 ;===============================================================
 .Shell		%src($F00, $42, $06, Shell, 0)
 ;===============================================================
-.FelMagic	%src($F83, $45, $0B, FelMagic, 0)
+.FelMagic	%cmd($F83, $45, $0B, FelMagic, 0)
+		%defaultpal(D)
+		db $FF
 ;===============================================================
 .Bone		%cmd($F65, $00, $04, Bone, 0)		; first tile is super-dynamic, second is static and used by dry bones tilemap
 		%super(!SD_Bone_offset)
@@ -2546,7 +2544,7 @@ ReadLevelData:
 		ASL #3
 		SEC : SBC $08
 		TAX
-		LDA $168003,x
+		LDA $168003+3,x
 		BRA ..shared
 		..vanilla
 		LDX $0E
@@ -2847,6 +2845,7 @@ ReadLevelData:
 		db $04,$03	; pole, facing right
 		db $10,$10	; keyhole (dummy values, actually spawned by sprite)
 		db $02,$04	; trash can
+		db $04,$04	; key block
 
 
 
@@ -2866,6 +2865,7 @@ BG_objectFiles:
 	db $05			; 06, pole
 	db $00			; 07, keyhole
 	db $06			; 08, trashcan
+	db $00			; 09, key block
 
 
 	; pointers to upload data

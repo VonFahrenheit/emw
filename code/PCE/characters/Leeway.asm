@@ -46,16 +46,17 @@ namespace Leeway
 		RTL
 
 		.Fall
-		BIT !P2YSpeed : BMI +
-		LDA $14
-		LSR #3
-		AND #$01
-		STA !P2Direction
-	+	STZ !P2Carry
+		STZ !P2Carry
 		STZ !P2Invinc
-		LDA #!Lee_Dead : STA !P2Anim
+		BIT !P2ShowHP
+		BMI ++
+		BVS ++
+		LDA !P2Anim
+		CMP #!Lee_Dead : BEQ +
+		CMP #!Lee_Dead+1 : BEQ +
+	++	LDA #!Lee_Dead : STA !P2Anim
 		STZ !P2AnimTimer
-		JMP ANIMATION_HandleUpdate
+	+	JMP ANIMATION_HandleUpdate
 
 
 		.Process
@@ -2405,15 +2406,18 @@ namespace Leeway
 	dw .ClippingStandard
 
 	.Dead				; 42
-	dw .24x32TM : db $FF,!Lee_Dead
+	dw .24x32TM : db $08,!Lee_Dead+1
+	dw .DeadDynamo
+	dw .ClippingStandard
+	dw .24x32TM_X : db $08,!Lee_Dead+0
 	dw .DeadDynamo
 	dw .ClippingStandard
 
-	.Victory0			; 43
+	.Victory0
 	dw .24x32TM : db $14,!Lee_Victory+1
 	dw .VictoryDynamo0
 	dw .ClippingStandard
-	.Victory1			; 44
+	.Victory1
 	dw .24x32TM : db $14,!Lee_Victory
 	dw .VictoryDynamo1
 	dw .ClippingStandard
@@ -3544,6 +3548,8 @@ print "  - clipping data: $", hex(.End-.ClippingStandard), " bytes (", dec((.End
 
 	.Dead				;
 	dw .HoldBackTM : db $0A,$F4
+	dw $0000,$0000
+	dw .HoldBackTM : db $0E,$F0
 	dw $0000,$0000
 
 	.Victory0			;

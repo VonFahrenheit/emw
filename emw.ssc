@@ -14,7 +14,10 @@
 0B	0002	0,0,005 12,4,009, -8,-16,402 8,-16,403
 0C	0002	0,0,007 12,4,009
 0D	0002	0,0,00A
+0E	0000	A keyhole. This will act as a door that opens only if the player is holding a key.
 0E	0002	0,0,00B
+0E	0010	A keyhole. This will turn a 32x32 section of the terrain into a key block. The key block disappears if a key touches it. The keyhole should be placed on the top-left corner of the block.
+0E	0012	0,0,00B 16,0,8420 0,16,8420 16,16,8420
 0F	0002	0,0,00C
 10	0002	-12,-8,0BE 0,0,00C 12,-8,0BF
 11	0002	0,0,00D

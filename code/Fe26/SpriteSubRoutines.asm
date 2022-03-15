@@ -465,8 +465,7 @@ SPRITE_OFF_SCREEN:
 		.Search
 		PHX					; push X
 		STA $00					; $00 = index (will be converted to 00 or 80)
-		LSR A					;\ $01 = -------I
-		STA $01					;/
+		LSR A : STA $01				; $01 = -------I (hi bit of index)
 		STZ $2250				;\
 		REP #$20				; |
 		LDA !SpriteYHi,x			; | y screen * level width
@@ -479,10 +478,9 @@ SPRITE_OFF_SCREEN:
 		ASL A					; * 2
 		BIT !SpriteXLo,x			;\ +1 on right half
 		BPL $01 : INC A				;/
-		ASL A					;\
-		LSR $00					; | get highest bit from index
-		ROR A					;/
-		STA $00					; $00 = iSSSSSSx
+		ASL A					;\ get highest bit from index
+		LSR $00					;/
+		ROR A : STA $00				; $00 = iSSSSSSx
 
 		LDA !SpriteXLo,x			;\
 		AND #$70				; |
@@ -1967,7 +1965,10 @@ SPRITE_OFF_SCREEN:
 		CMP #$0080
 		BMI $03 : ORA #$FF00
 		EOR $0E
-		CLC : ADC $00
+		CLC
+		BIT $0E
+		BPL $01 : SEC
+		ADC $00
 		BIT $0E : BPL +				;\
 		BIT $0A : BMI +				; | x-flipped 8x8 tiles move 8px right
 		CLC : ADC #$0008			;/
@@ -2105,7 +2106,10 @@ SPRITE_OFF_SCREEN:
 		CMP #$0080
 		BMI $03 : ORA #$FF00
 		EOR $0E
-		CLC : ADC $00
+		CLC
+		BIT $0E
+		BPL $01 : SEC
+		ADC $00
 		BIT $0E : BPL +				;\
 		BIT $0A : BMI +				; | x-flipped 8x8 tiles move 8px right
 		CLC : ADC #$0008			;/
@@ -2319,7 +2323,10 @@ SPRITE_OFF_SCREEN:
 		CMP #$0080
 		BMI $03 : ORA #$FF00
 		EOR $0E
-		CLC : ADC $00
+		CLC
+		BIT $0E
+		BPL $01 : SEC
+		ADC $00
 		BIT $0A : BMI +
 		BIT $0E : BPL +
 		CLC : ADC #$0008			; add 8 to x-flipped 8x8 tile
@@ -2483,7 +2490,10 @@ SPRITE_OFF_SCREEN:
 		CMP #$0080
 		BMI $03 : ORA #$FF00
 		EOR $0E
-		CLC : ADC $00
+		CLC
+		BIT $0E
+		BPL $01 : SEC
+		ADC $00
 		BIT $0E : BPL +				;\
 		BIT $0A : BMI +				; | x-flipped 8x8 tiles move 8px right
 		CLC : ADC #$0008			;/
