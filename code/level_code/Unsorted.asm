@@ -70,6 +70,10 @@ Weather:
 		ASL A
 		CMP.w #.SpawnPtr_End-.SpawnPtr
 		BCC $03 : LDA #$0000
+
+	STZ $7FFF
+
+
 		TAX
 		JSR (.SpawnPtr,x)
 
@@ -117,7 +121,7 @@ Weather:
 		SEP #$20						; A 8-bit
 		LDA #$FF : STA !Particle_Tile,x				; tile
 		LDA #$FF : STA !Particle_Prop,x				; prop
-		LDA #$02 : STA !Particle_Layer,x			; tile size
+		STZ !Particle_Layer,x					; tile size
 		LDA.b #!prt_basic_BG1 : STA !Particle_Type,x		; type
 		RTS							; return
 
@@ -168,7 +172,7 @@ Weather:
 		STZ !Particle_XAcc,x					; X acc = 0
 		LDA #$FF : STA !Particle_Tile,x				; tile
 		LDA #$FF : STA !Particle_Prop,x				; prop
-		LDA #$02 : STA !Particle_Layer,x			; tile size
+		STZ !Particle_Layer,x					; tile size
 		LDA.b #!prt_basic_BG1 : STA !Particle_Type,x		; type
 		RTS							; return
 
@@ -178,11 +182,11 @@ Weather:
 		LDA $02							;\
 		AND #$00FF						; |
 		ASL #2							; | RN 1 determines X pos
-		CLC : ADC $1A						; |
-		SEC : SBC #$0180					; |
+		ADC $1A							; |
+		SBC #$0180						; |
 		STA !Particle_XLo,x					;/
 		LDA $1C							;\
-		CLC : ADC #$00D8					; | always spawn at the bottom of the screen
+		ADC #$00D8						; | always spawn at the bottom of the screen
 		STA !Particle_YLo,x					;/
 		LDA $03							;\
 		AND #$00F0						; | RN 2 determines X speed
@@ -190,7 +194,7 @@ Weather:
 		STA !Particle_XSpeed,x					;/
 		LDA $04							;\
 		AND #$00F0						; | RN 3 determines Y speed
-		SEC : SBC #$0180					; |
+		SEC : SBC #$0200					; |
 		STA !Particle_YSpeed,x					;/
 		SEP #$20						; A 8-bit
 		LDA $03							;\
@@ -201,74 +205,45 @@ Weather:
 		AND #$04						; | third lowest bit of RN 3 determines Y acc
 		INC #2							; |
 		STA !Particle_YAcc,x					;/
-	..prop	LDA !GFX_Conjurex					;\
-		AND #$80						; |
-		ASL A							; | prop
-		ROL A							; |
-		ORA #$FA						; |
-		STA !Particle_Prop,x					;/
-		LDA !GFX_Conjurex					;\
-		AND #$70						; |
-		ASL A							; |
-		STA $00							; |
-		LDA !GFX_Conjurex					; | tile
-		AND #$0F						; |
-		ORA $00							; |
-		CLC : ADC #$4D						; |
-		STA !Particle_Tile,x					;/
-		LDA #$02 : STA !Particle_Layer,x			; tile size
+		..tile							;\
+		LDA !GFX_FelMagic_tile					; |
+		CLC : ADC #$1A						; |
+		STA !Particle_Tile,x					; | tile + prop
+		LDA !GFX_FelMagic_prop					; |
+		ADC #$00						; |
+		AND #$01						; |
+		ORA #$FA : STA !Particle_Prop,x				;/
+		STZ !Particle_Layer,x					; tile size
 		LDA.b #!prt_basic_BG1 : STA !Particle_Type,x		; type
 	..R	RTS
 
 
 		.MaskSpecial
 		LDX $00							; X = index
-		STZ $00							; set up side
-		LDA $02							;\ RN 1 determines which side to spawn particle on
-		AND #$0001 : BEQ ..right				;/
-	..left	LDA.l !Level+4						;\ see if left caster is alive
-		AND #$0001 : BEQ ..R					;/
-		DEC $00							;\ spawn on left side
-		LDA #$0D60 : BRA ..W					;/
 
-	..right	LDA.l !Level+4						;\ see if right caster is alive
-		AND #$0002 : BEQ ..R					;/
-		LDA #$0D90
-	..W	STA !Particle_XLo,x
-		LDA #$0148 : STA !Particle_YLo,x
+		LDA $02
+		AND #$000F
+		ADC #$0D74
+		STA !Particle_XLo,x
+		LDA #$0138 : STA !Particle_YLo,x
 
-		LDA $03							;\
-		AND #$0006						; |
-		PHX							; |
-		TAX							; |
-		LDA.l ..SpeedTable,x : STA $02				; |
-		LDA.l ..AccelTable,x					; |
-		PLX							; | get random speed and invert if spawning right side
-		SEP #$20						; |
-		BIT $00							; |
-		BPL $03 : EOR #$FF : INC A				; |
-		REP #$20						; |
-		STA !Particle_XAcc,x					;/ > write Y acc via hi byte
-
-		LDA $02							;\
-		AND #$00FF						; |
-		ASL #4							; |
-		CMP #$0800						; | X speed
-		BCC $03 : ORA #$F000					; |
-		BIT $00							; |
-		BPL $04 : EOR #$FFFF : INC A				; |
-		STA !Particle_XSpeed,x					;/
-		LDA $03							;\
-		AND #$00FF						; |
-		ASL #4							; | Y speed
-		CMP #$0800						; |
-		BCC $03 : ORA #$F000					; |
-		STA !Particle_YSpeed,x					;/
+		LDA $03
+		AND #$00FF
+		SBC #$0080
+		STA !Particle_XSpeed,x
+		BPL +
+		CMP #$FFF0 : BCS ..0
+		LDA #$0002 : BRA ..setacc
+	+	CMP #$0020 : BCC ..0
+		LDA #$FFFE : BRA ..setacc
+	..0	LDA #$0000
+		..setacc
+		STA !Particle_XAcc,x
+		STZ !Particle_YSpeed,x
+		LDA #$00F8 : STA !Particle_YAcc,x
 
 		SEP #$20						;\ same prop/tile as spell particles
-		JMP .SpellParticles_prop				;/
-
-	..R	RTS
+		JMP .SpellParticles_tile				;/
 
 
 
@@ -322,7 +297,7 @@ Weather:
 		LDA $04
 		AND #$0003
 		XBA
-		STA !Particle_XAcc,x						; X acc = 0, Y acc = 0-3 (Y written via hi byte)
+		STA !Particle_XAcc,x					; X acc = 0, Y acc = 0-3 (Y written via hi byte)
 
 		LDA $04
 		AND #$00FC
@@ -332,10 +307,10 @@ Weather:
 		LDA #$FE00 : STA !Particle_YSpeed
 
 		SEP #$20
-		LDA #$FF : STA !Particle_Tile,x					; tile
-		LDA #$FF : STA !Particle_Prop,x					; prop
-		LDA #$02 : STA !Particle_Layer,x				; tile size
-		LDA.b #!prt_basic_BG1 : STA !Particle_Type,x			; type
+		LDA #$FF : STA !Particle_Tile,x				; tile
+		LDA #$FF : STA !Particle_Prop,x				; prop
+		STZ !Particle_Layer,x					; tile size
+		LDA.b #!prt_basic_BG1 : STA !Particle_Type,x		; type
 		RTS
 
 

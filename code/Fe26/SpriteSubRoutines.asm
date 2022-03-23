@@ -1793,6 +1793,7 @@ SPRITE_OFF_SCREEN:
 ; input: void
 ; output: void
 	SpriteContactGFX:
+		PHX
 		LDA $3220,x
 		CLC : ADC $3220,y
 		STA $00
@@ -1815,7 +1816,7 @@ SPRITE_OFF_SCREEN:
 		LDA $00 : STA !Ex_XLo,x			; smoke X
 		LDA $02 : STA !Ex_YLo,x			; smoke Y
 		LDA #$08 : STA !Ex_Data1,x		; smoke timer
-		LDX !SpriteIndex
+		PLX
 		RTL
 
 

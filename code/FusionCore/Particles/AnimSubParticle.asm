@@ -5,9 +5,9 @@
 		LDA !Particle_Layer,x					;\
 		AND #$02						; | size
 		STA !Particle_TileTemp+2				;/
-		LDA !Particle_Timer,x : BEQ .NoTimer			;\ check and decrement timer
-		DEC !Particle_Timer,x					;/
-		LSR #3							;\
+		LDA !Particle_Timer,x : BEQ +				;\ check and decrement timer
+		DEC !Particle_Timer,x : BEQ .NoTimer			;/
+	+	LSR #3							;\
 		AND #$03						; |
 		LDY !Particle_TileTemp+2-1				; |
 		CPY #$0200						; | tile
@@ -28,9 +28,9 @@
 		LDA !Particle_Layer,x					;\
 		AND #$02						; | size
 		STA !Particle_TileTemp+2				;/
-		LDA !Particle_Timer,x : BEQ .NoTimer			;\ check and decrement timer
-		DEC !Particle_Timer,x					;/
-		LSR #3							;\
+		LDA !Particle_Timer,x : BEQ +				;\ check and decrement timer
+		DEC !Particle_Timer,x : BEQ .NoTimer			;/
+	+	LSR #3							;\
 		AND #$03						; |
 		LDY !Particle_TileTemp+2-1				; |
 		CPY #$0200						; | tile
@@ -58,9 +58,9 @@
 		LDA !Particle_Layer,x					;\
 		AND #$02						; | size
 		STA !Particle_TileTemp+2				;/
-		LDA !Particle_Timer,x : BEQ .NoTimer			;\ check and decrement timer
-		DEC !Particle_Timer,x					;/
-		LSR #3							;\
+		LDA !Particle_Timer,x : BEQ +				;\ check and decrement timer
+		DEC !Particle_Timer,x : BEQ .NoTimer			;/
+	+	LSR #3							;\
 		AND #$03						; |
 		LDY !Particle_TileTemp+2-1				; |
 		CPY #$0200						; | tile
@@ -81,9 +81,9 @@
 		LDA !Particle_Layer,x					;\
 		AND #$02						; | size
 		STA !Particle_TileTemp+2				;/
-		LDA !Particle_Timer,x : BEQ .NoTimer			;\ check and decrement timer
-		DEC !Particle_Timer,x					;/
-		LSR #3							;\
+		LDA !Particle_Timer,x : BEQ +				;\ check and decrement timer
+		DEC !Particle_Timer,x : BEQ .NoTimer			;/
+	+	LSR #3							;\
 		AND #$03						; |
 		LDY !Particle_TileTemp+2-1				; |
 		CPY #$0200						; | tile

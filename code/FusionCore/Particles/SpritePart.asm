@@ -7,9 +7,9 @@
 		RTS							; |
 		.Main							;/
 		SEP #$20						; 8-bit A
-		LDA !Particle_Timer,x : BEQ .NoTimer			;\ check and decrement timer
-		DEC !Particle_Timer,x					;/
-		JSR ParticleSpeed					; move particle
+		LDA !Particle_Timer,x : BEQ +				;\ check and decrement timer
+		DEC !Particle_Timer,x : BEQ .NoTimer			;/
+	+	JSR ParticleSpeed					; move particle
 		LDA !Particle_Tile,x : STA !Particle_TileTemp		; tile number + property byte
 		PHA							;\
 		ORA #$C000						; | _p3, push prop

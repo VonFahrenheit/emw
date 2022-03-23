@@ -1721,8 +1721,6 @@ Wizrex:
 		BRA .ActiveMask
 
 		.MoveUp
-		STZ !SpriteTweaker4,x
-		JSL SPRITE_OFF_SCREEN
 		LDA #$F0 : STA !SpriteYSpeed,x
 		JSL !SpriteApplySpeed-$10
 		BRA .Draw

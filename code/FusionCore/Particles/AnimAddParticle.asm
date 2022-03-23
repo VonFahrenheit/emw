@@ -5,9 +5,9 @@
 		LDA !Particle_Layer,x					;\
 		AND #$02						; | size
 		STA !Particle_TileTemp+2				;/
-		LDA !Particle_Timer,x : BEQ .NoTimer			;\ check and decrement timer
-		DEC !Particle_Timer,x					;/
-		EOR #$FF						; reverse timer to advance left -> right
+		LDA !Particle_Timer,x : BEQ +				;\ check and decrement timer
+		DEC !Particle_Timer,x : BEQ .NoTimer			;/
+	+	EOR #$FF						; reverse timer to advance left -> right
 		LSR #3							;\
 		AND #$03						; |
 		LDY !Particle_TileTemp+2-1				; |
@@ -28,9 +28,9 @@
 		LDA !Particle_Layer,x					;\
 		AND #$02						; | size
 		STA !Particle_TileTemp+2				;/
-		LDA !Particle_Timer,x : BEQ .NoTimer			;\ check and decrement timer
-		DEC !Particle_Timer,x					;/
-		EOR #$FF						; reverse timer to advance left -> right
+		LDA !Particle_Timer,x : BEQ +				;\ check and decrement timer
+		DEC !Particle_Timer,x : BEQ .NoTimer			;/
+	+	EOR #$FF						; reverse timer to advance left -> right
 		LSR #3							;\
 		AND #$03						; |
 		LDY !Particle_TileTemp+2-1				; |
@@ -58,9 +58,9 @@
 		LDA !Particle_Layer,x					;\
 		AND #$02						; | size
 		STA !Particle_TileTemp+2				;/
-		LDA !Particle_Timer,x : BEQ .NoTimer			;\ check and decrement timer
-		DEC !Particle_Timer,x					;/
-		EOR #$FF						; reverse timer to advance left -> right
+		LDA !Particle_Timer,x : BEQ +				;\ check and decrement timer
+		DEC !Particle_Timer,x : BEQ .NoTimer			;/
+	+	EOR #$FF						; reverse timer to advance left -> right
 		LSR #3							;\
 		AND #$03						; |
 		LDY !Particle_TileTemp+2-1				; |
@@ -81,9 +81,9 @@
 		LDA !Particle_Layer,x					;\
 		AND #$02						; | size
 		STA !Particle_TileTemp+2				;/
-		LDA !Particle_Timer,x : BEQ .NoTimer			;\ check and decrement timer
-		DEC !Particle_Timer,x					;/
-		EOR #$FF						; reverse timer to advance left -> right
+		LDA !Particle_Timer,x : BEQ +				;\ check and decrement timer
+		DEC !Particle_Timer,x : BEQ .NoTimer			;/
+	+	EOR #$FF						; reverse timer to advance left -> right
 		LSR #3							;\
 		AND #$03						; |
 		LDY !Particle_TileTemp+2-1				; |

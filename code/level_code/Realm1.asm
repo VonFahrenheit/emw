@@ -3216,7 +3216,40 @@ level32:
 		LDA #$0100 : STA !LightG
 		LDA #$00E0 : STA !LightB
 		SEP #$20
-		LDA #$02 : JSL Weather
+
+		LDA #$06 : JSL SearchSprite_Custom
+		BMI +
+		LDA !ExtraProp1,x
+		CMP #$01 : BNE +
+
+		.RitualCasters
+		LDA #$7F : TRB !Level+4
+		LDX #$0F
+		..loop
+		LDA $3230,x
+		CMP #$08 : BNE ..next
+		LDA !ExtraBits,x
+		AND #$08 : BEQ ..next
+		LDA !NewSpriteNum,x
+		CMP #$05 : BNE ..next
+		LDA !SpriteXHi,x
+		CMP #$0D : BNE ..next
+		LDA $BE,x : BNE ..next
+		LDA !SpriteXLo,x
+		ASL A
+		ROL A
+		AND #$01
+		STA $3320,x
+		INC A : TSB !Level+4
+		LDA #$0F : STA $32D0,x
+		..next
+		DEX : BPL ..loop
+
+		LDA #$03 : BRA ++
+	+	LDA #$02
+	++	JSL Weather
+
+
 
 		LDA $1B
 		CMP #$0E : BNE .NoExit
@@ -3263,27 +3296,6 @@ level32:
 		LDA $1E						; |
 		ROR A : STA $0A07,x				;/
 		STX !HDMA6source				; update source for BG2
-
-		; ritual casters
-		LDA #$7F : TRB !Level+4
-		LDX #$0F
-	-	LDA $3230,x
-		CMP #$08 : BNE +
-		LDA !ExtraBits,x
-		AND #$08 : BEQ +
-		LDA !NewSpriteNum,x
-		CMP #$05 : BNE +
-		LDA !SpriteXHi,x
-		CMP #$0D : BNE +
-		LDA $BE,x : BNE +
-		LDA !SpriteXLo,x
-		ASL A
-		ROL A
-		AND #$01
-		STA $3320,x
-		INC A : TSB !Level+4
-		LDA #$0F : STA $32D0,x
-	+	DEX : BPL -
 
 		REP #$30
 

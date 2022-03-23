@@ -2,9 +2,9 @@
 	RatioParticle:
 	.BG1	LDX $00							; reload index
 		SEP #$20						; 8-bit A
-		LDA !Particle_Timer,x : BEQ .NoTimer			;\ check and decrement timer
-		DEC !Particle_Timer,x					;/
-		JSR ParticleSpeed					; move particle
+		LDA !Particle_Timer,x : BEQ +				;\ check and decrement timer
+		DEC !Particle_Timer,x : BEQ .NoTimer			;/
+	+	JSR ParticleSpeed					; move particle
 		LDA !Particle_Tile,x					;\
 		AND #$3FFF						; | tile number + property byte (X/Y flip clear)
 		STA !Particle_TileTemp					;/
@@ -16,9 +16,9 @@
 
 	.BG2	LDX $00							; reload index
 		SEP #$20						; 8-bit A
-		LDA !Particle_Timer,x : BEQ .NoTimer			;\ check and decrement timer
-		DEC !Particle_Timer,x					;/
-		JSR ParticleSpeed					; move particle
+		LDA !Particle_Timer,x : BEQ +				;\ check and decrement timer
+		DEC !Particle_Timer,x : BEQ .NoTimer			;/
+	+	JSR ParticleSpeed					; move particle
 		LDA !Particle_Tile,x					;\
 		AND #$3FFF						; | tile number + property byte (X/Y flip clear)
 		STA !Particle_TileTemp					;/
@@ -37,9 +37,9 @@
 
 	.BG3	LDX $00							; reload index
 		SEP #$20						; 8-bit A
-		LDA !Particle_Timer,x : BEQ .NoTimer			;\ check and decrement timer
-		DEC !Particle_Timer,x					;/
-		JSR ParticleSpeed					; move particle
+		LDA !Particle_Timer,x : BEQ +				;\ check and decrement timer
+		DEC !Particle_Timer,x : BEQ .NoTimer			;/
+	+	JSR ParticleSpeed					; move particle
 		LDA !Particle_Tile,x					;\
 		AND #$3FFF						; | tile number + property byte (X/Y flip clear)
 		STA !Particle_TileTemp					;/
@@ -51,9 +51,9 @@
 
 	.Cam	LDX $00							; reload index
 		SEP #$20						; 8-bit A
-		LDA !Particle_Timer,x : BEQ .NoTimer			;\ check and decrement timer
-		DEC !Particle_Timer,x					;/
-		JSR ParticleSpeed					; move particle
+		LDA !Particle_Timer,x : BEQ +				;\ check and decrement timer
+		DEC !Particle_Timer,x : BEQ .NoTimer			;/
+	+	JSR ParticleSpeed					; move particle
 		LDA !Particle_Tile,x					;\
 		AND #$3FFF						; | tile number + property byte (X/Y flip clear)
 		STA !Particle_TileTemp					;/

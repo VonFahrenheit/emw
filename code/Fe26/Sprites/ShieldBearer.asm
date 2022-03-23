@@ -135,13 +135,14 @@ ShieldBearer:
 
 	.SpriteContact
 		LDX #$0F
-	-	CPX !SpriteIndex : BEQ +
+		..loop
+		CPX !SpriteIndex : BEQ ..next
 		LDA $3230,x
-		CMP #$09 : BEQ ++
-		CMP #$0A : BNE +
-	++	JSL !GetSpriteClipping00
-		JSL !CheckContact
-		BCC +
+		CMP #$09 : BEQ ..thisone
+		CMP #$0A : BNE ..next
+		..thisone
+		JSL !GetSpriteClipping00
+		JSL !CheckContact : BCC ..next
 		LDA #$02 :  STA !SPC1
 		LDY !SpriteIndex
 		LDA $3320,y : STA $3320,x
@@ -149,8 +150,8 @@ ShieldBearer:
 		LDA DATA_Force,y : STA !SpriteXSpeed,x
 		LDY !SpriteIndex
 		JSL SpriteContactGFX
-	+	DEX : BPL -
-		..NoSprite
+		..next
+		DEX : BPL ..loop
 		LDX !SpriteIndex
 
 
