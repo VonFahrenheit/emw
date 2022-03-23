@@ -33,10 +33,12 @@
 
 		..getblockhitbox
 		LDA !BG_object_Y,x				;\
-		STA $05						; | hitbox Y
+		SEC : SBC #$0004				; | hitbox Y
+		STA $05						; |
 		STA $0B-1					;/
-		LDA #$2020 : STA $06				; hitbox W + H
+		LDA #$282A : STA $06				; hitbox W + H
 		LDA !BG_object_X,x				;\
+		SEC : SBC #$0004				; |
 		STA $0A-1					; | hitbox X
 		SEP #$30					; > all regs 8-bit
 		STA $04						;/

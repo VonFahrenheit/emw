@@ -392,7 +392,7 @@ SPRITE_OFF_SCREEN:
 	..inc	INC !SpriteYSpeed,x				; |
 		RTL						;/
 		..up						;\
-		BIT !SpriteYSpeed,x : BPL ..inc			; |
+		BIT !SpriteYSpeed,x : BPL ..dec			; |
 		CMP !SpriteYSpeed,x : BCS ..inc			; | accel: target up
 	..dec	DEC !SpriteYSpeed,x				; |
 		RTL						;/
@@ -976,7 +976,7 @@ SPRITE_OFF_SCREEN:
 ;	$02 - X speed (sprite format)
 ;	$03 - Y speed (sprite format)
 ;	$04 - pointer to tilemap
-; output: $00 = index to spawned particle
+; output: $0E = index to spawned particle
 	SpawnSpriteTile:
 		PHX						; push X
 		STY $0E						;\ $0E = 16-bit index to tilemap
@@ -1062,7 +1062,7 @@ SPRITE_OFF_SCREEN:
 		LDA #$FF : STA !41_Particle_Timer,x		; particle timer
 		LDA #!prt_spritepart : STA !41_Particle_Type,x	; particle type
 
-		STX $00						; $00 = index to spawned particle
+		STX $0E						; $0E = index to spawned particle
 		SEP #$30					; all regs 8-bit
 		PLX						; restore X
 		RTL						; return

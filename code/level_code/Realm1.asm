@@ -611,12 +611,20 @@ levelinit2F:
 
 
 
-	!CollapseStart	= $0100
+	!CollapseStart	= $11A0
+	!CollapseEnd	= $1C80
 
 
 levelinit32:
 		JSL levelinit6
 		LDA #$02 : STA $41				; enable window 1 on layer 1
+
+	STZ $7FFF
+		LDA $95
+		CMP #$0E : BCS +
+		LDA #$0F : STA !LevelWidth
+		+
+
 
 		LDA #$07 : STA !PalsetStart			; restore this
 
@@ -625,50 +633,41 @@ levelinit32:
 		REP #$20
 		LDA #$0D03 : STA $4320
 		LDA #$0B00 : STA !HDMA2source
-	;	LDA #$2601 : STA $4370				;\ clipping window HDMA
-	;	LDA #$0C00 : STA !HDMA7source			;/
+		LDA #$2601 : STA $4370				;\ clipping window HDMA
+		LDA #$0C00 : STA !HDMA7source			;/
 
 		LDA #!CollapseStart : STA !Level+6		; set starting point for collapsing level
 		STA $0400					; also set for falling columns
 		STZ $0402
 
-		LDA.w #.BigMaskDyn : STA $0C
-		LDY.b #!File_Wizrex
-		CLC : JSL !UpdateFromFile
 		SEP #$20
-
 		STZ !Level+3
 		LDA #$04 : STA !41_WeatherFreq
 
-		STZ $0A80				; clear chunk status
-		STZ $0A87				; reset chunk size, baby!
-		REP #$20				; A 16-bit
-		LDA.w #.ChunkTable : STA $0A81		; set chunk data pointer
-		LDA.w level6_BGColoursEnd		;\ set color 0x02
-		STA $00A2				;/
-		SEP #$20				; A 8-bit
-	;	LDA #$F4 : STA !HDMA			; Enable HDMA on channels 2 and 4 through 7
-	LDA #$74 : STA !HDMA			; Enable HDMA on channels 2 and 4 through 6
+		STZ $0A80					; clear chunk status
+		STZ $0A87					; reset chunk size, baby!
+		REP #$20					; A 16-bit
+		LDA.w #.ChunkTable : STA $0A81			; set chunk data pointer
+		LDA.w level6_BGColoursEnd : STA $00A2		; set color 0x02
+		SEP #$20					; A 8-bit
+		LDA #$F4 : STA !HDMA				; enable HDMA on channels 2 and 4 through 7
 		STZ !SideExit
 		INC $14 : JSL level32_HDMA
 		DEC $14 : JSL level32_HDMA
 		JML level32
-
-	.BigMaskDyn
-		dw ..end-..start
-		..start
-		%generic_dynamo(4, $100, $1CC)
-		%generic_dynamo(4, $110, $1DC)
-		%generic_dynamo(4, $120, $1EC)
-		%generic_dynamo(4, $130, $1FC)
-		..end
 
 
 .ChunkTable	dw $02D0,$0110 : db $06		; X, Y, size
 
 
 levelinit33:
-		RTL
+		LDA $95 : BNE +
+		LDA #$80
+		STA !P2YSpeed-$80
+		STA !P2YSpeed
+		STA !MarioYSpeed
+		+
+		JMP level33
 
 
 levelinit38:
@@ -2242,8 +2241,7 @@ level27:
 
 
 		LDA !Room
-		ASL A
-		TAX
+		ASL A : TAX
 		JSR (.RoomCode,x)
 		REP #$20
 		LDA.w #.RoomPointers : JML LoadCameraBox
@@ -3211,31 +3209,74 @@ level2F:
 
 
 level32:
-		LDA.b #.HDMA : STA.l !HDMAptr+0
-		LDA.b #.HDMA>>8 : STA.l !HDMAptr+1
-		LDA.b #.HDMA>>16 : STA.l !HDMAptr+2
-
-
 		REP #$20
+		LDA.w #.HDMA : STA.l !HDMAptr+0
+		LDA.w #.HDMA>>8 : STA.l !HDMAptr+1
 		LDA #$0080 : STA !LightR
 		LDA #$0100 : STA !LightG
 		LDA #$00E0 : STA !LightB
 		SEP #$20
+		LDA #$02 : JSL Weather
+
+		LDA $1B
+		CMP #$0E : BNE .NoExit
+		REP #$20
+		LDA #$00A0 : JSL EXIT_Up
+		.NoExit
+
+		REP #$20
+		LDA #$1FE8 : JSL END_Right
 
 
 
+		.DestroyChunk
+		LDA #$01				;\
+		AND $0A80 : BNE ..done			; |
+		LDA #$06 : JSL SearchSprite_Custom	; |
+		BMI ..done				; |
+		LDA $3280,x				; | load chunks when adept shaman dies
+		AND #$03				; |
+		CMP #$02 : BNE ..done			; |
+		LDA #$01 : JSL LoadChunk		; |
+		..done					;/
+
+		LDA $0A87 : BEQ .Return
+		LDA $14
+		AND #$1F : BNE $04 : JML DestroyChunk
+
+		.Return
+		RTL
+
+
+
+		.HDMA
+		PHB : PHK : PLB
+		PHP
+		SEP #$30
+
+		LDA $14
+		AND #$01
+		BEQ $02 : LDA #$10
+		TAX
+		LDA $1F						;\
+		LSR A : STA $0A08,x				; | update BG2 Hscroll
+		LDA $1E						; |
+		ROR A : STA $0A07,x				;/
+		STX !HDMA6source				; update source for BG2
+
+		; ritual casters
 		LDA #$7F : TRB !Level+4
 		LDX #$0F
 	-	LDA $3230,x
 		CMP #$08 : BNE +
-		LDA $3590,x
+		LDA !ExtraBits,x
 		AND #$08 : BEQ +
-		LDA $35C0,x
+		LDA !NewSpriteNum,x
 		CMP #$05 : BNE +
-		LDA $3250,x
+		LDA !SpriteXHi,x
 		CMP #$0D : BNE +
 		LDA $BE,x : BNE +
-		LDA $3220,x
+		LDA !SpriteXLo,x
 		ASL A
 		ROL A
 		AND #$01
@@ -3244,145 +3285,7 @@ level32:
 		LDA #$0F : STA $32D0,x
 	+	DEX : BPL -
 
-		REP #$20
-		LDA !Level+3
-		ASL A
-		AND #$00FF
-		STA $02
-		LDA #$0D70
-		SEC : SBC $1A
-		CMP #$0100 : BCC .GoodX
-		CMP #$FFE0 : BCS $03 : JMP .Nope
-	.GoodX	STA $00
-		CLC : ADC #$0010
-		STA $0E
-		LDA $14
-		AND #$00FF
-		LSR #4
-		SEC : SBC #$0008
-		BPL $03 : EOR #$FFFF
-		CLC : ADC #$0108
-		SEC : SBC $1C
-		SEC : SBC $02
-		CMP #$00D8 : BCC .GoodY
-		CMP #$FFE0 : BCS $03 : JMP .Nope
-	.GoodY	LDY !OAMindex
-		SEP #$20
-		STA !OAM+$01,y
-		STA !OAM+$05,y
-		CLC : ADC #$10
-		STA !OAM+$09,y
-		STA !OAM+$0D,y
-		LDA $00
-		STA !OAM+$00,y
-		STA !OAM+$08,y
-		LDA $0E
-		STA !OAM+$04,y
-		STA !OAM+$0C,y
-		LDA #$CC : STA !OAM+$02,y
-		LDA #$CE : STA !OAM+$06,y
-		LDA #$EC : STA !OAM+$0A,y
-		LDA #$EE : STA !OAM+$0E,y
-		LDA #$39
-		STA !OAM+$03,y
-		STA !OAM+$07,y
-		STA !OAM+$0B,y
-		STA !OAM+$0F,y
-
-		LDA !Level+4
-		AND #$03 : BNE +
-		INC !Level+3
-		LDA !Level+4 : BMI +
-		ORA #$80
-		STA !Level+4
-		REP #$20
-		LDA #$0D60 : STA $0A83
-		LDA #$0130 : STA $0A85
-		JSL PuffTile
-		LDA #$0D70 : STA $0A83
-		JSL PuffTile
-		LDA #$0D80 : STA $0A83
-		JSL PuffTile
-		LDA #$0D90 : STA $0A83
-		JSL PuffTile
-		SEP #$20
-		LDA #$10 : STA !SPC1			; magikoopa sound
-
-	+	TYA
-		CLC : ADC #$10
-		STA !OAMindex
-		SEC : SBC #$10
-		LSR #2
-		TAY
-		LDA $01
-		AND #$01
-		ORA #$02
-		STA !OAMhi+0,y
-		STA !OAMhi+2,y
-		LDA $0F
-		AND #$01
-		ORA #$02
-		STA !OAMhi+1,y
-		STA !OAMhi+3,y
-		LDA #$03 : JSL Weather
-		BRA .WeatherDone
-
-	.Nope	SEP #$20
-		LDA #$02 : JSL Weather
-		.WeatherDone
-
-
-		LDA $1B
-		CMP #$0E : BNE .NoExit
-		REP #$20
-		LDA #$00A0 : JSL EXIT_Up
-		.NoExit
-
-
-		LDA #$01				;\
-		AND $0A80 : BNE ++			; |
-		LDX #$0F				; |
-	-	LDA $3230,x : BEQ +			; |
-		LDA $35C0,x				; |
-		CMP #$06 : BNE +			; |
-		LDA $3280,x				; | load chunks when adept shamans die
-		AND #$03				; |
-		CMP #$02 : BNE +			; |
-		LDA #$01 : JSL LoadChunk		; |
-		BRA ++					; |
-	+	DEX : BPL -				; |
-		++					;/
-
-		LDA $0A87 : BEQ .Return
-		LDA $14
-		AND #$1F : BNE $04 : JML DestroyChunk
-
-	.Return	RTL
-
-
-
-		.HDMA
-		PHB : PHK : PLB
-		PHP
 		REP #$30
-
-
-	SEP #$30
-	LDA $14
-	AND #$01
-	ASL #4
-	TAX
-	LDA $1F						;\
-	LSR A						; |
-	STA $0A08,x					; | Update BG2 Hscroll
-	LDA $1E						; |
-	ROR A						; |
-	STA $0A07,x					;/
-	STX !HDMA6source				; update source for BG2
-	PLP
-	PLB
-	RTL
-
 
 
 		LDA $0402 : BNE $03 : JMP .NotCollapsingYet
@@ -3499,17 +3402,28 @@ level32:
 
 		.NotCollapsingYet
 		LDA $1A
-		CMP #!CollapseStart : BCS $03 : JMP .HandleColumns_done
+		CMP #!CollapseStart : BCS .CheckTimer
+	-	JMP .HandleColumns_done
 		.CheckTimer
+
+		SEP #$30
+		LDA #$06 : JSL SearchSprite_Custom
+		REP #$30
+		LDA $3570,x
+		AND #$00FF : BNE -
 
 		LDA #$001F : STA $00
 		LDA !Level+6
+		CMP.w #!CollapseEnd : BCS ..nospawn
 		CMP $1A : BCS +
 		LDA #$0007 : STA $00
 		+
 
 		LDA $14
-		AND $00 : BEQ $03 : JMP .NoCollapse
+		AND $00 : BEQ ..spawnnew
+		..nospawn
+		JMP .NoCollapse
+		..spawnnew
 
 		LDX $0402					;\
 		STZ $0404,x					; |
@@ -3580,25 +3494,16 @@ level32:
 	..down	STA $0404,x
 		TAY
 		LDA .ChunkY,y
-		AND #$00FF
-		STA $0406,x
+		AND #$00FF : STA $0406,x
 		BRA ..loop
 		..done
 
 		SEP #$30
 		LDA $14
 		AND #$01
-		ASL #4
+		BEQ $02 : LDA #$10
 		TAX
-		LDA $1F						;\
-		LSR A						; |
-		STA $0A08,x					; | Update BG2 Hscroll
-		LDA $1E						; |
-		ROR A						; |
-		STA $0A07,x					;/
-		STX !HDMA6source				; update source for BG2
 		STX !HDMA2source				; update source for BG1
-
 		LDA #$01 : STA $0B00,x
 		STZ $0B05,x
 
@@ -3606,8 +3511,7 @@ level32:
 		AND #$01
 		LSR A
 		ROR A
-		AND #$80
-		TAX
+		AND #$80 : TAX
 		STX !HDMA7source				; update source for clipping window
 		LDA #$01 : STA $0C00,x				;\
 		LDA #$FF : STA $0C01,x				; | pre-emptively disable clipping window
@@ -3741,7 +3645,11 @@ level32:
 		STA $00
 
 		LDA $0400
+		CMP.w #!CollapseEnd : BCS ..generatewindow
+
 		CMP !Level+6 : BNE $03 : JMP ..done	; exception: collapse has not started yet
+
+		..generatewindow
 		SEC : SBC $1A
 		BPL $03 : LDA #$0000
 		CMP #$00FF
@@ -3925,6 +3833,11 @@ level32:
 
 level33:
 		STZ !SideExit
+
+		REP #$20
+		LDA #$0270 : JSL EXIT_Down
+
+
 		; LDA !StoryFlags+$02
 		; ORA #$80 : STA !StoryFlags+$02
 		; LDA #$80 : TSB !LevelTable4+$03		; unlock dinolord's domain
@@ -3951,21 +3864,28 @@ level33:
 .BoxTable
 .Box0	%CameraBox(0, 0, 1, 0, $FF, 0, 0)
 .Box1	%CameraBox(2, 0, 0, 0, $FF, 0, 0)
-.Box2	%CameraBox(3, 0, 2, 0, $FF, 0, 0)
-.Box3	%CameraBox(2, 1, 0, 1, $FF, 0, 0)
+.Box2	%CameraBox(2, 1, 0, 1, $FF, 0, 0)
+.Box3	%CameraBox(3, 0, 2, 2, $FF, 0, 0)
+.Box4	%CameraBox(6, 0, 1, 2, $FF, 0, 0)
+.Box5	%CameraBox(8, 0, 5, 2, $FF, 0, 0)
 
-.ScreenMatrix	db $00,$00,$01,$02,$02,$02,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-		db $00,$00,$03,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-		db $00,$00,$03,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+.ScreenMatrix	db $00,$00,$01,$03,$03,$03,$04,$04,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05
+		db $00,$00,$02,$03,$03,$03,$04,$04,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05
+		db $00,$00,$02,$03,$03,$03,$04,$04,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05
 
-.DoorList	db $00,$FF		; door 0 in room 0
-		db $00,$01,$FF		; doors 0 and 1 in room 1
-		db $01,$FF		; door 1 in room 2
+.DoorList	db $00,$FF		; room 0: door 0
+		db $00,$01,$FF		; room 1: doors 0 and 1
+		db $FF			; room 2: no doors
+		db $01,$02,$FF		; room 3: doors 1 and 2
+		db $02,$03,$FF		; room 4: doors 2 and 3
+		db $03,$FF		; room 5: door 3
 		db $80			; no more doors
 
 .DoorTable
 .Door0		%Door(2, 0)
 .Door1		%Door(3, 0)
+.Door2		%SideDoor(6, 0)
+.Door3		%SideDoor(8, 0)
 
 
 

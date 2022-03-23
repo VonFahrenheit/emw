@@ -1335,6 +1335,11 @@ Camera:
 	+	RTS
 
 
+
+; $08 = left border
+; $0A = top border
+; $0C = right border
+; $0E = bottom border
 		.Forbiddance
 		LDX !CameraForbiddance
 		CPX #$FF : BEQ .Process_R
@@ -1342,7 +1347,7 @@ Camera:
 		AND #$003F
 		TAX
 
-		LDA !CameraBoxU : STA $0A	; forbiddance top border start
+		LDA !CameraBoxU : STA $0A	; > forbiddance top border start
 		LDA !CameraBoxL
 	-	CPX #$00 : BEQ +
 		DEX
@@ -1351,17 +1356,17 @@ Camera:
 		CMP !CameraBoxR : BCC - : BEQ -
 		LDA $0A
 		CLC : ADC #$00E0
-		STA $0A				; forbiddance top border
+		STA $0A				; > forbiddance top border
 		LDA !CameraBoxL
 		BRA -
 
-	+	STA $08				; forbiddance left border
+	+	STA $08				; > forbiddance left border
 		LDA !CameraForbiddance
 		ASL #2
 		AND #$1F00
 		CLC : ADC $08
 		CLC : ADC #$0100
-		STA $0C				; forbiddance right border
+		STA $0C				; > forbiddance right border
 		LDA !CameraForbiddance
 		AND #$F800
 		LSR #3
@@ -1372,7 +1377,7 @@ Camera:
 		SEC : SBC $0E
 		CLC : ADC $0A
 		CLC : ADC #$00E0
-		STA $0E				; forbiddance bottom border
+		STA $0E				; > forbiddance bottom border
 
 
 		LDA $1A
@@ -1384,7 +1389,7 @@ Camera:
 		ADC #$00E0
 		CMP $0A : BCC .NoForbid
 
-
+	; probably limit Y then X
 		LDX #$02
 	-	LDA $08,x
 		CLC : ADC $0C,x
@@ -1408,6 +1413,9 @@ Camera:
 		LDA $04
 		CMP $06
 		BCC $02 : LDX #$02
+		; X = 0x00 -> adjust horizontally
+		; X = 0x02 -> adjust vertically
+
 		LDA $00,x
 		CMP !CameraBoxL,x : BNE +
 		TXA

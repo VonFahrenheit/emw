@@ -17,6 +17,7 @@
 	!WizrexTargetPlayer	= $3540
 	!WizrexAttackTimer	= $3550
 	!WizrexInvincTimer	= $3560
+	!WizrexCastFlash	= $3570
 
 
 
@@ -77,9 +78,8 @@ Wizrex:
 
 
 		LDA #!palset_special_wizrex : JSL LoadPalset	;\
-		LDA !Palset_status+!palset_special_wizrex	; | get palset
-		ASL A						; |
-		STA $33C0,x					;/
+		LDA !addr_palset_special_wizrex			; | get palset
+		ASL A : STA $33C0,x				;/
 
 
 	; get palette data
@@ -169,6 +169,7 @@ Wizrex:
 
 		%decreg(!WizrexAttackTimer)
 		%decreg(!WizrexInvincTimer)
+		%decreg(!WizrexCastFlash)
 
 		LDA !ExtraBits,x				;\ check for mask
 		AND #$04 : BNE .Mask				;/
@@ -214,9 +215,10 @@ Wizrex:
 		.Mask						;\
 		LDA #$20					; |
 		STA $32E0,x					; |
-		STA $35F0,x					; | big mask code
+		STA $35F0,x					; |
+		LDA !ExtraProp1,x : BNE +			; | big mask code
 		JSR Chase					; |
-		JSR Mask3D					; |
+	+	JSR Mask3D					; |
 		JSL !SpriteApplySpeed-$10			; |
 		JSL !SpriteApplySpeed-$8			;/
 		PLB
@@ -234,13 +236,24 @@ Wizrex:
 
 	GRAPHICS:
 
-		LDA !WizrexState,x
-		CMP #$02 : BNE .NotDead
-		LDA !WizrexFlyTimer,x : BPL .NotDead
-		AND #$02 : BEQ .NoSet
-		LDA #$0A : STA $33C0,x
-	.NoSet	STZ !WizrexInvincTimer,x
-		.NotDead
+		.GetPalette
+		LDA !WizrexCastFlash,x : BNE ..flash		; flash timer
+		LDA !WizrexState,x				;\
+		CMP #$02 : BNE ..normal				; | can flash green during death
+		LDA !WizrexFlyTimer,x : BPL ..normal		; |
+		AND #$02 : BEQ ..noflash			;/
+		..flash						;\ green
+		LDA #!palset_special_flash_caster : JSL LoadPalset
+		LDA !addr_palset_special_flash_caster
+		ASL A : STA $33C0,x				;/
+		..noflash					;\ no invinc flash when green
+		STZ !WizrexInvincTimer,x			;/
+		BRA ..done
+		..normal
+		LDA #!palset_special_wizrex : JSL LoadPalset
+		LDA !addr_palset_special_wizrex
+		ASL A : STA $33C0,x				;/
+		..done
 
 
 		JSL SETUP_SQUARE				; set up dynamic draw
@@ -317,9 +330,8 @@ Wizrex:
 		JSL LOAD_DYNAMIC				;/
 
 		.Return
-		LDA !Palset_status+!palset_special_wizrex	;\
-		ASL A						; | default to wizrex palset
-		STA $33C0,x					;/
+		LDA !addr_palset_special_wizrex			;\ default to wizrex palset
+		ASL A : STA $33C0,x				;/
 
 		PLB						; bank wrapper end
 		RTL						; return
@@ -434,8 +446,8 @@ Wizrex:
 
 	Statue:
 		LDX !SpriteIndex				; X = sprite index
-		LDA $3250,x : XBA				;\
-		LDA $3220,x					; |
+		LDA !SpriteXHi,x : XBA				;\
+		LDA !SpriteXLo,x				; |
 		REP #$20					; |
 		STA $00						; |
 		SEC : SBC !P2XPosLo-$80				; |
@@ -542,7 +554,15 @@ Wizrex:
 
 
 	Death:
+		LDY !SpriteIndex				;\
+		LDX $33F0,y					; |
+		CPX #$FF : BEQ +				; | never respawn
+		LDA #$EE : STA !SpriteLoadStatus,x		; |
+		+						;/
+
 		LDX !SpriteIndex				; X = sprite index
+		STZ !SpriteTweaker4,x				;\ despawn off-screen
+		JSL SPRITE_OFF_SCREEN				;/
 		LDA $3330,x					;\
 		AND #$04 : BEQ .AnimDone			; |
 		.Land						; |
@@ -641,8 +661,7 @@ Wizrex:
 		..init						; |
 		ORA #$80 : STA !WizrexMovement,x		; |
 		LDA !RNG					; |
-		AND #$80					; |
-		STA !WizrexTargetPlayer,x			; | init target player + attack timer
+		AND #$80 : STA !WizrexTargetPlayer,x		; | init target player + attack timer
 		LDA !RNG					; |
 		AND #$3F					; |
 		ORA #$40					; |
@@ -652,11 +671,8 @@ Wizrex:
 
 		LDA !ExtraBits,x				;\
 		AND #$04 : BEQ ..caster				; |
-		..mask						; |
-		LDA !RNG					; | attack for mask
-		AND #$02					; |
-		ORA #$04					; |
-		STA !WizrexMovement,x				; |
+		..mask						; | attack for mask (none)
+		STZ !WizrexMovement,x				; |
 		RTS						;/
 
 		..caster					;\
@@ -677,6 +693,7 @@ Wizrex:
 		LDY !WizrexTargetPlayer,x			; target player
 		LDA !P2XPosLo-$80,y : STA !WizrexTargetXLo,x	;\ target X
 		LDA !P2XPosHi-$80,y : STA !WizrexTargetXHi,x	;/
+
 
 		..anim						;\
 		LDA !SpriteAnimIndex				; |
@@ -714,20 +731,33 @@ Wizrex:
 		STZ !SpriteAnimTimer				; |
 		..animdone					;/
 
-		LDY !WizrexTargetPlayer,x			;\
+	;	LDY !WizrexTargetPlayer,x			; Y is already player index
+		LDA !ExtraBits,x				;\
+		AND #$04					; |
 		REP #$20					; |
+		BEQ ..castery					; |
+		..masky						; |
+		LDA !P2YPosLo-$80,y : BRA ..settargety		; | target Y
+		..castery					; |
 		LDA !P2YPosLo-$80,y				; |
-		SEC : SBC #$0040				; | target Y
+		SEC : SBC #$0040				; |
+		..settargety					; |
 		SEP #$20					; |
 		STA !WizrexTargetYLo,x				; |
 		XBA : STA !WizrexTargetYHi,x			;/
 		LDY #$00					;\
 		LDA !SpriteYLo,x				; |
 		CMP !WizrexTargetYLo,x				; |
-		LDA !SpriteYHi,x				; | Y speed
+		LDA !SpriteYHi,x : BMI +			; | Y speed
 		SBC !WizrexTargetYHi,x				; |
 		BCC $01 : INY					; |
-		LDA DATA_HoverY,y : JSL AccelerateY		;/
+	+	LDA !ExtraBits,x
+		AND #$04 : BEQ +
+		LDA $14
+		AND #$01 : BNE ++
+		INY #2
+	+	LDA DATA_HoverY,y : JSL AccelerateY_Unlimit1	;/
+		++
 
 		..move						;\
 		LDY !WizrexTargetPlayer,x			; | facing dir
@@ -753,7 +783,13 @@ Wizrex:
 		JSL AccelerateX_Friction2			; |
 		BRA ..accelxdone				; |
 		..accelx					; |
-		LDA DATA_HoverX,y : JSL AccelerateX_Unlimit1	; |
+		LDA !ExtraBits,x
+		AND #$04 : BEQ +
+		LDA $14
+		AND #$01 : BNE ++
+		INY #2
+	+	LDA DATA_HoverX,y : JSL AccelerateX_Unlimit1	; |
+		++
 		..accelxdone					;/
 
 		LDA #$FD : STA !SpriteGravityMod,x		;\ negate gravity
@@ -770,9 +806,9 @@ Wizrex:
 		LDX !SpriteIndex				; X = sprite index
 		LDA !WizrexMovement,x : BPL ..init		;\
 		..main						; |
-		LDA $3210,x					; |
+		LDA !SpriteYLo,x					; |
 		CMP !WizrexTargetYLo,x				; |
-		LDA $3240,x					; |
+		LDA !SpriteYHi,x					; |
 		SBC !WizrexTargetYHi,x				; |
 		BPL ..ascend					; | main code
 		LDA !SpriteYSpeed,x : BMI +			; |
@@ -799,12 +835,10 @@ Wizrex:
 		LDX !SpriteIndex				; X = sprite index
 		LDA !WizrexMovement,x : BMI ..main		;\
 		..init						; |
-		ORA #$80 : STA !WizrexMovement,x		; | init target player
-		LDA !RNG					; |
-		AND #$80					; |
-		STA !WizrexTargetPlayer,x			;/
-		TAY						;\
-		JSL SUB_HORZ_POS_Target				; | init speeds
+		ORA #$80 : STA !WizrexMovement,x		; |
+		LDA #$08 : STA !WizrexCastFlash,x		; |
+		LDY !WizrexTargetPlayer,x			; | init
+		JSL SUB_HORZ_POS_Target				; |
 		LDA DATA_GrindSpeed+0,y : STA !SpriteXSpeed,x	; |
 		STZ !SpriteYSpeed,x				;/
 		LDA #!Wizrex_Rise : STA !SpriteAnimIndex	;\
@@ -947,25 +981,9 @@ Wizrex:
 	.SpraySetup
 		LDX !SpriteIndex				; X = sprite index
 		LDA !WizrexMovement,x : BMI ..main		;\
-		..init						; |
+		..init						; | init
 		ORA #$80 : STA !WizrexMovement,x		; |
-		LDA !RNG					; | init
-		AND #$80 : STA !WizrexTargetPlayer,x		; |
-		BRA ..move					; > always move on first frame
-		..main						;/
-		LDA !WizrexTargetXLo,x : STA $00		;\
-		LDA !WizrexTargetXHi,x : STA $01		; |
-		LDA !SpriteXHi,x : XBA				; |
-		LDA !SpriteXLo,x				; |
-		REP #$20					; | move until wizrex is within 8px of target
-		SEC : SBC $00					; |
-		CLC : ADC #$0008				; |
-		CMP #$0010					; |
-		SEP #$20					; |
-		BCS ..move					;/
-		LDA #$05 : STA !WizrexMovement,x		;\ start spray
-		RTS						;/
-
+		LDA #$08 : STA !WizrexCastFlash,x		;/
 		..move						;\
 		LDY !WizrexTargetPlayer,x			; |
 		JSL SUB_HORZ_POS_Target				; |
@@ -980,6 +998,20 @@ Wizrex:
 		XBA : STA !WizrexTargetXLo,x			;/
 		LDY !WizrexTargetPlayer,x			;\ move + anim
 		JMP .Hover_anim					;/
+
+		..main						;\
+		LDA !WizrexTargetXLo,x : STA $00		; |
+		LDA !WizrexTargetXHi,x : STA $01		; |
+		LDA !SpriteXHi,x : XBA				; |
+		LDA !SpriteXLo,x				; |
+		REP #$20					; | move until wizrex is within 8px of target
+		SEC : SBC $00					; |
+		CLC : ADC #$0008				; |
+		CMP #$0010					; |
+		SEP #$20					; |
+		BCS ..move					;/
+		LDA #$05 : STA !WizrexMovement,x		;\ start spray
+		RTS						;/
 
 
 	.Spray
@@ -1111,7 +1143,7 @@ Wizrex:
 		CMP #$48 : BCS ..firedone			;/
 		SEC : SBC $2306					;\
 		CLC : ADC #$12					; |
-		CMP #$48					; | fire at angle $12 (straight up)
+		CMP #$48					; | fire orb when it's at angle $12 (straight up)
 		BCC $02 : SBC #$48				; |
 		CMP #$00 : BNE ..firedone			;/
 		..fire						;\ decrement orb count
@@ -1517,13 +1549,12 @@ Wizrex:
 
 		LDY #$02
 		JSL SpawnSpriteTile
-		LDY #$07
-		LDA.w $F0,y
+		LDA $F0+7
 		REP #$10
-		LDX $00
+		LDX $0E
 		STA !41_Particle_Tile,x
 		LDA !41_Particle_Prop,x
-		AND #$0E^$FF
+		AND #$0F^$FF
 		ORA #$08
 		ORA !DynamicProp,y
 		STA !41_Particle_Prop,x
@@ -1535,9 +1566,11 @@ Wizrex:
 	DATA:
 
 	.HoverX
-		db $40,$C0
+		db $40,$C0		; wizrex
+		db $40,$C0		; mask
 	.HoverY
-		db $10,$F0
+		db $10,$F0		; wizrex
+		db $20,$E0		; mask
 
 	.GrindSpeed
 		db $E0,$20
@@ -1565,10 +1598,205 @@ Wizrex:
 
 
 	Mask3D:
-		LDA $3220,x : STA.l !3D_X+0
-		LDA $3250,x : STA.l !3D_X+1
-		LDA $3210,x : STA.l !3D_Y+0
-		LDA $3240,x : STA.l !3D_Y+1
+		LDA !SpriteXHi,x
+		CMP #$1C : BNE +
+		LDA !SpriteXLo,x
+		CMP #$60 : BCC +
+		LDA #$60 : STA !SpriteXLo,x
+		+
+
+
+		REP #$20
+		LDA !ExtraProp1,x
+		AND #$00FF
+		ASL A : TAY
+		LDA .StatePtr,y
+		DEC A : PHA
+		SEP #$20
+		RTS
+
+		.StatePtr
+		dw .ActiveMask			; 00
+		dw .WaitForCasters		; 01
+		dw .MoveUp			; 02
+		dw .WaitForKeyInit		; 03
+		dw .WaitForKey			; 04
+		dw .ShakeIntoActivity		; 05
+		dw .WarningFlash		; 06
+
+		.ShakeIntoActivity
+		PHB
+		LDA.b #!3D_Base>>16
+		PHA : PLB
+
+		LDA $14
+		LSR A : BCC ++
+		LSR A
+		SEC : SBC #$20
+		BPL $03 : EOR #$FF : INC A
+		CLC : ADC #$20
+		CMP.w !3D_Distance+$11 : BCC +
+		STA.w !3D_Distance+$11
+	+	DEC.w !3D_Distance+$11
+		CMP.w !3D_Distance+$21 : BCC +
+		STA.w !3D_Distance+$21
+	+	DEC.w !3D_Distance+$21
+		CMP.w !3D_Distance+$31 : BCC +
+		STA.w !3D_Distance+$31
+	+	DEC.w !3D_Distance+$31
+		CMP.w !3D_Distance+$41 : BCC +
+		STA.w !3D_Distance+$41
+	+	DEC.w !3D_Distance+$41
+		++
+
+		LDA.w !3D_AngleXZ+$10
+		BEQ $03 : INC.w !3D_AngleXZ+$10
+		LDA.w !3D_AngleXZ+$20
+		CMP #$40
+		BEQ $03 : INC.w !3D_AngleXZ+$20
+		LDA.w !3D_AngleXZ+$30
+		CMP #$80
+		BEQ $03 : INC.w !3D_AngleXZ+$30
+		LDA.w !3D_AngleXZ+$40
+		CMP #$C0
+		BEQ $03 : INC.w !3D_AngleXZ+$40
+
+		PLB
+
+		LDA $32D0,x : BNE +
+		STZ !ExtraProp1,x
+	+	AND #$02
+		DEC A
+		CLC : ADC !SpriteXLo,x
+		STA !SpriteXLo,x
+		JMP .DrawCluster
+
+		.WaitForKeyInit
+		LDA #$80 : STA !3D_AngleXZ+$10
+		LDA #$00 : STA !3D_AngleXZ+$20
+		LDA #$20 : STA !3D_AngleXZ+$30
+		LDA #$60 : STA !3D_AngleXZ+$40
+		LDA #$5A
+		STA !3D_Distance+$31
+		STA !3D_Distance+$41
+		LDA #$40
+		STA !3D_Distance+$11
+		STA !3D_Distance+$21
+
+		REP #$20					;\
+		LDA !3D_TilemapCache+(3*2) : STA $00		; |
+		LDA !3D_TilemapCache+(4*2) : STA $02		; |
+		SEP #$20					; | flip masks
+		LDY #$02					; |
+		LDA #$75					; |
+		STA ($00),y					; |
+		STA ($02),y					;/
+
+		REP #$20
+		LDA.w #.BigMaskDynIdle : STA $0C
+		SEP #$20
+		JSL SETUP_SQUARE
+		LDY.b #!File_Wizrex : JSL LOAD_SQUARE_DYNAMO
+		INC !ExtraProp1,x
+
+		.WaitForKey
+		LDY #$0F
+	-	LDA $3230,y
+		CMP #$0B : BNE +
+		LDA !ExtraBits,y
+		AND #$08 : BNE +
+		LDA $3200,y
+		CMP #$80 : BNE +
+		LDA $1C
+		ORA $1D : BNE +
+		LDA #$F1 : STA $32D0,x
+		INC !ExtraProp1,x
+		JMP .DrawCluster
+	+	DEY : BPL -
+		JMP .DrawCluster
+
+		.WarningFlash
+		LDA #$9F : STA !WizrexCastFlash,x
+		STZ !ExtraProp1,x
+		BRA .ActiveMask
+
+		.MoveUp
+		STZ !SpriteTweaker4,x
+		JSL SPRITE_OFF_SCREEN
+		LDA #$F0 : STA !SpriteYSpeed,x
+		JSL !SpriteApplySpeed-$10
+		BRA .Draw
+
+		.WaitForCasters
+		LDY #$0F
+	-	LDA $3230,y : BEQ +
+		LDA !SpriteXHi,y
+		CMP !SpriteXHi,x : BNE +
+		LDA !ExtraBits,y
+		AND #$08 : BEQ +
+		LDA !NewSpriteNum,y
+		CMP #$05 : BNE +
+		LDA.w $BE,y : BEQ +
+		INC !ExtraProp1,x
+		BRA .Draw
+	+	DEY : BPL -
+
+		.Draw
+		LDA $14
+		LSR #4
+		SEC : SBC #$08
+		BPL $02 : EOR #$FF
+		SEC : SBC #$03
+		STA !SpriteYSpeed,x
+		LDA $14
+		LSR A : BCC +
+		DEC !SpriteYSpeed,x
+		+
+		STZ !SpriteXSpeed,x
+		..nospeed
+		JSL SETUP_SQUARE
+		REP #$20
+		LDA.w #.BigMask : STA $04
+		LDA.w #.BigMaskDynIdle : STA $0C
+		SEP #$20
+		LDY.b #!File_Wizrex : JSL LOAD_SQUARE_DYNAMO
+		JSL LOAD_DYNAMIC
+		RTS
+
+
+
+
+		.ActiveMask
+		LDA !SpriteXLo,x : STA $04
+		LDA !SpriteXHi,x : STA $0A
+		LDA !SpriteYLo,x : STA $05
+		LDA !SpriteYHi,x : STA $0B
+		LDA #$10
+		STA $06
+		STA $07
+		SEC : JSL !PlayerClipping
+		BCC ..nocontact
+		JSL !HurtPlayers
+		..nocontact
+
+
+		LDA !WizrexCastFlash,x : BEQ +
+		LSR #3 : TAX
+		LDA.l $00E292,x
+		LDX !SpriteIndex
+		AND !WizrexCastFlash,x : BNE +
+		LDA #!palset_special_flash_caster : JSL LoadPalset
+		LDA !addr_palset_special_flash_caster
+		ASL A : BRA ++
+	+	LDA #$08
+	++	STA $33C0,x
+
+
+
+		LDA !SpriteXLo,x : STA.l !3D_X+0
+		LDA !SpriteXHi,x : STA.l !3D_X+1
+		LDA !SpriteYLo,x : STA.l !3D_Y+0
+		LDA !SpriteYHi,x : STA.l !3D_Y+1
 
 		PHB
 		LDA.b #!3D_Base>>16 : PHA : PLB
@@ -1598,36 +1826,8 @@ Wizrex:
 		PLB
 
 
-		LDY.b #.Start-.Ptr-1
-	-	LDA .Ptr,y : STA !3D_TilemapCache,y
-		DEY : BPL -
-		REP #$20
-		LDA.w #!3D_TilemapCache : STA.l !3D_TilemapPointer
-		SEP #$20
-
-		JSR .GFX
-
-		LDA !WizrexCircleStatus,x : BMI .NoCircle	;\
-		LDA !WizrexMovement,x				; |
-		AND #$9F					; | draw circle spell
-		CMP #$86 : BNE .NoCircle			; |
-		JSR GRAPHICS_CircleCast				; |
-		.NoCircle					;/
-
-		LDA $3320,x : JSL !Update3DCluster
-
-		REP #$20
-		LDA.w #!BigRAM : STA $04
-		SEP #$20
-		JSL SETUP_SQUARE
-		JSL LOAD_DYNAMIC
-		RTS
-
-	; DO NOT flow into GFX here! we need to call GFX before updating the 3D cluster and loading tilemap
-
 		.GFX
 		PHP
-
 		SEP #$20
 		LDA !SpriteXSpeed,x
 		ASL A
@@ -1650,10 +1850,41 @@ Wizrex:
 		LDY.b #!File_Wizrex
 		JSL LOAD_SQUARE_DYNAMO
 		PLP
+
+		LDA !WizrexCircleStatus,x : BMI ..nocircle	;\
+		LDA !WizrexMovement,x				; |
+		AND #$9F					; | draw circle spell
+		CMP #$86 : BNE ..nocircle			; |
+		JSR GRAPHICS_CircleCast				; |
+		..nocircle					;/
+
+
+		.ReloadCluster
+		LDY.b #.Start-.Ptr-1
+	-	LDA .Ptr,y : STA !3D_TilemapCache,y
+		DEY : BPL -
+
+		.DrawCluster
+		REP #$20
+		LDA.w #!3D_TilemapCache : STA.l !3D_TilemapPointer
+		SEP #$20
+		LDA $3320,x : JSL !Update3DCluster
+		REP #$20
+		LDA.w #!BigRAM : STA $04
+		SEP #$20
+		JSL SETUP_SQUARE
+		JSL LOAD_DYNAMIC
 		RTS
 
 
+
 		.Init
+		LDA !SpriteXLo,x
+		ORA #$08 : STA !SpriteXLo,x
+		LDY.b #.Start-.Ptr-1
+	-	LDA .Ptr,y : STA !3D_TilemapCache,y
+		DEY : BPL -
+
 		PHX
 		LDX #$00
 	-	LDA.w .Start,x : STA.l !3D_Base,x
@@ -1718,16 +1949,16 @@ Wizrex:
 
 		.BigMask
 		dw $0010
-		db $39,$F8,$F8,$00
-		db $39,$08,$F8,$01
-		db $39,$F8,$08,$02
-		db $39,$08,$08,$03
+		db $22,$F8,$F8,$00
+		db $22,$08,$F8,$01
+		db $22,$F8,$08,$02
+		db $22,$08,$08,$03
 		.BigMaskX
 		dw $0010
-		db $79,$08,$F8,$00
-		db $79,$F8,$F8,$01
-		db $79,$08,$08,$02
-		db $79,$F8,$08,$03
+		db $62,$08,$F8,$00
+		db $62,$F8,$F8,$01
+		db $62,$08,$08,$02
+		db $62,$F8,$08,$03
 		.Mask1
 		dw $0004
 		db $35,$00,$00,$04
@@ -1822,6 +2053,17 @@ Wizrex:
 
 
 	.Target
+		LDA !ExtraBits,x
+		AND #$04 : BEQ ..aim
+		LDA !RNG
+		AND #$1F
+		SBC #$10
+		STA $02
+		LDA #$20 : STA $03
+		BRA CAST
+
+
+		..aim
 		PEI ($00)
 
 		LDA $01 : STA $02

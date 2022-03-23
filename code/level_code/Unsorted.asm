@@ -537,15 +537,16 @@ LoadCameraBox:
 		REP #$20					;\
 		LDA ($0E),y					; |
 		STX $00						; |
-		AND #$00FE : TAX				; |
-		LDA.l .VerticalScreens,x			; | get door box X
+		PHA						; > push side bit
+		AND #$00FE : TAX				; > clear side bit
+		LDA.l .VerticalScreens,x			; | get door box Y
 		LDX $00						; |
 		CLC : ADC #$00A0				; |
 		STA $05						; > lo byte -> $05
 		STA $0B-1					;/> hi byte -> $0B
 		LDA ($0E),y					;\
 		AND #$FF00					; |
-		SEC : SBC #$0018				; | get door box Y
+		SEC : SBC #$0018				; | get door box X
 		STA $0A-1					; > hi byte -> $0A
 		SEP #$20					; |
 		STA $04						;/> lo byte -> $04
@@ -556,6 +557,8 @@ LoadCameraBox:
 		TXY						; Y = index
 		INY						; index +1
 		REP #$20					;\
+		PLA						; |
+		AND #$0001 : STA $08				; > get side bit of door
 		PLA : STA $0E					; | restore pointers
 		PLA : STA $0C					; |
 		SEP #$20					;/
@@ -571,6 +574,7 @@ LoadCameraBox:
 		STA !CameraForceTimer				; |
 		STA !P2VectorTimeX-$80				; |
 		STA !P2VectorTimeX				; |
+		LDA $08 : BNE ..done				; > check side bit
 		JSR .CameraChain				; |
 		BRA ..done					;/
 		..next

@@ -594,7 +594,7 @@ Conjurex:
 		LDY #$02
 		JSL SpawnSpriteTile
 		REP #$10
-		LDX $00
+		LDX $0E
 		LDA !41_Particle_Prop,x
 		AND #$0E^$FF
 		ORA #$04

@@ -944,7 +944,6 @@ Rex:
 		LDY $3320,x
 		LDA DATA_HatXSpeed,y : STA $02
 		LDA #$E8 : STA $03
-
 		LDY #$02
 		JSL SpawnSpriteTile
 

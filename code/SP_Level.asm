@@ -2739,6 +2739,10 @@ macro Door(x, y)
 	db <y>*2,<x>
 endmacro
 
+macro SideDoor(x, y)
+	db (<y>*2)|1,<x>
+endmacro
+
 
 incsrc "level_data/TimeLimits.asm"
 incsrc "level_data/LevelLightPoints.asm"
