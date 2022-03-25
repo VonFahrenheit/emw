@@ -653,7 +653,6 @@ print "Level code handler inserted at $", pc, "."
 		SEC : SBC #$0008
 		STA !BG2ZipColumnY				; store first value
 
-		JSL $05809E					; init scroll sprites?
 
 		SEP #$30					; all regs 8-bit
 
@@ -664,6 +663,7 @@ print "Level code handler inserted at $", pc, "."
 
 		JSL GAMEMODE14_Camera_ExecutePtr		; HDMA pointer
 
+		JSL $05809E					; init BG2 tilemap
 
 
 
