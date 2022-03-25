@@ -330,7 +330,10 @@
 
 
 		.CheckStatus					;\
-		LDA !MultiPlayer : BEQ ..return			; > return if no multiplayer
+		LDA !MultiPlayer : BNE ..runp2			; | return with p2 dead if no multiplayer
+		LDA #$02 : STA !P2Status			; |
+		BRA ..return					;/
+		..runp2						;\
 		LDA !P2Status					; |
 		CMP #$02 : BNE ..done				; |
 		..dead						; |
@@ -625,6 +628,7 @@ SD_BANK:
 	incsrc "CORE/SET_GLITTER.asm"
 	incsrc "CORE/SET_SPLASH.asm"
 	incsrc "CORE/SMOKE_AT_FEET.asm"
+	incsrc "CORE/DOUBLE_JUMP_SMOKE.asm"
 	incsrc "CORE/DASH_SMOKE.asm"
 	incsrc "CORE/PLAYER_CLIPPING.asm"
 	incsrc "CORE/PLATFORM.asm"

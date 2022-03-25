@@ -155,18 +155,18 @@ endmacro
 		DEC !SpriteGravityTimer,x			; |
 		CLC : ADC !SpriteGravityMod,x
 		.NormalGravity
-		INC A
+		INC A						; +1
 		LDY !SpriteWater,x : BEQ .Land
 
 		.Water
-		STA !SpriteYSpeed,x : BPL ++
+		CMP #$80 : BCC ++
 		CMP $01 : BCS +
 		LDA $01 : BRA +
 	++	CMP $00 : BCC +
 		LDA $00 : BRA +
 
 		.Land
-		INC #2
+		INC #2						; additional +2
 		BMI +
 		CMP !SpriteFallSpeed,x : BCC +
 		LDA !SpriteFallSpeed,x

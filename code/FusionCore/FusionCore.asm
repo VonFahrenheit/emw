@@ -713,7 +713,6 @@ incsrc "FusionSprites/MMX_Explosion.asm"
 ;		p - 0 = use $64, 1 = use PP bits
 ;		t - number of tiles to read (read bytes = ttt*4)
 ;		i - GFX status index
-;	GFX status index
 ;	for each tile:
 ;		Xdisp
 ;		Ydisp
@@ -1230,8 +1229,10 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		+
 	warnpc $028DF1
 
-	org $028D42			; water splash tile table
-		db $00,$00,$02,$02,$02	; $68 -> $00, $6A -> $02
+	org $028D42					; water splash tile table
+		db $00,$00,$02,$02,$02,$60,$60,$60	; $68 -> $00, $6A -> $02
+		db $5D,$5D,$5E,$5E,$5F
+
 	org $028D8B
 	WaterSplash:
 		LDA !Ex_Data1,x
@@ -1246,10 +1247,7 @@ incsrc "FusionSprites/MalleableExtendedSprite.asm"
 		.Smoke8x8
 		JMP Smoke01_8
 		.Smoke16x16
-		JSL DisplayGFX
-		%TilemapHeader(1, $FFF, 0)
-		db $00,$00,$60,$02
-		RTS
+		JMP Smoke01_16
 		.Water00
 		JSL DisplayGFX
 		%TilemapHeader(1, !GFX_WaterEffects_offset, 0)

@@ -70,10 +70,6 @@ Weather:
 		ASL A
 		CMP.w #.SpawnPtr_End-.SpawnPtr
 		BCC $03 : LDA #$0000
-
-	STZ $7FFF
-
-
 		TAX
 		JSR (.SpawnPtr,x)
 
@@ -381,310 +377,350 @@ LoadCameraBox:
 
 
 		.SA1
-		PHB
-		PHP
-		SEP #$20
-		LDA $02
-		PHA : PLB				; maintain bank from SNES CPU
-		REP #$20
+		PHB						;\
+		PHP						; |
+		SEP #$30					; | wrapper
+		LDA $02						; |
+		PHA : PLB					; > maintain bank from SNES CPU
+		REP #$20					;/
+		LDX #$06					;\ get main pointers:
+	-	TXY						; |	$08 = screen matrix
+		LDA ($00),y : STA $08,x				; |	$0A = box table
+		DEX #2						; |	$0C = door list
+		BPL -						; |	$0E = door table
+		SEP #$20					;/
 
-		LDX #$06				;\ get main pointers:
-	-	TXY					; |	$08 = screen matrix
-		LDA ($00),y : STA $08,x			; |	$0A = box table
-		DEX #2					; |	$0C = door list
-		BPL -					; |	$0E = door table
-		SEP #$20				;/
+		.HandleTransition
+		LDA !CameraForceTimer : BEQ ..done		; check for door transition
+		LDA !CameraForceDir				;\
+		CMP #$04 : BCS ..done				; |
+		EOR #$02					; |
+		BEQ $02 : LDA #$28				; |
+		SEC : SBC #$14					; | player X speeds during door transitions
+		STA $00						; |
+		SEC : SBC !P2XSpeed-$80				; |
+		STA !P2VectorX-$80				; |
+		LDA $00						; |
+		SEC : SBC !P2XSpeed				; |
+		STA !P2VectorX					; |
+		STZ !P2VectorAccX-$80				; |
+		STZ !P2VectorAccX				; |
+		..done						;/
 
-		LDA !CameraForceTimer : BEQ .NoTransition
-		LDA !CameraForceDir
-		CMP #$04 : BCS .NoTransition
-		EOR #$02
-		ASL #2
-		STA $00
-		ASL #2
-		CLC : ADC $00
-		ASL A
-		SEC : SBC #$28
-		STA $00
-		SEC : SBC !P2XSpeed-$80
-		STA !P2VectorX-$80
-		LDA $00
-		SEC : SBC !P2XSpeed
-		STA !P2VectorX
-		STZ !P2VectorAccX-$80
-		STZ !P2VectorAccX
-		.NoTransition
-
-		LDA !P2Status-$80 : BEQ .GetCoords
-		LDA !P2Status : BEQ .GetCoords
-		PLP
-		PLB
-		RTL
+		LDA !P2Status-$80 : BEQ .GetCoords		;\ if at least one player is alive, run rest of camera box code
+		LDA !P2Status : BEQ .GetCoords			;/
+		PLP						;\
+		PLB						; | otherwise return
+		RTL						;/
 
 
 		.GetCoords
-		LDA !MultiPlayer : BEQ ..p1
-		LDA !P2Status
-		CMP #$02 : BNE +
-		LDA !P2Status-$80
-		CMP #$02 : BNE ..p1
-		; only P1 alive: P1
-		; both dead: flow to composite
-		..composite
+		LDA !P2Status-$80 : BNE ..p2			; P1 dead -> P2 camera
+		LDA !P2Status : BNE ..p1			; P2 dead -> P1 camera
+		..composite					; both alive -> composite camera
 		REP #$20					;\
 		LDA !P2XPosLo-$80				; |
 		CLC : ADC !P2XPosLo				; |
-		ROR A						; |
-		STA $00						; | composite coords
+		ROR A : STA $00					; | composite coords
 		LDA !P2YPosLo-$80				; |
 		CLC : ADC !P2YPosLo				; |
-		ROR A						; |
-		STA $02						; |
-		BRA ++						;/
-
-	+	LDA !P2Status-$80
-		CMP #$02 : BNE ..composite
-		; both alive: composite
-		; only P2 alive: flow to P2
-		..p2
-		REP #$20
-		LDA !P2XPosLo : STA $00
-		LDA !P2YPosLo : STA $02
-		BRA ++
-		..p1
-		REP #$20
-		LDA !P2XPosLo-$80 : STA $00
-		LDA !P2YPosLo-$80 : STA $02
-		++
-
-		LDA $00						;\
-		BPL $03 : LDA #$0000				; |
-		XBA : STA $00					; | don't allow negative coords
+		ROR A : STA $02					; |
+		BRA ..snap0					;/
+		..p1						;\
+		REP #$20					; |
+		LDA !P2XPosLo-$80 : STA $00			; | P1 coords
+		LDA !P2YPosLo-$80 : STA $02			; |
+		BRA ..snap0					;/
+		..p2						;\
+		REP #$20					; | P2 coords
+		LDA !P2XPosLo : STA $00				; |
+		LDA !P2YPosLo : STA $02				;/
+		..snap0						;\
+		LDA $00						; |
+		BPL $03 : LDA #$0000				; | don't allow negative coords
+		XBA : STA $00					; | also swap X lo/hi
 		LDA $02						; |
 		BPL $02 : STZ $02				;/
 
-
 		.CalcRoom
-		LDA $02
-		CMP !LevelHeight
-		BCC $04 : LDA !LevelHeight : DEC A
-		LDX #$00
-	-	CMP #$00E0 : BCC +
-		SBC #$00E0
-		INX
-		BRA -
-		+
+		LDX #$01 : STX $2250				;\
+		LDA $02						; |
+		CMP !LevelHeight				; | calculate y screen (y / 0xE0)
+		BCC $04 : LDA !LevelHeight : DEC A		; |
+		STA $2251					; |
+		LDA #$00E0 : STA $2253				;/
+		LDA !LevelWidth					;\
+		AND #$00FF					; |
+		LDX $2306					; | 
+		STZ $2250					; | calculate y component of index (y screen * level width)
+		STA $2251					; |
+		TXA						; |
+		AND #$00FF : STA $2253				;/
+		LDA $00						;\
+		AND #$00FF					; | add x component of index (x screen)
+		CLC : ADC $2306					;/
 
+		TAY						;\ read room number
+		LDA ($08),y					;/
+		AND #$00FF : STA !BigRAM+0			; !BigRAM+0 = room number
+		STZ !BigRAM+2					; clear new room flag
+		TAY						;\
+		CPY !CameraBoxRoom				; | store room index and check for change
+		STY !CameraBoxRoom				; |
+		BEQ ..done					;/
+		INC !BigRAM+2					; set new room flag
+		..done
+
+
+		.HorzTransition
+		LDX !GameMode
+		CPX #$14 : BNE +
+		LDX !CameraForceTimer : BNE ..done
+		..p1
+		LDX !P2Status-$80 : BNE ..p2
+		LDY #$00 : JSR ..checkborder
+		..p2
+		LDX !P2Status : BNE ..done
+		LDY #$80 : JSR ..checkborder
+	+	BRA ..done
+
+		..checkborder
+		LDA !P2XSpeed-$80,y
+		CLC : ADC !P2VectorX-$80,y
+		BIT #$0080 : BEQ +
+		LDA !CameraBoxL : BEQ +
+		LDA !P2XPosLo-$80,y
+		SEC : SBC !CameraBoxL
+		BMI ..l
+		BEQ ..l
+	+	LDA !P2XSpeed-$80,y
+		CLC : ADC !P2VectorX-$80,y
+		BIT #$0080 : BNE ...return
 		LDA !LevelWidth
-		EOR #$FFFF : INC A
-	-	CLC : ADC !LevelWidth
-		DEX : BPL -
-		CLC : ADC $00
-		TAY
-		LDA ($08),y
-		AND #$00FF
-		STA !BigRAM+0					; !BigRAM+0 = room number
-		TAY : STY !CameraBoxRoom			; store room index
-
-
-	; door loader
-		.LoadDoors
-		PEI ($0A)
-		PHP
-		SEP #$20
-		LDA !CameraForceTimer : BEQ $03 : JMP ..done
-
-		LDX #$00
-		LDY #$00					;\
-	-	CPX !BigRAM+0 : BEQ ++				; |
-		LDA ($0C),y : BPL +				; |
-		CMP #$80 : BNE $03 : JMP ..done			; > 0x80 = no doors at all
-		INX						; | get index to this room's doors
-	+	INY : BRA -					; |
-		++						;/
-
-		..loop
-		TYX						; preserve Y index in X
-		LDA ($0C),y					;\ Y = index to door data
-		ASL A : TAY					;/
-		PEI ($0C)					;\ preserve pointers
-		PEI ($0E)					;/
-		REP #$20					;\
-		LDA ($0E),y					; |
-		STX $00						; |
-		PHA						; > push side bit
-		AND #$00FE : TAX				; > clear side bit
-		LDA.l .VerticalScreens,x			; | get door box Y
-		LDX $00						; |
-		CLC : ADC #$00A0				; |
-		STA $05						; > lo byte -> $05
-		STA $0B-1					;/> hi byte -> $0B
-		LDA ($0E),y					;\
-		AND #$FF00					; |
-		SEC : SBC #$0018				; | get door box X
-		STA $0A-1					; > hi byte -> $0A
-		SEP #$20					; |
-		STA $04						;/> lo byte -> $04
-		LDA #$30					;\
-		STA $06						; | door box size
-		STA $07						;/
-		SEC : JSL !PlayerClipping			; check for contact
-		TXY						; Y = index
-		INY						; index +1
-		REP #$20					;\
-		PLA						; |
-		AND #$0001 : STA $08				; > get side bit of door
-		PLA : STA $0E					; | restore pointers
-		PLA : STA $0C					; |
-		SEP #$20					;/
-		BCC ..next					;\
-		LDA $1B						; |
-		CMP $0A						; |
-		BEQ ..r						; |
-		BCS ..l						; |
-	..r	LDA #$00 : BRA +				; |
-	..l	LDA #$02					; | enter door logic
-	+	STA !CameraForceDir				; |
+		DEC A : XBA
+		AND #$FF00
+		CMP !CameraBoxR : BEQ ...return
+		LDA !P2XPosLo-$80,y
+		SEC : SBC #$0100
+		SEC : SBC !CameraBoxR
+		BPL ..r
+		CMP #$FFF0 : BCS ..r
+		...return
+		RTS
+		..r
+		LDA #$0000 : BRA +
+		..l
+		LDA #$0002
+	+	SEP #$20
+		STA !CameraForceDir
 		LDA #$20					; |
 		STA !CameraForceTimer				; |
 		STA !P2VectorTimeX-$80				; |
 		STA !P2VectorTimeX				; |
-		LDA $08 : BNE ..done				; > check side bit
-		JSR .CameraChain				; |
-		BRA ..done					;/
-		..next
-		LDA ($0C),y : BMI ..done			; negative = done
-		JMP ..loop					; otherwise loop
+		JSR .CameraChain
+		REP #$20
+		RTS
 		..done
-		PLP
-		PLA : STA $0A
+
+
+
+	; door loader
+		; .LoadDoors
+		; PEI ($0A)
+		; PHP
+		; SEP #$20
+		; LDA !BigRAM+2 : BNE +				; don't handle doors if entering new room on this frame
+		; LDA !GameMode					;\ only load doors in game mode 0x14
+		; CMP #$14 : BNE +				;/
+
+		; LDA !CameraForceTimer : BEQ $03
+	; +	JMP ..done
+
+		; LDX #$00
+		; LDY #$00					;\
+	; -	CPX !BigRAM+0 : BEQ ++				; |
+		; LDA ($0C),y : BPL +				; |
+		; CMP #$80 : BNE $03 : JMP ..done			; > 0x80 = no doors at all
+		; INX						; | get index to this room's doors
+	; +	INY : BRA -					; |
+		; ++						;/
+
+		; ..loop
+		; TYX						; preserve Y index in X
+		; LDA ($0C),y					;\ Y = index to door data
+		; ASL A : TAY					;/
+		; PEI ($0C)					;\ preserve pointers
+		; PEI ($0E)					;/
+		; REP #$20					;\
+		; LDA ($0E),y					; |
+		; STX $00						; |
+		; PHA						; > push side bit
+		; AND #$00FE : TAX				; > clear side bit
+		; LDA.l .VerticalScreens,x			; | get door box Y
+		; LDX $00						; |
+		; CLC : ADC #$00A0				; |
+		; STA $05						; > lo byte -> $05
+		; STA $0B-1					;/> hi byte -> $0B
+		; LDA ($0E),y					;\
+		; AND #$FF00					; |
+		; SEC : SBC #$0008				; | get door box X
+		; STA $0A-1					; > hi byte -> $0A
+		; SEP #$20					; |
+		; STA $04						;/> lo byte -> $04
+		; LDA #$10 : STA $06				;\ door box size
+		; LDA #$30 : STA $07				;/
+		; SEC : JSL !PlayerClipping			; check for contact
+		; TXY						; Y = index
+		; INY						; index +1
+
+		; REP #$20					;\
+		; PLA						; |
+		; AND #$0001 : STA $08				; > get side bit of door
+		; PLA : STA $0E					; | restore pointers
+		; PLA : STA $0C					; |
+		; SEP #$20					;/
+		; BCC ..next					;\
+
+		; LDA $1B						; |
+		; CMP $0A						; |
+		; BEQ ..r						; |
+		; BCS ..l						; |
+	; ..r	LDA #$00 : BRA +				; |
+	; ..l	LDA #$02					; | enter door logic
+	; +	STA !CameraForceDir				; |
+		; LDA #$20					; |
+		; STA !CameraForceTimer				; |
+		; STA !P2VectorTimeX-$80				; |
+		; STA !P2VectorTimeX				; |
+		; LDA $08 : BNE ..done				; > check side bit
+		; JSR .CameraChain				; |
+		; BRA ..done					;/
+
+		; ..next
+		; LDA ($0C),y : BMI ..done			; negative = done
+		; JMP ..loop					; otherwise loop
+		; ..done
+		; PLP
+		; PLA : STA $0A
 
 
 	; camera box
-		LDA !BigRAM+0
-		ASL A
-		STA $00
-		ASL #2
-		CLC : ADC $00
-		CLC : ADC $0A
-		STA $0A
-		LDY #$00
-		LDA !LevelInitFlag			;\ don't do the update during level init
-		AND #$00FF : BNE .Old			;/
+	.HandleBox
+		LDA !BigRAM+0					;\
+		ASL #3						; | get index to room's camera box data
+		ADC $0A						; |
+		STA $0A						;/
+		LDY !GameMode					;\ same room in other game modes
+		CPY #$14 : BNE ..samebox			;/
+		LDA !LevelInitFlag				;\ same room if level is not yet initialized
+		AND #$00FF : BEQ ..samebox			;/
+		LDA !BigRAM+2 : BNE ..newbox			; check for new room
+		..samebox					;\
+		JSR .Load					; |
+		PLP						; | load box data and return
+		PLB						; |
+		RTL						;/
 
-	-	LDA ($0A),y
-		CMP !CameraBoxL,y : BNE .New
-		INY #2
-		CPY #$08 : BCC -
 
-	.Old	JSR .Load
+		..newbox
+		LDY #$0F					;\
+		..loop						; |
+		LDX !SpriteXLo,y : STX $02			; | get sprite coords
+		LDX !SpriteXHi,y : STX $03			; |
+		LDX !SpriteYLo,y : STX $04			; |
+		LDX !SpriteYHi,y : STX $05			;/
+		LDX #$02					;\
+		..nextcoord					; |
+		LDA $02,x					; | check if sprite is within old room's camera box
+		CMP !CameraBoxL,x : BCC ..next			; |
+		SBC .Offset,x					; |
+		CMP !CameraBoxR,x : BCS ..next			;/
+		..erase						;\
+		LDA $3230,y					; |
+		AND #$FF00 : STA $3230,y			; |
+		PHX						; |
+		LDX $33F0,y					; |
+		LDA $418A00,x					; | if not, despawn it and mark it for respawn
+		AND #$00FF					; | (unless marked as "never respawn")
+		CMP #$00EE : BEQ ..keep				; |
+		LDA $418A00,x					; |
+		AND #$FF00 : STA $418A00,x			; |
+		..keep						; |
+		PLX						;/
+		..next						;\ check X/Y coords
+		DEX #2 : BPL ..nextcoord			;/
+		DEY : BPL ..loop				; loop for all sprites
 
+		JSR .Load					; load box data for new room
+
+
+
+		LDA !CameraForceTimer : BNE .End		; checks both slots at once with 16-bit A
+		.Y
+		LDA !CameraBackupY				;\
+		AND #$FFF8 : STA !CameraBackupY			; | check if camera has to be pushed vertically
+		CMP !CameraBoxU : BEQ .X : BCC ..down		; |
+		CMP !CameraBoxD : BEQ .X : BCC .X		;/
+		..up						;\
+		SBC !CameraBoxD					; |
+		LSR #3						; |
+		SEP #$20					; | push camera up
+		STA !CameraForceTimer				; |
+		LDA #$06 : STA !CameraForceDir			; |
+		BRA .X						;/
+		..down						;\
+		SEC : SBC !CameraBoxU				; |
+		EOR #$FFFF : INC A				; |
+		LSR #3						; | push camera down
+		SEP #$20					; |
+		STA !CameraForceTimer				; |
+		LDA #$04 : STA !CameraForceDir			;/
+		.X
+		REP #$20					;\
+		LDA !CameraBackupX				; |
+		AND #$FFF8 : STA !CameraBackupX			; | check if camera has to be pushed horizontally
+		CMP !CameraBoxL : BEQ .End : BCC ..right	; |
+		CMP !CameraBoxR : BEQ .End : BCC .End		;/
+		..left						;\
+		SBC !CameraBoxR					; |
+		LSR #3						; |
+		SEP #$20					; | push camera left
+		STA !CameraForceTimer+1				; |
+		LDA #$02 : STA !CameraForceDir+1		; |
+		BRA .End					;/
+		..right						;\
+		SEC : SBC !CameraBoxL				; |
+		EOR #$FFFF : INC A				; |
+		LSR #3						; | push camera right
+		SEP #$20					; |
+		STA !CameraForceTimer+1				; |
+		STZ !CameraForceDir+1				;/
+
+		.End
 		PLP
 		PLB
 		RTL
 
 
-	.New	LDY !GameMode				;\ don't run this until level is properly going
-		CPY #$14 : BNE .Old			;/
-		LDY #$0F
-	-	LDX $3220,y : STX $02
-		LDX $3250,y : STX $03
-		LDX $3210,y : STX $04
-		LDX $3240,y : STX $05
-		LDX #$02
-	--	LDA $02,x
-		CMP !CameraBoxL,x : BCC ..Next
-		SBC .Offset,x
-		CMP !CameraBoxR,x : BCS ..Next
-
-	..Erase	LDA $3230,y
-		AND #$FF00
-		STA $3230,y
-		PHX
-		LDX $33F0,y
-		LDA $418A00,x
-		AND #$00FF
-		CMP #$00EE : BEQ +
-		LDA $418A00,x
-		AND #$FF00
-		STA $418A00,x
-	+	PLX
-
-	..Next	DEX #2 : BPL --
-		DEY : BPL -
-
-		JSR .Load
-
-		LDA !CameraForceTimer : BNE .End		; checks both slots
-
-		LDA !CameraBackupY
-		AND #$FFF8 : STA !CameraBackupY
-		CMP !CameraBoxU : BEQ .X : BCC .Down
-		CMP !CameraBoxD : BEQ .X : BCC .X
-
-	.Up	SBC !CameraBoxD
-		LSR #3
-		SEP #$20
-		STA !CameraForceTimer
-		LDA #$06 : STA !CameraForceDir
-		BRA .X
-
-	.Down	SEC : SBC !CameraBoxU
-		EOR #$FFFF : INC A
-		LSR #3
-		SEP #$20
-		STA !CameraForceTimer
-		LDA #$04 : STA !CameraForceDir
-
-	.X	REP #$20
-		LDA !CameraBackupX
-		AND #$FFF8 : STA !CameraBackupX
-		CMP !CameraBoxL : BEQ .End : BCC .R2
-		CMP !CameraBoxR : BEQ .End : BCC .End
-
-	.L2	SBC !CameraBoxR
-		LSR #3
-		SEP #$20
-		STA !CameraForceTimer+1
-		LDA #$02 : STA !CameraForceDir+1
-		BRA .End
-
-	.R2	SEC : SBC !CameraBoxL
-		EOR #$FFFF : INC A
-		LSR #3
-		SEP #$20
-		STA !CameraForceTimer+1
-		STZ !CameraForceDir+1
-
-
-	.End	PLP
-		PLB
-		RTL
-
-
-
-
-
-	.Offset	dw $0100,$00E0
+		.Offset
+		dw $0100,$00E0
 
 
 
 
 	.Load
-		LDY #$00				; reset index
-	-	LDA ($0A),y : STA !CameraBoxL,y
-		INY #2
-		CPY #$08 : BCC -
-		LDA ($0A),y : STA !CameraForbiddance
+		LDY #$06				; reset index
+	-	LDA ($0A),y : STA !CameraBoxL,y		;\ get camera box data
+		DEY #2 : BPL -				;/
 
-		LDA !LevelHeight
-		SEC : SBC #$0100
-		BPL $03 : LDA #$0000
-		CMP !CameraBoxD : BCS +
-		STA !CameraBoxD
-		CMP !CameraBoxU : BCS +
-		STA !CameraBoxU
-		+
+		LDA !LevelHeight			;\
+		SEC : SBC #$00E0			; |
+		BPL $03 : LDA #$0000			; |
+		CMP !CameraBoxD : BCS ..return		; | force camera box vertical boundaries within level borders
+		STA !CameraBoxD				; |
+		CMP !CameraBoxU : BCS ..return		; |
+		STA !CameraBoxU				; |
+		..return				;/
 
 		RTS
 
@@ -694,9 +730,8 @@ LoadCameraBox:
 	.CameraChain
 		PHB : PHK : PLB
 		LDY.b #.ScreensEnd-.VerticalScreens-2
-		LDA $0B : XBA
-		LDA $05
 		REP #$20
+		LDA $1C
 	-	CMP .VerticalScreens,y : BCS +
 		DEY #2 : BPL -
 		PLB
@@ -760,16 +795,6 @@ LoadCameraBox:
 		LDA !CameraBoxL
 		AND #$FF00 : STA !CameraXMem
 		+
-
-
-		; LDA $96
-		; SEC : SBC #$0070
-		; BPL $03 : LDA #$0000
-		; LDY.b #LoadCameraBox_ScreensEnd-LoadCameraBox_VerticalScreens-2
-	; -	CMP LoadCameraBox_VerticalScreens,y : BCS +
-		; DEY #2 : BPL -
-		; LDY #$00
-	; +	LDA LoadCameraBox_VerticalScreens,y : STA $1C
 
 		LDA !CameraBoxL
 		CMP $1A : BCS .WriteX
@@ -2085,8 +2110,10 @@ levelinitC3:
 	RTL
 levelinitC4:
 	RTL
+
+
 levelinitC5:
-		LDA #$01 : STA $5E		; prevent camera scroll
+		LDA #$01 : STA !LevelWidth	; prevent camera scroll
 		RTL				; return
 
 
@@ -4782,12 +4809,12 @@ level13B:
 
 
 
-;	Key ->	   X  Y  W  H  S  FX FY
-;		   |  |  |  |  |  |  |
-;		   V  V  V  V  V  V  V
+;	Key ->	   X  Y  W  H
+;		   |  |  |  |
+;		   V  V  V  V
 ;
 .BoxTable
-.Box0	%CameraBox(0, 0, 0, 3, $FF, 0, 0)
+.Box0	%CameraBox(0, 0, 0, 3)
 
 .ScreenMatrix	db $00
 		db $00
@@ -5256,12 +5283,12 @@ level1F1:
 		dw .DoorList
 		dw .DoorTable
 
-;	Key ->	   X  Y  W  H  S  FX FY
-;		   |  |  |  |  |  |  |
-;		   V  V  V  V  V  V  V
+;	Key ->	   X  Y  W  H
+;		   |  |  |  |
+;		   V  V  V  V
 ;
 .BoxTable
-.Box0	%CameraBox(0, 0, 1, 0, $FF, 0, 0)
+.Box0	%CameraBox(0, 0, 1, 0)
 
 .ScreenMatrix	db $00,$00,$00
 
@@ -5339,15 +5366,15 @@ level1F7:
 		dw .DoorList
 		dw .DoorTable
 
-;	Key ->	   X  Y  W  H  S  FX FY
-;		   |  |  |  |  |  |  |
-;		   V  V  V  V  V  V  V
+;	Key ->	   X  Y  W  H
+;		   |  |  |  |
+;		   V  V  V  V
 ;
 .BoxTable
-.Box0	%CameraBox(0, 0, 0, 0, $FF, 0, 0)
-.Box1	%CameraBox(1, 0, 0, 0, $FF, 0, 0)
-.Box2	%CameraBox(2, 0, 0, 0, $FF, 0, 0)
-.Box3	%CameraBox(3, 0, 0, 0, $FF, 0, 0)
+.Box0	%CameraBox(0, 0, 0, 0)
+.Box1	%CameraBox(1, 0, 0, 0)
+.Box2	%CameraBox(2, 0, 0, 0)
+.Box3	%CameraBox(3, 0, 0, 0)
 
 .ScreenMatrix	db $00,$01,$02,$03
 
@@ -5739,7 +5766,7 @@ ScreenGrind:
 		CLC : ADC !Level+3
 		STA $1A
 		SEP #$20
-		LDA $5E
+		LDA !LevelWidth
 		DEC A
 		XBA					; stop grind when reaching the last screen
 		LDA #$00
@@ -6172,98 +6199,100 @@ WATER_BOX:
 WARP_BOX:
 		REP #$20
 
-		LDA $01,s			;\
-		INC A				; | lo / hi bytes
-		STA $00				;/
-		CLC : ADC #$0008		;\ update stack value (return address)
-		STA $01,s			;/
+		LDA $01,s				;\
+		INC A					; | lo / hi bytes
+		STA $00					;/
+		CLC : ADC #$0008			;\ update stack value (return address)
+		STA $01,s				;/
 
-		LDY #$07			;\ entrance link data
-		LDA ($00),y : STA !BigRAM+2	;/
-		LDY #$03			;\
-		LDA ($00),y			; | box Y
-		STA $05				; |
-		STA $0A				;/
-		LDY #$05			;\ box dimensions
-		LDA ($00),y : STA $06		;/
-		LDY #$01			;\
-		LDA ($00),y			; |
-		STA $09				; | box X
-		SEP #$20			; |
-		STA $04				;/
-		LDA ($00) : STA !BigRAM		; directional value
-		LDA !P2Invinc-$80 : PHA		;\ backup invinc regs
-		LDA !P2Invinc : PHA		;/
-		STZ !P2Invinc-$80		;\ temp clear invinc regs
-		STZ !P2Invinc			;/
-		SEC : JSL !PlayerClipping	; check for player contact
-		PLX : STX !P2Invinc		;\ restore invinc regs
-		PLX : STX !P2Invinc-$80		;/
+		LDY #$07				;\ entrance link data
+		LDA ($00),y : STA !BigRAM+2		;/
+
+		LDY #$03				;\
+		LDA ($00),y				; | box Y
+		STA $05					; |
+		STA $0B-1				;/
+		LDY #$05				;\ box dimensions
+		LDA ($00),y : STA $06			;/
+		LDY #$01				;\
+		LDA ($00),y				; |
+		STA $0A-1				; | box X
+		SEP #$20				; |
+		STA $04					;/
+		LDA ($00) : STA !BigRAM+0		; directional value
+		LDA !P2Invinc-$80 : PHA			;\ backup invinc regs
+		LDA !P2Invinc : PHA			;/
+		STZ !P2Invinc-$80			;\ temp clear invinc regs
+		STZ !P2Invinc				;/
+		SEC : JSL !PlayerClipping		; check for player contact
+		PLX : STX !P2Invinc			;\ restore invinc regs
+		PLX : STX !P2Invinc-$80			;/
 		BCC .Return
 
-		LDX !BigRAM			;\ don't check directions if all directions are enabled already
-		CPX #$0F : BEQ .Link		;/
-		LSR A : BCC .P2			;\
-	.P1	PHA				; |
-		LDY #$00			; | check player 1
-		JSR .CheckDirections		; |
-		PLA				; > pull A first
-		BCS .Link			;/
-		LSR A : BCC .Return		; > return if only player 1 should be checked
-	.P2	LDY #$80			;\
-		JSR .CheckDirections		; | check player 2
-		BCS .Link			;/
+		LDX !BigRAM+0				;\ don't check directions if all directions are enabled already
+		CPX #$0F : BEQ .Link			;/
+		LSR A : BCC .P2				;\
+	.P1	PHA					; |
+		LDY #$00 : JSR .CheckDirections		; | check player 1
+		PLA					; > pull A first
+		BCS .Link				;/
+		LSR A : BCC .Return			; > return if only player 1 should be checked
+	.P2	LDY #$00 : JSR .CheckDirections		;\ check player 2
+		BCS .Link				;/
 
 		.Return
 		CLC
 		RTL
 
 		.Link
-		LDX #$1F			;\
-		LDA !BigRAM+2			; | level link data (lo byte)
-	-	STA $79B8,x			; |
-		DEX : BPL -			;/
-		LDX #$1F			;\
-		LDA !BigRAM+3			; | level link data (hi byte)
-	-	STA $79D8,x			; |
-		DEX : BPL -			;/
+		LDX #$1F				;\
+		LDA !BigRAM+2				; | level link data (lo byte)
+	-	STA $79B8,x				; |
+		DEX : BPL -				;/
+		LDX #$1F				;\
+		LDA !BigRAM+3				; | level link data (hi byte)
+	-	STA $79D8,x				; |
+		DEX : BPL -				;/
 		JMP EXIT_Exit+2
 
 
 		.CheckDirections
+		CLC
 		LDA !P2Platform-$80,y : BEQ +		; note that this branch only triggers if A = 0, so no LDA #$00 is needed
 		TAX
 		DEX
 		LDA !SpriteXSpeed,x
-	+	CLC : ADC !P2XSpeed-$80,y
-		CLC : ADC !P2VectorX-$80,y
+	+	ADC !P2XSpeed-$80,y
+		ADC !P2VectorX-$80,y
 		BEQ ..checkY
+		AND #$80
 		ASL A
 		ROL A
 		INC A
-		AND !BigRAM : BNE ..match
-
+		AND !BigRAM+0 : BNE ..match
 		..checkY
+		CLC
 		LDA !P2Platform-$80,y : BEQ +		; note that this branch only triggers if A = 0, so no LDA #$00 is needed
 		TAX
 		DEX
 		LDA !SpriteYSpeed,x
-	+	CLC : ADC !P2YSpeed-$80,y
-		CLC : ADC !P2VectorY-$80,y
+	+	ADC !P2YSpeed-$80,y
+		ADC !P2VectorY-$80,y
 		BEQ ..nomatch
+		AND #$80
 		ASL A
 		ROL A
 		INC A
 		ASL #2
-		AND !BigRAM : BNE ..match
-
+		AND !BigRAM+0 : BNE ..match
 		..nomatch
 		CLC
 		RTS
-
 		..match
 		SEC
 		RTS
+
+
 
 ; input: A = exit coordinate
 ; output: C = 0 means no exit occurred, C = 1 means the exit was triggered

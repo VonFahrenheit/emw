@@ -803,12 +803,12 @@ level35:
 
 
 
-;	Key ->	   X  Y  W  H  S  FX FY
-;		   |  |  |  |  |  |  |
-;		   V  V  V  V  V  V  V
+;	Key ->	   X  Y  W  H
+;		   |  |  |  |
+;		   V  V  V  V
 ;
 .BoxTable
-.Box0	%CameraBox(0, 0, 7, 7, $FF, 0, 0)
+.Box0	%CameraBox(0, 0, 7, 7)
 
 .ScreenMatrix	db $00,$00,$00,$00,$00,$00,$00,$00
 		db $00,$00,$00,$00,$00,$00,$00,$00
@@ -819,7 +819,7 @@ level35:
 		db $00,$00,$00,$00,$00,$00,$00,$00
 		db $00,$00,$00,$00,$00,$00,$00,$00
 
-.DoorList	db $FF			; no doors
+.DoorList	db $80			; no doors
 .DoorTable
 
 

@@ -64,6 +64,21 @@
 
 
 	KEYHOLE_MAIN:
+
+		REP #$30
+		LDA #$0000
+		LDY #$FFF0
+		JSL !GetMap16Sprite
+		CMP #$0000 : BEQ .Water
+		CMP #$0002 : BNE .Air
+		.Water
+		LDA #$00FF : STA !BigRAM
+		BRA +
+		.Air
+		STZ !BigRAM
+		+
+		SEP #$30
+
 		JSL GetItemMem
 		; $02 = 0, spawn locked door
 		; $02 != 0, spawn unlocked door
@@ -80,6 +95,7 @@
 		SEP #$20
 		LDA.l !ExtraBits,x				;\
 		AND #$04 : BEQ +				; |
+		LDA.l !BigRAM : STA !BG_object_Timer,y		; > tile type for key block
 		LDA #$09 : BRA ++				; | type depends on extra bit
 	+	LDA #$07					; |
 	++	STA !BG_object_Type,y				;/

@@ -597,8 +597,16 @@ levelinit2D:
 		JSL level2D_HDMA
 		RTL
 
+
 levelinit2E:
+		REP #$20
+		LDA #$FFE0
+		STA !P2YPosLo-$80
+		STA !P2YPosLo
+		STA $96
+		SEP #$20
 		RTL
+
 
 levelinit2F:
 		JSL levelinit2_Graphics				;\
@@ -671,6 +679,19 @@ levelinit33:
 
 
 levelinit38:
+		LDA $97
+		CMP #$0B : BNE +
+		LDA #$80
+		STA !P2YSpeed-$80
+		STA !P2YSpeed
+		STA !MarioYSpeed
+		LDA #$E0
+		STA !P2XSpeed-$80
+		STA !P2XSpeed
+		STA !MarioXSpeed
+		+
+
+
 		LDA #$E1 : STA !MsgPal
 
 		STZ !BG2BaseV
@@ -727,6 +748,18 @@ level2:
 	STZ $89						; |
 	+						; |
 	endif						;/
+
+
+		JSL WARP_BOX
+		db $04
+		dw $0000,$02A0 : db $FF,$30
+		dw $0C2E
+
+		JSL WARP_BOX
+		db $04
+		dw $1020,$02A0 : db $40,$30
+		dw $042E
+
 
 
 		; .Talk
@@ -2617,12 +2650,8 @@ level27:
 		STZ !SpriteXLo,x
 		LDA #$06 : STA !SpriteXHi,x
 		LDA $14
-		AND #$40
-		CLC : ADC #$D0
-		STA !SpriteYLo,x
-		LDA #$00
-		ADC #$00
-		STA !SpriteYHi,x
+		AND #$40 : STA !SpriteYLo,x
+		LDA #$01 : STA !SpriteYHi,x
 		JSL !ResetSprite
 		..done
 		SEP #$20
@@ -2733,22 +2762,22 @@ level27:
 
 
 
-;	Key ->	   X  Y  W  H  S  FX FY
-;		   |  |  |  |  |  |  |
-;		   V  V  V  V  V  V  V
+;	Key ->	   X  Y  W  H
+;		   |  |  |  |
+;		   V  V  V  V
 ;
 .BoxTable
-.Box0	%CameraBox(0, 0, 1, 1, $FF, 0, 0)
-.Box1	%CameraBox(2, 0, 1, 0, $FF, 0, 0)
-.Box2	%CameraBox(4, 0, 1, 1, $FF, 0, 0)
-.Box3	%CameraBox(0, 2, 1, 1, $FF, 0, 0)
-.Box4	%CameraBox(2, 2, 0, 0, $FF, 0, 0)
-.Box5	%CameraBox(4, 4, 1, 3, $FF, 0, 0)
-.Box6	%CameraBox(4, 5, 3, 2, $FF, 0, 0)
-.Box7	%CameraBox(4, 2, 1, 0, $FF, 0, 0)
-.Box8	%CameraBox(0, 4, 3, 1, $FF, 0, 0)
-.Box9	%CameraBox(6, 0, 1, 4, $FF, 0, 0)
-.BoxA	%CameraBox(0, 6, 3, 1, $FF, 0, 0)
+.Box0	%CameraBox(0, 0, 1, 1)
+.Box1	%CameraBox(2, 0, 1, 0)
+.Box2	%CameraBox(4, 0, 1, 1)
+.Box3	%CameraBox(0, 2, 1, 1)
+.Box4	%CameraBox(2, 2, 0, 0)
+.Box5	%CameraBox(4, 4, 1, 3)
+.Box6	%CameraBox(4, 5, 3, 2)
+.Box7	%CameraBox(4, 2, 1, 0)
+.Box8	%CameraBox(0, 4, 3, 1)
+.Box9	%CameraBox(6, 0, 1, 4)
+.BoxA	%CameraBox(0, 6, 3, 1)
 
 .ScreenMatrix	db $00,$00,$01,$01,$02,$02,$09,$09
 		db $00,$00,$FF,$FF,$02,$02,$09,$09
@@ -2916,9 +2945,90 @@ level2D:
 		RTL
 
 level2E:
-	RTL
+
+		JSL level2_ReloadSprites
+
+		JSL WARP_BOX
+		db $08
+		dw $0300,$0000 : db $FF,$01
+		dw $062B
+		JSL WARP_BOX
+		db $08
+		dw $0580,$0000 : db $80,$01
+		%SecondaryExitValue($384)
 
 
+		REP #$20
+		LDA.w #.RoomPointers : JML LoadCameraBox
+
+
+
+		.RoomPointers
+		dw .ScreenMatrix
+		dw .BoxTable
+		dw .DoorList
+		dw .DoorTable
+
+
+
+
+;	Key ->	   X  Y  W  H
+;		   |  |  |  |
+;		   V  V  V  V
+;
+.BoxTable
+.Box0	%CameraBox(3, 0, 0, 0)
+.Box1	%CameraBox(1, 0, 1, 1)
+.Box2	%CameraBox(0, 1, 0, 1)
+.Box3	%CameraBox(3, 1, 1, 1)
+.Box4	%CameraBox(1, 2, 1, 1)
+.Box5	%CameraBox(3, 3, 1, 0)
+.Box6	%CameraBox(5, 0, 0, 1)
+.Box7	%CameraBox(5, 2, 0, 1)
+.Box8	%CameraBox(6, 0, 2, 2)
+.Box9	%CameraBox(6, 3, 0, 1)
+.BoxA	%CameraBox(5, 5, 1, 1)
+.BoxB	%CameraBox(2, 6, 2, 0)
+.BoxC	%CameraBox(2, 4, 0, 1)
+.BoxD	%CameraBox(4, 5, 0, 0)
+.BoxE	%CameraBox(0, 0, 0, 0)
+
+.ScreenMatrix	db $0E,$01,$01,$00,$FF,$06,$08,$08,$08
+		db $02,$01,$01,$03,$03,$06,$08,$08,$08
+		db $02,$04,$04,$03,$03,$07,$08,$08,$08
+		db $FF,$04,$04,$05,$05,$07,$09,$FF,$FF
+		db $FF,$FF,$0C,$FF,$FF,$FF,$09,$FF,$FF
+		db $FF,$FF,$0C,$FF,$0D,$0A,$0A,$FF,$FF
+		db $FF,$FF,$0B,$0B,$0B,$0A,$0A,$FF,$FF
+
+
+.DoorList
+		db $00,$FF		; room 0: door 0
+		db $00,$01,$02,$FF	; room 1: doors 0, 1, 2
+		db $01,$04,$FF		; room 2: doors 1, 4
+		db $02,$03,$05,$06,$FF	; room 3: doors 2, 3, 5, 6
+		db $04,$05,$08,$FF	; room 4: doors 4, 5, 8
+		db $08,$FF		; room 5: door 8
+		db $03,$FF		; room 6: door 3
+		db $06,$07,$09,$FF	; room 7: doors 6, 7, 9
+		db $07,$FF		; room 8: door 7
+		db $09,$FF		; room 9: door 9
+		db $0A,$FF		; room A: door A
+		db $0A,$FF		; room B: door B
+		db $80			; no more doors (rooms C, D, E)
+
+.DoorTable
+.Door0		%Door(3, 0)
+.Door1		%Door(1, 1)
+.Door2		%Door(3, 1)
+.Door3		%Door(5, 1)
+.Door4		%Door(1, 2)
+.Door5		%Door(3, 2)
+.Door6		%Door(5, 2)
+.Door7		%Door(6, 2)
+.Door8		%Door(3, 3)
+.Door9		%Door(6, 3)
+.DoorA		%Door(5, 6)
 
 
 ;
@@ -2929,7 +3039,7 @@ level2E:
 ;
 
 	!StatueX	= 191
-	!StatueY	= 54
+	!StatueY	= 48
 
 
 level2F:
@@ -2999,7 +3109,7 @@ level2F:
 
 
 	.Brawl
-		LDA !TranslevelFlags+$00 : BMI .Return
+		LDA !TranslevelFlags+$10 : BMI .Return
 		LDA #$01 : STA !CameraBoxSpriteErase
 		REP #$20
 		LDA #$0C00 : STA !CameraBoxR
@@ -3134,11 +3244,11 @@ level2F:
 		REP #$10
 		LDX #$0000
 		SEP #$20
-	-	STA $40C800+($A*$400)+$30D,x
-		STA $40C800+($D*$400)+$302,x
+	-	STA $40C800+($A*$400)+$2AD,x
+		STA $40C800+($D*$400)+$2A2,x
 		XBA
-		STA $41C800+($A*$400)+$30D,x
-		STA $41C800+($D*$400)+$302,x
+		STA $41C800+($A*$400)+$2AD,x
+		STA $41C800+($D*$400)+$2A2,x
 		XBA
 		INX #16
 		CPX #$00B0 : BCC -
@@ -3157,24 +3267,24 @@ level2F:
 ; coords relative to 0A00,0200
 	..wavedata
 	..wave0
-	db $30,$1A	: db $02
-	db $31,$1A	: db $02
-	db $32,$1A	: db $02
+	db $30,$14	: db $02
+	db $31,$14	: db $02
+	db $32,$14	: db $02
 	..wave1
-	db $0C,$1A	: db $02
-	db $0D,$1A	: db $02
-	db $0E,$1A	: db $02
-	db $0F,$1A	: db $02
+	db $0C,$14	: db $02
+	db $0D,$14	: db $02
+	db $0E,$14	: db $02
+	db $0F,$14	: db $02
 	..wave2
-	db $0C,$1A	: db $02
-	db $0D,$1A	: db $03
-	db $0E,$1A	: db $03
-	db $0F,$1A	: db $03
+	db $0C,$14	: db $02
+	db $0D,$14	: db $03
+	db $0E,$14	: db $03
+	db $0F,$14	: db $03
 	..wave3
-	db $0C,$12	: db $2C
-	db $0E,$12	: db $2C
-	db $30,$12	: db $2C
-	db $32,$12	: db $2C
+	db $0C,$0C	: db $2C
+	db $0E,$0C	: db $2C
+	db $30,$0C	: db $2C
+	db $32,$0C	: db $2C
 	..waveend
 
 
@@ -3189,14 +3299,14 @@ level2F:
 
 
 
-;	Key ->	   X  Y  W  H  S  FX FY
-;		   |  |  |  |  |  |  |
-;		   V  V  V  V  V  V  V
+;	Key ->	   X  Y  W  H
+;		   |  |  |  |
+;		   V  V  V  V
 ;
 .BoxTable
-.Box0	%CameraBox(0, 0, 11, 4, $FF, 0, 0)
-.Box1	%CameraBox(11, 4, 2, 0, $FF, 0, 0)
-.Box2	%CameraBox(0, 0, 9, 0, $FF, 0, 0)
+.Box0	%CameraBox(0, 0, 11, 4)
+.Box1	%CameraBox(11, 3, 2, 0)
+.Box2	%CameraBox(0, 0, 9, 0)
 
 .ScreenMatrix	db $00,$00,$00,$00,$00,$00,$00,$00,$02,$02,$00,$01,$01,$01
 		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$01,$01,$01
@@ -3217,12 +3327,16 @@ level32:
 		LDA #$00E0 : STA !LightB
 		SEP #$20
 
-		LDA #$06 : JSL SearchSprite_Custom
-		BMI +
-		LDA !ExtraProp1,x
-		CMP #$01 : BNE +
 
-		.RitualCasters
+		.Weather
+		LDA $1B
+		CMP #$1C : BCS ..done
+		LDA #$06 : JSL SearchSprite_Custom
+		BMI ..spellparticles
+		LDA !ExtraProp1,x
+		CMP #$01 : BNE ..spellparticles
+
+		..ritualcasters
 		LDA #$7F : TRB !Level+4
 		LDX #$0F
 		..loop
@@ -3245,9 +3359,12 @@ level32:
 		..next
 		DEX : BPL ..loop
 
-		LDA #$03 : BRA ++
-	+	LDA #$02
-	++	JSL Weather
+		LDA #$03 : BRA ..spawnweather
+		..spellparticles
+		LDA #$02
+		..spawnweather
+		JSL Weather
+		..done
 
 
 
@@ -3870,16 +3987,16 @@ level33:
 		dw .DoorList
 		dw .DoorTable
 
-;	Key ->	   X  Y  W  H  S  FX FY
-;		   |  |  |  |  |  |  |
-;		   V  V  V  V  V  V  V
+;	Key ->	   X  Y  W  H
+;		   |  |  |  |
+;		   V  V  V  V
 .BoxTable
-.Box0	%CameraBox(0, 0, 1, 0, $FF, 0, 0)
-.Box1	%CameraBox(2, 0, 0, 0, $FF, 0, 0)
-.Box2	%CameraBox(2, 1, 0, 1, $FF, 0, 0)
-.Box3	%CameraBox(3, 0, 2, 2, $FF, 0, 0)
-.Box4	%CameraBox(6, 0, 1, 2, $FF, 0, 0)
-.Box5	%CameraBox(8, 0, 5, 2, $FF, 0, 0)
+.Box0	%CameraBox(0, 0, 1, 0)
+.Box1	%CameraBox(2, 0, 0, 0)
+.Box2	%CameraBox(2, 1, 0, 1)
+.Box3	%CameraBox(3, 0, 2, 2)
+.Box4	%CameraBox(6, 0, 1, 2)
+.Box5	%CameraBox(8, 0, 5, 2)
 
 .ScreenMatrix	db $00,$00,$01,$03,$03,$03,$04,$04,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05
 		db $00,$00,$02,$03,$03,$03,$04,$04,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05
@@ -4334,10 +4451,10 @@ level38:
 
 
 	.TrashHouse
-		REP #$20
-		LDA !CameraBoxD
-		ADC #$0100
-		JSL EXIT_Down
+		JSL WARP_BOX
+		db $04
+		dw $00E0,$0B70 : db $40,$10
+		%SecondaryExitValue($2E0)
 		RTS
 
 	.Prison
@@ -4421,23 +4538,23 @@ level38:
 		dw .DoorList
 		dw .DoorTable
 
-;	Key ->	   X  Y  W  H  S  FX FY
-;		   |  |  |  |  |  |  |
-;		   V  V  V  V  V  V  V
+;	Key ->	   X  Y  W  H
+;		   |  |  |  |
+;		   V  V  V  V
 ;
 .BoxTable
-.Box0	%CameraBox(0, 0, 1, 0, $FF, 0, 0)
-.Box1	%CameraBox(0, 1, 1, 1, $FF, 0, 0)
-.Box2	%CameraBox(0, 3, 1, 0, $FF, 0, 0)
-.Box3	%CameraBox(0, 4, 1, 0, $FF, 0, 0)
-.Box4	%CameraBox(0, 5, 1, 0, $FF, 0, 0)
-.Box5	%CameraBox(0, 6, 1, 0, $FF, 0, 0)
-.Box6	%CameraBox(0, 7, 1, 0, $FF, 0, 0)
-.Box7	%CameraBox(0, 9, 1, 2, $FF, 0, 0)
-.Box8	%CameraBox(0, 8, 1, 0, $FF, 0, 0)
-.Box9	%CameraBox(0, 12, 1, 0, $FF, 0, 0)
-.BoxA	%CameraBox(0, 14, 1, 1, $FF, 0, 0)
-.BoxB	%CameraBox(0, 16, 1, 1, $FF, 0, 0)
+.Box0	%CameraBox(0, 0, 1, 0)
+.Box1	%CameraBox(0, 1, 1, 1)
+.Box2	%CameraBox(0, 3, 1, 0)
+.Box3	%CameraBox(0, 4, 1, 0)
+.Box4	%CameraBox(0, 5, 1, 0)
+.Box5	%CameraBox(0, 6, 1, 0)
+.Box6	%CameraBox(0, 7, 1, 0)
+.Box7	%CameraBox(0, 9, 1, 2)
+.Box8	%CameraBox(0, 8, 1, 0)
+.Box9	%CameraBox(0, 12, 1, 0)
+.BoxA	%CameraBox(0, 14, 1, 1)
+.BoxB	%CameraBox(0, 16, 1, 1)
 
 .ScreenMatrix	db $00,$00	; top floor
 		db $01,$01	;\ floor 6
@@ -4567,13 +4684,13 @@ level39:
 		dw .DoorList
 		dw .DoorTable
 
-;	Key ->	   X  Y  W  H  S  FX FY
-;		   |  |  |  |  |  |  |
-;		   V  V  V  V  V  V  V
+;	Key ->	   X  Y  W  H
+;		   |  |  |  |
+;		   V  V  V  V
 ;
 .BoxTable
-.Box0	%CameraBox(0, 0, 1, 2, $FF, 0, 0)
-.Box1	%CameraBox(2, 0, 1, 7, $FF, 0, 0)
+.Box0	%CameraBox(0, 0, 1, 2)
+.Box1	%CameraBox(2, 0, 1, 7)
 
 .ScreenMatrix	db $00,$00,$01,$01
 		db $00,$00,$01,$01

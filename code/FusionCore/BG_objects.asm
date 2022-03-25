@@ -624,6 +624,18 @@ incsrc "BG_objects/KeyBlock.asm"
 		LDA.w #!prt_smoke16x16 : JSL !SpawnParticleBlock
 		RTS
 
+; input:
+;	$98 = Y coord
+;	$9A = X coord
+
+	WaterTile:
+		LDA #$0002 : JSL !ChangeMap16
+		STZ $00
+		STZ $02
+		STZ $04
+		LDA.w #!prt_smoke16x16 : JSL !SpawnParticleBlock
+		RTS
+
 
 
 namespace off

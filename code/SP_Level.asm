@@ -322,9 +322,7 @@ print "Level code handler inserted at $", pc, "."
 		STA !LevelInitFlag				; set level INIT
 		STA !3DWater					; disable 3D water
 		STA !DizzyEffect				; disable dizzy effect
-		LDA #$FF					;\
-		STA !CameraBoxU+1				; | disable camera box
-		STA !CameraForbiddance				;/
+		LDA #$FF : STA !CameraBoxU+1			; disable camera box
 
 		LDA #$00 : JSL !ProcessYoshiCoins		; > load Yoshi Coins (A must be 0x00)
 		LDA.b #.SA1 : STA $3180				;\
@@ -650,17 +648,25 @@ print "Level code handler inserted at $", pc, "."
 		JML [$0000]					; execute pointer
 		.Return
 		PLB
-		SEP #$30
-		JSL GAMEMODE14_Camera				; set scroll values for BG2
-		REP #$20
+		REP #$30
 		LDA $20
 		SEC : SBC #$0008
 		STA !BG2ZipColumnY				; store first value
 
-		JSL $05809E					; move this to here, after the camera has been initialized
-
+		JSL $05809E					; init scroll sprites?
 
 		SEP #$30					; all regs 8-bit
+
+		LDA.b #GAMEMODE14_Camera_BG : STA $3180
+		LDA.b #GAMEMODE14_Camera_BG>>8 : STA $3181
+		LDA.b #GAMEMODE14_Camera_BG>>16 : STA $3182
+		JSR $1E80
+
+		JSL GAMEMODE14_Camera_ExecutePtr		; HDMA pointer
+
+
+
+
 		LDA !MarioDirection : PHA			;\
 		LDA !P2Direction-$80 : PHA			; | preserve player directions
 		LDA !P2Direction : PHA				;/
@@ -2727,12 +2733,11 @@ HandleGraphics:
 
 
 
-macro CameraBox(X, Y, W, H, S, FX, FY)
+macro CameraBox(X, Y, W, H)
 	dw <X>*$100
 	dw <Y>*$E0
 	dw (<X>+<W>)*$100
 	dw (<Y>+<H>)*$E0
-	dw <S>|(<FX><<6)|(<FY><<11)
 endmacro
 
 macro Door(x, y)

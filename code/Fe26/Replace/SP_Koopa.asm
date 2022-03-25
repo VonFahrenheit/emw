@@ -223,7 +223,7 @@ pullpc
 
 		LDA $3420,x : BNE .Kicking
 		JSR .FindShell
-.0189B4		JML $0189B4
+	.0189B4	JML $0189B4
 
 	.Kicking
 		CMP #$03 : BCS .018957
@@ -263,9 +263,8 @@ pullpc
 		BRA .018957
 
 		.Return
-		LDA $3420,x
-		BEQ .0189B4
-.018957		JML $018957
+		LDA $3420,x : BEQ .0189B4
+	.018957	JML $018957
 
 	.FindShell
 		STZ $00

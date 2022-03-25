@@ -1112,27 +1112,27 @@ level14:
 
 
 
-;	Key ->	   X  Y  W  H  S  FX FY
-;		   |  |  |  |  |  |  |
-;		   V  V  V  V  V  V  V
+;	Key ->	   X  Y  W  H
+;		   |  |  |  |
+;		   V  V  V  V
 ;
 .BoxTable
-.Box0	%CameraBox(0, 5, 3, 2, 0, 2, 1)
-.Box1	%CameraBox(3, 4, 0, 0, $FF, 0, 0)
-.Box2	%CameraBox(1, 4, 1, 0, $FF, 0, 0)
-.Box3	%CameraBox(2, 2, 2, 1, $FF, 0, 0)
-.Box4	%CameraBox(4, 4, 0, 2, $FF, 0, 0)
-.Box5	%CameraBox(5, 2, 2, 4, 2, 0, 2)
-.Box6	%CameraBox(0, 2, 1, 1, $FF, 0, 0)
-.Box7	%CameraBox(1, 0, 1, 1, $FF, 0, 0)
-.Box8	%CameraBox(0, 0, 0, 1, $FF, 0, 0)
-.Box9	%CameraBox(5, 0, 1, 1, $FF, 0, 0)
-.BoxA	%CameraBox(3, 0, 1, 1, $FF, 0, 0)
-.BoxB	%CameraBox(7, 0, 0, 0, $FF, 0, 0)
-.BoxC	%CameraBox(7, 1, 0, 3, $FF, 0, 0)
-.BoxD	%CameraBox(4, 7, 3, 0, $FF, 0, 0)
-.BoxE	%CameraBox(0, 5, 2, 1, $FF, 0, 0)
-.BoxF	%CameraBox(0, 4, 0, 0, $FF, 0, 0)
+.Box0	%CameraBox(0, 5, 3, 2)
+.Box1	%CameraBox(3, 4, 0, 0)
+.Box2	%CameraBox(1, 4, 1, 0)
+.Box3	%CameraBox(2, 2, 2, 1)
+.Box4	%CameraBox(4, 4, 0, 2)
+.Box5	%CameraBox(5, 2, 2, 4)
+.Box6	%CameraBox(0, 2, 1, 1)
+.Box7	%CameraBox(1, 0, 1, 1)
+.Box8	%CameraBox(0, 0, 0, 1)
+.Box9	%CameraBox(5, 0, 1, 1)
+.BoxA	%CameraBox(3, 0, 1, 1)
+.BoxB	%CameraBox(7, 0, 0, 0)
+.BoxC	%CameraBox(7, 1, 0, 3)
+.BoxD	%CameraBox(4, 7, 3, 0)
+.BoxE	%CameraBox(0, 5, 2, 1)
+.BoxF	%CameraBox(0, 4, 0, 0)
 
 
 .ScreenMatrix	db $08,$07,$07,$0A,$0A,$09,$09,$0B
@@ -1367,26 +1367,26 @@ level34:
 
 
 
-;	Key ->	   X  Y  W  H  S  FX FY
-;		   |  |  |  |  |  |  |
-;		   V  V  V  V  V  V  V
+;	Key ->	   X  Y  W  H
+;		   |  |  |  |
+;		   V  V  V  V
 ;
 .BoxTable
-.Box0	%CameraBox(0, 0, 0, 3, $FF, 0, 0)
-.Box1	%CameraBox(1, 0, 0, 3, $FF, 0, 0)
-.Box2	%CameraBox(2, 0, 5, 0, $FF, 0, 0)
-.Box3	%CameraBox(2, 1, 1, 2, 3, 0, 1)
-.Box4	%CameraBox(4, 1, 3, 0, $FF, 0, 0)
-.Box5	%CameraBox(3, 2, 4, 1, $FF, 0, 0)
-.Box6	%CameraBox(0, 4, 1, 1, $FF, 0, 0)
-.Box7	%CameraBox(2, 4, 0, 1, $FF, 0, 0)
-.Box8	%CameraBox(3, 4, 0, 3, $FF, 0, 0)
-.Box9	%CameraBox(4, 4, 3, 2, 5, 2, 1)
-.BoxA	%CameraBox(5, 5, 2, 2, $FF, 0, 0)
-.BoxB	%CameraBox(0, 6, 1, 1, $FF, 0, 0)
-.BoxC	%CameraBox(2, 6, 0, 0, $FF, 0, 0)
-.BoxD	%CameraBox(2, 7, 0, 0, $FF, 0, 0)
-.BoxE	%CameraBox(4, 7, 0, 0, $FF, 0, 0)
+.Box0	%CameraBox(0, 0, 0, 3)
+.Box1	%CameraBox(1, 0, 0, 3)
+.Box2	%CameraBox(2, 0, 5, 0)
+.Box3	%CameraBox(2, 1, 1, 2)
+.Box4	%CameraBox(4, 1, 3, 0)
+.Box5	%CameraBox(3, 2, 4, 1)
+.Box6	%CameraBox(0, 4, 1, 1)
+.Box7	%CameraBox(2, 4, 0, 1)
+.Box8	%CameraBox(3, 4, 0, 3)
+.Box9	%CameraBox(4, 4, 3, 2)
+.BoxA	%CameraBox(5, 5, 2, 2)
+.BoxB	%CameraBox(0, 6, 1, 1)
+.BoxC	%CameraBox(2, 6, 0, 0)
+.BoxD	%CameraBox(2, 7, 0, 0)
+.BoxE	%CameraBox(4, 7, 0, 0)
 
 
 .ScreenMatrix	db $00,$01,$02,$02,$02,$02,$02,$02

@@ -243,7 +243,15 @@ namespace Luigi
 	-	JMP .NotSpinning				; can't start spin during fireball animation
 		LDA !P2SpinAttack : BNE .Spinning
 		BIT $6DA9 : BPL -
-		LDA #$30 : STA !P2SpinAttack
+;		LDA #$30 : STA !P2SpinAttack
+	LDA #$01 : STA !P2SpinAttack
+	LDA !P2InAir : BEQ +
+	LDA !P2SpinUsed : BNE +
+	LDA !P2YSpeed : BPL ++
+	CMP #$E0 : BCC +++
+++	LDA #$E0 : STA !P2YSpeed
++++	JSL CORE_DOUBLE_JUMP_SMOKE
+	+
 		LDA #!Lui_Spin : STA !P2Anim
 		STZ !P2Hitbox1IndexMem1				;\
 		STZ !P2Hitbox1IndexMem2				; | clear index mem
@@ -254,10 +262,10 @@ namespace Luigi
 		.Spinning
 		JSL CORE_SMOKE_AT_FEET
 		LDA !P2SpinAttack				;\
-		CMP #$30 : BCS +				; |
-		BIT $6DA9 : BPL +				; > can end spin at will
-		LDA #$01 : STA !P2SpinAttack			;\ end spin
-		BRA .NotSpinning				;/
+	;	CMP #$30 : BCS +				; |
+	;	BIT $6DA9 : BPL +				; > can end spin at will
+	;	LDA #$01 : STA !P2SpinAttack			;\ end spin
+	;	BRA .NotSpinning				;/
 	+	CMP #$08 : BCS +				;\ invincible during last 8 frames of spin (before finisher, which is also invincible)
 		LDA #$01 : STA !P2Invinc			;/
 	+	STZ !P2Carry					; can't carry something while spinning
@@ -1152,9 +1160,14 @@ namespace Luigi
 
 
 	OUTPUT_HURTBOX:
-		REP #$30
+		LDA !P2Anim : PHA
+		LDA !P2HP
+		CMP #$05 : BCS +
+		LDA #!Lui_Crouch : STA !P2Anim
+	+	REP #$30
 		LDA.w #ANIM
 		JSL CORE_OUTPUT_HURTBOX
+		PLA : STA !P2Anim
 		PLB
 		RTS
 

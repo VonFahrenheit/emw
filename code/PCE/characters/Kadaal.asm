@@ -514,7 +514,7 @@ namespace Kadaal
 		STZ !P2Direction
 	++	BIT $6DA7 : BPL +
 		STZ !P2Climbing					; vine/net jump
-		LDA #$B8 : STA !P2YSpeed
+		LDA #$A8 : STA !P2YSpeed
 		LDA #$2B : STA !SPC1				; jump SFX
 	+	RTS
 		.NoClimb
@@ -1473,67 +1473,33 @@ namespace Kadaal
 ; F:		second file flag (when set, file stored at !FileAddress+4 should be used for the rest of the dynamo)
 ; ttttt:	tile number (shift left 1 then add VRAM offset)
 
+		LDA !P2Anim
+		AND #$00FF
+		CMP.w #!Kad_Swim : BCC ..normalfile
+		CMP.w #!Kad_Swim_over : BCS ..normalfile
+		..linearfile
+		LDA !SD_KadaalLinear-1
+		AND #$FC00 : STA !FileAddress
+		LDA !SD_KadaalLinear
+		AND #$0003 : TAX
+		LDA.l CORE_SD_BANK,x : STA !FileAddress+2
+		STZ $2250
+		LDA $785F
+		BPL $04 : EOR #$FFFF : INC A
+		XBA
+		AND #$00FF
+		STA $2251
+		LDA #$0200 : STA $2253
+		LDA !FileAddress+0
+		CLC : ADC $2306
+		STA !FileAddress+0
+		BRA ..update
+		..normalfile
 		LDY.w #!File_Kadaal : JSL !GetFileAddress
-
-		; SEP #$20
-		; STZ $2250
-		; LDA !P2Anim
-		; CMP.b #!Kad_Swim : BCC +
-		; CMP.b #!Kad_Swim_over : BCS +
-		; LDA #$00 : XBA					; we live in a society
-		; LDA !SD_KadaalLinear : STA $03
-		; AND #$03 : TRB $03
-		; STZ $02
-		; TAX
-		; LDA.l CORE_SD_BANK,x : STA !FileAddress+2
-		; REP #$20
-		; LDA $02 : STA !FileAddress+0
-
-		; LDA $785F
-		; BPL $04 : EOR #$FFFF : INC A
-		; XBA
-		; AND #$00FF
-		; STA $2251
-		; LDA #$0200 : STA $2253
-		; LDA !FileAddress+0
-		; CLC : ADC $2306
-		; STA !FileAddress+0
-
-	; +	REP #$20
+		..update
 
 
-		; LDA ($00)					;\
-		; AND #$00FF					; |
-		; STA $02						; |
-		; LDX #$0000					; |
-		; LDY #$0000					; |
-		; INC $00						; |
-	; -	LDA ($00),y					; |
-		; AND #$001E					; |
-		; ASL #4						; |
-		; STA !BigRAM+$00+2,x				; |
-		; LDA ($00),y					; |
-		; AND #$7FE0					; |
-		; CLC : ADC !FileAddress				; |
-		; STA !BigRAM+$02+2,x				; | unpack dynamo data
-		; LDA !FileAddress+2 : STA !BigRAM+$04+2,x	; |
-		; INY #2						; |
-		; LDA ($00),y					; |
-		; ASL A						; |
-		; AND #$01F0					; |
-		; ORA #$6200					; |
-		; STA !BigRAM+$05+2,x				; |
-		; INY						; |
-		; TXA						; |
-		; CLC : ADC #$0007				; |
-		; TAX						; |
-		; CPY $02 : BCC -					;/
-		; STX !BigRAM+0					; > set size
-
-
-;		LDA.w #!BigRAM : JSL CORE_GENERATE_RAMCODE
-
-	LDA $00 : JSL CORE_GENERATE_RAMCODE_24bit
+		LDA $00 : JSL CORE_GENERATE_RAMCODE_24bit
 
 		SEP #$30
 		LDA !P2Anim : STA !P2Anim2

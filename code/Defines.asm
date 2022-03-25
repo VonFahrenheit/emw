@@ -197,6 +197,22 @@ endmacro
 
 
 
+; llllllll	lo byte
+; HHHH-ssh	hi byte
+
+; llllllll are bits 0-7
+; h is bit 8
+; HHHH are bits 9-12
+; ss are always set
+
+
+macro SecondaryExitValue(exit)
+		db <exit>
+		db ((<exit>&$1E00)>>5)|((<exit>&$0100)>>8)|$06
+endmacro
+
+
+
 
 	; -- Free RAM --		; Point to unused addresses, please.
 					; Don't change addressing mode (16-bit to 24-bit and vice versa).
@@ -366,16 +382,8 @@ endmacro
 		!CameraBoxU		= $6AC2
 		!CameraBoxR		= $6AC4
 		!CameraBoxD		= $6AC6
-		!CameraForbiddance	= $6AC8
-					; reg2     reg1
-					; yyyyyxxx xxssssss
-					; s = which screen of camera box that forbiddance box starts at
-					; x = number of screens for forbiddance box to span horizontally (0=1)
-					; y = number of screens for forbiddance box to span vertically (0=1)
-
-		!CameraBoxRoom		= $6AF6			; which camera box room the player is in
+		!CameraBoxRoom		= $6AC8			; which camera box room the player is in
 		!Room			= !CameraBoxRoom	; alt name
-
 
 
 
@@ -2587,7 +2595,7 @@ endmacro
 		!MarioJoypad2OneF	= $18
 		!MarioPowerUp		= $19
 		!RAM_ScreenMode		= $5B
-		!LevelWidth		= $5E	; in screens
+		!LevelWidth		= $5E	; in screens (effective width not max width: only used screens are counted)
 		!GlobalProperties	= $64
 		!MarioAnim		= $71
 		!MarioInAir		= $72

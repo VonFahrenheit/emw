@@ -1,9 +1,14 @@
 
 
 ; these are set during spawn (keyhole sprite)
-; _W	index, lo byte
-; _H	index, hi byte
-; _Misc	memory bit (if set to 0xFF, a break has been queued)
+; _W		item mem index, lo byte
+; _H		item mem index, hi byte (if set to 0xFF, this object has no item mem)
+; _Misc		item memory bit
+; _Timer	0x00 = turn to air, 0xFF = turn to water
+
+
+; other:
+; _Tile		0xFF if a break is queued
 
 	KeyBlock:
 		LDX $00						; X = BG object index
@@ -73,16 +78,17 @@
 
 		.Break
 		LDA !VRAMbase+!TileUpdateTable			;\
-		CMP #$00C0 : BCC ..yes				; |
-		..queue						; | queue if it can't update on this frame
-		INC !BG_object_Misc,x				; |
+		CMP #$00C0 : BCC ..yes				; | return if it can't break on this frame
 		RTS						;/
 		..yes
 		LDA !BG_object_X,x : STA $9A
 		LDA !BG_object_Y,x : STA $98
 		PHX
 		PHP
+		LDA !BG_object_Timer,x
 		PHB : PHK : PLB
+		AND #$00FF : BNE ..water
+		..air
 		JSR PuffTile
 		LDA $9A
 		CLC : ADC #$0010
@@ -96,6 +102,22 @@
 		SEC : SBC #$0010
 		STA $9A
 		JSR PuffTile
+		BRA ..return
+		..water
+		JSR WaterTile
+		LDA $9A
+		CLC : ADC #$0010
+		STA $9A
+		JSR WaterTile
+		LDA $98
+		CLC : ADC #$0010
+		STA $98
+		JSR WaterTile
+		LDA $9A
+		SEC : SBC #$0010
+		STA $9A
+		JSR WaterTile
+		..return
 		PLB
 		PLP
 		PLX

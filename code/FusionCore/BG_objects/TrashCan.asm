@@ -32,7 +32,7 @@
 		.BodyInteraction
 		LDA !BG_object_X,x				;\
 		STA $04						; |
-		STA $09						; |
+		STA $0A-1					; |
 		LDA !BG_object_Y,x				; |
 		CLC : ADC #$0008				; |
 		SEP #$20					; | clipping
@@ -58,6 +58,7 @@
 		LDA !P2InAir-$80 : BEQ ..done			; |
 		LDA !P2YSpeed-$80 : BMI ..done			; |
 		STA $02						; |
+		STZ !P2SpecialUsed-$80				; |
 		LDA !P2XSpeed-$80 : STA $0E			; > speed for knockover animation
 		LDA !P2XPosLo-$80 : JSR .GetSpeed		; |
 		CLC : ADC !P2XSpeed-$80				; |
@@ -96,7 +97,8 @@
 		LDA !P2InAir : BEQ ..done			; |
 		LDA !P2YSpeed : BMI ..done			; |
 		STA $02						; |
-		LDA !P2XSpeed-$80 : STA $0E			; > speed for knockover animation
+		STZ !P2SpecialUsed				; |
+		LDA !P2XSpeed : STA $0E				; > speed for knockover animation
 		LDA !P2XPosLo : JSR .GetSpeed			; |
 		CLC : ADC !P2XSpeed				; |
 		STA !P2XSpeed					; |

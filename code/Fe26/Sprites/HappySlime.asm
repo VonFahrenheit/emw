@@ -78,6 +78,9 @@ HappySlime:
 
 		!Happiness		= $3390,x
 
+		!SlimeRageTimer		= $3500		; no ,x
+
+
 		!TargetQuadrant		= $35A0,x
 		!SlimeBounceOffset	= $35B0,x
 		!Goal1			= $35D0,x
@@ -93,8 +96,7 @@ HappySlime:
 		LDA !ExtraBits,x : BMI .Main
 
 		.Init
-		ORA #$80
-		STA !ExtraBits,x
+		ORA #$80 : STA !ExtraBits,x
 		LDA #$00 : JSL GET_SQUARE
 		BCS +
 		STZ $3230,x
@@ -105,6 +107,8 @@ HappySlime:
 		JSL SUB_HORZ_POS
 		TYA : STA $3320,x
 	+	PEA.w RETURN-2			; yes, an extra byte here
+
+
 		LDA !ExtraBits,x
 		AND #$04 : BEQ .Follow
 
@@ -116,6 +120,18 @@ HappySlime:
 
 
 		.Main
+		.Rage
+		LDA !SpriteStasis,x : BNE ..done
+		LDA !SlimeRageTimer,x : BEQ ..done
+		DEC !SlimeRageTimer,x : BNE ..done
+		INC $BE,x
+		LDA !ExtraBits,x
+		AND.b #$04^$FF : STA !ExtraBits,x
+		LDA.b #!HappySlime_GroundSquat : STA !SpriteAnimIndex
+		STZ !SpriteAnimTimer
+		JSR FOLLOW
+		..done
+
 		JSL SPRITE_OFF_SCREEN
 		LDA $3230,x
 		SEC : SBC #$08
@@ -290,6 +306,7 @@ HappySlime:
 		BRA ..anim
 
 ..bounce	LDA !SpriteAnimTimer : BEQ $01 : RTS	; only bounce once
+		LDA #$78 : STA !SlimeRageTimer,x	; if item doesn't return in 2 seconds, RAGE!
 		LDA #$A0 : STA $309E,y			; bounce yspeed
 		LDA $3200,y				;\
 		CMP #$0F : BNE +			; | goomba is knocked out lmao
@@ -314,7 +331,7 @@ HappySlime:
 		JSL !GetSpriteClipping00
 		JSL !CheckContact
 		BCC ..next
-		LDA #$10 : STA $34E0,x			; set stasis timer
+		LDA #$10 : STA !SpriteStasis,x		; set stasis timer
 		TXA
 		TXY
 		PLX
@@ -748,6 +765,18 @@ HappySlime:
 		STA !Goal1
 		JSR HURT
 		.NoAttack
+
+		.CheckProjectiles
+		JSL FireballContact_Destroy : BCC ..done
+		LDA $00
+		STA !SpriteXSpeed,x
+		STA $02
+		LDA #$E0
+		STA !SpriteYSpeed,x
+		STA $03
+		JSR HURT
+		..done
+
 
 
 

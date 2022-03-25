@@ -223,14 +223,19 @@ namespace GAMEMODE14
 
 		JSL $008E1A				; status bar
 		LDA #$01 : JSL !ProcessYoshiCoins	; > handle Yoshi Coins
-
 		LDA $14					;\
 		AND #$1F				; |
 		TAY					; | index RNG table
 		DEC A					; |
 		AND #$1F				; |
 		TAX					;/
-		JSL !Random				; get vanilla RN
+		LDA !RNGtable,x				;\
+		BIT #$01 : BEQ +			; |
+		ASL A					; | apply 3N+1 on previous RN
+		ADC !RNGtable,x				; |
+		STA !RNGtable,x : BRA ++		; |
+	+	LSR !RNGtable,x				;/
+	++	JSL !Random				; get vanilla RN
 		ADC !RNGtable,x				; add RNG from last frame
 		ADC $13					; add true frame counter
 		ADC $6DA2				;\
@@ -411,7 +416,7 @@ pushpc
 	org $009A58
 		JSL Camera
 	org $00A01B			;
-		JML Camera_UpdateBG	;
+		JML Camera_HijackBG	;
 	;org $00A023			; $00A023 is how the code is aligned after LM's edit
 	org $00A044			; actually just skip all of it... we're not gonna use the vanilla layer 3 anyway
 		SkipLM_BG_Setup:	;
@@ -452,7 +457,7 @@ Camera:
 		LDA.b #Cutscene>>8 : STA $3181
 		LDA.b #Cutscene>>16 : STA $3182
 		JSR $1E80
-		BRA .Shared
+		BRA .ExecutePtr
 		.NoCutscene
 
 
@@ -473,12 +478,12 @@ Camera:
 		LDA !GameMode					;\
 		CMP #$14 : BEQ .Light				; | if not in level game mode, just wait for SA-1
 		JSR $1E80					; |
-		BRA .Shared					;/
+		BRA .ExecutePtr					;/
 
 	.Light	LDA #$80 : STA $2200				;\ if in level game mode, have SNES work on shading
 		JSR !MPU_light					;/
 
-		.Shared
+		.ExecutePtr
 		REP #$20					;\
 		LDA.l !HDMAptr+0 : BEQ .Return			; |
 		STA $00						; |
@@ -496,100 +501,102 @@ Camera:
 	; behold...
 	; the SCUFFEST way to initialize the camera's x position!
 	.PreserveDP
-		PHP
-		PEI ($00)
-		PEI ($02)
-		PEI ($04)
-		PEI ($06)
-		PEI ($08)
-		PEI ($0A)
-		PEI ($0C)
-		PEI ($0E)
-	; temp coords
-		REP #$30
-		STZ !CameraForceTimer		; clear forced camera movement
-		LDA $94
-		STA !P2XPosLo-$80
-		STA !P2XPosLo
-		LDA $96
-		CLC : ADC #$0010
-		STA !P2YPosLo-$80
-		STA !P2YPosLo
-		LDA !Level : STA $00
-		ASL A
-		ADC $00
-		TAY
-		LDA.l !BoxPtr : STA $03
-		LDA.l !BoxPtr+1 : STA $04
-		LDA [$03],y : BNE ..box
-		SEP #$30
-		LDA #$FF
-		STA !CameraBoxU+1
-		STA !CameraForbiddance
-		BRA ..nobox
-		..box
-		STA $00
-		INY
-		LDA [$03],y : STA $01
-		SEP #$30
-		XBA
-		PHB : PHA : PLB
-		REP #$20
-		LDA $00 : JSL LoadCameraBox
-		JSL InitCameraBox
-		PLB
-		SEP #$30
-		JSL Camera			; +1 call with camera box
-		..nobox
+		PHP						; preserve P
+		PEI ($00)					;\
+		PEI ($02)					; |
+		PEI ($04)					; |
+		PEI ($06)					; | preserve DP
+		PEI ($08)					; |
+		PEI ($0A)					; |
+		PEI ($0C)					; |
+		PEI ($0E)					;/
 
-		JSL Camera
+		REP #$30					; all regs 16-bit
+		STZ !CameraForceTimer				; clear forced camera movement
+		LDA $94						;\
+		STA !P2XPosLo-$80				; |
+		STA !P2XPosLo					; |
+		LDA $96						; | player coords
+		CLC : ADC #$0010				; |
+		STA !P2YPosLo-$80				; |
+		STA !P2YPosLo					;/
+		LDA !Level : STA $00				;\
+		ASL A						; |
+		ADC $00						; |
+		TAY						; | check if this level has a camera box
+		LDA.l !BoxPtr : STA $03				; |
+		LDA.l !BoxPtr+1 : STA $04			; |
+		LDA [$03],y : BNE ..box				;/
+		..nobox						;\
+		SEP #$30					; | disable camera box if this level doesn't have one
+		LDA #$FF : STA !CameraBoxU+1			; |
+		BRA ..boxdone					;/
+		..box						;\
+		STA $00						; |
+		INY						; |
+		LDA [$03],y : STA $01				; |
+		SEP #$30					; | load camera box
+		XBA						; |
+		PHB : PHA : PLB					; |
+		REP #$20					; |
+		LDA $00 : JSL LoadCameraBox			;/
+		JSL InitCameraBox				;\
+		REP #$20					; | init camera box
+		PLB						;/
+		LDA !CameraBoxL					;\
+		CMP !CameraBoxR : BNE ..fullcalc		; |
+		STA $1A						; | if width = 1, force camera X
+		STA !CameraBackupX				; |
+		STA $7462					; |
+		BRA ..return					;/
+		..fullcalc					;\
+		STA $7462					;/
+		SEP #$30					; all regs 8-bit
+		JSL Camera					; +1 call with camera box
+		..boxdone
 
-		PEI ($1C)
-		REP #$20
-		LDA !CameraBackupY : PHA
-		LDA $7464 : PHA
-		SEP #$20
-		JSL Camera
-		JSL Camera
-		JSL Camera
-		JSL Camera
-		JSL Camera
-		JSL Camera
-		JSL Camera
-		JSL Camera
-		JSL Camera
-		JSL Camera
-		JSL Camera
-		JSL Camera
-		JSL Camera
-		JSL Camera
-		JSL Camera
-		JSL Camera
-		REP #$20
-	;	BIT !CameraBoxU : BMI ..restore
-	;	..keep
-	;	PLA
-	;	PLA
-	;	PLA
-	;	BRA ..return
-		..restore
-		PLA : STA $7464
-		PLA : STA !CameraBackupY
-		PLA : STA $1C
-		..return
-		PLA : STA $0E
-		PLA : STA $0C
-		PLA : STA $0A
-		PLA : STA $08
-		PLA : STA $06
-		PLA : STA $04
-		PLA : STA $02
-		PLA : STA $00
-		PLP
-		RTL
+		JSL Camera					; move camera once
+
+		PEI ($1C)					;\
+		REP #$20					; |
+		LDA !CameraBackupY : PHA			; | preserve camera Y regs
+		LDA $7464 : PHA					; |
+		SEP #$20					;/
+		JSL Camera					;\
+		JSL Camera					; |
+		JSL Camera					; |
+		JSL Camera					; |
+		JSL Camera					; |
+		JSL Camera					; |
+		JSL Camera					; |
+		JSL Camera					; | move camera a bunch of times
+		JSL Camera					; | (yeah... extremely scuffed)
+		JSL Camera					; |
+		JSL Camera					; |
+		JSL Camera					; |
+		JSL Camera					; |
+		JSL Camera					; |
+		JSL Camera					; |
+		JSL Camera					;/
+		REP #$20					;\
+		..restore					; |
+		PLA : STA $7464					; | restore camera Y regs
+		PLA : STA !CameraBackupY			; |
+		PLA : STA $1C					;/
+		..return					;\
+		PLA : STA $0E					; |
+		PLA : STA $0C					; |
+		PLA : STA $0A					; |
+		PLA : STA $08					; | restore DP
+		PLA : STA $06					; |
+		PLA : STA $04					; |
+		PLA : STA $02					; |
+		PLA : STA $00					;/
+		PLP						; restore P
+		RTL						; return
 
 
-	.UpdateBG
+	.HijackBG
 		PHP
 		REP #$20
 		SEP #$10
@@ -597,6 +604,16 @@ Camera:
 		JSL BG3Controller
 		PLP
 		JML SkipLM_BG_Setup
+
+	.BG
+		PHP
+		REP #$20
+		SEP #$10
+		JSL BG2Controller
+		JSL BG3Controller
+		PLP
+		RTL
+
 
 
 
@@ -856,24 +873,20 @@ Camera:
 		.UnlimitX					; |
 		STA $1A						;/
 
-		LDA $5E						;\
+		LDA !LevelWidth					;\
 		DEC A						; |
 		XBA						; |
 		AND #$FF00					; | cap at right edge of level
 		BPL $03 : LDA #$0080				; |
 		CMP $1A						; |
-		BPL $02 : STA $1A				;/
+		BCS $02 : STA $1A				;/
 
 
 		.FinishCamera
-;		LDX !GameMode					;\
-;		CPX #$11 : BNE .NoInit				; | check for init
-;		JMP .InitCamera					;/
-;	.NoInit	CPX #$14 : BNE .NoBox				; if not game mode 0x14, no camera box
 
 		.Expand						;\
 		LDY #$01					; |
-	-	LDX !CameraForceTimer,y : BEQ .NextForce	; |
+	-	LDX !CameraForceTimer,y : BEQ +			; |
 		DEX						; |
 		TXA						; |
 		SEP #$20					; |
@@ -896,57 +909,12 @@ Camera:
 		AND #$FFF8					; |
 		STA $1C						; |
 		BRA .NoBox					; |
-.NextForce	DEY : BPL -					;/
+	+	DEY : BPL -					;/
+
 
 		BIT !CameraBoxU : BMI .NoBox			;\
 		JSR .CameraBox					; | run camera box if it's enabled
-;		JMP .CameraBackup				;/
-
-		.NoBox
-;		LDX !SmoothCamera : BEQ .CameraBackup		; > see if smooth cam is enabled
-;		PHB : PHK : PLB					;\
-;		STZ $00						; |
-;		LDX $5D						; |
-;		DEX						; |
-;		STX $01						; |
-;		LDA !LevelHeight				; |
-;		SEC : SBC #$00E0				; |
-;		STA $02						; |
-;		LDA !P2XPosLo-$80				; |
-;		CLC : ADC !P2XPosLo				; |
-;		LSR A						; |
-;		SEC : SBC #$0080				; |
-;		BPL $03 : LDA #$0000				; |
-;		CMP $00						; |
-;		BCC $02 : LDA $00				; |
-;		STA $1A						; |
-;		LDY !EnableVScroll : BEQ +			; |
-;		LDA !P2YPosLo-$80				; |
-;		CLC : ADC !P2YPosLo				; | smooth cam logic
-;		BPL $03 : LDA #$0000				; |
-;		LSR A						; |
-;		SEC : SBC #$0070				; |
-;		BPL $03 : LDA #$0000				; |
-;		CMP $02						; |
-;		BCC $02 : LDA $02				; |
-;		STA $1C						; |
-;	+	LDX #$02					; |
-;	-	LDA !CameraBackupX,x				; |
-;		CMP $1A,x : BEQ +				; |
-;		LDY #$00					; |
-;		BCC $02 : LDY #$02				; |
-;		CLC : ADC.w .SmoothSpeed,y			; |
-;		STA $00						; |
-;		LDA !CameraBackupX,x				; |
-;		SEC : SBC $1A,x					; |
-;		BPL $04 : EOR #$FFFF : INC A			; |
-;		CMP #$0006 : BCC +				; |
-;		LDA $00 : STA $1A,x				; |
-;	+	DEX #2 : BPL -					; |
-;		PLB						;/
-
-
-
+		.NoBox						;/
 
 
 		.CalcLightPoints				;\
@@ -1188,9 +1156,25 @@ Camera:
 		SEP #$10
 		REP #$20
 
-	;	JSR .Aim					; get camera target
-		JSR .Forbiddance				; apply forbiddance box
-		JSR .Process					; process movement
+		LDX #$02
+	-	LDA $1A,x
+		CMP !CameraBoxL,x : BCS +
+		LDA !CameraBoxL,x : STA $1A,x
+		BRA ++
+	+	CMP !CameraBoxR,x : BCC ++ : BEQ ++
+		LDA !CameraBoxR,x : STA $1A,x
+	++	LDA !CameraBackupX,x				; apply smooth camera
+		CMP $1A,x : BEQ +
+		LDY #$00
+		BCC $02 : LDY #$02
+		CLC : ADC.w .SmoothSpeed,y
+		STA $00
+		LDA !CameraBackupX,x
+		SEC : SBC $1A,x
+		BPL $04 : EOR #$FFFF : INC A
+		CMP #$0006 : BCC +
+		LDA $00 : STA $1A,x
+	+	DEX #2 : BPL -
 
 		LDX #$02					;\
 	-	LDY #$00					; |
@@ -1199,7 +1183,6 @@ Camera:
 		BCC $02 : LDY #$02				; |
 		STY $55						; |
 	+	DEX #2 : BPL -					;/
-
 
 		LDA !CameraBoxL					;\
 		SEC : SBC #$0020				; |
@@ -1297,33 +1280,6 @@ Camera:
 		STA $1C						; |
 		RTS						;/
 
-		.Process
-		LDX #$02
-	-	LDA $1A,x
-		CMP !CameraBoxL,x : BCS +
-		LDA !CameraBoxL,x : STA $1A,x
-		BRA ++
-	+	CMP !CameraBoxR,x : BCC ++ : BEQ ++
-		LDA !CameraBoxR,x : STA $1A,x
-	++	LDA !CameraBackupX,x				; apply smooth camera
-		CMP $1A,x : BEQ +
-		LDY #$00
-		BCC $02 : LDY #$02
-		CLC : ADC.w .SmoothSpeed,y
-		STA $00
-		LDA !CameraBackupX,x
-		SEC : SBC $1A,x
-		BPL $04 : EOR #$FFFF : INC A
-		CMP #$0006 : BCC +
-		LDA $00 : STA $1A,x
-	;	TXA
-	;	EOR #$0002
-	;	TAX
-	;	LDA !CameraBackupX,x : STA $1A,x
-	;	BRA .Absolute
-	+	DEX #2 : BPL -
-	..R	RTS
-
 
 		.Absolute
 		LDA $1A,x
@@ -1335,166 +1291,6 @@ Camera:
 	+	RTS
 
 
-
-; $08 = left border
-; $0A = top border
-; $0C = right border
-; $0E = bottom border
-		.Forbiddance
-		LDX !CameraForbiddance
-		CPX #$FF : BEQ .Process_R
-		LDA !CameraForbiddance
-		AND #$003F
-		TAX
-
-		LDA !CameraBoxU : STA $0A	; > forbiddance top border start
-		LDA !CameraBoxL
-	-	CPX #$00 : BEQ +
-		DEX
-		CLC : ADC #$0100
-		STA $08
-		CMP !CameraBoxR : BCC - : BEQ -
-		LDA $0A
-		CLC : ADC #$00E0
-		STA $0A				; > forbiddance top border
-		LDA !CameraBoxL
-		BRA -
-
-	+	STA $08				; > forbiddance left border
-		LDA !CameraForbiddance
-		ASL #2
-		AND #$1F00
-		CLC : ADC $08
-		CLC : ADC #$0100
-		STA $0C				; > forbiddance right border
-		LDA !CameraForbiddance
-		AND #$F800
-		LSR #3
-		PHA
-		LSR #3
-		STA $0E
-		PLA
-		SEC : SBC $0E
-		CLC : ADC $0A
-		CLC : ADC #$00E0
-		STA $0E				; > forbiddance bottom border
-
-
-		LDA $1A
-		CMP $0C : BCS .NoForbid
-		ADC #$0100
-		CMP $08 : BCC .NoForbid
-		LDA $1C
-		CMP $0E : BCS .NoForbid
-		ADC #$00E0
-		CMP $0A : BCC .NoForbid
-
-	; probably limit Y then X
-		LDX #$02
-	-	LDA $08,x
-		CLC : ADC $0C,x
-		LSR A
-		STA !BigRAM+0
-		LDA $1A,x
-		CLC : ADC .CameraCenter,x
-		CMP !BigRAM+0
-		BCS ..RD
-	..LU	LDA $08,x : STA $00,x
-		SEC : SBC .CameraOffset,x
-		BRA +
-	..RD	LDA $0C,x : STA $00,x
-	+	SEC : SBC $1A,x
-		BPL $04 : EOR #$FFFF : INC A
-		STA $04,x
-		DEX #2 : BPL -
-
-
-		LDX #$00
-		LDA $04
-		CMP $06
-		BCC $02 : LDX #$02
-		; X = 0x00 -> adjust horizontally
-		; X = 0x02 -> adjust vertically
-
-		LDA $00,x
-		CMP !CameraBoxL,x : BNE +
-		TXA
-		EOR #$0002
-		TAX
-		LDA $00,x
-	+	CMP $08,x : BNE +
-		SEC : SBC .CameraOffset,x
-		BPL $03 : LDA #$0000
-	+	STA $1A,x
-
-		.NoForbid
-		RTS
-
-
-
-	.InitCamera
-		PHP						;\
-		SEP #$20					; |
-		LDX !Level					; |
-		LDA.l .LevelTable,x				; |
-		LDX !Level+1					; |
-		AND.l .LevelSwitch,x				; |
-		BEQ .NormalCoords				; |
-		CMP #$10 : BCC +				; |
-		LSR #4						; | game mode 0x11 = INIT camera
-	+	DEC A						; |
-		ASL A						; |
-		CMP.b #.CoordsEnd-.CoordsPtr			; |
-		BCS .NormalCoords				; |
-		TAX						; |
-		JSR (.CoordsPtr,x)				; |
-	.NormalCoords						; |
-		PLP						; |
-		JMP .EndBox					;/
-
-
-; honestly i don't really know what this is...
-; some way of setting camera coords on level init?
-
-; lo nybble is used by levels 0x000-0x0FF, hi nybble is used by levels 0x100-0x1FF
-; 0 means it's unused, so just use normal coords
-; any other number is treated as an index to the coordinate routine pointer table
-
-.LevelTable	db $00,$00,$00,$00,$00,$00,$00,$00		; 00-07
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 08-0F
-		db $00,$00,$00,$00,$01,$00,$00,$00		; 10-17
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 18-1F
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 20-27
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 28-2F
-		db $00,$00,$00,$00,$01,$00,$00,$00		; 30-37
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 38-3F
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 40-47
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 48-4F
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 50-57
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 58-5F
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 60-67
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 68-6F
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 70-77
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 78-7F
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 80-87
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 88-8F
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 90-97
-		db $00,$00,$00,$00,$00,$00,$00,$00		; 98-9F
-		db $00,$00,$00,$00,$00,$00,$00,$00		; A0-A7
-		db $00,$00,$00,$00,$00,$00,$00,$00		; A8-AF
-		db $00,$00,$00,$00,$00,$00,$00,$00		; B0-B7
-		db $00,$00,$00,$00,$00,$00,$00,$00		; B8-BF
-		db $00,$00,$00,$00,$00,$00,$00,$00		; C0-C7
-		db $00,$00,$00,$00,$00,$00,$00,$00		; C8-CF
-		db $00,$00,$00,$00,$00,$00,$00,$00		; D0-D7
-		db $00,$00,$00,$00,$00,$00,$00,$00		; D8-DF
-		db $00,$00,$00,$00,$00,$00,$00,$00		; E0-E7
-		db $00,$00,$00,$00,$00,$00,$00,$00		; E8-EF
-		db $00,$00,$00,$00,$00,$00,$00,$00		; F0-F7
-		db $00,$00,$00,$00,$00,$00,$00,$00		; F8-FF
-
-
-.LevelSwitch	db $0F,$F0
 
 	; this is entered with all regs 8-bit
 	; PLP is used at return, so no need to bother keeping track of P
@@ -1529,7 +1325,6 @@ Camera:
 
 	..Y	dw $0000,$00E0,$01C0,$02A0
 		dw $0380,$0460,$0540,$0620
-
 
 
 
