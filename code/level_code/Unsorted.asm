@@ -1,22 +1,23 @@
 
 
 
-Halve:
-	.8	BPL ..pos
-	..neg	EOR #$FF
-		LSR A
-		EOR #$FF
-		RTL
-	..pos	LSR A
-		RTL
-
-	.16	BPL ..pos
-	..neg	EOR #$FFFF
-		LSR A
-		EOR #$FFFF
-		RTL
-	..pos	LSR A
-		RTL
+ReloadSprites:
+		LDX #$00						; loop through all slots
+		.Loop							;\
+		LDA !SpriteLoadStatus,x : BEQ .Next			; | check for loaded sprites
+		CMP #$EE : BEQ .Next					;/
+		STX $00							;\
+		LDY #$0F						; |
+	-	LDA $3230,y : BEQ +					; | check if the sprite is still alive
+		LDA $33F0,y						; |
+		CMP $00 : BEQ .Next					; |
+	+	DEY : BPL -						;/
+		.Clear							;\ mark for reload
+		LDA #$00 : STA !SpriteLoadStatus,x			;/
+		.Next							;\
+		INX							; | loop
+		CPX #$FF : BNE .Loop					;/
+		RTL							; return
 
 
 Weather:
@@ -24,8 +25,7 @@ Weather:
 		SEP #$30
 		STA $00							; $00 = weather type
 		LDA !41_WeatherTimer : BEQ .Spawn
-		DEC A
-		STA !41_WeatherTimer
+		DEC A : STA !41_WeatherTimer
 		PLP
 		RTL
 

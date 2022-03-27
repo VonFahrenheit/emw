@@ -455,7 +455,10 @@ MainSpriteLoop:
 		%decreg($3360)			; misc timer 1
 		%decreg($3420)			; misc timer 2
 		%decreg($34D0)			; cape interaction disable timer
-		%decreg(!SpriteStasis)		; stasis timer
+		LDA !SpriteStasis,x : BEQ +	;\
+		CMP #$FF : BEQ +		; | stasis timer (if set to -1, it will never end)
+		DEC !SpriteStasis,x		; |
+		+				;/
 		%decreg(!SpriteDisP1)		; P1 interaction disable timer
 		%decreg(!SpriteDisP2)		; P2 interaction disable timer
 

@@ -1882,18 +1882,18 @@ namespace Kadaal
 		RTS
 
 	HIT_01:
-		; Knock out always
+		; knock out always
 		JMP KNOCKOUT
 
 	HIT_02:
-		; Knock out of shell, send shell flying
+		; knock out of shell, send shell flying
 		LDA $3230,x
 		CMP #$02 : BEQ .Knockback
 		CMP #$08 : BEQ .Standard
 		CMP #$09 : BEQ .Knockback
 		CMP #$0A : BNE HIT_00
 		LDA $3200,x			;\
-		CMP #$07 : BNE .Knockback	; | Shiny shell is immune to attacks
+		CMP #$07 : BNE .Knockback	; | shiny shell is immune to attacks
 		LDA #$02 : STA !SPC1		; |
 		RTS				;/
 
@@ -1907,24 +1907,21 @@ namespace Kadaal
 		CMP #$08 : BCC $03
 	-	JMP .Stun
 
-		JSL $02A9DE			; Get new sprite number into Y
-		BMI -				; If there are no empty slots, don't spawn
+		JSL !GetSpriteSlot		; get new sprite number into Y
+		BMI -				; if there are no empty slots, don't spawn
 
 		LDA $3200,x
 		SEC : SBC #$04
-		STA $3200,y			; Store sprite number for new sprite
-		LDA #$08 : STA $3230,y		; > Status: normal
-		LDA $3220,x : STA $3220,y	;\
-		LDA $3250,x : STA $3250,y	; | coords
-		LDA $3210,x : STA $3210,y	; |
-		LDA $3240,x : STA $3240,y	;/
+		STA $3200,y			; store sprite number for new sprite
+		LDA #$08 : STA $3230,y		; > status: normal
+		JSL SPRITE_A_SPRITE_B_COORDS
 		PHX				;\
 		TYX				; | reset tables for new sprite
 		STZ !ExtraBits,x		; |
 		JSL !ResetSprite		; |
 		PLX				;/
 		LDA #$10			;\
-		STA $32B0,y			; | Some sprite tables that SMW normally sets
+		STA $32B0,y			; | some sprite tables that SMW normally sets
 		STA $32D0,y			; |
 		STA !SpriteDisP1,y		; > don't interact
 		STA !SpriteDisP2,y		; > don't interact
@@ -1936,21 +1933,20 @@ namespace Kadaal
 	+	TSB !P2Hitbox1IndexMem2
 		++
 
-		LDA #$10 : STA $3300,y		; > Temporarily disable player interaction
-		LDA $3430,x			;\ Copy "is in water" flag from sprite
+		LDA #$10 : STA $3300,y		; > temporarily disable player interaction
+		LDA $3430,x			;\ copy "is in water" flag from sprite
 		STA $3430,y			;/
-		LDA #$02 : STA $32D0,y		;\ Some sprite tables
-		LDA #$01 : STA $30BE,y		;/
+		LDA #$02 : STA $32D0,y		;\ some sprite tables
+		LDA #$01 : STA.w $BE,y		;/
 
 		LDA $3330,x : STA $3330,y
 
 		PHX
 		LDA !P2Direction
-		EOR #$01
-		STA $3320,y
+		EOR #$01 : STA $3320,y
 		TAX				; X = new sprite direction
-		LDA CORE_KOOPA_XSPEED,x		; Load X speed table indexed by direction
-		STA $30AE,y			; Store to new sprite X speed
+		LDA CORE_KOOPA_XSPEED,x		; load X speed table indexed by direction
+		STA.w !SpriteXSpeed,y		; store to new sprite X speed
 		PLX
 
 		; applying hitstun here causes the spawn to fail because SMW totally rules dude...
@@ -1965,11 +1961,11 @@ namespace Kadaal
 
 
 		.Stun
-		LDA #$09 : STA $3230,x		; > Stun sprite
+		LDA #$09 : STA $3230,x		; > stun sprite
 		LDA $3200,x			;\
-		CMP #$08			; | Check if sprite is a Koopa
+		CMP #$08			; | check if sprite is a Koopa
 		BCC .DontStun			;/
-		LDA #$FF : STA $32D0,x		; > Stun if not
+		LDA #$FF : STA $32D0,x		; > stun if not
 
 		.DontStun
 		LDA CORE_BITS,x

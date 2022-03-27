@@ -1,10 +1,9 @@
 ;===============;
 ;DISPLAY CONTACT;
 ;===============;
-DISPLAY_CONTACT:
-
-
+	DISPLAY_CONTACT:
 	DISPLAYCONTACT:
+
 		.CheckSize
 		LDA !P2Character
 		CMP #$02 : BNE .Small

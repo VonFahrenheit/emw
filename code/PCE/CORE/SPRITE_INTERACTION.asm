@@ -85,7 +85,7 @@ SPRITE_INTERACTION:
 		BRA ++					; | Check index memory
 	+	LDA !P2Hitbox1IndexMem2			; |
 		ORA !P2Hitbox2IndexMem2			; |
-	++	AND BITS,x : BNE .End			;/
+	++	AND BITS,x : BNE -			;/
 
 		JSL !GetSpriteClipping04		; get sprite clipping values
 		LDA $3230,x
@@ -108,6 +108,10 @@ SPRITE_INTERACTION:
 		INC !P2TouchingItem			; this flag prevents attacks
 		LDA $3330,x
 		AND #$04 : BNE +
+		LDA $05
+		CMP $01
+		LDA $0B
+		SBC $09 : BCS +
 		BIT $6DA3 : BVS .Carry
 	+	BIT $6DA7 : BVC .NoCarry
 		.Carry

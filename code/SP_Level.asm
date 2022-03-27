@@ -648,21 +648,17 @@ print "Level code handler inserted at $", pc, "."
 		JML [$0000]					; execute pointer
 		.Return
 		PLB
-		REP #$30
-		LDA $20
-		SEC : SBC #$0008
-		STA !BG2ZipColumnY				; store first value
-
-
 		SEP #$30					; all regs 8-bit
-
-		LDA.b #GAMEMODE14_Camera_BG : STA $3180
-		LDA.b #GAMEMODE14_Camera_BG>>8 : STA $3181
-		LDA.b #GAMEMODE14_Camera_BG>>16 : STA $3182
-		JSR $1E80
-
+		LDA.b #GAMEMODE14_Camera_BG : STA $3180		;\
+		LDA.b #GAMEMODE14_Camera_BG>>8 : STA $3181	; | initialize BG2/BG3 positions
+		LDA.b #GAMEMODE14_Camera_BG>>16 : STA $3182	; |
+		JSR $1E80					;/
 		JSL GAMEMODE14_Camera_ExecutePtr		; HDMA pointer
-
+		REP #$30					;\
+		LDA $20						; |
+		SEC : SBC #$0008				; | initialize BG2 zip column position
+		STA !BG2ZipColumnY				; |
+		SEP #$30					;/
 		JSL $05809E					; init BG2 tilemap
 
 

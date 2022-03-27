@@ -803,20 +803,7 @@ level2:
 		LDA #$13E8 : JSL EXIT_Right
 
 		.ReloadSprites
-		LDX #$00
-		..loop
-		LDA !SpriteLoadStatus,x : BEQ ..next
-		CMP #$EE : BEQ ..next
-		STX $00
-		LDY #$0F
-	-	LDA $3230,y : BEQ +
-		LDA $33F0,y
-		CMP $00 : BEQ ..next
-	+	DEY : BPL -
-		..clear
-		LDA #$00 : STA !SpriteLoadStatus,x
-		..next
-		INX : BNE ..loop
+		JSL ReloadSprites
 
 
 		.MorningLight
@@ -2098,7 +2085,7 @@ levelC:
 
 		.SpawnDense
 		LDA $1B					;\
-		CMP #$13 : BCC ..done			; | spawn on screens 0x13-0x18
+		CMP #$16 : BCC ..done			; | spawn on screens 0x13-0x18
 		CMP #$18+1 : BCS ..done			;/
 		LDA $14					;\ spawn every 128 frames (roughly every 2 seconds)
 		AND #$7F : BNE ..done			;/
@@ -2659,7 +2646,7 @@ level27:
 
 
 	.DimensionalCatacombs
-		JSL level2_ReloadSprites
+		JSL ReloadSprites
 		LDA !TranslevelFlags+$03
 		BIT #$01 : BNE ..nomsg
 		LDA #$01 : TSB !TranslevelFlags+$03
@@ -2946,7 +2933,7 @@ level2D:
 
 level2E:
 
-		JSL level2_ReloadSprites
+		JSL ReloadSprites
 
 		JSL WARP_BOX
 		db $08

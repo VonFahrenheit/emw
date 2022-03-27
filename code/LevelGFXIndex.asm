@@ -2038,6 +2038,7 @@ endmacro
 ;===============================================================
 .RexBag1	%cmd($F4A, $2D, $03, RexBag1, 0)	; sack
 		%defaultpal(A)
+		%mark(TinyCoin)
 		db $FF
 ;===============================================================
 .RexBag2	%cmd($F4A, $4D, $03, RexBag2, 0)	; food bag on stick

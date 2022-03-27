@@ -961,57 +961,60 @@ Rex:
 		TAY
 		LDA $33C0,x
 		CMP #$04 : BEQ .Return
-		LDA .Count-1,y : BEQ .Return
-		STA $08
-	.Again	STZ $00
+		CPY #$01 : BEQ .TinyCoins
+		CPY #$02 : BNE .Return
+
+		.Mushroom
+		STZ $00
 		STZ $01
-		CLC : LDA .Items-1,y
+		CLC : LDA #$74
 		JSL SpawnSprite
 		CPY #$FF : BEQ .Return
 		LDA #$08 : STA $3230,y
-		LDA #$20			;\
-		STA $32E0,y			; | prevent dropped item from interacting for a bit
-		STA $35F0,y			;/
-		LDA #$D0 : STA.w $9E,y
+		LDA #$20						;\
+		STA $32E0,y						; | prevent dropped item from interacting for a bit
+		STA $35F0,y						;/
+		LDA #$D0 : STA.w !SpriteYSpeed,y
 		PHX
 		LDA $3320,x : TAX
 		EOR $08
 		AND #$01
 		STA $3320,y
 		TAX
-		LDA .XSpeed,x : STA.w $AE,y
+		LDA .XSpeed,x : STA.w !SpriteXSpeed,y
 		PLX
-		DEC $08
-		LDY $08 : BNE .Again
+		RTS
 
-		LDA !ExtraProp2,x
-		CMP #$05 : BNE ..nobandit
-		LDY #$0F
-	-	PHY
+		.TinyCoins
+		LDA !ExtraProp2,x					;\
+		CMP #$05 : BEQ ..16					; |
+		..2							; |
+		LDY #$01 : BRA ..loop					; |
+		..16							; | bandit has 9-16 coins, others have 2
+		LDA !RNG						; |
+		AND #$07						; |
+		ORA #$08						; |
+		TAY							;/
+		..loop
+		PHY
 		STZ $00
 		STZ $01
 		LDA !RNGtable,y
 		AND #$1F
 		SBC #$10
 		STA $02
-		LDA #$E8 : STA $03
+		LDA #$E0 : STA $03
 		STZ $04
 		LDA #$18 : STA $05
 		STZ $06
 		STZ $07
 		LDA.b #!prt_tinycoin : JSL SpawnParticle
 		PLY
-		DEY : BPL -
-		..nobandit
-
-
+		DEY : BPL ..loop
 		RTS
 
-
-	.Items	db $21,$74,$00,$00,$00,$00
-	.Count	db $02,$01,$00,$00,$00,$00
-
-	.XSpeed	db $10,$F0
+		.XSpeed
+		db $10,$F0
 
 
 

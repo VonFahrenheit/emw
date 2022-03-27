@@ -1,0 +1,148 @@
+
+trivial
+	- keyhole
+	- classic piranha plant
+	- bullet bill
+	- moving coin
+	- invisible solid block
+	- mushroom (+invisible mushroom)
+	- star
+	- gold mushroom (life mushroom with extra bit)
+	- growing vine
+	- flying gold mushroom (life mushroom with extra bit)
+	- key
+	- spiny
+	- rolling spiny
+	- fish (horizontal + vertical)
+	- surface-jumping fish
+	- bouncing football)
+	- hopping flame
+	- thwomp
+	- thwimp
+	- upside-down piranha plant
+	- sumo brother's lightning
+	- fireball / podoboo
+	- boss fireball
+	- boo
+	- eerie
+	- torpedo ted
+	- swimming/jumping fish
+	- diggin chuck's rock
+	- growing/shrinking pipe
+	- exploding block
+	- monty moles
+	- ninji
+	- moving ledge hole
+	- platforms
+	- super koopas
+	- small bird
+	- large green gas bubble
+	- volcano lotus
+	- sumo bro
+	- amazing hammer bro
+	- carrier bubble
+	- banzai bill
+	- bowser's bowling ball
+	- floating spike ball
+	- blargg
+	- fishbone
+	- boo stream
+	- falling spike
+	- bowser statue fireball
+	- grinder (not line-guided)
+	- reflecting fireball
+	- timed lift
+	- grey moving castle block
+	- bowser statue
+	- swooper bat
+	- mega mole
+	- grey platform on lava (sinks)
+	- blurp fish
+	- porcu-puffer fish
+	- falling platform
+	- bullet bill shooter
+	- torpedo launcher
+	- eerie generator
+	- paragoomba generator
+	- parabomb generator
+	- paragoomba + parabomb generator
+	- dolphin generator (left + right)
+	- jumping fish generator
+	- generator 2 STOP command
+	- super koopa generator
+	- carrier bubble generator
+	- bullet bill generators
+	- bowser statue fireball generator
+	- generator 1 STOP command
+
+some effort
+	- goomba
+	- winged goomba
+	- POW
+	- jumping piranha plant (fire + no fire)
+	- flying ?-blocks
+	- creating/eating block
+	- bob-omb
+	- buzzy beetle
+	- net koopas
+	- big boo
+	- spike top
+	- dry bones
+	- bony beetle
+	- urchin
+	- rip van fish (+golden form)
+	- paragoomba
+	- parabomb
+	- dolphins
+	- pipe-dwelling lakitu
+	- dino rhino
+	- dino torch
+	- pokey
+	- scale platforms
+	- amazing hammer bro platform
+	- ball and chain
+	- mechakoopa
+	- sparky/fuzzball
+	- hothead
+	- wooden spike
+	- fishin boo
+	- boo block
+	- carrot top lift (diagonal)
+
+difficult
+	- portable spring board
+	- turn block bridge
+	- lakitu (normal + fisher)
+	- magikoopa (+magic)
+	- chucks (digger, charger, splitter, bouncer, whistler, clapper, punter, pitcher)
+	- brown platform on a chain
+	- floating skulls
+	- line-guided platforms
+	- line-guided mechanisms
+	- line-guided grinder
+	- line-guided fuzzy
+	- lakitu's cloud
+	- grey platform on chain
+	- 3 platforms on chains
+
+cut
+	- directional coin
+	- spring board (left wall + right wall)
+	- flying red coin
+	- light switch block for dark room
+	- climbing net door
+	- balloon
+	- wiggler
+	- big boo boss
+
+
+combined projects
+
+	koopa set
+		- shelless (+ blue slider)
+		- normal
+		- shell state (include DA, DB, DC, DD, DF)
+		- winged state
+
+
+

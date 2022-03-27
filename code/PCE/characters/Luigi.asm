@@ -480,6 +480,7 @@ namespace Luigi
 		LDA .SlopeAcc,x					; |
 		CLC : ADC !P2XSpeedFraction			; |
 		EOR $00						; |
+		BIT $00 : BPL $01 : INC A			; |
 		CMP .SlopeSpeedDescending,x : BPL +		; |
 		LDA .SlopeAcc,x					; |
 		EOR $00						; |
