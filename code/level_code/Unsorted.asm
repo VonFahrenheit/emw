@@ -5676,46 +5676,46 @@ GET_DIVISION:	NOP #2
 ; 07-08: MSG number
 TalkOnce:
 		STA $00
-		LDA ($00) : TAX				; ID in X
-		LDA.l .BitTable,x			;\ only trigger message once
-		AND $6DF5 : BNE .Return			;/
+		LDA ($00) : TAX						; ID in X
+		LDA.l .BitTable,x					;\ only trigger message once
+		AND !TranslevelFlags+$20 : BNE .Return			;/
 
-		PHX					; ID on stack
+		PHX							; ID on stack
 		INC $00
 		LDA ($00)
-		STA $04					; Xlo in $04
-		STA $09					; Xhi in $0A
+		STA $04							; Xlo in $04
+		STA $09							; Xhi in $0A
 		INC $00
 		INC $00
-		LDA ($00) : STA $05			; Ylo in $05
-		XBA : STA $0B				; Yhi in $0B
+		LDA ($00) : STA $05					; Ylo in $05
+		XBA : STA $0B						; Yhi in $0B
 		INC $00
 		INC $00
-		LDA ($00) : STA $06			; dimensions in $06-$07
+		LDA ($00) : STA $06					; dimensions in $06-$07
 		INC $00
 		INC $00
-		LDA ($00) : PHA				; push message number
+		LDA ($00) : PHA						; push message number
 
-		SEP #$21				; 8-bit, set carry
-		JSL !PlayerClipping			; check player contact
+		SEP #$21						; 8-bit, set carry
+		JSL !PlayerClipping					; check player contact
 		BCC .ReturnP
-		STZ $00					;\
-		LSR A : BCC +				; |
-		PHA					; |
-		LDA !P2Blocked-$80			; |
-		AND #$04				; |
-		TSB $00					; | only trigger on a player that's on the ground
-		PLA					; |
-	+	LSR A : BCC +				; |
-		LDA !P2Blocked				; |
-		AND #$04				; |
-		TSB $00					; |
-	+	LDA $00					;/
+		STZ $00							;\
+		LSR A : BCC +						; |
+		PHA							; |
+		LDA !P2Blocked-$80					; |
+		AND #$04						; |
+		TSB $00							; | only trigger on a player that's on the ground
+		PLA							; |
+	+	LSR A : BCC +						; |
+		LDA !P2Blocked						; |
+		AND #$04						; |
+		TSB $00							; |
+	+	LDA $00							;/
 		REP #$20
 		BEQ .ReturnP
-		PLA : STA !MsgTrigger			; trigger MSG
+		PLA : STA !MsgTrigger					; trigger MSG
 		PLX
-		LDA.l .BitTable,x : TSB $6DF5		; mark message as triggered
+		LDA.l .BitTable,x : TSB !TranslevelFlags+$20		; mark message as triggered
 		RTL
 
 		.ReturnP

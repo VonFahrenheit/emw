@@ -676,6 +676,14 @@ if !CompileText = 1
 	%endmessage()
 endif
 ;====================================================================================================;
+%insertMSG(CaptainWarrior_Fight1_Phase2)
+if !CompileText = 1
+	%mode(1)
+	%portrait(CaptainWarrior, 0)
+	db "All troops, attack!"
+	%endmessage()
+endif
+;====================================================================================================;
 %insertMSG(CaptainWarrior_Fight1_Defeated)
 if !CompileText = 1
 	%mode(1)

@@ -168,6 +168,7 @@ CaptainWarrior:
 
 		%decreg(!CW_InvincTimer)
 
+	.RunPtr
 		LDA !CW_Phase,x						;\
 		ASL A							; |
 		CMP.b #.PhasePtr_end-.PhasePtr				; | execute pointer
@@ -178,7 +179,9 @@ CaptainWarrior:
 		.PhasePtr
 		dw Intro			; 0
 		dw Battle			; 1
-		dw Defeated			; 2
+		dw PrepPhase2			; 2
+		dw Battle			; 3
+		dw Defeated			; 4
 		..end
 
 
@@ -241,20 +244,25 @@ CaptainWarrior:
 		LDA !CW_Phase,x : BMI .Main				;\
 		.Init							; |
 		ORA #$80 : STA !CW_Phase,x				; | battle init
+		CMP #$81 : BNE +					; | > only change music in first phase
 		LDA #$37 : STA !SPC3					; |
-		JMP GRAPHICS						;/
+	+	JMP GRAPHICS						;/
 
 		.Main
 		LDA !CW_HP,x						;\
 		BEQ ..dead						; |
-		BPL ..alive						; | defeated if HP < 1
+		BPL ..alive						; |
 		..dead							; |
-		LDA #$02 : STA !CW_Phase,x				; |
+		LDA !CW_Phase,x						; | defeated if HP < 1
+		AND #$7F						; |
+		INC A : STA !CW_Phase,x					; |
 		STZ $3330,x						; > remove collision
-		JMP Defeated						;/
+		JMP MAIN_RunPtr						;/
 		..alive
 
-	BRA .Boss
+		LDA !CW_Phase,x						;\
+		AND #$7F						; | only spawn minions in phase 2
+		CMP #$03 : BCC .Boss					;/
 
 
 		LDA !CW_Screen,x : STA !BigRAM
@@ -759,6 +767,38 @@ CaptainWarrior:
 
 		.Return
 		RTS							; return
+
+
+	PrepPhase2:
+		LDX !SpriteIndex
+		JSL !SpriteApplySpeed
+		STZ !SpriteAnimTimer
+		LDA $3330,x
+		AND #$04 : BNE .Process
+		LDA #!CW_Hurt : STA !SpriteAnimIndex
+		BRA .Return
+		.Process
+		LDA !CW_Phase,x : BMI .Main
+		.Init
+		ORA #$80 : STA !CW_Phase,x
+		LDA #$60 : STA !CW_AttackTimer,x
+		LDA #!CW_Channel : STA !SpriteAnimIndex
+		STZ !SpriteXSpeed,x
+		.Main
+		LDA !CW_AttackTimer,x : BEQ .NextPhase
+		CMP #$30 : BNE .Return
+		REP #$20
+		LDA.w #!MSG_CaptainWarrior_Fight1_Phase2 : STA !MsgTrigger
+		SEP #$20
+		JMP GRAPHICS
+		.NextPhase
+		LDA !CW_Phase,x
+		AND #$7F
+		INC A : STA !CW_Phase,x
+		LDY !Difficulty						;\ HP
+		LDA.w DATA_BaseHP,y : STA !CW_HP,x			;/
+		.Return
+		JMP GRAPHICS
 
 
 	Defeated:

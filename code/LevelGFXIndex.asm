@@ -1482,6 +1482,8 @@ File:
 		dw .BossFireball
 		dw .SmallFireball
 		dw .ReznorFireball
+		dw .Fireball32x32
+		dw .EnemyFireball
 		dw .LotusPollen
 		dw .Baseball
 		dw .WaterEffects
@@ -1947,6 +1949,14 @@ endmacro
 .ReznorFireball	%cmd($F5F, $00, $02, ReznorFireball, 0)
 		%defaultpal(C)
 		%super(!SD_Fireball16x16_offset)
+		db $FF
+;===============================================================
+.Fireball32x32	%cmd($F00, $00, $08, Fireball32x32, 0)
+		%super(!SD_Fireball32x32)
+		db $FF
+;===============================================================
+.EnemyFireball	%cmd($F00, $00, $02, EnemyFireball, 0)
+		%super(!SD_EnemyFireball)
 		db $FF
 ;===============================================================
 .LotusPollen	%cmd($F60, $00, $01, LotusPollen, 0)
@@ -3488,7 +3498,7 @@ BG_objectFiles:
 		.Lookup
 		dw $10D : db !SD_PlantHead_offset		; plant head
 		dw $110 : db !SD_Fireball32x32_offset		; kingking, fireball 32x32
-		dw $110 : db !SD_EnemyFireball16x16_offset	; kingking, enemy fireball 16x16
+		dw $110 : db !SD_EnemyFireball_offset		; kingking, enemy fireball 16x16
 		..End
 
 
@@ -3503,7 +3513,7 @@ BG_objectFiles:
 		dw .Baseball		; 07
 		dw .KadaalSwim		; 08
 		dw .Fireball32x32	; 09
-		dw .EnemyFireball16x16	; 0A
+		dw .EnemyFireball	; 0A
 		..End
 
 
@@ -3717,12 +3727,12 @@ db $10,$20				; chunk dimensions (32x32)
 ..end
 db $FF					; end file
 
-.EnemyFireball16x16
+.EnemyFireball
 ..header
 dw $0010				; width encoding
 %size($80*16)				; size: 16 16x16 chunks
 dw $E0A					; source ExGFX
-db !SD_EnemyFireball16x16_offset	; SD GFX status index
+db !SD_EnemyFireball_offset		; SD GFX status index
 db $08,$10				; chunk dimensions (16x16)
 ..commands
 %loadchunk($00)				; load chunk 0

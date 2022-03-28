@@ -146,9 +146,8 @@
 
 		LDA #!palset_special_kingking_blue
 		JSL LoadPalset
-		LDA !Palset_status+!palset_special_kingking_blue
-		ASL A
-		STA $33C0,x
+		LDA !addr_palset_special_kingking_blue
+		ASL A : STA $33C0,x
 		REP #$30
 		AND #$000E
 		ASL #4
@@ -157,7 +156,7 @@
 		LDA.w #!PalsetData : STA $00
 		LDA.w #!PalsetData>>8 : STA $01
 		LDA #$000F : STA $0E
-		LDY.w #!palset_special_kingking_red*$20
+		LDY.w #(!palset_special_kingking_red-1)*$20
 	-	LDA [$00],y : STA !PaletteCacheRGB,x
 		INY #2
 		INX #2
@@ -1085,7 +1084,7 @@
 		STA !ProjectileAnimTime,y
 		STA !ProjectileTimer,y
 		LDA #$03 : STA !ProjectileGravity,y
-		LDA #$E0 : STA !SpriteTile,y
+		LDA !GFX_EnemyFireball_tile : STA !SpriteTile,y
 		LDA #$00 : STA !SpriteProp,y
 		LDA.w !SpriteXSpeed,y
 		LSR A
@@ -2066,94 +2065,11 @@
 
 
 	GRAPHICS:
-
-	; update 32x32 fireball
-		.Fireball32x32
-		REP #$20
-		LDA #$0007*4 : STA !BigRAM+0			; size of dynamo (4 uploads)
-		LDA #$0080
-		STA !BigRAM+$00+2
-		STA !BigRAM+$07+2
-		STA !BigRAM+$0E+2
-		STA !BigRAM+$15+2
-
-		LDA !SD_Fireball32x32
-		AND #$00C0 : BEQ ..7E
-		CMP #$0040 : BEQ ..7F
-		CMP #$0080 : BEQ ..40
-	..41	LDA #$0041 : BRA ..addr
-	..40	LDA #$0040 : BRA ..addr
-	..7F	LDA #$007F : BRA ..addr
-	..7E	LDA #$007E
-	..addr	STA !BigRAM+$04+2
-		STA !BigRAM+$0B+2
-		STA !BigRAM+$12+2
-		STA !BigRAM+$19+2
-		LDA $14
-		LSR A
-		AND #$000F
-		EOR #$000F
-		XBA
-		ASL A
-		STA $00
-		LDA !SD_Fireball32x32
-		AND #$003F
-		XBA
-		ASL #2
-		ADC $00
-		STA !BigRAM+$02+2
-		CLC : ADC #$0080
-		STA !BigRAM+$09+2
-		CLC : ADC #$0080
-		STA !BigRAM+$10+2
-		CLC : ADC #$0080
-		STA !BigRAM+$17+2
-		LDA #$6A00 : STA !BigRAM+$05+2
-		LDA #$6B00 : STA !BigRAM+$0C+2
-		LDA #$6C00 : STA !BigRAM+$13+2
-		LDA #$6D00 : STA !BigRAM+$1A+2
-		LDA #!BigRAM : STA $0C
-		SEP #$20
-		CLC : JSL !UpdateGFX
-
-
-	; update 16x16 fireball
-		.Fireball16x16
-		REP #$20
-		LDA #$0007*4 : STA !BigRAM+0			; size of dynamo (4 uploads)
-		LDA #$0040
-		STA !BigRAM+$00+2
-		STA !BigRAM+$07+2
-
-		LDA !SD_EnemyFireball16x16
-		AND #$00C0 : BEQ ..7E
-		CMP #$0040 : BEQ ..7F
-		CMP #$0080 : BEQ ..40
-	..41	LDA #$0041 : BRA ..addr
-	..40	LDA #$0040 : BRA ..addr
-	..7F	LDA #$007F : BRA ..addr
-	..7E	LDA #$007E
-	..addr	STA !BigRAM+$04+2
-		STA !BigRAM+$0B+2
-		LDA $14
-		AND #$000F
-		EOR #$000F
-		XBA
-		LSR A
-		STA $00
-		LDA !SD_EnemyFireball16x16
-		AND #$003F
-		XBA
-		ASL #2
-		ADC $00
-		STA !BigRAM+$02+2
-		CLC : ADC #$0040
-		STA !BigRAM+$09+2
-		LDA #$6E00 : STA !BigRAM+$05+2
-		LDA #$6F00 : STA !BigRAM+$0C+2
-		LDA #!BigRAM : STA $0C
-		SEP #$20
-		CLC : JSL !UpdateGFX
+		; location of SD fireballs
+		LDA #$A0 : STA !GFX_Fireball32x32_tile
+		LDA #$00 : STA !GFX_Fireball32x32_prop
+		LDA #$C0 : STA !GFX_EnemyFireball_tile
+		LDA #$00 : STA !GFX_EnemyFireball_prop
 
 		LDX !SpriteIndex				; X = sprite index
 		STZ !SpriteTile,x				;\ nope
@@ -2684,8 +2600,8 @@
 
 	.ScepterWalk2
 		dw $0008
-		db $32,$E0,$F3,$A5
-		db $32,$E8,$F3,$A6
+		db $32,$E0,$F3,$C2
+		db $32,$E8,$F3,$C3
 
 	.ScepterWalk3
 		dw $0008
@@ -2704,8 +2620,8 @@
 
 	.ScepterWalk6
 		dw $0008
-		db $32,$E7,$F2,$A5
-		db $32,$EF,$F2,$A6
+		db $32,$E7,$F2,$C2
+		db $32,$EF,$F2,$C3
 
 	.ScepterWalk7
 		dw $0008
@@ -2714,8 +2630,8 @@
 
 	.ScepterFire
 		dw $0008
-		db $32,$E3,$08,$A5
-		db $32,$EB,$08,$A6
+		db $32,$E3,$08,$C2
+		db $32,$EB,$08,$C3
 
 	.ScepterThrow
 		dw $0008
@@ -2738,8 +2654,8 @@
 		db $32,$E8,$D9,$BA
 		db $32,$E0,$DD,$C5
 		db $32,$E8,$DD,$C6
-		db $32,$E0,$E9,$A5
-		db $32,$E8,$E9,$A6
+		db $32,$E0,$E9,$C2
+		db $32,$E8,$E9,$C3
 		db $B2,$E0,$F1,$C5
 		db $B2,$E8,$F1,$C6
 
@@ -3253,7 +3169,7 @@ Wait:		LDY !Difficulty
 		STA !ProjectileAnimTime,y
 		STA !ProjectileTimer,y
 		LDA #$03 : STA !ProjectileGravity,y
-		LDA #$E0 : STA !SpriteTile,y
+		LDA !GFX_EnemyFireball_tile : STA !SpriteTile,y
 		LDA #$00 : STA !SpriteProp,y
 		LDA.w !SpriteXSpeed,y
 		LSR A
@@ -3374,8 +3290,8 @@ Wait:		LDY !Difficulty
 		db $32,$F8,$E8,$C6
 		.FallTM02
 		dw $0008
-		db $32,$F0,$E8,$A5
-		db $32,$F8,$E8,$A6
+		db $32,$F0,$E8,$C2
+		db $32,$F8,$E8,$C3
 		.FallTM03
 		dw $0008
 		db $B2,$F0,$E8,$C5
@@ -3393,8 +3309,8 @@ Wait:		LDY !Difficulty
 		dw $0010
 		db $32,$F8,$F8,$A0
 		db $32,$08,$F8,$A2
-		db $32,$F8,$08,$C0
-		db $32,$08,$08,$C2
+		db $32,$F8,$08,$A4
+		db $32,$08,$08,$A6
 
 
 

@@ -2841,14 +2841,14 @@ level2B:
 level2C:
 		LDA #$E1 : STA !MsgPal
 
-		LDX #$0F			;\
-	-	LDA $3230,x			; | look for a killed sprite (states 2-7)
-		CMP #$02 : BCC +		; |
-		CMP #$08 : BCS +		;/
-		LDY $3240,x			;\ must be on Y screen 00-03
-		CPY #$04 : BCS +		;/
-		LDA .Table,y : TSB $6DF5	; if there is a rex, it can talk
-	+	DEX : BPL -			; Loop
+		LDX #$0F						;\
+	-	LDA $3230,x						; | look for a killed sprite (states 2-7)
+		CMP #$02 : BCC +					; |
+		CMP #$08 : BCS +					;/
+		LDY $3240,x						;\ must be on Y screen 00-03
+		CPY #$04 : BCS +					;/
+		LDA .Table,y : TSB !TranslevelFlags+$20			; if there is a rex, it can talk
+	+	DEX : BPL -						; loop
 
 		REP #$20
 		LDA.w #.Table1 : JSL TalkOnce
@@ -2861,10 +2861,10 @@ level2C:
 		LDA $1A
 		CMP #$00E0 : BNE +
 		LDA $1C : BNE +
-		LDA $6DF5
+		LDA !TranslevelFlags+$20
 		AND #$0008 : BNE +
 		LDA.w #!MSG_CaptainWarrior_Warning : STA !MsgTrigger
-		LDA #$0008 : TSB $6DF5
+		LDA #$0008 : TSB !TranslevelFlags+$20
 		+
 
 		REP #$30

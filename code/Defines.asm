@@ -573,6 +573,8 @@ endmacro
 		%def_GFX(BossFireball)
 		%def_GFX(SmallFireball)
 		%def_GFX(ReznorFireball)
+		%def_GFX(Fireball32x32)
+		%def_GFX(EnemyFireball)
 		%def_GFX(LotusPollen)
 		%def_GFX(Baseball)
 		%def_GFX(WaterEffects)
@@ -719,7 +721,7 @@ endmacro
 		%def_SD(Baseball)
 		%def_SD(KadaalLinear)
 		%def_SD(Fireball32x32)
-		%def_SD(EnemyFireball16x16)
+		%def_SD(EnemyFireball)
 
 
 

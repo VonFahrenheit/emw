@@ -2153,16 +2153,23 @@ HandleGraphics:
 		..process				;\
 		STA $00					; | $00 = tile num (000-1FF)
 		XBA : STA $01				;/
-		LDA .RotationData+2,y : TAX		;\
+		LDA .RotationData+5,y : TAX		;\
 		LDA !SD_status,x : STA $03		; |
 		AND #$03 : TRB $03			; | $02 = SD page address
 		TAX					; | $0A = SD bank
 		LDA .SuperDynamicBank,x : STA $0A	; |
 		STZ $02					;/
-		LDA .RotationData+3,y : STA $04		;\ $04 = size
-		STZ $05					;/
-		LDA .RotationData+4,y : STA $07		; $06 = animation rate (n/v flag triggers)
-		LDA .RotationData+5,y : STA $08		;\ $08 = rotation direction
+
+		LDA .RotationData+2,y : BNE +		;\
+		STZ $04					; |
+		LDA #$82 : STA $05			; |
+		BRA ++					; | $04 = size (highest bit signals that this will have 4 uploads)
+	+	STA $04					; |
+		STZ $05					; |
+		++					;/
+
+		LDA .RotationData+3,y : STA $07		; $06 = animation rate (n/v flag triggers)
+		LDA .RotationData+4,y : STA $08		;\ $08 = rotation direction
 		STZ $09					;/
 
 		JSL !GetVRAM
@@ -2175,6 +2182,10 @@ HandleGraphics:
 		STA.w !VRAMtable+$05,x
 		CLC : ADC #$0100
 		STA.w !VRAMtable+$0C,x
+		BIT $04 : BPL +
+		SBC #$0100-$40-1 : STA.w !VRAMtable+$13,x
+		ADC #$0100-1 : STA.w !VRAMtable+$1A,x
+		+
 		LDA $14
 		BIT $06
 		BPL $01 : LSR A
@@ -2182,26 +2193,47 @@ HandleGraphics:
 		AND #$000F
 		EOR $08
 		STA.l $2251
-		LDA $04 : STA.l $2253
+		LDA $04
+		AND #$7FFF : STA.l $2253		; skip highest bit
 		NOP
 		LDA $02
 		CLC : ADC.l $2306
 		STA.w !VRAMtable+$02,x
-		ADC #$0040
-		STA.w !VRAMtable+$09,x
-		LDA $04
-		CMP #$0040 : BCS ..big
-		..8x8
-		STA.w !VRAMtable+$00,x : BRA ..shared
+		BIT $04 : BPL ..small
 		..big
-		LSR A
+		ADC #$0080 : STA.w !VRAMtable+$09,x
+		ADC #$0080 : STA.w !VRAMtable+$10,x
+		ADC #$0080 : STA.w !VRAMtable+$17,x
+		BRA ..getsize
+		..small
+		ADC #$0040 : STA.w !VRAMtable+$09,x
+		..getsize
+		LDA $04 : BMI ..32x32
+		AND #$7FFF
+		CMP #$0040 : BCS ..16x16
+		..8x8
+		LDA #$0020 : STA.w !VRAMtable+$00,x
+		BRA ..shared
+		..16x16
+		LDA #$0040
 		STA.w !VRAMtable+$00,x
 		STA.w !VRAMtable+$07,x
+		BRA ..shared
+		..32x32
+		LDA #$0080
+		STA.w !VRAMtable+$00,x
+		STA.w !VRAMtable+$07,x
+		STA.w !VRAMtable+$0E,x
+		STA.w !VRAMtable+$15,x
 		..shared
 		SEP #$20
 		LDA $0A
 		STA.w !VRAMtable+$04,x
 		STA.w !VRAMtable+$0B,x
+		BIT $04+1 : BPL +
+		STA.w !VRAMtable+$12,x
+		STA.w !VRAMtable+$19,x
+		+
 		PLB
 
 		..next
@@ -2220,19 +2252,23 @@ HandleGraphics:
 
 	; format:
 	; - GFX status index
-	; - SD index
-	; - width ($20 for 8x8 or $80 for 16x16)
+	; - width ($20 for 8x8, $80 for 16x16, $00 for 32x32)
 	; - animation speed (00 = every frame, 40/80 = every other frame, C0 = every 4 frames)
 	; - direction (00 = clockwise, 0F = counterclockwise)
+	; - SD index
 
 	.RotationData
-		dw !GFX_Hammer_offset		: db $00,$80,$00,$0F
-		dw !GFX_Bone_offset		: db $02,$80,$40,$0F
-		dw !GFX_SmallFireball_offset	: db $03,$20,$00,$00
-		dw !GFX_ReznorFireball_offset	: db $04,$80,$00,$0F
-		dw !GFX_Goomba_offset		: db $05,$80,$00,$0F
-		dw !GFX_LuigiFireball_offset	: db $06,$20,$00,$00
-		dw !GFX_Baseball_offset		: db $07,$20,$40,$0F
+		dw !GFX_Hammer_offset		: db $80,$00,$0F,!SD_Hammer_offset
+		dw !GFX_Bone_offset		: db $80,$40,$0F,!SD_Bone_offset
+		dw !GFX_SmallFireball_offset	: db $20,$00,$00,!SD_Fireball8x8_offset
+		dw !GFX_ReznorFireball_offset	: db $80,$00,$0F,!SD_Fireball16x16_offset
+		dw !GFX_Goomba_offset		: db $80,$00,$0F,!SD_Goomba_offset
+		dw !GFX_LuigiFireball_offset	: db $20,$00,$00,!SD_LuigiFireball_offset
+		dw !GFX_Baseball_offset		: db $20,$40,$0F,!SD_Baseball_offset
+
+		dw !GFX_Fireball32x32_offset	: db $00,$40,$0F,!SD_Fireball32x32_offset
+		dw !GFX_EnemyFireball_offset	: db $80,$00,$0F,!SD_EnemyFireball_offset
+
 		..end
 
 
