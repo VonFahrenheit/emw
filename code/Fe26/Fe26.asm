@@ -19,6 +19,90 @@ macro BRK()
 endmacro
 
 
+macro ListVanillaInit(name)
+	dw <name>_INIT
+endmacro
+
+macro ListVanillaMain(name)
+	dw <name>_MAIN
+endmacro
+
+macro VanillaSprite(name, file)
+	namespace <name>
+		incsrc "Rework\<file>.asm"
+	namespace off
+endmacro
+
+; states:
+;	00 - empty slot
+;	01 - INIT
+;	02 - dead, falling down
+;		$3280, $3290, $32A0 = lo, hi, bank bytes of tilemap pointer
+;		in this state, sprite runs speed (no terrain interaction except liquids) + displays its tilemap
+;		despawns when off-screen
+;	03 -
+;	04 - turn to smoke puff particle
+;	05 - sinking in lava/mud
+;	06 -
+;	07 -
+;	08 - MAIN
+;	09 - can be carried
+;	0A - kicked
+;	0B - carried
+;	0C -
+;
+
+
+
+
+
+macro UpdateX()
+		LDA !SpriteXLo,x : STA $00
+		LDA !SpriteXSpeed,x : BEQ ?Return
+		ASL #4
+		CLC : ADC !SpriteXFraction,x
+		STA !SpriteXFraction,x
+		PHP
+		LDY #$00
+		LDA !SpriteXSpeed,x
+		LSR #4
+		CMP #$08
+		BCC $03 : ORA #$F0 : DEY
+		PLP
+		ADC !SpriteXLo,x
+		STA !SpriteXLo,x
+		TYA
+		ADC !SpriteXHi,x
+		STA !SpriteXHi,x
+		LDA !SpriteXLo,x
+		SEC : SBC $00
+	?Return:
+endmacro
+
+macro UpdateY()
+		LDA !SpriteYLo,x : STA $00
+		LDA !SpriteYSpeed,x : BEQ ?Return
+		ASL #4
+		CLC : ADC !SpriteYFraction,x
+		STA !SpriteYFraction,x
+		PHP
+		LDY #$00
+		LDA !SpriteYSpeed,x
+		LSR #4
+		CMP #$08
+		BCC $03 : ORA #$F0 : DEY
+		PLP
+		ADC !SpriteYLo,x
+		STA !SpriteYLo,x
+		TYA
+		ADC !SpriteYHi,x
+		STA !SpriteYHi,x
+		LDA !SpriteYLo,x
+		SEC : SBC $00
+	?Return:
+endmacro
+
+
 
 
 	org $048437
@@ -1962,9 +2046,6 @@ Bank16Start:
 %InsertSprite(FlyingRex)
 %InsertSprite(Conjurex)
 %InsertSprite(Wizrex)
-%InsertSprite(Projectile)
-%InsertSprite(Chest)
-%InsertSprite(EpicBlock)
 
 Bank16End:
 
@@ -2028,6 +2109,9 @@ print "-- BANK $1A --"
 %InsertSprite(MoleWizard)
 %InsertSprite(Lightning)
 %InsertSprite(ShopObject)
+%InsertSprite(Projectile)
+%InsertSprite(Chest)
+%InsertSprite(EpicBlock)
 
 
 BANK1AEnd:

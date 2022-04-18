@@ -318,6 +318,7 @@ print "Level code handler inserted at $", pc, "."
 		LDA #$7F : STA !MarioMaskBits			; | hide mario if he's not in play
 		+						;/
 		LDA #$00
+		STA !LockBox					; disable camera box lock
 		STA !PauseThif					; unpause Thif
 		STA !LevelInitFlag				; set level INIT
 		STA !3DWater					; disable 3D water

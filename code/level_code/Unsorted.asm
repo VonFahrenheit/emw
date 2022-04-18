@@ -381,14 +381,14 @@ LoadCameraBox:
 		PHP						; |
 		SEP #$30					; | wrapper
 		LDA $02						; |
-		PHA : PLB					; > maintain bank from SNES CPU
-		REP #$20					;/
-		LDX #$06					;\ get main pointers:
-	-	TXY						; |	$08 = screen matrix
-		LDA ($00),y : STA $08,x				; |	$0A = box table
-		DEX #2						; |	$0C = door list
-		BPL -						; |	$0E = door table
-		SEP #$20					;/
+		PHA : PLB					;/> maintain bank from SNES CPU
+	
+
+		REP #$20					; A 16-bit
+		LDA ($00) : STA $08				;> $08 = screen matrix
+		LDY #$02					;\ $0A = box table
+		LDA ($00),y : STA $0A				;/
+		SEP #$20					; A 8-bit
 
 		.HandleTransition
 		LDA !CameraForceTimer : BEQ ..done		; check for door transition
@@ -396,9 +396,9 @@ LoadCameraBox:
 		CMP #$04 : BCS ..done				; |
 		EOR #$02					; |
 		BEQ $02 : LDA #$28				; |
-		SEC : SBC #$14					; | player X speeds during door transitions
+		SEC : SBC #$14					; |
 		STA $00						; |
-		SEC : SBC !P2XSpeed-$80				; |
+		SEC : SBC !P2XSpeed-$80				; | player X speeds during door transitions
 		STA !P2VectorX-$80				; |
 		LDA $00						; |
 		SEC : SBC !P2XSpeed				; |
@@ -464,6 +464,8 @@ LoadCameraBox:
 		LDA ($08),y					;/
 		AND #$00FF : STA !BigRAM+0			; !BigRAM+0 = room number
 		STZ !BigRAM+2					; clear new room flag
+		STZ !BigRAM+4					;\ !BigRAM+4 = index of current room (16-bit format)
+		STY !BigRAM+4					;/
 		TAY						;\
 		CPY !CameraBoxRoom				; | store room index and check for change
 		STY !CameraBoxRoom				; |
@@ -475,14 +477,15 @@ LoadCameraBox:
 		.HorzTransition
 		LDX !GameMode
 		CPX #$14 : BNE +
-		LDX !CameraForceTimer : BNE ..done
+		LDX !LockBox : BNE +
+		LDX !CameraForceTimer : BNE +
 		..p1
 		LDX !P2Status-$80 : BNE ..p2
 		LDY #$00 : JSR ..checkborder
 		..p2
-		LDX !P2Status : BNE ..done
+		LDX !P2Status : BNE +
 		LDY #$80 : JSR ..checkborder
-	+	BRA ..done
+	+	JMP ..done
 
 		..checkborder
 		LDA !P2XSpeed-$80,y
@@ -508,100 +511,47 @@ LoadCameraBox:
 		...return
 		RTS
 		..r
+		INC !BigRAM+4					; room index +1
 		LDA #$0000 : BRA +
 		..l
+		DEC !BigRAM+4					; room index -1
 		LDA #$0002
 	+	SEP #$20
 		STA !CameraForceDir
-		LDA #$20					; |
-		STA !CameraForceTimer				; |
+		LDA #$20					;\
+		STA !CameraForceTimer				; | move camera + players
 		STA !P2VectorTimeX-$80				; |
-		STA !P2VectorTimeX				; |
-		JSR .CameraChain
+		STA !P2VectorTimeX				;/
+		REP #$20					;\
+		LDA !P2XPosLo-$80,y : STA $0C			; |
+		LDA !P2YPosLo-$80,y : STA $0E			; |
+		TYA						; | make sure both players are in position
+		EOR #$0080 : TAY				; |
+		LDA $0C : STA !P2XPosLo-$80,y			; |
+		LDA $0E : STA !P2YPosLo-$80,y			;/
+
+		LDY !BigRAM+4					;\
+		LDA ($08),y					; | get room number of room camera is moving into
+		AND #$00FF					;/
+		ASL #2						;\
+		INC A						; > +2 with the ASL A after
+		ASL A						; | get index to box data
+		ADC $0A						; |
+		STA $0C						;/
+		LDY #$04					;\ $0E = bottom border
+		LDA ($0C),y : STA $0E				;/
+		LDA ($0C) : STA $0C				; $0C = top border
+		LDA $1C						;\
+		CMP $0C : BCC ..chain				; |
+		CMP $0E						; |
+		BEQ ..nochain					; | only chain if vertically out of bounds
+		BCC ..nochain					; |
+		..chain						; |
+		JSR .CameraChain				; |
+		..nochain					;/
 		REP #$20
 		RTS
 		..done
-
-
-
-	; door loader
-		; .LoadDoors
-		; PEI ($0A)
-		; PHP
-		; SEP #$20
-		; LDA !BigRAM+2 : BNE +				; don't handle doors if entering new room on this frame
-		; LDA !GameMode					;\ only load doors in game mode 0x14
-		; CMP #$14 : BNE +				;/
-
-		; LDA !CameraForceTimer : BEQ $03
-	; +	JMP ..done
-
-		; LDX #$00
-		; LDY #$00					;\
-	; -	CPX !BigRAM+0 : BEQ ++				; |
-		; LDA ($0C),y : BPL +				; |
-		; CMP #$80 : BNE $03 : JMP ..done			; > 0x80 = no doors at all
-		; INX						; | get index to this room's doors
-	; +	INY : BRA -					; |
-		; ++						;/
-
-		; ..loop
-		; TYX						; preserve Y index in X
-		; LDA ($0C),y					;\ Y = index to door data
-		; ASL A : TAY					;/
-		; PEI ($0C)					;\ preserve pointers
-		; PEI ($0E)					;/
-		; REP #$20					;\
-		; LDA ($0E),y					; |
-		; STX $00						; |
-		; PHA						; > push side bit
-		; AND #$00FE : TAX				; > clear side bit
-		; LDA.l .VerticalScreens,x			; | get door box Y
-		; LDX $00						; |
-		; CLC : ADC #$00A0				; |
-		; STA $05						; > lo byte -> $05
-		; STA $0B-1					;/> hi byte -> $0B
-		; LDA ($0E),y					;\
-		; AND #$FF00					; |
-		; SEC : SBC #$0008				; | get door box X
-		; STA $0A-1					; > hi byte -> $0A
-		; SEP #$20					; |
-		; STA $04						;/> lo byte -> $04
-		; LDA #$10 : STA $06				;\ door box size
-		; LDA #$30 : STA $07				;/
-		; SEC : JSL !PlayerClipping			; check for contact
-		; TXY						; Y = index
-		; INY						; index +1
-
-		; REP #$20					;\
-		; PLA						; |
-		; AND #$0001 : STA $08				; > get side bit of door
-		; PLA : STA $0E					; | restore pointers
-		; PLA : STA $0C					; |
-		; SEP #$20					;/
-		; BCC ..next					;\
-
-		; LDA $1B						; |
-		; CMP $0A						; |
-		; BEQ ..r						; |
-		; BCS ..l						; |
-	; ..r	LDA #$00 : BRA +				; |
-	; ..l	LDA #$02					; | enter door logic
-	; +	STA !CameraForceDir				; |
-		; LDA #$20					; |
-		; STA !CameraForceTimer				; |
-		; STA !P2VectorTimeX-$80				; |
-		; STA !P2VectorTimeX				; |
-		; LDA $08 : BNE ..done				; > check side bit
-		; JSR .CameraChain				; |
-		; BRA ..done					;/
-
-		; ..next
-		; LDA ($0C),y : BMI ..done			; negative = done
-		; JMP ..loop					; otherwise loop
-		; ..done
-		; PLP
-		; PLA : STA $0A
 
 
 	; camera box
@@ -2135,6 +2085,8 @@ levelinitC6:
 
 		LDA $95 : BNE +
 		LDA #$FF : STA $97
+		LDA !P2HP-$80 : STA !StatusBarP1Hearts
+		LDA !P2HP : STA !StatusBarP2Hearts
 		+
 
 
@@ -4803,11 +4755,6 @@ level13B:
 		.RoomPointers
 		dw .ScreenMatrix
 		dw .BoxTable
-		dw .DoorList
-		dw .DoorTable
-
-
-
 
 ;	Key ->	   X  Y  W  H
 ;		   |  |  |  |
@@ -4821,10 +4768,6 @@ level13B:
 		db $00
 		db $00
 		db $00
-
-.DoorList	db $FF			; no doors
-.DoorTable
-
 
 
 level13C:
@@ -5280,8 +5223,6 @@ level1F1:
 		.RoomPointers
 		dw .ScreenMatrix
 		dw .BoxTable
-		dw .DoorList
-		dw .DoorTable
 
 ;	Key ->	   X  Y  W  H
 ;		   |  |  |  |
@@ -5291,9 +5232,6 @@ level1F1:
 .Box0	%CameraBox(0, 0, 1, 0)
 
 .ScreenMatrix	db $00,$00,$00
-
-.DoorList	db $FF			; no doors
-.DoorTable
 
 
 ; empty room
@@ -5363,8 +5301,6 @@ level1F7:
 		.RoomPointers
 		dw .ScreenMatrix
 		dw .BoxTable
-		dw .DoorList
-		dw .DoorTable
 
 ;	Key ->	   X  Y  W  H
 ;		   |  |  |  |
@@ -5377,11 +5313,6 @@ level1F7:
 .Box3	%CameraBox(3, 0, 0, 0)
 
 .ScreenMatrix	db $00,$01,$02,$03
-
-.DoorList	db $FF			; no doors
-.DoorTable
-
-
 
 
 

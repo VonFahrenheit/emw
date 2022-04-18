@@ -98,12 +98,12 @@
 ; REWORK
 
 ; tweaker 1: object/terrain interaction settings
-;	tLwloooo
+;	tLoooowl
 ;	t = disable terrain interaction		(0x80)
 ;	L = disable layer 2/3 interaction	(0x40)
+;	oooo = object clipping			(AND#)
 ;	w = disable water splash
-;	l = treat lava as water
-;	oooo = object clipping
+;	l = treat lava as water			(LSR)
 
 ; tweaker 2: sprite clipping settings
 ;	pscccccc
@@ -126,15 +126,26 @@
 ;	k = slide kick immunity
 ;	s = star immunity
 ;	P = silver POW immunity
-;	c = crush immunity
+;	c = crush immunity (effects such as spin jump)
 
-; tweaker 5: graphics
-;	----ccct
+; tweaker 5: graphics + jump height
+;	hhhhccct
+;	hhhh = jump height			(AND#)
 ;	ccc = ccc bits of OAM prop		(AND#)
 ;	t = t bit of OAM prop			(AND#, LSR)
 
-; tweaker 6: unused
-;	--------
+; tweaker 6: common behaviors
+;	ll----ww
+;	ll = ledge behavior			(0x80, 0x40)
+;		00 = ignore ledge
+;		01 = turn around at ledge
+;		02 = jump at ledge
+;		03 = ledge acts as wall
+;	ww = wall behavior			(AND#)
+;		00 = ignore wall (still can't pass through)
+;		01 = turn around at wall
+;		02 = jump at wall
+;		03 = turn around at wall + invert X speed
 
 
 

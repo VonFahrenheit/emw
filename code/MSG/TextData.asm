@@ -810,15 +810,15 @@ if !CompileText = 1
 	db "Will you not try to stop me?"
 	%n()
 	%portrait(CaptainWarrior, 0)
+	db "There is no need."
+	%n()
 	db "I have faith in my King."
 	%n()
 	db "I have faith in the strongest Rex!"
 	%n()
 	db "So go! "
 	%delay(32)
-	db "Go "
-	%delay(16)
-	db "and meet your end at the hand of the Dragon King!"
+	db "Go and meet your end at the hand of the Dragon King!"
 	%endmessage()
 endif
 ;====================================================================================================;
@@ -1169,7 +1169,7 @@ if !CompileText = 1
 	%linebreak()
 	db "Enemies are weaker and less aggressive."
 	%linebreak()
-	db "Bottomless pits and lava are not instant death."
+	db "Bottomless pits and lava bounce you up."
 	%endmessage()
 endif
 ;====================================================================================================;

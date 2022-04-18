@@ -2711,6 +2711,8 @@ MAIN_MENU:
 		CLC : ADC #$14
 		STA $02
 		REP #$20
+		LDA !PlaytimeMinutes : PHA
+		LDA !PlaytimeHours : PHA
 		LDA !SRAM_block+$008,x : STA !PlaytimeMinutes
 		LDA !SRAM_block+$009,x : STA !PlaytimeHours
 		STZ $0E
@@ -2775,6 +2777,8 @@ MAIN_MENU:
 		PLY
 		PLP
 		..done
+		PLA : STA !PlaytimeHours
+		PLA : STA !PlaytimeMinutes
 		RTS
 
 
@@ -3278,18 +3282,18 @@ MAIN_MENU:
 		RTS
 
 		..draw
-		JSR .DrawDifficulty
-		JSR .DrawChallengeModes
-		JSR .DrawRealmStars
-		JSR .DrawCounterIcons
+		JSR .DrawDifficulty			; main difficulty setting
+		JSR .DrawChallengeModes			; challenge mode markers
+		JSR .DrawRealmStars			; map icons from beating realm bosses
+		JSR .DrawCounterIcons			; icons for various counters
 		REP #$30				;\
 		LDA !BigRAM				; |
 		CLC : ADC #$00C0			; | playtime
 		STA $00					; |
 		LDA.w #!NumColumnHeight+$00 : STA $02	; |
 		JSR .DrawPlaytime			;/
-		JSR .DrawCoins
-		JSR .DrawDeaths
+		JSR .DrawCoins				; coins
+		JSR .DrawDeaths				; deaths
 		REP #$30				;\
 		LDA !BigRAM				; |
 		CLC : ADC #$00C8			; |
@@ -3624,6 +3628,8 @@ MAIN_MENU:
 ; input:
 ;	$00 = Xdisp
 ;	$02 = Ydisp
+;	$0C = playtime minutes
+;	$0E = playtime hours
 	.DrawPlaytime
 	; hours
 		STZ $0E

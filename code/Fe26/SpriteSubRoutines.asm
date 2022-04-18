@@ -1,3 +1,514 @@
+;===============;
+; PHYSICS CODES ;
+;===============;
+
+
+
+; ; input: void
+; ; output: void
+; APPLY_SPEED:
+		; LDA !SpriteStasis,x : BEQ .Process		;\
+		; RTL						; | return if stasis
+		; .Process					;/
+		; STZ !SpriteDeltaX,x				;\ clear delta from last frame
+		; STZ !SpriteDeltaY,x				;/
+
+
+		; .VectorX					;\
+		; LDA !SpriteVectorTimerX,x : BEQ ..clear		; | check X vector
+		; DEC !SpriteVectorTimerX,x			; |
+		; BRA ..apply					;/
+		; ..clear						;\
+		; STZ !SpriteVectorX,x				; | reset X vector
+		; STZ !SpriteVectorAccX,x				; |
+		; BRA ..done					;/
+		; ..apply						;\
+		; LDA !SpriteXSpeed,x : PHA			; |
+		; LDA !SpriteVectorX,x : STA !SpriteXSpeed,x	; |
+		; CLC : ADC !SpriteVectorAccX,x			; | apply X vector
+		; STA !SpriteVectorX,x				; |
+		; JSL .X						; |
+		; PLA : STA !SpriteXSpeed,x			; |
+		; ..done						;/
+
+		; .VectorY					;\
+		; LDA !SpriteVectorTimerY,x : BEQ ..clear		; | check Y vector
+		; DEC !SpriteVectorTimerY,x			; |
+		; BRA ..apply					;/
+		; ..clear						;\
+		; STZ !SpriteVectorY,x				; | reset Y vector
+		; STZ !SpriteVectorAccY,x				; |
+		; BRA ..done					;/
+		; ..apply						;\
+		; LDA !SpriteYSpeed,x : PHA			; |
+		; LDA !SpriteVectorY,x : STA !SpriteYSpeed,x	; |
+		; CLC : ADC !SpriteVectorAccY,x			; | apply Y vector
+		; STA !SpriteVectorY,x				; |
+		; JSL .Y						; |
+		; PLA : STA !SpriteYSpeed,x			; |
+		; ..done						;/
+
+
+
+		; .SpeedY						;\ move Y
+		; %UpdateY()					;/
+		; CLC : ADC !SpriteDeltaY,x			;\ update delta
+		; STA !SpriteDeltaY,x				;/
+		; LDA !SpriteFallSpeed,x				;\
+		; LSR #2 : STA $00				; |
+		; EOR #$FF : STA $01				; |
+		; LDA !SpriteYSpeed,x				; | gravity + fall speed checks
+		; LDY !SpriteGravityTimer,x : BEQ ..normalgravity	; |
+		; DEC !SpriteGravityTimer,x			; |
+		; CLC : ADC !SpriteGravityMod,x			;/
+		; ..normalgravity					;\
+		; INC A						; | check water/land
+		; LDY !SpriteWater,x : BEQ ..land			;/
+		; ..water						;\
+		; CMP #$80 : BCC ++				; |
+		; CMP $01 : BCS +					; | fall speed checks under water
+		; LDA $01 : BRA +					; |
+	; ++	CMP $00 : BCC +					; |
+		; LDA $00 : BRA +					;/
+		; ..land						;\
+		; INC #2						; |
+		; BMI +						; | fall speed checks on land
+		; CMP !SpriteFallSpeed,x : BCC +			; |
+		; LDA !SpriteFallSpeed,x				; |
+	; +	STA !SpriteYSpeed,x				;/
+
+		; .SpeedX						;\
+		; LDA !SpriteXSpeed,x : PHA			; | water check
+		; LDY !SpriteWater,x : BEQ ..update		;/
+		; ..water						;\
+		; ASL A						; |
+		; ROR !SpriteXSpeed,x				; |
+		; LDA !SpriteXSpeed,x : STA $00			; |
+		; ASL A						; | 75% X speed in water
+		; ROR $00						; |
+		; LDA !SpriteXSpeed,x				; |
+		; CLC : ADC $00					; |
+		; STA !SpriteXSpeed,x				;/
+		; ..update					;\ apply X speed
+		; %UpdateX()					;/
+		; CLC : ADC !SpriteDeltaX,x			;\ update delta
+		; STA !SpriteDeltaX,x				;/
+		; PLA : STA !SpriteXSpeed,x			; restore
+
+		; JMP OBJECT_INTERACTION
+
+
+		; .X
+		; %UpdateX()
+		; STA !SpriteDeltaX,x
+		; RTL
+
+		; .Y
+		; %UpdateY()
+		; STA !SpriteDeltaY,x
+		; RTL
+
+
+
+; ; $00 - max X coord of level
+; ; $02 - max Y coord of level
+; ; $04 - 16-bit map16 index
+; ;	during block processing, $04 is the sprite to spawn from a block
+; ;	during block processing, $05 is a multiplayer flag for spawning multiple items from blocks
+; ; $06 - 24-bit pointer to map16 acts like table 00
+; ; $09 - 24-bit pointer to map16 acts like table 40
+; ; $0C - map16 acts like
+; ; $0E - layer (0 = layer 1, 80 = layer 2)
+; ; $0F - collision this frame
+; ;	01 - right
+; ;	02 - left
+; ;	04 - down
+; ;	08 - up
+; ;	10 - UNUSED
+; ;	20 - touching layer 2 ceiling
+; ;	40 - touching layer 2 wall
+; ;	80 - touching layer 2 floor
+
+; OBJECT_INTERACTION:
+		; PHB : PHK : PLB					; bank wrapper start
+		; BIT !SpriteTweaker1,x : BMI .Return		; return if object interaction is disabled
+		; LDA !SpriteTweaker3,x				;\
+		; LSR A : BCS .Process				; |
+		; TXA						; | check if interaction should be processed this frame
+		; EOR $14						; |
+		; LSR A : BCS .Process				;/
+		; .Return						;\
+		; PLB						; | bank wrapper end + return
+		; RTL						;/
+
+		; .Process
+		; STZ $00						;\
+		; LDA $5D						; | max X coord
+		; DEC A : STA $01					;/
+		; REP #$20					;\
+		; LDA !Map16ActsLike+0 : STA $06			; |
+		; LDA !Map16ActsLike+1 : STA $07			; |
+		; LDA !Map16ActsLike40+0 : STA $09		; | 24-bit pointers to map16 acts like tables
+		; LDA !Map16ActsLike40+1				; |
+		; ORA #$0080					; |
+		; STA $0A						;/
+		; LDA !LevelHeight				;\
+		; SEC : SBC #$0010				; | max Y coord
+		; STA $02						; |
+		; SEP #$20					;/
+
+
+
+
+		; LDA !SpriteXLo,x : STA $E0			;\
+		; LDA !SpriteXHi,x : STA $E1			; | backup coords
+		; LDA !SpriteYLo,x : STA $E2			; |
+		; LDA !SpriteYHi,x : STA $E3			;/
+		; LDA $3330,x : STA $E4				;\ backup + clear collision
+		; STZ $3330,x					;/
+		; STZ !SpriteSlope,x				; clear slope
+		; LDA !SpriteWater,x : STA $7695			;\ backup + clear water
+		; STZ !SpriteWater,x				;/
+		; STZ $7694					; vertical pushout value
+		; STZ $0E						; layer (0 = layer 1, 80 = layer 2)
+
+		; JSR .InteractLayer
+
+		; .Ledge
+		; LDA $E4						;\
+		; AND #$04 : BEQ ..done				; | check for ledge
+		; AND $3330,x : BNE ..done			;/
+		; BIT !SpriteTweaker6,x				;\ check ledge behavior
+		; BVS ..restoreX					;/
+		; BPL ..done					; 00 = ignore ledge
+		; LDA !SpriteTweaker5,x				;\
+		; AND #$F0 : STA !SpriteYSpeed,x			; |
+		; LDA $E2 : STA !SpriteYLo,x			; | 80 = jump
+		; LDA $E3 : STA !SpriteYHi,x			; |
+		; BRA ..done					;/
+		; ..restoreX					;\
+		; BMI ..noturn					; |
+		; LDA $3330,x					; | 40 = turn
+		; EOR #$01 : STA $3330,x				; |
+		; ..noturn					;/
+		; LDA $E0 : STA !SpriteXLo,x			;\
+		; LDA $E1 : STA !SpriteXHi,x			; |
+		; LDA $E2 : STA !SpriteYLo,x			; | C0 = stop, but don't turn
+		; LDA $E3 : STA !SpriteYHi,x			; |
+		; ..done						;/
+
+		; .Wall
+		; LDA $3330,x					;\ check for wall
+		; AND #$03 : BEQ ..done				;/
+		; LDA !SpriteTweaker6,x				;\ check wall behavior
+		; LSR A : BCS ..restoreX				;/
+		; LSR A : BCC ..done				; 00 = just collide
+		; LDA !SpriteTweaker5,x				;\
+		; AND #$F0 : STA !SpriteYSpeed,x			; | 02 = jump
+		; BRA ..done					;/
+		; ..restoreX					;\
+		; LSR A : BCC ..noinvert				; |
+		; LDA !SpriteXSpeed,x				; | 03 = turn + invert speed
+		; EOR #$FF : INC A				; |
+		; STA !SpriteXSpeed,x				;/
+		; ..noinvert					;\
+		; LDA $3330,x					; | 01 = turn but don't change speed
+		; EOR #$01 : STA $3330,x				;/
+		; ..collide					;\
+		; LDA $3230,x					; |
+		; CMP #$09 : BEQ ..done				; | bump x position back unless carryable/kicked
+		; LDA $E0 : STA !SpriteXLo,x			; |
+		; LDA $E1 : STA !SpriteXHi,x			; |
+		; ..done						;/
+
+
+		; PLB
+		; RTL
+
+
+
+	; .InteractLayer
+		; LDA !BuoyancySettings : BEQ ..noliquids
+		; ; water stuff
+		; ..noliquids
+
+		; ; SMW has a "no interaction" check here
+
+		; LDA $0E : BEQ ..go				;\
+		; ..layer2					; |
+		; LDA !BuoyancySettings				; | return if trying to interact with layer 2 while it's disabled
+		; ORA !SpriteTweaker1,x				; |
+		; AND #$40 : BNE .SideCollision_return		;/
+		; ..go						;\
+		; LDY #$02					; |
+		; BIT !SpriteDeltaY,x				; | get tile for vertical interaction
+		; BPL $01 : INY					; |
+		; JSR .GetTile					;/
+		; JSR .InteractVert				; interact with tile
+
+
+
+		; LDA $3230,x					;\
+		; CMP #$09 : BEQ .UnStuck				; | check if sprite should use unstuck code
+		; CMP #$0A : BNE .SideCollision			;/
+		; .UnStuck					;\
+		; LDA !SpriteXSpeed,x : BNE .SideCollision	; | unstuck code (alternate left/right interaction)
+		; ; also branch if turning around??
+		; LDA $14 : BRA +					;/
+
+		; .SideCollision
+		; LDA !SpriteDeltaX,x : BEQ ..return		; return if no X movement
+		; ASL A						;\
+		; ROL A						; | get tile for horizontal interaction
+	; +	AND #$01 : TAY					; |
+		; JSR .GetTile					;/
+		; LDA $0D : BEQ ..return				; ignore tiles on page 0
+		; LDA $0C						;\
+		; CMP #$11 : BCC ..return				; | only interact with tiles 0x0111-0x016D
+		; CMP #$6E : BCS ..return				;/
+		; TYA						;\
+		; INC A						; | set block status
+		; ORA $3330,x : STA $3330,x			;/
+		; LDA $0E : BEQ ..return				;\
+		; LDA $3330,x					; | set 0x40 bit when touching layer 2 wall
+		; ORA #$40 : STA $3330,x				;/
+
+		; ..return
+		; RTS
+
+
+
+	; .GetTile
+		; PHY						; push Y
+		; STY $04						;\
+		; LDA !SpriteTweaker1,x				; |
+	; ;	AND #$0F*4					; | Y = index to coords
+	; AND #$0F
+		; CLC : ADC $04					; |
+		; TAY						;/
+
+		; PHX						; push X
+
+		; LDA !SpriteXLo,x : STA $9A			;\
+		; LDA !SpriteXHi,x : STA $9B			; | sprite coords
+		; LDA !SpriteYLo,x : STA $98			; |
+		; LDA !SpriteYHi,x : STA $99			;/
+		; REP #$20					; A 16-bit
+
+		; LDA SpriteObjectClippingY,y			;\
+		; AND #$00FF					; |
+		; CLC : ADC $98					; |
+		; BPL +						; | Y coord of point (snap to within bounds)
+		; LDA #$0000 : BRA ++				; |
+	; +	CMP $02 : BCC ++				; |
+		; LDA $02						; |
+	; ++	STA $98						;/
+
+		; LDA SpriteObjectClippingX,y			;\
+		; AND #$00FF					; |
+		; CLC : ADC $9A					; |
+		; BPL +						; | X coord of point (snap to within bounds)
+		; LDA #$0000 : BRA ++				; |
+	; +	CMP $00 : BCC ++				; |
+		; LDA $00						; |
+	; ++	STA $9A						;/
+
+		; SEP #$20					; A 8-bit
+		; LDA $98						;\
+		; AND #$F0 : STA $04				; | lo byte of map16 index
+		; LDA $9A						; |
+		; LSR #4 : TSB $04				;/
+		; LDX $9B						;\
+		; LDA $6CB6,x					; |
+		; BIT $0F						; | add lo byte offset based on layer and screen
+		; BPL $03 : LDA $6CC6,x				; |
+		; CLC : ADC $04					; |
+		; STA $04						;/
+		; LDA $6CD6,x					;\
+		; BIT $0F						; |
+		; BPL $03 : LDA $6CE6,x				; | hi byte of index based on layer and screen
+		; ADC $99						; |
+		; STA $05						;/
+
+		; REP #$10					;\
+		; LDX $04						; |
+		; LDA $410000,x : XBA				; |
+		; LDA $400000,x					; |
+		; REP #$20					; |
+		; ASL A : BMI ..40				; |
+	; ..00	TAY						; | get acts like
+		; LDA [$06],y : BRA ..store			; |
+	; ..40	AND #$7FFF : TAY				; |
+		; LDA [$09],y					; |
+		; ..store						; |
+		; STA $0C						; |
+		; SEP #$30					;/
+
+		; PLX						; restore X
+		; PLY						; restore Y
+		; RTS						; return
+
+
+	; .InteractVert
+		; LDA $0D : BEQ .Ceiling_return			; return if page 0
+		; LDA $0C						; A = lo byte of acts like
+		; CPY #$02 : BEQ .Floor				; check whether floor/ceiling should be checked
+
+		; .Ceiling
+		; CMP #$11 : BCC ..return				;\
+		; CMP #$6E : BCC ..interact			; | check for ceiling tiles
+		; CMP $7430 : BCC ..return			; |
+		; CMP $7431 : BCS ..return			;/
+		; ..interact					;\
+		; LDA $3330,x					; |
+		; ORA #$08					; | set ceiling collision
+		; BIT $0E						; |
+		; BPL $02 : ORA #$20				; |
+		; STA $3330,x					;/
+		; ..return					;\ return
+		; RTS						;/
+
+
+
+		; .Floor
+		; LDA $0C						;\
+		; CMP #$59 : BCC ..checksolid			; |
+		; CMP #$5C : BCS ..checksolid			; | check for lava/mud
+		; LDY !HeaderTileset				; |
+		; CPY #$0E : BEQ +				; |
+		; CPY #$03 : BNE ..checksolid			;/
+	; +	LDA !SpriteTweaker1,x				;\
+		; LSR A : BNE ..checksolid			; | unless treating lava as water, status = sinking
+		; LDA #$05 : STA $3230,x				; |
+		; LDA #$40 : STA $32F0,x				;/
+		; RTS						; return
+
+		; ..platform
+		; LDA $98
+		; AND #$0F
+		; CMP #$05 : BCS ..return
+		; ..solid
+		; LDA $3230,x
+		; CMP #$02 : BEQ ..return
+		; CMP #$05 : BEQ ..return
+		; CMP #$0B : BEQ ..return
+		; LDA !SpriteYLo,x				;\
+		; AND #$F0					; | push sprite on top of floor tile
+		; CLC : ADC $7694					; |
+		; STA !SpriteYLo,x				;/
+		; LDA $3330,x					;\
+		; ORA #$04					; |
+		; BIT $0E						; | set floor collision
+		; BPL $02 : ORA #$80				; |
+		; STA $3330,x					;/
+		; ..return
+		; RTS
+
+		; ..checksolid
+		; CMP #$11 : BCC ..platform			; 0x100-0x110 = platform tile
+		; CMP #$6E : BCC ..solid				; 0x111-0x16D = solid
+		; CMP #$D8 : BCS ..slopeassist			; 0x1D8-0x1FF = slope assist tile
+
+		; ..slope						; 0x16E-0x1D7 = check slope
+		; LDY #$32 : STY $F0				;\
+		; LDY #$E6 : STY $F1				; | $F0 = 24-bit pointer to slope coordinate table
+		; STZ $F2						;/
+		; SEC : SBC #$6E					;\
+		; TAY						; |
+		; PHX						; |
+		; LDA [$82],y : TAX				; | set sprite slope type
+		; LDA.l $00E53D,x					; |
+		; TXY						; > preserve in Y
+		; PLX						; |
+		; STA !SpriteSlope,x				;/
+		; TYA						;\ get index to pushout value
+		; ASL #4 : STA $05				;/
+		; BCC $02 : INC $F1				; index +256
+		; LDA $98						;\
+		; AND #$0F : STA $04				; |
+		; LDA $9A						; | Y = index to [$F0]
+		; AND #$0F : ORA $05				; |
+		; TAY						;/
+		; LDA [$F0],y					;\ check for invalid slope
+		; CMP #$10 : BEQ ..return				;/
+		; BCS ..slopeassist				; check for slope assist
+		; LDA $04						;\
+		; CMP #$0C : BCS +				; | get vertical pushup vallue
+		; CMP [$F0],y : BCC ..return			; |
+	; +	LDA [$F0],y : STA $7694				;/
+		; LDA !SpriteSlope,x				;\
+		; CMP #$04 : BEQ ..supersteep			; |
+		; CMP #$FC : BNE ++				; |
+		; ..supersteep					; | slope interaction
+		; EOR !SpriteDeltaX,x : BPL +			; |
+		; LDA !SpriteDeltaX,x : BEQ +			; |
+		; LDA $3320,x					; |
+		; EOR #$01 : STA $3320,x				;/
+	; +	JSL $03C1CA					; sprite interact with supersteep slope tile, needs further research
+	; ++	JMP ..solid
+
+		; ..slopeassist
+		; LDA $98
+		; AND #$0F
+		; CMP #$05 : BCS ..return2
+		; INC A : STA $04
+		; LDA $3230,x
+		; CMP #$02 : BEQ ..return2
+		; CMP #$05 : BEQ ..return2
+		; CMP #$0B : BEQ ..return2
+		; LDA !SpriteYLo,x
+		; SEC : SBC $04
+		; STA !SpriteYLo,x
+		; LDA !SpriteYHi,x
+		; SBC #$00
+		; STA !SpriteYHi,x
+		; PLA : PLA
+		; JMP .InteractLayer_go
+
+		; ..return2
+		; RTS
+
+
+
+
+; SpriteObjectClippingX:
+		; db $0E,$02,$08,$08	; clipping 0
+		; db $0E,$02,$07,$07	; clipping 1
+		; db $07,$07,$07,$07	; clipping 2
+		; db $0E,$02,$08,$08	; clipping 3
+		; db $10,$00,$08,$08	; clipping 4
+		; db $0D,$02,$08,$08	; clipping 5
+		; db $07,$00,$04,$04	; clipping 6
+		; db $1F,$01,$10,$10	; clipping 7
+		; db $0F,$00,$08,$08	; clipping 8
+		; db $10,$00,$08,$08	; clipping 9
+		; db $0D,$02,$08,$08	; clipping A
+		; db $0E,$02,$08,$08	; clipping B
+		; db $0D,$02,$08,$08	; clipping C
+		; db $10,$00,$08,$08	; clipping D
+		; db $1F,$00,$10,$10	; clipping E
+		; db $08,$08,$08,$10	; clipping F
+
+; SpriteObjectClippingY:
+		; db $08,$08,$10,$02	; clipping 0
+		; db $12,$12,$20,$02	; clipping 1
+		; db $07,$07,$07,$07	; clipping 2
+		; db $10,$10,$20,$0B	; clipping 3
+		; db $12,$12,$20,$02	; clipping 4
+		; db $18,$18,$20,$10	; clipping 5
+		; db $04,$04,$08,$00	; clipping 6
+		; db $10,$10,$1F,$01	; clipping 7
+		; db $08,$08,$0F,$00	; clipping 8
+		; db $08,$08,$10,$00	; clipping 9
+		; db $48,$48,$50,$42	; clipping A
+		; db $04,$04,$08,$00	; clipping B
+		; db $00,$00,$00,$00	; clipping C
+		; db $08,$08,$10,$00	; clipping D
+		; db $08,$08,$10,$00	; clipping E
+		; db $04,$01,$02,$04	; clipping F
+
+
+
 ;=======================;
 ; GENERIC SUPPORT CODES ;
 ;=======================;

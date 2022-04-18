@@ -656,11 +656,9 @@ endmacro
 
 macro SetMap16Index()
 		LDA $98					;\
-		AND #$F0				; |
-		STA $04					; | lo byte of map16 index
+		AND #$F0 : STA $04			; | lo byte of map16 index
 		LDA $9A					; |
-		LSR #4					; |
-		TSB $04					;/
+		LSR #4 : TSB $04			;/
 		LDX $9B					;\
 		LDA $6CB6,x				; |
 		BIT $0F					; | add lo byte offset based on layer and screen
@@ -681,17 +679,13 @@ macro GetActsLike()
 		LDA $410000,x : XBA			; |
 		LDA $400000,x				;/
 		REP #$20				;\
-		CMP #$4000				; |
-		AND #$3FFF				; |
-		BCS ?block40				; |
+		ASL A : BMI ?block40			; |
 	?block00:					; |
-		ASL A					; |
-		TAY					; | get acts like setting
-		LDA [$06],y				; |
+		TAY					; |
+		LDA [$06],y				; | get acts like setting
 		BRA ?W					; |
 	?block40:					; |
-		ASL A					; |
-		TAY					; |
+		AND #$7FFF : TAY			; |
 		LDA [$09],y				; |
 	?W:	STA $0C					; > write to $0C
 		SEP #$10				;/

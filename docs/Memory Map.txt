@@ -283,7 +283,7 @@
 					$69E0-$6A5F: 128/80 B, tilemap data for layer 2 row (size varies, always used)
 					$6A60-$6ABF: 96 B, checkpoint level, lo byte (level data byte 2)
 					$6AC0-$6AC9: 10 B, camera box registers
-					$6ACA:       1 B, ----
+					$6ACA:       1 B, camera box lock flag
 					$6ACB-$????: ?? B, cutscene RAM
 					$????-$6AF4: ?? B, ----
 

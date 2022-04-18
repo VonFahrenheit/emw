@@ -384,7 +384,7 @@ endmacro
 		!CameraBoxD		= $6AC6
 		!CameraBoxRoom		= $6AC8			; which camera box room the player is in
 		!Room			= !CameraBoxRoom	; alt name
-
+		!LockBox		= $6ACA			; 0 = camera box has automatic doors, 1 = camera box is locked
 
 
 
@@ -1604,7 +1604,7 @@ endmacro
 
 
 
-		!Debug			= 1			; 0 = do not insert debug code
+		!Debug			= 0			; 0 = do not insert debug code
 								; 1 = insert debug code
 
 	macro DebugCode()
@@ -2103,20 +2103,17 @@ endmacro
 
 		!FileAddress		= $E0			; 24-bit, scratch pointer to file ($E3 kept free so !FileAddress+2 can be accessed in 16-bit mode)
 
-		; 4 bytes free at $405DFB-$405DFE!
 
+		!LoadCheckpoint		= $405DFB		; 00 = don't load checkpoint, 01 = load checkpoint
+		!ShakeBG3		= $405DFC		; same as !ShakeTimer but for BG3
 
-		!NPC_Talk		= $405DFF		; 256 word entries (512 B), 1 for each NPC ID, index with NPC ID * 2 to get input for !MsgTrigger
-		!NPC_TalkCap		= $405FFF		; same format as previous table, cap for auto-incrementing function
+		; 2 bytes free at $405DFD-$405DFE!
 
+		!NPC_TalkSign		= $405DFF
+		!NPC_Talk		= $405E00		; 256 word entries (512 B), 1 for each NPC ID, index with NPC ID * 2 to get input for !MsgTrigger
+		!NPC_TalkCap		= $406000		; same format as previous table, cap for auto-incrementing function
 
-		!LoadCheckpoint		= $4061FF		; 00 = don't load checkpoint, 01 = load checkpoint
-		!ShakeBG3		= $406200		; same as !ShakeTimer but for BG3
-
-
-
-
-	; next entry at $406201
+	; next entry at $406200
 
 
 
@@ -2697,6 +2694,7 @@ endmacro
 		!YoshiIndex		= $78E2
 		!GeneratorNum		= $78B9
 		!MarioStunTimer		= $78BD
+		!BuoyancySettings	= $790E		; 0x80 = enabled, 0x40 = enabled but disable BG2 interaction for sprites
 		!HeaderTileset		= $7931
 		!CurrentLayer		= $7933		; 0x00 = BG1, 0x80 = BG2/BG3
 		!WindowDir		= $7B88

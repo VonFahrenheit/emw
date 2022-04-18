@@ -383,6 +383,10 @@ NPC:
 
 	Mario:
 		LDX !SpriteIndex
+
+		LDA !addr_palset_mario				;\ apparently mario needs this for some reason
+		ASL A : STA $33C0,x				;/
+
 		REP #$30
 		LDY.w #!File_Mario
 		LDA.w #.IdleDyn : STA $0C
@@ -1757,12 +1761,41 @@ NPC:
 		JSR FacePlayer
 
 		.Main
+		LDA !NPC_TalkSign : BEQ ..cantalk
+		STZ $00
+		..return
+		RTS
+		..cantalk
 		REP #$20
 		LDA.w #DATA_Talkbox : JSL LOAD_HITBOX
 		SEC : JSL !PlayerClipping
 		STA $00
-		BCC .NoTalk
-		LSR A : BCC .P2
+		BCC ..return
+		PHA
+
+		LDA #$01 : STA !NPC_TalkSign				; > only one can talk at a time
+		LDA $00 : PHA						;\
+		LDA $3320,x : PHA					; |
+		LDA #$01 : STA $3320,x					; |
+		REP #$20						; |
+		LDA #$0004 : STA !BigRAM+0				; |
+		LDA #$0030 : STA !BigRAM+2				; |
+		LDA #$68D8 : STA !BigRAM+4				; |
+		LDA.w #!BigRAM : STA $04				; |
+		SEP #$20						; | display "talk" tooltip
+		LDA $14							; |
+		LSR #3							; |
+		AND #$07						; |
+		SEC : SBC #$04						; |
+		BPL $03 : EOR #$FF : INC A				; > oscilate
+		CLC : ADC #$D8						; |
+		STA !BigRAM+4						; |
+		JSL LOAD_TILEMAP					; |
+		PLA : STA $3320,x					; |
+		PLA : STA $00						; |
+		PLA							; |
+		LSR A : BCC .P2						;/
+
 
 		.P1
 		PHA
@@ -1790,7 +1823,6 @@ NPC:
 		LDA #$03 : STA !TalkTimer,x
 		..fail
 
-		.NoTalk
 		RTS
 
 
@@ -2099,6 +2131,11 @@ NPC:
 		.LuigiDone
 
 		RTS
+
+
+	TalkTilemap:
+		dw $0004
+		db $30,$00,$D8,$68
 
 
 

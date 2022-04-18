@@ -177,7 +177,7 @@ Wizrex:
 
 
 		LDA !ExtraProp1,x : BEQ .Normal			;\
-		LDA #$38 : STA !SpriteXSpeed,x			; |
+		LDA #$58 : STA !SpriteXSpeed,x			; |
 		LDA $14						; |
 		LSR #3						; |
 		AND #$0F
@@ -1700,6 +1700,8 @@ Wizrex:
 		INC !ExtraProp1,x
 
 		.WaitForKey
+		LDA !P2InAir-$80
+		ORA !P2InAir : BNE ++
 		LDY #$0F
 	-	LDA $3230,y
 		CMP #$0B : BNE +
@@ -1713,7 +1715,7 @@ Wizrex:
 		INC !ExtraProp1,x
 		JMP .DrawCluster
 	+	DEY : BPL -
-		JMP .DrawCluster
+	++	JMP .DrawCluster
 
 		.WarningFlash
 		LDA #$9F : STA !WizrexCastFlash,x

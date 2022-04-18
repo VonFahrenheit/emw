@@ -15,7 +15,7 @@ trivial
 	- rolling spiny
 	- fish (horizontal + vertical)
 	- surface-jumping fish
-	- bouncing football)
+	- bouncing football
 	- hopping flame
 	- thwomp
 	- thwimp

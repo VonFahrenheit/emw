@@ -18,12 +18,12 @@ namespace Kadaal
 
 
 ; new upgrade layout:
-;	bit 0	senku smash
+;	bit 0	drop kick
 ;	bit 1	directional senku
 ;	bit 2	air senku
 ;	bit 3	shadow step
 ;	bit 4	fancy footwork (backdash/pivot)
-;	bit 5	sturdy shell
+;	bit 5	---- ????
 ;	bit 6	---- ????
 ;	bit 7	ultimate: shun koopa satsu
 
@@ -36,11 +36,6 @@ namespace Kadaal
 		LDA #$08			;\
 		CLC : ADC !PlayerBonusHP	; | max HP
 		STA !P2MaxHP			;/
-		LDA !KadaalUpgrades		;\
-		AND #$20			; | +1 Max HP with upgrade
-		BEQ $03 : INC !P2MaxHP		;/
-
-
 
 		LDA !P2Init : BNE .Main
 
@@ -48,8 +43,7 @@ namespace Kadaal
 		PHP
 		LDA.b #!VRAMbank : PHA
 		REP #$30
-		LDY.w #!File_Kadaal
-		JSL !GetFileAddress
+		LDY.w #!File_Kadaal : JSL !GetFileAddress
 		JSL !GetVRAM
 		PLB
 		LDA #$0140*$20
@@ -262,60 +256,45 @@ namespace Kadaal
 		AND #$04
 		ORA !P2Platform
 		BNE ..Ground
-		LDA !P2ShellSlide : BNE .ShellSlide	; maintain shell slide in midair
-		JMP .NoGround
+		LDA !P2ShellSlide : BNE .ShellSlide		; maintain shell slide in midair
+	-	JMP .NoGround
 
 	..Ground
-;		LDA !P2BackDash
-;		CMP #$08 : BCC ..BackDash
-;		BRA ..NoDir
+		LDA !KadaalUpgrades
+		AND #$10 : BEQ .NoBackDash
+		LDA !P2BackDash
+		CMP #$08 : BCC ..BackDash
+		BRA ..NoDir
 
 	..BackDash
-;		LDA $6DA9
-;		AND #$30 : BEQ .NoBackDash
-;		AND #$10 : BEQ +
-;		LDA !P2Direction			; R is perfect pivot
-;		INC A
-;		TSB $6DA3
-;		EOR #$03
-;		TRB $6DA3
-;	+	LDA #$10 : STA !P2BackDash
-;		LDA $6DA3
-;		AND #$03 : BEQ +
-;		CMP #$03 : BEQ +
-;		DEC A
-;		EOR #$01
-;		STA !P2Direction
-;		BRA ++
-;	+	LDA !P2Direction
-;	++	EOR #$01
-;		TAY
-;		LDA .XSpeedSenku,y : JSL CORE_SET_XSPEED
-;		LDA #$2D : STA !SPC1			; slide SFX
-;		STZ !P2Punch1
-;		STZ !P2Punch2
-;		STZ !P2Senku
-;	..NoDir	LDA #$0F				;\
-;		TRB $6DA3				; | clear directionals during back dash
-;		TRB $6DA7				;/
-;		LDA #$01 : STA !P2Dashing
+		LDA $6DA9
+		AND #$30 : BEQ .NoBackDash
+		AND #$10 : BEQ +
+		LDA !P2Direction				; R is perfect pivot
+		INC A
+		TSB $6DA3
+		EOR #$03
+		TRB $6DA3
+	+	LDA #$10 : STA !P2BackDash
+		LDA $6DA3
+		AND #$03 : BEQ +
+		CMP #$03 : BEQ +
+		DEC A
+		EOR #$01
+		STA !P2Direction
+		BRA ++
+	+	LDA !P2Direction
+	++	EOR #$01
+		TAY
+		LDA .XSpeedSenku,y : JSL CORE_SET_XSPEED
+		LDA #$2D : STA !SPC1				; slide SFX
+		STZ !P2Punch
+		STZ !P2Senku
+	..NoDir	LDA #$0F					;\
+		TRB $6DA3					; | clear directionals during back dash
+		TRB $6DA7					;/
+		LDA #$01 : STA !P2Dashing
 		.NoBackDash
-
-
-	;	LDA !P2ShellDrill : BEQ .NoPound		;\
-	;	STZ !P2ShellDrill				; |
-	;	JSR .StartSpin					; | shell drill landing
-	;	LDA #$09 : STA !SPC4				; > smash SFX
-	;	LDA #$17 : STA !P2JumpLag			; |
-	;	LDA #!Kad_DrillLand : STA !P2Anim		; |
-	;	RTS						; |
-	;	.NoPound					;/
-
-
-	;	LDA !P2Anim					;\
-	;	CMP #!Kad_DrillLand : BCC .NoDrillLand		; | force crouch physics during drill land
-	;	JMP .ForceCrouch				; |
-	;	.NoDrillLand					;/
 
 
 		.ShellSlide					;\
@@ -366,8 +345,6 @@ namespace Kadaal
 		LDA !P2Headbutt				;\ can cancel ending of headbutt into headbutt
 		CMP #$11 : BCS .NoDuck			;/
 		LDA !P2Water : BNE .ForceCrouch		; can't shell slide underwater
-	;	LDA !KadaalUpgrades			;\
-	;	AND #$08 : BEQ .ForceCrouch		; > no more upgrade requirement for shell slide
 		LDA !P2Slope : BNE +			; > always start sliding on slopes
 		LDA !P2XSpeed				; |
 		BPL $03 : EOR #$FF : INC A		; | start shell slide with enough speed
@@ -385,8 +362,6 @@ namespace Kadaal
 		STZ !P2Dashing
 		STZ !P2Senku
 	.GSpin	LDA !P2ShellSpin : BNE .SpinR		;\
-	;	LDA !KadaalUpgrades			; |
-	;	AND #$40 : BEQ .SpinR			; |
 		BIT $6DA7 : BVC .SpinR			; | ground spin
 		.StartSpin				; > JSR here to start spin
 		LDA #$10 : STA !P2ShellSpin		; |
@@ -412,10 +387,10 @@ namespace Kadaal
 		LDA !P2Senku
 		BNE $03 : JMP .InitSenku
 		CMP #$20 : BCC .ProcessSenku
-		BNE .NoInitSenku			;\ Set invulnerability timer
+		BNE .NoInitSenku			;\ set invulnerability timer
 		STA !P2Invinc				;/
 		LDA !KadaalUpgrades			;\
-		AND #$02 : BEQ ..Basic			; | Store all-range senku direction if upgrade is attained
+		AND #$02 : BEQ ..Basic			; | store all-range senku direction if upgrade is attained
 		LDA $6DA3				; |
 		AND #$0F : STA !P2AllRangeSenku		;/
 		..Basic
@@ -462,7 +437,23 @@ namespace Kadaal
 		STZ !P2Buffer
 		STZ !P2Climbing
 		LDA !P2Senku
-		CMP #$20 : BCS +
+		CMP #$20 : BCC ..process
+	; SHADOWSTEP CEHCK
+	; shadow step
+	LDA !KadaalUpgrades
+	AND #$08 : BEQ +
+	BIT $6DA9 : BPL +
+	LDA !P2Direction
+	ASL A : TAY
+	REP #$20
+	LDA !P2XPosLo
+	CLC : ADC .ShadowstepDistance,y
+	STA !P2XPosLo
+	SEP #$20
+	STZ !P2Senku
+	RTS
+
+		..process
 		LDA !P2SenkuDir					;\
 		EOR #$01					; |
 		INC A						; | Don't keep momentum after senku-ing into a block
@@ -475,9 +466,15 @@ namespace Kadaal
 		BNE ++
 		LDA #$01 : STA !P2SenkuUsed
 		++
-		BIT $6DA7
-		BPL $06 : STZ !P2Invinc : JMP .SenkuJump
+		BIT $6DA7 : BPL +
+		STZ !P2Invinc
+		JMP .SenkuJump
 	+	RTS
+
+
+	.ShadowstepDistance
+	dw $FFB0
+	dw $0050
 
 		.InitSenku
 		LDA !P2SenkuUsed : BNE .NoSenku
@@ -644,34 +641,16 @@ namespace Kadaal
 	..Skip	JMP .NoPunch
 	+	STZ !P2BackDash					; > clear back dash when an attack is started
 		LDA !P2ShellSpin : BEQ +			; see if a spin is happening already
-;		LDA !KadaalUpgrades				;\
-;		AND #$10 : BEQ ..NoC				; | kadaal can cancel spin into drill
-;		LDA $6DA3					; |
-;		AND #$04 : BNE .StartSpin_Drill			;/
 	..NoC	LDA #$40 : STA !P2Buffer			;\ don't change buffer here if spin is active
 		JMP .NoPunch					;/
-	+	;LDA !P2Anim					;\ can't start spin or shell drill during smash
-		;CMP #$28 : BCC $03 : JMP .NoPunch		;/
-		LDA !P2Blocked
+	+	LDA !P2Blocked
 		AND #$04
 		ORA !P2Platform
 		BEQ .AirSpin
 		BRA .NoSpin
 
 		.AirSpin
-	;	LDA !KadaalUpgrades
-	;	AND #$10 : BEQ ..Spin
-	;	LDA $6DA3
-	;	AND #$04 : BEQ ..Spin
-	;..Drill	LDA #$01 : STA !P2ShellDrill			; start shell drill
-	;	STZ !P2ShellSpin				; cancel shell spin
-	;	LDA #!Kad_ShellDrill : STA !P2Anim
-	;	STZ !P2AnimTimer
-	;	STZ !P2ShellSlide
-	;	STZ !P2ShellSpeed
-	;	BRA .NoPunch
-
-	..Spin	LDA #$10 : STA !P2ShellSpin
+		LDA #$10 : STA !P2ShellSpin
 		LDA #!Kad_Spin : STA !P2Anim
 		LDA #$3E : STA !SPC4				; spin SFX
 		STZ !P2AnimTimer
@@ -1028,33 +1007,6 @@ namespace Kadaal
 	PHYSICS:
 		PLA
 		BMI $03 : STA !P2Direction
-
-
-;	.SenkuSmash			; This has to be before sprite interaction so custom sprites can set the flag
-;		LDA !KadaalUpgrades
-;		LSR A : BCC ..Return
-;		LDA !P2Senku : BEQ ..Return
-;		LDA !P2SenkuSmash : BEQ ..Return
-;		BIT $6DA7 : BVC ..Return
-;		LDA #!Kad_SenkuSmash : STA !P2Anim
-;		STZ !P2AnimTimer
-;		LDA #$A0 : STA !P2YSpeed
-;		LDA #$1C : STA !P2Invinc
-;		STZ !P2Senku
-;		LDA #$02 : STA !SPC1			; SFX
-;		LDA !P2Direction
-;		EOR #$01
-;		STA !P2Direction
-;		ASL #2
-;		INC A
-;		TAY
-;		LDA CONTROLS_XSpeed,y : STA !P2XSpeed
-;		STZ !P2SenkuUsed
-;		PEA .Collisions-1
-;		JMP HITBOX_Smash
-;		..Return
-
-
 		LDA !P2SlantPipe : BEQ +
 		LDA #$40 : STA !P2XSpeed
 		LDA #$C0 : STA !P2YSpeed
@@ -1164,12 +1116,10 @@ namespace Kadaal
 		LDA #$07 : STA !P2JumpLag
 		STZ !P2ShellSpin
 		LDA !P2Water : BNE .LandingDone		; can't shell slide underwater
-	;	LDA !KadaalUpgrades			;\
-	;	AND #$08 : BEQ +			; |
-		LDA !P2Slope : BNE +
+		LDA !P2Slope : BNE +			;\
 		LDA !P2XSpeed				; |
 		BPL $03 : EOR #$FF : INC A		; |
-		CMP #$20 : BCC .LandingDone		; | allow shell slide with upgrade
+		CMP #$20 : BCC .LandingDone		; | shell slide check
 	+	LDA $6DA3				; |
 		AND #$04 : BEQ .LandingDone		; |
 		JSR StartSlide				; |
@@ -1312,10 +1262,6 @@ namespace Kadaal
 		STA !P2Anim
 		JMP .HandleUpdate
 		.NoSenku
-
-	; senku smash check
-	;	LDA !P2Anim
-	;	CMP #!Kad_SenkuSmash : BCC $03 : JMP .HandleUpdate
 
 	; squat/swim check
 		LDA !P2JumpLag : BEQ +
@@ -1530,6 +1476,8 @@ namespace Kadaal
 		LDA $0E : STA $04
 		LDA $0F : STA $05
 		JSL CORE_LOAD_TILEMAP
+
+
 
 
 

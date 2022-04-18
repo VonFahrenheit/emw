@@ -57,56 +57,6 @@
 	warnpc $01B4B2
 
 
-macro UpdateX()
-		LDA $3220,x : STA $00
-		LDA !SpriteXSpeed,x : BEQ ?Return
-		ASL #4
-		CLC : ADC !SpriteXFraction,x
-		STA !SpriteXFraction,x
-		PHP
-		LDY #$00
-		LDA !SpriteXSpeed,x
-		LSR #4
-		CMP #$08
-		BCC $03 : ORA #$F0 : DEY
-		PLP
-		ADC $3220,x
-		STA $3220,x
-		TYA
-		ADC $3250,x
-		STA $3250,x
-		LDA $3220,x
-		SEC : SBC $00
-	?Return:
-		STA !SpriteDeltaX,x
-endmacro
-
-macro UpdateY()
-		LDA $3210,x : STA $00
-		LDA !SpriteYSpeed,x : BEQ ?Return
-		ASL #4
-		CLC : ADC !SpriteYFraction,x
-		STA !SpriteYFraction,x
-		PHP
-		LDY #$00
-		LDA !SpriteYSpeed,x
-		LSR #4
-		CMP #$08
-		BCC $03 : ORA #$F0 : DEY
-		PLP
-		ADC $3210,x
-		STA $3210,x
-		TYA
-		ADC $3240,x
-		STA $3240,x
-		LDA $3210,x
-		SEC : SBC $00
-	?Return:
-		STA !SpriteDeltaY,x
-endmacro
-
-
-
 	pullpc
 	.Main
 		LDA !SpriteStasis,x : BNE .NoVectors		; > don't update gravity or vectors during stasis

@@ -1174,93 +1174,105 @@
 		PHB : PHK : PLB
 		PHP
 		REP #$30
+		JSR Player
 		JSR CalcLightPoints
-		STZ $2250
+		LDA $00 : STA !LightR
+		LDA $02 : STA !LightG
+		LDA $04 : STA !LightB
+		LDA #$0002 : STA !LightIndexStart			;\ default: shade all colors except background
+		STZ !LightIndexEnd					;/
+		SEP #$30
+		LDA #$FF : STA !PrevTranslevel
+		STZ !ProcessLight
+		STZ !LightBuffer
 
-		.CalcR							;\
-		LDX #$0000						; | init loop
-		LDY #$0000						; |
-		LDA !LightR : STA $2251					;/
-		..loop							;\
-		TXA							; |
-		AND #$001E : BNE ..samerow				; |
-		LDA !LightList,y					; |
-		AND #$00FF : BEQ ..goodrow				; |
-		TXA							; |
-		CLC : ADC #$0020					; | check for shader row disable on new row
-		TAX							; |
-		INY							; |
-		BRA ..loop						; |
-		..goodrow						; |
-		INY							; |
-		..samerow						;/
-		LDA !PaletteRGB,x					;\
-		AND #$001F : STA $2253					; |
-		NOP : BRA $00						; |
-		LDA $2307						; |
-		CMP #$001F						; | calc R
-		BCC $03 : LDA #$001F					; |
-		STA !PaletteBuffer,x					; |
-		INX #2							; |
-		CPX #$0200 : BCC ..loop					;/
 
-		.CalcG							;\
-		LDX #$0000						; | init loop
-		LDY #$0000						; |
-		LDA !LightG : STA $2251					;/
-		..loop							;\
-		TXA							; |
-		AND #$001E : BNE ..samerow				; |
-		LDA !LightList,y					; |
-		AND #$00FF : BEQ ..goodrow				; |
-		TXA							; |
-		CLC : ADC #$0020					; | check for shader row disable on new row
-		TAX							; |
-		INY							; |
-		BRA ..loop						; |
-		..goodrow						; |
-		INY							; |
-		..samerow						;/
-		LDA !PaletteRGB,x					;\
-		AND #$001F*$20 : STA $2253				; |
-		NOP : BRA $00						; |
-		LDA $2307						; |
-		AND #$001F*$20						; |
-		CMP #$001F*$20						; | calc G
-		BCC $03 : LDA #$001F*$20				; |
-		ORA !PaletteBuffer,x					; |
-		STA !PaletteBuffer,x					; |
-		INX #2							; |
-		CPX #$0200 : BCC ..loop					;/
+		; STZ $2250
 
-		.CalcB							;\
-		LDX #$0000						; | init loop
-		LDY #$0000						; |
-		LDA !LightG : STA $2251					;/
-		..loop							;\
-		TXA							; |
-		AND #$001E : BNE ..samerow				; |
-		LDA !LightList,y					; |
-		AND #$00FF : BEQ ..goodrow				; |
-		TXA							; |
-		CLC : ADC #$0020					; | check for shader row disable on new row
-		TAX							; |
-		INY							; |
-		BRA ..loop						; |
-		..goodrow						; |
-		INY							; |
-		..samerow						;/
-		LDA !PaletteRGB,x					;\
-		AND #$001F*$20*$20 : STA $2253				; |
-		NOP : BRA $00						; |
-		LDA $2307						; |
-		AND #$001F*$20*$20					; |
-		CMP #$001F*$20*$20					; | calc B
-		BCC $03 : LDA #$001F*$20*$20				; |
-		ORA !PaletteBuffer,x					; |
-		STA !PaletteBuffer,x					; |
-		INX #2							; |
-		CPX #$0200 : BCC ..loop					;/
+		; .CalcR							;\
+		; LDX #$0000						; | init loop
+		; LDY #$0000						; |
+		; LDA !LightR : STA $2251					;/
+		; ..loop							;\
+		; TXA							; |
+		; AND #$001E : BNE ..samerow				; |
+		; LDA !LightList,y					; |
+		; AND #$00FF : BEQ ..goodrow				; |
+		; TXA							; |
+		; CLC : ADC #$0020					; | check for shader row disable on new row
+		; TAX							; |
+		; INY							; |
+		; BRA ..loop						; |
+		; ..goodrow						; |
+		; INY							; |
+		; ..samerow						;/
+		; LDA !PaletteRGB,x					;\
+		; AND #$001F : STA $2253					; |
+		; NOP : BRA $00						; |
+		; LDA $2307						; |
+		; CMP #$001F						; | calc R
+		; BCC $03 : LDA #$001F					; |
+		; STA !PaletteBuffer,x					; |
+		; INX #2							; |
+		; CPX #$0200 : BCC ..loop					;/
+
+		; .CalcG							;\
+		; LDX #$0000						; | init loop
+		; LDY #$0000						; |
+		; LDA !LightG : STA $2251					;/
+		; ..loop							;\
+		; TXA							; |
+		; AND #$001E : BNE ..samerow				; |
+		; LDA !LightList,y					; |
+		; AND #$00FF : BEQ ..goodrow				; |
+		; TXA							; |
+		; CLC : ADC #$0020					; | check for shader row disable on new row
+		; TAX							; |
+		; INY							; |
+		; BRA ..loop						; |
+		; ..goodrow						; |
+		; INY							; |
+		; ..samerow						;/
+		; LDA !PaletteRGB,x					;\
+		; AND #$001F*$20 : STA $2253				; |
+		; NOP : BRA $00						; |
+		; LDA $2307						; |
+		; AND #$001F*$20						; |
+		; CMP #$001F*$20						; | calc G
+		; BCC $03 : LDA #$001F*$20				; |
+		; ORA !PaletteBuffer,x					; |
+		; STA !PaletteBuffer,x					; |
+		; INX #2							; |
+		; CPX #$0200 : BCC ..loop					;/
+
+		; .CalcB							;\
+		; LDX #$0000						; | init loop
+		; LDY #$0000						; |
+		; LDA !LightG : STA $2251					;/
+		; ..loop							;\
+		; TXA							; |
+		; AND #$001E : BNE ..samerow				; |
+		; LDA !LightList,y					; |
+		; AND #$00FF : BEQ ..goodrow				; |
+		; TXA							; |
+		; CLC : ADC #$0020					; | check for shader row disable on new row
+		; TAX							; |
+		; INY							; |
+		; BRA ..loop						; |
+		; ..goodrow						; |
+		; INY							; |
+		; ..samerow						;/
+		; LDA !PaletteRGB,x					;\
+		; AND #$001F*$20*$20 : STA $2253				; |
+		; NOP : BRA $00						; |
+		; LDA $2307						; |
+		; AND #$001F*$20*$20					; |
+		; CMP #$001F*$20*$20					; | calc B
+		; BCC $03 : LDA #$001F*$20*$20				; |
+		; ORA !PaletteBuffer,x					; |
+		; STA !PaletteBuffer,x					; |
+		; INX #2							; |
+		; CPX #$0200 : BCC ..loop					;/
 
 		PLP
 		PLB

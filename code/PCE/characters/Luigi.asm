@@ -244,7 +244,7 @@ namespace Luigi
 		LDA !P2SpinAttack : BNE .Spinning
 		BIT $6DA9 : BPL -
 ;		LDA #$30 : STA !P2SpinAttack
-	LDA #$01 : STA !P2SpinAttack
+	LDA #$10 : STA !P2SpinAttack
 	LDA !P2InAir : BEQ +
 	LDA !P2SpinUsed : BNE +
 	LDA !P2YSpeed : BPL ++
@@ -266,8 +266,8 @@ namespace Luigi
 	;	BIT $6DA9 : BPL +				; > can end spin at will
 	;	LDA #$01 : STA !P2SpinAttack			;\ end spin
 	;	BRA .NotSpinning				;/
-	+	CMP #$08 : BCS +				;\ invincible during last 8 frames of spin (before finisher, which is also invincible)
-		LDA #$01 : STA !P2Invinc			;/
+	;+	CMP #$08 : BCS +				;\ invincible during last 8 frames of spin (before finisher, which is also invincible)
+	;	LDA #$01 : STA !P2Invinc			;/
 	+	STZ !P2Carry					; can't carry something while spinning
 		LDA !P2Slope : BNE +
 		LDA !P2SpinUsed : BNE +				; can only gain height from spin once per jump
@@ -827,12 +827,12 @@ namespace Luigi
 
 
 		LDA !P2Anim
-		CMP #!Lui_SpinEnd_over : BCS .NoSpin
-		CMP #!Lui_SpinEnd : BCS -
+		; CMP #!Lui_SpinEnd_over : BCS .NoSpin
+		; CMP #!Lui_SpinEnd : BCS -
 		LDX !P2SpinAttack : BEQ .NoSpin
 		CPX #$01 : BNE .Spinning
 		STX !P2SpinUsed					; spin is used
-		LDA #!Lui_Spin+4 : BRA ++
+		; LDA #!Lui_Spin+4 : BRA ++
 
 		.Spinning
 		CMP #!Lui_Spin : BCC +
@@ -1098,8 +1098,6 @@ namespace Luigi
 
 
 		LDY #$00					; Y = big format
-		LDX !P2Anim					;\ hurt animation always uses big luigi address
-		CPX.b #!Lui_Hurt : BEQ .BigAddress		;/
 		LDA !P2ShrinkTimer				;\ shrink anim check
 		AND #$0012 : BNE .BigAddress			;/
 		LDX !P2HP					;\ always use big address if luigi has more than a full heart
@@ -1145,10 +1143,8 @@ namespace Luigi
 		.DrawTiles
 		REP #$20
 		LDA $0E : STA $04
-		LDY !P2Anim				;\
-		CPY #!Lui_Hurt : BEQ .Big		; |
-		LDA !P2ShrinkTimer			; | conditions for small luigi tilemap
-		AND #$0012 : BNE .Big			; |
+		LDA !P2ShrinkTimer			;\
+		AND #$0012 : BNE .Big			; | conditions for small luigi tilemap
 		LDY !P2HP				; |
 		CPY #$05 : BCS .Big			;/
 		LDA $04					;\

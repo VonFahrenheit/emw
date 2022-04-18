@@ -2743,11 +2743,6 @@ level27:
 		.RoomPointers
 		dw .ScreenMatrix
 		dw .BoxTable
-		dw .DoorList
-		dw .DoorTable
-
-
-
 
 ;	Key ->	   X  Y  W  H
 ;		   |  |  |  |
@@ -2774,10 +2769,6 @@ level27:
 		db $08,$08,$08,$08,$05,$05,$06,$06
 		db $0A,$0A,$0A,$0A,$05,$05,$06,$06
 		db $0A,$0A,$0A,$0A,$06,$06,$06,$06
-
-.DoorList	db $80			; no doors at all
-.DoorTable
-
 
 
 
@@ -2953,11 +2944,6 @@ level2E:
 		.RoomPointers
 		dw .ScreenMatrix
 		dw .BoxTable
-		dw .DoorList
-		dw .DoorTable
-
-
-
 
 ;	Key ->	   X  Y  W  H
 ;		   |  |  |  |
@@ -2989,33 +2975,6 @@ level2E:
 		db $FF,$FF,$0B,$0B,$0B,$0A,$0A,$FF,$FF
 
 
-.DoorList
-		db $00,$FF		; room 0: door 0
-		db $00,$01,$02,$FF	; room 1: doors 0, 1, 2
-		db $01,$04,$FF		; room 2: doors 1, 4
-		db $02,$03,$05,$06,$FF	; room 3: doors 2, 3, 5, 6
-		db $04,$05,$08,$FF	; room 4: doors 4, 5, 8
-		db $08,$FF		; room 5: door 8
-		db $03,$FF		; room 6: door 3
-		db $06,$07,$09,$FF	; room 7: doors 6, 7, 9
-		db $07,$FF		; room 8: door 7
-		db $09,$FF		; room 9: door 9
-		db $0A,$FF		; room A: door A
-		db $0A,$FF		; room B: door B
-		db $80			; no more doors (rooms C, D, E)
-
-.DoorTable
-.Door0		%Door(3, 0)
-.Door1		%Door(1, 1)
-.Door2		%Door(3, 1)
-.Door3		%Door(5, 1)
-.Door4		%Door(1, 2)
-.Door5		%Door(3, 2)
-.Door6		%Door(5, 2)
-.Door7		%Door(6, 2)
-.Door8		%Door(3, 3)
-.Door9		%Door(6, 3)
-.DoorA		%Door(5, 6)
 
 
 ;
@@ -3079,6 +3038,7 @@ level2F:
 		LDA !Room : STA !Level+4
 		REP #$20
 		LDA.w #.RoomPointers : JSL LoadCameraBox
+		STZ !LockBox
 		LDA !Room
 		CMP !Level+4
 		STA !Level+4 : BEQ ..same
@@ -3097,7 +3057,9 @@ level2F:
 
 	.Brawl
 		LDA !TranslevelFlags+$10 : BMI .Return
-		LDA #$01 : STA !CameraBoxSpriteErase
+		LDA #$01
+		STA !LockBox
+		STA !CameraBoxSpriteErase
 		REP #$20
 		LDA #$0C00 : STA !CameraBoxR
 		SEP #$20
@@ -3280,11 +3242,6 @@ level2F:
 		.RoomPointers
 		dw .ScreenMatrix
 		dw .BoxTable
-		dw .DoorList
-		dw .DoorTable
-
-
-
 
 ;	Key ->	   X  Y  W  H
 ;		   |  |  |  |
@@ -3300,9 +3257,6 @@ level2F:
 		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$01,$01,$01
 		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$01,$01,$01
 		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$01,$01,$01
-
-.DoorList	db $80			; no doors at all
-.DoorTable
 
 
 level32:
@@ -3971,8 +3925,6 @@ level33:
 		.RoomPointers
 		dw .ScreenMatrix
 		dw .BoxTable
-		dw .DoorList
-		dw .DoorTable
 
 ;	Key ->	   X  Y  W  H
 ;		   |  |  |  |
@@ -3988,21 +3940,6 @@ level33:
 .ScreenMatrix	db $00,$00,$01,$03,$03,$03,$04,$04,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05
 		db $00,$00,$02,$03,$03,$03,$04,$04,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05
 		db $00,$00,$02,$03,$03,$03,$04,$04,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05
-
-.DoorList	db $00,$FF		; room 0: door 0
-		db $00,$01,$FF		; room 1: doors 0 and 1
-		db $FF			; room 2: no doors
-		db $01,$02,$FF		; room 3: doors 1 and 2
-		db $02,$03,$FF		; room 4: doors 2 and 3
-		db $03,$FF		; room 5: door 3
-		db $80			; no more doors
-
-.DoorTable
-.Door0		%Door(2, 0)
-.Door1		%Door(3, 0)
-.Door2		%SideDoor(6, 0)
-.Door3		%SideDoor(8, 0)
-
 
 
 
@@ -4522,8 +4459,6 @@ level38:
 		.RoomPointers
 		dw .ScreenMatrix
 		dw .BoxTable
-		dw .DoorList
-		dw .DoorTable
 
 ;	Key ->	   X  Y  W  H
 ;		   |  |  |  |
@@ -4580,13 +4515,6 @@ level38:
 		db $06,$06
 		db $06,$06
 		db $06,$06
-
-
-
-
-.DoorList	db $80			; no doors at all
-.DoorTable
-
 
 
 
@@ -4668,8 +4596,6 @@ level39:
 		.RoomPointers
 		dw .ScreenMatrix
 		dw .BoxTable
-		dw .DoorList
-		dw .DoorTable
 
 ;	Key ->	   X  Y  W  H
 ;		   |  |  |  |
@@ -4687,9 +4613,6 @@ level39:
 		db $FF,$FF,$01,$01
 		db $FF,$FF,$01,$01
 		db $FF,$FF,$01,$01
-
-.DoorList	db $80			; no doors (room 0)
-.DoorTable
 
 
 

@@ -2,8 +2,8 @@
 ;GAME MODE 14 REWRITE;
 ;====================;
 
-; TO DO:
 ; TODO:
+; TO DO:
 ; - generators
 ; - scroll sprites ??
 
@@ -305,6 +305,7 @@ namespace GAMEMODE14
 
 		JSL $158008				; call PCE
 		LDA #$01 : STA !ProcessingSprites	; mark sprites as currently processing
+		LDA #$00 : STA !NPC_TalkSign		; reset NPC talk sign
 		JSL $168000				; call Fe26 main loop
 		JSL $148000				; call FusionCore (fusion sprites + particles)
 		LDA #$00 : STA !ProcessingSprites	; mark sprites as no longer processing
