@@ -77,6 +77,7 @@ macro UpdateX()
 		LDA !SpriteXLo,x
 		SEC : SBC $00
 	?Return:
+		STA !SpriteDeltaX,x
 endmacro
 
 macro UpdateY()
@@ -100,6 +101,7 @@ macro UpdateY()
 		LDA !SpriteYLo,x
 		SEC : SBC $00
 	?Return:
+		STA !SpriteDeltaY,x
 endmacro
 
 

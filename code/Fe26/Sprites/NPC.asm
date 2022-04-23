@@ -384,8 +384,15 @@ NPC:
 	Mario:
 		LDX !SpriteIndex
 
+
+		LDA !P2Character-$80 : BEQ +
+		LDA !MultiPlayer : BEQ ++
+		LDA !P2Character : BEQ +
+		++
 		LDA !addr_palset_mario				;\ apparently mario needs this for some reason
 		ASL A : STA $33C0,x				;/
+		+
+
 
 		REP #$30
 		LDY.w #!File_Mario
@@ -1774,6 +1781,9 @@ NPC:
 		PHA
 
 		LDA #$01 : STA !NPC_TalkSign				; > only one can talk at a time
+		LDA !MsgTrigger
+		ORA !MsgTrigger+1
+		BNE ..notext
 		LDA $00 : PHA						;\
 		LDA $3320,x : PHA					; |
 		LDA #$01 : STA $3320,x					; |
@@ -1793,6 +1803,7 @@ NPC:
 		JSL LOAD_TILEMAP					; |
 		PLA : STA $3320,x					; |
 		PLA : STA $00						; |
+		..notext
 		PLA							; |
 		LSR A : BCC .P2						;/
 
