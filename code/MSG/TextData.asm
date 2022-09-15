@@ -30,13 +30,13 @@ endif
 if !CompileText = 1
 	%important(1)
 	%mode(1)
-	%playerexpression(distressed, 1)
+	%playerexpression(distressed, left)
 	db "Mamma mia!"
 	%n()
-	%playerexpression(neutral, 1)
+	%playerexpression(neutral, left)
 	db "I have-a no idea where I fell..."
 	%n()
-	%playerexpression(angry, 1)
+	%playerexpression(angry, left)
 	db "But the airship crashed somewhere in that direction!"
 	%delay(1)
 	%music($49)
@@ -92,21 +92,21 @@ endif
 if !CompileText = 1
 	%important(1)
 	%mode(1)
-	%expression(Toad, neutral, 0)
+	%expression(Toad, neutral, right)
 	db "Mario! We're about to arrive!"
 	%n()
 	db "Dinosaur Land... I haven't been there since I was a spore!"
 	%n()
-	%expression(Mario, happy, 1)
+	%expression(Mario, happy, left)
 	db "Do you remember it?"
 	%n()
-	%expression(Toad, neutral, 0)
+	%expression(Toad, neutral, right)
 	db "Not at all! Toads don't develop brains until adulthood!"
 	%n()
-	%expression(Mario, sad, 1)
+	%expression(Mario, sad, left)
 	db "I see..."
 	%n()
-	%expression(Toad, neutral, 0)
+	%expression(Toad, neutral, right)
 	%music($80)
 	db "Huh?"
 	%delay(128)
@@ -120,7 +120,7 @@ if !CompileText = 1
 	%important(1)
 	%mode(1)
 	%music($1F)
-	%expression(Toad, distressed, 0)
+	%expression(Toad, distressed, right)
 	db "Mario! We're under attack!"
 	%n()
 	%talk(1)
@@ -134,19 +134,19 @@ endif
 if !CompileText = 1
 	%important(1)
 	%mode(1)
-	%expression(Kadaal, angry, 0)
+	%expression(Kadaal, angry, right)
 	%talk(3)
 	db "You! Suspicious red man!"
 	%n()
 	db "Are you with the Dark Lord?!"
 	%n()
-	%expression(Kadaal, neutral, 0)
+	%expression(Kadaal, neutral, right)
 	%speed(12)
 	db "...No. "
 	%speed(8)
 	db "You're not."
 	%n()
-	%expression(Kadaal, happy, 0)
+	%expression(Kadaal, happy, right)
 	%music($4A)
 	db "My name is Kadaal and I can tell you're a good person!"
 	%n()
@@ -157,24 +157,24 @@ endif
 %insertMSG(CrashSite_1)
 if !CompileText = 1
 	%important(2)
-	%portrait(Kadaal, 0)
+	%portrait(Kadaal, right)
 	db "I found a green man."
 	%n()
-	%expression(Mario, distressed, 1)
+	%expression(Mario, distressed, left)
 	db "Mamma mia! Luigi!"
 	%n()
-	%expression(Luigi, sad, 0)
+	%expression(Luigi, sad, right)
 	db "..."
 	%n()
 	db "!"
 	%n()
 	db "!!!!!!!!!!!!!!!"
-	%expression(Luigi, happy, 0)
+	%expression(Luigi, happy, right)
 	%mode(1)
 	db " "
 	%mode(0)
 	%n()
-	%portrait(Kadaal, 0)
+	%portrait(Kadaal, right)
 	db "Your flying boat fell here."
 	%n()
 	db "I will prepare its cannon."
@@ -188,49 +188,49 @@ if !CompileText = 1
 	%important(2)
 	%mode(1)
 	%talk(1)
-	%portrait(Survivor, 1)
+	%portrait(Survivor, left)
 	%next(Survivor_Talk_IntroLevel_End)
 	db "Hello."
 	%n()
-	%playerexpression(distressed, 0)
+	%playerexpression(distressed, right)
 	db "Those injuries! What happened to you?"
 	%n()
 	db "Did we... land on you?"
 	%n()
-	%portrait(Survivor, 1)
+	%portrait(Survivor, left)
 	db "That WAS quite the landing!"
 	%n()
 	db "But no, your captain managed to just avoid my tent."
 	%n()
 	db "Very impressive for a crash landing!"
 	%n()
-	%playerexpression(angry, 0)
+	%playerexpression(angry, right)
 	db "Then who did this to you?"
 	%n()
-	%portrait(Survivor, 1)
+	%portrait(Survivor, left)
 	db "If you're here, I'm sure you already know that the Dark Lord has appeared."
 	%n()
 	db "No one has yet to see him... but when he appeared, the Rex on this island became incredibly dangerous."
 	%n()
 	db "I don't know where the other Yoshi are. I've been hiding here for weeks!"
 	%n()
-	%playerexpression(distressed, 0)
+	%playerexpression(distressed, right)
 	db "You mean..."
 	%n()
 	db "You're the last Yoshi here?"
 	%n()
 	db "On Yoshi's Island?"
 	%n()
-	%portrait(Survivor, 1)
+	%portrait(Survivor, left)
 	db "Most likely."
 	%n()
-	%playerexpression(sad, 0)
+	%playerexpression(sad, right)
 	db "...I see."
 	%n()
 	db "Then stay here for as long as you need."
 	%n()
 	%music($3D)
-	%playerexpression(angry, 0)
+	%playerexpression(angry, right)
 	db "We will free this island."
 	%n()
 	%endmessage()
@@ -240,7 +240,7 @@ endif
 if !CompileText = 1
 	%important(2)
 	%mode(1)
-	%portrait(Survivor, 1)
+	%portrait(Survivor, left)
 	db "I can see that you're determined."
 	%n()
 	db "Here, I have something for you!"
@@ -251,7 +251,7 @@ if !CompileText = 1
 	%n()
 	db "Use it on the map with ",$57," to return to the crash site at any time!"
 	%n()
-	%portrait(Survivor, 1)
+	%portrait(Survivor, left)
 	db "I think Kadaal already left."
 	%n()
 	db "Make sure you get the most use out of all your companions!"
@@ -262,7 +262,7 @@ endif
 ;====================================================================================================;
 %insertMSG(Survivor_Talk_1)
 if !CompileText = 1
-	%portrait(Survivor, 0)
+	%portrait(Survivor, left)
 	%speed(7)
 	%mode(1)
 	%talk(1)
@@ -273,7 +273,7 @@ endif
 %insertMSG(MarioSwitch)
 if !CompileText = 1
 	%mode(1)
-	%portrait(Mario, 0)
+	%portrait(Mario, right)
 	%speed(7)
 	db "It's-a go time!"
 	%endmessage()
@@ -282,11 +282,11 @@ endif
 %insertMSG(LuigiSwitchFirstTime)
 if !CompileText = 1
 	%mode(1)
-	%expression(Luigi, distressed, 0)
+	%expression(Luigi, distressed, right)
 	%speed(7)
 	db "That's-a one way to arrive!"
 	%n()
-	%expression(Luigi, happy, 0)
+	%expression(Luigi, happy, right)
 	db "Rest up, bro! Leave this part to me!"
 	%endmessage()
 endif
@@ -294,7 +294,7 @@ endif
 %insertMSG(LuigiSwitch)
 if !CompileText = 1
 	%mode(1)
-	%portrait(Luigi, 0)
+	%portrait(Luigi, right)
 	%speed(7)
 	db "Go-igi!"
 	%endmessage()
@@ -303,14 +303,14 @@ endif
 %insertMSG(KadaalTalk_IntroLevel)
 if !CompileText = 1
 	%mode(1)
-	%portrait(Kadaal, 0)
+	%portrait(Kadaal, left)
 	db "Did you know? This island used to be called Yoshi's Island."
 	%n()
 	db "After the Dark Lord appeared, some of the Rex became really strong."
 	%n()
 	db "Their king rules this island now."
 	%n()
-	%expression(Kadaal, angry, 0)
+	%expression(Kadaal, angry, right)
 	db "They demand that it be called Rex Island, but I refuse to accept that!"
 	%endmessage()
 endif
@@ -318,7 +318,7 @@ endif
 %insertMSG(KadaalSwitch)
 if !CompileText = 1
 	%mode(1)
-	%portrait(Kadaal, 0)
+	%portrait(Kadaal, right)
 	%speed(7)
 	db "Kadaal revenge!"
 	%endmessage()
@@ -327,7 +327,7 @@ endif
 %insertMSG(LeewaySwitch)
 if !CompileText = 1
 	%mode(1)
-	%portrait(Leeway, 0)
+	%portrait(Leeway, right)
 	%speed(7)
 	db "I knew you'd need me for this one!"
 	%endmessage()
@@ -336,7 +336,7 @@ endif
 %insertMSG(AlterSwitch)
 if !CompileText = 1
 	%mode(1)
-	%portrait(Alter, 0)
+	%portrait(Alter, right)
 	%speed(7)
 	db "[PLACEHOLDER]"
 	%endmessage()
@@ -345,7 +345,7 @@ endif
 %insertMSG(PeachSwitch)
 if !CompileText = 1
 	%mode(1)
-	%portrait(Peach, 0)
+	%portrait(Peach, right)
 	%speed(7)
 	db "[PLACEHOLDER]"
 	%endmessage()
@@ -353,13 +353,13 @@ endif
 ;====================================================================================================;
 %insertMSG(ToadTemp)
 if !CompileText = 1
-	%expression(Toad, distressed, 0)
+	%expression(Toad, distressed, right)
 	%mode(1)
 	db "My poor ship!"
 	%n()
 	db "The repairs are gonna be so expensive!"
 	%n()
-	%portrait(Toad, 0)
+	%portrait(Toad, right)
 	%talk(2)
 	db "You wouldn't mind getting me 1000000 coins to pay for it, would you?"
 	%endmessage()
@@ -387,7 +387,7 @@ endif
 ;====================================================================================================;
 %insertMSG(Tinker_Talk_1)
 if !CompileText = 1
-	%portrait(Tinkerer, 0)
+	%portrait(Tinkerer, right)
 	%speed(8)
 	%mode(1)
 	db "Hoooi fam, how about you cough up some of those "
@@ -482,7 +482,7 @@ endif
 ;====================================================================================================;
 %insertMSG(RexVillage_Rex1)
 if !CompileText = 1
-	%portrait(Rex, 0)
+	%portrait(Rex, right)
 	db "Have I seen you before? I can't remember, non-Rex all look the same to me!"
 	%n()
 	db "Anyways, you shouldn't be here. The area above ground is for Rex only!"
@@ -491,7 +491,7 @@ endif
 ;====================================================================================================;
 %insertMSG(RexVillage_Aristocrat1)
 if !CompileText = 1
-	%portrait(Rex, 0)
+	%portrait(Rex, right)
 	db "Fetch me my golden mushrooms! Hurry it up, you fools!"
 	%endmessage()
 endif
@@ -499,7 +499,7 @@ endif
 %insertMSG(RexVillage_Aristocrat2)
 if !CompileText = 1
 	%important(2)
-	%portrait(Rex, 0)
+	%portrait(Rex, right)
 	%speed(15)
 	db "YOU THIEF!!!"
 	%linebreak()
@@ -509,14 +509,14 @@ endif
 ;====================================================================================================;
 %insertMSG(RexVillage_Shop1)
 if !CompileText = 1
-	%portrait(Rex, 1)
+	%portrait(Rex, left)
 	db "Buy somethin' will ya!"
 	%endmessage()
 endif
 ;====================================================================================================;
 %insertMSG(RexVillage_Shop2)
 if !CompileText = 1
-	%portrait(Rex, 1)
+	%portrait(Rex, left)
 	%mode(1)
 	db "Thank you for your patronage!"
 	%endmessage()
@@ -524,14 +524,14 @@ endif
 ;====================================================================================================;
 %insertMSG(RexVillage_Shop3)
 if !CompileText = 1
-	%portrait(Rex, 1)
+	%portrait(Rex, left)
 	db "Boy, this is really expensive!"
 	%endmessage()
 endif
 ;====================================================================================================;
 %insertMSG(RexVillage_ShopHurt)
 if !CompileText = 1
-	%portrait(Rex, 1)
+	%portrait(Rex, left)
 	db "Ouch! This is assault!"
 	%endmessage()
 endif
@@ -545,7 +545,7 @@ endif
 ;====================================================================================================;
 %insertMSG(RexVillage_Mayor1)
 if !CompileText = 1
-	%portrait(Rex, 0)
+	%portrait(Rex, right)
 	db "Yes, taxes! I love collecting taxes!"
 	%linebreak()
 	db "All for the King, of course..."
@@ -554,22 +554,22 @@ endif
 ;====================================================================================================;
 %insertMSG(RexVillage_Catacombs)
 if !CompileText = 1
-	%portrait(Rex, 0)
+	%portrait(Rex, right)
 	db "I don't recall this place ever being here..."
 	%linebreak()
 	db "Can a basement really appear out of nowhere?"
 	%n()
-	%portrait(Rex, 1)
+	%portrait(Rex, left)
 	db "I don't know. Who knows where basements come from anyway?"
 	%n()
-	%portrait(Rex, 0)
+	%portrait(Rex, right)
 	db "There's something strange going on..."
 	%endmessage()
 endif
 ;====================================================================================================;
 %insertMSG(RexVillage_Negotiator1)
 if !CompileText = 1
-	%portrait(Rex, 0)
+	%portrait(Rex, right)
 	db "You look tough..."
 	%n()
 	db "Very well, let's negotiate! You leave me alone and you let me live. Deal?"
@@ -578,14 +578,14 @@ endif
 ;====================================================================================================;
 %insertMSG(RexVillage_Negotiator2)
 if !CompileText = 1
-	%portrait(Rex, 0)
+	%portrait(Rex, right)
 	db "No no, help yourself to my lunch, that's ok..."
 	%endmessage()
 endif
 ;====================================================================================================;
 %insertMSG(RexVillage_BullyGuard)
 if !CompileText = 1
-	%portrait(Rex, 1)
+	%portrait(Rex, left)
 	db "Hey, Goomba! Why don't you try to escape through the window?"
 	%n()
 	db "Oh right, you can't reach!"
@@ -602,7 +602,7 @@ endif
 ;====================================================================================================;
 %insertMSG(RexVillage_Mayor2)
 if !CompileText = 1
-	%portrait(Rex, 0)
+	%portrait(Rex, right)
 	%important(2)
 	%speed(10)
 	db "Bury me with my money..."
@@ -611,7 +611,7 @@ endif
 ;====================================================================================================;
 %insertMSG(RexVillage_SkyScraper1)
 if !CompileText = 1
-	%portrait(Rex, 0)
+	%portrait(Rex, right)
 	db "Go ahead."
 	%n()
 	db "Buy it."
@@ -620,21 +620,21 @@ endif
 ;====================================================================================================;
 %insertMSG(RexVillage_SkyScraper2)
 if !CompileText = 1
-	%portrait(Rex, 0)
+	%portrait(Rex, right)
 	db "Aaaagh! You'll regret this!"
 	%endmessage()
 endif
 ;====================================================================================================;
 %insertMSG(RexVillage_SkyScraper3)
 if !CompileText = 1
-	%portrait(Rex, 0)
+	%portrait(Rex, right)
 	db "They tryin to steal our treasure! Get em, boys!"
 	%endmessage()
 endif
 ;====================================================================================================;
 %insertMSG(RexVillage_Library)
 if !CompileText = 1
-	%portrait(Rex, 0)
+	%portrait(Rex, right)
 	db "According to the legends, no Rex has been able to use magic since the times of the Dragon King."
 	%endmessage()
 endif
@@ -642,7 +642,7 @@ endif
 %insertMSG(DinolordsDomain_Sign_1)
 if !CompileText = 1
 	%mode(1)
-	db "For his valiant efforts in the legendary Battle of Dinosaurs, Captain Warrior shall be known as Chamption of all Rex and guardian of these lands."
+	db "For his valiant efforts in the legendary Battle of Dinosaurs, Captain Warrior shall be known as Champion of all Rex and guardian of these lands."
 	%linebreak()
 	db "Thus decrees the King."
 	%endmessage()
@@ -658,7 +658,7 @@ endif
 %insertMSG(CaptainWarrior_Fight1_Intro)
 if !CompileText = 1
 	%mode(1)
-	%portrait(CaptainWarrior, 0)
+	%portrait(CaptainWarrior, right)
 	db "Halt! On order of our great King, civilians may not pass here."
 	%n()
 	db "Wait a minute! You're not even Rex!"
@@ -679,7 +679,7 @@ endif
 %insertMSG(CaptainWarrior_Fight1_Phase2)
 if !CompileText = 1
 	%mode(1)
-	%portrait(CaptainWarrior, 0)
+	%portrait(CaptainWarrior, right)
 	db "All troops, attack!"
 	%endmessage()
 endif
@@ -687,7 +687,7 @@ endif
 %insertMSG(CaptainWarrior_Fight1_Defeated)
 if !CompileText = 1
 	%mode(1)
-	%portrait(CaptainWarrior, 0)
+	%portrait(CaptainWarrior, right)
 	%speed(15)
 	db "Huff.. "
 	%delay(16)
@@ -704,20 +704,20 @@ endif
 %insertMSG(CaptainWarrior_Fight1_Leeway)
 if !CompileText = 1
 	%mode(1)
-	%portrait(CaptainWarrior, 0)
+	%portrait(CaptainWarrior, right)
 	db "Halt!"
 	%linebreak()
 	db "Wait... Leeway?"
 	%n()
-	%portrait(Leeway, 1)
+	%portrait(Leeway, left)
 	db "Oh yes! I have returned, Captain."
 	%n()
-	%portrait(CaptainWarrior, 0)
+	%portrait(CaptainWarrior, right)
 	db "I don't see Rexcalibur on you..."
 	%linebreak()
 	db "Have you returned merely to report your failure?"
 	%n()
-	%portrait(Leeway, 1)
+	%portrait(Leeway, left)
 	db "I bring not the Dragon King's sword, nor do I come in defeat."
 	%linebreak()
 	%waitforinput()
@@ -725,7 +725,7 @@ if !CompileText = 1
 	%speed(12)
 	db "to relieve the King of his crown..."
 	%n()
-	%portrait(CaptainWarrior, 0)
+	%portrait(CaptainWarrior, right)
 	%speed(15)
 	db "LEEWAY YOU DAMNABLE TRAITOR!"
 	%speed(8)
@@ -748,7 +748,7 @@ endif
 ;====================================================================================================;
 %insertMSG(CastleRex_Villager)
 if !CompileText = 1
-	%portrait(Rex, 1)
+	%portrait(Rex, left)
 	db "Ahead lies Castle Rex."
 	%n()
 	db "I've been building up my courage to go visit it..."
@@ -768,7 +768,7 @@ endif
 %insertMSG(CastleRex_Rex_Warning_1)
 if !CompileText = 1
 	%mode(1)
-	%portrait(Rex, 0)
+	%portrait(Rex, right)
 	db "I saw you fight Captain Warrior so I know how strong you are."
 	%n()
 	db "But the King is the strongest there is! You can't beat him!"
@@ -778,7 +778,7 @@ endif
 %insertMSG(CastleRex_Rex_Warning_2)
 if !CompileText = 1
 	%mode(1)
-	%portrait(Rex, 1)
+	%portrait(Rex, left)
 	db "Our leader has always been the strongest Rex."
 	%n()
 	db "After the Dark Lord appeared, our leader undertook gruesome training and attained an invincible body."
@@ -790,7 +790,7 @@ endif
 %insertMSG(CastleRex_Rex_Warning_3)
 if !CompileText = 1
 	%mode(1)
-	%portrait(Rex, 1)
+	%portrait(Rex, left)
 	db "Captain Warrior told me I can't beat you, so I won't fight."
 	%n()
 	db "Still, I'm not worried, because the King will do what I can not!"
@@ -801,15 +801,15 @@ endif
 ;====================================================================================================;
 %insertMSG(CaptainWarrior_Warning)
 if !CompileText = 1
-	%portrait(CaptainWarrior, 0)
+	%portrait(CaptainWarrior, right)
 	db "There you are."
 	%n()
 	db "The King is on the other side of this door."
 	%n()
-	%playerexpression(angry, 1)
+	%playerexpression(angry, left)
 	db "Will you not try to stop me?"
 	%n()
-	%portrait(CaptainWarrior, 0)
+	%portrait(CaptainWarrior, right)
 	db "There is no need."
 	%n()
 	db "I have faith in my King."
@@ -824,10 +824,10 @@ endif
 ;====================================================================================================;
 %insertMSG(KingKing_Intro)
 if !CompileText = 1
-	%playerexpression(angry, 1)
+	%playerexpression(angry, left)
 	db "King of the Rex!"
 	%n()
-	%portrait(KingKing, 0)
+	%portrait(KingKing, right)
 	db "Ah, an interloper appears."
 	%n()
 	%next(KingKing_Intro2)
@@ -839,13 +839,13 @@ endif
 ;====================================================================================================;
 %insertMSG(KingKing_Rebuttal_Mario)
 if !CompileText = 1
-	%playerexpression(neutral, 1)
+	%playerexpression(neutral, left)
 	db "King, you have reigned long enough."
 	%n()
-	%playerexpression(sad, 1)
+	%playerexpression(sad, left)
 	db "Prepare for justice..."
 	%n()
-	%playerexpression(angry, 1)
+	%playerexpression(angry, left)
 	db "Plumber justice!"
 	%n()
 	%endmessage()
@@ -853,13 +853,13 @@ endif
 ;====================================================================================================;
 %insertMSG(KingKing_Rebuttal_Luigi)
 if !CompileText = 1
-	%playerexpression(distressed, 1)
+	%playerexpression(distressed, left)
 	db "(come on, Luigi, just do what your bro would have done!)"
 	%n()
-	%playerexpression(neutral, 1)
+	%playerexpression(neutral, left)
 	db "(here goes!)"
 	%n()
-	%playerexpression(angry, 1)
+	%playerexpression(angry, left)
 	db "Hey! Big guy! You're going down!"
 	%n()
 	%endmessage()
@@ -867,10 +867,10 @@ endif
 ;====================================================================================================;
 %insertMSG(KingKing_Rebuttal_Kadaal)
 if !CompileText = 1
-	%playerexpression(happy, 1)
+	%playerexpression(happy, left)
 	db "At last..."
 	%n()
-	%playerexpression(angry, 1)
+	%playerexpression(angry, left)
 	db "For my tribe, I will have revenge!"
 	%n()
 	%endmessage()
@@ -878,10 +878,10 @@ endif
 ;====================================================================================================;
 %insertMSG(KingKing_Rebuttal_Leeway)
 if !CompileText = 1
-	%playerexpression(sad, 1)
+	%playerexpression(sad, left)
 	db "I do so apologize, your highness..."
 	%n()
-	%playerexpression(happy, 1)
+	%playerexpression(happy, left)
 	db "But I think it's time we end the monarchy, right here, right now!"
 	%n()
 	%endmessage()
@@ -889,14 +889,14 @@ endif
 ;====================================================================================================;
 %insertMSG(KingKing_Intro2)
 if !CompileText = 1
-	%portrait(KingKing, 0)
+	%portrait(KingKing, right)
 	db "You will be crushed under my claw!"
 	%endmessage()
 endif
 ;====================================================================================================;
 %insertMSG(KingKing_Defeated)
 if !CompileText = 1
-	%portrait(KingKing, 0)
+	%portrait(KingKing, right)
 	%important(2)
 	%speed(12)
 	db "How... can this... be..."
@@ -1145,7 +1145,7 @@ endif
 ;====================================================================================================;
 %insertMSG(FoundLuigi)
 if !CompileText = 1
-	%portrait(Luigi, 0)
+	%portrait(Luigi, right)
 	db "I will take it from here!"
 	%endmessage()
 endif

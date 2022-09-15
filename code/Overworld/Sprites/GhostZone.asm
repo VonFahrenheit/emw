@@ -25,58 +25,61 @@
 		LDA !OW_sprite_XSpeed,x				;\ collision disable bits
 		AND #$00FF : STA !BigRAM			;/
 
-		LDA !OW_sprite_Y,x
-		STA $05
-		STA $0A
-		LDA !OW_sprite_Anim,x : STA $06
-		LDA !OW_sprite_X,x
+		LDA !OW_sprite_X,x : STA $E8
+		LDA !OW_sprite_Y,x : STA $EA
+		LDA !OW_sprite_Anim,x : STA $EE-1
+		AND #$00FF : STA $EC
 		SEP #$20
-		STA $04
-		XBA : STA $0A
+		STZ $EF
 		PHX
 		SEP #$30
 
 		.CheckP2
 		LDA !MultiPlayer : BEQ ..done
-		LDA !P2MapX : STA $00
-		LDA !P2MapX+1 : STA $08
-		LDA !P2MapY : STA $01
-		LDA !P2MapY+1 : STA $09
-		LDA #$10
-		STA $02
-		STA $03
-		JSL !Contact16 : BCC ..done
+
+		REP #$20
+		LDA !P2MapX : STA $E0
+		LDA !P2MapY : STA $E2
+		LDA #$0010
+		STA $E4
+		STA $E6
+		SEP #$20
+		JSL CheckContact : BCC ..done
 		LDA !BigRAM : STA !P2MapGhost
 		CMP #$0F : BEQ ..done
 		AND #$03 : BNE ..sety
 		..setx
-		LDA $04 : STA !P2MapX
-		LDA $0A : STA !P2MapX+1
+		REP #$20
+		LDA $E8 : STA !P2MapX
+		SEP #$20
 		BRA ..done
 		..sety
-		LDA $05 : STA !P2MapY
-		LDA $0B : STA !P2MapY+1
+		REP #$20
+		LDA $EA : STA !P2MapY
+		SEP #$20
 		..done
 
 		.CheckP1
-		LDA !P1MapX : STA $00
-		LDA !P1MapX+1 : STA $08
-		LDA !P1MapY : STA $01
-		LDA !P1MapY+1 : STA $09
-		LDA #$10
-		STA $02
-		STA $03
-		JSL !Contact16 : BCC ..done
+		REP #$20
+		LDA !P1MapX : STA $E0
+		LDA !P1MapY : STA $E2
+		LDA #$0010
+		STA $E4
+		STA $E6
+		SEP #$20
+		JSL CheckContact : BCC ..done
 		LDA !BigRAM : STA !P1MapGhost
 		CMP #$0F : BEQ ..done
 		AND #$03 : BNE ..sety
 		..setx
-		LDA $04 : STA !P1MapX
-		LDA $0A : STA !P1MapX+1
+		REP #$20
+		LDA $E8 : STA !P1MapX
+		SEP #$20
 		BRA ..done
 		..sety
-		LDA $05 : STA !P1MapY
-		LDA $0B : STA !P1MapY+1
+		REP #$20
+		LDA $EA : STA !P1MapY
+		SEP #$20
 		..done
 
 		REP #$30

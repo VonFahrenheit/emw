@@ -876,6 +876,7 @@ db $00,$10,$20,$30,$04,$14,$24,$34,$08,$18,$28,$38,$0C,$1C,$2C,$3C
 		BCC $03 : LDA #$FFFE			; > minimum negative distance is -2
 		STA $00					;/
 
+		STZ $2250				; set multiplication
 		LDY #$0016				;\
 	-	LDA $00 : STA $2251			; |
 		LDA ..BG3Table,y : STA $2253		; |
@@ -1021,16 +1022,12 @@ levelE:
 
 		LDA.w #.Table1 : JSL TalkOnce
 
-		LDA #$01A0
-		STA $04
-		STA $09
-		LDA #$0050
-		STA $05
-		XBA : STA $0B
-		LDA #$1008 : STA $06
+		LDA #$01A0 : STA $E8
+		LDA #$0050 : STA $EA
+		LDA #$0008 : STA $EC
+		LDA #$0010 : STA $EE
 		SEP #$20
-		SEC : JSL !PlayerClipping
-		BCS .Gate
+		JSL PlayerContact : BCS .Gate
 
 		.NoWarp
 		JML DANCE
@@ -1239,28 +1236,28 @@ level28:
 		STA !StoryFlags+$02
 
 		.Block
-		LDA #$09 : STA !SPC4			; > Boom sound
-		LDA $1D : BNE +				;\ Only spawn smoke sprite on vertical screen 01
-		LDA $1C : BPL ++			;/
-	+	LDA #$01+!SmokeOffset			;\
-		STA !Ex_Num : STA !Ex_Num+1		; |
-		LDA #$60				; |
-		STA !Ex_YLo : STA !Ex_YLo+1		; | Smoke puff the cement blocks
-		LDA #$40 : STA !Ex_XLo			; |
-		LDA #$50 : STA !Ex_XLo+1		; |
-		LDA #$17				; |
-		STA !Ex_Data1 : STA !Ex_Data1		;/
-	++	PEI ($98)
+		LDA #$09 : STA !SPC4			; > boom sfx
+		PEI ($98)
 		PEI ($9A)
 		REP #$20
 		LDA #$0940 : STA $9A
 		LDA #$0160 : STA $98
 		LDX #$02 : STX $9C
 		JSL $00BEB0
+		STZ $00
+		STZ $02
+		STZ $04
+		STZ $06
+		LDA.w #!prt_smoke16x16 : JSL SpawnParticleBlock
 		LDA #$0950 : STA $9A
 		LDA #$0160 : STA $98
 		LDX #$02 : STX $9C
 		JSL $00BEB0
+		STZ $00
+		STZ $02
+		STZ $04
+		STZ $06
+		LDA.w #!prt_smoke16x16 : JSL SpawnParticleBlock
 		PLA : STA $9A
 		PLA : STA $98
 		SEP #$20

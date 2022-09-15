@@ -113,7 +113,7 @@ LOAD_TILEMAP:	STZ !BigRAM+$7E				; this reg ACTUALLY controls priority bits duri
 
 		LDA ($04)
 		AND #$00FF
-	CLC : ADC $04
+		CLC : ADC $04
 		STA $08
 		INC $04
 		INC $04
@@ -123,30 +123,26 @@ LOAD_TILEMAP:	STZ !BigRAM+$7E				; this reg ACTUALLY controls priority bits duri
 		LSR A : BCC +
 		LDA #$0040 : STA $0C
 		DEC $0E
-	+	LDA !OAMindex_p1 : TAX
-	;	LDY #$0000
-	LDY $04
+	+	LDA !OAMindex_p2 : TAX
+		LDY $04
 		SEP #$20
 
 
 		.Loop
-	;	LDA ($04),y
-	LDA $0000,y
+		LDA $0000,y
 		AND #$01
 		BEQ $02 : LDA #$80
 		STA !BigRAM+$7F
-	;	LDA ($04),y
-	LDA $0000,y
+		LDA $0000,y
 		AND #$FE
 		EOR $0C
 		SEC : SBC !BigRAM+$7E
 		ORA $0B					; player palette
-		STA !OAM_p1+$003,x
+		STA !OAM_p2+$003,x
 		REP #$20
 		INY
 
-	;	LDA ($04),y
-	LDA $0000,y
+		LDA $0000,y
 		AND #$00FF
 		CMP #$0080
 		BMI $03 : ORA #$FF00
@@ -166,8 +162,7 @@ LOAD_TILEMAP:	STZ !BigRAM+$7E				; this reg ACTUALLY controls priority bits duri
 		.GoodX
 		STA $06					; save tile xpos
 		INY
-	;	LDA ($04),y
-	LDA $0000,y
+		LDA $0000,y
 		AND #$00FF
 		CMP #$0080
 		BMI $03 : ORA #$FF00
@@ -181,14 +176,13 @@ LOAD_TILEMAP:	STZ !BigRAM+$7E				; this reg ACTUALLY controls priority bits duri
 
 		.GoodY
 		SEP #$20
-		STA !OAM_p1+$001,x
-		LDA $06 : STA !OAM_p1+$000,x
+		STA !OAM_p2+$001,x
+		LDA $06 : STA !OAM_p2+$000,x
 		INY
-	;	LDA ($04),y
-	LDA $0000,y
+		LDA $0000,y
 		CMP #$40 : BCS +
 		ADC $0A					; add player offset unless it's Leeway's slashy thing
-	+	STA !OAM_p1+$002,x
+	+	STA !OAM_p2+$002,x
 		INY
 		PHX
 		REP #$20
@@ -199,7 +193,7 @@ LOAD_TILEMAP:	STZ !BigRAM+$7E				; this reg ACTUALLY controls priority bits duri
 		LDA $07
 		AND #$01
 		BIT !BigRAM+$7F : BMI $02 : ORA #$02
-		STA !OAMhi_p1+$00,x
+		STA !OAMhi_p2+$00,x
 		PLX
 		INX #4
 		CPY $08 : BCS .End
@@ -208,11 +202,11 @@ LOAD_TILEMAP:	STZ !BigRAM+$7E				; this reg ACTUALLY controls priority bits duri
 		.End
 		TXA
 		REP #$20
-		SEC : SBC !OAMindex_p1
+		SEC : SBC !OAMindex_p2
 		SEP #$20
 		STA !BigRAM+$7E
 		REP #$20
-		TXA : STA !OAMindex_p1
+		TXA : STA !OAMindex_p2
 		SEP #$30
 		RTL
 
@@ -258,7 +252,7 @@ LOAD_TILEMAP:	STZ !BigRAM+$7E				; this reg ACTUALLY controls priority bits duri
 		RTS
 
 		..anim
-		db $26
+		db !Mar_Victory
 		db !Lui_Victory
 		db !Kad_Victory
 		db !Lee_Victory

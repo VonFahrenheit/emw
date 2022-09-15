@@ -1,5 +1,5 @@
-header
-sa1rom
+namespace Uncompressed
+
 
 ; when adding files:
 ;	insert the file with the InsertFile macro
@@ -36,13 +36,6 @@ sa1rom
 	!half2		= !bnk38+!bnk39+!bnk3A+!bnk3B+!bnk3C+!bnk3D+!bnk3E+!bnk3F
 	!total		= !half1+!half2
 
-
-macro BigRATS(address)
-org <address>
-	db $53,$54,$41,$52
-	dw $FFF7
-	dw $0008
-endmacro
 
 macro BankStart(bank)
 	Bank<bank>:
@@ -160,6 +153,13 @@ org $308008
 	db $05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05	; 1E0-1EF
 	db $05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05,$05	; 1F0-1FF
 
+	pushpc
+	org $0EF30C
+		dl SpriteSizeTable		; pointer to sprite size table (for Lunar Magic)
+		db $42				; signal to LM that sprite size table has been inserted
+	pullpc
+
+
 
 	FileList:
 	dl Mario
@@ -196,6 +196,7 @@ org $308008
 	dl default_border
 
 	dl Sprite_BG_1
+	dl IntroQuotes
 
 
 
@@ -227,6 +228,10 @@ org $318000
 
 	%InsertFile(Sprite_BG_1)
 	incbin ../RawGraphics/SpriteBG/Sprite_BG_1.bin
+	.End
+
+	%InsertFile(IntroQuotes)
+	incbin ../RawGraphics/SpriteBG/IntroQuotes.bin
 	.End
 
 %BankEnd(31)
@@ -719,7 +724,7 @@ print " "
 
 
 
-
+namespace off
 
 
 

@@ -13,11 +13,10 @@ SMOKE_AT_FEET:
 		RTL
 
 	.Spawn	PHB
-		JSL !GetParticleIndex
+		JSL GetParticleIndex
 		STZ !Particle_XSpeed,x
 		STZ !Particle_YSpeed,x
 		STZ !Particle_XAcc,x
-		LDA #$0013 : STA !Particle_Timer,x
 		LDA.w #!prt_smoke8x8 : STA !Particle_Type,x
 		LDA #$00C0 : STA !Particle_Prop,x
 		PLB
@@ -28,10 +27,10 @@ SMOKE_AT_FEET:
 		BCC $03 : ORA #$FFF0			; |
 		CLC : ADC !P2XPosLo			; |
 		CLC : ADC #$0004			; |
-		STA $410000+!Particle_XLo,x		;/
+		STA !41_Particle_XLo,x			;/
 		LDA !P2YPosLo				;\
 		CLC : ADC #$000C			; | spawn at player Y + 12 pixels
-		STA $410000+!Particle_YLo,x		;/
+		STA !41_Particle_YLo,x			;/
 		PLP
 		RTL
 

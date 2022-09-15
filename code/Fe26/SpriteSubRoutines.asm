@@ -4,676 +4,890 @@
 
 
 
-; ; input: void
-; ; output: void
-; APPLY_SPEED:
-		; LDA !SpriteStasis,x : BEQ .Process		;\
-		; RTL						; | return if stasis
-		; .Process					;/
-		; STZ !SpriteDeltaX,x				;\ clear delta from last frame
-		; STZ !SpriteDeltaY,x				;/
+; input: void
+; output: void
+	APPLY_SPEED:
+		LDA !SpriteStasis,x : BEQ .Process		;\
+		RTL						; | return if stasis
+		.Process					;/
+		LDA !SpriteXLo,x : STA $F0			;\
+		LDA !SpriteXHi,x : STA $F1			; | backup coords
+		LDA !SpriteYLo,x : STA $F2			; |
+		LDA !SpriteYHi,x : STA $F3			;/
+		LDA !SpriteBlocked,x : STA $F4			; backup collision
+		LDA !SpriteWater,x : STA $0F			; backup water flags (if no movement occurs, they stick to the next frame)
 
 
-		; .VectorX					;\
-		; LDA !SpriteVectorTimerX,x : BEQ ..clear		; | check X vector
-		; DEC !SpriteVectorTimerX,x			; |
-		; BRA ..apply					;/
-		; ..clear						;\
-		; STZ !SpriteVectorX,x				; | reset X vector
-		; STZ !SpriteVectorAccX,x				; |
-		; BRA ..done					;/
-		; ..apply						;\
-		; LDA !SpriteXSpeed,x : PHA			; |
-		; LDA !SpriteVectorX,x : STA !SpriteXSpeed,x	; |
-		; CLC : ADC !SpriteVectorAccX,x			; | apply X vector
-		; STA !SpriteVectorX,x				; |
-		; JSL .X						; |
-		; PLA : STA !SpriteXSpeed,x			; |
-		; ..done						;/
+		.VectorX					;\
+		LDA !SpriteVectorTimeX,x : BEQ ..clear		; | check X vector
+		DEC !SpriteVectorTimeX,x			; |
+		BRA ..apply					;/
+		..clear						;\
+		STZ !SpriteVectorX,x				; | reset X vector
+		STZ !SpriteVectorAccX,x				; |
+		BRA ..done					;/
+		..apply						;\
+		LDA !SpriteXSpeed,x : PHA			; |
+		LDA !SpriteVectorX,x : STA !SpriteXSpeed,x	; |
+		CLC : ADC !SpriteVectorAccX,x			; | apply X vector
+		STA !SpriteVectorX,x				; |
+		JSL .X						; |
+		PLA : STA !SpriteXSpeed,x			; |
+		..done						;/
 
-		; .VectorY					;\
-		; LDA !SpriteVectorTimerY,x : BEQ ..clear		; | check Y vector
-		; DEC !SpriteVectorTimerY,x			; |
-		; BRA ..apply					;/
-		; ..clear						;\
-		; STZ !SpriteVectorY,x				; | reset Y vector
-		; STZ !SpriteVectorAccY,x				; |
-		; BRA ..done					;/
-		; ..apply						;\
-		; LDA !SpriteYSpeed,x : PHA			; |
-		; LDA !SpriteVectorY,x : STA !SpriteYSpeed,x	; |
-		; CLC : ADC !SpriteVectorAccY,x			; | apply Y vector
-		; STA !SpriteVectorY,x				; |
-		; JSL .Y						; |
-		; PLA : STA !SpriteYSpeed,x			; |
-		; ..done						;/
-
-
-
-		; .SpeedY						;\ move Y
-		; %UpdateY()					;/
-		; CLC : ADC !SpriteDeltaY,x			;\ update delta
-		; STA !SpriteDeltaY,x				;/
-		; LDA !SpriteFallSpeed,x				;\
-		; LSR #2 : STA $00				; |
-		; EOR #$FF : STA $01				; |
-		; LDA !SpriteYSpeed,x				; | gravity + fall speed checks
-		; LDY !SpriteGravityTimer,x : BEQ ..normalgravity	; |
-		; DEC !SpriteGravityTimer,x			; |
-		; CLC : ADC !SpriteGravityMod,x			;/
-		; ..normalgravity					;\
-		; INC A						; | check water/land
-		; LDY !SpriteWater,x : BEQ ..land			;/
-		; ..water						;\
-		; CMP #$80 : BCC ++				; |
-		; CMP $01 : BCS +					; | fall speed checks under water
-		; LDA $01 : BRA +					; |
-	; ++	CMP $00 : BCC +					; |
-		; LDA $00 : BRA +					;/
-		; ..land						;\
-		; INC #2						; |
-		; BMI +						; | fall speed checks on land
-		; CMP !SpriteFallSpeed,x : BCC +			; |
-		; LDA !SpriteFallSpeed,x				; |
-	; +	STA !SpriteYSpeed,x				;/
-
-		; .SpeedX						;\
-		; LDA !SpriteXSpeed,x : PHA			; | water check
-		; LDY !SpriteWater,x : BEQ ..update		;/
-		; ..water						;\
-		; ASL A						; |
-		; ROR !SpriteXSpeed,x				; |
-		; LDA !SpriteXSpeed,x : STA $00			; |
-		; ASL A						; | 75% X speed in water
-		; ROR $00						; |
-		; LDA !SpriteXSpeed,x				; |
-		; CLC : ADC $00					; |
-		; STA !SpriteXSpeed,x				;/
-		; ..update					;\ apply X speed
-		; %UpdateX()					;/
-		; CLC : ADC !SpriteDeltaX,x			;\ update delta
-		; STA !SpriteDeltaX,x				;/
-		; PLA : STA !SpriteXSpeed,x			; restore
-
-		; JMP OBJECT_INTERACTION
-
-
-		; .X
-		; %UpdateX()
-		; STA !SpriteDeltaX,x
-		; RTL
-
-		; .Y
-		; %UpdateY()
-		; STA !SpriteDeltaY,x
-		; RTL
+		.VectorY					;\
+		LDA !SpriteVectorTimeY,x : BEQ ..clear		; | check Y vector
+		DEC !SpriteVectorTimeY,x			; |
+		BRA ..apply					;/
+		..clear						;\
+		STZ !SpriteVectorY,x				; | reset Y vector
+		STZ !SpriteVectorAccY,x				; |
+		BRA ..done					;/
+		..apply						;\
+		LDA !SpriteYSpeed,x : PHA			; |
+		LDA !SpriteVectorY,x : STA !SpriteYSpeed,x	; |
+		CLC : ADC !SpriteVectorAccY,x			; | apply Y vector
+		STA !SpriteVectorY,x				; |
+		JSL .Y						; |
+		PLA : STA !SpriteYSpeed,x			; |
+		..done						;/
 
 
 
-; ; $00 - max X coord of level
-; ; $02 - max Y coord of level
-; ; $04 - 16-bit map16 index
-; ;	during block processing, $04 is the sprite to spawn from a block
-; ;	during block processing, $05 is a multiplayer flag for spawning multiple items from blocks
-; ; $06 - 24-bit pointer to map16 acts like table 00
-; ; $09 - 24-bit pointer to map16 acts like table 40
-; ; $0C - map16 acts like
-; ; $0E - layer (0 = layer 1, 80 = layer 2)
-; ; $0F - collision this frame
-; ;	01 - right
-; ;	02 - left
-; ;	04 - down
-; ;	08 - up
-; ;	10 - UNUSED
-; ;	20 - touching layer 2 ceiling
-; ;	40 - touching layer 2 wall
-; ;	80 - touching layer 2 floor
+		.SpeedY						;\ move Y
+		%UpdateY()					;/
+		LDA !SpriteFallSpeed,x				;\
+		LSR #2 : STA $00				; |
+		EOR #$FF : STA $01				; | gravity + fall speed checks + land/water check
+		LDA !SpriteYSpeed,x				; |
+		LDY !SpriteWater,x : BEQ ..land			;/
+		..water						;\
+		CLC : ADC !SpriteFloat,x			; |
+		BPL ++						; |
+		CMP $01 : BCS +					; | fall speed checks under water
+		LDA $01 : BRA +					; |
+	++	CMP $00 : BCC +					; |
+		LDA $00 : BRA +					;/
+		..land						;\
+		CLC : ADC !SpriteGravity,x			; |
+		BMI +						; | fall speed checks on land
+		CMP !SpriteFallSpeed,x : BCC +			; |
+		LDA !SpriteFallSpeed,x				; |
+	+	STA !SpriteYSpeed,x				;/
 
-; OBJECT_INTERACTION:
-		; PHB : PHK : PLB					; bank wrapper start
-		; BIT !SpriteTweaker1,x : BMI .Return		; return if object interaction is disabled
-		; LDA !SpriteTweaker3,x				;\
-		; LSR A : BCS .Process				; |
-		; TXA						; | check if interaction should be processed this frame
-		; EOR $14						; |
-		; LSR A : BCS .Process				;/
-		; .Return						;\
-		; PLB						; | bank wrapper end + return
-		; RTL						;/
+		.SpeedX						;\
+		LDA !SpriteXSpeed,x : PHA			; | water check
+		LDY !SpriteWater,x : BEQ ..update		;/
+		LDY !SpriteFloat,x : BEQ ..update		; > if free swim is set (float = 0), sprite ignores water resistance
+		..water						;\
+		ASL A						; |
+		ROR !SpriteXSpeed,x				; |
+		LDA !SpriteXSpeed,x : STA $00			; |
+		ASL A						; | 75% X speed in water
+		ROR $00						; |
+		LDA !SpriteXSpeed,x				; |
+		CLC : ADC $00					; |
+		STA !SpriteXSpeed,x				;/
+		..update					;\ apply X speed
+		%UpdateX()					;/
+		PLA : STA !SpriteXSpeed,x			; restore
 
-		; .Process
-		; STZ $00						;\
-		; LDA $5D						; | max X coord
-		; DEC A : STA $01					;/
-		; REP #$20					;\
-		; LDA !Map16ActsLike+0 : STA $06			; |
-		; LDA !Map16ActsLike+1 : STA $07			; |
-		; LDA !Map16ActsLike40+0 : STA $09		; | 24-bit pointers to map16 acts like tables
-		; LDA !Map16ActsLike40+1				; |
-		; ORA #$0080					; |
-		; STA $0A						;/
-		; LDA !LevelHeight				;\
-		; SEC : SBC #$0010				; | max Y coord
-		; STA $02						; |
-		; SEP #$20					;/
+		LDA !SpriteXLo,x				;\
+		SEC : SBC $F0					; |
+		STA !SpriteDeltaX,x				; | get delta
+		LDA !SpriteYLo,x				; |
+		SEC : SBC $F2					; |
+		STA !SpriteDeltaY,x				;/
 
-
+		JMP SPRITE_INTERACTION
 
 
-		; LDA !SpriteXLo,x : STA $E0			;\
-		; LDA !SpriteXHi,x : STA $E1			; | backup coords
-		; LDA !SpriteYLo,x : STA $E2			; |
-		; LDA !SpriteYHi,x : STA $E3			;/
-		; LDA $3330,x : STA $E4				;\ backup + clear collision
-		; STZ $3330,x					;/
-		; STZ !SpriteSlope,x				; clear slope
-		; LDA !SpriteWater,x : STA $7695			;\ backup + clear water
-		; STZ !SpriteWater,x				;/
-		; STZ $7694					; vertical pushout value
-		; STZ $0E						; layer (0 = layer 1, 80 = layer 2)
+		.X
+		LDA !SpriteStasis,x : BNE ..return
+		..ignorestasis
+		%UpdateX()
+		..return
+		RTL
 
-		; JSR .InteractLayer
-
-		; .Ledge
-		; LDA $E4						;\
-		; AND #$04 : BEQ ..done				; | check for ledge
-		; AND $3330,x : BNE ..done			;/
-		; BIT !SpriteTweaker6,x				;\ check ledge behavior
-		; BVS ..restoreX					;/
-		; BPL ..done					; 00 = ignore ledge
-		; LDA !SpriteTweaker5,x				;\
-		; AND #$F0 : STA !SpriteYSpeed,x			; |
-		; LDA $E2 : STA !SpriteYLo,x			; | 80 = jump
-		; LDA $E3 : STA !SpriteYHi,x			; |
-		; BRA ..done					;/
-		; ..restoreX					;\
-		; BMI ..noturn					; |
-		; LDA $3330,x					; | 40 = turn
-		; EOR #$01 : STA $3330,x				; |
-		; ..noturn					;/
-		; LDA $E0 : STA !SpriteXLo,x			;\
-		; LDA $E1 : STA !SpriteXHi,x			; |
-		; LDA $E2 : STA !SpriteYLo,x			; | C0 = stop, but don't turn
-		; LDA $E3 : STA !SpriteYHi,x			; |
-		; ..done						;/
-
-		; .Wall
-		; LDA $3330,x					;\ check for wall
-		; AND #$03 : BEQ ..done				;/
-		; LDA !SpriteTweaker6,x				;\ check wall behavior
-		; LSR A : BCS ..restoreX				;/
-		; LSR A : BCC ..done				; 00 = just collide
-		; LDA !SpriteTweaker5,x				;\
-		; AND #$F0 : STA !SpriteYSpeed,x			; | 02 = jump
-		; BRA ..done					;/
-		; ..restoreX					;\
-		; LSR A : BCC ..noinvert				; |
-		; LDA !SpriteXSpeed,x				; | 03 = turn + invert speed
-		; EOR #$FF : INC A				; |
-		; STA !SpriteXSpeed,x				;/
-		; ..noinvert					;\
-		; LDA $3330,x					; | 01 = turn but don't change speed
-		; EOR #$01 : STA $3330,x				;/
-		; ..collide					;\
-		; LDA $3230,x					; |
-		; CMP #$09 : BEQ ..done				; | bump x position back unless carryable/kicked
-		; LDA $E0 : STA !SpriteXLo,x			; |
-		; LDA $E1 : STA !SpriteXHi,x			; |
-		; ..done						;/
-
-
-		; PLB
-		; RTL
+		.Y
+		LDA !SpriteStasis,x : BNE ..return
+		..ignorestasis
+		%UpdateY()
+		..return
+		RTL
 
 
 
-	; .InteractLayer
-		; LDA !BuoyancySettings : BEQ ..noliquids
-		; ; water stuff
-		; ..noliquids
+	SPRITE_INTERACTION:
+		.ContactTurn
+		BIT !SpriteTweaker2,x : BVS .Return
+		LDA !SpriteDisSprite,x : BNE .Return
+		JSL GetSpriteClippingE8
 
-		; ; SMW has a "no interaction" check here
+		LDA !SpriteTweaker6,x
+		AND #$20 : BEQ ..done
 
-		; LDA $0E : BEQ ..go				;\
-		; ..layer2					; |
-		; LDA !BuoyancySettings				; | return if trying to interact with layer 2 while it's disabled
-		; ORA !SpriteTweaker1,x				; |
-		; AND #$40 : BNE .SideCollision_return		;/
-		; ..go						;\
-		; LDY #$02					; |
-		; BIT !SpriteDeltaY,x				; | get tile for vertical interaction
-		; BPL $01 : INY					; |
-		; JSR .GetTile					;/
-		; JSR .InteractVert				; interact with tile
+		LDA !SpriteTweaker3,x				;\
+		AND #$01 : BNE ..process			; |
+		TXA						; | unless "process interaction every frame" is set...
+		EOR $14						; | ...only process when sprite index = frame counter (lowest bits only)
+		LSR A : BCS ..done				;/
 
+		..process
+		LDX #$0F
+	-	CPX !SpriteIndex : BEQ ..done
+		LDA !SpriteStatus,x
+		CMP #$08 : BEQ +
+		CMP #$09 : BNE ..next
+	+	BIT !SpriteTweaker2,x : BVS ..next
+		LDA !SpriteDisSprite,x : BNE ..next
+		JSL GetSpriteClippingE0
+		JSL CheckContact : BCC ..next
 
-
-		; LDA $3230,x					;\
-		; CMP #$09 : BEQ .UnStuck				; | check if sprite should use unstuck code
-		; CMP #$0A : BNE .SideCollision			;/
-		; .UnStuck					;\
-		; LDA !SpriteXSpeed,x : BNE .SideCollision	; | unstuck code (alternate left/right interaction)
-		; ; also branch if turning around??
-		; LDA $14 : BRA +					;/
-
-		; .SideCollision
-		; LDA !SpriteDeltaX,x : BEQ ..return		; return if no X movement
-		; ASL A						;\
-		; ROL A						; | get tile for horizontal interaction
-	; +	AND #$01 : TAY					; |
-		; JSR .GetTile					;/
-		; LDA $0D : BEQ ..return				; ignore tiles on page 0
-		; LDA $0C						;\
-		; CMP #$11 : BCC ..return				; | only interact with tiles 0x0111-0x016D
-		; CMP #$6E : BCS ..return				;/
-		; TYA						;\
-		; INC A						; | set block status
-		; ORA $3330,x : STA $3330,x			;/
-		; LDA $0E : BEQ ..return				;\
-		; LDA $3330,x					; | set 0x40 bit when touching layer 2 wall
-		; ORA #$40 : STA $3330,x				;/
-
-		; ..return
-		; RTS
-
-
-
-	; .GetTile
-		; PHY						; push Y
-		; STY $04						;\
-		; LDA !SpriteTweaker1,x				; |
-	; ;	AND #$0F*4					; | Y = index to coords
-	; AND #$0F
-		; CLC : ADC $04					; |
-		; TAY						;/
-
-		; PHX						; push X
-
-		; LDA !SpriteXLo,x : STA $9A			;\
-		; LDA !SpriteXHi,x : STA $9B			; | sprite coords
-		; LDA !SpriteYLo,x : STA $98			; |
-		; LDA !SpriteYHi,x : STA $99			;/
-		; REP #$20					; A 16-bit
-
-		; LDA SpriteObjectClippingY,y			;\
-		; AND #$00FF					; |
-		; CLC : ADC $98					; |
-		; BPL +						; | Y coord of point (snap to within bounds)
-		; LDA #$0000 : BRA ++				; |
-	; +	CMP $02 : BCC ++				; |
-		; LDA $02						; |
-	; ++	STA $98						;/
-
-		; LDA SpriteObjectClippingX,y			;\
-		; AND #$00FF					; |
-		; CLC : ADC $9A					; |
-		; BPL +						; | X coord of point (snap to within bounds)
-		; LDA #$0000 : BRA ++				; |
-	; +	CMP $00 : BCC ++				; |
-		; LDA $00						; |
-	; ++	STA $9A						;/
-
-		; SEP #$20					; A 8-bit
-		; LDA $98						;\
-		; AND #$F0 : STA $04				; | lo byte of map16 index
-		; LDA $9A						; |
-		; LSR #4 : TSB $04				;/
-		; LDX $9B						;\
-		; LDA $6CB6,x					; |
-		; BIT $0F						; | add lo byte offset based on layer and screen
-		; BPL $03 : LDA $6CC6,x				; |
-		; CLC : ADC $04					; |
-		; STA $04						;/
-		; LDA $6CD6,x					;\
-		; BIT $0F						; |
-		; BPL $03 : LDA $6CE6,x				; | hi byte of index based on layer and screen
-		; ADC $99						; |
-		; STA $05						;/
-
-		; REP #$10					;\
-		; LDX $04						; |
-		; LDA $410000,x : XBA				; |
-		; LDA $400000,x					; |
-		; REP #$20					; |
-		; ASL A : BMI ..40				; |
-	; ..00	TAY						; | get acts like
-		; LDA [$06],y : BRA ..store			; |
-	; ..40	AND #$7FFF : TAY				; |
-		; LDA [$09],y					; |
-		; ..store						; |
-		; STA $0C						; |
-		; SEP #$30					;/
-
-		; PLX						; restore X
-		; PLY						; restore Y
-		; RTS						; return
+		LDA !SpriteTweaker6,x				;\ check if touched sprite should also turn
+		AND #$20 : STA $00				;/
+		REP #$20					;\
+		LDA $E4						; |
+		LSR A						; |
+		ADC $E0						; |
+		STA $E0						; |
+		LDA $EC						; | get turn directions
+		LSR A						; |
+		ADC $E8						; |
+		CMP $E0						; |
+		SEP #$20					; |
+		LDA #$00					; |
+		BCC $01 : INC A					;/
+		LDY $00 : BEQ +					;\ turn touched sprite
+		STA !SpriteDir,x				;/
+	+	LDX !SpriteIndex				;\ turn sprite
+		EOR #$01 : STA !SpriteDir,x			;/
+		BRA ..done					; > done
+		..next
+		DEX : BPL -
+		..done
 
 
-	; .InteractVert
-		; LDA $0D : BEQ .Ceiling_return			; return if page 0
-		; LDA $0C						; A = lo byte of acts like
-		; CPY #$02 : BEQ .Floor				; check whether floor/ceiling should be checked
-
-		; .Ceiling
-		; CMP #$11 : BCC ..return				;\
-		; CMP #$6E : BCC ..interact			; | check for ceiling tiles
-		; CMP $7430 : BCC ..return			; |
-		; CMP $7431 : BCS ..return			;/
-		; ..interact					;\
-		; LDA $3330,x					; |
-		; ORA #$08					; | set ceiling collision
-		; BIT $0E						; |
-		; BPL $02 : ORA #$20				; |
-		; STA $3330,x					;/
-		; ..return					;\ return
-		; RTS						;/
+		.Return
+		; flow into OBJECT_INTERACTION
 
 
 
-		; .Floor
-		; LDA $0C						;\
-		; CMP #$59 : BCC ..checksolid			; |
-		; CMP #$5C : BCS ..checksolid			; | check for lava/mud
-		; LDY !HeaderTileset				; |
-		; CPY #$0E : BEQ +				; |
-		; CPY #$03 : BNE ..checksolid			;/
-	; +	LDA !SpriteTweaker1,x				;\
-		; LSR A : BNE ..checksolid			; | unless treating lava as water, status = sinking
-		; LDA #$05 : STA $3230,x				; |
-		; LDA #$40 : STA $32F0,x				;/
-		; RTS						; return
-
-		; ..platform
-		; LDA $98
-		; AND #$0F
-		; CMP #$05 : BCS ..return
-		; ..solid
-		; LDA $3230,x
-		; CMP #$02 : BEQ ..return
-		; CMP #$05 : BEQ ..return
-		; CMP #$0B : BEQ ..return
-		; LDA !SpriteYLo,x				;\
-		; AND #$F0					; | push sprite on top of floor tile
-		; CLC : ADC $7694					; |
-		; STA !SpriteYLo,x				;/
-		; LDA $3330,x					;\
-		; ORA #$04					; |
-		; BIT $0E						; | set floor collision
-		; BPL $02 : ORA #$80				; |
-		; STA $3330,x					;/
-		; ..return
-		; RTS
-
-		; ..checksolid
-		; CMP #$11 : BCC ..platform			; 0x100-0x110 = platform tile
-		; CMP #$6E : BCC ..solid				; 0x111-0x16D = solid
-		; CMP #$D8 : BCS ..slopeassist			; 0x1D8-0x1FF = slope assist tile
-
-		; ..slope						; 0x16E-0x1D7 = check slope
-		; LDY #$32 : STY $F0				;\
-		; LDY #$E6 : STY $F1				; | $F0 = 24-bit pointer to slope coordinate table
-		; STZ $F2						;/
-		; SEC : SBC #$6E					;\
-		; TAY						; |
-		; PHX						; |
-		; LDA [$82],y : TAX				; | set sprite slope type
-		; LDA.l $00E53D,x					; |
-		; TXY						; > preserve in Y
-		; PLX						; |
-		; STA !SpriteSlope,x				;/
-		; TYA						;\ get index to pushout value
-		; ASL #4 : STA $05				;/
-		; BCC $02 : INC $F1				; index +256
-		; LDA $98						;\
-		; AND #$0F : STA $04				; |
-		; LDA $9A						; | Y = index to [$F0]
-		; AND #$0F : ORA $05				; |
-		; TAY						;/
-		; LDA [$F0],y					;\ check for invalid slope
-		; CMP #$10 : BEQ ..return				;/
-		; BCS ..slopeassist				; check for slope assist
-		; LDA $04						;\
-		; CMP #$0C : BCS +				; | get vertical pushup vallue
-		; CMP [$F0],y : BCC ..return			; |
-	; +	LDA [$F0],y : STA $7694				;/
-		; LDA !SpriteSlope,x				;\
-		; CMP #$04 : BEQ ..supersteep			; |
-		; CMP #$FC : BNE ++				; |
-		; ..supersteep					; | slope interaction
-		; EOR !SpriteDeltaX,x : BPL +			; |
-		; LDA !SpriteDeltaX,x : BEQ +			; |
-		; LDA $3320,x					; |
-		; EOR #$01 : STA $3320,x				;/
-	; +	JSL $03C1CA					; sprite interact with supersteep slope tile, needs further research
-	; ++	JMP ..solid
-
-		; ..slopeassist
-		; LDA $98
-		; AND #$0F
-		; CMP #$05 : BCS ..return2
-		; INC A : STA $04
-		; LDA $3230,x
-		; CMP #$02 : BEQ ..return2
-		; CMP #$05 : BEQ ..return2
-		; CMP #$0B : BEQ ..return2
-		; LDA !SpriteYLo,x
-		; SEC : SBC $04
-		; STA !SpriteYLo,x
-		; LDA !SpriteYHi,x
-		; SBC #$00
-		; STA !SpriteYHi,x
-		; PLA : PLA
-		; JMP .InteractLayer_go
-
-		; ..return2
-		; RTS
+; $00 - max X coord of level
+; $02 - max Y coord of level
+; $04 - scratch, used to calculate map16 index
+;	during block processing, $04 is the sprite to spawn from a block
+;	during block processing, $05 is a multiplayer flag for spawning multiple items from blocks
+; $06 - 24-bit pointer to map16 acts like table 00
+; $09 - 24-bit pointer to map16 acts like table 40
+; $0C - map16 acts like
+; $0E - layer (0 = layer 1, 80 = layer 2)
+; $0F - collision this frame
+;	01 - right
+;	02 - left
+;	04 - down
+;	08 - up
+;	10 - lava flag
+;	20 - water horizontal (can be kept from previous frame if delta X = 0)
+;	40 - water vertical (can be kept from previous frame if delta Y = 0)
+;	80 - touching layer 2 flag
+;
+; $F0 - previous X coord of sprite
+; $F2 - previous Y coord of sprite
+; $F4 - previous collision status (read only)
+; $F5 - horizontal pushout value (8-bit)
+; $F6 - vertical pushout value (16-bit)
+; $F8 - slope data pointer (24-bit)
 
 
 
+	OBJECT_INTERACTION:
+		BIT !SpriteTweaker1,x : BMI .Phase		;\
+		LDA !SpritePhaseTimer,x : BEQ .Process		; |
+		DEC !SpritePhaseTimer,x				; | return if object interaction is disabled
+		.Phase						; |
+		STZ !SpriteBlocked,x				; |
+		RTL						;/
 
-; SpriteObjectClippingX:
-		; db $0E,$02,$08,$08	; clipping 0
-		; db $0E,$02,$07,$07	; clipping 1
-		; db $07,$07,$07,$07	; clipping 2
-		; db $0E,$02,$08,$08	; clipping 3
-		; db $10,$00,$08,$08	; clipping 4
-		; db $0D,$02,$08,$08	; clipping 5
-		; db $07,$00,$04,$04	; clipping 6
-		; db $1F,$01,$10,$10	; clipping 7
-		; db $0F,$00,$08,$08	; clipping 8
-		; db $10,$00,$08,$08	; clipping 9
-		; db $0D,$02,$08,$08	; clipping A
-		; db $0E,$02,$08,$08	; clipping B
-		; db $0D,$02,$08,$08	; clipping C
-		; db $10,$00,$08,$08	; clipping D
-		; db $1F,$00,$10,$10	; clipping E
-		; db $08,$08,$08,$10	; clipping F
+		.Process
+		PHB : PHK : PLB					; bank wrapper start
+		LDA #$F0 : STA $00				;\
+		LDA !Map16Width					; | max X coord
+		DEC A : STA $01					;/
+		REP #$20					;\
+		LDA !Map16ActsLike+0 : STA $06			; |
+		LDA !Map16ActsLike+1 : STA $07			; | 24-bit pointers to map16 acts like tables
+		LDA !Map16ActsLike40+0 : STA $09		; |
+		LDA !Map16ActsLike40+1 : STA $0A		;/
+		LDA !LevelHeight				;\
+		SEC : SBC #$0010				; | max Y coord
+		STA $02						; |
+		SEP #$20					;/
 
-; SpriteObjectClippingY:
-		; db $08,$08,$10,$02	; clipping 0
-		; db $12,$12,$20,$02	; clipping 1
-		; db $07,$07,$07,$07	; clipping 2
-		; db $10,$10,$20,$0B	; clipping 3
-		; db $12,$12,$20,$02	; clipping 4
-		; db $18,$18,$20,$10	; clipping 5
-		; db $04,$04,$08,$00	; clipping 6
-		; db $10,$10,$1F,$01	; clipping 7
-		; db $08,$08,$0F,$00	; clipping 8
-		; db $08,$08,$10,$00	; clipping 9
-		; db $48,$48,$50,$42	; clipping A
-		; db $04,$04,$08,$00	; clipping B
-		; db $00,$00,$00,$00	; clipping C
-		; db $08,$08,$10,$00	; clipping D
-		; db $08,$08,$10,$00	; clipping E
-		; db $04,$01,$02,$04	; clipping F
+
+
+		STZ !SpriteBlocked,x				; clear collision
+		STZ !SpriteSlope,x				; clear slope
+		STZ $0E						; layer (0 = layer 1, 80 = layer 2)
+		LDY !SpriteDeltaY,x				;\
+		BEQ $04 : LDA #$40 : TRB $0F			; | wipe water flags from working reg if moving in a relevant direction
+		LDY !SpriteDeltaX,x				; |
+		BEQ $04 : LDA #$20 : TRB $0F			;/
+
+
+		STZ !CurrentLayer
+		JSR .InteractLayer
+		LDA !SpriteExtraCollision,x : TSB $0F
+		STZ !SpriteExtraCollision,x
+
+
+		.Ground
+		LDA $0F
+		AND #$04 : BEQ ..done
+		AND $F4 : BEQ ..done				; skip on landing frame, so sprites can read their landing Y speed
+		LDA !SpriteYSpeed,x : BMI ..done
+		CMP #$10 : BCC ..done
+		LDA #$10 : STA !SpriteYSpeed,x
+		..done
+
+		.Ledge
+		LDA $F4						;\
+		AND #$04 : BEQ ..done				; | check for ledge
+		AND $0F : BNE ..done				;/
+		BIT !SpriteTweaker6,x				;\ check ledge behavior
+		BVS ..restoreX					;/
+		BPL ..done					; 00 = ignore ledge
+		LDA !SpriteTweaker5,x				;\
+		AND #$F8 : STA !SpriteYSpeed,x			; | 80 = jump
+		BRA ..restoreY					;/
+		..restoreX					;\
+		BMI ..noturn					; |
+		LDA !SpriteDir,x				; | 40 = turn
+		EOR #$01 : STA !SpriteDir,x			; |
+		..noturn					;/
+		LDA $F0 : STA !SpriteXLo,x			;\
+		LDA $F1 : STA !SpriteXHi,x			; |
+		STZ !SpriteXSpeed,x				; |
+		..restoreY					; | C0 = stop, but don't turn
+		LDA $F2 : STA !SpriteYLo,x			; |
+		LDA $F3 : STA !SpriteYHi,x			; |
+		..done						;/
+
+		.Wall
+		LDA $0F						;\ check for wall
+		AND #$03 : BEQ ..done				;/
+		LDA !SpriteTweaker6,x				;\ check wall behavior
+		LSR A : BCS ..restoreX				;/
+		LSR A : BCC ..collide				; 00 = just collide
+		LSR A : BCS ..jump				; > if 04 bit is set, can "jump" even in midair, effectively climbing
+		LDA $0F						;\
+		AND #$04 : BEQ ..collide			; |
+		..jump						; | 02 = jump
+		LDA !SpriteTweaker5,x				; | (must be on ground to be able to jump, unless climb is enabled)
+		AND #$F8 : STA !SpriteYSpeed,x			; |
+		BRA ..collide					;/
+		..restoreX					;\
+		LSR A : BCC ..noinvert				; |
+		LDA !SpriteXSpeed,x				; | 03 = turn + invert speed
+		EOR #$FF : INC A				; |
+		STA !SpriteXSpeed,x				;/
+		..noinvert					;\
+		LDA $0F						; |
+		AND #$03					; | 01 = turn but don't change speed
+		DEC A						; |
+		EOR #$01 : STA !SpriteDir,x			;/
+		..collide					;\
+		LDA !SpriteXLo,x				; |
+		AND #$F0					; |
+		ORA #$0F					; |
+		SEC : SBC $F5					; | horizontal pushout
+		STA !SpriteXLo,x				; |
+		LDA !SpriteXHi,x				; |
+		SBC #$00					; |
+		STA !SpriteXHi,x				; |
+		..done						;/
+
+		.UpdateReg
+		LDA $0F : STA !SpriteBlocked,x			; update collision reg
+		LDY !BuoyancySettings : BEQ .Return		; no water if bouyancy is off
+
+		.WaterSplash
+		AND #$60 : BEQ ..exitwater			;\
+		..enterwater					; |
+		LDY !SpriteWater,x : BNE .ReturnWater		; |
+		BRA ..splash					; |
+		..exitwater					; | check for splash conditions
+		LDY !SpriteWater,x : BEQ .ReturnWater		; |
+		..splash					; |
+		STA !SpriteWater,x				; > update water status
+		LDA !BuoyancySettings : BEQ ..done		; |
+		LDA !SpriteTweaker1,x				; |
+		AND #$02 : BNE ..done				;/
+		REP #$20					;\
+		STZ $00						; |
+		STZ $02						; |
+		STZ $04						; | spawn splash
+		LDA #$F000 : STA $06				; |
+		SEP #$20					; |
+		LDA.b #!prt_watersplash : JSL SpawnParticle	;/
+		..done
+
+		.Return
+		PLB
+		RTL
+
+		.ReturnWater
+		STA !SpriteWater,x
+		PLB
+		RTL
+
+
+
+	.InteractLayer
+		LDA $0E : BEQ ..go				;\
+		..layer2					; |
+		LDA !BuoyancySettings				; | return if trying to interact with layer 2 while it's disabled
+		ORA !SpriteTweaker1,x				; |
+		AND #$40 : BNE .SideCollision_return		;/
+		..go						;\
+		LDY #$02					; |
+		BIT !SpriteDeltaY,x				; | get tile for vertical interaction
+		BPL $01 : INY					; |
+		JSR .GetTile					;/
+		BCS ..noliquids					;\
+		LDY !BuoyancySettings : BEQ ..noliquids		; > no liquids if buoyancy is off
+		CMP #$04 : BCS ..lava				; |
+		..water						; |
+		LDA #$40 : BRA +				; | mark water/lava
+		..lava						; |
+		LDA #$10					; |
+	+	TSB $0F						; |
+		..noliquids					;/
+		JSR .InteractVert				; interact with tile
+
+
+
+		LDA !SpriteStatus,x				;\
+		CMP #$09 : BEQ .UnStuck				; | check if sprite should use unstuck code
+		CMP #$0A : BNE .SideCollision			;/
+		.UnStuck					;\
+		LDA !SpriteXSpeed,x : BNE .SideCollision	; | unstuck code (alternate left/right interaction)
+		; also branch if turning around??
+		LDA $14 : BRA +					;/
+
+		.SideCollision
+		LDA !SpriteDeltaX,x : BEQ ..return		; return if no X movement
+		ASL A						;\
+		ROL A						; | get tile for horizontal interaction
+	+	AND #$01 : TAY					; |
+		JSR .GetTile					;/
+		BCS ..noliquids					;\
+		LDY !BuoyancySettings : BEQ ..noliquids		; > no liquids if buoyancy is off
+		CMP #$04 : BCS ..lava				; |
+		..water						; |
+		LDA #$20 : BRA +				; | mark water/lava
+		..lava						; |
+		LDA #$10					; |
+	+	TSB $0F						; |
+		..noliquids					;/
+		LDA $0D : BEQ ..return				; ignore tiles on page 0
+		LDA $0C						;\
+		CMP #$11 : BCC ..return				; | only interact with tiles 0x0111-0x016D
+		CMP #$6E : BCS ..return				;/
+		TYA						;\
+		INC A						; | set block status
+		ORA $0E						; |
+		TSB $0F						;/
+
+		LDA !SpriteStatus,x				;\
+		CMP #$0A : BNE ..return				; | interact with tile if kicked
+		JSR ITEM_INTERACT_OBJECT			;/
+
+		..return
+		RTS
+
+
+
+	.GetTile
+		PHY						; push Y
+		STY $04						;\
+		LDA !SpriteTweaker1,x				; |
+		AND #$0F*4					; | Y = index to coords
+		CLC : ADC $04					; |
+		TAY						;/
+
+		BIT #$02 : BNE ..vert				; check direction
+		..horz						;\
+		LSR A						; |
+		LDA SpriteObjectClippingX,y			; | horizontal pushout value
+		BCC $01 : DEC A					; |
+		STA $F5						; |
+		BRA ..process					;/
+		..vert						;\
+		LDA SpriteObjectClippingY,y : STA $F6		; | vertical pushout value
+		STZ $F7						;/
+
+		..process					;
+		PHX						; push X
+
+		LDA !SpriteXLo,x : STA $9A			;\
+		LDA !SpriteXHi,x : STA $9B			; | sprite coords
+		LDA !SpriteYLo,x : STA $98			; |
+		LDA !SpriteYHi,x : STA $99			;/
+
+		REP #$30					; all regs 16-bit
+		LDA SpriteObjectClippingY,y			;\
+		AND #$00FF					; |
+		CLC : ADC $98					; |
+		BPL +						; | Y coord of point (snap to within bounds)
+		LDA #$0000 : BRA ++				; |
+	+	CMP $02 : BCC ++				; |
+		LDA $02						; |
+	++	STA $98						;/
+
+		LDA !3DWater					;\
+		AND #$00FF : BEQ +				; |
+		LDA $98						; |
+		CMP !Level+2 : BCC +				; |
+		LDA $04						; |
+		AND #$00FF					; | check for 3D water
+		CMP #$0002					; |
+		LDA #$0020					; |
+		BCC $01 : ASL A					; |
+		TSB $0F						; |
+		+						;/
+
+		LDA SpriteObjectClippingX,y			;\
+		AND #$00FF					; |
+		CLC : ADC $9A					; |
+		BPL +						; | X coord of point (snap to within bounds)
+		LDA #$0000 : BRA ++				; |
+	+	CMP $00 : BCC ++				; |
+		LDA $00						; |
+	++	STA $9A						;/
+
+		STZ $2250					;\
+		XBA						; | x screen * level height = based address of column
+		AND #$00FF : STA $2251				; |
+		LDA !LevelHeight : STA $2253			;/
+		LDA $9A						;\
+		LSR #4						; |
+		AND #$000F : STA $04				; | position within column
+		LDA $98						; |
+		AND #$FFF0					; |
+		ORA $04						;/
+		CLC : ADC $2306					; add to get full index
+		TAX						;\
+		SEP #$20					; |
+		LDA $41C800,x : XBA				; |
+		LDA $40C800,x					; |
+		REP #$20					; |
+		ASL A : TAY					; | get acts like
+		BMI ..40					; |
+	..00	LDA [$06],y : BRA ..store			; |
+	..40	LDA [$09],y					; |
+		..store						; |
+		STA $0C						;/
+		CMP #$0005+1					; > water/lava check (maintain C)
+
+		SEP #$30					; all regs 8-bit
+		PLX						; restore X
+		PLY						; restore Y
+		RTS						; return
+
+
+	.InteractVert
+		LDA $0D : BEQ .Floor_return			; return if page 0
+		LDA $0C						; A = lo byte of acts like
+		CPY #$02 : BEQ .Floor				; check whether floor/ceiling should be checked
+
+		.Ceiling
+		CMP #$11 : BCC .Floor_return			;\
+		CMP #$6E : BCC ..interact			; | check for ceiling tiles
+		CMP $7430 : BCC .Floor_return			; |
+		CMP $7431 : BCS .Floor_return			;/
+		..interact					;\
+		LDA $98						; |
+		AND #$F0					; |
+		ORA #$0F					; |
+		SEC : SBC $F6					; | push sprite below ceiling
+		STA !SpriteYLo,x				; |
+		LDA $99						; |
+		SBC $F7						; |
+		STA !SpriteYHi,x				;/
+		LDA #$08 : TSB $0F				; set ceiling collision
+
+		LDA !SpriteStatus,x				;\
+		CMP #$09 : BCC .Floor_return			; | interact with tiles if thrown/kicked
+		CMP #$0B : BCS .Floor_return			; |
+		JMP ITEM_INTERACT_OBJECT			;/
+
+
+		.Floor
+		LDA $0C						;\
+		CMP #$59 : BCC ..checksolid			; |
+		CMP #$5C : BCS ..checksolid			; | check for lava/mud
+		LDY !HeaderTileset				; |
+		CPY #$0E : BEQ +				; |
+		CPY #$03 : BNE ..checksolid			;/
+	+	LDA #$10 : TSB $0F				; set lava flag
+		..return
+		RTS						; return
+
+		..platform
+		LDA $98
+		AND #$0F
+		CMP #$05 : BCS ..return
+		..solid
+		LDA !SpriteStatus,x
+		CMP #$02 : BEQ ..return
+		CMP #$05 : BEQ ..return
+		CMP #$0B : BEQ ..return
+		LDA $98						;\
+		AND #$F0					; |
+		SEC : SBC $F6					; |
+		STA !SpriteYLo,x				; | push sprite on top of floor tile
+		LDA $99						; |
+		SBC $F7						; |
+		STA !SpriteYHi,x				;/
+		LDA #$04 : TSB $0F				; set floor collision
+		RTS
+
+		..checksolid
+		CMP #$11 : BCC ..platform			; 0x100-0x110 = platform tile
+		CMP #$6E : BCC ..solid				; 0x111-0x16D = solid
+		CMP #$D8 : BCS ..slopeassist			; 0x1D8-0x1FF = slope assist tile
+
+		..slope						; 0x16E-0x1D7 = check slope
+		LDY #$32 : STY $F8				;\
+		LDY #$E6 : STY $F9				; | $F8 = 24-bit pointer to slope coordinate table ($00E632)
+		STZ $FA						;/
+		SEC : SBC #$6E					;\
+		TAY						; |
+		PHX						; |
+		LDA [$82],y : TAX				; | set sprite slope type
+		LDA.l $00E53D,x					; |
+		TXY						; > preserve in Y
+		PLX						; |
+		STA !SpriteSlope,x				;/
+		TYA						;\ get index to pushout value
+		ASL #4 : STA $05				;/
+		BCC $02 : INC $F1				; index +256
+		LDA $98						;\
+		AND #$0F : STA $04				; |
+		LDA $9A						; | Y = index to [$F0]
+		AND #$0F : ORA $05				; |
+		TAY						;/
+		LDA [$F8],y					;\ check for invalid slope
+		CMP #$10 : BEQ ..return				;/
+		BCS ..slopeassist				; check for slope assist
+		LDA $04						;\
+		CMP #$0C : BCS +				; |
+		CMP [$F8],y : BCC ..return			; |
+	+	REP #$20					; |
+		LDA [$F8],y					; | get vertical pushup value (+1)
+		AND #$00FF					; |
+		EOR #$FFFF					; |
+		CLC : ADC $F6					; |
+		STA $F6						; |
+		SEP #$20					;/
+		LDA !SpriteSlope,x				;\
+		CMP #$04 : BEQ ..supersteep			; |
+		CMP #$FC : BNE ++				; |
+		..supersteep					; | slope interaction
+		EOR !SpriteDeltaX,x : BPL +			; |
+		LDA !SpriteDeltaX,x : BEQ +			; |
+		LDA !SpriteDir,x				; |
+		EOR #$01 : STA !SpriteDir,x			;/
+	+	JSL $03C1CA					; sprite interact with supersteep slope tile, needs further research
+	++	JMP ..solid
+
+		..slopeassist
+		LDA $98
+		AND #$0F
+		CMP #$05 : BCS ..return2
+		INC A : STA $04
+		LDA !SpriteStatus,x
+		CMP #$02 : BEQ ..return2
+		CMP #$05 : BEQ ..return2
+		CMP #$0B : BEQ ..return2
+		LDA !SpriteYLo,x
+		SEC : SBC $04
+		STA !SpriteYLo,x
+		LDA !SpriteYHi,x
+		SBC #$00
+		STA !SpriteYHi,x
+		PLA : PLA
+		JMP .InteractLayer_go
+
+		..return2
+		RTS
+
+
+
+
+; order is: R, L, D, U
+
+	SpriteObjectClippingX:
+		db $0E,$01,$08,$08	; clipping 0
+		db $0E,$01,$07,$07	; clipping 1
+		db $07,$07,$07,$07	; clipping 2
+		db $0E,$01,$08,$08	; clipping 3
+		db $10,$00,$08,$08	; clipping 4
+		db $0D,$02,$08,$08	; clipping 5
+		db $0B,$04,$08,$08	; clipping 6
+		db $1F,$01,$10,$10	; clipping 7
+		db $0F,$00,$08,$08	; clipping 8
+		db $10,$00,$08,$08	; clipping 9
+		db $0D,$02,$08,$08	; clipping A
+		db $0E,$01,$08,$08	; clipping B
+		db $0D,$02,$08,$08	; clipping C
+		db $10,$00,$08,$08	; clipping D
+		db $1F,$00,$10,$10	; clipping E
+		db $08,$08,$08,$10	; clipping F
+
+	SpriteObjectClippingY:
+		db $08,$08,$10,$01	; clipping 0
+		db $12,$12,$20,$02	; clipping 1
+		db $07,$07,$07,$07	; clipping 2
+		db $10,$10,$20,$0B	; clipping 3
+		db $12,$12,$20,$02	; clipping 4
+		db $18,$18,$20,$10	; clipping 5
+		db $04,$04,$08,$00	; clipping 6
+		db $10,$10,$1F,$01	; clipping 7
+		db $08,$08,$0F,$00	; clipping 8
+		db $08,$08,$10,$00	; clipping 9
+		db $48,$48,$50,$42	; clipping A
+		db $04,$04,$08,$00	; clipping B
+		db $00,$00,$00,$00	; clipping C
+		db $08,$08,$10,$00	; clipping D
+		db $08,$08,$10,$00	; clipping E
+		db $04,$01,$02,$04	; clipping F
+
+
+
+
+
+	ITEM_PHYSICS:
+
+		.Move
+		JSL APPLY_SPEED				; move
+		LDA !SpriteBlocked,x			;\
+		AND #$04 : BEQ ..done			; | find landing frame
+		AND $F4 : BNE ..ground			;/
+		LDA !SpriteXSpeed,x			;\
+		CMP #$80				; |
+		ROR A : STA !SpriteXSpeed,x		; |
+		LDA !SpriteYSpeed,x			; |
+		CMP #$20				; | bounce
+		BPL $02 : LDA #$00			; > BCC can cause a bug
+		LSR A					; |
+		EOR #$FF : INC A			; |
+		STA !SpriteYSpeed,x			;/
+		BRA ..done
+		..ground
+		JSL AccelerateX_Friction2
+		..done
+
+		.Wall
+		LDA !SpriteBlocked,x
+		AND #$03 : BEQ ..done
+		LDA !SpriteXSpeed,x
+		CMP #$80
+		ROR A
+		EOR #$FF : INC A
+		STA !SpriteXSpeed,x
+		..done
+
+		RTL
+
+
+	ITEM_INTERACT_OBJECT:
+		PHX
+		LDA !ShellOwner,x : STA !CurrentPlayer
+		REP #$20
+		LDA $0C
+		SEC : SBC #$0117
+		SEP #$20
+		BMI .Fail
+		ASL A
+		CMP.b #.Ptr_end-.Ptr : BCS .Fail
+		TAX
+		JSR (.Ptr,x)
+
+		.Fail
+		SEP #$30
+		PLX
+		RTS
+
+
+		.Ptr
+		dw .Brick_mushroom		; 117
+		dw .Brick_lifemushroom		; 118
+		dw .Brick_star			; 119
+		dw .Brick_variable		; 11A
+		dw .Brick_multiplecoins		; 11B
+		dw .Brick_coin			; 11C
+		dw .Brick_pow			; 11D
+		dw .Brick			; 11E
+		dw .Block_mushroom		; 11F
+		dw .Block_lifemushroom		; 120
+		dw .Block_star			; 121
+		dw .Block_star2			; 122
+		dw .Block_multiplecoins		; 123
+		dw .Block_coin			; 124
+		dw .Block_variable		; 125
+		dw .Block_goldmushroom		; 126
+		dw .Block_greenshell		; 127
+		dw .Block_greenshell		; 128
+		..end
+
+
+
+		.Brick
+		REP #$20
+		LDA #$0025 : JSL ChangeMap16
+		SEP #$20
+		LDX !SpriteIndex
+		JSL SpawnBrickPieces
+		RTS
+		..mushroom
+		LDA #$74 : BRA ..useblock
+		..lifemushroom
+		LDA #$77 : BRA ..useblock
+		..goldmushroom
+		LDA #$78 : BRA ..useblock
+		..star2
+		LDA !StarTimer : BEQ ..coin
+		..star
+		LDA #$76 : BRA ..useblock
+		..variable
+		LDA $9A
+		LSR #4 : TAY
+		LDA ..varitemdata,y : BEQ ..star2
+		CMP #$01 : BEQ ..goldmushroom
+		..vine
+		LDA #$79 : BRA ..useblock
+		..multiplecoins
+		LDA !CoinTimer : BEQ ..multicoinstart
+		CMP #$01 : BNE ..multicoin
+		STZ !CoinTimer
+		BRA ..coin
+		..multicoinstart
+		LDA #$FF : STA !CoinTimer
+		..multicoin
+		LDA #$0B : BRA +
+		..coin
+		LDA #$0D
+	+	STA $9C
+		LDA.b #!Brick_Num : JSL CORE_BOUNCE_SPRITE_Long
+		JSL CORE_SPAWN_COIN_Long
+		RTS
+		..pow
+		LDA #$3E
+
+		..useblock
+		STA $04
+		LDA #$0D : STA $9C
+		LDA.b #!Brick_Num : BRA .BounceSprite
+
+
+		..varitemdata
+		db $00,$01,$02,$00,$01,$02,$00,$01,$02,$00,$01,$02,$00,$01,$02,$00
+
+		.BounceSprite
+		JSL CORE_BOUNCE_SPRITE_Long
+
+		.SpawnSprite
+		STZ $05
+		JSL CORE_SPAWN_OBJECT_Long
+		RTS
+
+
+		.Block
+		..mushroom
+		LDA #$74 : BRA ..useblock
+		..lifemushroom
+		LDA #$77 : BRA ..useblock
+		..goldmushroom
+		LDA #$78 : BRA ..useblock
+		..star2
+		LDA !StarTimer : BEQ ..coin
+		..star
+		LDA #$76 : BRA ..useblock
+		..multiplecoins
+		LDA !CoinTimer : BEQ ..multicoinstart
+		CMP #$01 : BNE ..multicoin
+		STZ !CoinTimer
+		BRA ..coin
+		..multicoinstart
+		LDA #$FF : STA !CoinTimer
+		..multicoin
+		LDA #$0B : BRA +
+		..coin
+		LDA #$0D
+	+	STA $9C
+		LDA.b #!QuestionBlock_Num : JSL CORE_BOUNCE_SPRITE_Long
+		JSL CORE_SPAWN_COIN_Long
+		RTS
+
+		..variable
+		LDA $9A
+		AND #$30 : BEQ ..key
+		CMP #$10 : BEQ ..wingblock
+		CMP #$20 : BNE ..greenshell
+		..balloon
+		LDA #$7D : BRA ..useblock
+		..key
+		LDA #$80 : BRA ..useblock
+		..wingblock
+		LDA #$84 : BRA ..useblock
+		..greenshell
+		LDA #$04 : BRA ..useblock
+
+		..useblock
+		STA $04
+		LDA #$0D : STA $9C
+		LDA.b #!QuestionBlock_Num : BRA .BounceSprite
+
+
+
+
+	SpawnBrickPieces:
+		STZ $00
+		STZ $01
+		LDA #$F8 : STA $02
+		LDA #$B0 : STA $03
+		LDA #$F0 : STA $07
+		LDA.b #!prt_brickpiece : JSL SpawnParticle
+		LDA #$08
+		STA $00
+		STA $02
+		LDA.b #!prt_brickpiece : JSL SpawnParticle
+		LDA #$D0 : STA $03
+		LDA #$08 : STA $01
+		LDA.b #!prt_brickpiece : JSL SpawnParticle
+		STZ $00
+		LDA #$F8 : STA $02
+		LDA.b #!prt_brickpiece : JMP SpawnParticle
+
+		.Half
+		STZ $00
+		LDA #$08 : STA $01
+		LDA #$F8 : STA $02
+		LDA #$B0 : STA $03
+		LDA #$F0 : STA $07
+		LDA.b #!prt_brickpiece : JSL SpawnParticle
+		LDA #$08
+		STA $00
+		STA $02
+		LDA.b #!prt_brickpiece : JMP SpawnParticle
 
 
 
 ;=======================;
 ; GENERIC SUPPORT CODES ;
 ;=======================;
-
-
-; input: void
-; output: void
-SPRITE_OFF_SCREEN:
-		PHB : PHK : PLB
-		STZ $3490,x
-		STZ $3350,x
-	;	LDA !RAM_ScreenMode
-	;	LSR A
-	;	LDA $3250,x
-	;	BCC .HorizontalLevel
-	;	.VerticalLevel
-	;	BEQ .VertY
-	;	DEC A : BEQ .VertY
-	;	LDA $3220,x
-	;	CMP #$F0 : BCS .VertY				; Can be up to 16px off the screen on the left
-	;	INC $3350,x
-	;	.VertY
-	;	LDA $3240,x
-	;	XBA
-	;	LDA $3210,x
-	;	REP #$20
-	;	SEC : SBC $1C
-	;	CLC : ADC #$0060				;\ Used to be add 0x0040 compare to 0x0140
-	;	CMP #$01C0					;/
-	;	SEP #$20
-	;	ROL A
-	;	AND #$01
-	;	STA $3490,x
-	;	BRA .GoodY
-	;	.HorizontalLevel
-
-		LDA !SpriteXHi,x : XBA
-		LDA !CameraBoxSpriteErase			;\ if camera box ignores sprites, sprites ignore camera box
-		CMP #$02 : BCS +				;/
-		CMP #$01 : BNE ++				;\
-		LDA !SpriteXLo,x				; |
-		REP #$20					; |
-		STA $00						; |
-		SEC : SBC !CameraBoxL				; |
-		BPL .WithinCamL					; |
-		CMP #$FFC0 : BCS .WithinCamL			; |
-		.BadCamX					; |
-		INC $3350,x					; |
-		BRA .CamY					; |
-		.WithinCamL					; |
-		LDA $00						; |
-		SEC : SBC !CameraBoxR				; |
-		BMI .CamY					; |
-		CMP #$0140 : BCS .BadCamX			; | erase mode 1: erase zone defined by camera box borders
-		.CamY						; |
-		SEP #$20					; |
-		LDA !SpriteYHi,x : XBA				; |
-		LDA !SpriteYLo,x				; |
-		REP #$20					; |
-		STA $00						; |
-		SEC : SBC !CameraBoxU				; |
-		BPL .WithinCamU					; |
-		CMP #$FFC0 : BCS .WithinCamU			; |
-		.BadCamY					; |
-		JMP .OutOfBoundsY				; |
-		.WithinCamU					; |
-		LDA $00						; |
-		SEC : SBC !CameraBoxD				; |
-		BPL .GoodY					; |
-		CMP #$0120 : BCS .BadCamY			; |
-		BRA .GoodY					;/
-
-	++	BIT !CameraBoxU+1 : BPL .GoodX
-	+	LDA !SpriteTweaker4,x
-		AND #$04 : BNE .GoodX
-		LDA !SpriteXLo,x
-		REP #$20
-		SEC : SBC $1A
-		CLC : ADC #$0060
-		CMP #$01C0
-		SEP #$20
-		ROL A
-		AND #$01
-		STA $3350,x
-		.GoodX
-		LDA $6BF4
-		AND #$03
-		ASL A
-		TAY
-		LDA !SpriteYHi,x : XBA
-		LDA !CameraBoxSpriteErase
-		CMP #$02					; be careful to keep C flag here
-		LDA !SpriteYLo,x
-		REP #$20
-		BCS .NoBoxY
-
-		BIT !CameraBoxU : BMI .NoBoxY
-		CMP !CameraBoxU : BCC .NoBoxY
-		SBC #$00E0 : BMI .GoodY
-		CMP !CameraBoxD : BCC .GoodY
-
-		.NoBoxY
-		CMP !LevelHeight : BCS .OutOfBoundsY
-		STA $00
-		LDA $1C
-		CLC : ADC.w InitSpriteEngine_min_y_range,y
-		CMP $00 : BPL .OutOfBoundsY
-		LDA $1C
-		CLC : ADC.w InitSpriteEngine_max_y_range,y
-		CMP $00 : BPL .GoodY
-
-;		SEC : SBC $1C
-;		BPL +
-;		EOR #$FFFF
-;		LDY #$00
-;		BRA ++
-;	+	LDY #$02
-;	++	CMP.w .YBounds,y
-;		SEP #$20
-;		BCC .GoodY
-
-		.OutOfBoundsY
-		SEP #$20
-		INC $3490,x
-		.GoodY
-		SEP #$20
-		LDA $3350,x
-		ORA $3490,x
-		BEQ .Return
-		LDA !SpriteTweaker4,x
-		AND #$04 : BNE .Return
-		LDA $3230,x
-		CMP #$08 : BCC .Kill
-		LDY $33F0,x
-		CPY #$FF : BEQ .Kill
-		PHX
-		TYX
-		LDA $418A00,x					;\ 0xEE means don't respawn ever
-		CMP #$EE : BEQ +				;/
-		LDA #$00					;\ Respawn
-		STA $418A00,x					;/
-	+	PLX
-		.Kill
-		STZ $3230,x
-		.Return
-		PLB
-		RTL
-
-;		.YBounds
-;		dw $00E0,$01C0					; above, below
-
-
-
-
-; input: void
-; output: void
-	SPRITE_SPINKILL:
-		LDA #$04 : STA $3230,x
-		LDA #$1F : STA $32D0,x
-		PHY
-		JSL $07FC3B
-		PLY
-		LDA #$08 : STA !SPC1
-		RTL
-
 
 ; input: void (for _Target, Y = player index)
 ; output:
@@ -682,8 +896,8 @@ SPRITE_OFF_SCREEN:
 	SUB_HORZ_POS:
 		LDA !P2Status-$80 : BNE .P2
 .P1		LDY #$00
-		LDA $3250,x : XBA
-		LDA $3220,x
+		LDA !SpriteXHi,x : XBA
+		LDA !SpriteXLo,x
 		REP #$20
 		SEC : SBC !P2XPosLo-$80
 		SEP #$20
@@ -693,8 +907,8 @@ SPRITE_OFF_SCREEN:
 .P2		LDA !MultiPlayer : BEQ .P1
 		LDA !P2Status : BNE .P1
 		LDY #$00
-		LDA $3250,x : XBA
-		LDA $3220,x
+		LDA !SpriteXHi,x : XBA
+		LDA !SpriteXLo,x
 		REP #$20
 		SEC : SBC !P2XPosLo
 		SEP #$20
@@ -706,8 +920,8 @@ SPRITE_OFF_SCREEN:
 		TYA
 		EOR #$80
 		TAY
-	..go	LDA $3250,x : XBA
-		LDA $3220,x
+	..go	LDA !SpriteXHi,x : XBA
+		LDA !SpriteXLo,x
 		REP #$20
 		SEC : SBC !P2XPosLo-$80,y
 		SEP #$20
@@ -725,8 +939,8 @@ SPRITE_OFF_SCREEN:
 	SUB_VERT_POS:
 		LDA !P2Status-$80 : BNE .P2
 .P1		LDY #$00
-		LDA $3240,x : XBA
-		LDA $3210,x
+		LDA !SpriteYHi,x : XBA
+		LDA !SpriteYLo,x
 		REP #$20
 		SEC : SBC !P2YPosLo-$80
 		SEP #$20
@@ -736,8 +950,8 @@ SPRITE_OFF_SCREEN:
 .P2		LDA !MultiPlayer : BEQ .P1
 		LDA !P2Status : BNE .P1
 		LDY #$00
-		LDA $3240,x : XBA
-		LDA $3210,x
+		LDA !SpriteYHi,x : XBA
+		LDA !SpriteYLo,x
 		REP #$20
 		SEC : SBC !P2YPosLo
 		SEP #$20
@@ -752,8 +966,8 @@ SPRITE_OFF_SCREEN:
 		TYA
 		EOR #$80
 		TAY
-	..go	LDA $3240,x : XBA
-		LDA $3210,x
+	..go	LDA !SpriteYHi,x : XBA
+		LDA !SpriteYLo,x
 		REP #$20
 		CLC : ADC $00
 		SEC : SBC !P2YPosLo-$80,y
@@ -817,8 +1031,10 @@ SPRITE_OFF_SCREEN:
 		BPL ..dec
 	..inc	CMP #$FF : BEQ .Friction1_0
 		INC !SpriteXSpeed,x
+		INC !SpriteXSpeed,x
 		RTL
 	..dec	CMP #$01 : BEQ .Friction1_0
+		DEC !SpriteXSpeed,x
 		DEC !SpriteXSpeed,x
 		RTL
 
@@ -915,44 +1131,22 @@ SPRITE_OFF_SCREEN:
 		TXA
 		CLC : ADC $14
 		AND #$0F : BNE .Return
-	.Loop	%Ex_Index_Y()
-		LDA #$02+!MinorOffset : STA !Ex_Num,y
-		LDA !RNG
-		AND #$0F
-		ASL A
-		SEC : SBC #$10
-		STZ $00
-		BPL $02 : DEC $00
-		CLC : ADC $3210,x
-		STA !Ex_YLo,y
-		LDA $3240,x
-		ADC $00
-		STA !Ex_YHi,y
-		LDA !RNG
-		LSR #3
-		AND #$17
-		SEC : SBC #$08
-		STZ $00
-		BPL $02 : DEC $00
-		CLC : ADC $3220,x
-		STA !Ex_XLo,y
-		LDA $3250,x
-		ADC $00
-		STA !Ex_XHi,y
-		LDA #$1F : STA !Ex_Data1,y
-	.Return	RTL
 
+		LDA !RNG					;\
+		AND #$0F					; |
+		ASL A						; | roll x offset
+		SBC #$0C					; |
+		STA $00						;/
+		LDA !RNG					;\
+		LSR #3						; |
+		AND #$17					; | roll y offset
+		SBC #$04					; |
+		STA $01						;/
+		LDA #$F0 : STA $07				; max prio
+		LDA.b #!prt_sparklesmall : JSL SpawnParticle_NoSpeedAcc	; spawn small sparkle particle
 
-
-; input: A = palset to load
-; output: void
-	LoadPalset:
-		STA $0F
-		LDA.l !LoadPalset : STA $00
-		LDA.l !LoadPalset+1 : STA $01
-		LDA.l !LoadPalset+2 : STA $02
-		LDA $0F
-		JML [$3000]
+		.Return
+		RTL
 
 
 
@@ -968,45 +1162,45 @@ SPRITE_OFF_SCREEN:
 ;	it just means less of the table is used, but everything will still be mapped properly
 
 	GetItemMem:
-		LDA !HeaderItemMem			;\ return if invalid index
-		CMP #$03 : BCC .Search			;/
-		LDA #$00				;\ return with null output
-		RTL					;/
+		LDA !HeaderItemMem				;\ return if invalid index
+		CMP #$03 : BCC .Search				;/
+		LDA #$00					;\ return with null output
+		RTL						;/
 
 		.Search
-		PHX					; push X
-		STA $00					; $00 = index (will be converted to 00 or 80)
-		LSR A : STA $01				; $01 = -------I (hi bit of index)
-		STZ $2250				;\
-		REP #$20				; |
-		LDA !SpriteYHi,x			; | y screen * level width
-		AND #$00FF : STA $2251			; |
-		LDA !LevelWidth				; |
-		AND #$00FF : STA $2253			;/
-		SEP #$20				;\
-		LDA !SpriteXHi,x			; | + x screen
-		CLC : ADC $2306				;/
-		ASL A					; * 2
-		BIT !SpriteXLo,x			;\ +1 on right half
-		BPL $01 : INC A				;/
-		ASL A					;\ get highest bit from index
-		LSR $00					;/
-		ROR A : STA $00				; $00 = iSSSSSSx
+		PHX						; push X
+		STA $00						; $00 = index (will be converted to 00 or 80)
+		LSR A : STA $01					; $01 = -------I (hi bit of index)
+		STZ $2250					;\
+		REP #$20					; |
+		LDA !SpriteYHi,x				; | y screen * level width
+		AND #$00FF : STA $2251				; |
+		LDA !LevelWidth					; |
+		AND #$00FF : STA $2253				;/
+		SEP #$20					;\
+		LDA !SpriteXHi,x				; | + x screen
+		CLC : ADC $2306					;/
+		ASL A						; * 2
+		BIT !SpriteXLo,x				;\ +1 on right half
+		BPL $01 : INC A					;/
+		ASL A						;\ get highest bit from index
+		LSR $00						;/
+		ROR A : STA $00					; $00 = iSSSSSSx
 
-		LDA !SpriteXLo,x			;\
-		AND #$70				; |
-		LSR #4					; | get bit (reverse order because of course it is)
-		TAX					; |
-		LDA.l .Bits,x : STA $02			;/
-		REP #$10				;\
-		LDX $00					; | read item memory bit
-		AND !ItemMem0,x				; |
-		SEP #$10				;/
+		LDA !SpriteXLo,x				;\
+		AND #$70					; |
+		LSR #4						; | get bit (reverse order because of course it is)
+		TAX						; |
+		LDA.l .Bits,x : STA $02				;/
+		REP #$10					;\
+		LDX $00						; | read item memory bit
+		AND !ItemMem0,x					; |
+		SEP #$10					;/
 
 		.Return
-		PLX					; pull X
-		CMP #$00				; z
-		RTL					; return
+		PLX						; pull X
+		CMP #$00					; z
+		RTL						; return
 
 		.Bits
 		db $80,$40,$20,$10,$08,$04,$02,$01
@@ -1014,48 +1208,109 @@ SPRITE_OFF_SCREEN:
 
 
 
+; input: sprite hurtbox loaded in $E8 slot
+; output:
+;	C set if contact, C clear if no contact
+;	Y = thrown item sprite index
+	ThrownItemContact:
+		LDA !SpriteIFrames,x : BNE .Fail		; no contact during i-frames
+		BIT !SpriteTweaker4,x : BVC .Process		; check for projectile immunity
+		.Fail
+		CLC						;\ return with no contact
+		RTL						;/
+
+		.Process
+		LDX #$0F					; loop over all sprites
+
+		.Loop
+		CPX !SpriteIndex : BEQ .Next			; don't interact with self
+		LDA !SpriteStatus,x				;\ search for sprites in state 0x0A
+		CMP #$0A : BNE .Next				;/
+		BIT !SpriteTweaker2,x : BVS .Next		;\ ignore sprites that don't interact with other sprites
+		LDA !SpriteDisSprite,x : BNE .Next		;/
+		JSL GetSpriteClippingE0
+		JSL CheckContact : BCC .Next
+		TXY
+		BRA .Return
+
+		.Next
+		DEX : BPL .Loop
+		CLC
+
+		.Return
+		LDX !SpriteIndex				; reload sprite index
+		BCC ..done					;\
+		LDA !SpriteTweaker4,x				; |
+		AND #$02 : BEQ ..done				; | if there is contact, apply knockback unless sprite is immune
+		LDA.w !SpriteXSpeed,y : STA !SpriteXSpeed,x	; |
+		LDA.w !SpriteYSpeed,y : STA !SpriteYSpeed,x	;/
+
+		..done
+		RTL
+
 
 
 ; normal version just checks for contact
 ; _Destroy version will also destroy the fireball that touches the sprite (only 1 per frame, there is no way that this can cause problems, future Eric, i know what you're thinking!)
-; input: sprite hurtbox loaded in $04 slot ($04-$07, $0A-$0B)
+; input: sprite hurtbox loaded in $E8 slot
 ; output:
 ;	C set if contact, C clear if no contact
 ;	Y = fireball fusion index
 ;	$00: fireball X speed (converted to sprite format, but halved)
 	FireballContact:
+		LDA !SpriteIFrames,x : BNE .Fail		; no contact during i-frames
+		BIT !SpriteTweaker4,x : BVS .Fail		; check for projectile immunity
 		LDY #!Ex_Amount-1
 	-	JSR .Main : BCS .Return
 		DEY : BPL -
+		.Fail
 		CLC
 		RTL
 
 	.Destroy
+		LDA !SpriteIFrames,x : BNE .Fail		; no contact during i-frames
 		LDY #!Ex_Amount-1
 	-	JSR .Main : BCS ..puff
 		DEY : BPL -
 		CLC
 		RTL
-	..puff	LDA !Ex_Num,y					;\
-		AND #$7F					; | blocks don't puff
-		CMP #$01+!QuakeOffset : BEQ .Return		;/
-		LDA #$0F : STA !Ex_Data2,y			; don't mess with carry here! it has to return set
-		LDA #$01+!ExtendedOffset : STA !Ex_Num,y	; smoke puff num
+		..puff
+		STZ $00						; X speed output: default to 0
+		LDA !Ex_Num,y					;\
+		AND #$7F					; |
+		CMP #!QuestionBlock_Num : BEQ .Return		; | blocks don't puff
+		CMP #!Brick_Num : BEQ .Return			; |
+		CMP #!BlockHitbox_Num : BEQ .Return		;/
+		LDA #!TurnToPrt_Num : STA !Ex_Num,y		;\
+		LDA.b #!prt_smoke16x16 : STA !Ex_Data1,y	; |
+		LDA #$F0 : STA !Ex_Data3,y			; | turn to smoke puff (max prio)
+		LDA !Ex_XSpeed,y : STA $00			; > fireball X speed output
+		LDA #$00					; |
+		STA !Ex_XSpeed,y				; |
+		STA !Ex_YSpeed,y				;/
 		LDA #$01 : STA !SPC1				; SFX
-
+		; flow into .Return
 
 		.Return
 		LDA !Ex_Num,y					;\
 		AND #$7F					; |
-		CMP #$01+!QuakeOffset : BNE ..notblock		; | kick SFX when hit by a block
+		CMP #!QuestionBlock_Num : BEQ ..block		; |
+		CMP #!Brick_Num : BEQ ..block			; | kick SFX when hit by a block
+		CMP #!BlockHitbox_Num : BNE ..notblock		; |
+		..block						; |
 		LDA #$03 : STA !SPC1				; |
-		LDA #$00 : BRA +				; > xspeed = 0
 		..notblock					;/
-		LDA !Ex_XSpeed,y				;\
-		ASL #3						; |
-		CMP #$40					; | fireball speed output
+
+		LDA !SpriteTweaker4,x				;\
+		AND #$42 : BNE ..done				; |
+		LDA $00						; |
+		LSR A						; | apply knockback unless sprite is immune (to knockback or projectiles)
+		CMP #$40					; |
 		BCC $02 : ORA #$80				; |
-	+	STA $00						;/
+		STA !SpriteXSpeed,x				; |
+		LDA #$E8 : STA !SpriteYSpeed,x			;/
+
+		..done
 		SEC						; set C
 		RTL						; return
 
@@ -1064,66 +1319,96 @@ SPRITE_OFF_SCREEN:
 		.Main
 		LDA !Ex_Num,y
 		AND #$7F
-		CMP #$01+!QuakeOffset : BEQ .Check		; check block hitbox
-		.NotBounce
-		CMP #$05+!ExtendedOffset : BEQ .Check		; check mario fireball
-		CMP #$02+!CustomOffset : BNE .ReturnC		; check luigi fireball
-	.Check	LDA !Ex_YLo,y : STA $01
-		LDA !Ex_XLo,y : STA $00
-		LDA !Ex_YHi,y : STA $09
-		LDA !Ex_XHi,y : STA $08
+		CMP #!QuestionBlock_Num : BEQ ..check		; check ?-block
+		CMP #!Brick_Num : BEQ ..check			; check brick
+		CMP #!BlockHitbox_Num : BEQ ..check		; check block hitbox
+		CMP #!MarFireball_Num : BEQ ..check		; check mario fireball
+		CMP #!LuiFireball_Num : BNE ..returnc		; check luigi fireball
+		..check
+		LDA !Ex_XLo,y : STA $E0
+		LDA !Ex_XHi,y : STA $E1
+		LDA !Ex_YLo,y : STA $E2
+		LDA !Ex_YHi,y : STA $E3
 		LDA #$08
-		STA $02
-		STA $03
+		STA $E4 : STZ $E5
+		STA $E6 : STZ $E7
 		PHY
-		JSL !Contact16
+		JSL CheckContact
 		PLY
 		RTS
-
-	.ReturnC
+		..returnc
 		CLC
 		RTS
 
 
 
 ; input: A = 16-bit pointer to hitbox data (hitbox based on facing left)
-; output: hitbox loaded in $04 slot
+; output: hitbox loaded in $E8 slot (_E0 version loads in $E0 slot)
 	LOAD_HITBOX:
+	.E8
 		REP #$30				; all regs 16-bit
 		TAY					; Y = index to hitbox data
 		SEP #$20				;\
-		LDA !SpriteXLo,x : STA $0C		; |
-		LDA !SpriteXHi,x : STA $0D		; | get sprite coords
+		LDA !SpriteXLo,x : STA $E8		; |
+		LDA !SpriteXHi,x : STA $E9		; | get sprite coords
 		LDA !SpriteYHi,x : XBA			; |
 		LDA !SpriteYLo,x			; |
 		REP #$20				;/
-		CLC : ADC $0002,y			;\
-		STA $05					; | Y coords
-		STA $0A					;/
+		CLC : ADC $0002,y			;\ Y coord
+		STA $EA					;/
 
-		LDA $0004,y : STA $06			; W + H
-		AND #$00FF : STA $0E			; W, 16-bit
+		LDA $0004,y : STA $EE-1			; H (hi byte of size in $EE)
+		AND #$00FF : STA $EC			; W, 16-bit
 
 		LDA $0000,y				; read X offset
 		SEP #$10				; index 8-bit
-		LDY $3320,x : BNE .Left			; check direction
-		.Right					;\
+		LDY !SpriteDir,x : BNE ..left		; check direction
+		..right					;\
 		EOR #$FFFF				; |
 		CLC : ADC #$0010			; | facing left adjustment
-		SEC : SBC $0E				; |
-		.Left					;/
-		CLC : ADC $0C				;\
-		SEP #$20				; | add sprite Xpos and store
-		STA $04					; |
-		XBA : STA $0A				;/
+		SEC : SBC $EC				; |
+		..left					;/
+		CLC : ADC $E8				;\ add sprite Xpos and store
+		STA $E8					;/
+		SEP #$20				;\ clear hi byte of height
+		STZ $EF					;/
+		RTL					; return
+
+	.E0
+		REP #$30				; all regs 16-bit
+		TAY					; Y = index to hitbox data
+		SEP #$20				;\
+		LDA !SpriteXLo,x : STA $E0		; |
+		LDA !SpriteXHi,x : STA $E1		; | get sprite coords
+		LDA !SpriteYHi,x : XBA			; |
+		LDA !SpriteYLo,x			; |
+		REP #$20				;/
+		CLC : ADC $0002,y			;\ Y coord
+		STA $E2					;/
+
+		LDA $0004,y : STA $E6-1			; H (hi byte of size in $EE)
+		AND #$00FF : STA $E4			; W, 16-bit
+
+		LDA $0000,y				; read X offset
+		SEP #$10				; index 8-bit
+		LDY !SpriteDir,x : BNE ..left		; check direction
+		..right					;\
+		EOR #$FFFF				; |
+		CLC : ADC #$0010			; | facing left adjustment
+		SEC : SBC $E4				; |
+		..left					;/
+		CLC : ADC $E0				;\ add sprite Xpos and store
+		STA $E0					;/
+		SEP #$20				;\ clear hi byte of height
+		STZ $E7					;/
 		RTL					; return
 
 ; debug: display hitbox
 ;	PEI ($04)
 ;	PEI ($06)
 ;	PEI ($0A)
-;	LDA $3320,x : PHA
-;	LDA #$01 : STA $3320,x
+;	LDA !SpriteDir,x : PHA
+;	LDA #$01 : STA !SpriteDir,x
 ;	LDA !SpriteXLo,x : PHA
 ;	LDA !SpriteXHi,x : PHA
 ;	LDA !SpriteYLo,x : PHA
@@ -1163,7 +1448,7 @@ SPRITE_OFF_SCREEN:
 ;	PLA : STA !SpriteYLo,x
 ;	PLA : STA !SpriteXHi,x
 ;	PLA : STA !SpriteXLo,x
-;	PLA : STA $3320,x
+;	PLA : STA !SpriteDir,x
 ;	REP #$20
 ;	PLA : STA $0A
 ;	PLA : STA $06
@@ -1174,7 +1459,7 @@ SPRITE_OFF_SCREEN:
 
 
 
-; input: void
+; input: hitbox loaded in E8 slot
 ; output: void
 	OutputShieldBox:
 		PHB
@@ -1186,12 +1471,12 @@ SPRITE_OFF_SCREEN:
 		ADC $00
 		ASL A
 		TAY
-		LDA $04 : STA.w !ShieldXLo,y
-		LDA $0A : STA.w !ShieldXHi,y
-		LDA $05 : STA.w !ShieldYLo,y
-		LDA $0B : STA.w !ShieldYHi,y
-		LDA $06 : STA.w !ShieldW,y
-		LDA $07 : STA.w !ShieldH,y
+		LDA $E8 : STA.w !ShieldXLo,y
+		LDA $E9 : STA.w !ShieldXHi,y
+		LDA $EA : STA.w !ShieldYLo,y
+		LDA $EB : STA.w !ShieldYHi,y
+		LDA $EC : STA.w !ShieldW,y
+		LDA $EE : STA.w !ShieldH,y
 		INC.w !ShieldExists
 		PLB
 		RTL
@@ -1200,7 +1485,7 @@ SPRITE_OFF_SCREEN:
 
 ; input:
 ;	A = collision points to interact with (01 = right, 02 = left, 04 = down, 08 = up, 10 = center/crush point)
-;	sprite clipping loaded in $04 slot ($04-$07, $0A-$0B)
+;	sprite clipping loaded in $E8 slot
 ; output: void
 	OutputPlatformBox:
 		PHX					; push X
@@ -1218,18 +1503,14 @@ SPRITE_OFF_SCREEN:
 		XBA : STA !PlatformDeltaY,x		;/
 		TYA : STA !PlatformSprite,x		; platform sprite index
 		LDA $00 : STA !PlatformStatus,x		; set status
-		LDA $04 : STA !PlatformXLeft+0,x	; left border lo
-		CLC : ADC $06				;\ right border lo
-		STA !PlatformXRight+0,x			;/
-		LDA $0A : STA !PlatformXLeft+1,x	; left border hi
-		ADC #$00				;\ right border hi
-		STA !PlatformXRight+1,x			;/
-		LDA $05 : STA !PlatformYUp+0,x		; up border lo
-		CLC : ADC $07				;\ down border lo
-		STA !PlatformYDown+0,x			;/
-		LDA $0B : STA !PlatformYUp+1,x		; up border hi
-		ADC #$00				;\ down border hi
-		STA !PlatformYDown+1,x			;/
+		REP #$20				;\
+		LDA $E8 : STA !PlatformXLeft,x		; |
+		CLC : ADC $EC				; |
+		STA !PlatformXRight,x			; | platform edges
+		LDA $EA : STA !PlatformYUp,x		; |
+		CLC : ADC $EE				; |
+		STA !PlatformYDown,x			; |
+		SEP #$20				;/
 		LDA #$01 : STA !PlatformExists		; mark that players have to check for platform contact next frame
 		PLX					; restore X
 		RTL					; return
@@ -1242,13 +1523,13 @@ SPRITE_OFF_SCREEN:
 ;	$01 = Ydisp (8-bit signed)
 ;	$02 = Xspeed
 ;	$03 = Yspeed
-; output: Y = sprite number of spawned sprite (if Y = 0xFF, a sprite could not be spawned)
+; output: Y = sprite index of spawned sprite (if Y = 0xFF, a sprite could not be spawned)
 	SpawnSprite:
 		STA $0E
 		STZ $0F
 		BCC $02 : INC $0F
 		LDY #$0F
-	.Loop	LDA $3230,y : BEQ .Spawn
+	.Loop	LDA !SpriteStatus,y : BEQ .Spawn
 		DEY : BPL .Loop
 		RTL
 
@@ -1257,42 +1538,32 @@ SPRITE_OFF_SCREEN:
 		LDA $00
 		STZ $02
 		BPL $02 : DEC $02
-		CLC : ADC $3220,x
-		STA $3220,y
+		CLC : ADC !SpriteXLo,x
+		STA !SpriteXLo,y
 		LDA $02
-		ADC $3250,x
-		STA $3250,y
+		ADC !SpriteXHi,x
+		STA !SpriteXHi,y
 		LDA $01
 		STZ $02
 		BPL $02 : DEC $02
-		CLC : ADC $3210,x
-		STA $3210,y
+		CLC : ADC !SpriteYLo,x
+		STA !SpriteYLo,y
 		LDA $02
-		ADC $3240,x
-		STA $3240,y
+		ADC !SpriteYHi,x
+		STA !SpriteYHi,y
+		LDA $0E : STA !SpriteNum,y
+		LDA #$01 : STA !SpriteStatus,y
 		LDA $0F : BNE .Custom
-
 		.Vanilla
-		LDA $0E : STA $3200,y
-		LDA #$01 : STA $3230,y
-		PHY
-		PHX
-		TYX
-		STZ !ExtraBits,x
-		STZ !NewSpriteNum,x
-		JSL !ResetSprite		; reset sprite tables
-		BRA .Finish
-
+		LDA #$00 : BRA .Finish
 		.Custom
-		LDA $0E : STA !NewSpriteNum,y
-		LDA #$08 : STA !ExtraBits,y
-		LDA #$01 : STA $3230,y
+		LDA #$08
+		.Finish
+		STA !ExtraBits,y
 		PHY
 		PHX
 		TYX
 		JSL !ResetSprite		; reset sprite tables
-
-		.Finish
 		PLX
 		PLY
 		PLA : STA.w !SpriteXSpeed,y
@@ -1340,16 +1611,16 @@ SPRITE_OFF_SCREEN:
 
 		LDA $02 : STA !Ex_XSpeed,y		; X speed
 		LDA $03 : STA !Ex_YSpeed,y		; Y speed
-		LDA $3220,x				;\
+		LDA !SpriteXLo,x			;\
 		CLC : ADC $00				; |
 		STA !Ex_XLo,y				; | Xpos
-		LDA $3250,x				; |
+		LDA !SpriteXHi,x			; |
 		ADC $01					; |
 		STA !Ex_XHi,y				;/
-		LDA $3210,x				;\
+		LDA !SpriteYLo,x			;\
 		CLC : ADC $04				; |
 		STA !Ex_YLo,y				; | Ypos
-		LDA $3240,x				; |
+		LDA !SpriteYHi,x			; |
 		ADC $05					; |
 		STA !Ex_YHi,y				;/
 
@@ -1367,40 +1638,88 @@ SPRITE_OFF_SCREEN:
 
 
 		.Ex_Data1
-		db $00,$00				; coin
-		db $00,$00,$1F,$00,$0F,$1F,$0F,$0F	;\ minor
-		db $00,$00,$0F,$00			;/
-		db $00,$00,$00,$00,$00,$00,$00,$00	;\
-		db $00,$00,$00,$00,$00,$00,$00,$00	; | extended
-		db $00,$00,$00				;/
-		db $00,$00,$08,$13,$00,$00		; smoke
-		db $00,$00,$00				; quake
-		db $00,$00,$00				; shooter
-		db $00,$00,$00,$00			; custom
+		db $00					; 00 empty
+		db $00					; 01 mario fireball
+		db $00					; 02 luigi fireball
+		db $00					; 03 RESERVED
+		db $00					; 04 RESERVED
+		db $00					; 05 RESERVED
+		db $00					; 06 RESERVED
+		db $00					; 07 RESERVED
+		db $00					; 08 malleable extended sprite
+		db $00					; 09 hammer
+		db $00					; 0A bone
+		db $00					; 0B baseball
+		db $00					; 0C small fireball
+		db $00					; 0D big fireball
+		db $00					; 0E tiny flame
+		db $00					; 0F volcano lotus fire
+		db $10					; 10 glitter
+		db $00					; 11 question block
+		db $00					; 12 brick
+		db $00					; 13 block hitbox
+		db $00					; 14 coin from block
+		db $00					; 15 shooter
+		db $00					; 16 torpedo arm
+		db $00					; 17 dizzy star
+		db $00					; 18 explosion
+		db $00					; 19 turn to particle
 
 		.Ex_Data2
-		db $00,$00				; coin
-		db $00,$00,$1F,$00,$0F,$1F,$0F,$0F	;\ minor
-		db $00,$00,$0F,$00			;/
-		db $00,$00,$00,$00,$00,$00,$00,$00	;\
-		db $00,$00,$00,$00,$00,$00,$00,$00	; | extended
-		db $00,$00,$00				;/
-		db $00,$00,$08,$13,$00,$00		; smoke
-		db $00,$00,$00				; quake
-		db $00,$00,$00				; shooter
-		db $00,$00,$00,$00			; custom
+		db $00					; 00 empty
+		db $00					; 01 mario fireball
+		db $00					; 02 luigi fireball
+		db $00					; 03 RESERVED
+		db $00					; 04 RESERVED
+		db $00					; 05 RESERVED
+		db $00					; 06 RESERVED
+		db $00					; 07 RESERVED
+		db $00					; 08 malleable extended sprite
+		db $00					; 09 hammer
+		db $00					; 0A bone
+		db $00					; 0B baseball
+		db $00					; 0C small fireball
+		db $00					; 0D big fireball
+		db $00					; 0E tiny flame
+		db $00					; 0F volcano lotus fire
+		db $00					; 10 glitter
+		db $00					; 11 question block
+		db $00					; 12 brick
+		db $00					; 13 block hitbox
+		db $00					; 14 coin from block
+		db $00					; 15 shooter
+		db $00					; 16 torpedo arm
+		db $00					; 17 dizzy star
+		db $00					; 18 explosion
+		db $00					; 19 turn to particle
 
 		.Ex_Data3
-		db $00,$00				; coin
-		db $00,$00,$1F,$00,$0F,$1F,$0F,$0F	;\ minor
-		db $00,$00,$0F,$00			;/
-		db $00,$00,$00,$00,$00,$00,$00,$00	;\
-		db $00,$00,$00,$00,$00,$00,$00,$00	; | extended
-		db $00,$00,$00				;/
-		db $00,$00,$08,$13,$00,$00		; smoke
-		db $00,$00,$00				; quake
-		db $00,$00,$00				; shooter
-		db $00,$00,$00,$00			; custom
+		db $00					; 00 empty
+		db $00					; 01 mario fireball
+		db $00					; 02 luigi fireball
+		db $00					; 03 RESERVED
+		db $00					; 04 RESERVED
+		db $00					; 05 RESERVED
+		db $00					; 06 RESERVED
+		db $00					; 07 RESERVED
+		db $00					; 08 malleable extended sprite
+		db $00					; 09 hammer
+		db $00					; 0A bone
+		db $00					; 0B baseball
+		db $00					; 0C small fireball
+		db $00					; 0D big fireball
+		db $00					; 0E tiny flame
+		db $00					; 0F volcano lotus fire
+		db $00					; 10 glitter
+		db $00					; 11 question block
+		db $00					; 12 brick
+		db $00					; 13 block hitbox
+		db $00					; 14 coin from block
+		db $00					; 15 shooter
+		db $00					; 16 torpedo arm
+		db $00					; 17 dizzy star
+		db $00					; 18 explosion
+		db $00					; 19 turn to particle
 
 
 
@@ -1416,9 +1735,14 @@ SPRITE_OFF_SCREEN:
 ;	$05 = Y acc
 ;	$06 = tile
 ;	$07 = prop (S-PPCCCT, S is size bit, PP is mirrored to top 2 bits for layer prio + OAM prio)
+;
+;	_NoSpeed version zeroes $02-$03
+;	_NoAcc version zeroes $04-$05
+;	_NoSpeedAcc version zeroes $02-$05
+;
 ; output:
 ;	$0E = index to spawned particle
-;	mirrors the PP bits of $07 to the upper 2 bits, but the rest of $00-$07 remain
+;	mirrors the PP bits of $07 to the upper 2 bits, but the rest of $00-$07 remain unchanged
 	SpawnParticle:
 		PHX						; push X
 		STA $0F						; $0F = particle num
@@ -1449,7 +1773,7 @@ SPRITE_OFF_SCREEN:
 		STA $0B						;/
 
 		PHB						; push bank
-		JSL !GetParticleIndex				; X = 16-bit particle index, bank = $41
+		JSL GetParticleIndex				; X = 16-bit particle index, bank = $41
 		LDA $0A : STA !Particle_XLo,x			;\ particle coords
 		LDA $08 : STA !Particle_YLo,x			;/
 		LDA $06 : STA !Particle_Tile,x			; particle tile/prop
@@ -1470,7 +1794,6 @@ SPRITE_OFF_SCREEN:
 		LDA $05 : STA !Particle_YAcc,x			;/
 		LDA $0E : STA !Particle_Layer,x			; particle size bit
 		LDA $0F : STA !Particle_Type,x			; particle num
-		JSL !InitParticle : STA !Particle_Timer,x	; set timer
 
 		STX $0E						; save this index
 		PLB						; restore bank
@@ -1478,6 +1801,22 @@ SPRITE_OFF_SCREEN:
 		PLX						; restore X
 		RTL						; return
 
+	.NoSpeed
+		STZ $02
+		STZ $03
+		JMP SpawnParticle
+
+	.NoAcc
+		STZ $04
+		STZ $05
+		JMP SpawnParticle
+
+	.NoSpeedAcc
+		STZ $02
+		STZ $03
+		STZ $04
+		STZ $05
+		JMP SpawnParticle
 
 
 ; input:
@@ -1494,18 +1833,18 @@ SPRITE_OFF_SCREEN:
 		STZ $0F						;/
 		LDA !SpriteTile,x : STA $06			; $06 = sprite tile offset lo
 		LDA !SpriteProp,x				;\
-		ORA $33C0,x					; | $07 = ----CCCT
+		ORA !SpriteOAMProp,x				; | $07 = ----CCCT
 		STA $07						;/
-		LDA $3220,x : STA $08				;\ $08 = 16-bit Xpos
-		LDA $3250,x : STA $09				;/
-		LDA $3210,x : STA $0A				;\ $0A = 16-bit Ypos
-		LDA $3240,x : STA $0B				;/
+		LDA !SpriteXLo,x : STA $08			;\ $08 = 16-bit Xpos
+		LDA !SpriteXHi,x : STA $09			;/
+		LDA !SpriteYLo,x : STA $0A			;\ $0A = 16-bit Ypos
+		LDA !SpriteYHi,x : STA $0B			;/
 		STZ $0C						;\
-		LDA $3320,x					; | $0C = flip bits for X coord
+		LDA !SpriteDir,x				; | $0C = flip bits for X coord
 		BNE $02 : DEC $0C				;/
 
 		PHB						; push bank
-		JSL !GetParticleIndex				; get particle index
+		JSL GetParticleIndex				; get particle index
 
 		LDA $00 : STA !Particle_XAcc,x			; particle X acc
 		STA !Particle_YAcc-1,x				; write particle Y acc with hi byte
@@ -1579,6 +1918,7 @@ SPRITE_OFF_SCREEN:
 		RTL						; return
 
 
+
 ; input: void
 ; output: void
 	BigPuff:
@@ -1616,6 +1956,23 @@ SPRITE_OFF_SCREEN:
 		; extended cosine area
 		db $10,$0C
 
+
+
+; input: void
+; output: void
+	FrictionSmoke:
+		TXA							;\
+		EOR $14							; | spawn every 4 frames, order depends on sprite index
+		AND #$03 : BNE .Return					;/
+		LDA #$08						;\
+		BIT !SpriteXSpeed,x					; | x offset
+		BPL $02 : LDA #$00					; |
+		STA $00							;/
+		LDA #$0C : STA $01					; y offset
+		LDA #$F0 : STA $07					; prio
+		LDA.b #!prt_smoke8x8 : JSL SpawnParticle_NoSpeedAcc	; spawn 8x8 smoke puff
+		.Return							;\ return
+		RTL							;/
 
 
 
@@ -1656,16 +2013,16 @@ SPRITE_OFF_SCREEN:
 		BRA .P1					;/
 	.P2	LDY #$80
 		.Main
-	.P1	LDA $3220,x				;\
+	.P1	LDA !SpriteXLo,x			;\
 		SEC : SBC !P2XPosLo-$80,y		; |
 		STA $00					; | DX
-		LDA $3250,x				; |
+		LDA !SpriteXHi,x			; |
 		SBC !P2XPosHi-$80,y			; |
 		STA $01					;/
-		LDA $3210,x				;\
+		LDA !SpriteYLo,x			;\
 		SEC : SBC !P2YPosLo-$80,y		; |
 		STA $02					; | DY
-		LDA $3240,x				; |
+		LDA !SpriteYHi,x			; |
 		SBC !P2YPosHi-$80,y			; |
 		STA $03					;/
 		BRA AIM_SHOT_Main			; go to main code
@@ -1749,7 +2106,7 @@ SPRITE_OFF_SCREEN:
 
 .Shared		LDA $2306
 		CLC : ADC $0A
-		JSL !GetRoot		; (handles 17-bit numbers)
+		JSL GetRoot		; (handles 17-bit numbers)
 		ROR A
 		LSR #7
 		STA $0A			; > $0A = distance
@@ -1802,21 +2159,11 @@ SPRITE_OFF_SCREEN:
 ; output: void
 	StompSound:
 		PHX
-		LDA !P2Character-$80,y : BEQ .Mario
-
-		.PCE
 		LDA !P2KillCount-$80,y
 		CMP #$07 : BCS .Shared
 		INC A
 		STA !P2KillCount-$80,y
 		DEC A
-		BRA .Shared
-
-		.Mario
-		LDA $7697
-		CMP #$07 : BCS .Shared
-		INC $7697
-
 		.Shared
 		TAX
 		CPX #$06
@@ -1833,13 +2180,12 @@ SPRITE_OFF_SCREEN:
 ; output: void
 	SPRITE_STAR:
 		PHX
-		LDA #$02 : STA $3230,x
+		LDA #$02 : STA !SpriteStatus,x
 		LDA #$E8 : STA !SpriteYSpeed,x
 		LDA !P2XSpeed-$80,y : STA !SpriteXSpeed,x
 		LDA $78D2
 		CMP #$08 : BCS +
-		INC A
-		STA $78D2
+		INC A : STA $78D2
 	+	TAX
 		CPX #$06
 		BCC $02 : LDX #$06
@@ -1850,21 +2196,45 @@ SPRITE_OFF_SCREEN:
 
 
 
-; input:
-;	sprite hurtbox in $04 slot ($04-$07, $0A-$0B)
+
+; input: void
 ; output:
-;	C clear = no contact
-;	C set = contact
+;	C clear = no contact, C set = contact
+;	runs P2Attack, FireballContact_Destroy and ThrownItemContact
+; notes:
+;	most sprites can simply call this routine to handle most of its attack interaction
+;	generally, this should be called followed by "damage sprite" code, and then P2Standard
+	InteractAttacks:
+		JSL P2Attack : BCS .Return
+		JSL FireballContact_Destroy : BCS .Return
+		JMP ThrownItemContact
+		.Return
+		RTL
+
+
+
+; input: sprite hurtbox in $E8 slot
+; output:
+;	C clear = no contact, C set = contact
 ;	Y = index to hitbox (00, 0F, 80 or 8F)
-;
-; normal version will not apply knockback
-; _Knockback version will apply knockback
+; notes:
+;	normal version will not apply knockback
+;	_Knockback version will apply knockback
 	P2Attack:
 		.Main
+		LDA !SpriteIFrames,x : BNE .NoContact
+		BIT !SpriteTweaker4,x : BMI .NoContact			; check for melee attack immunity
+
 		LDY #$00
-	;	LDA !SpriteDisP1,x : BNE .Player2
 
 	.CheckHitbox
+		LDA !SpriteTweaker3,x					;\
+		AND #$01 : BNE ..process				; |
+		TXA							; | unless "process interaction every frame" is set...
+		EOR $14							; | ...only process when sprite index = frame counter (lowest bits only)
+		LSR A : BCS .NoContact					;/
+
+		..process
 		LDA !P2Hitbox1Shield-$80,y : BNE .Hitbox2		; no hit if a shield blocks the way
 		LDA !P2Hitbox1W-$80,y
 		ORA !P2Hitbox1H-$80,y
@@ -1874,14 +2244,26 @@ SPRITE_OFF_SCREEN:
 	..07	LDA !P2Hitbox1IndexMem1-$80,y : BRA ..index
 	..8F	LDA !P2Hitbox1IndexMem2-$80,y
 	..index	AND.l .ContactBits,x : BNE .Hitbox2
-		LDA !P2Hitbox1XLo-$80,y : STA $00
-		LDA !P2Hitbox1XHi-$80,y : STA $08
-		LDA !P2Hitbox1YLo-$80,y : STA $01
-		LDA !P2Hitbox1YHi-$80,y : STA $09
-		LDA !P2Hitbox1W-$80,y : STA $02
-		LDA !P2Hitbox1H-$80,y : STA $03
-		JSL !Contact16
-		BCS .YesContact
+
+		REP #$20						;\
+		LDA !P2Hitbox1W-$80,y					; |
+		AND #$00FF						; |
+		CLC : ADC !P2Hitbox1X-$80,y				; |
+		CMP $E8 : BCC ..nocontact				; |
+		LDA $E8							; |
+		CLC : ADC $EC						; |
+		CMP !P2Hitbox1X-$80,y : BCC ..nocontact			; |
+		LDA !P2Hitbox1H-$80,y					; |
+		AND #$00FF						; | check for hitbox contact
+		CLC : ADC !P2Hitbox1Y-$80,y				; |
+		CMP $EA : BCC ..nocontact				; |
+		LDA $EA							; |
+		CLC : ADC $EE						; |
+		CMP !P2Hitbox1Y-$80,y					; |
+		SEP #$20						; |
+		BCS .YesContact						; |
+		..nocontact						; |
+		SEP #$20						;/
 
 		.Hitbox2
 		CPY #$81 : BCS .NoContact				; if we just checked player 2 hitbox 2, return with no contact
@@ -1890,55 +2272,73 @@ SPRITE_OFF_SCREEN:
 		CLC : ADC.b #!P2Hitbox2Offset				; | add hitbox 2 offset, then loop
 		TAY : BRA .CheckHitbox					;/
 
-	.Player2
-		LDA !MultiPlayer : BEQ .NoContact			; in singleplayer, return with no contact instead of checking player 2
-	;	LDA !SpriteDisP2,x : BNE .NoContact
-		LDY #$80 : BRA .CheckHitbox				; get ready to check player 2 hitbox 1, then loop
-
 		.NoContact
 		CLC
 		RTL
 
-	.YesContact
-		LDA !P2Hitbox1Hitstun-$80,y : STA $0C
+	.Player2
+		LDA !MultiPlayer : BEQ .NoContact			; in singleplayer, return with no contact instead of checking player 2
+		LDY #$80 : BRA .CheckHitbox				; get ready to check player 2 hitbox 1, then loop
 
+	.YesContact
+		LDA !P2Hitbox1X-$80,y : STA $E0				;\
+		LDA !P2Hitbox1Y-$80,y : STA $E2				; | copy hitbox here
+		LDA !P2Hitbox1W-$80,y : STA $E4				; | (only done on a hit)
+		LDA !P2Hitbox1H-$80,y : STA $E6				;/
+		LDA !P2Hitbox1Hitstun-$80,y : STA $0C
 		PHY
 		CPX #$08
 		BCC $01 : INY
 		LDA.l .ContactBits,x
 		ORA !P2Hitbox1IndexMem1-$80,y
 		STA !P2Hitbox1IndexMem1-$80,y
+		LDA !SpriteTweaker3,x					;\ skip gfx if ghost mode
+		AND #$08 : BNE ..nocombo				;/ (this needs 2 checks)
 		LDA $0C
 		CMP #$06 : BCC ..small
 		TYA
-		AND #$80
-		TAY
+		AND #$80 : TAY
 		LDA !P2Character-$80,y
 		CMP #$02 : BNE ..gosmall
 		JSL P2BigContactGFX
-		BRA .NotLeeway
+		BRA ..nocombo
 		..small
 		TYA
-		AND #$80
-		TAY
+		AND #$80 : TAY
 		..gosmall
 		JSL P2HitContactGFX
 		LDA !P2Character-$80,y
-		CMP #$03 : BNE .NotLeeway
+		CMP #$03 : BNE ..nocombo
 		LDA #$08 : STA !P2ComboDash-$80,y
-		.NotLeeway
+		..nocombo
 		PLY
 		LDA !P2Hitbox1DisTimer-$80,y : JSL DontInteract		; interaction disable
+
+		.Knockback						;\
+		LDA !SpriteTweaker4,x					; |
+		AND #$02 : BNE ..done					; | apply knockback unless sprite is immune to it
+		LDA !P2Hitbox1XSpeed-$80,y : STA !SpriteXSpeed,x	; |
+		LDA !P2Hitbox1YSpeed-$80,y : STA !SpriteYSpeed,x	; |
+		..done							;/
+
+		.Hitstrun
+		LDA !SpriteTweaker3,x					;\ check for ghost mode (ignores hitstun, gfx and sfx)
+		AND #$08 : BNE .Return					;/
 		LDA !P2Hitbox1Hitstun-$80,y : STA $9D			; hitstun
+
+		.SFX1							;\
+		LDA !P2Hitbox1SFX1-$80,y : BEQ ..done			; | SFX 1
+		STA !SPC1						; |
+		..done							;/
+
+		.SFX2							;\
+		LDA !P2Hitbox1SFX2-$80,y : BEQ ..done			; | SFX 2
+		STA !SPC4						; |
+		..done							;/
+
 		.Return
-		LDA !P2Hitbox1SFX1-$80,y : BEQ .SkipSFX1		;\
-		STA !SPC1						; | SFX 1
-		.SkipSFX1						;/
-		LDA !P2Hitbox1SFX2-$80,y : BEQ .SkipSFX2		;\
-		STA !SPC4						; | SFX 2
-		.SkipSFX2						;/
-		SEC
-		RTL
+		SEC							; mark contact
+		RTL							; return
 
 
 		.ContactBits
@@ -1951,73 +2351,64 @@ SPRITE_OFF_SCREEN:
 ; input: Y = player index
 ; output: void
 	P2ContactGFX:
-		PHX
-		%Ex_Index_X()				; X = fusion index
-		LDA #$02+!SmokeOffset : STA !Ex_Num,x	; > fusion type
-		LDA !P2XPosLo-$80,y : STA !Ex_XLo,x	;\ Xpos
-		LDA !P2XPosHi-$80,y : STA !Ex_XHi,x	;/
-		LDA !P2YPosLo-$80,y			;\
-		CLC : ADC #$08				; |
-		STA !Ex_YLo,x				; | Ypos
-		LDA !P2YPosHi-$80,y			; |
-		ADC #$00				; |
-		STA !Ex_YHi,x				;/
-		LDA #$08 : STA !Ex_Data1,x		; > smoke timer
-		PLX
-		RTL
+		PHX							; preserve X
+		PHB							; |
+		JSL GetParticleIndex					; | get particle index
+		LDA.w #!prt_contact : STA !Particle_Type,x		; > particle num
+		LDA #$F000 : STA !Particle_Tile,x			; > particle prop
+		PLB							; |
+		LDA !P2XPosLo-$80,y : STA !41_Particle_X,x		;\
+		LDA !P2YPosLo-$80,y					; | coords
+		CLC : ADC #$0008					; |
+		STA !41_Particle_Y,x					;/
+		LDA #$0000						;\
+		STA !41_Particle_XSpeed,x				; |
+		STA !41_Particle_YSpeed,x				; | clear speed + acc
+		STA !41_Particle_XAcc,x					; |
+		STA !41_Particle_YAcc,x					;/
+		SEP #$30						; all regs 8-bit
+		PLX							; restore X
+		RTL							; return
 
 
 
 ; input: clipping boxes loaded in both slots
 ; output: void
 	P2HitContactGFX:
-		PHX
-		%Ex_Index_X()
-		LDA #$02+!SmokeOffset : STA !Ex_Num,x
-
-		LDA $02
-		CLC : ADC $06
-		ROR A
-		STA $0C
-		STZ $0D
-
-		LDA $00 : STA $0E
-		LDA $08 : STA $0F
-
-		LDA $0A : XBA
-		LDA $04
-		REP #$20
-		CLC : ADC $0C
-		CLC : ADC $0E
-		LSR A
-		SEC : SBC #$0008
-		SEP #$20
-		STA !Ex_XLo,x
-		XBA : STA !Ex_XHi,x
-
-		LDA $03
-		CLC : ADC $07
-		ROR A
-		STA $0C
-		STZ $0D
-
-		LDA $01 : STA $0E
-		LDA $09 : STA $0F
-
-		LDA $0B : XBA
-		LDA $05
-		REP #$20
-		CLC : ADC $0C
-		CLC : ADC $0E
-		LSR A
-		SEC : SBC #$0008
-		SEP #$20
-		STA !Ex_YLo,x
-		XBA : STA !Ex_YHi,x
-
-		LDA #$08 : STA !Ex_Data1,x
-		PLX
-		RTL
+		PHX							; preserve X
+		PHB							;
+		JSL GetParticleIndex					; get particle index
+		PLB							;
+		CLC							;\
+		LDA !P2Hitbox1W-$80,y					; |
+		AND #$00FF						; |
+		ADC $EC							; |
+		LSR A							; | x position
+		SBC #$0008						; |
+		ADC !P2Hitbox1X-$80,y					; |
+		ADC $E8							; |
+		LSR A							; |
+		STA !41_Particle_X,x					;/
+		CLC							;\
+		LDA !P2Hitbox1H-$80,y					; |
+		AND #$00FF						; |
+		ADC $EE							; |
+		LSR A							; | y position
+		SBC #$0008						; |
+		ADC !P2Hitbox1Y-$80,y					; |
+		ADC $EA							; |
+		LSR A							; |
+		STA !41_Particle_Y,x					;/
+		LDA #$0000						;\
+		STA !41_Particle_XSpeed,x				; |
+		STA !41_Particle_YSpeed,x				; | clear speed + acc
+		STA !41_Particle_XAcc,x					; |
+		STA !41_Particle_YAcc,x					;/
+		LDA #$F000 : STA !41_Particle_Tile,x			; prop
+		LDA.w #!prt_contact : STA !41_Particle_Type,x		; particle num
+		SEP #$30						; all regs 8-bit
+		PLX							; restore X
+		RTL							; return
 
 
 ; input:
@@ -2025,14 +2416,10 @@ SPRITE_OFF_SCREEN:
 ;	clipping boxes loaded in both slots
 ; output: void
 	P2BigContactGFX:
-		REP #$10
 		PHX
 		PHB
-		PHY
-		JSL !GetParticleIndex
-		LDA #$0007 : STA !Particle_Timer,x
+		JSL GetParticleIndex
 		LDA.w #!prt_contactbig : STA !Particle_Type,x
-		PLY
 		TYA
 		BEQ $03 : LDA #$0220				; set lowest c bit as well as add 0x20 to tile num
 		CLC : ADC.w #!P2Tile7-$20
@@ -2041,23 +2428,15 @@ SPRITE_OFF_SCREEN:
 		SEP #$20
 		LDA #$02 : STA !Particle_Layer,x
 		PLB
-		LDA $00 : STA $0C
-		LDA $08 : STA $0D
-		LDA $01 : STA $0E
-		LDA $09 : STA $0F
-		LDA $0A : XBA
-		LDA $04
+
 		REP #$20
-		CLC : ADC $0C
+		LDA $E8
+		CLC : ADC !P2Hitbox1X-$80,y
 		LSR A
 		STA $0C
-		SEP #$20
-		LDA $0B : XBA
-		LDA $05
-		REP #$20
-		CLC : ADC $0E
+		LDA $EA
+		CLC : ADC !P2Hitbox1Y-$80,y
 		LSR A
-		STA $0E
 		SEC : SBC #$000E
 		STA !41_Particle_YLo,x
 		LDA $0C : STA !41_Particle_XLo,x
@@ -2065,23 +2444,43 @@ SPRITE_OFF_SCREEN:
 		AND #$00FF
 		BEQ $03 : LDA #$0040
 		STA !41_Particle_XSpeed,x
-		PLX
 		SEP #$30
+		PLX
+		RTL
+
+
+
+; input: A = player contact bits
+; output: void
+	BouncePlayers:
+		.P1
+		LSR A : BCC ..done
+		PHA
+		JSL P2Bounce
+		PLA
+		..done
+
+		.P2
+		LSR A : BCS P2Bounce
 		RTL
 
 
 ; input: Y = player index
 ; output: void
 	P2Bounce:
+		LDA #$00 : STA !P2SpecialUsed-$80,y		; refund special
 		PHX						; preserve X
-		LDX !P2Character-$80,y : BNE .Shared		; X = player character
+		LDX !P2Character-$80,y : BNE .ReadInput		; X = player character
 		.Mario						;\
-		LDA !P2FireCharge-$80,y : BNE .Shared		; |
+		LDA !P2FireCharge-$80,y : BNE .ReadInput	; |
 		INC A						; | mario fire flash code
 		STA !P2FireCharge-$80,y				; |
 		LDA #!MarioFlashPal : STA !P2FlashPal-$80,y	;/
-		.Shared						;\ refund special
-		LDA #$00 : STA !P2SpecialUsed-$80,y		;/
+		CPY #$80 : BEQ ..p2				;\
+	..p1	LDA $6DA4 : BMI .ReadInput_B			; | mario can bounce with A button
+		BRA .ReadInput					; |
+	..p2	LDA $6DA5 : BMI .ReadInput_B			;/
+		.ReadInput
 		CPY #$80 : BEQ ..p2				;\
 	..p1	LDA $6DA2 : BRA ..read				; |
 	..p2	LDA $6DA3					; | read input
@@ -2092,9 +2491,6 @@ SPRITE_OFF_SCREEN:
 		CMP !P2YSpeed-$80,y : BCS ..end			;\ otherwise only bounce if player would gain speed from it
 	..set	STA !P2YSpeed-$80,y				;/
 	..end	JSL P2ContactGFX				; include contact GFX
-		LDA !P2Character-$80,y : BNE .Return		;\
-		LDA !P2YSpeed-$80,y : STA !MarioYSpeed		; | final mario check: write to his Y speed reg
-		.Return						;/
 		PLX						; restore X
 		RTL						; return
 
@@ -2104,7 +2500,70 @@ SPRITE_OFF_SCREEN:
 		db $A8,$A8,$A8,$A8,$00,$00	; Mario, Luigi, Kadaal, Leeway, Alter, Peach (when holding B)
 
 
-; input: A = number of frames to not interact, Y = player index
+; input: A = contact bits
+; output: void
+; sets kick timer for players
+	P2Kick:
+		PHX
+		.P1
+		LSR A : BCC .P2
+		LDX !P2Direction-$80
+		LDY !P2Character-$80
+		CPY #$02 : BCS .Kick
+		LDY #$08 : STY !P2KickTimer-$80
+		BRA .Kick
+
+		.P2
+		LSR A : BCC .ReturnX
+		LDX !P2Direction
+		LDY !P2Character
+		CPY #$02 : BCS .Kick
+		LDY #$08 : STY !P2KickTimer
+		.Kick
+		LDA.l .KickSpeed,x
+		PLX
+		STA !SpriteXSpeed,x
+		LDA #$E8 : STA !SpriteYSpeed,x
+
+		.Return
+		RTL
+
+		.ReturnX
+		PLX
+		RTL
+
+		.KickSpeed
+		db $E0,$20
+
+
+
+
+
+; input: A = number of frames to not interact
+; output: void
+	IFrames:
+		STA !SpriteDisP1,x
+		STA !SpriteDisP2,x
+		STA !SpriteIFrames,x
+
+		.SetIndexMem
+		LDA.l CORE_BITS,x
+		CPX #$08 : BCS ..8F
+	..07	TSB !P2Hitbox1IndexMem1-$80
+		TSB !P2Hitbox2IndexMem1-$80
+		TSB !P2Hitbox1IndexMem1
+		TSB !P2Hitbox2IndexMem1
+		RTL
+	..8F	TSB !P2Hitbox1IndexMem2-$80
+		TSB !P2Hitbox2IndexMem2-$80
+		TSB !P2Hitbox1IndexMem2
+		TSB !P2Hitbox2IndexMem2
+		RTL
+
+
+; input:
+;	A = number of frames to not interact
+;	Y = player index
 ; output: void
 	DontInteract:
 		CPY #$80 : BCS .P2
@@ -2123,24 +2582,35 @@ SPRITE_OFF_SCREEN:
 		RTL
 
 
-; input: sprite clipping loaded in $04 slot ($04-$07, $0A-$0B)
+; input:
+;	sprite clipping loaded in $E8 slot
+;	!dmg = potential contact damage
 ; output:
 ;	C = clear if no contact, C = set if contact
-;	A = !BigRAM+$7E (instant BEQ will trigger if sprite was not hurt, instant BNE will trigger if it was)
-;	!BigRAM+$7E = how many times sprite was hurt
-;	!BigRAM+$7F = player contact bits (0 = no, 1 = p1, 2 = p2, 3 = both)
+;	A = $00 (instant BEQ will trigger if sprite was not hurt, instant BNE will trigger if it was)
+;	$00 = how many times sprite was hurt
+;	$01 = player contact bits (0 = no, 1 = p1, 2 = p2, 3 = both)
 ; note: if "can be jumped on" = 0, crush state will not crush the sprite
 	P2Standard:
-		STZ !BigRAM+$7E
-		STZ !BigRAM+$7F
-		SEC : JSL !PlayerClipping : BCC .NoContact
-		STA !BigRAM+$7F
+		STZ $00
+		STZ $01
+		BIT !SpriteTweaker2,x : BMI .Return
+
+		LDA !SpriteTweaker3,x				;\
+		AND #$01 : BNE .Process				; |
+		TXA						; | unless "process interaction every frame" is set...
+		EOR $14						; | ...only process when sprite index = frame counter (lowest bits only)
+		LSR A : BCS .Return				;/
+
+		.Process
+		JSL PlayerContact : BCC .NoContact
+		STA $01
 		LSR A : BCC .P2
 
 		.P1
 		PHA
 		LDA !SpriteDisP1,x : BEQ ..int
-		LDA #$01 : TRB !BigRAM+$7F
+		LDA #$01 : TRB $01
 		BRA ..next
 	..int	LDY #$00 : JSR .PlayerContact
 	..next	PLA
@@ -2148,78 +2618,84 @@ SPRITE_OFF_SCREEN:
 		.P2
 		LSR A : BCC .Return
 		LDA !SpriteDisP2,x : BEQ ..int
-		LDA #$02 : TRB !BigRAM+$7F
+		LDA #$02 : TRB $01
 		BRA .Return
 	..int	LDY #$80 : JSR .PlayerContact
 
 		.Return
 		CLC
-		LDA !BigRAM+$7F : BEQ .NoContact
+		LDA $01 : BEQ .NoContact
 		SEC
 
 		.NoContact
 		STZ !dmg				; make sure damage value is always used up (AFTER both damage calls)
-		LDA !BigRAM+$7E
+		LDA $00
 		RTL
 
 
 	.PlayerContact
-		LDA !StarTimer : BEQ .NoStar
+		LDA !StarTimer : BEQ .NoStar		; check for star
+		LDA !SpriteTweaker4,x			;\ check for star immunity
+		AND #$10 : BNE .NoStar			;/
 		JSL SPRITE_STAR
-		INC !BigRAM+$7E
+		INC $00
 		RTS
 		.NoStar
 
-		LDA $0B : XBA
-		LDA $05
 		REP #$20
+		LDA $EA
 		SEC : SBC #$0004
 		CMP !P2YPosLo-$80,y
 		SEP #$20	
 		BCC .HurtPlayer
-		LDA #$08 : JSL DontInteract		; interaction disable when stomping sprite: 8 frames
-		INC !BigRAM+$7E
-		JSL P2Bounce
+
+		BIT !SpriteTweaker3,x : BVC .Bounce	;\ spiky surface: hurt player unless they have the crush property
+		LDA !P2Crush-$80,y : BEQ .HurtPlayer	;/
 
 		.Bounce
-		LDA !SpriteTweaker1,x
-		AND #$10 : BEQ .NoCrush
-		LDA !P2Crush-$80,y : BNE .Crush
-		.NoCrush
+		LDA #$08 : JSL DontInteract		; interaction disable when stomping sprite: 8 frames
+		INC $00
+		JSL P2Bounce
+	;	LDA !SpriteTweaker4,x			;\
+	;	AND #$04 : BNE .NoCrush			; | check for crush property unless sprite is immune to it
+	;	LDA !P2Crush-$80,y : BNE .Crush		;/
+	;	.NoCrush
 		JSL StompSound
-		RTS
 
-		.Crush
-		LDA #$04 : STA $3230,x
-		LDA #$1B : STA $32D0,x
-		JSL $07FC3B
-		LDA #$08 : STA !SPC1
+		LDA !SpriteYSpeed,x : BPL ..done	;\ reset sprite Y speed if it's moving up when stomped
+		STZ !SpriteYSpeed,x			;/
+		..done
+
 		RTS
 
 		.HurtPlayer
+		LDA !dmg : BMI ..done			; negative damage = can't hurt player
 		LDA #$0F : JSL DontInteract		; interaction disable when hurt by sprite: 15 frames
 		LDA !dmg : PHA				;\
 		TYA					; |
 		CLC : ROL #2				; | hurt (make sure damage value is applied to both players!)
 		INC A					; |
-		JSL !HurtPlayers			; |
+		JSL HurtPlayers				; |
 		PLA : STA !dmg				;/
+		..done
 		RTS
 
+
+
 ; input:
-;	sprite clipping loaded in $04 slot ($04-$07, $0A-$0B)
-;	A = horizontal knockback for players
+;	sprite clipping loaded in $E8 slot
+;	A = horizontal knockback for players (_NoKnockback version skips this and just has no knockback instead)
 ; output:
 ;	hurts players that touch the sprite, but only if interaction timers are clear
 ;	C = clear if no contact, C = set if contact
-	P2Hurt:
-		LDY $3320,x : BEQ .Right
+	SpriteAttack:
+		LDY !SpriteDir,x : BEQ .Right
 		.Left
 		EOR #$FF : INC A
 		.Right
-		STA !BigRAM+$7E
-		SEC : JSL !PlayerClipping : BCC .NoContact
-		STA !BigRAM+$7F
+		STA $00
+		JSL PlayerContact : BCC .NoContact
+		STA $01
 		LSR A : BCC .P2
 
 		.P1
@@ -2229,12 +2705,12 @@ SPRITE_OFF_SCREEN:
 		BNE ..nope
 		LDA !SpriteDisP1,x : BEQ ..int
 		..nope
-		LDA #$01 : TRB !BigRAM+$7F
+		LDA #$01 : TRB $01
 		BRA ..next
 		..int
 		LDY #$00
 		LDA #$0F : JSL DontInteract
-		LDA !BigRAM+$7E : STA !P2VectorX-$80
+		LDA $00 : STA !P2VectorX-$80
 		LDA #$0F : STA !P2VectorTimeX-$80
 		..next
 		PLA
@@ -2246,22 +2722,24 @@ SPRITE_OFF_SCREEN:
 		BNE ..nope
 		LDA !SpriteDisP2,x : BEQ ..int
 		..nope
-		LDA #$02 : TRB !BigRAM+$7F
+		LDA #$02 : TRB $01
 		BRA .Return
 		..int
 		LDY #$80
 		LDA #$0F : JSL DontInteract
-		LDA !BigRAM+$7E : STA !P2VectorX
+		LDA $00 : STA !P2VectorX
 		LDA #$0F : STA !P2VectorTimeX
 
 		.Return
-		LDA !BigRAM+$7F : BEQ .NoContact
-		JSL !HurtPlayers
+		LDA $01 : BEQ .NoContact
+		JSL HurtPlayers
 
 		.NoContact
 		STZ !dmg				; make sure damage value is always used up
 		RTL
 
+	.NoKnockback
+		LDA #$00 : BRA .Right
 
 
 ;==========================;
@@ -2274,10 +2752,10 @@ SPRITE_OFF_SCREEN:
 ; input: void
 ; output: void
 		.COORDS
-		LDA $3220,x : STA $3220,y	;\
-		LDA $3250,x : STA $3250,y	; | copy coordinates
-		LDA $3210,x : STA $3210,y	; |
-		LDA $3240,x : STA $3240,y	;/
+		LDA !SpriteXLo,x : STA !SpriteXLo,y	;\
+		LDA !SpriteXHi,x : STA !SpriteXHi,y	; | copy coordinates
+		LDA !SpriteYLo,x : STA !SpriteYLo,y	; |
+		LDA !SpriteYHi,x : STA !SpriteYHi,y	;/
 		RTL
 
 ; input:
@@ -2285,18 +2763,18 @@ SPRITE_OFF_SCREEN:
 ;	$02 = 16-bit Y offset
 ; output: void
 		.ADD
-		LDA $3220,x			;\
-		CLC : ADC $00			; |
-		STA $3220,y			; |
-		LDA $3250,x			; |
-		ADC $01				; |
-		STA $3250,y			; | copy coordinates and add $00-$03
-		LDA $3210,x			; |
-		CLC : ADC $02			; |
-		STA $3210,y			; |
-		LDA $3240,x			; |
-		ADC $03				; |
-		STA $3240,y			;/
+		LDA !SpriteXLo,x			;\
+		CLC : ADC $00				; |
+		STA !SpriteXLo,y			; |
+		LDA !SpriteXHi,x			; |
+		ADC $01					; |
+		STA !SpriteXHi,y			; | copy coordinates and add $00-$03
+		LDA !SpriteYLo,x			; |
+		CLC : ADC $02				; |
+		STA !SpriteYLo,y			; |
+		LDA !SpriteYHi,x			; |
+		ADC $03					; |
+		STA !SpriteYHi,y			;/
 		RTL
 
 
@@ -2304,38 +2782,98 @@ SPRITE_OFF_SCREEN:
 ; input: void
 ; output: void
 	SpriteContactGFX:
-		PHX
-		LDA $3220,x
-		CLC : ADC $3220,y
+		PHY
+		LDA !SpriteXLo,y
+		SEC : SBC !SpriteXLo,x
 		STA $00
-		LDA $3250,x
-		ADC $3250,y
+		LDA !SpriteYLo,y
+		SEC : SBC !SpriteYLo,x
 		STA $01
-		LDA $3210,x
-		CLC : ADC $3210,y
-		STA $02
-		LDA $3240,x
-		ADC $3240,y
-		STA $03
 		REP #$20
-		LSR $00
-		LSR $02
+		STZ $02
+		STZ $04
+		STZ $06
 		SEP #$20
-
-		%Ex_Index_X()
-		LDA #$02+!SmokeOffset : STA !Ex_Num,x	; smoke type
-		LDA $00 : STA !Ex_XLo,x			; smoke X
-		LDA $02 : STA !Ex_YLo,x			; smoke Y
-		LDA #$08 : STA !Ex_Data1,x		; smoke timer
-		PLX
+		LDA.b #!prt_contact : JSL SpawnParticle	
+		PLY
 		RTL
 
 
 
-;=================;
-; TILEMAP LOADERS ;
-;=================;
-;
+;===============;
+; TILEMAP CODES ;
+;===============;
+
+; input:
+;	A = 16-bit pointer to ANIM table (4-byte wide)
+;	X = sprite index
+; output:
+;	updates !SpriteAnimIndex and !SpriteAnimTimer
+;	Y = index to ANIM table (after update)
+;	$04 = 16-bit tilemap pointer
+	UPDATE_ANIM:
+		STA $00					; $00 = pointer to ANIM+0 (tilemap pointer)
+		INC #2 : STA $02			; $02 = pointer to ANIM+2 (timer value)
+		INC A : STA $04				; $04 = pointer to ANIM+3 (next anim)
+		SEP #$20				;\
+		LDA !SpriteAnimIndex,x			; |
+		ASL #2 : TAY				; | get index, increment timer, compare to threshold time
+		LDA !SpriteAnimTimer,x			; |
+		INC A					; |
+		CMP ($02),y : BNE .SameAnim		;/
+
+		.NewAnim				;\
+		LDA ($04),y : STA !SpriteAnimIndex,x	; | update anim, get new index, reset timer
+		ASL #2 : TAY				; |
+		LDA #$00				;/
+
+		.SameAnim				;\ write timer
+		STA !SpriteAnimTimer,x			;/
+		REP #$20				;\
+		LDA ($00),y : STA $04			; | output tilemap pointer
+		SEP #$20				;/
+		RTL					; return
+
+
+; input:
+;	A = 16-bit pointer to ANIM table (6-byte wide)
+;	X = sprite index
+; output:
+;	updates !SpriteAnimIndex and !SpriteAnimTimer
+;	$04 = 16-bit tilemap pointer
+;	$0C = 16-bit square dynamo pointer
+; notes:
+;	the sprite itself is responsible for determining when a new frame is loaded
+;	this is because this routine is just one way that the animation can change
+;	if the sprite changes animations due to performing an action, this routine would not know
+;	because of this, the sprite has to handle that itself
+	UPDATE_ANIM_SQUARE:
+		STA $00					; $00 = pointer to ANIM+0 (tilemap pointer)
+		INC #2 : STA $0C			; $0C = pointer to ANIM+2 (dynamo pointer)
+		INC #2 : STA $02			; $02 = pointer to ANIM+4 (timer value)
+		INC A : STA $04				; $04 = pointer to ANIM+5 (next anim)
+		SEP #$20				;\
+		LDA !SpriteAnimIndex,x			; |
+		ASL #2 : TAY				; | get index, increment timer, compare to threshold time
+		LDA !SpriteAnimTimer,x			; |
+		INC A					; |
+		CMP ($02),y : BNE .SameAnim		;/
+
+		.NewAnim				;\
+		LDA ($04),y : STA !SpriteAnimIndex,x	; | update anim, get new index, reset timer
+		ASL #2 : TAY				; |
+		LDA #$00				;/
+
+		.SameAnim				;\ write timer
+		STA !SpriteAnimTimer,x			;/
+		REP #$20				;\
+		LDA ($00),y : STA $04			; | output tilemap pointer and square dynamo pointer
+		LDA ($0C),y : STA $0C			; |
+		SEP #$20				;/
+		RTL					; return
+
+
+
 ; these routines can be used by sprites to load an OAM tilemap
 ;
 ; global tilemap format:
@@ -2353,14 +2891,14 @@ SPRITE_OFF_SCREEN:
 ;
 ;	for LOAD_TILEMAP_COLOR, prop is this:
 ;		YXPP--ST
-;		CCC bits come from sprite's $33C0,x
+;		CCC bits come from sprite's !SpriteOAMProp,x
 ;
 ;	for LOAD_PSUEDO_DYNAMIC (yes i spelled that wrong when i was a teenager, get over it), prop has the following format:
 ;		YXPP--Sc
-;		C bits are unused since those are instead read from $33C0,x
+;		C bits are unused since those are instead read from !SpriteOAMProp,x
 ;		T bit is unused since it is read from !SpriteProp,x
 ;		S is size bit
-;		c if set, --S bits are used as CCC and lower P bit is used as S, $33C0,x is ignored
+;		c if set, --S bits are used as CCC and lower P bit is used as S, !SpriteOAMProp,x is ignored
 ;	tile num is added to !SpriteTile,x and stored to OAM
 ;
 ;	for LOAD_DYNAMIC, prop has the same format as for LOAD_PSUEDO_DYNAMIC, but the T bit comes from the dynamic tile's allocation, loaded by SETUP_SQUARE
@@ -2368,6 +2906,13 @@ SPRITE_OFF_SCREEN:
 ;
 ;	for carryable items, DRAW_CARRIED can be used to detect whether _p1 or _p2 should be used based on the carrying player's animation
 ;
+;	DRAW_SIMPLE: draws tile 0 (PSUEDO_DYNAMIC) as a 16x16 tile with no offset, prio 1 (sprite) and prio 2 (PP bits)
+;		_0	draws tile 0
+;		_2	draws tile 2
+;		_4	draws tile 4
+;		_6	draws tile 6
+;
+
 
 ; recode all to use this memory format:
 ;
@@ -2386,13 +2931,14 @@ SPRITE_OFF_SCREEN:
 
 
 
+
 ; input:
 ;	X = sprite index
 ;	$04 = pointer to tilemap
 ; output: void
 	LOAD_TILEMAP:
-	.p1	LDA #$02 : BRA .Shared			; default to prio 1 if not specified
 	.p2	LDA #$04 : BRA .Shared
+	.p1	LDA #$02 : BRA .Shared			; default to prio 1 if not specified
 	.p0	LDA #$00 : BRA .Shared
 	.p3	LDA #$06
 
@@ -2401,30 +2947,28 @@ SPRITE_OFF_SCREEN:
 		STZ !ActiveOAM+1
 		PHP
 		SEP #$30
-		LDA $3220,x : STA $00
-		LDA $3250,x : STA $01
-		LDA $3240,x : XBA
-		LDA $3210,x
+		LDA !SpriteXLo,x : STA $00
+		LDA !SpriteXHi,x : STA $01
+		LDA !SpriteYHi,x : XBA
+		LDA !SpriteYLo,x
 		REP #$30
 		SEC : SBC $1C
 		STA $02
 		LDA $00
 		SEC : SBC $1A
 		STA $00
-	;	LDA ($04) : STA $08
-	LDA ($04)
+		LDA ($04)
 		INC $04
 		INC $04
-	CLC : ADC $04
-	STA $08
+		CLC : ADC $04
+		STA $08
 		STZ $0C
 		STZ $0E
-		LDA $3320,x
+		LDA !SpriteDir,x
 		LSR A : BCS +
 		LDA #$0040 : STA $0C
 		DEC $0E
-	+	;LDY #$0000
-	LDY $04
+	+	LDY $04
 		LDX !ActiveOAM
 		LDA !OAMindex_offset,x
 		CLC : ADC #$0200
@@ -2449,19 +2993,16 @@ SPRITE_OFF_SCREEN:
 		RTS
 
 		.WithinBounds
-	;	LDA ($04),y				;\
-	LDA $0000,y
+		LDA $0000,y				;\
 		AND #$20				; |
 		STA $0A					; | YXP-CCCT
-	;	LDA ($04),y				; | (lower P bit is size bit)
-	LDA $0000,y
+		LDA $0000,y				; | (lower P bit is size bit)
 		AND.b #$10^$FF				; |
 		ORA $0A					; |
 		EOR $0C					; |
 		STA !OAM_p0+$003,x			;/
 
-	;	LDA ($04),y				;\
-	LDA $0000,y
+		LDA $0000,y				;\
 		AND #$10				; | tile size bit
 		BEQ $02 : LDA #$02			; |
 		STA $0A					;/
@@ -2471,8 +3012,7 @@ SPRITE_OFF_SCREEN:
 		REP #$20
 		INY
 
-	;	LDA ($04),y
-	LDA $0000,y
+		LDA $0000,y
 		AND #$00FF
 		CMP #$0080
 		BMI $03 : ORA #$FF00
@@ -2497,8 +3037,7 @@ SPRITE_OFF_SCREEN:
 		.GoodX
 		STA $06					; temp tile xpos
 		INY
-	;	LDA ($04),y
-	LDA $0000,y
+		LDA $0000,y
 		AND #$00FF
 		CMP #$0080
 		BMI $03 : ORA #$FF00
@@ -2511,8 +3050,7 @@ SPRITE_OFF_SCREEN:
 		STA !OAM_p0+$001,x
 		LDA $06 : STA !OAM_p0+$000,x
 		INY
-	;	LDA ($04),y : STA !OAM_p0+$002,x
-	LDA $0000,y : STA !OAM_p0+$002,x
+		LDA $0000,y : STA !OAM_p0+$002,x
 		INY
 		PHX
 		REP #$20
@@ -2547,32 +3085,30 @@ SPRITE_OFF_SCREEN:
 		STZ !ActiveOAM+1
 		PHP
 		SEP #$30
-		LDA $3220,x : STA $00
-		LDA $3250,x : STA $01
-		LDA $3240,x : XBA
-		LDA $3210,x
+		LDA !SpriteXLo,x : STA $00
+		LDA !SpriteXHi,x : STA $01
+		LDA !SpriteYHi,x : XBA
+		LDA !SpriteYLo,x
 		REP #$30
 		SEC : SBC $1C
 		STA $02
 		LDA $00
 		SEC : SBC $1A
 		STA $00
-	;	LDA ($04) : STA $08
-	LDA ($04)
+		LDA ($04)
 		INC $04
 		INC $04
-	CLC : ADC $04
-	STA $08
+		CLC : ADC $04
+		STA $08
 		STZ $0C
 		STZ $0E
-		LDA $3320,x
+		LDA !SpriteDir,x
 		LSR A : BCS +
 		LDA #$0040 : STA $0C
 		DEC $0E
-	+	LDA $33C0,x
+	+	LDA !SpriteOAMProp,x
 		AND #$000E : TSB $0C
-	;	LDY #$0000
-	LDY $04
+		LDY $04
 		LDX !ActiveOAM
 		LDA !OAMindex_offset,x
 		CLC : ADC #$0200
@@ -2597,13 +3133,11 @@ SPRITE_OFF_SCREEN:
 		RTS
 
 		.WithinBounds
-	;	LDA ($04),y				;\
-	LDA $0000,y
+		LDA $0000,y				;\
 		AND #$02 : STA $0A			; |
 		STZ $0B					;\ n flag trigger (for size bit)
 		BEQ $02 : DEC $0B			;/
-	;	LDA ($04),y				; | YXPP--ST
-	LDA $0000,y
+		LDA $0000,y				; | YXPP--ST
 		AND.b #$0E^$FF				; |
 		EOR $0C					; |
 		STA !OAM_p0+$003,x			;/
@@ -2611,9 +3145,7 @@ SPRITE_OFF_SCREEN:
 
 		REP #$20
 		INY
-
-	;	LDA ($04),y
-	LDA $0000,y
+		LDA $0000,y
 		AND #$00FF
 		CMP #$0080
 		BMI $03 : ORA #$FF00
@@ -2638,8 +3170,7 @@ SPRITE_OFF_SCREEN:
 		.GoodX
 		STA $06					; temp tile xpos
 		INY
-	;	LDA ($04),y
-	LDA $0000,y
+		LDA $0000,y
 		AND #$00FF
 		CMP #$0080
 		BMI $03 : ORA #$FF00
@@ -2652,8 +3183,7 @@ SPRITE_OFF_SCREEN:
 		STA !OAM_p0+$001,x
 		LDA $06 : STA !OAM_p0+$000,x
 		INY
-	;	LDA ($04),y : STA !OAM_p0+$002,x
-	LDA $0000,y : STA !OAM_p0+$002,x
+		LDA $0000,y : STA !OAM_p0+$002,x
 		INY
 		PHX
 		REP #$20
@@ -2674,7 +3204,7 @@ SPRITE_OFF_SCREEN:
 
 
 	SETUP_CARRIED:
-		LDA $3230,x
+		LDA !SpriteStatus,x
 		CMP #$0B : BNE .HandleDir_nodir
 		TXA
 		INC A
@@ -2692,13 +3222,12 @@ SPRITE_OFF_SCREEN:
 		LDA #$01
 		RTL
 		..mario
-		LDA !MarioImg
-		CMP #$0F : BEQ ..prio2
-		CMP #$45 : BEQ ..prio2
+		LDA !P2Anim-$80,y
+		CMP #!Mar_Turn : BEQ ..prio2
 		..prio1
 
 		.HandleDir
-		LDA $3230,x
+		LDA !SpriteStatus,x
 		CMP #$0B : BNE ..nodir
 		LDA !P2Character-$80,y
 		CMP #$02 : BEQ ..reverse
@@ -2708,19 +3237,54 @@ SPRITE_OFF_SCREEN:
 		..reverse
 		LDA !P2Direction-$80,y
 		..setdir
-		STA $3320,x
+		STA !SpriteDir,x
 		..nodir
 		LDA #$00
 		RTL
 
 
 	DRAW_CARRIED:
-		BEQ .Prio1
+		BEQ .Prio2
+		.Prio3
+		JMP LOAD_PSUEDO_DYNAMIC_p3
 		.Prio2
 		JMP LOAD_PSUEDO_DYNAMIC_p2
-		.Prio1
-		JMP LOAD_PSUEDO_DYNAMIC_p1
 
+
+; input: void
+; output: void
+	DRAW_SIMPLE:
+	.0	LDY #$00 : BRA .Main
+	.2	LDY #$02 : BRA .Main
+	.4	LDY #$04 : BRA .Main
+	.6	LDY #$06
+		.Main
+		PHB : PHK : PLB
+		REP #$20
+		LDA.w .Ptr,y : STA $04
+		SEP #$20
+		JSL LOAD_PSUEDO_DYNAMIC
+		PLB
+		RTL
+
+		.Ptr
+		dw .TM0
+		dw .TM2
+		dw .TM4
+		dw .TM6
+
+		.TM0
+		dw $0004
+		db $22,$00,$00,$00
+		.TM2
+		dw $0004
+		db $22,$00,$00,$02
+		.TM4
+		dw $0004
+		db $22,$00,$00,$04
+		.TM6
+		dw $0004
+		db $22,$00,$00,$06
 
 
 ; input:
@@ -2728,8 +3292,8 @@ SPRITE_OFF_SCREEN:
 ;	$04 = pointer to tilemap
 ; output: void
 	LOAD_PSUEDO_DYNAMIC:
-	.p1	LDA #$02 : BRA .Shared			; default to prio 1 if not specified
 	.p2	LDA #$04 : BRA .Shared
+	.p1	LDA #$02 : BRA .Shared			; default to prio 1 if not specified
 	.p0	LDA #$00 : BRA .Shared
 	.p3	LDA #$06
 
@@ -2738,33 +3302,31 @@ SPRITE_OFF_SCREEN:
 		STZ !ActiveOAM+1
 		PHP
 		SEP #$30
-		LDA $3220,x : STA $00
-		LDA $3250,x : STA $01
-		LDA $3240,x : XBA
-		LDA $3210,x
+		LDA !SpriteXLo,x : STA $00
+		LDA !SpriteXHi,x : STA $01
+		LDA !SpriteYHi,x : XBA
+		LDA !SpriteYLo,x
 		REP #$30
 		SEC : SBC $1C
 		STA $02
 		LDA $00
 		SEC : SBC $1A
 		STA $00
-	;	LDA ($04) : STA $08
-	LDA ($04)
+		LDA ($04)
 		INC $04
 		INC $04
-	CLC : ADC $04
-	STA $08
+		CLC : ADC $04
+		STA $08
 		LDA !SpriteProp,x			;\
-		ORA $33C0,x				; | prop base
+		ORA !SpriteOAMProp,x			; | prop base
 		AND #$00FF				; |
 		STA $0C					;/
 		STZ $0E
-		LDA $3320,x
+		LDA !SpriteDir,x
 		LSR A : BCS +
 		LDA #$0040 : TSB $0C
 		DEC $0E
-	+	;LDY #$0000
-	LDY $04
+	+	LDY $04
 		LDA !SpriteTile,x			;\
 		AND #$00FF				; | dynamic tile
 		STA !BigRAM+$7C				;/
@@ -2792,8 +3354,7 @@ SPRITE_OFF_SCREEN:
 		RTS
 
 		.WithinBounds
-	;	LDA ($04),y				; read prop byte
-	LDA $0000,y
+		LDA $0000,y				; read prop byte
 		BIT #$01 : BEQ ..dynamicprop		; check which format this is
 
 		..staticprop				;\
@@ -2817,8 +3378,7 @@ SPRITE_OFF_SCREEN:
 		EOR $0C					; | get dynamic prop
 		ORA $64					; |
 		STA !OAM_p0+$003,x			;/
-	;	LDA ($04),y				;\ S bit
-	LDA $0000,y
+		LDA $0000,y				;\ S bit
 		AND #$02				;/
 
 		..propdone
@@ -2829,8 +3389,7 @@ SPRITE_OFF_SCREEN:
 		REP #$20
 		INY
 
-	;	LDA ($04),y
-	LDA $0000,y
+		LDA $0000,y
 		AND #$00FF
 		CMP #$0080
 		BMI $03 : ORA #$FF00
@@ -2855,8 +3414,7 @@ SPRITE_OFF_SCREEN:
 		.GoodX
 		STA $06					; $06 = 16-bit tile xpos
 		INY
-	;	LDA ($04),y
-	LDA $0000,y
+		LDA $0000,y
 		AND #$00FF
 		CMP #$0080
 		BMI $03 : ORA #$FF00
@@ -2870,8 +3428,7 @@ SPRITE_OFF_SCREEN:
 		STA !OAM_p0+$001,x
 		LDA $06 : STA !OAM_p0+$000,x		; lo byte of tile xpos
 		INY
-	;	LDA ($04),y
-	LDA $0000,y
+		LDA $0000,y
 		CLC : ADC !BigRAM+$7C
 		STA !OAM_p0+$002,x
 		INY
@@ -2898,8 +3455,8 @@ SPRITE_OFF_SCREEN:
 ;	$04 = pointer to tilemap
 ; output: void
 	LOAD_DYNAMIC:
-	.p1	LDA #$02 : BRA .Shared			; default to prio 1 if not specified
 	.p2	LDA #$04 : BRA .Shared
+	.p1	LDA #$02 : BRA .Shared			; default to prio 1 if not specified
 	.p0	LDA #$00 : BRA .Shared
 	.p3	LDA #$06
 
@@ -2908,34 +3465,30 @@ SPRITE_OFF_SCREEN:
 		STZ !ActiveOAM+1
 		PHP
 		SEP #$30
-		LDA $3220,x : STA $00
-		LDA $3250,x : STA $01
-		LDA $3240,x : XBA
-		LDA $3210,x
+		LDA !SpriteXLo,x : STA $00
+		LDA !SpriteXHi,x : STA $01
+		LDA !SpriteYHi,x : XBA
+		LDA !SpriteYLo,x
 		REP #$30
 		SEC : SBC $1C
 		STA $02
 		LDA $00
 		SEC : SBC $1A
 		STA $00
-	;	LDA ($04) : STA $08
-	LDA ($04)
+		LDA ($04)
 		INC $04
 		INC $04
-	CLC : ADC $04
-	STA $08
-		LDA $33C0,x
+		CLC : ADC $04
+		STA $08
+		LDA !SpriteOAMProp,x
 		AND #$000E
 		STA $0C
 		STZ $0E
-		LDA $3320,x
+		LDA !SpriteDir,x
 		LSR A : BCS +
 		LDA #$0040 : TSB $0C
 		DEC $0E
-	+	;LDA !GFX_Dynamic-1
-		;BPL $02 : INC $0C
-	;	LDY #$0000
-	LDY $04
+	+	LDY $04
 		LDX !ActiveOAM
 		LDA !OAMindex_offset,x
 		CLC : ADC #$0200
@@ -2960,8 +3513,7 @@ SPRITE_OFF_SCREEN:
 		RTS
 
 		.WithinBounds
-	;	LDA ($04),y				; read prop byte
-	LDA $0000,y
+		LDA $0000,y				; read prop byte
 		BIT #$01 : BEQ ..dynamicprop		; check which format this is
 
 		..staticprop				;\
@@ -2985,8 +3537,7 @@ SPRITE_OFF_SCREEN:
 		EOR $0C					; | get dynamic prop
 		ORA $64					; |
 		STA !OAM_p0+$003,x			;/
-	;	LDA ($04),y				;\ S bit
-	LDA $0000,y
+		LDA $0000,y				;\ S bit
 		AND #$02				;/
 
 		..propdone
@@ -2996,8 +3547,7 @@ SPRITE_OFF_SCREEN:
 
 		REP #$20
 		INY
-	;	LDA ($04),y
-	LDA $0000,y
+		LDA $0000,y
 		AND #$00FF
 		CMP #$0080
 		BMI $03 : ORA #$FF00
@@ -3022,8 +3572,7 @@ SPRITE_OFF_SCREEN:
 		.GoodX
 		STA $06					; tile xpos
 		INY
-	;	LDA ($04),y
-	LDA $0000,y
+		LDA $0000,y
 		AND #$00FF
 		CMP #$0080
 		BMI $03 : ORA #$FF00
@@ -3038,8 +3587,7 @@ SPRITE_OFF_SCREEN:
 		LDA $06 : STA !OAM_p0+$000,x
 		INY
 		PHX
-	;	LDA ($04),y : TAX
-	LDA $0000,y : TAX				; X hi has to be clear
+		LDA $0000,y : TAX			; X hi has to be clear
 		LDA !DynamicProp,x : STA $06		; -------T flip for dynamic tile
 		LDA $F0,x
 		PLX
@@ -3188,7 +3736,7 @@ SPRITE_OFF_SCREEN:
 ;	$0C = pointer to square dynamo
 ; output: void
 	LOAD_SQUARE_DYNAMO:
-		JSL !GetFileAddress					; get file address
+		JSL GetFileAddress					; get file address
 
 		.Main							;\
 		PHX							; |
@@ -3249,7 +3797,7 @@ SPRITE_OFF_SCREEN:
 		.GetFile						;\
 		PHY							; |
 		AND #$7FFF : TAY					; | get file address
-		JSL !GetFileAddress					; |
+		JSL GetFileAddress					; |
 		PLY							; |
 		JMP .Loop						;/
 

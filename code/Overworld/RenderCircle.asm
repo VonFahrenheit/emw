@@ -31,22 +31,54 @@
 ;	- i need a better way of detecting whether a line is valid or not
 
 
-
-
-	!CircleTable	= $3200
-	!CircleTable1	= !CircleTable+$000
-	!CircleTable2	= !CircleTable+$200
-
-
-
 	RenderCircle:
+		PHB : PHK : PLB
+		PHP
+		REP #$30
+
+		; calculate radius^1.5
+		.InitCalc
+		LDA !CircleForceCenter
+		STZ !CircleForceCenter
+		BEQ ..calccenter
+		LDA #$0080 : STA !CircleCenterX
+		LDA #$0078 : STA !CircleCenterY
+		BRA ..process
+		..calccenter
+		LDA !P1MapX
+		CLC : ADC #$0008
+		SEC : SBC $1A
+		BPL $03 : LDA #$0000
+		CMP #$00FF
+		BCC $03 : LDA #$00FF
+		STA !CircleCenterX
+		LDA !P1MapY
+		CLC : ADC #$0008
+		SEC : SBC $1C
+		BPL $03 : LDA #$0000
+		CMP #$00FF
+		BCC $03 : LDA #$00FF
+		STA !CircleCenterY
+		..process
+		LDA !CircleRadius
+		BPL $03 : LDA #$0000
+		CMP #$0030
+		BCC $03 : LDA #$0030
+		STA !CircleRadius
+		STZ $2250
+		STA $2251
+		CLC : JSL GetRoot : STA $2253
+		NOP : BRA $00
+		LDA $2307 : STA !CircleRadiusInternal
+		..done
+
 		LDA !CircleTimer
-		AND #$00001
+		AND #$0001
 		BEQ $03 : LDA.w #(!CircleTable2)-(!CircleTable1)
 		STA $0C
 		CLC : ADC #$00E0*2
 		STA $0E
-		LDA !CircleRadius : BEQ .FillAll
+		LDA !CircleRadiusInternal : BEQ .FillAll
 		CMP #$0169 : BCC .Render
 
 		.FullClear
@@ -57,7 +89,9 @@
 		STA !CircleTable,x
 		INX #2
 		CPX $0E : BCC ..loop
-		RTS
+		PLP
+		PLB
+		RTL
 
 		.FillAll
 		LDA #$00FF : BRA .FullClear_write
@@ -70,7 +104,7 @@
 		.FillTop
 		LDX $0C
 		LDA !CircleCenterY
-		SEC : SBC !CircleRadius
+		SEC : SBC !CircleRadiusInternal
 		BEQ ..done
 		BMI ..done
 		CMP #$00E0
@@ -89,13 +123,13 @@
 		.CalculateCircle
 		STZ $02					;\
 		LDA !CircleCenterY			; |
-		SEC : SBC !CircleRadius			; | X = index to circle part
+		SEC : SBC !CircleRadiusInternal		; | X = index to circle part
 		BPL $05 : STA $02 : LDA #$0000		; | $02 = offset to starting y
 		ASL A					; |
 		ADC $0C					; |
 		TAX					;/
 		STZ $2250				; prepare multiplication
-		LDA !CircleRadius			;\
+		LDA !CircleRadiusInternal		;\
 		STA $2251				; |
 		STA $2253				; |
 		EOR #$FFFF : INC A			; | calculate 32-bit r^2 and -r (added to starting y offset)
@@ -116,7 +150,7 @@
 		CLC					; |
 		BEQ $01 : SEC				; |
 		LDA $06					; | $06 = 17-bit sqrt(r^2 - y^2)
-		JSL !GetRoot				; | (17-bit input number, don't mind n flag)
+		JSL GetRoot				; | (17-bit input number, don't mind n flag)
 		XBA					; |
 		PHP					; |
 		AND #$00FF				; |
@@ -138,7 +172,7 @@
 		STA !CircleTable+1,x			;/
 		INX #2					; index+2
 		LDA $02					;\ done if entire circle is rendered
-		CMP !CircleRadius : BEQ ..done		;/
+		CMP !CircleRadiusInternal : BEQ ..done	;/
 		INC $02					; y+1
 		CPX $0E : BCC ..loop			;\ otherwise, render until bottom of screen is reached
 		..done					;/
@@ -151,13 +185,15 @@
 		INX #2					; |
 		CPX $0E : BCC ..loop			;/
 
-
 		.Return
-		RTS
+		PLP
+		PLB
+		RTL
 
 
 
 		.Cutscene
+		REP #$30
 		LDA !Cutscene
 		AND #$00FF : BEQ ..dec
 
@@ -189,7 +225,7 @@
 		DEY #2 : BPL -
 
 		..return
-		RTS
+		RTL
 
 
 

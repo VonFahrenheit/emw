@@ -30,45 +30,44 @@ levelinit2:
 
 
 		INC !SideExit
-		REP #$20			; > A 16 bit
-		LDA.w #$3200			;\
-		STA $4330			; |
-		LDA.w #HDMA_BlueSky_Green	; | Set up green colour math on channel 3
-		STA !HDMA3source		; |
-		LDY.b #HDMA_BlueSky_Green>>16	; |
-		STY $4334			;/
-		LDA.w #$3200			;\
-		STA $4340			; |
-		LDA.w #HDMA_BlueSky_Blue	; | Set up blue colour math on channel 4
-		STA !HDMA4source		; |
-		STY $4344			;/
-		LDA.w #$7C00			;\
-		STA $400000+!MsgVRAM1		; | Portrait VRAM location
-		LDA.w #$7C80			; |
-		STA $400000+!MsgVRAM2		;/
-		SEP #$20			; > A 8 bit
-		LDA #$18			;\ Enable HDMA on channels 3 and 4
-		TSB $6D9F			;/
-		RTL				; > Return
+		REP #$20					; > A 16 bit
+		LDA.w #!SpriteNum				;\
+		STA $4330					; |
+		LDA.w #HDMA_BlueSky_Green			; | set up green colour math on channel 3
+		STA !HDMA3source				; |
+		LDY.b #HDMA_BlueSky_Green>>16			; |
+		STY $4334					;/
+		LDA.w #!SpriteNum				;\
+		STA $4340					; |
+		LDA.w #HDMA_BlueSky_Blue			; | set up blue colour math on channel 4
+		STA !HDMA4source				; |
+		STY $4344					;/
+		LDA.w #$7C00					;\
+		STA $400000+!MsgVRAM1				; | portrait VRAM location
+		LDA.w #$7C80					; |
+		STA $400000+!MsgVRAM2				;/
+		SEP #$20					; > A 8 bit
+		LDA #$18					;\ enable HDMA on channels 3 and 4
+		TSB !HDMA					;/
+		RTL						; > return
 
 
 
 levelinit3:
-		LDA #$06 : STA !PalsetStart		; exclude palette F
-		LDA #$E1 : STA !MsgPal			; portrait: palettes E and F
-		LDA #$03*4 : STA !TextPal		;
+		LDA #$06 : STA !PalsetStart				; exclude palette F
+		LDA #$E1 : STA !MsgPal					; portrait: palettes E and F
+		LDA #$03*4 : STA !TextPal				;
 
-		REP #$30				;\
-		LDA.w #.Dynamo : STA $0C		; |
-		LDY.w #!File_Sprite_BG_1		; | upload castle (sprite BG)
-		CLC : JSL !UpdateFromFile		; |
-		SEP #$30				;/
+		REP #$30						;\
+		LDA.w #.Dynamo : STA $0C				; | upload castle (sprite BG)
+		LDY.w #!File_Sprite_BG_1 : JSL UpdateGFX_NoOffset	; |
+		SEP #$30						;/
 
 		LDA #$02 : STA !BG2ModeH
 		LDA #$04 : STA !BG2ModeV
 		%GradientRGB(HDMA_BlueSky)
-		LDA #$B9 : STA !Level+4			; > base offset
-		LDA #$07 : STA !Level+5			; > size of chunks
+		LDA #$B9 : STA !Level+4					; > base offset
+		LDA #$07 : STA !Level+5					; > size of chunks
 		JML levelinit5_HDMA
 
 
@@ -114,7 +113,7 @@ levelinit4:
 		LDA #$1C00 : STA !CameraBoxR
 		LDA #$00E0 : STA !CameraBoxD
 		SEP #$20
-		LDA #$02 : STA !CameraBoxSpriteErase
+		LDA #$04 : STA !SpriteEraseMode		; disable camera box sprite erase
 		JML level4
 
 	.Bonus
@@ -160,7 +159,7 @@ levelinit5:
 
 	; Upload sun, sample code
 
-		JSL !GetVRAM
+		JSL GetVRAM
 		LDA.b #!VRAMbank
 		PHA : PLB
 		REP #$20
@@ -222,8 +221,7 @@ levelinit6:
 
 		REP #$20
 		LDA.w #.BigMaskDyn : STA $0C
-		LDY.b #!File_Wizrex
-		CLC : JSL !UpdateFromFile
+		LDY.b #!File_Wizrex : JSL UpdateGFX_NoOffset
 		SEP #$20
 
 
@@ -257,7 +255,7 @@ levelinit6:
 		PHA : PLB
 		REP #$30					;\
 		LDY.w #!File_level06_night			; |
-		JSL !GetFileAddress				; |
+		JSL GetFileAddress				; |
 		LDA !FileAddress : STA $00			; |
 		LDA !FileAddress+1 : STA $01			; | cache the HSL-formatted night time palette
 		LDY #$017E					; |
@@ -333,18 +331,18 @@ levelinit6:
 		SEP #$20			;/
 
 		REP #$20			; > A 16 bit
-		LDA #$3200			;\
+		LDA #!SpriteNum			;\
 		STA $4330			; |
 		LDA #$0700			; |
 		STA !HDMA3source		; | Set up red colour math on channel 3
 		LDY #$00			; |
 		STY $4334			;/
-		LDA #$3200			;\
+		LDA #!SpriteNum			;\
 		STA $4340			; |
 		LDA #$0800			; | Set up green colour math on channel 4
 		STA !HDMA4source		; |
 		STY $4344			;/
-		LDA #$3200			;\
+		LDA #!SpriteNum			;\
 		STA $4350			; |
 		LDA #$0900			; | Set up blue colour math on channel 5
 		STA !HDMA5source		; |
@@ -364,7 +362,7 @@ levelinit6:
 		LDA #$F8 : TSB !HDMA			; > enable HDMA on channels 3 through 7
 
 
-		JSL !GetVRAM				;\
+		JSL GetVRAM				;\
 		PHB : LDA #!VRAMbank			; |
 		PHA : PLB				; |
 		LDA #$31				; |
@@ -450,6 +448,8 @@ levelinit27:
 
 		LDA #$E1 : STA !MsgPal
 
+		LDA #$81 : STA !SpriteEraseMode		; erase sprites outside camera box, but ignore standard off-screen check
+
 		STZ !BG2BaseV
 		STZ !BG2BaseV+1
 
@@ -473,7 +473,7 @@ levelinit27:
 
 
 levelinit2A:
-		JSL !GetVRAM				;\
+		JSL GetVRAM				;\
 		REP #$20				; |
 		LDA.w #$0C00				; |
 		STA.l !VRAMbase+!VRAMtable+$00,x	; |
@@ -487,31 +487,38 @@ levelinit2A:
 		RTL
 
 levelinit2B:
-		LDY #$0F
 
-	-	%Ex_Index_X()
-		LDA $94
-		AND #$F0
-		CLC : ADC .XDisp,y
-		STA !Ex_XLo,x
-		LDA $95
-		ADC #$00
-		STA !Ex_XHi,x
-		LDA $96
-		AND #$F0
-		CLC : ADC .YDisp,y
-		STA !Ex_YLo,x
-		LDA $97
-		ADC #$00
-		STA !Ex_YHi,x
-		LDA.b #$01+!MinorOffset : STA !Ex_Num,x
-		LDA .XSpeed,y : STA !Ex_XSpeed,x
-		LDA .YSpeed,y : STA !Ex_YSpeed,x
-		STZ !Ex_Data1,x
-		STZ !Ex_Data2,x
-		STZ !Ex_Data3,x
-		DEY : BPL -
+		LDA #$0F : STA $0E
+		STZ $0F
+		PHB
 
+	-	JSL GetParticleIndex : TXY
+		LDX $0E
+		LDA.l .XDisp,x
+		AND #$00FF
+		CLC : ADC $94
+		STA !Particle_X,y
+		LDA.l .YDisp,x
+		AND #$00FF
+		CLC : ADC $96
+		STA !Particle_Y,y
+		LDA.l .XSpeed,x
+		AND #$00FF
+		ASL #4
+		CMP #$0800
+		BCC $03 : ORA #$F000
+		STA !Particle_XSpeed,y
+		LDA.l .YSpeed,x
+		AND #$00FF
+		ASL #4
+		CMP #$0800
+		BCC $03 : ORA #$F000
+		STA !Particle_YSpeed,y
+		LDA #$0000 : STA !Particle_XAcc,y
+		DEC $0E : BPL -
+
+		PLB
+		SEP #$30
 		LDA #$09 : STA !SPC4
 		LDA #$1F
 		STA !ShakeTimer
@@ -530,15 +537,15 @@ levelinit2B:
 		db $00,$00,$08,$08
 		db $00,$00,$08,$08
 		.XSpeed
-		db $02,$03,$02,$03
-		db $02,$03,$02,$03
-		db $02,$03,$02,$03
-		db $02,$03,$02,$03
+		db $20,$30,$20,$30
+		db $20,$30,$20,$30
+		db $20,$30,$20,$30
+		db $20,$30,$20,$30
 		.YSpeed
-		db $F9,$F9,$FB,$FB
-		db $FA,$FA,$FD,$FD
-		db $FB,$FB,$FE,$FE
-		db $FC,$FC,$FF,$FF
+		db $90,$90,$B0,$B0
+		db $A0,$A0,$D0,$D0
+		db $B0,$B0,$E0,$E0
+		db $C0,$C0,$F0,$F0
 
 
 levelinit2C:
@@ -627,7 +634,6 @@ levelinit32:
 		JSL levelinit6
 		LDA #$02 : STA $41				; enable window 1 on layer 1
 
-	STZ $7FFF
 		LDA $95
 		CMP #$0E : BCS +
 		LDA #$0F : STA !LevelWidth
@@ -749,7 +755,6 @@ level2:
 	+						; |
 	endif						;/
 
-
 		JSL WARP_BOX
 		db $04
 		dw $0000,$02A0 : db $FF,$30
@@ -766,7 +771,7 @@ level2:
 		; LDA #$01
 		; BIT !Level+2 : BNE ..done
 		; LDX #$0F
-	; -	LDA $3230,x : BEQ +
+	; -	LDA !SpriteStatus,x : BEQ +
 		; LDA !NewSpriteNum,x
 		; CMP #$02 : BNE +
 		; LDA !SpriteXLo,x
@@ -784,7 +789,7 @@ level2:
 		; LDA #$90
 		; STA $06
 		; STA $07
-		; SEC : JSL !PlayerClipping
+		; SEC : JSL PlayerContact
 		; BCS ..talk
 
 	; +	DEX : BPL -
@@ -842,9 +847,9 @@ level3:
 
 		RTL					; > return
 
+
 		.HDMA
 		PHB : PHK : PLB
-		PHP
 		JSL level5_HDMA
 		REP #$20
 		LDA !MsgTrigger : BNE ..fail
@@ -872,10 +877,9 @@ level3:
 		SEP #$30				; |
 		LDA #$14 : STA $01			; |
 		LDA #$20 : STA $0E			; |
-		JSL !SpriteBG				; |
+		JSL DrawSpriteBG			; |
 		..fail					;/
 
-		PLP
 		PLB
 		RTL
 
@@ -946,14 +950,15 @@ level4:
 
 		LDY #$0F
 		LDX #$02
-	-	LDA $3230,y
+	-	LDA !SpriteStatus,y
 		CMP #$08 : BNE +
 		LDA !ExtraBits,y
-		AND #$08 : BEQ +
-		LDA !NewSpriteNum,y
-		CMP #$13 : BEQ ++
-		CMP #$14 : BNE +
-	++	LDA #$01+!CustomOffset : STA !Ex_Num,x	;\
+		AND #$0C
+		CMP #$04 : BNE +
+		LDA !SpriteNum,y
+		CMP #$04 : BCC +
+		CMP #$08 : BCS +
+		LDA #!DizzyStar_Num : STA !Ex_Num,x	;\
 		TYA : STA !Ex_Data1,x			; | allocate slots for dizzy stars on dancing koopas
 		LDA #$F0 : STA !Ex_Data3,x		; |
 		LDA !Ex_Data2,x				; |
@@ -962,7 +967,7 @@ level4:
 		STA !Ex_Data2,x				; |
 		BRA ++
 	+	LDA !Ex_Num,x
-		CMP #$01+!CustomOffset : BNE ++
+		CMP #!DizzyStar_Num : BNE ++
 		STZ !Ex_Num,x
 	++	INX
 		DEY : BPL -
@@ -981,7 +986,7 @@ level4:
 		LDA .SpawnRate,y
 		AND $14 : BNE .NoSpawn
 		LDX #$0E				; DON'T use all slots
-	-	LDA $3230,x : BEQ .TriggerSpawn
+	-	LDA !SpriteStatus,x : BEQ .TriggerSpawn
 		DEX : BPL -
 		BRA .NoSpawn
 
@@ -1033,12 +1038,11 @@ level4:
 		LDA $1A
 		CLC : ADC .SpawnX,y
 		SEP #$20
-		STA $3220,x
-		XBA : STA $3250,x
-		LDA #$01 : STA $3230,x
-		LDA #$36 : STA $3200,x
-		LDA #$2D : STA $35C0,x
-		LDA #$08 : STA $3590,x
+		STA !SpriteXLo,x
+		XBA : STA !SpriteXHi,x
+		LDA #$01 : STA !SpriteStatus,x
+		LDA #$2D : STA !SpriteNum,x
+		LDA #$08 : STA !ExtraBits,x
 		JSL !ResetSprite
 		..fail
 		RTS
@@ -1392,7 +1396,7 @@ level4:
 
 		SEP #$10
 
-		JSL !GetVRAM
+		JSL GetVRAM
 		LDA #$0080 : STA !VRAMbase+!VRAMtable+$00,x
 		LDA.w #!DecompBuffer+$1000 : STA !VRAMbase+!VRAMtable+$02,x
 		LDA.w #!DecompBuffer>>16 : STA !VRAMbase+!VRAMtable+$04,x
@@ -1499,7 +1503,7 @@ level5:
 		AND #$04 : BEQ +
 		LDA !ExtraProp1,x
 		CMP #$02 : BNE +
-		STZ $3320,x
+		STZ !SpriteDir,x
 		REP #$20
 		LDA.w #.Table1 : JSL TalkOnce
 		SEP #$20
@@ -1722,6 +1726,8 @@ level6:
 		SEP #$20
 		LDA #$06 : JSL SpawnSprite_Custom
 		INC !ExtraProp1,x
+		LDA #$C0 : STA !SpriteTweaker1,x
+		STZ !SpriteTweaker3,x
 		..done
 
 
@@ -1735,11 +1741,9 @@ level6:
 
 
 		.HDMA
-		PHB
+		PHB : PHK : PLB
 		PHP
 		SEP #$30
-		LDA.b #MAIN_Level>>16
-		PHA : PLB
 		LDA $14
 		AND #$01
 		ASL #4
@@ -1830,7 +1834,7 @@ level6:
 	+	LDA !Level+2			; |
 		BNE $01 : INC A			; |
 		EOR #$FF : INC A		; |
-	++	JSL !MixHSL			; |
+	++	JSL MixHSL			; |
 		BRA .NoHSL			; |
 		.UploadColor			; |
 		REP #$30			; |
@@ -1838,7 +1842,7 @@ level6:
 		ORA #$0200			; |
 		TAX				; |
 		LDY #$000E			; |
-		JSL !HSLtoRGB			; |
+		JSL HSLtoRGB			; |
 		SEP #$30			; |
 		.NoHSL				;/
 
@@ -2115,16 +2119,16 @@ levelC:
 
 	; squish dense on ground, but only underwater
 		LDX #$0F
-	-	LDA !NewSpriteNum,x
+	-	LDA !SpriteNum,x
 		CMP #$34 : BNE +
 		LDA !SpriteWater,x : BEQ +
-		LDA $BE,x
+		LDA !SpriteHP,x
 		CMP #$02 : BCS +
-		LDA $3330,x
+		LDA !SpriteBlocked,x
 		AND #$04 : BEQ +
 		LDA #$0B : STA !SpriteAnimIndex
 		STZ !SpriteAnimTimer
-		LDA #$02 : STA $BE,x
+		LDA #$02 : STA !SpriteHP,x
 	+	DEX : BPL -
 
 
@@ -2287,12 +2291,12 @@ level27:
 
 
 	.AristocratHouse
-		LDA #$02 : JSL SearchSprite_Custom
-		BMI ..done
-		LDA $3280,x : BNE ..done
-		LDA $BE,x : BNE ..done
+		LDA #$02 : JSL SearchSprite_Custom : BMI ..done
+		LDA $3400,x : BNE ..done
+		LDA !SpriteHP,x : BNE ..done
 		LDA #$02 : STA !SpriteStasis,x
 		LDA #$5A : STA !SpriteXLo,x
+		LDA !P2XPosHi
 		LDA $95 : BEQ ..done
 		LDA !TranslevelFlags+$01
 		BIT #$01 : BNE ..nomsg1
@@ -2302,8 +2306,7 @@ level27:
 		LDA.w #!MSG_RexVillage_Aristocrat1 : STA !MsgTrigger
 		SEP #$20
 		..nomsg1
-		LDA #$78 : JSL CountSprites_Vanilla
-		BNE ..nomsg2
+		LDA #$78 : JSL CountSprites_Vanilla : BNE ..nomsg2
 		LDA !TranslevelFlags+$01
 		BIT #$02 : BNE ..nomsg2
 		..msg2
@@ -2314,9 +2317,9 @@ level27:
 		LDA #$02 : JSL SearchSprite_Custom
 		BMI ..nomsg2
 		..enrage
-		LDA #$03 : STA $3280,x
+		LDA #$03 : STA $3400,x
+		STZ !SpriteTweaker6,x
 		LDA #$05 : STA !ExtraProp1,x
-		LDA #$01 : JSL KOSprite_Custom
 		..nomsg2
 		..done
 		RTS
@@ -2341,9 +2344,9 @@ level27:
 
 		STZ $00
 		LDX #$0F					;\
-	-	LDA $3230,x					; |
+	-	LDA !SpriteStatus,x				; |
 		CMP #$0B : BNE +				; |
-		LDA !NewSpriteNum,x				; | look for purchaseable items in shop area
+		LDA !SpriteNum,x				; | look for purchaseable items in shop area
 		CMP #$32 : BNE +				; |
 		LDA !SpriteXHi,x				; |
 		CMP #$03 : BCS +				; |
@@ -2370,12 +2373,12 @@ level27:
 		LDA.w #!MSG_RexVillage_Shop2 : STA !MsgTrigger
 		SEP #$20
 		LDA #$29 : STA !SPC4
-		STZ $3230,x
+		STZ !SpriteStatus,x
 		PHX
 		LDA #$02 : JSL SearchSprite_Custom
 		BMI ++
 		LDA #$C0 : STA !SpriteYSpeed,x
-		STZ $3330,x
+		STZ !SpriteBlocked,x
 	++	PLX
 	+	DEX : BPL -
 		LDA $00
@@ -2396,11 +2399,11 @@ level27:
 		..nokill
 		LDA #$02 : JSL SearchSprite_Custom
 		BMI ..kill
-		LDA $BE,x : BNE ..assault
+		LDA !SpriteHP,x : BNE ..assault
 		STZ !SpriteXSpeed,x
-		STZ !SpriteXFraction,x
+		STZ !SpriteXSub,x
 		LDA #$65 : STA !SpriteXLo,x
-		LDA $3330,x
+		LDA !SpriteBlocked,x
 		AND #$04 : BEQ +
 		STZ !SpriteAnimTimer
 		+
@@ -2425,12 +2428,6 @@ level27:
 
 
 	.BigHouse
-		LDA #$6E : JSL SearchSprite_Vanilla
-		BMI +
-		LDA #$02 : STA !SpriteStasis,x
-		LDA #$04 : STA $3330,x
-		+
-
 		REP #$20
 		LDA.w #..HDMA : STA !HDMAptr+0
 		LDA.w #..HDMA>>8 : STA !HDMAptr+1
@@ -2440,7 +2437,6 @@ level27:
 
 
 		..HDMA
-		PHP
 		REP #$20
 		SEP #$10
 		LDA #$0000 : STA $4320
@@ -2496,7 +2492,6 @@ level27:
 		LDA #$01 : STA $0204,x
 		LDA !Level+2 : STA $0205,x
 		STZ $0206,x
-		PLP
 		RTL
 
 		..1chunk
@@ -2505,7 +2500,6 @@ level27:
 		LDA #$01 : STA $0202,x
 		LDA !Level+2 : STA $0203,x
 		STZ $0204,x
-		PLP
 		RTL
 
 		..nohide
@@ -2513,14 +2507,13 @@ level27:
 		LDA #$01 : STA $0200,x
 		LDA !2100 : STA $0201,x
 		STZ $0202,x
-		PLP
 		RTL
 
 
 	.Negotiator
 		LDA #$02 : JSL SearchSprite_Custom
 		BMI ..return
-		LDA $BE,x : BNE ..return
+		LDA !SpriteHP,x : BNE ..return
 		STA !SpriteStasis,x
 		LDA #$7A : STA !SpriteXLo,x
 		LDA $95
@@ -2566,7 +2559,6 @@ level27:
 		RTS
 
 		..HDMA
-		PHP
 		REP #$20
 		LDA #$0040 : STA $4320
 		LDA.w #..table : STA !HDMA2source
@@ -2582,7 +2574,6 @@ level27:
 		DEC A
 		BPL $02 : LDA #$00
 		DEX : BPL -
-		PLP
 		RTL
 
 		..table
@@ -2627,13 +2618,13 @@ level27:
 		AND #$3F : BNE ..done
 		LDX #$0F
 		..loop
-		LDA $3230,x : BEQ ..thisone
+		LDA !SpriteStatus,x : BEQ ..thisone
 		DEX : BPL ..loop
 		BRA ..done
 		..thisone
-		LDA #$2C : STA !NewSpriteNum,x
+		LDA #$2C : STA !SpriteNum,x
 		LDA #$08 : STA !ExtraBits,x
-		LDA #$01 : STA $3230,x
+		LDA #$01 : STA !SpriteStatus,x
 		STZ !SpriteXLo,x
 		LDA #$06 : STA !SpriteXHi,x
 		LDA $14
@@ -2717,7 +2708,7 @@ level27:
 		STA !MarioXPosLo
 		SEP #$20
 		LDX #$0F
-	-	LDA $3230,x
+	-	LDA !SpriteStatus,x
 		CMP #$08 : BNE +
 		LDA !SpriteXHi,x : XBA
 		LDA !SpriteXLo,x
@@ -2776,15 +2767,16 @@ level2A:
 		.FirstBit
 		LDA !StoryFlags+1
 		AND #$01 : BNE ..done
-		LDA.b #190*16 : STA $04
-		LDA.b #190*16>>8 : STA $0A
-		LDA #$30 : STA $05
-		STZ $0B
-		LDA #$50
-		STA $06
-		STA $07
-		SEC : JSL !PlayerClipping
-		BCC ..done
+
+		REP #$20
+		LDA.w #190*16 : STA $E8
+		LDA #$0030 : STA $EA
+		LDA #$0050
+		STA $EC
+		STA $EE
+		SEP #$20
+
+		JSL PlayerContact : BCC ..done
 		LSR A : BCC ..p2
 		LDY !P2InAir-$80 : BEQ ..msg
 		..p2
@@ -2833,10 +2825,10 @@ level2C:
 		LDA #$E1 : STA !MsgPal
 
 		LDX #$0F						;\
-	-	LDA $3230,x						; | look for a killed sprite (states 2-7)
+	-	LDA !SpriteStatus,x						; | look for a killed sprite (states 2-7)
 		CMP #$02 : BCC +					; |
 		CMP #$08 : BCS +					;/
-		LDY $3240,x						;\ must be on Y screen 00-03
+		LDY !SpriteYHi,x					;\ must be on Y screen 00-03
 		CPY #$04 : BCS +					;/
 		LDA .Table,y : TSB !TranslevelFlags+$20			; if there is a rex, it can talk
 	+	DEX : BPL -						; loop
@@ -2911,7 +2903,6 @@ level2D:
 		RTL
 
 		.HDMA
-		PHP
 		REP #$20
 		STZ $22
 		STZ $24
@@ -2919,7 +2910,6 @@ level2D:
 		AND #$0007
 		BNE $03 : DEC !Level+2
 		LDA !Level+2 : STA $1E
-		PLP
 		RTL
 
 level2E:
@@ -2928,11 +2918,11 @@ level2E:
 
 		JSL WARP_BOX
 		db $08
-		dw $0300,$0000 : db $FF,$01
+		dw $0300,$FFE0 : db $FF,$1F
 		dw $062B
 		JSL WARP_BOX
 		db $08
-		dw $0580,$0000 : db $80,$01
+		dw $0580,$FFE0 : db $80,$1F
 		%SecondaryExitValue($384)
 
 
@@ -2990,7 +2980,7 @@ level2E:
 
 level2F:
 		LDX #$0F
-	-	LDA !NewSpriteNum,x
+	-	LDA !SpriteNum,x
 		CMP #$02 : BNE +
 		LDA !ExtraProp1,x
 		CMP #$04 : BNE +
@@ -2998,7 +2988,7 @@ level2F:
 		CMP #$02 : BNE +
 		LDA !SpriteXLo,x
 		CMP #$D8 : BCC +
-		STZ $3230,x
+		STZ !SpriteStatus,x
 	+	DEX : BPL -
 
 
@@ -3057,9 +3047,8 @@ level2F:
 
 	.Brawl
 		LDA !TranslevelFlags+$10 : BMI .Return
-		LDA #$01
-		STA !LockBox
-		STA !CameraBoxSpriteErase
+		LDA #$01 : STA !LockBox
+		LDA #$83 : STA !SpriteEraseMode			; erase sprites outside of camera box (threshold = 0x60), disable normal check
 		REP #$20
 		LDA #$0C00 : STA !CameraBoxR
 		SEP #$20
@@ -3102,13 +3091,16 @@ level2F:
 		LDA !Level+3 : BNE .Return			;\
 		LDX #$0F					; |
 		LDY #$00					; |
-	-	LDA $3230,x : BEQ +				; |
-		LDA !NewSpriteNum,x				; |
+	-	LDA !SpriteStatus,x : BEQ +			; |
+		LDA !SpriteNum,x				; |
 		CMP #$02 : BEQ ++				; | count brawlers
 		CMP #$03 : BEQ ++				; |
 		CMP #$04 : BEQ ++				; |
 		CMP #$2C : BNE +				; |
-	++	INY						; |
+	++	LDA !SpriteXHi,x				; |
+		CMP #$0A : BCC +				; \ don't count if too far off-screen
+		CMP #$0E : BCS +				; /
+		INY						; |
 	+	DEX : BPL -					; |
 		CPY #$02 : BCS ..return				;/
 
@@ -3138,7 +3130,7 @@ level2F:
 		LDA ..wavedata+2,x : JSL SpawnSprite_Custom
 		PLA : STA $0F
 		CPX #$FF : BEQ +
-		LDA !NewSpriteNum,x
+		LDA !SpriteNum,x
 		CMP #$02 : BNE +
 		LDA #$05 : STA !ExtraProp1,x
 		LDA #$08 : STA !ExtraProp2,x
@@ -3156,10 +3148,10 @@ level2F:
 	-	LDA ..statueblockx,x : STA $9A
 		LDA ..statueblocky,x : STA $98
 		PHX
-		LDA #$0025 : JSL !ChangeMap16
+		LDA #$0025 : JSL ChangeMap16
 		STZ $00
 		LDA #$FF80 : STA $02
-		LDA.w #!prt_smoke16x16 : JSL !SpawnParticleBlock
+		LDA.w #!prt_smoke16x16 : JSL SpawnParticleBlock
 		PLX
 		DEX #2 : BPL -
 		LDA #$0130 : JSR ..togglegates
@@ -3172,7 +3164,7 @@ level2F:
 		LDA #$09 : STA !SpriteAnimIndex
 		LDA #$E0 : STA !SpriteAnimTimer
 		LDA #$40 : STA $32D0,x
-		INC $3280,x
+		INC $3400,x
 		LDA #$25 : STA !SPC1					; roar SFX
 		RTL
 
@@ -3231,8 +3223,8 @@ level2F:
 	db $0F,$14	: db $03
 	..wave3
 	db $0C,$0C	: db $2C
-	db $0E,$0C	: db $2C
-	db $30,$0C	: db $2C
+	db $0E,$0D	: db $2C
+	db $30,$0D	: db $2C
 	db $32,$0C	: db $2C
 	..waveend
 
@@ -3281,20 +3273,20 @@ level32:
 		LDA #$7F : TRB !Level+4
 		LDX #$0F
 		..loop
-		LDA $3230,x
+		LDA !SpriteStatus,x
 		CMP #$08 : BNE ..next
 		LDA !ExtraBits,x
 		AND #$08 : BEQ ..next
-		LDA !NewSpriteNum,x
+		LDA !SpriteNum,x
 		CMP #$05 : BNE ..next
 		LDA !SpriteXHi,x
 		CMP #$0D : BNE ..next
-		LDA $BE,x : BNE ..next
+		LDA !SpriteHP,x : BNE ..next
 		LDA !SpriteXLo,x
 		ASL A
 		ROL A
 		AND #$01
-		STA $3320,x
+		STA !SpriteDir,x
 		INC A : TSB !Level+4
 		LDA #$0F : STA $32D0,x
 		..next
@@ -3321,15 +3313,15 @@ level32:
 
 
 		.DestroyChunk
-		LDA #$01				;\
-		AND $0A80 : BNE ..done			; |
-		LDA #$06 : JSL SearchSprite_Custom	; |
-		BMI ..done				; |
-		LDA $3280,x				; | load chunks when adept shaman dies
-		AND #$03				; |
-		CMP #$02 : BNE ..done			; |
-		LDA #$01 : JSL LoadChunk		; |
-		..done					;/
+		LDA #$01					;\
+		AND $0A80 : BNE ..done				; |
+		LDA #$06 : JSL SearchSprite_Custom		; |
+		BMI ..done					; |
+		LDA $BE,x					; | load chunks when adept shaman dies
+		AND #$03					; |
+		CMP #$02 : BNE ..done				; |
+		LDA #$01 : JSL LoadChunk			; |
+		..done						;/
 
 		LDA $0A87 : BEQ .Return
 		LDA $14
@@ -3342,7 +3334,6 @@ level32:
 
 		.HDMA
 		PHB : PHK : PLB
-		PHP
 		SEP #$30
 
 		LDA $14
@@ -3387,22 +3378,20 @@ level32:
 		AND #$00FF
 		CMP #$0025 : BEQ ..fail
 
-		SEP #$30
-		LDX.b #!Ex_Amount-1
-	..loop	LDA !Ex_Num,x : BEQ ..spawn
-		DEX : BPL ..loop
-		BRA ..fail
-		..spawn
-		LDA #$01+!MinorOffset : STA !Ex_Num,x
-		LDA !RNG
-		CLC : ADC $1A
-		STA !Ex_XLo,x
-		LDA $1B
-		ADC #$00
-		STA !Ex_XHi,x
-		LDA #$B8 : STA !Ex_YLo,x
-		STZ !Ex_YHi,x
-	..fail	REP #$30
+		PHB
+		JSL GetParticleIndex
+		LDA.l !RNG
+		AND #$00FF
+		ADC $1A
+		STA !Particle_X,x
+		LDA #$00B8 : STA !Particle_Y,x
+		STZ !Particle_XSpeed,x
+		STZ !Particle_YSpeed,x
+		STZ !Particle_XAcc,x
+		STZ !Particle_YAcc,x
+		PLB
+		..fail
+		; keep all regs 16-bit here
 		JMP .CheckTimer
 
 
@@ -3438,37 +3427,31 @@ level32:
 		INC A
 		STA $00
 
+
 		SEP #$30
-		LDX.b #!Ex_Amount-1
-	..loop	LDA !Ex_Num,x : BEQ ..spawn
-		DEX : BPL ..loop
-		BRA ..fail
-		..spawn
-		LDA #$01+!ExtendedOffset : STA !Ex_Num,x
 		LDA !RNG
 		AND #$F0
 		CMP $00 : BCS ..fail
 		STA $00
-		LDA !LevelHeight
-		SEC : SBC $00
-		STA !Ex_YLo,x
-		LDA !LevelHeight+1
-		SBC #$00
-		STA !Ex_YHi,x
-		LDA #$0B : STA !Ex_Data2,x
-		REP #$20
-		LDA !RNG
+		STZ $01
+		PHB
+		JSL GetParticleIndex
+		LDA.l !RNG
 		AND #$001F
 		SEC : SBC #$0010
-		CLC : ADC !Level+6
-		SEP #$20
-		STA !Ex_XLo,x
-		XBA : STA !Ex_XHi,x
-		STZ !Ex_XSpeed,x
-		STZ !Ex_YSpeed,x
-	..fail	REP #$30
+		CLC : ADC.l !Level+6
+		STA !Particle_X,x
+		LDA.l !LevelHeight
+		SEC : SBC $00
+		STA !Particle_Y,x
+		STZ !Particle_XSpeed,x
+		STZ !Particle_YSpeed,x
+		STZ !Particle_XAcc,x
+		STZ !Particle_YAcc,x
+		PLB
+		..fail
+		REP #$30
 		BRA .CheckTimer
-
 
 		.NotCollapsingYet
 		LDA $1A
@@ -3501,8 +3484,7 @@ level32:
 		INX #4						; |
 		STX $0402					;/
 		LDA !ShakeTimer
-		ORA #$0010
-		STA !ShakeTimer
+		ORA #$0010 : STA !ShakeTimer
 
 		; update map16 to remove interaction
 		; TO DO: non-interaction page without blanking the column upon reload
@@ -3791,7 +3773,7 @@ level32:
 		..done
 
 
-		JSL !GetVRAM
+		JSL GetVRAM
 		LDA #$0080 : STA !VRAMbase+!VRAMtable+$00,x
 		LDA.w #!DecompBuffer+$1000 : STA !VRAMbase+!VRAMtable+$02,x
 		LDA.w #!DecompBuffer>>16 : STA !VRAMbase+!VRAMtable+$04,x
@@ -3799,7 +3781,6 @@ level32:
 		AND #$00FC
 		XBA
 		STA !VRAMbase+!VRAMtable+$05,x
-		PLP
 		PLB
 		RTL
 
@@ -3852,21 +3833,17 @@ level32:
 		LDA $0A85 : STA $98
 		LDX #$02 : STX $9C
 		JSL $00BEB0
+
+		STZ $00
+		STZ $02
+		STZ $04
+		STZ $06
+		LDA.w #!prt_smoke16x16 : JSL SpawnParticleBlock
 		PLA : STA $9A
 		PLA : STA $98
 
-		SEP #$30
-		LDX.b #!Ex_Amount-1
-	-	LDA !Ex_Num,x : BEQ .Slot
-		DEX : BPL -
-		BMI .Return
-	.Slot	LDA #$01+!SmokeOffset : STA !Ex_Num,x
-		LDA $0A83 : STA !Ex_XLo,x
-		LDA $0A84 : STA !Ex_XHi,x
-		LDA $0A85 : STA !Ex_YLo,x
-		LDA $0A86 : STA !Ex_YHi,x
-		LDA #$17 : STA !Ex_Data1,x
-	.Return	PLP
+		.Return
+		PLP
 		RTL
 
 
@@ -4063,7 +4040,7 @@ level38:
 	.GroundFloor
 		LDA #$02 : JSL SearchSprite_Custom
 		BMI ..return
-		LDA $BE,x : BEQ ..normal
+		LDA !SpriteHP,x : BEQ ..normal
 		..hurt
 		LDA !Level+2
 		AND #$01 : BNE ..return
@@ -4073,7 +4050,7 @@ level38:
 		SEP #$20
 		RTS
 		..normal
-		LDA #$08 : STA $33C0,x
+		LDA #$08 : STA !SpriteOAMProp,x
 		LDA #$2A : STA !SpriteXLo,x
 		LDA !Level+3
 		CMP #$01 : BNE ..return
@@ -4109,7 +4086,7 @@ level38:
 		SEP #$20
 		LDX #$0F
 		..loop
-		LDA !NewSpriteNum,x
+		LDA !SpriteNum,x
 		CMP #$02 : BEQ ..thisnum
 		CMP #$30 : BNE ..next
 		..thisnum
@@ -4120,7 +4097,7 @@ level38:
 		CMP $02 : BCC ..next
 		..kill
 		SEP #$20
-		STZ $3230,x
+		STZ !SpriteStatus,x
 		..next
 		SEP #$20
 		DEX : BPL ..loop
@@ -4149,12 +4126,12 @@ level38:
 	CMP #$04 : BCS ..return
 		LDX #$0F
 		..loop
-		LDA $3230,x : BEQ ..thisone
+		LDA !SpriteStatus,x : BEQ ..thisone
 		DEX : BPL ..loop
 		RTS
 		..thisone
-		LDA #$08 : STA $3230,x
-		LDA #$02 : STA !NewSpriteNum,x
+		LDA #$08 : STA !SpriteStatus,x
+		LDA #$02 : STA !SpriteNum,x
 		LDA #$08 : STA !ExtraBits,x
 		JSL !ResetSprite
 		LDY !Room
@@ -4164,7 +4141,7 @@ level38:
 		LDA ..yhi,y : STA !SpriteYHi,x
 		LDA #$05 : STA !ExtraProp1,x
 		LDA #$05 : STA !ExtraProp2,x
-		LDA #$03 : STA $3280,x
+		LDA #$03 : STA $3400,x
 		LDA #$C0 : STA !SpriteYSpeed,x
 		..return
 		RTS
@@ -4185,7 +4162,7 @@ level38:
 
 		.SetBandit
 		CPX #$10 : BCS ..return
-		LDA #$03 : STA $3280,x
+		LDA #$03 : STA $3400,x
 		LDA #$05 : STA !ExtraProp1,x
 		LDA #$05 : STA !ExtraProp2,x
 		..return
@@ -4213,18 +4190,18 @@ level38:
 		CLC : ADC #$0005					; |
 		STA $01,s						;/
 
-		LDY #$02						;\
-		LDA ($0E),y						; |
-		STA $05							; |
-		STA $0A							; |
+
+
+
+		LDA ($0E) : STA $E8					;\
+		LDY #$02						; |
+		LDA ($0E),y : STA $EA					; |
 		LDY #$04						; |
-		LDA ($0E),y : STA $06					; |
-		LDA ($0E)						; | check trigger box, then let .BreakIn code take over
+		LDA ($0E),y : STA $EE-1					; |
+		AND #$00FF : STA $EC					; | check trigger box, then let .BreakIn code take over
 		SEP #$20						; |
-		STA $04							; |
-		XBA : STA $0A						; |
-		SEC : JSL !PlayerClipping				; |
-		BCC .BreakIn_fail					; |
+		STZ $EF							; |
+		JSL PlayerContact : BCC .BreakIn_fail			; |
 		LDA !BigRAM						; > A = bit key
 		BCS .BreakIn_spawn					; |
 		BRA .BreakIn_return					;/
@@ -4284,7 +4261,7 @@ level38:
 
 		LDX #$00						;\
 		..loop							; |
-		LDA $3230,x : BEQ ..thisone				; | search for a sprite slot
+		LDA !SpriteStatus,x : BEQ ..thisone				; | search for a sprite slot
 		INX							; |
 		CPX #$10 : BCC ..loop					; |
 		BRA ..fail						;/
@@ -4298,12 +4275,12 @@ level38:
 		LDA ($00) : STA !ExtraBits,x				; | get sprite data
 		BIT #$08 : BNE ..custom					; |
 		..vanilla						; |
-		LDA ($00),y : STA $3200,x				; |
+		LDA ($00),y : STA !SpriteNum,x				; |
 		BRA ..reset						; |
 		..custom						; |
-		LDA ($00),y : STA !NewSpriteNum,x			; |
+		LDA ($00),y : STA !SpriteNum,x				; |
 		..reset							;/
-		INC $3230,x						;\
+		INC !SpriteStatus,x					;\
 		JSL !ResetSprite					; |
 		LDA $9A							; |
 		ORA #$08 : STA !SpriteXLo,x				; | spawn sprite
@@ -4314,10 +4291,10 @@ level38:
 		JMP ..return
 
 		..break
-		JSL !ChangeMap16
+		JSL ChangeMap16
 		LDA #$FF80 : STA $00
 		STZ $02
-		LDA.w #!prt_smoke16x16 : JSL !SpawnParticleBlock
+		LDA.w #!prt_smoke16x16 : JSL SpawnParticleBlock
 		RTS
 
 
@@ -4333,7 +4310,7 @@ level38:
 	-	LDA !ExtraBits,x
 		AND #$08 : BNE ..custom
 		..vanilla
-		LDA $3200,x
+		LDA !SpriteNum,x
 		CMP #$1D : BNE +
 		LDA #$02
 		STA !SpriteStasis,x
@@ -4341,15 +4318,12 @@ level38:
 		STA !SpriteDisP2,x
 		BRA +
 		..custom
-		LDA !NewSpriteNum,x
+		LDA !SpriteNum,x
 		CMP #$02 : BNE +
-	;	LDA !ExtraProp2,x
-	;	AND #$3F
-	;	CMP #$06 : BNE +
 		..mayor
-		LDA $3230,x
+		LDA !SpriteStatus,x
 		CMP #$04 : BEQ ..dead
-		LDA $BE,x : BEQ ..alive
+		LDA !SpriteHP,x : BEQ ..alive
 		CMP #$01 : BEQ +
 		..dead
 		LDA !TranslevelFlags+$04
@@ -4362,7 +4336,7 @@ level38:
 
 		..alive
 		LDA #$02 : STA !SpriteStasis,x
-		LDA #$04 : STA $33C0,x
+		LDA #$04 : STA !SpriteOAMProp,x
 		LDA #$1A : STA !SpriteXLo,x
 		LDA !TranslevelFlags+$04
 		AND #$01 : BNE +
@@ -4383,7 +4357,7 @@ level38:
 
 	.Prison
 		LDX #$0F
-	-	LDA $3200,x
+	-	LDA !SpriteNum,x
 		CMP #$1D : BNE +
 		LDA #$02
 		STA !SpriteStasis,x
@@ -4393,8 +4367,8 @@ level38:
 
 		LDA #$02 : JSL SearchSprite_Custom
 		BMI ..return
-		LDA $BE,x : BNE ..return
-		STZ $3320,x
+		LDA !SpriteHP,x : BNE ..return
+		STZ !SpriteDir,x
 
 		LDA !TranslevelFlags+$05
 		BIT #$01 : BNE ..return
@@ -4434,18 +4408,17 @@ level38:
 		LDA $01,s
 		INC A
 		STA $0E
+
+		LDA ($0E) : STA $E8
 		LDY #$02
-		LDA ($0E),y
-		STA $05
-		STA $0A
+		LDA ($0E),y : STA $EA
 		LDY #$04
-		LDA ($0E),y : STA $06
-		LDA ($0E)
+		LDA ($0E),y : STA $EE-1
+		AND #$00FF : STA $EC
 		SEP #$20
-		STA $04
-		XBA : STA $0A
-		SEC : JSL !PlayerClipping
-		BCC ..return
+		STZ $EF
+
+		JSL PlayerContact : BCC ..return
 		LDA !BigRAM : TSB !Level+2
 		REP #$20
 		LDA $01,s
@@ -4618,7 +4591,6 @@ level39:
 
 	.HDMA
 		PHB : PHK : PLB
-		PHP
 	; BG1 wave code
 
 		REP #$20
@@ -4702,7 +4674,6 @@ level39:
 		INC A					; |
 		STA $0D0A,x				; |
 		STA $0D0E,x				;/
-		PLP
 		PLB
 		RTL
 

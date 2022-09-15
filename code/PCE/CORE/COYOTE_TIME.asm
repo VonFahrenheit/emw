@@ -12,7 +12,7 @@ COYOTE_TIME:
 		LDA !P2CoyoteTime
 		BEQ .Jump
 		BPL .Timer
-	.Jump	LDA $6DA7
+	.Jump	LDA $16
 		AND #$80 : BEQ .Timer
 		ORA #$03 : STA !P2CoyoteTime
 		RTL

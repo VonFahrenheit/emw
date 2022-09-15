@@ -219,15 +219,11 @@
 	.CheckLevel
 		LDA !Translevel : STA !PrevTranslevel
 		STZ !Translevel
-		LDA !P1MapX
-		STA $00
-		STA $08-1
-		LDA !P1MapY
-		SEP #$20
-		STA $01
-		XBA : STA $09
-		REP #$20
-		LDA #$0C0C : STA $02
+		LDA !P1MapX : STA $E0
+		LDA !P1MapY : STA $E2
+		LDA #$000C
+		STA $E4
+		STA $E6
 
 		LDA !P1MapX+1
 		AND #$00FF
@@ -252,16 +248,14 @@
 		PLX						; |
 		AND #$0080 : BEQ ..next				;/
 
-		LDA LevelList+0,y
-		STA $04
-		XBA : STA $0A
-		LDA LevelList+4,y : STA $06
-		LDA LevelList+2,y
+		LDA LevelList+0,y : STA $E8
+		LDA LevelList+2,y : STA $EA
+		LDA LevelList+4,y : STA $EE-1
+		AND #$00FF : STA $EC
 		SEP #$30
-		STA $05
-		XBA : STA $0B
+		STZ $EF
 
-		JSL !CheckContact
+		JSL CheckContact
 		REP #$30
 		BCS ..load
 		..next
@@ -522,7 +516,7 @@
 		SEP #$20
 		LDA $0E
 		CMP !P1MapPrevAnim,x : BEQ ..done
-		JSL !GetVRAM : BCS ..done
+		JSL GetVRAM : BCS ..done
 		REP #$20
 		LDA #$0040 : STA !VRAMbase+!VRAMtable+$00,x
 		LDA #$007F : STA !VRAMbase+!VRAMtable+$04,x
@@ -531,7 +525,7 @@
 		LSR #3
 		STA !VRAMbase+!VRAMtable+$02,x
 		LDA $0C : STA !VRAMbase+!VRAMtable+$05,x
-		JSL !GetVRAM : BCS ..done
+		JSL GetVRAM : BCS ..done
 		LDA #$0040 : STA !VRAMbase+!VRAMtable+$00,x
 		LDA #$007F : STA !VRAMbase+!VRAMtable+$04,x
 		LDA $0E

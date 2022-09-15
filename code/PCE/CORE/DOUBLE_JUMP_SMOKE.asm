@@ -18,7 +18,7 @@ DOUBLE_JUMP_SMOKE:
 		LDY #$0007					;/
 		.Loop
 		PHY
-		JSL !GetParticleIndex
+		JSL GetParticleIndex
 
 		LDA $06
 		AND #$0003
@@ -51,9 +51,7 @@ DOUBLE_JUMP_SMOKE:
 
 		LDA $06
 		AND #$0003
-		ASL A
-		ADC #$000D
-		STA !Particle_Timer,x
+		ASL A : STA !Particle_Timer,x
 		LDA.w #!prt_smoke8x8 : STA !Particle_Type,x
 		LDA #$00C0 : STA !Particle_Prop,x
 		LSR $06

@@ -1,6 +1,5 @@
 
-
-; timer: 00, increments
+; incrementing timer
 
 	ContactParticle:
 		LDX $00							; reload index
@@ -36,7 +35,7 @@
 		AND #$00FF : STA $02					;/
 		LDX $00							; X = index
 
-		JSL !GetParticleIndex					;\
+		JSL GetParticleIndex					;\
 		LDY $00							; |
 		LDA.w #!prt_spritepart					; |
 		CPX $00							; |
@@ -59,7 +58,7 @@
 		STA !Particle_XSpeed,x					; |
 		STA !Particle_YSpeed,x					;/
 
-		JSL !GetParticleIndex					;\
+		JSL GetParticleIndex					;\
 		LDY $00							; |
 		LDA.w #!prt_spritepart					; |
 		CPX $00							; |
@@ -81,7 +80,7 @@
 		ORA #$0100 : STA !Particle_XSpeed,x			; |
 		EOR #$FFFF : STA !Particle_YSpeed,x			;/
 
-		JSL !GetParticleIndex					;\
+		JSL GetParticleIndex					;\
 		LDY $00							; |
 		LDA.w #!prt_spritepart					; |
 		CPX $00							; |
@@ -103,7 +102,7 @@
 		ORA #$0100 : STA !Particle_YSpeed,x			; |
 		EOR #$FFFF : STA !Particle_XSpeed,x			;/
 
-		JSL !GetParticleIndex					;\
+		JSL GetParticleIndex					;\
 		LDY $00							; |
 		LDA.w #!prt_spritepart					; |
 		CPX $00							; |

@@ -24,28 +24,23 @@
 		..done
 		PLB
 		LDA !BG_object_Misc,x
-		ORA #$0001
-		STA !BG_object_Misc,x
+		ORA #$0001 : STA !BG_object_Misc,x
 
 
 
 		.BodyInteraction
-		LDA !BG_object_X,x				;\
-		STA $04						; |
-		STA $0A-1					; |
+		LDA !BG_object_X,x : STA $E8			;\
 		LDA !BG_object_Y,x				; |
 		CLC : ADC #$0008				; |
-		SEP #$20					; | clipping
-		STA $05						; |
-		XBA : STA $0B					; |
+		STA $EA						; | clipping
 		LDA !BG_object_W,x				; |
 		ASL #3						; |
-		STA $06						; |
-		LDA #$01 : STA $07				;/
+		AND #$00FF : STA $EC				; |
+		LDA #$0001 : STA $EE				;/
 		SEP #$30
 
 		PHK : PLB
-		SEC : JSL !PlayerClipping
+		JSL PlayerContact
 		PLP
 		PLX
 		STA $00
@@ -142,28 +137,28 @@
 		..main
 		CMP #$0080 : BCS ..knockleft
 		..knockright
-		LDA #$0025 : JSL !ChangeMap16
+		LDA #$0025 : JSL ChangeMap16
 		LDA $98
 		CLC : ADC #$0010
 		STA $98
-		LDA #$0381 : JSL !ChangeMap16
+		LDA #$0381 : JSL ChangeMap16
 		LDA $9A
 		CLC : ADC #$0010
 		STA $9A
-		LDA #$0382 : JSL !ChangeMap16
+		LDA #$0382 : JSL ChangeMap16
 		PLX
 		PLA : STA $00
 		RTS
 		..knockleft
-		LDA #$0025 : JSL !ChangeMap16
+		LDA #$0025 : JSL ChangeMap16
 		LDA $98
 		CLC : ADC #$0010
 		STA $98
-		LDA #$0371 : JSL !ChangeMap16
+		LDA #$0371 : JSL ChangeMap16
 		LDA $9A
 		SEC : SBC #$0010
 		STA $9A
-		LDA #$0382 : JSL !ChangeMap16
+		LDA #$0382 : JSL ChangeMap16
 		PLX
 		PLA : STA $00
 		RTS

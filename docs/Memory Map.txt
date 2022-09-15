@@ -2,30 +2,49 @@
 
 	-- ROM map --
 		-- MB 1 --
-		Bank $00-$0F	SMW code/data, LM code, music data
-		Bank $10	contains SA-1 patch code, almost full
-		Bank $11	MSG
-	*	Bank $12	SP_Menu, VR3
-		Bank $13	SP_Patch
-		Bank $14	FusionCore (fusion sprites, BG objects, particles)
-		Bank $15	PCE
-		Bank $16	Fe26
-		Bank $17	Fe26
-	*	Bank $18	SP_Level
-		Bank $19	SP_Level
-		Bank $1A	Fe26
-		Bank $1B	Overworld
-		Bank $1C	SP_Level
-		Bank $1D	claimed but UNUSED
-		Bank $1E	--------
-		Bank $1F	PCE
+		00	think of this as the core of the smw shell
+	*	01	vanilla sprite code
+	*	02	fusion sprite code
+		03	misc code, some data, unknown lunar magic modifications
+	*	04	----
+		05	various code, mostly related to level load
+		06	level data
+		07	level data, but the last 0x1000 bytes contain various support codes
+		08	compressed gfx
+		09	compressed gfx
+		0A	compressed gfx
+		0B	compressed gfx
+		0C	vanilla overworld data, also contains some cutscene code + data
+		0D	map16 and object data, also contains object load code + ending data
+		0E	vanilla audio data
+		0F	vanilla instrument data
+
+		10	contains SA-1 patch code, large portions are unused
+		11	MSG
+		12	SP_Menu, VR3
+		13	SP_Patch
+		14	FusionCore (fusion sprites, BG objects, particles)
+		15	PCE
+		16	Fe26
+		17	Fe26
+		18	SP_Level
+		19	SP_Level
+		1A	Fe26
+		1B	Overworld
+		1C	SP_Level
+		1D	claimed but UNUSED
+		1E	--------
+		1F	PCE
+
 		-- MB 2 --
-		Bank $20-$2F	--------
-		Bank $30-$3F	SP_Files
+		20-2F	--------
+		30-3F	SP_Files
+
 		-- MB 3 --
-		Bank $80-$9F	LM data
+		80-9F	LM data
+
 		-- MB 4 --
-		Bank $A0-$BF	LM data
+		A0-BF	LM data
 
 
 	-- VRAM map --
@@ -236,7 +255,7 @@
 		$318F:		1 B		mirror of $2225 (BWRAM mirror register)
 		$3190-$31DF:	80 B		CCDMA table (10 slots of 8 bytes each)
 		$31E0-$31FF:	32 B		reserved for SA-1 background mode
-		$3200-$35FF:	1024 B		Sprite data, expanded by physics+
+		$3200-$35FF:	1024 B		Sprite data
 		$3600-$367F:	128 B		Player 1 data
 		$3680-$36FF:	128 B		Player 2 data
 		$3700-$377F:	128 B		CCDMA buffer (also used to pass tilemap data from SNES to SA-1)
@@ -262,7 +281,7 @@
 		$6120-$617F:	96 B		best rank score for each level (level data byte 3)
 		$6180-$61EF:	112 B		light point data during levels
 		$61F0-$61FF:	16 B		used during layer tilemap update
-		$6200-$63FF:	512 B			OAM, lo table
+		$6200-$63FF:	512 B		OAM, lo table
 		$6400-$641F:	32 B		OAM, hi table
 		$6420-$649F:	128 B		OAM, hi table buffer
 		$64A0-$665F:	448 B		used as an HDMA table on for message boxes and on title screen

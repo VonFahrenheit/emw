@@ -12,22 +12,21 @@ namespace Luigi
 
 
 	MAINCODE:
-		PHB : PHK : PLB
-
 		LDA #$01 : STA !P2Character
-		LDA #$08			;\
-		CLC : ADC !PlayerBonusHP	; | max HP
-		STA !P2MaxHP			;/
+		LDA #$08					;\
+		CLC : ADC !PlayerBonusHP			; | max HP
+		STA !P2MaxHP					;/
 
 		LDA !P2Init : BNE .Main
 
 		.Init
+		INC !P2Init
 		PHP
 		LDA.b #!VRAMbank : PHA
 		REP #$30
 		LDY.w #!File_Kadaal
-		JSL !GetFileAddress
-		JSL !GetVRAM
+		JSL GetFileAddress
+		JSL GetVRAM
 		PLB
 		LDA #$0140*$20
 		CLC : ADC !FileAddress
@@ -49,7 +48,6 @@ namespace Luigi
 		STA !VRAMtable+$07,x
 		PHK : PLB
 		PLP
-		INC !P2Init
 
 		.Main
 		LDA !P2Status : BEQ .Process
@@ -60,16 +58,14 @@ namespace Luigi
 		LDA $94 : STA !P2XPosLo
 		LDA $96 : STA !P2YPosLo
 		SEP #$20
-		PLB
-		RTS
+		RTL
 
 		.KnockedOut
 		JSL CORE_KNOCKED_OUT
 		BMI .Fall
 		BCC .Fall
 		LDA #$02 : STA !P2Status
-		PLB
-		RTS
+		RTL
 
 		.Fall
 		BIT !P2YSpeed : BMI +
@@ -85,9 +81,9 @@ namespace Luigi
 
 
 		.Process
-		LDA !P2MaxHP				;\
-		CMP !P2HP				; | enforce max HP
-		BCS $03 : STA !P2HP			;/
+		LDA !P2MaxHP					;\
+		CMP !P2HP					; | enforce max HP
+		BCS $03 : STA !P2HP				;/
 
 		LDA !P2KickTimer
 		BEQ $03 : DEC !P2KickTimer
@@ -109,8 +105,6 @@ namespace Luigi
 		BEQ $03 : DEC !P2SpinAttack
 		LDA !P2FireTimer
 		BEQ $03 : DEC !P2FireTimer
-		LDA !P2FireLife
-		BEQ $03 : DEC !P2FireLife
 
 
 		LDA !P2ShrinkTimer : BEQ ..noshrink
@@ -120,10 +114,11 @@ namespace Luigi
 
 
 
-		LDA !P2SlantPipe : BEQ +
+		.SlantPipe
+		LDA !P2SlantPipe : BEQ ..done
 		LDA #$40 : STA !P2XSpeed
 		LDA #$C0 : STA !P2YSpeed
-		+
+		..done
 
 
 	PIPE:
@@ -149,13 +144,13 @@ namespace Luigi
 
 		PEA.w PHYSICS-1					; RTS address
 
-		LDA !P2HurtTimer : BEQ .NoHurt			;\
-		LDA !P2XSpeed : BEQ +				; |
-		BPL ++						; |
-		INC !P2XSpeed : BRA +				; | hurt animation
-	++	DEC !P2XSpeed					; |
-	+	RTS						; |
-		.NoHurt						;/
+		.Hurt
+		LDA !P2HurtTimer : BEQ ..done			;\
+		LDY #$01					; |
+		LDA #$00					; | hurt animation
+		JSL CORE_ACCEL_X_8Bit				; |
+		RTS						; |
+		..done						;/
 
 
 
@@ -166,10 +161,10 @@ namespace Luigi
 		ORA !P2SpinAttack				; |
 		ORA !P2Climbing					; |
 		BNE .NoFireStart				; |
-		BIT $6DA7 : BVC .NoFireStart			; |
+		BIT $16 : BVC .NoFireStart			; |
 		LDX.b #!Ex_Amount-1				; |
 	-	LDA !Ex_Num,x					; | start fireball throw
-		CMP #$02+!CustomOffset : BEQ .NoFireStart	; |
+		CMP #!LuiFireball_Num : BEQ .NoFireStart	; |
 		DEX : BPL -					; |
 		LDA #!Lui_Hammer : STA !P2Anim			; |
 		STZ !P2AnimTimer				; |
@@ -180,7 +175,7 @@ namespace Luigi
 		LDA !P2FireTimer				;\
 		CMP #$0C : BNE .NoFire				; |
 		%Ex_Index_X_fast()				; |
-		LDA #$02+!CustomOffset : STA !Ex_Num,x		; |
+		LDA #!LuiFireball_Num : STA !Ex_Num,x		; |
 		LDY !P2Direction				; |
 		LDA .FireballXSpeed,y : STA !Ex_XSpeed,x	; |
 		LDA !P2XPosLo					; |
@@ -200,19 +195,8 @@ namespace Luigi
 		ADC .FireballYDisp+2,y				; |
 		STA !Ex_YHi,x					; |
 		STZ !Ex_Data1,x					; |
-		STZ !Ex_Data2,x					; |
-		STZ !Ex_Data3,x					; |
 		STX !P2FireIndex				; |
-		LDA #$40 : STA !P2FireLife			; |
 		.NoFire						;/
-
-		LDA !P2FireLife : BNE .FireAlive		;\
-		LDX !P2FireIndex				; |
-		LDA !Ex_Num,x					; |
-		CMP #$02+!CustomOffset : BNE .FireAlive		; | keep track of fireball life
-		LDA #$01+!SmokeOffset : STA !Ex_Num,x		; |
-		LDA #$17 : STA !Ex_Data1,x			; |
-		.FireAlive					;/
 
 
 		LDA !P2Anim					;\
@@ -220,29 +204,27 @@ namespace Luigi
 		CMP #!Lui_SpinEnd_over : BCS .CheckSpin		; |
 		CMP #!Lui_SpinEnd_over-1 : BNE .SpinEnd		; |
 		.SpinEndHitbox					; |
-		JSL CORE_ATTACK_Setup				; |
 		REP #$20					; |
 		LDA.w #.SpinHitbox : JSL CORE_ATTACK_LoadHitbox	; |
-		JSR Kadaal_HITBOX_ExecuteHitboxes		; |
 		.SpinEnd					; |
 		LDA #$01 : STA !P2Invinc			; > invulnerable during spin finisher
-		LDA $6DA7					; > can buffer jump from end lag of spin
+		LDA $16						; > can buffer jump from end lag of spin
 		AND #$80					; |
 		TSB !P2Buffer					; |
 		LDA !P2Water					; |
 		AND #$10 : BEQ $03 : JMP .WaterCode		; |
-		LDA #$80 : TSB $6DA3				; |
+		LDA #$80 : TSB $15				; |
 		LDA !P2InAir : BEQ ..friction
 		JMP .Drift
 		..friction
-		LDA #$07 : TRB $6DA3				; |
+		LDA #$07 : TRB $15				; |
 		JMP .Friction					;/
 
 		.CheckSpin
 		LDA !P2FireTimer : BEQ $03
 	-	JMP .NotSpinning				; can't start spin during fireball animation
 		LDA !P2SpinAttack : BNE .Spinning
-		BIT $6DA9 : BPL -
+		BIT $18 : BPL -
 ;		LDA #$30 : STA !P2SpinAttack
 	LDA #$10 : STA !P2SpinAttack
 	LDA !P2InAir : BEQ +
@@ -263,7 +245,7 @@ namespace Luigi
 		JSL CORE_SMOKE_AT_FEET
 		LDA !P2SpinAttack				;\
 	;	CMP #$30 : BCS +				; |
-	;	BIT $6DA9 : BPL +				; > can end spin at will
+	;	BIT $18 : BPL +					; > can end spin at will
 	;	LDA #$01 : STA !P2SpinAttack			;\ end spin
 	;	BRA .NotSpinning				;/
 	;+	CMP #$08 : BCS +				;\ invincible during last 8 frames of spin (before finisher, which is also invincible)
@@ -271,7 +253,7 @@ namespace Luigi
 	+	STZ !P2Carry					; can't carry something while spinning
 		LDA !P2Slope : BNE +
 		LDA !P2SpinUsed : BNE +				; can only gain height from spin once per jump
-		BIT $6DA5 : BPL +
+		BIT $17 : BPL +
 		LDA !LuigiUpgrades				;\ check for cyclone upgrade
 		LSR A : BCS ..control				;/
 		..nocontrol					;\
@@ -289,8 +271,8 @@ namespace Luigi
 	++	CPY #$F4 : BCC +				;/
 	..dec	DEY #3
 	..set	STY !P2YSpeed
-	+	LDA #$04 : TRB $6DA3
-		LDA #$80 : TSB $6DA3
+	+	LDA #$04 : TRB $15
+		LDA #$80 : TSB $15
 		LDA !P2Water					; |
 		AND #$10 : BNE .WaterCode			; |
 		JMP .Drift
@@ -321,7 +303,7 @@ namespace Luigi
 
 
 		.Drift
-		LDA $6DA3					;\
+		LDA $15						;\
 		AND #$03 : BEQ -				; |
 		CMP #$03 : BEQ -				; > go to friction if no direction is held
 		TAX						; |
@@ -354,12 +336,12 @@ namespace Luigi
 		LDA !P2Dashing
 		CMP #$30 : BCS +
 		LDX !P2InAir : BEQ +
-		BIT $6DA3 : BVC +
+		BIT $15 : BVC +
 		LDA #$30
 		+
 		LSR #3
 		AND #$0C
-		BIT $6DA3
+		BIT $15
 		BVC $03 : CLC : ADC #$04
 		ORA $00
 		TAX
@@ -375,7 +357,7 @@ namespace Luigi
 		ROL A						; |
 		EOR #$01					; | acceleration when turning around on the ground: 2
 		INC A						; |
-		AND $6DA3 : BEQ ..accel				; |
+		AND $15 : BEQ ..accel				; |
 		..doubleaccel					; |
 		LDY #$0200					;/
 		..accel						;\
@@ -384,7 +366,7 @@ namespace Luigi
 		AND #$00FF : BEQ ..notice			; |
 		LDA !P2InAir					; |
 		AND #$00FF : BNE ..notice			; |
-		LDA $6DA3					; |
+		LDA $15						; |
 		AND #$0043					; | ICY GROUND
 		CMP #$0041 : BCS ..running			; |
 		..walking					; |
@@ -451,13 +433,13 @@ namespace Luigi
 		CPX #$08 : BCS +				; |
 		DEC $00						; |
 		DEC $01						;/
-	+	LDA $6DA3					;\
+	+	LDA $15						;\
 		AND #$07					; | end slide on walk
 		CMP #$04 : BCS +				; |
 		CMP #$00 : BNE .EndSlide			;/
 	+	CPX #$08 : BEQ +				; > can't start slide on flat ground
 		LDA !P2Sliding : BNE +				;\
-		LDA $6DA3					; |
+		LDA $15						; |
 		AND #$04 : BEQ .NotSliding			; | start slide
 		STA !P2Sliding					; |
 		STA !P2Ducking					;/
@@ -498,7 +480,7 @@ namespace Luigi
 		.NoSlope
 
 		LDA !P2Sliding : BNE +				;
-	-	LDA $6DA3
+	-	LDA $15
 		AND #$04
 	+	STA !P2Ducking
 		LDA !P2Sliding : BEQ .SlideDone
@@ -519,7 +501,7 @@ namespace Luigi
 		BMI +
 		BEQ +
 	++	JSR .JumpCheck
-	+	BIT $6DA3 : BMI +
+	+	BIT $15 : BMI +
 		LDA #$46 : STA !P2FallSpeed		; fall speed is 0x46 during normal jump
 		RTS
 	+	LDA #$39 : STA !P2FallSpeed		; fall speed is 0x39 during flutter
@@ -527,15 +509,15 @@ namespace Luigi
 
 
 		.JumpCheck
-		LDA $6DA3				;\
+		LDA $15					;\
 		AND #$80				; | clear jump buffer unless jump is held
 		EOR #$80				; |
 		TRB !P2Buffer				;/
 		LDA !P2Buffer				;\
 		AND #$80				; | apply jump buffer
-		TSB $6DA7				;/
+		TSB $16					;/
 
-		BIT $6DA7 : BPL .Return			; no jump unless jump is pressed
+		BIT $16 : BPL .Return			; no jump unless jump is pressed
 		LDA !P2Anim				;\
 		CMP #!Lui_Spin : BCC .Jump		; | can't jump during spin animation
 		CMP #!Lui_SpinEnd_over : BCC .Return	;/
@@ -553,9 +535,9 @@ namespace Luigi
 		LDA .JumpHeight,x : STA !P2YSpeed
 		LDA !P2Sliding : BEQ +
 		STZ !P2Sliding				; clear slide when jumping
-		LDA #$04 : TRB $6DA3			; clear crouch when jumping out of slide
+		LDA #$04 : TRB $15			; clear crouch when jumping out of slide
 	+	LDA #$2B : STA !SPC1			; jump SFX
-		LDA $6DA3				;\
+		LDA $15					;\
 		AND #$04				; | reset ducking status
 		STA !P2Ducking				;/
 		.Return
@@ -563,7 +545,7 @@ namespace Luigi
 
 
 		.FireballXSpeed
-		db $FE,$02
+		db $E0,$20
 
 		.FireballXDisp
 		db $00,$08
@@ -659,8 +641,8 @@ namespace Luigi
 		LDA !P2Blocked
 		AND #$03 : BNE ..clear			; kill dash timer if running into a wall
 		LDY !P2Ducking : BNE ..dec		; decrement dash when crouching
-		BIT $6DA3 : BVC ..dec			; decrement dash if not holding Y
-		LDA $6DA3				;\
+		BIT $15 : BVC ..dec			; decrement dash if not holding Y
+		LDA $15					;\
 		AND #$03 : BEQ ..dec			; |
 		CMP #$03 : BEQ ..dec			; |
 		DEC A					; |
@@ -699,10 +681,6 @@ namespace Luigi
 		JSL CORE_SPRITE_INTERACTION
 
 
-	EXSPRITE_INTERACTION:
-		JSL CORE_EXSPRITE_INTERACTION
-
-
 	UPDATE_SPEED:
 		LDA !P2Blocked
 		AND #$04
@@ -714,7 +692,7 @@ namespace Luigi
 		LDA #$03				; base gravity when ascending: 3
 		BIT !P2YSpeed				;\ base gravity when descending: 1
 		BMI $02 : LDA #$01			;/
-		BIT $6DA3				;\ +2 to gravity if B is not held
+		BIT $15					;\ +2 to gravity if B is not held
 		BMI $02 : INC #2			;/
 		STA !P2Gravity				; store gravity
 
@@ -732,10 +710,8 @@ namespace Luigi
 
 	; CARRY ITEM CODE
 	; (this has to be run after speed update to sync sprite image)
-
-
 		LDX !P2Carry : BEQ .NoCarry
-		JSL CORE_PLUMBER_CARRY		
+		JSL CORE_CARRY		
 		.NoCarry
 
 
@@ -852,7 +828,7 @@ namespace Luigi
 		CMP #!Lui_Climb_over : BCC ++
 	+	LDA #!Lui_Climb : STA !P2Anim
 		STZ !P2AnimTimer
-	++	LDA $6DA3
+	++	LDA $15
 		AND #$0F : BNE +
 		STZ !P2AnimTimer
 	+	JMP .HandleUpdate
@@ -934,7 +910,7 @@ namespace Luigi
 
 
 		BIT !P2YSpeed : BMI .NoFlutter			; no flutter while ascending
-		BIT $6DA3 : BPL .NoFlutter			; no flutter without holding B
+		BIT $15 : BPL .NoFlutter			; no flutter without holding B
 	.Flutter
 		LDA !P2Anim					;\
 		CMP #!Lui_Flutter : BCC +			; |
@@ -967,7 +943,7 @@ namespace Luigi
 		ORA !P2VectorX					; | check for horizonal movement
 		BNE .Move					;/
 
-		LDA $6DA3					;\
+		LDA $15						;\
 		AND #$08 : BEQ .Stand				; | look up frame when up is held
 		LDA #!Lui_LookUp : STA !P2Anim			; |
 		JMP .HandleUpdate				;/
@@ -976,7 +952,7 @@ namespace Luigi
 
 		.Move
 		STA $00						;\
-		LDA $6DA3					; |
+		LDA $15						; |
 		AND #$03 : BEQ .NoTurn				; |
 		CMP #$03 : BEQ .NoTurn				; | turn frame when holding against Xspeed direction
 		DEC A						; |
@@ -1007,8 +983,8 @@ namespace Luigi
 		LDA !P2Carry : BEQ .HandleUpdate		;\
 		DEC A						; |
 		TAX						; | set carried item coordinate
-		LDA !P2XPosLo : STA $3220,x			; |
-		LDA !P2XPosHi : STA $3250,x			;/
+		LDA !P2XPosLo : STA !SpriteXLo,x		; |
+		LDA !P2XPosHi : STA !SpriteXHi,x		;/
 
 
 
@@ -1020,7 +996,6 @@ namespace Luigi
 		STA $02						; temp anim
 		ASL #3
 		TAY
-		LDA ANIM+$00,y : STA $0E
 		SEP #$20
 		LDA !P2AnimTimer
 		INC A
@@ -1030,7 +1005,6 @@ namespace Luigi
 		AND #$00FF
 		ASL #3
 		TAY
-		LDA ANIM+$00,y : STA $0E
 		SEP #$20
 		LDA !P2Anim
 		CMP #!Lui_Walk : BCC ..rate0
@@ -1055,7 +1029,10 @@ namespace Luigi
 
 
 	.ReplaceAnim
-		LDA !MultiPlayer : BEQ .ThisOne		; animate at 60fps on single player
+		REP #$20
+		LDA ANIM+$00,y : STA $0E
+		SEP #$20
+		LDA !MultiPlayer : BEQ .ThisOne			; animate at 60fps on single player
 		LDA $14
 		AND #$01
 		CMP !CurrentPlayer : BEQ .ThisOne
@@ -1081,18 +1058,17 @@ namespace Luigi
 		LDX CARRY_POSE,y				;\
 		CPX #$FF : BEQ .CarryAddress			; |
 		REP #$10					; |
-		STX $02						; |
-		TXA						; | carry pose replacement
+		STX $02						; | carry pose replacement
+		TXA						; |
 		ASL #3						; |
 		TAY						; |
-		SEP #$20					; |
 		BRA .ReplaceAnim				;/
 		.CarryAddress					;\
 		CLC : ADC #$0800				; | carrying offset
 		.NoCarryAddress					;/
 
 		STA $02						; $00 = address
-		LDY.b #!File_Luigi : JSL !GetFileAddress	; get address of file
+		LDY.b #!File_Luigi : JSL GetFileAddress		; get address of file
 
 
 
@@ -1152,7 +1128,8 @@ namespace Luigi
 		INC #2					; |
 		STA $04					;/
 
-	.Big	SEP #$20
+		.Big
+		SEP #$20
 		JSL CORE_LOAD_TILEMAP
 
 
@@ -1165,8 +1142,7 @@ namespace Luigi
 		LDA.w #ANIM
 		JSL CORE_OUTPUT_HURTBOX
 		PLA : STA !P2Anim
-		PLB
-		RTS
+		RTL
 
 
 
@@ -1186,6 +1162,7 @@ namespace Luigi
 	CARRY_ADDRESS:
 	db $00					; idle
 	db $00,$00,$00				; walk
+	db $00,$00,$00				; run
 	db $00					; lookup
 	db $00					; crouch
 	db $00,$00				; jump
@@ -1193,7 +1170,6 @@ namespace Luigi
 	db $FF					; face back
 	db $FF					; face front
 	db $FF					; kick
-	db $00,$00,$00				; run
 	db $00					; long jump
 	db $00					; turn
 	db $FF					; victory
@@ -1206,14 +1182,15 @@ namespace Luigi
 	db $FF,$FF,$FF,$FF			; spin
 	db $FF,$FF,$FF,$FF			; spin end
 	db $00,$00,$00				; flutter
-	db $FF					; hurt
-	db $FF					; shrink
+	db $FF,$FF				; hurt
+	db $FF,$FF				; shrink
 	db $FF					; dead
 
 	; which pose to replace the pose (index) with if luigi is carrying something, 0xFF if there is no replacement
 	CARRY_POSE:
 	db $FF					; idle
 	db $FF,$FF,$FF				; walk
+	db !Lui_Walk+0,!Lui_Walk+1,!Lui_Walk+2	; run
 	db $FF					; lookup
 	db $FF					; crouch
 	db !Lui_Walk+2,!Lui_Walk+1		; jump
@@ -1221,7 +1198,6 @@ namespace Luigi
 	db $FF					; face back
 	db $FF					; face front
 	db $FF					; kick
-	db !Lui_Walk+0,!Lui_Walk+1,!Lui_Walk+2	; run
 	db !Lui_Walk+2				; long jump
 	db $FF					; turn
 	db $FF					; victory
@@ -1234,8 +1210,8 @@ namespace Luigi
 	db $FF,$FF,$FF,$FF			; spin
 	db $FF,$FF,$FF,$FF			; spin end
 	db !Lui_Walk+0,!Lui_Walk+1,!Lui_Walk+2	; flutter
-	db $FF					; hurt
-	db $FF					; shrink
+	db $FF,$FF				; hurt
+	db $FF,$FF				; shrink
 	db $FF					; dead
 
 
@@ -1247,193 +1223,193 @@ endmacro
 
 	ANIM:
 	.Idle0
-	dw .16x32TM : db $00,!Lui_Idle		; 00
+	dw .16x32TM : db $00,!Lui_Idle
 	%LuiDyn(2, $000)
 	dw .ClippingStandard
 
 	.Walk
-	dw .16x32TM : db $06,!Lui_Walk+1	; 01
+	dw .16x32TM : db $06,!Lui_Walk+1
 	%LuiDyn(2, $000)
 	dw .ClippingStandard
-	dw .16x32TM : db $06,!Lui_Walk+2	; 02
+	dw .16x32TM : db $06,!Lui_Walk+2
 	%LuiDyn(2, $002)
 	dw .ClippingStandard
-	dw .16x32TM : db $06,!Lui_Walk		; 03
+	dw .16x32TM : db $06,!Lui_Walk
 	%LuiDyn(2, $004)
 	dw .ClippingStandard
 
 	.Run
-	dw .24x32TM : db $02,!Lui_Run+1		; 0C
+	dw .24x32TM : db $02,!Lui_Run+1
 	%LuiDyn(3, $080)
 	dw .ClippingStandard
-	dw .24x32TM : db $02,!Lui_Run+2		; 0D
+	dw .24x32TM : db $02,!Lui_Run+2
 	%LuiDyn(3, $083)
 	dw .ClippingStandard
-	dw .24x32TM : db $02,!Lui_Run		; 0E
+	dw .24x32TM : db $02,!Lui_Run
 	%LuiDyn(3, $086)
 	dw .ClippingStandard
 
 	.LookUp
-	dw .16x32TM : db $FF,!Lui_LookUp	; 04
+	dw .16x32TM : db $FF,!Lui_LookUp
 	%LuiDyn(2, $006)
 	dw .ClippingStandard
 
 	.Crouch
-	dw .16x32TM : db $FF,!Lui_Crouch	; 05
+	dw .16x32TM : db $FF,!Lui_Crouch
 	%LuiDyn(2, $008)
 	dw .ClippingCrouch
 
 	.Jump
-	dw .16x32TM : db $FF,!Lui_Jump		; 06
+	dw .16x32TM : db $FF,!Lui_Jump
 	%LuiDyn(2, $00A)
 	dw .ClippingStandard
-	dw .16x32TM : db $FF,!Lui_Jump+1	; 07
+	dw .16x32TM : db $FF,!Lui_Jump+1
 	%LuiDyn(2, $00C)
 	dw .ClippingStandard
 
 	.Slide
-	dw .16x32TM : db $FF,!Lui_Slide		; 08
+	dw .16x32TM : db $FF,!Lui_Slide
 	%LuiDyn(2, $00E)
 	dw .ClippingCrouch
 
 	.FaceBack
-	dw .16x32TM : db $FF,!Lui_FaceBack	; 09
+	dw .16x32TM : db $FF,!Lui_FaceBack
 	%LuiDyn(2, $08E)
 	dw .ClippingStandard
 
 	.FaceFront
-	dw .16x32TM : db $FF,!Lui_FaceFront	; 0A
+	dw .16x32TM : db $FF,!Lui_FaceFront
 	%LuiDyn(2, $08C)
 	dw .ClippingStandard
 
 	.Kick
-	dw .16x32TM : db $08,!Lui_Idle		; 0B
+	dw .16x32TM : db $08,!Lui_Idle
 	%LuiDyn(2, $04E)
 	dw .ClippingStandard
 
 	.LongJump
-	dw .24x32TM : db $FF,!Lui_LongJump	; 0F
+	dw .24x32TM : db $FF,!Lui_LongJump
 	%LuiDyn(3, $089)
 	dw .ClippingStandard
 
 	.Turn
-	dw .16x32TM : db $FF,!Lui_Turn		; 10
+	dw .16x32TM : db $FF,!Lui_Turn
 	%LuiDyn(2, $04C)
 	dw .ClippingStandard
 
 	.Victory
-	dw .16x32TM : db $FF,!Lui_Victory	; 11
+	dw .16x32TM : db $FF,!Lui_Victory
 	%LuiDyn(2, $04A)
 	dw .ClippingStandard
 
 	.SwimSlow
-	dw .24x32TM : db $FF,!Lui_SwimSlow	; 12
+	dw .24x32TM : db $FF,!Lui_SwimSlow
 	%LuiDyn(3, $0C0)
 	dw .ClippingStandard
-	dw .24x32TM : db $08,!Lui_SwimSlow+2	; 13
+	dw .24x32TM : db $08,!Lui_SwimSlow+2
 	%LuiDyn(3, $0C0)
 	dw .ClippingStandard
-	dw .24x32TM : db $08,!Lui_SwimSlow+3	; 14
+	dw .24x32TM : db $08,!Lui_SwimSlow+3
 	%LuiDyn(3, $0C3)
 	dw .ClippingStandard
-	dw .24x32TM : db $08,!Lui_SwimSlow+0	;
+	dw .24x32TM : db $08,!Lui_SwimSlow+0
 	%LuiDyn(3, $0C6)
 	dw .ClippingStandard
 
 	.SwimFast
-	dw .24x32TM : db $08,!Lui_SwimFast+1	;
+	dw .24x32TM : db $08,!Lui_SwimFast+1
 	%LuiDyn(3, $100)
 	dw .ClippingStandard
-	dw .24x32TM : db $08,!Lui_SwimFast+2	;
+	dw .24x32TM : db $08,!Lui_SwimFast+2
 	%LuiDyn(3, $103)
 	dw .ClippingStandard
-	dw .24x32TM : db $08,!Lui_SwimFast	;
+	dw .24x32TM : db $08,!Lui_SwimFast
 	%LuiDyn(3, $106)
 	dw .ClippingStandard
 
 	.Climb
-	dw .16x32TM : db $08,!Lui_Climb+1	; 17
+	dw .16x32TM : db $08,!Lui_Climb+1
 	%LuiDyn(2, $10B)
 	dw .ClippingStandard
-	dw .16x32TMX : db $08,!Lui_Climb	; 18
+	dw .16x32TMX : db $08,!Lui_Climb
 	%LuiDyn(2, $10B)
 	dw .ClippingStandard
 
 	.Hammer
-	dw .16x32TM : db $06,!Lui_Hammer+1	; 1A
+	dw .16x32TM : db $06,!Lui_Hammer+1
 	%LuiDyn(2, $140)
 	dw .ClippingStandard
-	dw .16x32TM : db $06,!Lui_Hammer+2	; 1B
+	dw .16x32TM : db $06,!Lui_Hammer+2
 	%LuiDyn(2, $142)
 	dw .ClippingStandard
-	dw .16x32TM : db $0C,!Lui_Idle		; 1C
+	dw .16x32TM : db $0C,!Lui_Idle
 	%LuiDyn(2, $144)
 	dw .ClippingStandard
 
 	.Cutscene
-	dw .16x32TM : db $FF,!Lui_Cutscene	; 1D
+	dw .16x32TM : db $FF,!Lui_Cutscene
 	%LuiDyn(2, $146)
 	dw .ClippingStandard
-	dw .16x32TM : db $FF,!Lui_Cutscene+1	; 1E
+	dw .16x32TM : db $FF,!Lui_Cutscene+1
 	%LuiDyn(2, $148)
 	dw .ClippingStandard
-	dw .16x32TM : db $FF,!Lui_Cutscene+2	; 1F
+	dw .16x32TM : db $FF,!Lui_Cutscene+2
 	%LuiDyn(2, $14A)
 	dw .ClippingStandard
-	dw .16x32TM : db $FF,!Lui_Cutscene+3	; 20
+	dw .16x32TM : db $FF,!Lui_Cutscene+3
 	%LuiDyn(2, $14C)
 	dw .ClippingStandard
-	dw .16x32TM : db $FF,!Lui_Cutscene+4	; 21
+	dw .16x32TM : db $FF,!Lui_Cutscene+4
 	%LuiDyn(2, $14E)
 	dw .ClippingStandard
-	dw .16x32TM : db $FF,!Lui_Cutscene+5	; 22
+	dw .16x32TM : db $FF,!Lui_Cutscene+5
 	%LuiDyn(2, $180)
 	dw .ClippingStandard
-	dw .16x32TM : db $FF,!Lui_Cutscene+6	; 23
+	dw .16x32TM : db $FF,!Lui_Cutscene+6
 	%LuiDyn(2, $182)
 	dw .ClippingStandard
 
 	.Balloon
-	dw .32x32TM : db $FF,!Lui_Balloon	; 24
+	dw .32x32TM : db $FF,!Lui_Balloon
 	%LuiDyn(4, $184)
 	dw .ClippingStandard
 
 	.Spin
-	dw .SpinTM00 : db $02,!Lui_Spin+1	; 25
+	dw .SpinTM00 : db $02,!Lui_Spin+1
 	%LuiDyn(2, $1C0)
 	dw .ClippingStandard
-	dw .32x32TM : db $02,!Lui_Spin+2	; 26
+	dw .32x32TM : db $02,!Lui_Spin+2
 	%LuiDyn(4, $1C2)
 	dw .ClippingStandard
-	dw .SpinTM01 : db $02,!Lui_Spin+3	; 27
+	dw .SpinTM01 : db $02,!Lui_Spin+3
 	%LuiDyn(2, $1C6)
 	dw .ClippingStandard
-	dw .Reverse32x32TM : db $02,!Lui_Spin	; 28
+	dw .Reverse32x32TM : db $02,!Lui_Spin
 	%LuiDyn(4, $1C2)
 	dw .ClippingStandard
 
 	.SpinEnd
-	dw .32x32TM : db $04,!Lui_SpinEnd+1	; 29
+	dw .32x32TM : db $04,!Lui_SpinEnd+1
 	%LuiDyn(4, $1C8)
 	dw .ClippingStandard
-	dw .16x32TM : db $04,!Lui_SpinEnd+2	; 2A
+	dw .16x32TM : db $04,!Lui_SpinEnd+2
 	%LuiDyn(2, $1CC)
 	dw .ClippingStandard
-	dw .16x32TM : db $04,!Lui_SpinEnd+3	; 2B
+	dw .16x32TM : db $04,!Lui_SpinEnd+3
 	%LuiDyn(2, $1CE)
 	dw .ClippingStandard
-	dw .32x32TM : db $0C,!Lui_Idle		; 2C
+	dw .32x32TM : db $0C,!Lui_Idle
 	%LuiDyn(4, $200)
 	dw .ClippingStandard
 
 	.Flutter
-	dw .16x32TM : db $02,!Lui_Flutter+1	; 2D
+	dw .16x32TM : db $02,!Lui_Flutter+1
 	%LuiDyn(2, $204)
 	dw .ClippingStandard
-	dw .16x32TM : db $02,!Lui_Flutter+2	; 2E
+	dw .16x32TM : db $02,!Lui_Flutter+2
 	%LuiDyn(2, $206)
 	dw .ClippingStandard
-	dw .16x32TM : db $02,!Lui_Flutter	; 2F
+	dw .16x32TM : db $02,!Lui_Flutter
 	%LuiDyn(2, $208)
 	dw .ClippingStandard
 
@@ -1446,7 +1422,7 @@ endmacro
 	dw .ClippingCrouch
 
 	.Shrink
-	dw .16x32TM : db $04,!Lui_Shrink+1	; 31
+	dw .16x32TM : db $04,!Lui_Shrink+1
 	%LuiDyn(2, $18C)
 	dw .ClippingCrouch
 	dw .16x32TM : db $04,!Lui_Shrink+0
@@ -1548,8 +1524,8 @@ endmacro
 	db $FF,$FF,$0A,$0A		; R/L/R/L
 	db $10,$10,$F8,$02		; D/D/U/C
 	; hurtbox
-	dw $0001,$FFF8			; X/Y
-	db $0D,$17			; W/H
+	dw $0002,$FFF6			; X/Y
+	db $0C,$1A			; W/H
 
 
 	.ClippingCrouch
@@ -1560,8 +1536,8 @@ endmacro
 	db $06,$06,$0A,$0A		; R/L/R/L
 	db $10,$10,$00,$08		; D/D/U/C
 	; hurtbox
-	dw $0001,$0000			; X/Y
-	db $0D,$0F			; W/H
+	dw $0002,$0004			; X/Y
+	db $0C,$0C			; W/H
 
 
 .End

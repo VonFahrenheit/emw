@@ -154,7 +154,7 @@
 
 
 	; water animation
-	LDY.w #!File_Overworld_Anim : JSL !GetFileAddress
+	LDY.w #!File_Overworld_Anim : JSL GetFileAddress
 	LDA.l !FileAddress : STA $0D
 	LDA.l !FileAddress+1 : STA $0E
 
@@ -181,7 +181,7 @@
 	ASL #5
 	STA $02
 	PHX
-	JSL !GetVRAM
+	JSL GetVRAM
 	LDA #$0040 : STA !VRAMbase+!VRAMtable+$00,x
 	LDA $0D : STA !VRAMbase+!VRAMtable+$02,x
 	LDA $0E : STA !VRAMbase+!VRAMtable+$03,x
@@ -209,7 +209,7 @@
 	ASL #5
 	STA $02
 	PHX
-	JSL !GetVRAM
+	JSL GetVRAM
 	LDA #$0040 : STA !VRAMbase+!VRAMtable+$00,x
 	LDA $0D : STA !VRAMbase+!VRAMtable+$02,x
 	LDA $0E : STA !VRAMbase+!VRAMtable+$03,x
@@ -616,7 +616,7 @@
 		..finish						;\ final part
 		LDA $00 : STA $0C					;/
 		..sendrow						;\
-		JSL !GetVRAM : BCS ..return				; |
+		JSL GetVRAM : BCS ..return				; |
 		LDA $0C							; |
 		ASL A							; |
 		STA !VRAMbase+!VRAMtable+$00,x				; | transfer a zip row part
@@ -670,7 +670,7 @@
 		SEC : SBC #$0005					; | Y = buffer index (skip if all have been gone through)
 		TAY							; |
 		BMI ..full						;/
-		JSL !GetVRAM : BCS ..full				; X = VRAM table index (skip if table is full)
+		JSL GetVRAM : BCS ..full				; X = VRAM table index (skip if table is full)
 		LDA #$0040 : STA !VRAMbase+!VRAMtable+$00,x		; size is always 64 bytes
 		LDA.w !loadbuffer+0,y : STA !VRAMbase+!VRAMtable+$02,x	;\ source address + bank
 		LDA.w !loadbuffer+1,y : STA !VRAMbase+!VRAMtable+$03,x	;/

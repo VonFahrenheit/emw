@@ -1,17 +1,14 @@
 
 	RIPOSTE:
-		PHB : PHK : PLB
-		REP #$20						;\
-		LDA.w #.FakeTable : STA $0E				; > rig this table to always read 0
+		LDA !P2Hitbox1W						;\ riposte can't overwrite other attacks
+		ORA !P2Hitbox1H : BNE .Return				;/
+
+		PHB : PHK : PLB						;\
+		REP #$20						; | riposte hitbox
 		LDA.w #.Hitbox : JSL CORE_ATTACK_LoadHitbox		; |
-		JSL CORE_ATTACK_ActivateHitbox1				; | riposte hitbox
-		JSR Kadaal_HITBOX_GetClipping				; |
-		REP #$20						; |
-		LDA !P2Hitbox1IndexMem1 : TSB !P2Hitbox2IndexMem1	; > merge hitboxes
-		SEP #$20						; |
-		JSL CORE_ATTACK_ActivateHitbox2				; |
-		JSR Kadaal_HITBOX_GetClipping				;/
-		PLB
+		PLB							;/
+
+		.Return
 		RTL							; return
 
 
@@ -28,6 +25,4 @@
 	db $02,$00			; SFX
 
 
-	.FakeTable
-	db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; 16 0x00 bytes
 

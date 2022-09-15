@@ -8,27 +8,21 @@
 	PLUMBER_SWIM:
 
 		LDA !P2Blocked				;\
-		AND $6DA3				; | set crouch
+		AND $15					; | set crouch
 		AND #$04				; |
 		STA !P2Ducking				;/
 		BEQ +					;\
-		LDA #$03 : TRB $6DA3			; | clear left/right when crouching
+		LDA #$03 : TRB $15			; | clear left/right when crouching
 		+					;/
 
-		BIT $6DA3 : BMI +			;\
+		BIT $15 : BMI +				;\
 		LDA #$0A : STA !P2FastSwim		; | fast swim check
-	+	LDA !P2FastSwim : BNE .Slow		;/
-	.Fast	LDA !P2Character : BNE .HoldingObject	; luigi doesn't use this timer
-		INC !P2FastSwimAnim			;\
-		LDA !P2FastSwimAnim			; |
-		AND #$0F				; | special timer for mario
-		STA !MarioAnimTimer			; |
-		BRA .HoldingObject			;/
-	.Slow	DEC !P2FastSwim				; decrement timer
-		LDA !P2Carry : BEQ .NotHoldingObject	; special mario holding object flag
+	+	LDA !P2FastSwim : BEQ .HoldingObject	;/
+		DEC !P2FastSwim				; decrement timer
+		LDA !P2Carry : BEQ .NotHoldingObject	; holding item flag
 
 		.HoldingObject
-		LDA $6DA3				;\
+		LDA $15					;\
 		AND #$03 : BEQ +			; |
 		CMP #$03 : BEQ +			; | fast swim speed when no input
 		CLC : ADC #$04				; |
@@ -39,7 +33,7 @@
 	++	BRA +					;/
 
 		.NotHoldingObject
-		LDA $6DA3				;\
+		LDA $15					;\
 		AND #$03				; | get index
 	+	ASL A					; |
 		TAX					;/
@@ -64,7 +58,7 @@
 	+	STA !P2XSpeedFraction			; |
 		.XSpeedDone				; |
 		SEP #$20				;/
-		LDA $6DA3				;\
+		LDA $15					;\
 		AND #$03 : BEQ .DirDone			; |
 		CMP #$03 : BEQ .DirDone			; | set facing direction
 		AND #$01				; |
@@ -82,16 +76,16 @@
 		AND #$08 : BNE .Submerged		; | has to have up collision point above water and be moving up to jump out of water
 		BIT !P2YSpeed : BPL .Submerged		;/
 		LDA !P2Character : BNE +		;\
-		LDA $6DA5				; |
+		LDA $17					; |
 		AND #$80				; |
-		ORA $6DA3				; |
+		ORA $15					; |
 		AND #$88				; | mario can spin jump out of water
 		CMP #$88 : BNE .FastSwimDown		; |
-		BIT $6DA5 : BPL ++			; |
-		INC !MarioSpinJump			; |
+		BIT $17 : BPL ++			; |
+		; spin jump flag here
 		LDA #$04 : STA !SPC4			; > spin jump SFX
 		BRA ++					;/
-	+	LDA $6DA3				;\
+	+	LDA $15					;\
 		AND #$88				; |
 		CMP #$88 : BNE .FastSwimDown		; | can jump out of water with B + up
 	++	LDA #$0F : TRB !P2YPosLo		; |
@@ -103,7 +97,7 @@
 		LDA !P2FastSwim : BNE .SlowSwim		;/
 
 		.FastSwim				;\
-		LDA $6DA3				; |
+		LDA $15					; |
 		AND #$04 : BEQ .FastSwimRise		; |
 		.FastSwimDown				; |
 		LDA !P2YSpeed				; |
@@ -126,7 +120,7 @@
 		BRA .NoGravity				;/
 
 		.SlowSwim
-		BIT $6DA7 : BPL .NoSwim			; check input
+		BIT $16 : BPL .NoSwim			; check input
 		LDA #$0E : STA !SPC1			; swim SFX
 		LDA !P2Character : BNE ..Luigi		; check for animation type
 		..Mario					;\
@@ -137,7 +131,7 @@
 		LDA #!Lui_SwimSlow+1 : STA !P2Anim	; | luigi swim animation
 		STZ !P2AnimTimer			; |
 		..CharDone				;/
-		LDA $6DA3				;\
+		LDA $15					;\
 		AND #$0C				; |
 		LSR #2					; |
 		TAX					; |

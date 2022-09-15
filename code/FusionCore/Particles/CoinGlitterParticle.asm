@@ -1,4 +1,5 @@
 
+; incrementing timer
 ; need:
 ;	initial angle offset + target player
 ;	timer (increments angle and handles movement)
@@ -7,23 +8,22 @@
 ; X acc will be target player
 ; Y acc will be initial angle
 
-; 00-0F: move + shrink
-; 10-1F: move
-; 20-3F: grow
+; 00-1F: grow
+; 20-2F: move
+; 30-3F: move + shrink
 
 
 	CoinGlitterParticle:
 		LDX $00
 		LDA !Particle_XAcc,x
 		AND #$00FF : STA $0A
-		DEC !Particle_Timer,x
+		INC !Particle_Timer,x
 		LDA !Particle_Timer,x
-		AND #$00FF : BEQ .Despawn
-		CMP #$0020 : BCC .Move
+		AND #$00FF
+		CMP #$0040 : BCS .Despawn
+		CMP #$0020 : BCS .Move
 
-		.Grow
-		SBC #$003F						;\
-		EOR #$FFFF : INC A					; |
+		.Grow							;\
 		CMP #$0010 : BCC ..table				; |
 		LDA #$0020 : BRA ..set					; |
 		..table							; |
@@ -55,14 +55,16 @@
 		RTS							;/
 
 		.Move
-		ASL #3							;\ Y = timer factor
+		AND #$001F						;\
+		ASL #3							; | $0E = timer factor
+		STA $0E							;/
+		LDA #$0100						;\
+		SEC : SBC $0E						; | Y = reverse timer factor
 		TAY							;/
-		STA $0E							; store in $0E too
 		LDA !Particle_YAcc,x					;\
-		AND #$0080						; |
-		TAX							; |
-		LDA.l !P2XLo-$80,x					; | $02,$04 = target X,Y coords
-		CLC : ADC #$0008					; |
+		AND #$0080 : TAX					; |
+		LDA.l !P2XLo-$80,x					; |
+		CLC : ADC #$0008					; | $02,$04 = target X,Y coords
 		STA $02							; |
 		LDA.l !P2YLo-$80,x : STA $04				; |
 		LDX $00							;/
@@ -78,9 +80,7 @@
 		STY $2253						; | calculate org X component
 		NOP : BRA $00						; |
 		LDA $2307 : STA $06					;/
-		LDA #$0100						;\
-		SEC : SBC $0E						; | reverse timer for target coord
-		TAY							;/
+		LDY $0E							; get timer factor
 		LDA $02 : STA $2251					;\
 		STY $2253						; |
 		LDA $06							; | calculate final X
@@ -90,7 +90,8 @@
 		LDA $04 : STA $2251					;\ set up final Y calc
 		STY $2253						;/
 		LDA !41_Particle_Timer,x				;\
-		AND #$00FF						; |
+		AND #$001F						; |
+		EOR #$001F : INC A					; |
 		ASL A							; | calculate circle size
 		CMP #$0020						; |
 		BCC $03 : LDA #$0020					; |
@@ -107,8 +108,8 @@
 
 		LDA !Particle_Timer,x
 		AND #$00FF
-		CMP #$0018
-		BCC $01 : LSR A
+		CMP #$0028
+		BCS $01 : LSR A
 		CLC : ADC $0A
 
 		.GetCircle
@@ -147,7 +148,6 @@
 		CLC : ADC $04
 		STA $04
 
-
 		LDX $00
 		PLB
 
@@ -155,19 +155,14 @@
 		.Draw
 		LDA $02 : STA !Particle_XLo,x
 		LDA $04 : STA !Particle_YLo,x
-
-
 		LDA !Particle_Timer,x
 		LSR #2
 		AND #$0001
 		ORA #$3458
 		STA !Particle_TileTemp
-
 		STZ !Particle_TileTemp+2
-		JSR ParticleDrawSimple_BG1
+		JMP ParticleDrawSimple_BG1
 
-
-		RTS							;/
 
 
 

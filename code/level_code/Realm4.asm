@@ -411,7 +411,7 @@ level10:
 		INC A
 		STA $00
 		CPY $00 : BCS .Return
-		JSL !GetSpriteSlot
+	;	JSL !GetSpriteSlot
 		BMI .Return
 		TYX
 		LDA #$17 : STA $35C0,x		; custom sprite number
@@ -533,7 +533,7 @@ level10:
 
 
 	SpawnBirdo:
-		JSL !GetSpriteSlot
+	;	JSL !GetSpriteSlot
 		TYX
 		LDA #$36 : STA $3200,x		; > Sprite num
 		LDA #$19 : STA $35C0,x		; custom sprite num
@@ -596,7 +596,7 @@ level11:
 		LDA !Level+2 : BNE .nope
 		INC !Level+2
 
-		JSL !GetCGRAM
+		JSL GetCGRAM
 		REP #$20						; make players black silhouettes
 		LDA.w #$0040 : STA.l !VRAMbase+!CGRAMtable+$00,x
 		LDA.w #.color : STA.l !VRAMbase+!CGRAMtable+$02,x

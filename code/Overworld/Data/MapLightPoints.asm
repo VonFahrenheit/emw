@@ -1,5 +1,5 @@
 
-	macro LightPoint(X, Y, R, G, B, S)
+	macro MapLightPoint(X, Y, R, G, B, S)
 		dw <X>
 		dw <Y>
 		dw <R>
@@ -19,7 +19,7 @@
 
 	LightPoints:
 		;	    --X--  --Y--   R     G     B    size
-		%LightPoint($0300, $0080, $0E0, $100, $120, $180)
+		%MapLightPoint($0300, $0080, $0E0, $100, $120, $180)
 
 
 

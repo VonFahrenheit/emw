@@ -106,7 +106,7 @@
 		LDA #$02 : STA $0D
 		LDA #$08 : STA $0E
 		PHX
-		JSL !SpriteBG
+		JSL DrawSpriteBG
 		PLX
 		REP #$20
 		RTS

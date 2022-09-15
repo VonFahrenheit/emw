@@ -1,19 +1,19 @@
 
-
-; timer: 13 tops
+; incrementing timer (ends at 0x10)
 
 	SmokeParticle8x8:
 		LDX $00							; reload index
 		SEP #$20						; 8-bit A
-		LDA !Particle_Timer,x : BEQ .NoTimer			;\ check and decrement timer
-		DEC !Particle_Timer,x					;/
+		LDA !Particle_Timer,x					;\
+		CMP #$10 : BCS .NoTimer					; | check and increment timer
+		INC !Particle_Timer,x					;/
 		JSR ParticleSpeed					; move particle (this lets smoke be affected by wind)
 		PHX							;\
 		LDA !Particle_Timer,x					; |
 		AND #$00FF						; |
 		LSR #2							; |
 		TAX							; | get tile num
-		LDA.l $029922,x						; |
+		LDA.l .TileNum,x					; |
 		AND #$00FF						; |
 		ORA #$3400						; |
 		STA !Particle_TileTemp					; |
@@ -30,11 +30,9 @@
 		TXA : STA.l !Particle_Index				; |
 		RTS							;/
 
-	pushpc
-	org $029922
-		db $5F,$5F,$5E,$5D,$5D
-	warnpc $029927
-	pullpc
+
+		.TileNum
+		db $5D,$5D,$5E,$5F,$5F
 
 
 

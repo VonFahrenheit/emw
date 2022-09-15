@@ -39,14 +39,13 @@
 		..getblockhitbox
 		LDA !BG_object_Y,x				;\
 		SEC : SBC #$0004				; | hitbox Y
-		STA $05						; |
-		STA $0B-1					;/
-		LDA #$282A : STA $06				; hitbox W + H
+		STA $EA						;/
+		LDA #$0028 : STA $EC				; hitbox W
+		LDA #$002A : STA $EE				; hitbox H
 		LDA !BG_object_X,x				;\
-		SEC : SBC #$0004				; |
-		STA $0A-1					; | hitbox X
+		SEC : SBC #$0004				; | hitbox X
+		STA $E8						;/
 		SEP #$30					; > all regs 8-bit
-		STA $04						;/
 		..searchkeys					;\
 		PHB : PHK : PLB					; |
 		LDX #$0F					; |
@@ -57,8 +56,8 @@
 		AND #$08 : BNE ..next				; |
 		LDA $3200,x					; |
 		CMP #$80 : BNE ..next				; |
-		JSL !GetSpriteClipping00			; |
-		JSL !Contact16 : BCC ..next			;/
+		JSL GetSpriteClippingE0				; |
+		JSL CheckContact : BCC ..next			;/
 		..contact					;\
 		LDA !BigRAM+0 : STA $02				; |
 		LDA !BigRAM+1 : STA $0E				; |

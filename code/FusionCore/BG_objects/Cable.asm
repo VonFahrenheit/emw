@@ -64,26 +64,23 @@
 
 
 		.GetClipping						;\
-		LDA !BG_object_X,x					; |
-		STA $04							; |
-		STA $09							; |
+		LDA !BG_object_X,x : STA $E8				; |
 		LDA !BG_object_H,x					; |
 		AND #$00FF						; |
 		CMP #$0080 : BCC +					; |
 		LDA #$FFE0 : BRA ++					; |
 	+	LDA #$FFFE						; |
 	++	CLC : ADC !BG_object_Y,x				; |
-		SEP #$20						; | cable clipping
-		STA $05							; |
-		XBA : STA $0B						; |
+		STA $EA							; | cable clipping
+		SEP #$20						; |
 		LDA !BG_object_W,x					; |
 		ASL #3							; |
 		BNE $01 : DEC A						; |
-		STA $06							; |
+		STA $EC : STZ $ED					; |
 		LDA !BG_object_H,x : BPL +				; |
 		LDA #$23 : BRA ++					; |
 	+	LDA #$05						; |
-	++	STA $07							;/
+	++	STA $EE : STZ $EF					;/
 
 
 		.Timer							;\
@@ -163,9 +160,8 @@
 		..done							;/
 
 
-		SEP #$30						;\
-		SEC : JSL !PlayerClipping				; | check contact (store contact bits in $00)
-		STA $0E							;/
+		SEP #$30						; all regs 8-bit
+		JSL PlayerContact : STA $0E				; check contact (store contact bits in $00)
 		PLB							; > bank wrapper end
 		PLP							;\ reg wrapper end
 		PLX							;/
@@ -769,7 +765,7 @@
 		AND #$0100 : BNE ..doubletransfer
 
 		..singletransfer
-		JSL !GetVRAM
+		JSL GetVRAM
 		LDA $06
 		ORA $0E
 		STA !VRAMtable+$00,x
@@ -781,7 +777,7 @@
 		BRA ..next
 
 		..doubletransfer
-		JSL !GetVRAM
+		JSL GetVRAM
 		LDA #$0020
 		SEC : SBC $00
 		ASL A
@@ -793,7 +789,7 @@
 		LDA $00
 		ORA $02
 		STA !VRAMtable+$05,x
-		JSL !GetVRAM
+		JSL GetVRAM
 		LDA $01,s
 		SEC : SBC $06
 		EOR #$FFFF : INC A

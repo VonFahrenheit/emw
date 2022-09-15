@@ -1,0 +1,10 @@
+
+	TorpedoTedArm:
+		LDX !SpriteIndex
+		RTS
+
+
+
+
+
+

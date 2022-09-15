@@ -1,65 +1,5 @@
 
 
-;=======;
-;HIJACKS;
-;=======;
-
-; PCE FIX MUST BE PATCHED FIRST!!
-;	...but does it really?
-
-	org $00986C				; patch out initial player/sprite engine call to let it be handled by my own code instead
-		BRA $02 : NOP #2		; org: JSL $01808C
-	org $00A6C7
-		JML Multiplayer_Pipe
-
-	org $00DC4A
-		JSL Multiplayer_Coordinates	; org: LDA $8A : STA $7D
-
-
-	org $01808C
-		JML PCE
-
-
-	org $01CAC2
-		JSL CORE_PLATFORM_Bank01	; org: JSL $03B664 (!GetP1Clipping)
-	org $01E809
-		JML CORE_PLATFORM_Cloud		; org: JSR $F7A7 : BCC $2F ($01E83D)
-		NOP
-	org $02D71E
-		JSL CORE_PLATFORM_Bank02	; org: JSL $01B44F (solid block main)
-
-	org $03911F
-		JSL FishingBooFix		; org: JSL $03B664 (!GetP1Clipping)
-		LDA !BigRAM : BEQ +		; JSL $03B72B (!CheckContact)
-		JSL !HurtPlayers		; BCC $04
-		NOP				; JSL $00F5B7 (!HurtMario)
-	warnpc $03912D
-	org $03912D
-	+	RTS
-
-
-;====;
-;CODE;
-;====;
-
-	org $1E8000				; claim banks $1E and $1F
-	db $53,$54,$41,$52
-	dw $FFF7
-	dw $0008
-
-	org $158000
-	db $53,$54,$41,$52
-	dw $FFF7
-	dw $0008
-	print " "
-	print "-- PCE --"
-	print "Von Fahrenheit's playable character engine."
-
-
-
-;========;
-;PLAYER 2;
-;========;
 
 	print "Main player engine at $", pc, "."
 	PCE:
@@ -69,7 +9,9 @@
 		LDA !GameMode
 
 		CMP #$12 : BEQ .PreProcess
-		CMP #$13 : BNE .NoPreProcess
+		CMP #$14 : BEQ ProcessMain
+		RTL
+
 		.PreProcess
 		LDA #$04
 		STA !P2Blocked-$80
@@ -82,46 +24,10 @@
 		STZ $6DA6
 		STZ $6DA8
 		SEP #$20
-		BRA ProcessMain
-		.NoPreProcess
-		CMP #$14 : BEQ ProcessMain
-		.Return
-		RTL
 
 
 	ProcessMain:
 		SEP #$30					; all regs 8-bit
-
-
-		.Mario
-		LDA !CurrentMario : BNE ..inplay		;\
-		LDA !GameMode
-		CMP #$14 : BNE ..inplay
-		..notinplay					;\
-		REP #$20					; |
-		LDA !P2XPosLo-$80 : STA !MarioXPos		; | mario coords when he's not in play
-		LDA !P2YPosLo-$80 : STA !MarioYPos		; |
-		SEP #$20					; |
-		BRA ..anim					;/
-		..inplay
-		LDA !P1Dead : BEQ ..marioinput			; check if mario is marked as dead
-		..anim
-		LDA !MarioAnim					;\ don't skip transitions
-		CMP #$06 : BEQ ..call				;/
-		LDA #$09 : STA !MarioAnim			; mario anim = 09 (dead) if he's not in play
-		..call
-		JSR RunMario					; if no one plays mario, run his anim code right away
-		BRA ..done
-		..marioinput
-		LDA !CurrentMario				;\
-		DEC A						; |
-		TAX						; |
-		LDA $6DA2,x : STA $15				; | mario input
-		LDA $6DA4,x : STA $17				; |
-		LDA $6DA6,x : STA $16				; |
-		LDA $6DA8,x : STA $18				;/
-		..done
-
 
 		.IronmanMode
 		LDA !Difficulty					;\
@@ -137,6 +43,11 @@
 		STA !P2Status-$80				; |
 		..done						;/
 
+
+		REP #$20					;\
+		LDA !P2XPosLo-$80 : STA $94			; | update dp coords
+		LDA !P2YPosLo-$80 : STA $96			; |
+		SEP #$20					;/
 
 
 	ProcessPlayer1:
@@ -179,12 +90,6 @@
 		SEP #$30					; > all regs 8-bit
 
 
-		LDA $6DA3 : PHA					;\
-		LDA $6DA5 : PHA					; | input backup
-		LDA $6DA7 : PHA					; |
-		LDA $6DA9 : PHA					;/
-
-
 		.Inputs						;\
 		LDA !P2Entrance : BEQ ..allowinputs		; |
 		..entrance					; |
@@ -194,34 +99,49 @@
 		LDA #$09 : STA !SPC4				; |
 		LDA #$1F : STA !ShakeTimer			; | entrance animation (no inputs)
 		..noinputs					; |
-		STZ $6DA3					; |
-		STZ $6DA5					; |
-		STZ $6DA7					; |
-		STZ $6DA9					; |
+		STZ $15						; |
+		STZ $16						; |
+		STZ $17						; |
+		STZ $18						; |
 		BRA ..done					;/
 		..allowinputs					;\
-		LDA $6DA2 : STA $6DA3				; |
-		LDA $6DA4 : STA $6DA5				; | get joypads
-		LDA $6DA6 : STA $6DA7				; |
-		LDA $6DA8 : STA $6DA9				;/
-		LDA !P2ExtraInput1				;\
-		BEQ $03 : STA $6DA3				; |
-		LDA !P2ExtraInput2				; |
-		BEQ $03 : STA $6DA7				; |
-		LDA !P2ExtraInput3				; | input override
-		BEQ $03 : STA $6DA5				; |
-		LDA !P2ExtraInput4				; |
-		BEQ $03 : STA $6DA9				; |
+		LDA $6DA2 : STA $15				; |
+		LDA $6DA4 : STA $17				; | get joypads
+		LDA $6DA6 : STA $16				; |
+		LDA $6DA8 : STA $18				;/
+		LDA !P2ExtraInput1 : BEQ ..input1done		;\
+		STA $15						; |
+		STZ !P2ExtraInput1				; |
+		..input1done					; |
+		LDA !P2ExtraInput2 : BEQ ..input2done		; |
+		STA $17						; |
+		STZ !P2ExtraInput2				; |
+		..input2done					; |
+		LDA !P2ExtraInput3 : BEQ ..input3done		; | input override
+		STA $16						; |
+		STZ !P2ExtraInput3				; |
+		..input3done					; |
+		LDA !P2ExtraInput4 : BEQ ..input4done		; |
+		STA $18						; |
+		STZ !P2ExtraInput4				; |
+		..input4done					; |
 		..done						;/
 
 
-		JSR Stasis					; apply stasis
+		.Stasis
+		LDA !P2Stasis : BEQ ..done
+		STZ $15
+		STZ $16
+		STZ $17
+		STZ $18
+		DEC !P2AnimTimer
+		..done
 
 
 		.CriticalMode					;\
 		LDA !Difficulty					; |
 		AND.b #!CriticalMode : BEQ ..done		; |
-		LDA $6DA7					; |
+		LDA $16						; |
 		AND #$20 : BEQ ..done				; |
 		LDA !P2HP					; | toggle size with select on critical mode
 		CMP #$01 : BEQ ..max				; |
@@ -234,8 +154,8 @@
 
 		.RunMain					;\
 		LDA !Characters					; |
-		LSR #4						; | get player 1 character ID (invalid defaults to mario to avoid crashes)
-		ASL A						; |
+		LSR #4 : STA $00				; | get player 1 character ID (invalid defaults to mario to avoid crashes)
+		ASL A : ADC $00					; |
 		CMP.b #CharacterList_End-CharacterList		; |
 		BCC $02 : LDA #$00				;/
 		TAX						; > X = index
@@ -243,17 +163,25 @@
 		LDA !P2TempHP					; |
 		CLC : ADC !PlayerBonusHP			; | run code for player 1
 		STA !PlayerBonusHP				; |
-		JSR (CharacterList,x)				; |
+		JSL RunCharacter				; |
 		PLA : STA !PlayerBonusHP			;/
-
 
 		.Riposte					;\
 		LDA !P2HurtTimer				; |
-		CMP #$0E : BNE ..done				; |
-		LDA !Difficulty					; | riposte
-		AND #$03 : BNE ..done				; |
+		CMP #$0D : BCC ..done				; | riposte
+		LDA !Difficulty : BNE ..done			; |
 		JSL CORE_RIPOSTE				; |
 		..done						;/
+
+		.ResetHitbox
+		REP #$20					;\
+		LDA !P2Hitbox1W : BNE ..box2			; |
+		STZ !P2Hitbox1IndexMem1				; |
+		..box2						; | clear hitbox index mem in empty hitboxes
+		LDA !P2Hitbox2W : BNE ..done			; |
+		STZ !P2Hitbox2IndexMem1				; |
+		..done						; |
+		SEP #$20					;/
 
 		JSL CORE_SHOW_HEARTS				; heart counter
 
@@ -290,12 +218,6 @@
 		STZ !P2ExtraInput1				; |
 		STZ !P2ExtraInput3				;/
 	+	SEP #$20					; A 8-bit
-
-
-		PLA : STA $6DA9					;\
-		PLA : STA $6DA7					; | restore P2 input
-		PLA : STA $6DA5					; |
-		PLA : STA $6DA3					;/
 
 
 		REP #$30					; > all regs 16-bit
@@ -365,30 +287,49 @@
 		LDA #$09 : STA !SPC4				; |
 		LDA #$1F : STA !ShakeTimer			; | entrance animation (no inputs)
 		..noinputs					; |
-		STZ $6DA3					; |
-		STZ $6DA5					; |
-		STZ $6DA7					; |
-		STZ $6DA9					; |
+		STZ $15						; |
+		STZ $16						; |
+		STZ $17						; |
+		STZ $18						; |
 		BRA ..done					;/
 		..allowinputs					;\
-		LDA !P2ExtraInput1				; |
-		BEQ $03 : STA $6DA3				; |
-		LDA !P2ExtraInput2				; |
-		BEQ $03 : STA $6DA7				; | input override
-		LDA !P2ExtraInput3				; |
-		BEQ $03 : STA $6DA5				; |
-		LDA !P2ExtraInput4				; |
-		BEQ $03 : STA $6DA9				; |
+		LDA $6DA3 : STA $15				; |
+		LDA $6DA5 : STA $17				; | get joypads
+		LDA $6DA7 : STA $16				; |
+		LDA $6DA9 : STA $18				;/
+		LDA !P2ExtraInput1 : BEQ ..input1done		;\
+		STA $15						; |
+		STZ !P2ExtraInput1				; |
+		..input1done					; |
+		LDA !P2ExtraInput2 : BEQ ..input2done		; |
+		STA $17						; |
+		STZ !P2ExtraInput2				; |
+		..input2done					; |
+		LDA !P2ExtraInput3 : BEQ ..input3done		; | input override
+		STA $16						; |
+		STZ !P2ExtraInput3				; |
+		..input3done					; |
+		LDA !P2ExtraInput4 : BEQ ..input4done		; |
+		STA $18						; |
+		STZ !P2ExtraInput4				; |
+		..input4done					; |
 		..done						;/
 
 
-		JSR Stasis					; apply stasis
+		.Stasis
+		LDA !P2Stasis : BEQ ..done
+		STZ $15
+		STZ $16
+		STZ $17
+		STZ $18
+		DEC !P2AnimTimer
+		..done
 
 
 		.CriticalMode					;\
 		LDA !Difficulty					; |
 		AND.b #!CriticalMode : BEQ ..done		; |
-		LDA $6DA7					; |
+		LDA $16						; |
 		AND #$20 : BEQ ..done				; |
 		LDA !P2HP					; | toggle size with select on critical mode
 		CMP #$01 : BEQ ..max				; |
@@ -401,8 +342,8 @@
 
 		.RunMain					;\
 		LDA !Characters					; |
-		AND #$0F					; | get player 2 character ID (invalid defaults to mario to avoid crashes)
-		ASL A						; |
+		AND #$0F : STA $00				; | get player 2 character ID (invalid defaults to mario to avoid crashes)
+		ASL A : ADC $00					; |
 		CMP.b #CharacterList_End-CharacterList		; |
 		BCC $02 : LDA #$00				;/
 		TAX						; > X = index
@@ -410,21 +351,27 @@
 		LDA !P2TempHP					; |
 		CLC : ADC !PlayerBonusHP			; | run code for player 2
 		STA !PlayerBonusHP				; |
-		JSR (CharacterList,x)				; |
+		JSL RunCharacter				; |
 		PLA : STA !PlayerBonusHP			;/
-
 
 		.Riposte					;\
 		LDA !P2HurtTimer				; |
-		CMP #$0E : BNE ..done				; |
-		LDA !Difficulty					; | riposte
-		AND #$03 : BNE ..done				; |
+		CMP #$0D : BCC ..done				; | riposte
+		LDA !Difficulty : BNE ..done			; |
 		JSL CORE_RIPOSTE				; |
 		..done						;/
 
+		.ResetHitbox
+		REP #$20					;\
+		LDA !P2Hitbox1W : BNE ..box2			; |
+		STZ !P2Hitbox1IndexMem1				; |
+		..box2						; | clear hitbox index mem in empty hitboxes
+		LDA !P2Hitbox2W : BNE ..done			; |
+		STZ !P2Hitbox2IndexMem1				; |
+		..done						; |
+		SEP #$20					;/
 
 		JSL CORE_SHOW_HEARTS				; heart counter
-
 
 		.Apex
 		LDA !ApexTimerP2 : BEQ ..nodec			;\ decrement
@@ -466,100 +413,20 @@
 
 
 
+	RunCharacter:
+		LDA CharacterList,x : STA $00
+		LDA CharacterList+1,x : STA $01
+		LDA CharacterList+2,x : STA $02
+		JML [$3000]
 
 	CharacterList:
-		dw Mario			; 0
-		dw Luigi			; 1
-		dw Kadaal			; 2
-		dw Leeway_Redirect		; 3
-		dw Alter			; 4
+		dl Mario			; 0
+		dl Luigi			; 1
+		dl Kadaal			; 2
+		dl Leeway			; 3
+		dl Alter			; 4
+		dl Peach			; 5
 		.End
-
-
-
-
-
-	Multiplayer:
-
-
-
-		.Pipe
-		STZ !P2Entrance
-		STZ !P2Entrance-$80
-		STX !MarioAnim			;\ Store P1 animation trigger and pipe timer
-	;	STY $88				;/
-		CPX #$07 : BNE ..NoShoot	;\
-		LDA #$30			; | slant pipe
-		STA !P2SlantPipe		; |
-		STA !P2SlantPipe-$80		;/
-		STZ !MarioAnim
-		JML $00A6CB			; > Return slant pipe
-		..NoShoot
-		LDA $89				;\
-		AND #$03			; |
-		CLC : ROR #3			; | Get P2 pipe timer
-	;	ORA $88				; |
-		ORA #$0F
-		STA !P2Pipe			; |
-		STA !P2Pipe-$80			;/
-
-
-		STZ !MarioAnim			; clear mario anim
-		REP #$20			;\
-		LDA $96				; | Fix Ypos
-		CLC : ADC #$000E		; |
-		STA !P2YPosLo			; |
-		STA !P2YPosLo-$80		; |
-		SEP #$20			;/
-		JML $00A6CB
-
-
-
-
-		.Coordinates
-		LDA !GameMode
-		CMP #$14 : BEQ ..R
-		TSC
-		XBA
-		CMP #$37 : BEQ ..R
-
-		PHX
-		PHP
-		REP #$20
-		LDA !MarioXPosLo
-		STA !P2XPosLo-$80
-		STA !P2XPosLo
-		LDA !MarioYPosLo
-		CLC : ADC #$0010
-		LDX !P2Pipe-$80
-		BNE $03 : STA !P2YPosLo-$80
-		LDX !P2Pipe : BNE +
-		STA !P2YPosLo
-		LDA !MultiPlayer
-		AND #$00FF : BEQ +
-		LDA $741A
-		AND #$00FF : BNE +
-		LDA !P2XPosLo
-		SEC : SBC #$0008
-		STA !P2XPosLo
-		CLC : ADC #$0010
-		STA !P2XPosLo-$80
-		+
-
-		LDA !CurrentMario
-		AND #$00FF : BEQ +
-		DEC A
-		BEQ $03 : LDA #$0080
-		TAX
-		LDA !P2XPosLo-$80,x : STA !MarioXPosLo
-		+
-
-		PLP
-		PLX
-	..R	LDA $8A : STA $7D
-		RTL
-
-
 
 
 
@@ -569,33 +436,6 @@
 		RTS
 
 
-	RunMario:
-		LDA !MarioAnim				;\
-		CMP #$09 : BNE +			; |
-		LDA !CurrentMario : BEQ +		; | if mario status = 9 and mario is in play, set PCE kill reg
-
-		REP #$20
-		LDA $1C
-		CLC : ADC #$0100
-		CMP !MarioYPosLo
-		SEP #$20
-		BCC .Dead
-
-		.Failling
-		LDA #$01 : BRA ++
-		.Dead
-		LDA #$02
-	++	STA !P2Status				;/
-	+	LDA !MarioAnim				;\
-		PHB					; |
-		LDX #$00 : PHX : PLB			; |
-		PHK : PEA.w .MarioReturn-1		; |
-		PEA $84CF-1				; | if mario animation/status != 0, execute special code
-		JML $00C595				; |
-		.MarioReturn				; |
-		PLB					; |
-		.Return					; |
-		RTS					;/
 
 
 
@@ -610,10 +450,9 @@ BITS:	db $01,$02,$04,$08,$10,$20,$40,$80
 SD_BANK:
 	db $7E,$7F,$40,$41
 	incsrc "CORE/SPRITE_INTERACTION.asm"
-	incsrc "CORE/EXSPRITE_INTERACTION.asm"
 	incsrc "CORE/UPDATE_SPEED.asm"
 	incsrc "CORE/PLUMBER_SWIM.asm"
-	incsrc "CORE/PLUMBER_CARRY.asm"
+	incsrc "CORE/CARRY.asm"
 	incsrc "CORE/COLLISION.asm"
 	incsrc "CORE/LOAD_TILEMAP.asm"
 	incsrc "CORE/GENERATE_RAMCODE.asm"
@@ -630,8 +469,6 @@ SD_BANK:
 	incsrc "CORE/SMOKE_AT_FEET.asm"
 	incsrc "CORE/DOUBLE_JUMP_SMOKE.asm"
 	incsrc "CORE/DASH_SMOKE.asm"
-	incsrc "CORE/PLAYER_CLIPPING.asm"
-	incsrc "CORE/PLATFORM.asm"
 	incsrc "CORE/KNOCKED_OUT.asm"
 	incsrc "CORE/DISPLAY_CONTACT.asm"
 	incsrc "CORE/CHECK_ABOVE.asm"
@@ -639,71 +476,6 @@ SD_BANK:
 	incsrc "CORE/FLASHPAL.asm"
 	incsrc "CORE/SHOW_HEARTS.asm"
 	namespace off
-
-
-	Stasis:
-		LDA !P2Stasis : BEQ .Return
-		STZ $6DA3
-		STZ $6DA7
-		STZ $6DA5
-		STZ $6DA9
-		DEC !P2AnimTimer
-		LDA !CurrentPlayer
-		INC A
-		CMP !CurrentMario : BNE .Return
-		STZ $15
-		STZ $16
-		STZ $17
-		STZ $18
-	.Return	RTS
-
-
-	FishingBooFix:
-		STZ !BigRAM
-		SEC : JSL !PlayerClipping
-		BCC .Return
-		STA !BigRAM
-	.Return
-		RTL
-
-	Mario:
-	print " "
-	print "Mario modification code inserted at $", pc, " ($", hex(Luigi-Mario), " bytes)"
-	incsrc "characters/Mario.asm"
-	Luigi:
-	print " "
-	print "Luigi code inserted at $", pc, " ($", hex(Kadaal-Luigi), " bytes)"
-	incsrc "characters/Luigi.asm"
-	Kadaal:
-	print " "
-	print "Kadaal code inserted at $", pc, " ($", hex(End15-Kadaal), " bytes)"
-	incsrc "characters/Kadaal.asm"
-
-End15:
-print " "
-print "$", hex($160000-End15), " bytes left in bank."
-print " "
-
-	org $1F8000
-	Leeway:
-	print " "
-	print "Leeway code inserted at $", pc, " ($", hex(Alter-Leeway), " bytes)"
-	incsrc "characters/Leeway.asm"
-	Alter:
-	print " "
-	print "Alter code inserted at $", pc, " ($", hex(End1F-Alter), " bytes)"
-	incsrc "characters/Alter.asm"
-
-
-End1F:
-print " "
-print "$", hex($200000-End1F), " bytes left in bank."
-print " "
-
-
-	; store this pointer at the end to prevent breaking
-	org $00E3D6				; property
-		dl CORE_PlayerClipping		; $00E3D6 is a psuedo-vector!
 
 
 

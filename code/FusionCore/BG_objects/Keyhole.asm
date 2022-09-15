@@ -13,21 +13,15 @@
 		LDA !BG_object_W,x : PHA			; push item memory index (neg = no index)
 		LDA !BG_object_Misc,x : PHA			; push item memory bit key
 
-		LDA !BG_object_Y,x				;\
-		STA $05						; |
-		STA $0B-1					; |
-		LDA #$2010 : STA $06				; | clipping
-		LDA !BG_object_X,x				; |
-		STA $0A-1					; |
-		SEP #$20					; |
-		STA $04						;/
-
+		LDA !BG_object_X,x : STA $E8			;\
+		LDA !BG_object_Y,x : STA $EA			; | clipping
+		LDA #$0010 : STA $EC				; |
+		LDA #$0020 : STA $EE				;/
 
 		PHK : PLB					; switch bank
 
 		SEP #$30					; all regs 8-bit
-		SEC : JSL !PlayerClipping			;\ check contact with players ($00 = contact bits)
-		STA $00						;/
+		JSL PlayerContact : STA $00			; check contact with players ($00 = contact bits)
 
 		REP #$20
 		PLA : STA $02					; $02 = item memory bit key
@@ -57,7 +51,7 @@
 		..checkkey					;\
 		LDX !P2Carry-$80 : BEQ ..done			; |
 		DEX						; |
-		LDA $3200,x					; |
+		LDA !SpriteNum,x				; |
 		CMP #$80 : BNE ..done				; | require key if door is locked
 		LDA $6DA6					; |
 		AND #$08 : BEQ ..done				; |
@@ -75,7 +69,7 @@
 		..checkkey					;\
 		LDX !P2Carry : BEQ ..done			; |
 		DEX						; |
-		LDA $3200,x					; |
+		LDA !SpriteNum,x				; |
 		CMP #$80 : BNE ..done				; | require key if door is locked
 		LDA $6DA7					; |
 		AND #$08 : BEQ ..done				; |
@@ -94,10 +88,13 @@
 		JSR UnlockObject
 		..nodestroy
 		LDA #$0F : STA !SPC4				; > door sfx
-		LDA #$06 : STA $71				;\
-		STZ $88						; | start door transition
-		STZ $89						; |
-		BRA .Return					;/
+		INC $741A					; +1 door count
+		BNE $03 : DEC $741A				; stay at 255 instead of wrapping around to 0
+		LDA #$0F : STA !GameMode			; load level
+		LDA #$0D : STA !MarioAnim			; enter door animation
+		LDA !P2XPosLo : STA !MarioXPosLo		;\ set mario coords to make sure the transition goes into the correct level
+		LDA !P2XPosHi : STA !MarioXPosHi		;/
+		BRA .Return					;
 
 
 

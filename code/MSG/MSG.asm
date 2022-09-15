@@ -1,5 +1,3 @@
-header
-sa1rom
 
 ;==============;
 ;MESSAGE ENGINE;
@@ -36,27 +34,7 @@ sa1rom
 
 
 
-
-; - hijack
-
-	org $00A1DF
-	print "-- MSG --"
-
-		JML MESSAGE_ENGINE					; hijack message box routine
-
-
-; - defines
-
-	incsrc "../Defines.asm"
-
-
-
 ; - code
-
-	org $118000
-		db $53,$54,$41,$52	; claim this bank
-		dw $7FF7
-		dw $8008
 
 	; this code is only run if MSG was called with a normal JSL
 	; if it was called with the %CallMSG() macro, this part is skipped
@@ -80,7 +58,7 @@ sa1rom
 		LDA !OAMindex_p1_prev : STA !OAMindex_p1		; |
 		LDA !OAMindex_p2_prev : STA !OAMindex_p2		; | build OAM, but keep _p0-_p2 on screen
 		SEP #$30						; |
-		JSL !BuildOAM						; |
+		JSL BuildOAM						; |
 		RTL							;/
 
 		.Mode1							; run animations but don't let players move
@@ -101,6 +79,8 @@ sa1rom
 
 	MESSAGE_ENGINE:
 		PHK : PEA.w TrueReturn-1				; set proper return address
+
+		.Main
 		%TrackSetup(!TrackMSG)
 
 	; INIT CODE
@@ -179,7 +159,6 @@ sa1rom
 		LDA $400000+!MsgImportant
 		CMP #$FF : BNE .NoSkipBuffer
 		LDA.l !MsgMode : BNE +
-	;	JSL !KillOAM
 	+	JMP LOAD_MESSAGE_Close
 		.NoSkipBuffer
 		JMP LOAD_MESSAGE
@@ -226,12 +205,7 @@ sa1rom
 
 
 	LOAD_MESSAGE:
-		LDA #$09 : STA !2105					; > mode 1 with absolute priority for layer 3
-		LDA.l !MsgMode : BEQ .NoClear				;\
-	;	JSL !KillOAM						; | manually clear OAM during message modes 1 and 2
-		.NoClear						;/
-
-
+		LDA #$09 : STA !2105					; mode 1 with absolute priority for layer 3
 		LDA #$22 : STA $43					; enable window 1 on sprite layer as well
 
 
@@ -266,7 +240,6 @@ sa1rom
 		JSR CHECK_INPUT_Start
 		BEQ .NoSkip
 		LDA #$FF : STA !MsgImportant				; buffer message skip
-	;	JSL !KillOAM						; wipe OAM here
 		BRA .NoWait						; no delay when skipping message
 		.NoSkip
 		LDA !MsgWaitFlag : BEQ .NoWait
@@ -429,7 +402,7 @@ sa1rom
 		PLA : STA !MsgVertOffset				; > we need to keep this flag for the window closing
 		PLA : STA !MsgInit					; > don't reset init until the last frame
 
-		JSL !GetVRAM
+		JSL GetVRAM
 		LDA.b #!GFX_buffer>>16					;\
 		STA !VRAMtable+$04,x					; |
 		STA !VRAMtable+$0B,x					; |
@@ -651,7 +624,7 @@ sa1rom
 
 		LDX #$40						;\ Set bank
 		PHX : PLB						;/
-		JSL !GetVRAM						; > Get VRAM table index
+		JSL GetVRAM						; > Get VRAM table index
 
 		LDA.b #!GFX_buffer>>16					;\
 		STA !VRAMtable+$04,x					; |
@@ -706,9 +679,8 @@ sa1rom
 		TAX
 
 		PHP							;\
-		REP #$10						; |
-		LDY.w #!File_default_border				; | get address of border file
-		JSL !GetFileAddress					; |
+		REP #$10						; | get address of border file
+		LDY.w #!File_default_border : JSL GetFileAddress	; |
 		PLP							;/
 
 
@@ -797,7 +769,7 @@ sa1rom
 		STZ !MsgRow
 		LDA #$01 : STA !MsgClearBox
 
-		JSL !GetVRAM
+		JSL GetVRAM
 		REP #$20
 
 		.EmptyTile						;\
@@ -1114,10 +1086,10 @@ sa1rom
 		AND #$00FF						; |
 		ASL A							; |
 		TAX							; |
-		LDY.w GFX_FontGFX,x					; |
+		LDY.w FontGFX,x						; |
 		CMP #$FFFF						; |
-		BNE $03 : LDY.w GFX_FontGFX				; > see which file should be loaded
-		JSL !GetFileAddress					; > get address of file
+		BNE $03 : LDY.w FontGFX					; > see which file should be loaded
+		JSL GetFileAddress					; > get address of file
 		LDA !FileAddress : STA $2232				; |
 		LDA.w #$1000 : STA $2238				; | use SA-1 DMA to cache font
 		LDA.w #!ImageCache : STA $2235				; |
@@ -1198,7 +1170,7 @@ sa1rom
 	; make sure they're lined up
 
 		LDA #$00 : STA.l $2250					; prepare multiplication
-		JSL !GetBigCCDMA					; X = index to CCDMA table
+		JSL GetBigCCDMA						; X = index to CCDMA table
 		LDA #$16 : STA !CCDMAtable+$07,x			; > width = 256px, bit depth = 2bpp
 		LDA.b #!GFX_buffer>>16 : STA !CCDMAtable+$04,x		;\
 		REP #$20						; | source adddress
@@ -1221,7 +1193,7 @@ sa1rom
 		STA !CCDMAtable+$05,x					;/
 
 		SEP #$20
-		JSL !GetBigCCDMA					; X = index to CCDMA table
+		JSL GetBigCCDMA						; X = index to CCDMA table
 		LDA #$16 : STA !CCDMAtable+$07,x			; > width = 256px, bit depth = 2bpp
 		LDA.b #!GFX_buffer>>16 : STA !CCDMAtable+$04,x		;\
 		REP #$20						; | source adddress
@@ -1294,7 +1266,7 @@ sa1rom
 		INX #2
 		CPX #$0040 : BCC -
 		SEP #$30
-		JSL !GetVRAM
+		JSL GetVRAM
 		REP #$20
 		LDA.w #!GFX_buffer+$200 : STA !VRAMtable+$02,x
 		LDA.w #!GFX_buffer+$200>>8 : STA !VRAMtable+$03,x
@@ -1546,12 +1518,12 @@ sa1rom
 		AND #$00FF						; |
 		ASL A							; |
 		TAX							; | get index to table and add index to font data
-		LDA.l GFX_FontData,x					; |
+		LDA.l FontData,x					; |
 		CMP #$FFFF						; |
-		BNE $04 : LDA.l GFX_FontData				; |
+		BNE $04 : LDA.l FontData				; |
 		CLC : ADC $0E						;/
 		TAX							;\ store font data of char to $0E-$0F
-		LDA.l GFX_FontData,x : STA $0E				;/
+		LDA.l FontData,x : STA $0E				;/
 		PLP
 		RTS
 
@@ -1826,10 +1798,9 @@ endmacro
 		LDA [$00],y : STA $00						; |
 		SEP #$20							;/
 
-
 		LDA #!VRAMbank
 		PHA : PLB
-		JSL !GetCGRAM : BCS ..paldone					; get CGRAM table index
+		JSL GetCGRAM : BCS ..paldone					; get CGRAM table index
 		LDA #$3E : STA !CGRAMtable+$00,y				;\ data size
 		LDA #$00 : STA !CGRAMtable+$01,y				;/
 		LDA.l !PortraitPointers+5,x					;\
@@ -1845,11 +1816,11 @@ endmacro
 		..paldone
 
 		LDA #$10 : STA $03						; > 16 8x8 tiles
-		JSL !PlaneSplit							; > decode
+		JSL PlaneSplit							; > decode
 
 
 		REP #$20
-		JSL !GetBigCCDMA
+		JSL GetBigCCDMA
 		LDA #$0100 : STA !CCDMAtable+$00,x			; upload size = .5 KB
 		LDA.w #!BufferLo : STA !CCDMAtable+$02,x		; source address = !BufferLo
 		LDA !MsgVRAM1 : STA !CCDMAtable+$05,x			; dest VRAM = !MsgVRAM1
@@ -1857,7 +1828,7 @@ endmacro
 		LDA.b #!BufferLo>>16 : STA !CCDMAtable+$04,x		; source bank
 		LDA #$09 : STA !CCDMAtable+$07,x			; settings = 4bpp, 32px
 		REP #$20
-		JSL !GetBigCCDMA
+		JSL GetBigCCDMA
 		LDA #$0100 : STA !CCDMAtable+$00,x			; upload size = .5 KB
 		LDA.w #!BufferLo+$100 : STA !CCDMAtable+$02,x		; source address = !BufferLo+$100
 		LDA !MsgVRAM1						;\
@@ -1867,7 +1838,7 @@ endmacro
 		LDA.b #!BufferLo>>16 : STA !CCDMAtable+$04,x		; source bank
 		LDA #$09 : STA !CCDMAtable+$07,x			; settings = 4bpp, 32px
 		REP #$20
-		JSL !GetBigCCDMA
+		JSL GetBigCCDMA
 		LDA #$0100 : STA !CCDMAtable+$00,x			; upload size = .5 KB
 		LDA.w #!BufferHi : STA !CCDMAtable+$02,x		; source address = !BufferHi
 		LDA !MsgVRAM2 : STA !CCDMAtable+$05,x			; dest VRAM = !MsgVRAM2
@@ -1875,7 +1846,7 @@ endmacro
 		LDA.b #!BufferHi>>16 : STA !CCDMAtable+$04,x		; source bank
 		LDA #$09 : STA !CCDMAtable+$07,x			; settings = 4bpp, 32px
 		REP #$20
-		JSL !GetBigCCDMA
+		JSL GetBigCCDMA
 		LDA #$0100 : STA !CCDMAtable+$00,x			; upload size = .5 KB
 		LDA.w #!BufferHi+$100 : STA !CCDMAtable+$02,x		; source address = !BufferHi+$100
 		LDA !MsgVRAM2						;\
@@ -2181,7 +2152,7 @@ endmacro
 		STA $2251
 		STZ $2252
 
-		JSL !GetSmallCCDMA						; get index
+		JSL GetSmallCCDMA						; get index
 		LDA #$02 : STA !VRAMbase+!CCDMAtable+$07,x			; mode: 8px 2bpp
 		LDA.b #!GFX_buffer>>16 : STA !VRAMbase+!CCDMAtable+$04,x	;\
 		REP #$20							; | source address
@@ -2203,7 +2174,7 @@ endmacro
 		LDA #$0010 : STA !VRAMbase+!CCDMAtable+$00,x			; > 16 bytes
 
 		SEP #$20
-		JSL !GetSmallCCDMA						; get index
+		JSL GetSmallCCDMA						; get index
 		LDA #$02 : STA !VRAMbase+!CCDMAtable+$07,x			; mode: 8px 2bpp
 		LDA.b #!GFX_buffer>>16 : STA !VRAMbase+!CCDMAtable+$04,x	;\
 		REP #$20							; | source address
@@ -2252,7 +2223,7 @@ endmacro
 		RTL
 
 		.Erase
-		JSL !GetSmallCCDMA
+		JSL GetSmallCCDMA
 		TYA								;\
 		AND #$00FF							; |
 		STA.l $2251							; |
@@ -2352,7 +2323,7 @@ endmacro
 		AND #$F0
 		ORA $0F
 		STA !Characters
-		BRA .UpdateMario
+		BRA .Return
 
 	.P1Char	AND #$0F
 		CMP.l !P2Character-$80 : BEQ .Return
@@ -2363,7 +2334,7 @@ endmacro
 		AND #$0F
 		ORA $0F
 		STA !Characters
-		BRA .UpdateMario
+		BRA .Return
 
 	.Talk	AND #$0F
 		STA !MsgTalk
@@ -2377,34 +2348,6 @@ endmacro
 		STY !MsgIndex
 		RTS
 
-	.UpdateMario
-		LDA !Characters
-		BIT #$F0 : BEQ ..P1
-		BIT #$0F : BEQ ..P2
-	..nomario
-		LDA #$00 : STA !CurrentMario
-	..dead	LDA #$01 : STA.l !P1Dead
-		LDA #$7F : STA !MarioMaskBits
-		LDA #$09 : STA !MarioAnim
-		BRA .Return
-
-	..P2	LDA #$02 : STA !CurrentMario
-		LDX #$0080
-		BRA +
-	..P1	LDA #$01 : STA !CurrentMario
-		LDX #$0000
-	+	LDA.l !P2Status-$80,x : BNE ..dead
-
-	..alive	LDA #$00 : STA.l !P1Dead
-		STZ !MarioMaskBits
-		STZ !MarioAnim
-		REP #$20
-		LDA.l !P2XPosLo-$80,x : STA $94
-		LDA.l !P2YPosLo-$80,x
-		SEC : SBC #$0010
-		STA $96
-		SEP #$20
-		BRA .Return
 
 
 		.Ptr
@@ -2774,16 +2717,11 @@ endmacro
 
 
 
-
-
-	!CompileText	= 0		;\ pass 0 (ID)
-	incsrc "TextData.asm"		;/
 cleartable
 table "MessageTable.txt"
 print "Text data:"
 print "    stored at $", pc
 	TextData:
-	incsrc "TextCommands.asm"	; include commands
 	!CompileText	= 1		;\ compile pass 1 (data)
 	incsrc "TextData.asm"		;/
 print "    ", dec(!Temp), " messages registered"
@@ -2794,7 +2732,8 @@ print "    pointers stored at $", pc
 print "    ", dec((.End-TextData+512)/1024), " KiB"
 
 
-GFX:
+
+
 
 ; each character needs:
 ; - tile number (8 bits)
@@ -2818,17 +2757,11 @@ macro Char(number, width)
 	db <width>
 endmacro
 
-	pushpc
-	org $048443
-		dl .FontData
-		dl .FontGFX
-	pullpc
 
-
-
-.FontData
-		dw ..Default-.FontData		; 00
-		dw ..Classic-.FontData		; 01
+FontData:
+		.Ptr
+		dw .Default-.Ptr		; 00
+		dw .Classic-.Ptr		; 01
 		dw $FFFF			; 02
 		dw $FFFF			; 03
 		dw $FFFF			; 04
@@ -2843,9 +2776,11 @@ endmacro
 		dw $FFFF			; 0D
 		dw $FFFF			; 0E
 		dw $FFFF			; 0F
+		..end
 
 
-..Default	%Char($00, 6)	; A
+		.Default
+		%Char($00, 6)	; A
 		%Char($01, 6)	; B
 		%Char($02, 6)	; C
 		%Char($03, 6)	; D
@@ -2949,7 +2884,8 @@ endmacro
 		%Char($E6, 5)	; japanese ]
 
 
-..Classic	%Char($00, 7)	; A
+		.Classic
+		%Char($00, 7)	; A
 		%Char($01, 7)	; B
 		%Char($02, 7)	; C
 		%Char($03, 7)	; D
@@ -3053,7 +2989,8 @@ endmacro
 		%Char($00, 0)	; japanese ] (MISSING)
 
 
-.FontGFX
+FontGFX:
+		.Ptr
 		dw !File_default_font	; 00
 		dw !File_classic_font	; 01
 		dw $FFFF		; 02
@@ -3070,10 +3007,6 @@ endmacro
 		dw $FFFF		; 0D
 		dw $FFFF		; 0E
 		dw $FFFF		; 0F
+		..end
 
 
-
-.End
-
-	print "0x", hex(GFX_End-MESSAGE_ENGINE), " bytes used by MSG."
-	print " "

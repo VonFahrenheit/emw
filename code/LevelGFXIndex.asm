@@ -10,15 +10,13 @@
 
 
 	print "Sprite GFX file table stored at $", pc, "."
-; $188450
-
 
 macro gfx_index(name)
 	dw !GFX_<name>_offset
 endmacro
 
 
-LoadTable:
+SpriteGFXIndex:
 ; this is which file each sprite corresponds to
 ; the value here is used as an index to .PartList, .SetList, and .SuperSetList
 ; word offsets 000-0FF are vanilla sprites
@@ -29,6 +27,7 @@ LoadTable:
 ;===========================================;
 ;	vanilla sprite slots (000-0C8)
 ;===========================================;
+.Vanilla
 	%gfx_index(ShellessKoopa)	; 000
 	%gfx_index(ShellessKoopa)	; 001
 	%gfx_index(KickerKoopa)		; 002
@@ -216,7 +215,7 @@ LoadTable:
 	%gfx_index(CarrotPlat)		; 0B8
 	dw $FFFF			; 0B9
 	%gfx_index(TimerPlat)		; 0BA
-	%gfx_index(MovingBlock)		; 0BB
+	%gfx_index(CastleBlock)		; 0BB
 	%gfx_index(BowserStatue)	; 0BC
 	%gfx_index(KickerKoopa)		; 0BD
 	%gfx_index(SwooperBat)		; 0BE
@@ -295,6 +294,7 @@ LoadTable:
 ;===========================================;
 ;	custom sprite slots (100-1FF)
 ;===========================================;
+.Custom
 	%gfx_index(SlimeParticles)	; 100
 	%gfx_index(GoombaSlave)		; 101
 	%gfx_index(Rex)			; 102
@@ -306,7 +306,7 @@ LoadTable:
 	dw $FFFF			; 108
 	%gfx_index(TarCreeperHands)	; 109
 	dw $FFFF			; 10A
-	%gfx_index(MagicMole)		; 10B
+	%gfx_index(MoleWizard)		; 10B
 	%gfx_index(MiniMole)		; 10C (new)
 	dw $8000			; 10D (SD search)
 	dw $FFFF			; 10E
@@ -314,8 +314,8 @@ LoadTable:
 	dw $8000			; 110 (SD search)
 	%gfx_index(Sign)		; 111
 	dw $FFFF			; 112
-	%gfx_index(Koopa)		; 113 (make extra byte control color)
-	%gfx_index(KoopaBlue)		; 114 (used to be blue + yellow)
+	dw $FFFF			; 113
+	dw $FFFF			; 114
 	dw $FFFF			; 115
 	%gfx_index(Thif)		; 116
 	%gfx_index(Thif)		; 117
@@ -344,13 +344,13 @@ LoadTable:
 	%gfx_index(Shield)		; 12E
 	%gfx_index(Elevator)		; 12F
 	%gfx_index(Chest)		; 130
-	%gfx_index(MovingBlock)		; 131
+	%gfx_index(CastleBlock)		; 131
 	%gfx_index(SmallNumbers)	; 132
 	dw $FFFF			; 133
 	%gfx_index(Rex)			; 134
 	dw $FFFF			; 135
 	dw $FFFF			; 136
-	dw $FFFF			; 137
+	%gfx_index(LightningEffects)	; 137
 	dw $FFFF			; 138
 	dw $FFFF			; 139
 	dw $FFFF			; 13A
@@ -554,20 +554,15 @@ LoadTable:
 
 
 
-
-
-
-; $188650
-
 PalsetDefaults:
-	db $FF		; pal 8
-	db $FF		; pal 9
-	db $0A		; pal A
-	db $0B		; pal B
-	db $0C		; pal C
-	db $0D		; pal D
-	db $FF		; pal E
-	db $FF		; pal F
+	db $FF				; pal 8
+	db $FF				; pal 9
+	db !palset_default_yellow	; pal A
+	db !palset_default_blue		; pal B
+	db !palset_default_red		; pal C
+	db !palset_default_green	; pal D
+	db $FF				; pal E
+	db $FF				; pal F
 
 
 	!FileMark	= $410000			; might be overwritten by super-dynamic GFX
@@ -578,16 +573,8 @@ PalsetDefaults:
 
 
 	GFXIndex:
-
 		PHP						; preserve P
 		SEP #$30					; all regs 8-bit
-		LDA $741A : BNE +				;\
-		LDA #$FF					; |
-		STA !HeldItemP1_num				; | reset held items when going into a new level
-		STA !HeldItemP1_level+1				; |
-		STA !HeldItemP2_num				; |
-		STA !HeldItemP2_level+1				; |
-		+						;/
 		STZ !PalsetA					;\
 		STZ !PalsetB					; |
 		STZ !PalsetC					; | clear palset regs
@@ -780,6 +767,8 @@ PalsetDefaults:
 		BRA ++						; |
 	+	LDA PalsetDefaults,y : BMI ++			; | A-D load their default palsets if they are used
 		STA !Palset8,y					; |
+		TAX						; |
+		TYA : STA !Palset_status,x			; |
 	++	DEY						; |
 		CPY #$02 : BCS -				;/
 
@@ -799,7 +788,7 @@ PalsetDefaults:
 		INC #2						; > compensate for +2
 		ASL #5						; |
 		TAX						;/
-	--	LDA [$00],y : STA !PaletteRGB+$100,x		;\
+	--	LDA [$00],y : STA !PaletteRGB+($80*2),x		;\
 		INX #2						; |
 		INY #2						; | copy palset to palette
 		CPY #$0020 : BCC --				; |
@@ -912,7 +901,7 @@ PalsetDefaults:
 ; address of page3 tiles:
 ; tile num * 8 + read2($6F552+1) + (read1($06F555+2)<<16)
 
-print "$", hex(($300*8)+read2($6F552+1)+(read1($06F555+2)<<16))
+print "Map16 page 3 data is stored at $", hex(($300*8)+read2($6F552+1)+(read1($06F555+2)<<16))
 ;
 ; org ($300*8)+read2($6F552+1)+(read1($06F555+2)<<16)+0
 ; org ($300*8)+read2($6F552+1)+(read1($06F555+2)<<16)+2
@@ -1168,7 +1157,7 @@ endmacro
 		AND #$0FFF					;/
 		CMP #$0F00 : BCS ..exgfx			;\
 		TAY						; | num < $F00 = uncompressed file, num => $F00 = ExGFX
-		JSL !GetFileAddress				; |
+		JSL GetFileAddress				; |
 		BRA ..addressdone				;/
 		..exgfx						;\ don't decompress if already decompressed
 		CMP !BigRAM+$7E : BEQ ..decompdone		;/
@@ -1382,7 +1371,6 @@ File:
 	.PartList
 		; simple enemies
 		dw .Goomba
-		dw .GoombaSlave
 		dw .Bobomb
 		dw .Spiny
 		dw .SpikeTop
@@ -1422,7 +1410,6 @@ File:
 		dw .BonyBeetle
 		dw .Fish
 		dw .BlurpFish
-		dw .RipVanFish
 		dw .PorcuPuffer
 		dw .Dolphin
 		dw .Urchin
@@ -1453,7 +1440,7 @@ File:
 
 		; platforms
 		dw .GrowingPipe
-		dw .MovingBlock
+		dw .CastleBlock
 		dw .FloatingSkulls
 		dw .BrownGreyPlat
 		dw .CheckerPlat
@@ -1488,7 +1475,9 @@ File:
 		dw .Baseball
 		dw .WaterEffects
 		dw .LavaEffects
+		dw .LightningEffects
 		dw .Parachute
+		dw .Tray
 		dw .PlantStalk
 		dw .Wings		; bat wings
 		dw .AngelWings
@@ -1500,6 +1489,7 @@ File:
 		dw .Bone
 		dw .SkeletonRubble
 		dw .SlimeParticles
+		dw .SnoreZ
 
 		; rex support parts
 		dw .RexLegs1
@@ -1531,10 +1521,11 @@ File:
 
 	.SetList
 		; vanilla enemies
+		dw .GoombaSlave
 		dw .ParaGoomba
 		dw .PiranhaPlant	; stalk, fire
 		dw .Magikoopa
-		dw .Blargg	; lava parts
+		dw .Blargg		; lava parts
 		dw .VolcanoLotus
 		dw .BooBlock
 		dw .BigBoo
@@ -1551,16 +1542,17 @@ File:
 		dw .BulletBillCardinals
 		dw .ParachuteGoomba
 		dw .ParachuteBobomb
+		dw .RipVanFish
 
 		; neutral things
-		dw .Blocks	; includes wings
+		dw .Blocks		; includes wings
 
 		; custom enemies
 		dw .Rex
 		dw .HammerRex
 		dw .FlyingRex
 		dw .Conjurex
-		dw .MagicMole
+		dw .MoleWizard
 		dw .KompositeKoopa
 		dw .CoinGolem
 
@@ -1734,8 +1726,6 @@ endmacro
 		%super(!SD_Goomba_offset)
 		db $FF
 ;===============================================================
-.GoombaSlave	%src($F80, $00, $14, GoombaSlave, 2)
-;===============================================================
 .Bobomb		%src($F01, $00, $04, Bobomb, 0)
 ;===============================================================
 .Spiny		%src($F0D, $00, $08, Spiny, 0)
@@ -1746,7 +1736,7 @@ endmacro
 ;===============================================================
 .SwooperBat	%src($F22, $00, $06, SwooperBat, 0)
 ;===============================================================
-.MontyMole	%src($F34, $00, $0A, MontyMole, 0)
+.MontyMole	%src($F34, $00, $09, MontyMole, 0)
 ;===============================================================
 .MegaMole	%src($F4D, $00, $10, MegaMole, 0)
 ;===============================================================
@@ -1823,13 +1813,11 @@ endmacro
 ;===============================================================
 .BlurpFish	%src($F31, $00, $04, BlurpFish, 0)
 ;===============================================================
-.RipVanFish	%src($F2E, $00, $0A, RipVanFish, 0)
-;===============================================================
 .PorcuPuffer	%src($F32, $00, $0A, PorcuPuffer, 0)
 ;===============================================================
 .Dolphin	%src($F2F, $00, $0E, Dolphin, 0)
 ;===============================================================
-.Urchin		%src($F2D, $00, $0A, Urchin, 0)
+.Urchin		%src($F2D, $00, $08, Urchin, 0)
 ;===============================================================
 .TorpedoTed	%src($F30, $00, $0A, TorpedoTed, 0)
 ;===============================================================
@@ -1887,7 +1875,7 @@ endmacro
 ;===============================================================
 .GrowingPipe	%src($F0F, $00, $04, GrowingPipe, 0)
 ;===============================================================
-.MovingBlock	%src($F1C, $00, $08, MovingBlock, 0)
+.CastleBlock	%src($F1C, $00, $08, CastleBlock, 0)
 ;===============================================================
 .FloatingSkulls	%src($F20, $00, $04, FloatingSkulls, 0)
 ;===============================================================
@@ -1915,7 +1903,7 @@ endmacro
 ;===============================================================
 .Shield		%src($FA3, $00, $04, Shield, 0)
 ;===============================================================
-.Portal		%cmd($FA3, $00, $04, Portal, 0)			; dummy upload to claim tiles
+.Portal		%cmd(!File_Portal, $00, $04, Portal, 0)
 		%defaultpal(D)
 		db $FF
 ;===============================================================
@@ -1974,9 +1962,14 @@ endmacro
 		%defaultpal(C)
 		db $FF
 ;===============================================================
+.LightningEffects
+		%src(!File_Sprite_BG_1, $06, $06, LightningEffects, 0)
+;===============================================================
 .Parachute	%cmd($F68, $00, $04, Parachute, 0)
 		%defaultpal(B)
 		db $FF
+;===============================================================
+.Tray		%src($F03, $20, $08, Tray, 0)
 ;===============================================================
 .PlantStalk	%cmd($F66, $00, $02, PlantStalk, 0)
 		%defaultpal(D)
@@ -2015,6 +2008,8 @@ endmacro
 .SkeletonRubble	%src($F64, $00, $06, SkeletonRubble, 0)
 ;===============================================================
 .SlimeParticles	%src(!File_HappySlime, $4E, $01, SlimeParticles, 0)
+;===============================================================
+.SnoreZ		%src($F2E, $08, $02, SnoreZ, 0)
 ;===============================================================
 .RexLegs1	%src($F4A, $40, $09, RexLegs1, 0)	; normal
 ;===============================================================
@@ -2083,6 +2078,11 @@ endmacro
 ; -- sets -- ;
 ;============;
 ;===============================================================
+.GoombaSlave	%cmd($F03, $08, $06, GoombaSlave, 0)
+		%mark(Tray)
+		%mark(Goomba)
+		db $FF
+;===============================================================
 .ParaGoomba	%cmd($F03, $00, $04, ParaGoomba, 0)
 		%mark(AngelWings)
 		db $FF
@@ -2098,7 +2098,7 @@ endmacro
 		%mark(LavaEffects)
 		db $FF
 ;===============================================================
-.VolcanoLotus	%cmd($F37, $00, $06, VolcanoLotus, 0)
+.VolcanoLotus	%cmd($F37, $00, $04, VolcanoLotus, 0)
 		%mark(LotusPollen)
 		db $FF
 ;===============================================================
@@ -2177,6 +2177,11 @@ endmacro
 		%mark(Bobomb)
 		%mark(Parachute)
 		db $FF
+
+;===============================================================
+.RipVanFish	%cmd($F2E, $00, $08, RipVanFish, 0)
+		%mark(SnoreZ)
+		db $FF
 ;===============================================================
 .Blocks		%cmd($F09, $00, $02, Blocks, 0)
 		%mark(AngelWings)
@@ -2199,7 +2204,7 @@ endmacro
 		%include(FelMagic, $45)
 		db $FF
 ;===============================================================
-.MagicMole	%cmd($F84, $00, $20, MagicMole, 2)
+.MoleWizard	%cmd($F84, $00, $20, MoleWizard, 2)
 		%include(MiniMole, $20)
 		db $FF
 ;===============================================================
@@ -2228,14 +2233,14 @@ endmacro
 		%mark(ShellessKoopa)
 		db $FF
 ;===============================================================
-.Koopa
-		%cmd($F00, $00, $0C, Koopa, 2)
+.Koopa		%cmd($F00, $00, $0C, Koopa, 2)
 		%include(KoopaBlue, $00)
 		%mark(Shell)
 		%mark(ShellessKoopa)
 		db $FF
 ;===============================================================
-.KoopaBlue	%cmd($F00, $00, $0C, Koopa, 2)
+.KoopaBlue	%cmd($F00, $00, $0C, KoopaBlue, 2)
+		%include(Koopa, $00)
 		%mark(Shell)
 		%mark(KickerKoopa)
 		db $FF
@@ -2246,8 +2251,7 @@ endmacro
 		%mark(KickerKoopa)
 		db $FF
 ;===============================================================
-.ParachuteGen
-		%cmd($F8F, $00, $04, ParachuteGoomba, 2)
+.ParachuteGen	%cmd($F8F, $00, $04, ParachuteGoomba, 2)
 		%include(ParachuteGoomba, $00)
 		%mark(Goomba)
 		%mark(Bobomb)
@@ -2377,8 +2381,14 @@ ReadLevelData:
 		.Page0					;\
 		CMP #$04 : BCS ..nowater		; |
 		LDA #$01 : %filemark(WaterEffects)	; > mark water effects for loading
-		..nowater				; |
-		JMP .NextTile				;/
+		..nowater				;/
+		CMP #$47 : BNE ..novine			;\
+		%filemark(PiranhaPlant)			; | invisible vine block
+		..novine				;/
+		CMP #$48 : BNE ..nostar			;\
+		%filemark(Starman)			; | invisible star block
+		..nostar				;/
+		JMP .NextTile				; go to next
 
 		.Page1
 		CMP #$14 : BCC ..noblock
@@ -2474,17 +2484,17 @@ ReadLevelData:
 		.P1HeldItem
 		LDA.l !HeldItemP1_num
 		CMP #$FF : BEQ ..done
+		LDA.l !HeldItemP1_num : STA.w !TempSpriteMark+2
+		XBA
 		LDA.l !HeldItemP1_extra : STA.w !TempSpriteMark+0
 		AND #$08 : BNE ..custom
 		..vanilla
-		LDA.l !HeldItemP1_num : STA.w !TempSpriteMark+2
-		XBA : LDA #$00
+		LDA #$00
 		BRA ..load
 		..custom
 		LDA.l !HeldItemP1_prop1 : STA.w !TempSpriteMark+3
 		LDA.l !HeldItemP1_prop2 : STA.w !TempSpriteMark+4
-		LDA.l !HeldItemP1_customnum : STA.w !TempSpriteMark+2
-		XBA : LDA #$01
+		LDA #$01
 		..load
 		XBA
 		REP #$20
@@ -2493,24 +2503,24 @@ ReadLevelData:
 		TAX
 		LDY #$0000
 		PEA ..done-1
-		BRA .MarkPalette
+		BRA .MarkPalset
 		..done
 
 		.P2HeldItem
 		SEP #$20
 		LDA.l !HeldItemP2_num
 		CMP #$FF : BEQ ..done
+		LDA.l !HeldItemP2_num : STA.w !TempSpriteMark+2
+		XBA
 		LDA.l !HeldItemP2_extra : STA.w !TempSpriteMark+0
 		AND #$08 : BNE ..custom
 		..vanilla
-		LDA.l !HeldItemP2_num : STA.w !TempSpriteMark+2
-		XBA : LDA #$00
+		LDA #$00
 		BRA ..load
 		..custom
 		LDA.l !HeldItemP2_prop1 : STA.w !TempSpriteMark+3
 		LDA.l !HeldItemP2_prop2 : STA.w !TempSpriteMark+4
-		LDA.l !HeldItemP2_customnum : STA.w !TempSpriteMark+2
-		XBA : LDA #$01
+		LDA #$01
 		..load
 		XBA
 		REP #$20
@@ -2519,12 +2529,15 @@ ReadLevelData:
 		TAX
 		LDY #$0000
 		PEA ..done-1
-		BRA .MarkPalette
+		BRA .MarkPalset
 		..done
 
 
 		SEP #$20
-		PLA : STA $D0
+		LDA.l !FileMark+!GFX_ShellessKoopa_offset : BEQ +		;\
+		LDA.l !FileMark+!GFX_Shell_offset : BEQ +			; | if shelless and shell are both loaded, also load koopa
+		%filemark(Koopa)						;/
+	+	PLA : STA $D0
 		REP #$20
 		PLA : STA $CE
 
@@ -2545,35 +2558,32 @@ ReadLevelData:
 		ASL A					; x2
 		TAX					; X = index to sprite file correspondance table
 
-		.MarkPalette
+		.MarkPalset
 		PHX
 		LDA $0E
 		CMP #$0100 : BCC ..vanilla
 		AND #$00FF
-		ASL A
-		STA $08
-		ASL #3
-		SEC : SBC $08
+		ASL #2 : STA $08
+		ASL A : ADC $08
 		TAX
-		LDA $168003+3,x
-		BRA ..shared
+		LDA.l SpriteData+5,x : BRA ..shared
 		..vanilla
-		LDX $0E
-		LDA $07F3FE,x
+		TAX
+		LDA.l VanillaTweakerData_Tweaker5,x
 		..shared
-		LSR A
 		AND #$0007
+		INC A
+		CMP #$0002 : BCC ..done			; don't mark palette 8-9
+		CMP #$0006 : BCS ..done			; don't mark palette E-F
 		TAX
 		SEP #$20
-		CPX #$0002 : BCC ..done			;\ palettes 8-9 and E-F should not be marked here
-		CPX #$0006 : BCS ..done			;/
-		LDA #$01 : STA.l !Palset8,x
+		LDA #$01 : STA.l !Palset8,x		; mark defaultpal
 		..done
 		REP #$20
 		PLX
 
 
-		LDA.l LoadTable,x : BPL +		;\
+		LDA.l SpriteGFXIndex,x : BPL +		;\
 		CMP #$8000 : BNE ..cmd			; | 0x8000 = SD search
 		JSR SuperDynamicFiles_Search		; | 0xFFFF = load nothing
 		BRA ..cmd				; | anything else = mark that index
@@ -3186,7 +3196,7 @@ BG_objectFiles:
 		LDA $08						;\
 		ASL A						; | width of image
 		STA !BigRAM+$02					;/
-		LDA #$0004 : JSL !TransformGFX			; convert to planar
+		LDA #$0004 : JSL TransformGFX			; convert to planar
 		JSR DownloadChunk				; put converted chunk back in RAM
 		DEC $06 : BEQ ..done				;\
 		LDA $0A						; |
@@ -3372,7 +3382,7 @@ BG_objectFiles:
 		LDA $08					;\
 		ASL A					; | width
 		STA !BigRAM+$02				;/
-		LDA #$0020 : JSL !TransformGFX		; rotate with fixed size
+		LDA #$0020 : JSL TransformGFX		; rotate with fixed size
 
 
 		; LDA !BigRAM+$70
@@ -3453,7 +3463,7 @@ BG_objectFiles:
 		ASL A					; | width
 		STA !BigRAM+$02				; | + height
 		STA !BigRAM+$04				;/
-		LDA #$0080 : JSL !TransformGFX		; scale
+		LDA #$0080 : JSL TransformGFX		; scale
 		JSR DownloadScaledChunk			; get chunk from output buffer
 		LDA $0D					;\
 		CLC : ADC $04				; | adjust address

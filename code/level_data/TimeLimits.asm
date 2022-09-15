@@ -2,7 +2,6 @@
 ; index = translevel (see comments)
 ; an entry of $FF00 disables the timer on that level
 ; the timer can be disabled at will in level code by writing 0xFF to !TimerSeconds+1
-	LevelTimerTable:
 		dw $FF00				; level 0
 		dw 200					; level 1
 		dw 400					; level 2

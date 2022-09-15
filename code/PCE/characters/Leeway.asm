@@ -60,20 +60,23 @@ namespace Leeway
 
 
 		.Process
-		LDA !P2MaxHP				;\
-		CMP !P2HP				; | Enforce max HP
-		BCS $03 : STA !P2HP			;/
-		LDA $6DA5
+		LDA !P2MaxHP						;\
+		CMP !P2HP						; | enforce max HP
+		BCS $03 : STA !P2HP					;/
+		LDA $17
 		AND #$20
 		ASL #2
-		TSB $6DA5
-		LDA $6DA9
+		TSB $17
+		LDA $18
 		AND #$20
 		ASL #2
-		TSB $6DA9
+		TSB $18
 
 		REP #$20						;\
-		LDA !P2Hitbox2IndexMem1 : TSB !P2Hitbox1IndexMem1	; | merge index mem for hitboxes
+		LDA !P2Hitbox1IndexMem					; |
+		ORA !P2Hitbox2IndexMem					; | merge hitboxes
+		STA !P2Hitbox1IndexMem					; |
+		STA !P2Hitbox2IndexMem					; |
 		SEP #$20						;/
 
 		LDA !P2DashSmoke : BEQ .NoDashSmoke
@@ -116,7 +119,7 @@ namespace Leeway
 		STZ !P2Buffer
 		BRA ++
 	+	DEC !P2SwordTimer
-		LDA $6DA3			; Leeway can crouch during a dash slash by pushing down
+		LDA $15			; Leeway can crouch during a dash slash by pushing down
 		AND #$04 : BEQ +
 		STZ !P2Dashing
 		BRA ++
@@ -130,8 +133,8 @@ namespace Leeway
 		LDA !P2WallJumpInputTimer
 		BEQ $03 : DEC !P2WallJumpInputTimer
 		BEQ +
-		LDA !P2WallJumpInput : TSB $6DA3
-		EOR #$03 : TRB $6DA3
+		LDA !P2WallJumpInput : TSB $15
+		EOR #$03 : TRB $15
 		BRA ++
 	+	STZ !P2WallJumpInput
 		++
@@ -139,7 +142,7 @@ namespace Leeway
 
 	PIPE:
 		JSL CORE_PIPE : BCC CONTROLS
-		LDA #$04 : TRB $6DA3
+		LDA #$04 : TRB $15
 		JMP ANIMATION
 
 	BITS:
@@ -151,8 +154,8 @@ namespace Leeway
 
 		LDA !P2Buffer			;\
 		AND #$80			; |
-		TSB $6DA3			; | apply jump buffer
-		TSB $6DA7			; |
+		TSB $15				; | apply jump buffer
+		TSB $16				; |
 		TRB !P2Buffer			;/
 
 		PEA PHYSICS-1
@@ -163,7 +166,7 @@ namespace Leeway
 	; crouch check
 		LDA !P2Anim
 		CMP #!Lee_Cut : BCS .NoCrouch
-		LDA $6DA3
+		LDA $15
 		AND #$04 : BEQ .NoCrouch
 		LDA #$01 : STA !P2Ducking
 		.NoCrouch
@@ -181,7 +184,7 @@ namespace Leeway
 	+	LDA !P2WallClimb
 		BEQ $03 : JMP .ProcessClimb
 
-		LDA $6DA3
+		LDA $15
 		ORA #$04
 		AND !P2Blocked
 		LDY !P2Platform
@@ -201,7 +204,7 @@ namespace Leeway
 	-	JMP .NoClimb
 	+	JSL CORE_CHECK_ABOVE
 		BCC -
-		LDA $6DA3
+		LDA $15
 		AND #$08 : BEQ -
 
 		.ClingUp
@@ -216,11 +219,11 @@ namespace Leeway
 
 		.GroundCheck
 		LSR A : BCC +
-		LDA $6DA3
+		LDA $15
 		AND #$08 : BNE .ClingRight
 		JMP .NoClimb
 	+	LSR A : BCC +
-		LDA $6DA3
+		LDA $15
 		AND #$08 : BNE .ClingLeft
 	+	JMP .NoClimb
 
@@ -287,14 +290,14 @@ namespace Leeway
 		.done
 
 
-		LDA $6DA3
+		LDA $15
 		LSR #2
 		AND #$03
 		TAX
 		LDA .XSpeed,x : STA !P2YSpeed		; climb up/down speed
 		BNE +
 		LDX !P2Direction
-		LDA $6DA3
+		LDA $15
 		AND .WallAnim,x
 		BNE .HoldOut
 	+	LDA !P2Anim
@@ -325,7 +328,7 @@ namespace Leeway
 	++	JSL CORE_CHECK_ABOVE : BCS .stick
 	+++	JMP .Fall
 	.stick	STZ !P2WallClimbTop					; Clear getup
-		LDA $6DA3
+		LDA $15
 		AND #$03
 		TAX
 		LDA .Direction,x
@@ -341,11 +344,11 @@ namespace Leeway
 
 		.ClimbJump
 		BIT !P2WallClimb : BPL ..nodash				; can only do this out of ceiling climb
-		BIT $6DA9 : BPL ..nodash
+		BIT $18 : BPL ..nodash
 		STZ !P2WallClimb
 		JMP .DashCheck
 		..nodash
-		BIT $6DA7
+		BIT $16
 		BVS .ClimbSlash
 		BPL .EndClimb
 		BIT !P2WallClimb : BMI .Fall
@@ -368,7 +371,7 @@ namespace Leeway
 		BPL $02 : LDA #$00				; |
 		STA !P2Stamina					;/
 		LDA #$2B : STA !SPC1				; jump SFX
-		BIT $6DA5 : BPL .Fall
+		BIT $17 : BPL .Fall
 		LDA #$01 : STA !P2DashJump
 
 		.Fall
@@ -423,7 +426,7 @@ namespace Leeway
 		LDA !P2CrouchTimer			;\
 		BEQ $03					; | check crouch timer, can't dash during
 	-	JMP .NoDash				;/
-		BIT $6DA9 : BPL -			; check input
+		BIT $18 : BPL -				; check input
 	;	LDA !P2Climbing : BNE -			; no dashing from nets
 
 		LDA !P2SwordAttack : BEQ .NoCombo	;\
@@ -482,13 +485,13 @@ namespace Leeway
 
 
 		LDA !P2Climbing : BEQ .NoVineClimb	; Check for vine/net climb
-		LDA $6DA3
+		LDA $15
 		LSR A : BCC +
 		LDA #$01 : STA !P2Direction
 		BRA ++
 	+	LSR A : BCC ++
 		STZ !P2Direction
-	++	BIT $6DA7 : BPL +
+	++	BIT $16 : BPL +
 		STZ !P2Climbing				; vine/net jump
 		LDA #$B8 : STA !P2YSpeed
 		LDA #$2B : STA !SPC1			; jump SFX
@@ -504,7 +507,7 @@ namespace Leeway
 		LDA !P2CoyoteTime				;\
 		BMI ..nope					; |
 		BEQ ..nope					; | coyote time
-		BIT $6DA7 : BMI .Jump				; |
+		BIT $16 : BMI .Jump				; |
 		..nope						;/
 
 		LDA !P2CrouchTimer : BNE +
@@ -515,7 +518,7 @@ namespace Leeway
 		STZ !P2Dashing
 		BRA .Shared
 	+	LDA !P2WallClimbTop : BNE .Shared			; No air attack during get-up
-		BIT $6DA7 : BVC .Shared
+		BIT $16 : BVC .Shared
 		LDA !P2Climbing : BNE .Shared
 		LDA !P2SwordAttack : BNE .Shared
 		LDA #$04 : STA !P2SwordAttack
@@ -524,7 +527,7 @@ namespace Leeway
 
 		.Ground
 		LDA !LeewayMaxStamina : STA !P2Stamina
-		BIT $6DA7
+		BIT $16
 		BMI .Jump
 		BVC .Shared
 		LDA !P2SwordAttack
@@ -556,13 +559,13 @@ namespace Leeway
 		BEQ .Walk
 		BMI .Dash
 		LDA !P2DashJump : BEQ .Dash
-		LDA $6DA3
+		LDA $15
 		AND #$03
 	-	ORA #$04
 		BRA +
 
 		.Dash
-		LDA $6DA3
+		LDA $15
 		AND #$03
 		BNE -
 		ORA !P2Direction
@@ -578,7 +581,7 @@ namespace Leeway
 		BEQ ++					; | go straight to friction when swinging or going in/out of crouch
 		LDA #$00				; |
 		BRA +					;/
-	++	LDA $6DA3
+	++	LDA $15
 		AND #$03
 	+	TAX
 		LDA .XSpeed,x : BNE .NoFriction
@@ -675,7 +678,6 @@ namespace Leeway
 
 	PHYSICS:
 
-
 		.Stamina
 		LDA !P2WallClimb : BEQ .NoStamina		;\
 		LDA !P2Stamina : BEQ .NoStamina			; |
@@ -704,19 +706,20 @@ namespace Leeway
 
 
 		LDA !P2WallClimbTop : BEQ .NoGetUpAttack	;\
-		BIT $6DA7 : BVC .NoGetUpAttack			; | Can buffer get-up attack
+		BIT $16 : BVC .NoGetUpAttack			; | Can buffer get-up attack
 		LDA #$02 : STA !P2WallClimbTop			;/
 		.NoGetUpAttack
 
 
 
-		LDA !P2SlantPipe : BEQ +
+		.SlantPipe
+		LDA !P2SlantPipe : BEQ ..done
 		LDA #$40 : STA !P2XSpeed
 		LDA #$C0 : STA !P2YSpeed
 		LDA #$01
 		STA !P2Dashing
 		STA !P2DashJump
-		+
+		..done
 
 		LDA !P2Blocked
 		AND #$04
@@ -735,7 +738,7 @@ namespace Leeway
 		LDA !P2Blocked
 		LDY !P2Platform
 		BEQ $02 : ORA #$04
-		AND $6DA3
+		AND $15
 		AND #$04 : BEQ +
 		LDA !P2Dashing
 		ORA !P2SwordAttack
@@ -752,7 +755,7 @@ namespace Leeway
 		STZ !P2SwordAttack
 		STZ !P2DashJump
 		LDA #$04 : TSB !P2Blocked
-		LDA $6DA3
+		LDA $15
 		AND #$03
 		TAX
 		LDA CONTROLS_XSpeed,x : JSL CORE_SET_XSPEED
@@ -764,7 +767,7 @@ namespace Leeway
 
 
 	;	LDA !P2Floatiness : BEQ +
-	;	BIT $6DA3 : BMI ++
+	;	BIT $15 : BMI ++
 	;	STZ !P2Floatiness
 	;	LDA !P2YSpeed
 	;	BPL +
@@ -794,12 +797,12 @@ namespace Leeway
 		.Dash
 		LDA !P2DashSlash : BNE .NoDash
 		LDA !P2SwordAttack : BNE .NoDash
-		BIT $6DA7 : BVC +
+		BIT $16 : BVC +
 		LDA #$03 : STA !P2SwordAttack
 		LDA #$3C : STA !SPC4				; slice SFX
 		LDA #$01 : STA !P2DashSlash
 		BRA .NoDash
-	+	BIT $6DA5 : BMI .NoDash
+	+	BIT $17 : BMI .NoDash
 		LDA #$01 : STA !P2Dashing
 		.NoDash
 
@@ -808,20 +811,16 @@ namespace Leeway
 		JSL CORE_SPRITE_INTERACTION
 
 
-	EXSPRITE_INTERACTION:
-		JSL CORE_EXSPRITE_INTERACTION
-
-
 	UPDATE_SPEED:
 		LDX #$46				; normal fall speed is 0x46
 		LDA !LeewayUpgrades			;\
 		AND #$10 : BEQ .NoCape			; |
-		LDA $6DA3 : BPL .NoCape			; | fall speed when slow falling with cape is 0x20
+		LDA $15 : BPL .NoCape			; | fall speed when slow falling with cape is 0x20
 		AND #$04 : BNE .NoCape			; | (overwritten by water since you can't use the cape underwater)
 		LDX #$20				; |
 		.NoCape					;/
 		LDA #$03				; gravity is 3 when holding B
-		BIT $6DA3 : BMI .G			;\
+		BIT $15 : BMI .G			;\
 		LDA !P2JumpCancel : BEQ +		; |
 		STZ !P2JumpCancel			; |
 		LDA !P2YSpeed : BPL +			; | gravity is 6 when not holding B
@@ -890,7 +889,7 @@ namespace Leeway
 
 
 		LDA !P2Blocked
-		AND $6DA3
+		AND $15
 		AND #$08 : BEQ +
 		LDA !P2Stamina : BEQ +
 		LDA !LeewayUpgrades
@@ -952,20 +951,14 @@ namespace Leeway
 		ASL A
 		TAX
 		BCC +
-		LDA $6DA7 : TSB !P2Buffer		; Allow buffering, but not during frame 1
+		LDA $16 : TSB !P2Buffer			; Allow buffering, but not during frame 1
 	+	CPX.b #.End-.Ptr
 		BCC .Go
-		STZ !P2Hitbox1IndexMem1			;\
-		STZ !P2Hitbox1IndexMem2			; | clear index mem
-		STZ !P2Hitbox2IndexMem1			; |
-		STZ !P2Hitbox2IndexMem2			;/
+		.Return
 		RTS
 
 		.Go
 		JMP (.Ptr,x)
-
-		.Return
-		RTS
 
 		.Ptr
 		dw .Cut					; 1
@@ -1166,7 +1159,7 @@ namespace Leeway
 		CMP #!Lee_ClimbBG_over : BCC ++
 	+	LDA #!Lee_ClimbBG : STA !P2Anim
 		STZ !P2AnimTimer
-	++	LDA $6DA3
+	++	LDA $15
 		AND #$0F : BNE +
 		STZ !P2AnimTimer
 	+	JMP .HandleUpdate
@@ -1200,7 +1193,7 @@ namespace Leeway
 		.Falling
 		LDA !LeewayUpgrades				; check for slow fall upgrade
 		AND #$10 : BEQ ..fast
-		BIT $6DA3 : BPL ..fast
+		BIT $15 : BPL ..fast
 	..slow	LDA !P2Anim
 		CMP #!Lee_SlowFall : BCC +
 		CMP #!Lee_SlowFall_over : BCC -
@@ -1339,7 +1332,7 @@ namespace Leeway
 		; STX !BigRAM+0				; > set size
 
 	;	LDA.w #!BigRAM : JSL CORE_GENERATE_RAMCODE
-	LDY.w #!File_Leeway : JSL !GetFileAddress	; primary file
+	LDY.w #!File_Leeway : JSL GetFileAddress	; primary file
 	LDA.w #!File_Leeway_Sword : STA !FileAddress+4	; second file
 	LDA $00 : JSL CORE_GENERATE_RAMCODE_24bit
 
@@ -1462,15 +1455,6 @@ namespace Leeway
 		.Process
 		REP #$20
 		LDA HitboxTable,y : JSL CORE_ATTACK_LoadHitbox
-		JSL CORE_ATTACK_Setup
-
-		JSL CORE_ATTACK_ActivateHitbox1
-		JSR .CheckContact
-		LDA !P2Hitbox2W					;\
-		ORA !P2Hitbox2H					; | only process hitbox 2 if it actuallly exists
-		BEQ .Return					;/
-		JSL CORE_ATTACK_ActivateHitbox2
-		JSR .CheckContact
 		.Return
 		REP #$20
 		LDA !P2Hitbox1IndexMem1
@@ -1480,96 +1464,6 @@ namespace Leeway
 		SEP #$20
 		JSL CORE_GET_TILE_Attack
 		RTS
-
-		.CheckContact
-		LDY !P2ActiveHitbox
-		LDA !P2Hitbox1Shield,y : BNE .NoHit
-
-		LDX #$0F				; all sprites
-	.Loop	LDA $3230,x				;\ check sprite status
-		CMP #$08 : BCC .LoopEnd			;/
-		CPX #$08 : BCS +			;\
-		LDA !P2Hitbox1IndexMem1 : BRA ++	; | check index memory
-	+	LDA !P2Hitbox1IndexMem2			; |
-	++	AND.l CORE_BITS,x : BNE .LoopEnd	;/
-		TXY					;\ check for interaction disable timer
-		LDA ($0E),y : BNE .LoopEnd		;/
-		LDA $0F : PHA				;\
-		JSL !GetSpriteClipping04		; |
-		JSL !CheckContact			; | check for contact
-		PLA : STA $0F				; |
-		BCC .LoopEnd				;/
-
-		LDA !ExtraBits,x			;\
-		AND #$08 : BNE .HiBlock			; |
-		.LoBlock				; |
-		LDY $3200,x				; |
-		LDA HIT_TABLE,y : BEQ .LoopEnd		; | get interaction type
-		BRA .AnyBlock				; |
-		.HiBlock				; |
-		LDY !NewSpriteNum,x			; |
-		LDA HIT_TABLE_Custom,y : BEQ .LoopEnd	;/
-
-		.AnyBlock				;\
-		ASL A : TAY				; |
-		PEI ($0E)				; |
-		PEA .CallReturn-1			; |
-		REP #$20				; |
-		LDA HIT_Ptr+0,y				; |
-		DEC A					; | execute pointer
-		PHA					; |
-		SEP #$20				; |
-		LDA #$08 : STA !P2ComboDash		; > set combo dash enable for 8 frames
-		LDY !P2ActiveHitbox
-		LDA CORE_BITS,x
-		CPX #$08 : BCS ..8F
-	..07	ORA !P2Hitbox1IndexMem1,y
-		STA !P2Hitbox1IndexMem1,y
-		RTS
-	..8F	ORA !P2Hitbox1IndexMem2,y
-		STA !P2Hitbox1IndexMem2,y
-		.NoHit					; |
-		RTS					;/
-
-		.CallReturn
-		REP #$20
-		PLA : STA $0E
-		SEP #$20
-
-		.LoopEnd				;\ loop
-		DEX : BPL .Loop				;/
-		RTS					; return
-
-
-	HIT_Ptr:
-	dw HIT_00
-	dw HIT_01
-	dw HIT_02
-	dw HIT_03
-	dw HIT_04
-	dw HIT_05
-	dw HIT_06
-	dw HIT_07
-	dw HIT_08
-	dw HIT_09
-	dw HIT_0A
-	dw HIT_0B
-	dw HIT_0C
-	dw HIT_0D
-	dw HIT_0E
-	dw HIT_0F
-	dw HIT_10
-	dw HIT_11
-	dw HIT_12
-	dw HIT_13
-	dw HIT_14
-	dw HIT_15
-	dw HIT_16
-	dw HIT_17
-	dw HIT_18
-	dw HIT_19
-	dw HIT_1A
-
 
 
 
@@ -1721,396 +1615,6 @@ namespace Leeway
 	db $02,$00			; SFX
 	db $00
 
-
-
-	HIT_00:
-		RTS
-
-	HIT_01:
-		; Knock out always
-		JMP KNOCKOUT
-
-	HIT_02:
-		; Knock out of shell, send shell flying
-		LDA $3230,x
-		CMP #$08 : BEQ .Standard
-		CMP #$09 : BEQ .Knockback
-		CMP #$0A : BNE HIT_00
-		LDA $3200,x			;\
-		CMP #$07 : BNE .Knockback	; | Shiny shell is immune to sword
-		LDA #$02 : STA !SPC1		; |
-		RTS				;/
-
-		.Knockback
-		JSL CORE_ATTACK_Main
-		LDA #$09 : STA $3230,x
-		JMP KNOCKBACK
-
-		.Standard
-		LDA $3200,x
-		CMP #$08 : BCC $03
-	-	JMP .Stun
-
-		JSL $02A9DE			; Get new sprite number into Y
-		BMI -				; If there are no empty slots, don't spawn
-
-		LDA $3200,x
-		SEC : SBC #$04
-		STA $3200,y			; Store sprite number for new sprite
-		LDA #$08 : STA $3230,y		; > Status: normal
-		LDA $3220,x : STA $3220,y	;\
-		LDA $3250,x : STA $3250,y	; | coords
-		LDA $3210,x : STA $3210,y	; |
-		LDA $3240,x : STA $3240,y	;/
-		PHX				;\
-		TYX				; | reset tables for new sprite
-		STZ !ExtraBits,x		; |
-		JSL !ResetSprite		; |
-		LDA.l CORE_BITS,x
-		CPX #$08 : BCS +
-		TSB !P2Hitbox1IndexMem1 : BRA ++
-	+	TSB !P2Hitbox1IndexMem2
-		++
-		PLX				;/
-		LDA #$10			;\
-		STA $32B0,y			; | Some sprite tables that SMW normally sets
-		STA $32D0,y			; |
-		STA !SpriteDisP1,y		; > don't interact
-		STA !SpriteDisP2,y		; > don't interact
-		LDA #$01 : STA $3310,y		;/
-
-		LDA #$10 : STA $3300,y		; > Temporarily disable player interaction
-		LDA $3430,x			;\ Copy "is in water" flag from sprite
-		STA $3430,y			;/
-		LDA #$02 : STA $32D0,y		;\ Some sprite tables
-		LDA #$01 : STA $30BE,y		;/
-
-		LDA $3330,x : STA $3330,y
-
-		PHX
-		LDA !P2Direction
-		LDX !P2SwordAttack
-		CPX #$85
-		BEQ $02 : EOR #$01
-		STA $3320,y
-		TAX				; X = new sprite direction
-		LDA.l CORE_KOOPA_XSPEED,x	; Load X speed table indexed by direction
-		STA $30AE,y			; Store to new sprite X speed
-		PLX
-
-		; applying hitstun here causes the spawn to fail because SMW totally rules dude...
-		LDY !P2ActiveHitbox
-		LDA !P2Hitbox1SFX1,y : BEQ ..skipSFX1
-		STA !SPC1
-		..skipSFX1
-		LDA !P2Hitbox1SFX2,y : BEQ ..skipSFX2
-		STA !SPC4
-		..skipSFX2
-		JSL CORE_DISPLAYCONTACT
-
-
-		.Stun
-		LDA #$09 : STA $3230,x		; > Stun sprite
-		LDA $3200,x			;\
-		CMP #$08			; | Check if sprite is a Koopa
-		BCC .DontStun			;/
-		LDA #$FF : STA $32D0,x		; > Stun if not
-
-		.DontStun
-		LDA.l CORE_BITS,x
-		CPX #$08 : BCS +
-		TSB !P2Hitbox1IndexMem1 : BRA ++
-	+	TSB !P2Hitbox1IndexMem2
-		++
-
-		RTS
-
-
-	HIT_03:
-		; Knock back and clip wings
-		LDA $3230,x
-		CMP #$08
-		BNE HIT_02_DontStun
-		LDA $3200,x			; Load sprite sprite number
-		SEC : SBC #$08			; Subtract base number of Parakoopa sprite numbers
-		PHX
-		TAX
-		LDA CORE_PARAKOOPACOLOR,x	; Load new sprite number
-		PLX
-		STA $3200,x			; Set new sprite number
-		LDA #$01 : STA $3230,x		; > Initialize sprite
-		JSL CORE_ATTACK_Main
-		JMP KNOCKBACK
-
-	HIT_04:
-		; Knock back and stun
-		LDA $3230,x
-		CMP #$08
-		BEQ .Main
-		CMP #$09
-		BNE HIT_07
-
-		.Main
-		JSL CORE_ATTACK_Main
-		LDA $3200,x
-		CMP #$40
-		BEQ .ParaBomb
-		LDA #$09			;\
-		STA $3230,x			; | Regular Bobomb code (stuns it)
-		BRA .Shared			;/
-
-		.ParaBomb
-		LDA #$0D : STA $3200,x		; > Sprite = Bobomb
-		LDA #$01 : STA $3230,x		; > Initialize sprite
-		JSL $07F7D2			; > Reset sprite tables
-
-		.Shared
-		JMP KNOCKBACK
-
-	HIT_05:
-		; Knock back and stun
-		LDA $3230,x
-		CMP #$08
-		BEQ .Main
-		CMP #$09
-		BNE HIT_07
-
-		.Main
-		JSL CORE_ATTACK_Main
-		LDA #$09 : STA $3230,x
-		LDA #$FF : STA $32D0,x
-		JMP KNOCKBACK
-
-	HIT_06:
-		; Knock back, stun, and clip wings
-		LDA $3230,x
-		CMP #$08
-		BNE HIT_07
-		LDA #$0F : STA $3200,x		; Set new sprite number
-		JSL $07F7D2			; Reset sprite tables
-		BRA HIT_05_Main			; Handle like normal
-
-	HIT_07:
-		; Do nothing
-		RTS
-
-	HIT_08:
-		; Knock out always
-	HIT_09:
-		; Knock out always
-	HIT_0A:
-		; Knock out always
-		JMP KNOCKOUT
-
-	HIT_0B:
-		; Collect
-		PHK : PEA.w .Return-1
-		PEA.w CORE_SPRITE_INTERACTION_RTL-1
-		JML CORE_INT_0B+$03
-		.Return
-		RTS
-
-	HIT_0C:
-		; Knock out if at same depth
-		LDA $3410,x			;\ Don't process interaction while sprite is behind scenery
-		BNE HIT_0D			;/
-		JMP KNOCKOUT
-
-	HIT_0D:
-		; Do nothing
-		RTS
-
-	HIT_0E:
-		; Collapse
-		LDA $32C0,x
-		BNE .Return
-		LDA #$01 : STA $32C0,x
-		LDA #$FF : STA $32D0,x
-		LDA #$07 : STA !SPC1
-		LDY !P2Direction
-		JMP KNOCKBACK_GFX
-
-		.Return
-		RTS
-
-
-	HIT_0F:
-		; Do nothing
-		RTS
-
-	HIT_10:
-		; Stun and damage
-		JSL CORE_ATTACK_Main
-		STZ $3420,x			; Reset unknown sprite table
-		LDA $BE,x			;\
-		CMP #$03			; |
-		BEQ HIT_0F			;/> Return if sprite is still recovering from a stomp
-		INC $32B0,x			; Increment sprite stomp count
-		LDA $32B0,x
-		CMP #$03
-		BEQ .Kill
-		LDA #$03 : STA $BE,x		; Stun sprite
-		LDA #$03 : STA $32D0,x		; Set sprite stunned timer to 3 frames
-		STZ $3310,x			; Reset follow player timer
-		LDY !P2Direction
-		JMP KNOCKBACK_GFX
-
-		.Kill
-		JMP KNOCKOUT
-
-
-	HIT_11:
-		; Do nothing
-		RTS
-
-	HIT_12:
-		; Knock out if emerged
-		LDA $BE,x			;\
-		BEQ .Return			; | Only interact if sprite has emerged from the ground
-		LDA $32D0,x			; |
-		BEQ .Process			;/
-
-		.Return
-		RTS
-
-		.Process
-		JMP KNOCKOUT
-
-
-	HIT_13:
-		; Knock back and damage
-		LDA $3200,x
-		CMP #$6E
-		BEQ .Large
-
-		.Small
-		JMP KNOCKOUT
-
-		.Large
-		LDA #$6F : STA $3200,x		; Sprite num
-		JSL !LoadTweakers		; Reset sprite tables
-		LDA #$01 : STA $BE,x		; Action: fire breath forward
-		LDA #$FF : STA $32D0,x
-		STZ $33D0,x
-		JMP KNOCKBACK
-
-
-	HIT_14:
-		; Do nothing
-		RTS
-
-	HIT_15:
-		; Knock back and damage
-		LDY $BE,x
-		LDA $3280,x
-		AND #$04 : BNE .Aggro
-		CPY #$01 : BNE +
-		LDA #$20 : STA $32F0,x
-		JMP KNOCKOUT
-	+	LDA #$04 : STA $34D0,x		; Half smush timer
-		BRA .Shared
-
-		.Return
-		RTS
-
-		.Aggro
-		LDA !P2SwordAttack		;\
-		AND #$7F			; | Slash ignores I-frames
-		CMP #$02 : BEQ +		;/
-		LDA $35D0,x : BNE .Return
-	+	LDA #$40 : STA $35D0,x
-		LDA $33E0,x
-		BEQ .NoRoar
-		LDA #$01 : STA $33E0,x
-
-		.NoRoar
-		CPY #$02
-		BNE .Shared
-		LDA #$20 : STA $32F0,x
-		JMP KNOCKOUT
-
-		.Shared
-		INC $BE,x
-		JSL CORE_ATTACK_Main
-		LDA $3340,x			;\
-		ORA #$0D			; | Set jump, getup, and knockback flags
-		STA $3340,x			;/
-		LDA $3330,x			;\
-		AND.b #$04^$FF			; | Put sprite in midair
-		STA $3330,x			;/
-		LDA $3280,x			;\
-		AND.b #$08^$FF			; | Clear movement disable
-		STA $3280,x			;/
-		BIT $3280,x			;\
-		BVC .NoChase			; |
-		BIT $3340,x			; |
-		BVS .NoChase			; | Aggro off of being cut
-		LDA !CurrentPlayer		; |
-		CLC : ROL #4			; |
-		ORA #$40			; |
-		ORA $3340,x			; |
-		STA $3340,x			;/
-
-		.NoChase
-		STZ $32A0,x			; > Disable hammer
-		JMP KNOCKBACK
-
-
-
-	HIT_16:
-		; Do nothing
-	HIT_17:
-		; Do nothing
-		RTS
-
-	HIT_18:
-		; Knock back without doing damage
-		LDA !P2Direction
-		EOR #$01
-		STA $3320,x
-		JMP KNOCKBACK
-
-
-	HIT_19:
-		; Do nothing
-		RTS
-
-	HIT_1A:
-		; Collect
-		PHK : PEA.w .Return-1
-		PEA.w CORE_SPRITE_INTERACTION_RTL-1
-		JML CORE_INT_1A+$03
-		.Return
-		RTS
-
-
-
-	KNOCKOUT:
-		LDA #$02 : STA $3230,x
-		LDY !P2ActiveHitbox
-		LDA !P2Hitbox1Hitstun,y : STA $9D
-		LDA !P2Hitbox1YSpeed,y
-		SEC : SBC #$10
-		STA !SpriteYSpeed,x
-		LDA !P2Hitbox1XSpeed,y : STA !SpriteXSpeed,x
-
-		LDA #$02 : STA !SPC1
-		JSL CORE_DISPLAY_CONTACT
-		RTS
-
-
-	KNOCKBACK:
-		LDY !P2ActiveHitbox
-		LDA !P2Hitbox1Hitstun,y : STA $9D
-		LDA !P2Hitbox1XSpeed,y : STA !SpriteXSpeed,x
-		LDA !P2Hitbox1YSpeed,y : STA !SpriteYSpeed,x
-		LDA !P2Dashing : BEQ .GFX			;\
-		TXY						; | +50% i-frames when dashing
-		LDA #$18 : STA ($0E),y				;/
-
-	.GFX	LDA #$02 : STA !SPC1
-		JSL CORE_DISPLAY_CONTACT
-		RTS
 
 
 
@@ -3674,41 +3178,6 @@ print "  - sequence data: $", hex(.HorzTM-SWORD), " bytes (", dec((.HorzTM-SWORD
 print "  - tilemap data:  $", hex(.End-.HorzTM), " bytes (", dec((.End-.HorzTM)*100/(.End-SWORD)), "%)"
 
 
-
-;			   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |			|
-;	LO NYBBLE	   |YY0|YY1|YY2|YY3|YY4|YY5|YY6|YY7|YY8|YY9|YYA|YYB|YYC|YYD|YYE|YYF|	HI NYBBLE	|
-;	--->		   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |			V
-
-HIT_TABLE:		db $01,$01,$01,$01,$02,$02,$02,$02,$03,$03,$03,$03,$03,$04,$00,$05	;| 00X
-			db $06,$02,$00,$01,$01,$08,$08,$00,$08,$00,$00,$07,$09,$07,$0A,$0A	;| 01X
-			db $07,$0B,$0C,$0C,$0C,$0C,$07,$07,$07,$00,$07,$07,$00,$00,$07,$0D	;| 02X
-			db $0E,$0E,$0E,$07,$07,$00,$00,$07,$07,$07,$07,$07,$07,$01,$0D,$06	;| 03X
-			db $04,$0F,$0F,$0F,$07,$00,$10,$00,$07,$0F,$11,$0A,$00,$12,$12,$01	;| 04X
-			db $01,$0A,$00,$00,$00,$0F,$0F,$0F,$0F,$00,$00,$0F,$0F,$0F,$0F,$00	;| 05X
-			db $00,$0F,$0F,$0F,$00,$07,$07,$07,$07,$00,$00,$00,$00,$00,$13,$13	;| 06X
-			db $00,$01,$01,$01,$1A,$1A,$1A,$1A,$1A,$00,$00,$11,$00,$00,$00,$00	;| 07X
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 08X
-			db $00,$10,$10,$10,$10,$10,$00,$10,$10,$07,$07,$0A,$0F,$00,$07,$14	;| 09X
-			db $00,$07,$02,$00,$07,$07,$07,$00,$07,$07,$07,$15,$00,$00,$07,$16	;| 0AX
-			db $07,$00,$07,$07,$07,$00,$07,$17,$17,$00,$0F,$0F,$00,$01,$0A,$18	;| 0BX
-			db $0F,$00,$01,$07,$0F,$07,$00,$00,$00					;| 0CX
-
-.Custom			db $00,$00,$00,$00,$00,$00,$00,$07,$00,$00,$00,$00,$00,$00,$00,$00	;| 10X
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 11X
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 12X
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 13X
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 14X
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 15X
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 16X
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 17X
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 18X
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 19X
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 1AX
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 1BX
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 1CX
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 1DX
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 1EX
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 1FX
 
 
 namespace off

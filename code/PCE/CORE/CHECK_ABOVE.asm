@@ -13,7 +13,7 @@ CHECK_ABOVE:
 		SEC : SBC #$000F
 		TAY
 		SEP #$20
-		JSL !GetMap16
+		JSL GetMap16
 		CMP #$0111
 		SEP #$20
 		BCC .Return

@@ -34,7 +34,13 @@ norom
 org $000000
 db $00
 %vanillasprite(02, 1)		; smart kicker
+%vanillasprite(04, 1)		; green dancer koopa
+%vanillasprite(05, 1)		; red dancer koopa
+%vanillasprite(06, 1)		; blue dancer koopa
+%vanillasprite(07, 1)		; yellow dancer koopa
 %vanillasprite(0E, 1)		; keyhole
+%vanillasprite(13, 1)		; rolling spiny
+%vanillasprite(21, 1)		; still coin
 %vanillasprite(2E, 1)		; spiketop
 %vanillasprite(3D, 1)		; rip
 %vanillasprite(4D, 1)		; ground-dwelling monty mole
@@ -82,10 +88,8 @@ db $00
 %sprite(11, 1)			; Sign
 %sprite(12, 0)			; Lakitu Lovers
 %sprite(12, 1)			; Dance Pad
-%sprite(13, 0)			; Green Dancer Koopa
-%sprite(13, 1)			; Red Dancer Koopa
-%sprite(14, 0)			; Blue Dancer Koopa
-%sprite(14, 1)			; Yellow Dancer Koopa
+; 13 unused
+; 14 unused
 %sprite(15, 0)			; Spiny
 %sprite(15, 1)			; Rolling Spiny
 %sprite(16, 0)			; Thif
@@ -128,7 +132,7 @@ db $00
 %sprite(30, 0)			; Chest
 %sprite(31, 0)			; Experimental Block
 %sprite(32, 0)			; Shop Object
-%sprite(33, 0)			; Life Shroom
+; 33 unused
 %extrasprite(34, 0, 00, 07)	; dense rex: bandana
 %extrasprite(34, 0, 01, 07)	; dense rex: bandana
 %extrasprite(34, 0, 02, 07)	; dense rex: bandana

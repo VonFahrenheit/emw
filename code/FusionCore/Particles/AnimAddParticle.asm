@@ -1,4 +1,5 @@
 
+; decrementing timer
 	AnimAddParticle:
 	.BG1	LDX $00							; reload index
 		SEP #$20						; 8-bit A
@@ -13,7 +14,7 @@
 		LDY !Particle_TileTemp+2-1				; |
 		CPY #$0200						; | tile
 		BCC $01 : ASL A						; |
-		CLC : ADC !Particle_Tile,x				; |
+		ADC !Particle_Tile,x					; |
 		STA !Particle_TileTemp					;/
 		LDA !Particle_Prop,x					;\
 		AND #$3F						; | prop
@@ -36,7 +37,7 @@
 		LDY !Particle_TileTemp+2-1				; |
 		CPY #$0200						; | tile
 		BCC $01 : ASL A						; |
-		CLC : ADC !Particle_Tile,x				; |
+		ADC !Particle_Tile,x					; |
 		STA !Particle_TileTemp					;/
 		LDA !Particle_Prop,x					;\
 		AND #$3F						; | prop
@@ -66,7 +67,7 @@
 		LDY !Particle_TileTemp+2-1				; |
 		CPY #$0200						; | tile
 		BCC $01 : ASL A						; |
-		CLC : ADC !Particle_Tile,x				; |
+		ADC !Particle_Tile,x					; |
 		STA !Particle_TileTemp					;/
 		LDA !Particle_Prop,x					;\
 		AND #$3F						; | prop
@@ -89,7 +90,7 @@
 		LDY !Particle_TileTemp+2-1				; |
 		CPY #$0200						; | tile
 		BCC $01 : ASL A						; |
-		CLC : ADC !Particle_Tile,x				; |
+		ADC !Particle_Tile,x					; |
 		STA !Particle_TileTemp					;/
 		LDA !Particle_Prop,x					;\
 		AND #$3F						; | prop

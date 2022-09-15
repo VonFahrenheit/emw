@@ -1,0 +1,6 @@
+
+	INIT:
+	MAIN:
+		RTS
+
+

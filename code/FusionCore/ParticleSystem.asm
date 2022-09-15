@@ -108,12 +108,11 @@
 ;		AND #$00FF : BEQ +
 ;		INY
 ;	+	TXA
-;		CLC : ADC #$0011
-;		CMP #$06A4 : BCS +
+;		CLC : ADC.w #!Particle_Size
+;		CMP.w #(!Particle_Count*!Particle_Size) : BCS +
 ;		TAX
 ;		BRA -
 ;	+	TYA : STA.l !P1Coins
-
 
 		LDX #$0000						; starting index
 		LDA !DizzyEffect					;\ turbo paradigm: 1 copy of code with dizzy and 1 copy without it
@@ -196,6 +195,7 @@
 		RTS
 
 		.List
+		; super customs
 		dw BasicParticle_BG1		; 01
 		dw BasicParticle_BG2
 		dw BasicParticle_BG3
@@ -212,17 +212,28 @@
 		dw AnimSubParticle_BG2
 		dw AnimSubParticle_BG3
 		dw AnimSubParticle_Cam
+
+		; minor customs
+		dw SpritePart
+		dw FlashParticle
+
+		; hardcoded: vanilla replacements
 		dw SmokeParticle8x8
 		dw SmokeParticle16x16
 		dw ContactParticle
 		dw ContactBigParticle
-		dw SpritePart
 		dw CoinGlitterParticle
 		dw SparkleParticle
+		dw SparkleSmallParticle
+		dw Text100Particle
+		dw BrickPieceParticle
+		dw WaterSplashParticle
+		dw BubbleParticle
+		dw SnoreZParticle
+
+		; hardcoded: new particles
 		dw LeafParticle
 		dw TinyCoin
-		dw FlashParticle
-		dw Text100Particle
 
 		dw .ClearParticle		; final index, a particle is set to this when it's erased which makes it clear its data next frame
 
@@ -240,10 +251,15 @@ incsrc "Particles/ContactBigParticle.asm"
 incsrc "Particles/SpritePart.asm"
 incsrc "Particles/CoinGlitterParticle.asm"
 incsrc "Particles/SparkleParticle.asm"
+incsrc "Particles/SparkleSmallParticle.asm"
 incsrc "Particles/LeafParticle.asm"
 incsrc "Particles/TinyCoin.asm"
 incsrc "Particles/FlashParticle.asm"
 incsrc "Particles/Text100Particle.asm"
+incsrc "Particles/BrickPieceParticle.asm"
+incsrc "Particles/WaterSplashParticle.asm"
+incsrc "Particles/BubbleParticle.asm"
+incsrc "Particles/SnoreZParticle.asm"
 
 
 

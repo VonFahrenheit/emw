@@ -23,7 +23,6 @@
 
 
 
-	BG3_Resolution:
 	.B00	db $FF		; mode 7 tilemap
 	.B01	db !64x64	; main menu BG3
 	.B02	db !32x64	; vanilla castle windows

@@ -3,12 +3,11 @@ macro regbox(ID, bool)
 	if <bool> = 0
 		dl $000000
 	else
-		dl level<ID>_RoomPointers
+		dl LevelCode_level<ID>_RoomPointers
 	endif
 endmacro
 
 
-BoxTable:
 %regbox(0, 0)
 %regbox(1, 0)
 %regbox(2, 0)

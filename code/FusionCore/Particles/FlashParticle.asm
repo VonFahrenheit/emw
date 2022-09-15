@@ -1,4 +1,6 @@
 
+; decrementing timer
+
 	FlashParticle:
 		LDX $00
 		SEP #$20

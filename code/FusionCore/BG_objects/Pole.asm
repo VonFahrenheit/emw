@@ -30,18 +30,14 @@
 
 
 		.Main
-		LDA !BG_object_X,x				;\
-		STA $04						; |
-		STA $09						; |
+		LDA !BG_object_X,x : STA $E8			;\
 		LDA !BG_object_Y,x				; |
 		CLC : ADC #$0008				; |
-		SEP #$20					; | clipping
-		STA $05						; |
-		XBA : STA $0B					; |
+		STA $EA						; | clipping
 		LDA !BG_object_W,x				; |
 		ASL #3						; |
-		STA $06						; |
-		LDA #$01 : STA $07				;/
+		AND #$00FF : STA $EC				; |
+		LDA #$0001 : STA $EE				;/
 		SEP #$30
 
 
@@ -64,23 +60,23 @@
 		LDA !SpriteYSpeed,x
 		CLC : ADC !SpriteVectorY,x
 		BMI +
-		JSL !GetSpriteClipping00
-		LDA $03
+		JSL GetSpriteClippingE0
+		LDA $E6
 		CLC : ADC #$05
-		STA $03
-		JSL !CheckContact : BCC +
+		STA $E6
+		JSL CheckContact : BCC +
 		STZ !SpriteYSpeed,x
 		LDA #$04 : STA !SpriteExtraCollision,x
-		LDA $05
+		LDA $EA
 		SEC : SBC #$0F
 		STA !SpriteYLo,x
-		LDA $0B
+		LDA $EB
 		SBC #$00
 		STA !SpriteYHi,x
 	+	DEX : BPL -
 
 
-		SEC : JSL !PlayerClipping
+		JSL PlayerContact
 		PLB
 		PLP
 		PLX

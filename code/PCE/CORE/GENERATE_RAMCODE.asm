@@ -196,7 +196,7 @@ GENERATE_RAMCODE:
 		..updateaddress						;\
 		STA $08							; |
 		PHY							; | get secondary file
-		LDY !FileAddress+4 : JSL !GetFileAddress		; |
+		LDY !FileAddress+4 : JSL GetFileAddress			; |
 		PLY							; |
 		BRA ..updatebank					; > update bank
 		..keepaddress						;/

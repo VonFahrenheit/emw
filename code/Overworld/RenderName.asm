@@ -62,7 +62,7 @@
 		TAY
 		TYX
 		LDA #$9C6A : STA $00
-		LDA.l $188000,x
+		LDA.l LevelData_MegaLevelID,x
 		AND #$00FF
 		STA $06
 		BEQ +
@@ -211,10 +211,8 @@
 		CLC : ADC $2306						; |
 		STA $00							;/
 
-		LDA.w #!TextFontData
-		CLC : ADC.w #read2(!TextFontData+2)
-		STA $03							;\ pointer to font data
-		LDA.w #!TextFontData>>16 :  STA $05			;/
+		LDA.w #FontData_Classic : STA $03			;\ pointer to font data
+		LDA.w #FontData>>16 :  STA $05				;/
 		STZ $06							; starting read index
 		STZ $08							; starting rendering index
 		SEP #$20						; A 8-bit
@@ -365,7 +363,7 @@
 		SEP #$30
 		LDA #$40 : PHA : PLB
 
-		JSL !GetBigCCDMA					; X = index to CCDMA table
+		JSL GetBigCCDMA						; X = index to CCDMA table
 		LDA #$11 : STA !CCDMAtable+$07,x			; > width = 128px, bit depth = 4bpp
 		LDA.b #!GFX_buffer>>16 : STA !CCDMAtable+$04,x		;\
 		REP #$20						; | source adddress
@@ -373,7 +371,7 @@
 		LDA #$0200 : STA !CCDMAtable+$00,x			; upload size
 		LDA #$6600 : STA !CCDMAtable+$05,x			; dest VRAM
 		SEP #$20
-		JSL !GetBigCCDMA					; X = index to CCDMA table
+		JSL GetBigCCDMA						; X = index to CCDMA table
 		LDA #$11 : STA !CCDMAtable+$07,x			; > width = 128px, bit depth = 4bpp
 		LDA.b #!GFX_buffer>>16 : STA !CCDMAtable+$04,x		;\
 		REP #$20						; | source adddress
@@ -391,8 +389,8 @@
 		PHB : PHK : PLB						;\ wrapper start
 		PHP							;/
 		REP #$30						;\
-		LDY.w #read2(!TextFontGFX+2)				; | get font address
-		JSL !GetFileAddress					;/
+		LDY.w #!File_classic_font				; | get font address
+		JSL GetFileAddress					;/
 		SEP #$20						; A 8-bit
 		STZ $223F						; 4bpp
 		LDA.b #!V_cache>>16					;\ bank 0x60

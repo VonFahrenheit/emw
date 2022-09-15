@@ -15,6 +15,12 @@
 		ORA !P2SlantPipe			; |
 		BNE .Return				;/
 
+		REP #$20				;\
+		LDA #$0000				; |
+		STA !P2Hitbox1IndexMem			; | reset index mem for riposte
+		STA !P2Hitbox2IndexMem			; |
+		SEP #$20				;/
+
 		LDA !Difficulty_full			;\
 		AND.b #!CriticalMode : BEQ .NotCrit	; | critical mode sets HP to 1 when player gets hit, meaning they'll always die from the damage
 		LDA #$01 : STA !P2HP			; |
@@ -86,30 +92,18 @@
 		..End
 
 		.Mario
-		LDA !P2Invinc : STA !MarioFlashTimer
 		LDA !P2HP				;\
-		SEC : SBC !dmg				; | die when HP goes to 0 or negative
-		BEQ ..kill				; |
-		BMI ..kill				;/
-		CMP #$05 : BCS ..noshrink		;\
-		LDA !P2HP				; | only shrink when going from big to small
-		CMP #$05 : BCC ..noshrink		;/
-		LDA #$04 : STA !SPC1			; power down SFX
-		LDA #$01 : STA !MarioAnim
-		STZ $19
-		LDA #$2F : STA !MarioAnimTimer
-		LDA #$1F : STA !P2ShrinkTimer		; > shrink timer
-		..noshrink
-		LDA #$F8 : STA !MarioYSpeed
-		STZ !P2FastSwim				;\ end fast swim
-		STZ !P2FastSwimAnim			;/
-		STZ !P2FlareDrill			; end flare drill
+		CMP #$05 : BCC ..nosizechange		; |
+		SBC !dmg				; | set shrink timer when size changes from big to small
+		CMP #$05 : BCS ..nosizechange		; |
+		LDA #$1F : STA !P2ShrinkTimer		; |
+		LDA #$04 : STA !SPC1			; > shrink sfx
+		..nosizechange				;/
+		STZ !P2PickUp				; end pickup animation
+		STZ !P2KickTimer			; end kick animation
+		STZ !P2TurnTimer			; end turn animation
+		STZ !P2Dashing				; end dash state
 		STZ !P2HangFromLedge			; fall if hanging from ledge
-		RTS
-		..kill
-		LDA #$90
-		STA !MarioYSpeed
-		STA !P2YSpeed
 		RTS
 
 		.Luigi

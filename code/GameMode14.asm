@@ -9,20 +9,6 @@
 
 
 
-; - trim:
-;	- VR3 OAM handler
-;	- Fe26 extra hijacks
-
-
-
-
-
-GAMEMODE14:
-namespace GAMEMODE14
-
-
-
-
 ;
 ; structure
 ;
@@ -64,6 +50,7 @@ namespace GAMEMODE14
 
 ; phase 1: accelerator mode
 
+	GAMEMODE_14:
 
 		.PlayersDead					;\
 		LDA !P2Status-$80 : BEQ ..alive			; |
@@ -111,23 +98,11 @@ namespace GAMEMODE14
 		..noshade					;/
 
 		LDA !MsgTrigger					;\
-		ORA !MsgTrigger+1				; |
-		BEQ .NoMSG					; | MSG
-		JSL read3($00A1DF+1)				; |
+		ORA !MsgTrigger+1 : BEQ .NoMSG			; |
+		JSL MESSAGE_ENGINE				; | MSG
 		BRA .RETURN					; |
 		.NoMSG						;/
 
-
-
-	; disable down and X/Y during animations and level end
-		LDA !MarioAnim
-		ORA !LevelEnd
-		BEQ +
-		LDA #$04 : TRB $15
-		LDA #$40
-		TRB $16
-		TRB $18
-		+
 
 	; optimized pause code
 		LDA !Cutscene : BNE .PauseDone
@@ -161,164 +136,744 @@ namespace GAMEMODE14
 		LDA #$0B : STA !GameMode
 		.GameIsPaused
 		LDA #$08
-		CMP !2100
-		BEQ $03 : DEC !2100
+		CMP !2100 : BEQ .RETURN
+		DEC !2100
 
 		; RETURN
 		.RETURN
-		LDA #$00				;\ bank = 0x00
-		PHA : PLB				;/
-		JML $00A289				; JML to RTS
+		LDA #$00					;\ bank = 0x00
+		PHA : PLB					;/
+		RTL
 		.PauseDone
 		LDA #$0F
-		CMP !2100
-		BEQ $03 : INC !2100
-
-
-;		LDA !MsgTrigger : BEQ ++		; > always clear if there's no message box
-;		LDA !WindowDir : BNE +			; > don't clear while window is closing
-;		LDA.l !MsgMode : BNE +			;\ don't clear OAM during !MsgMode non-zero
-;	++	;JSL !KillOAM				;/
+		CMP !2100 : BEQ +
+		INC !2100
 		+
 
 
 
 ; phase 2: MPU operation
 
-		STZ !MPU_SNES				;\ start new MPU operation
-		STZ !MPU_SA1				;/
+		STZ !MPU_SNES					;\ start new MPU operation
+		STZ !MPU_SA1					;/
 
-		LDA.b #.SA1 : STA $3180			;\
-		LDA.b #.SA1>>8 : STA $3181		; | start SA-1 thread
-		LDA.b #.SA1>>16 : STA $3182		; |
-		LDA #$80 : STA $2200			;/
+		LDA.b #.SA1 : STA $3180				;\
+		LDA.b #.SA1>>8 : STA $3181			; | start SA-1 thread
+		LDA.b #.SA1>>16 : STA $3182			; |
+		LDA #$80 : STA $2200				;/
 
 	.SNES
 	; SNES phase 1, executed on DP 0
-		JSR MAIN_Level				; SNES thread is just MAIN level code
-		JSL Camera				; camera (run in accelerator mode)
-		%MPU_SNES($01)				; end of SNES phase 1
+
+		LDA #$01 : STA !LevelInitFlag			;\
+		REP #$30					; |
+		LDA !Level					; |
+		ASL A : ADC !Level				; | get level MAIN pointer
+		TAX						; |
+		LDA.l LevelMainPtr,x : STA $0000		; |
+		LDA.l LevelMainPtr+1,x : STA $0001		; |
+		SEP #$30					;/
+		PHB						;\
+		LDA $0002					; | wrap bank
+		PHA : PLB					;/
+		PHK : PEA.w ..levelcodereturn-1			;\
+		JML [$0000]					; | execute pointer
+		..levelcodereturn				;/
+		PLB						; restore bank
+		SEP #$30					; all regs 8-bit just in case
+		JSL Camera					; camera (run in accelerator mode)
+		%MPU_SNES($01)					; end of SNES phase 1
 
 	; SNES phase 2, executed on DP $0100
-		PHD					; push DP
-		%MPU_copy()				; set up SNES MPU DP
+		PHD						; push DP
+		%MPU_copy()					; set up SNES MPU DP
 
-		JSL read3($00A2A5+1)			; call animation setup routine
-		PLD					; restore DP
-		JSR !MPU_light				; SNES will process light shader while SA-1 is running the main game
+		JSL read3($00A2A5+1)				; call animation setup routine
+		PLD						; restore DP
+		JSR !MPU_light					; SNES will process light shader while SA-1 is running the main game
 		JMP .RETURN
 
 
 	.SA1
-		PHB					;\
-		PHP					; | start of SA-1 thread
-		SEP #$30				;/
-		LDA #$00				;\ bank = 00
-		PHA : PLB				;/
-
+		PHB						;\ start of SA-1 thread
+		PHP						;/
 
 	; SA-1 phase 1, executed on DP $0100
-		PHD					; push DP
-		%MPU_copy()				; set up SA-1 MPU DP
+		PHD						; push DP
+		%MPU_copy()					; set up SA-1 MPU DP
 
-		JSL $008E1A				; status bar
-		LDA #$01 : JSL !ProcessYoshiCoins	; > handle Yoshi Coins
-		LDA $14					;\
-		AND #$1F				; |
-		TAY					; | index RNG table
-		DEC A					; |
-		AND #$1F				; |
-		TAX					;/
-		LDA !RNGtable,x				;\
-		BIT #$01 : BEQ +			; |
-		ASL A					; | apply 3N+1 on previous RN
-		ADC !RNGtable,x				; |
-		STA !RNGtable,x : BRA ++		; |
-	+	LSR !RNGtable,x				;/
-	++	JSL !Random				; get vanilla RN
-		ADC !RNGtable,x				; add RNG from last frame
-		ADC $13					; add true frame counter
-		ADC $6DA2				;\
-		ADC $6DA3				; |
-		ADC $6DA4				; |
-		ADC $6DA5				; | add player controller input
-		ADC $6DA6				; |
-		ADC $6DA7				; |
-		ADC $6DA8				; |
-		ADC $6DA9				;/
-		ADC !P2XSpeed-$80			;\ add player 1 speed
-		ADC !P2YSpeed-$80			;/
-		ADC !P2XPosLo-$80			;\ add player 1 position
-		ADC !P2YPosLo-$80			;/
-		ADC !P2XSpeed				;\ add player 2 speed
-		ADC !P2YSpeed				;/
-		ADC !P2XPosLo				;\ add player 2 position
-		ADC !P2YPosLo				;/
-		STA !RNGtable,y				; store new RN
-		STA !RNG				; most recently generated
-		PLD					; restore DP
-		%MPU_SA1($01)				; end of SA-1 phase 1
+
+		LDA.b #LevelData_YoshiCoins>>16 : PHA : PLB	; bank = yoshi coin data bank
+		REP #$30					;\
+		LDA !Translevel					; | unless level = 0, run normal yoshi coin checks
+		AND #$00FF : BEQ ..yoshicoindone		;/
+		TAX						;\
+		STA $0E						; |
+		ASL #2 : ADC $0E				; | *25
+		STA $0E						; |
+		ASL #2 : ADC $0E				; |
+		TAY						;/
+		STZ $2250					;\ prepare multiplication with level height
+		LDA !LevelHeight : STA $2251			;/
+		STZ $00						; will hold the "yoshi coins collected" flags (rotated in ROR, so they will end up in $01)
+		LDA !LevelTable1,x : STA $02			; holds currently collected yoshi coins
+		PHX						;\
+		JSR .ReadYoshiCoin				; |
+		JSR .ReadYoshiCoin				; |
+		JSR .ReadYoshiCoin				; |
+		JSR .ReadYoshiCoin				; |
+		JSR .ReadYoshiCoin				; | update yoshi coin flags
+		PLX						; |
+		SEP #$20					; |
+		LDA $01					 	; |
+		LSR #3						; |
+		ORA !LevelTable1,x				; |
+		STA !LevelTable1,x				;/
+
+		LDA !MegaLevelID : BEQ ..yoshicoindone		; check for mega level 
+		REP #$20					;\
+		AND #$00FF					; |
+		TAX						; |
+		STA $0E						; | *25
+		ASL #2 : ADC $0E				; |
+		STA $0E						; |
+		ASL #2 : ADC $0E				; |
+		TAY						;/
+		STZ $00						; will hold the "yoshi coins collected" flags (rotated in ROR, so they will end up in $01)
+		LDA !LevelTable1,x : STA $02			; holds currently collected yoshi coins
+		PHX						;\
+		JSR .ReadYoshiCoin				; |
+		JSR .ReadYoshiCoin				; |
+		JSR .ReadYoshiCoin				; |
+		JSR .ReadYoshiCoin				; |
+		JSR .ReadYoshiCoin				; | update yoshi coin flags
+		PLX						; |
+		SEP #$20					; |
+		LDA $01				 		; |
+		LSR #3						; |
+		ORA !LevelTable1,x				; |
+		STA !LevelTable1,x				;/
+		..yoshicoindone
+
+
+		SEP #$30					; all regs 8-bit
+		PEA $0000 : PLB					; bank = 00, with an extra 00 on stack
+		JSL StatusBar					; status bar
+
+
+		LDA $14						;\
+		AND #$1F					; |
+		TAY						; | index RNG table
+		DEC A						; |
+		AND #$1F					; |
+		TAX						;/
+		LDA !RNGtable,x : STA !RNG_Seed3		; > update seed 3
+		BIT #$01 : BEQ +				;\
+		ASL A : ADC !RNG_Seed3				; | apply 3N+1 on previous RN
+		STA !RNG_Seed3 : BRA ++				; |
+	+	LSR !RNG_Seed3					;/
+	++	LDA !RNG_Seed1					;\
+		ASL #2						; |
+		SEC : ADC !RNG_Seed1				; |
+		STA !RNG_Seed1					; |
+		ASL !RNG_Seed2					; |
+		LDA #$20					; |
+		BIT !RNG_Seed2					; | vanilla RN algorithm
+		BCC +						; |
+		BEQ +++						; |
+		BNE ++						; |
+	+	BNE +++						; |
+	++	INC !RNG_Seed2					; |
+	+++	LDA !RNG_Seed2					; |
+		EOR !RNG_Seed1 : STA !RNG_Seed4			;/ > update seed 4
+		ADC !RNG_Seed3					; add seed 3 (RNG from last frame)
+		ADC $13						; add true frame counter
+		ADC $6DA2					;\
+		ADC $6DA3					; |
+		ADC $6DA4					; |
+		ADC $6DA5					; | add player controller input
+		ADC $6DA6					; |
+		ADC $6DA7					; |
+		ADC $6DA8					; |
+		ADC $6DA9					;/
+		ADC !P2XSpeed-$80				;\ add player 1 speed
+		ADC !P2YSpeed-$80				;/
+		ADC !P2XPosLo-$80				;\ add player 1 position
+		ADC !P2YPosLo-$80				;/
+		ADC !P2XSpeed					;\ add player 2 speed
+		ADC !P2YSpeed					;/
+		ADC !P2XPosLo					;\ add player 2 position
+		ADC !P2YPosLo					;/
+		STA !RNGtable,y					; store new RN to table
+		STA !RNG					; store most recently generated
+		PLD						; restore DP
+		%MPU_SA1($01)					; end of SA-1 phase 1
 
 	; SA-1 phase 2, executed on DP 0
-		SEP #$30				; all regs 8-bit
-	;	LDA $9D : BNE ..noanim
-		INC $14					; increment frame counter
-		JSL HandleGraphics			; rotate simple + starman handler (part of SP_Level.asm)
-		..noanim
-		JSL $05BC00				; scroll sprites (includes LM's hijack for BG3 controller, which i have KILLED >:D)
-		PEI ($1C)				;\
-		REP #$20				; |
-		STZ $7888				; |
-		LDA !ShakeTimer : BEQ ..noshake		; > note that $7888 was JUST cleared so hi byte is fine
-		DEC !ShakeTimer				; |
-		AND #$0003				; |
-		ASL A					; |
-		TAY					; | camera shake routine
-		LDA $A1CE,y : STA $7888			; |
-		BIT $6BF5-1				; |
-		BVC $02 : DEC #2			; |
-		STA $7888				; |
-		CLC : ADC $1C				; > this only applies to sprites, actual camera offset is in camera routine
-		STA $1C					; |
-		..noshake				; |
-		SEP #$30				;/
+		SEP #$30					; all regs 8-bit
+		INC $14						; increment frame counter
+		PHK : PLB					; B = K
 
-.CODE_00C533	LDY $74AD				;\
-		CPY $74AE				; |
-		BCS $03 : LDY $74AE			; |
-		CPY !StarTimer				; |
-		BCS $03 : LDY !StarTimer		; |
-		LDA $6DDA : BMI +			; |
-		CPY #$01 : BNE +			; | POW (blue and silver) + star power timer + music
-		LDY $790C : BNE +			; |
-		STA !SPC3				; |
-	+	CMP #$FF : BEQ .CODE_00C55C		; |
-		CPY #$1E : BNE .CODE_00C55C		; |
-		LDA #$24 : STA !SPC4			;/
-.CODE_00C55C	LDA $14					;\ only decrement these every 4 frames
-		AND #$03 : BNE +			;/
-		LDX #$06				;\
-	-	LDA $74A8,x				; | auto-decrement $74A9-$74AE (only notable ones are $74AD and $74AE, the P switch timers)
-		BEQ $03 : DEC $74A8,x			; | (note the BNE: $74A8 is not decremented)
-		DEX : BNE -				;/
+; RAM
+; $00	9-bit tile num
+; $02	SD status: page address
+; $04	size
+; $06	animation rate (n/v flag triggers)
+; $08	rotation direction
+; $0A	SD status: bank
+
+	; handler for simple rotation graphics
+	.RotateSimple
+		STZ $2250
+		LDY #$00
+		..loop
+		PHY
+		REP #$30
+		LDX .RotationData,y
+		LDA !GFX_status,x
+		SEP #$30
+		BNE ..process
+		JMP ..next
+		..process					;\
+		STA $00						; | $00 = tile num (000-1FF)
+		XBA : STA $01					;/
+		LDA .RotationData+5,y : TAX			;\
+		LDA !SD_status,x : STA $03			; |
+		AND #$03 : TRB $03				; | $02 = SD page address
+		TAX						; | $0A = SD bank
+		LDA .SuperDynamicBank,x : STA $0A		; |
+		STZ $02						;/
+		LDA .RotationData+2,y : BNE +			;\
+		STZ $04						; |
+		LDA #$82 : STA $05				; |
+		BRA ++						; | $04 = size (highest bit signals that this will have 4 uploads)
+	+	STA $04						; |
+		STZ $05						; |
+		++						;/
+		LDA .RotationData+3,y : STA $07			; $06 = animation rate (n/v flag triggers)
+		LDA .RotationData+4,y : STA $08			;\ $08 = rotation direction
+		STZ $09						;/
+		JSL GetVRAM
+		PHB : LDA.b #!VRAMbank
+		PHA : PLB
+		REP #$20
+		LDA $00
+		ASL #4
+		ORA #$6000
+		STA.w !VRAMtable+$05,x
+		CLC : ADC #$0100
+		STA.w !VRAMtable+$0C,x
+		BIT $04 : BPL +
+		SBC #$0100-$40-1 : STA.w !VRAMtable+$13,x
+		ADC #$0100-1 : STA.w !VRAMtable+$1A,x
+		+
+		LDA $14
+		BIT $06
+		BPL $01 : LSR A
+		BVC $01 : LSR A
+		AND #$000F
+		EOR $08
+		STA.l $2251
+		LDA $04
+		AND #$7FFF : STA.l $2253			; skip highest bit
+		NOP
+		LDA $02
+		CLC : ADC.l $2306
+		STA.w !VRAMtable+$02,x
+		BIT $04 : BPL ..small
+		..big
+		ADC #$0080 : STA.w !VRAMtable+$09,x
+		ADC #$0080 : STA.w !VRAMtable+$10,x
+		ADC #$0080 : STA.w !VRAMtable+$17,x
+		BRA ..getsize
+		..small
+		ADC #$0040 : STA.w !VRAMtable+$09,x
+		..getsize
+		LDA $04 : BMI ..32x32
+		AND #$7FFF
+		CMP #$0040 : BCS ..16x16
+		..8x8
+		LDA #$0020 : STA.w !VRAMtable+$00,x
+		BRA ..shared
+		..16x16
+		LDA #$0040
+		STA.w !VRAMtable+$00,x
+		STA.w !VRAMtable+$07,x
+		BRA ..shared
+		..32x32
+		LDA #$0080
+		STA.w !VRAMtable+$00,x
+		STA.w !VRAMtable+$07,x
+		STA.w !VRAMtable+$0E,x
+		STA.w !VRAMtable+$15,x
+		..shared
+		SEP #$20
+		LDA $0A
+		STA.w !VRAMtable+$04,x
+		STA.w !VRAMtable+$0B,x
+		BIT $04+1 : BPL +
+		STA.w !VRAMtable+$12,x
+		STA.w !VRAMtable+$19,x
+		+
+		PLB
+
+		..next
+		PLA
+		CLC : ADC #$06
+		CMP.b #.RotationData_end-.RotationData : BCS ..done
+		TAY
+		JMP ..loop
+		..done
+
+	; handler for portal sprite
+	.UpdatePortal
+		LDA $14
+		AND #$03 : BNE ..done
+		REP #$30
+		LDA !GFX_Portal : BEQ ..done
+		LDY.w #!File_Portal : JSL GetFileAddress
+		JSL GetVRAM
+		LDA !FileAddress+1
+		STA !VRAMbase+!VRAMtable+$03,x
+		STA !VRAMbase+!VRAMtable+$0A,x
+		LDA $14
+		LSR #2
+		AND #$0003
+		XBA : LSR A			; *128
+		ADC !FileAddress
+		STA !VRAMbase+!VRAMtable+$02,x
+		ADC #$0200
+		STA !VRAMbase+!VRAMtable+$09,x
+		LDA #$0080
+		STA !VRAMbase+!VRAMtable+$00,x
+		STA !VRAMbase+!VRAMtable+$07,x
+		LDA !GFX_Portal
+		ASL #4
+		ORA #$6000
+		STA !VRAMbase+!VRAMtable+$05,x
+		ADC #$0100
+		STA !VRAMbase+!VRAMtable+$0C,x
+		..done
+
+	; handler for player rainbow effect
+	.RainbowShifter
+		SEP #$30
+		LDA !StarTimer : BNE ..shift
+		LDA #$80
+		..p1
+		LDX !P2LockPalset-$80 : BNE ..p2
+		TRB !Palset8
+		..p2
+		LDX !P2LockPalset : BNE ..ret
+		TRB !Palset9
+		..ret
+		JMP ..done
+		..shift
+		XBA
+		LDA $14
+		AND #$03
+		BNE $03 : DEC !StarTimer
+		LDA #$00
+		XBA
+		LSR #5
+		TAX
+		LDA $13
+		AND.w .SparkleTime,x : BNE ..nosparkle
+		LDA !P2Status-$80 : BNE ..nop1
+		LDY #$00
+		JSR .SpawnSparkles
+		..nop1
+		LDA !MultiPlayer : BEQ ..nosparkle
+		LDA !P2Status : BNE ..nosparkle
+		LDY #$80
+		JSR .SpawnSparkles
+		..nosparkle
+		REP #$10
+		LDX #$0081
+		LDY #$001F
+		JSL RGBtoHSL
+		LDX #$009F*3
+		..loop
+		LDA !StarTimer
+		ASL #2
+		CLC : ADC !PaletteHSL,x
+		CMP #$F0
+		BCC $02 : SBC #$F0
+		STA !PaletteHSL,x
+		LDA #$30 : STA !PaletteHSL+1,x
+		LDA #$20 : STA !PaletteHSL+2,x
+		DEX #3
+		CPX #$0081*3 : BCS ..loop
+		LDX #$0081
+		LDY #$001F
+		JSL HSLtoRGB
+		LDX #$0081
+		LDY #$001F
+		LDA !StarTimer
+		CMP #$10
+		BCC $02 : LDA #$10
+		SEC : SBC #$20
+		EOR #$FF : INC A
+		JSL MixRGB
+		..done
+
+	; handler for light update
+	.UpdateLight
+		LDA !GlobalLightMix				;\
+		CMP !GlobalLightMixPrev : BEQ ..done		; | see if there was a change this frame
+		JSR .UpdateLightSub				; | done this way so .UpdateLightSub can also be called on level init
+		..done						;/
+
+	; cleanup for palset allocation
+	.UpdatePalset
+		LDX #$07					;\
+	-	STZ $00,x					; | clear $00-$07
+		DEX : BPL -					;/
+		LDY #$0F					;\
+	-	LDA !SpriteOAMProp,y				; |
+		LSR A						; |
+		AND #$07					; | mark palettes as used if an existing sprite uses them
+		TAX						; |
+		LDA !SpriteStatus,y				; |
+		BEQ $02 : STA $00,x				; |
+		DEY : BPL -					;/
+		LDY.b #!Ex_Amount-1				;\
+	-	LDA !Ex_Palset,y				; |
+		CMP #$FF : BEQ +				; |
+		LSR A						; | mark palettes as used if a FusionCore sprite uses them
+		AND #$07					; |
+		TAX						; |
+		LDA #$01 : STA $00,x				; |
+	+	DEY : BPL -					;/
+		LDA !MsgPal					;\
+		AND #$7F					; |
+		LSR #4						; |
+		STA $0E						; |
+		INC A						; |
+		STA $0F						; |
+		LDA !MsgTrigger					; | mark palsets used by portrait
+		ORA !MsgTrigger+1				; |
+		BEQ ..nomsg					; |
+		LDA !WindowDir : BEQ ..msg			; |
+		..nomsg						; |
+		LDA #$FF					; |
+		STA $0E						; |
+		STA $0F						; |
+		..msg						;/
+		LDX !PalsetStart				;\
+	-	CPX $0E : BEQ +					; |
+		CPX $0F : BEQ +					; |
+		LDA !Palset8,x					; |
+		AND #$7F					; |
+		CMP PalsetDefaults,x : BEQ +			; |
+		LDA $00,x : BNE +				; |
+		PHX						; |
+		LDA #$00 : XBA					; > clear B
+		LDA !Palset8,x					; | if palset is non-default AND unused, unload it
+		AND #$7F					; | (unless it is used by msg portraits)
+		TAX						; |
+		LDA #$00 : STA !Palset_status,x			; |
+		PLX						; |
+		LDA #$80 : STA !Palset8,x			; |
+	+	DEX						; |
+		CPX #$02 : BCS -				;/
+		LDY !PalsetStart				; loop through all sprite palsets
+		REP #$10
+		..loop
+		LDA !Palset8,y : BMI ..next			; if already loaded, go to next			
+		STA $00 : STZ $01				; $00 = palset to load
+		XBA : LDA #$00					;\ clear B
+		XBA						;/
+		TAX						;\
+		ORA #$80 : STA !Palset8,y			; | mark palset as loaded
+		TYA : STA !Palset_status,x			;/
+		TYX						;\ disable this for 1 operation
+		LDA #$01 : STA !ShaderRowDisable+8,x		;/
+		JSL UpdatePalset				; get color data
+		..next
+		DEY : BPL ..loop				; loop
+
+
+		PLB						; B = 0
+		JSL $05BC00					; scroll sprites (includes LM's hijack for BG3 controller, which i have KILLED >:D)
+		PEI ($1C)					;\
+		REP #$20					; |
+		STZ $7888					; |
+		LDA !ShakeTimer : BEQ ..noshake			; > note that $7888 was JUST cleared so hi byte is fine
+		DEC !ShakeTimer					; |
+		AND #$0003					; |
+		ASL A						; |
+		TAY						; | camera shake routine
+		LDA $A1CE,y : STA $7888				; |
+		BIT $6BF5-1					; |
+		BVC $02 : DEC #2				; |
+		STA $7888					; |
+		CLC : ADC $1C					; > this only applies to sprites, actual camera offset is in camera routine
+		STA $1C						; |
+		..noshake					; |
+		SEP #$30					;/
+
+.CODE_00C533	LDY $74AD					;\
+		CPY $74AE					; |
+		BCS $03 : LDY $74AE				; |
+		CPY !StarTimer					; |
+		BCS $03 : LDY !StarTimer			; |
+		LDA $6DDA : BMI +				; |
+		CPY #$01 : BNE +				; | POW (blue and silver) + star power timer + music
+		LDY $790C : BNE +				; |
+		STA !SPC3					; |
+	+	CMP #$FF : BEQ .CODE_00C55C			; |
+		CPY #$1E : BNE .CODE_00C55C			; |
+		LDA #$24 : STA !SPC4				;/
+.CODE_00C55C	LDA $14						;\ only decrement these every 4 frames
+		AND #$03 : BNE +				;/
+		LDX #$06					;\
+	-	LDA $74A8,x					; | auto-decrement $74A9-$74AE (only notable ones are $74AD and $74AE, the P switch timers)
+		BEQ $03 : DEC $74A8,x				; | (note the BNE: $74A8 is not decremented)
+		DEX : BNE -					;/
 		+
 
-		JSL $158008				; call PCE
-		LDA #$01 : STA !ProcessingSprites	; mark sprites as currently processing
-		LDA #$00 : STA !NPC_TalkSign		; reset NPC talk sign
-		JSL $168000				; call Fe26 main loop
-		JSL $148000				; call FusionCore (fusion sprites + particles)
-		LDA #$00 : STA !ProcessingSprites	; mark sprites as no longer processing
+		JSL PCE						; call PCE
+		LDA #$01 : STA !ProcessingSprites		; mark sprites as currently processing
+		LDA #$00 : STA !NPC_TalkSign			; reset NPC talk sign
+		JSL MainSpriteLoop				; call Fe26 main loop
+		JSL FusionCore					; call FusionCore (fusion sprites + particles + BG objects)
+		LDA #$00 : STA !ProcessingSprites		; mark sprites as no longer processing
 
 
-		REP #$20				;\
-		PLA : STA $1C				; | restore BG1 Y
-		SEP #$30				;/
-		JSL !BuildOAM				; build OAM at the end of the game mode code
+		REP #$20					;\
+		PLA : STA $1C					; | restore BG1 Y
+		SEP #$30					;/
+		JSL BuildOAM					; build OAM at the end of the game mode code
 
-		PLP					;\
-		PLB					; | end of SA-1 thread
-		RTL					;/
+		PLP						;\
+		PLB						; | end of SA-1 thread
+		RTL						;/
+
+
+; data format per Yoshi Coin:
+; [XX] [xy] [YY] [-s] [sS]
+;
+; X and Y are expected to be 3-digit hexadecimal numbers (but they can be entered as decimal too)
+; they point to the tile coordinates of the coin
+; if sublevel number is $FFFF, the Yoshi Coin does not exist
+	.ReadYoshiCoin
+		LSR $02 : BCS ..collectcoin			; return if coin is already collected
+		LDA LevelData_YoshiCoins+3,y : BMI ..nocoin	; coin must exist
+		AND #$01FF					;\ coin must be on this level
+		CMP !Level : BNE ..nocoin			;/
+		LDA LevelData_YoshiCoins+0,y			;\ index offset from X screen
+		AND #$00FF : STA $2253				;/
+		LDA LevelData_YoshiCoins+1,y			;\ add with offset from X/Y position
+		CLC : ADC $2306					;/
+		TAX						;\
+		SEP #$20					; |
+		LDA $41C800,x : XBA				; | read map16
+		LDA $40C800,x					; |
+		REP #$20					;/
+		CMP #$002D : BNE ..collectcoin			; check for top half of yoshi coin
+		..nocoin					;\ clear collected flag
+		CLC : ROR $00					;/
+		BRA ..incrementindex				; go to increment index
+		..collectcoin					;\ set collected flag
+		SEC : ROR $00					;/
+		..incrementindex				;\
+		TYA						; | increase index
+		CLC : ADC #$0005				; |
+		TAY						;/
+		RTS						; return
+
+
+
+
+
+	.SuperDynamicBank
+		db $7E,$7F,$40,$41
+
+
+	; format:
+	; - GFX status index
+	; - width ($20 for 8x8, $80 for 16x16, $00 for 32x32)
+	; - animation speed (00 = every frame, 40/80 = every other frame, C0 = every 4 frames)
+	; - direction (00 = clockwise, 0F = counterclockwise)
+	; - SD index
+
+	.RotationData
+		dw !GFX_Hammer_offset		: db $80,$00,$0F,!SD_Hammer_offset
+		dw !GFX_Bone_offset		: db $80,$40,$0F,!SD_Bone_offset
+		dw !GFX_SmallFireball_offset	: db $20,$00,$00,!SD_Fireball8x8_offset
+		dw !GFX_ReznorFireball_offset	: db $80,$00,$0F,!SD_Fireball16x16_offset
+		dw !GFX_Goomba_offset		: db $80,$00,$0F,!SD_Goomba_offset
+		dw !GFX_LuigiFireball_offset	: db $20,$00,$00,!SD_LuigiFireball_offset
+		dw !GFX_Baseball_offset		: db $20,$40,$0F,!SD_Baseball_offset
+
+		dw !GFX_Fireball32x32_offset	: db $00,$40,$0F,!SD_Fireball32x32_offset
+		dw !GFX_EnemyFireball_offset	: db $80,$00,$0F,!SD_EnemyFireball_offset
+
+		..end
+
+
+	.UpdateLightSub
+		STZ $2250					; prepare multiplication
+		REP #$20					;\
+		LDA !GlobalLight1				; |
+		AND #$00FF					; |
+		ASL A						; |
+		STA $00						; |
+		ASL A						; | RGB values of light 1
+		ADC $00						; |
+		TAX						; |
+		LDA.w .LightValues+0,x : STA $04		; |
+		LDA.w .LightValues+2,x : STA $06		; |
+		LDA.w .LightValues+4,x : STA $08		;/
+		LDA !GlobalLight2				;\
+		AND #$00FF					; |
+		ASL A						; |
+		STA $00						; |
+		ASL A						; | RGB values of light 2
+		ADC $00						; |
+		TAX						; |
+		LDA.w .LightValues+0,x : STA $0A		; |
+		LDA.w .LightValues+2,x : STA $0C		; |
+		LDA.w .LightValues+4,x : STA $0E		;/
+		LDA !GlobalLightMix				;\
+		AND #$00FF					; |
+		CMP #$0021					; | (min 0x00, max 0x20)
+		BCC $03 : LDA #$0020				; | strength of lights 1 and 2
+		STA $02						; |
+		LDA #$0020					; |
+		SEC : SBC $02					; |
+		STA $00						;/
+		STA $2251					;\
+		LDA $04 : STA $2253				; |
+		NOP : BRA $00					; |
+		LDA $2306 : STA $04				; |
+		LDA $06 : STA $2253				; |
+		NOP : BRA $00					; | update light 1
+		LDA $2306 : STA $06				; |
+		LDA $08 : STA $2253				; |
+		LDA #$0020					; |
+		SEC : SBC $00					; |
+		STA $02						; |
+		LDA $2306 : STA $08				;/
+		LDA $02 : STA $2251				;\
+		LDA $0A : STA $2253				; |
+		NOP						; |
+		LDA $04						; |
+		CLC : ADC $2306					; |
+		LSR #5						; |
+		STA !LightR					; |
+		LDA $0C : STA $2253				; |
+		NOP						; |
+		LDA $06						; | update light 2, merge with light 1, then update light RGB values
+		CLC : ADC $2306					; |
+		LSR #5						; |
+		STA !LightG					; |
+		LDA $0E : STA $2253				; |
+		NOP						; |
+		LDA $08						; |
+		CLC : ADC $2306					; |
+		LSR #5						; |
+		STA !LightB					; |
+		SEP #$20					;/
+		LDA !GlobalLightMix : STA !GlobalLightMixPrev	; update for next frame
+		..return
+		RTS
+
+
+
+	; alt palset light values:
+	.LightValues	;    R     G     B
+	..default	dw $0100,$0100,$0100	; 00
+	..dawn		dw $00F8,$00EE,$00D4	; 01
+	..sunset	dw $0120,$00E0,$00C0	; 02
+	..night		dw $0080,$00C0,$00E0	; 03
+	..lava		dw $0180,$0080,$0080	; 04
+	..water		dw $00C0,$00E0,$00F0	; 05
+
+
+
+	.SparkleTime
+		db $07,$03,$03,$01,$01,$01,$01,$01		; from 028AA9 in all.log
+
+
+	.SpawnSparkles
+		LDA #$1F : STA $0C				;\ AND value for Y coord
+		STZ $0D						;/
+		LDA #$EE : STA $0E				;\ Y offset = -18
+		LDA #$FF : STA $0F				;/
+
+		LDA !P2HurtboxH-$80,y
+		CMP #$11 : BCS +
+		LDA #$0F : STA $0C
+		LDA #$FE : STA $0E
+		+
+
+		LDA #$0F : STA $04				;\ AND value for X coord
+		STZ $05						;/
+		STZ $06						;\ X offset
+		STZ $07						;/
+
+		LDA !P2HurtboxW-$80,y
+		CMP #$11 : BCC +
+		LDA #$1F : STA $04
+		LDA !P2Dashing-$80,y : BEQ +++
+		LDA !P2Direction-$80,y : BNE +
+		BRA ++
+	+++	LDA !P2Direction-$80,y : BEQ +
+	++	LDA #$F0 : STA $06
+		DEC $07
+		+
+
+		LDA $14
+		AND #$1F
+		TAX
+		REP #$20
+		LDA !RNGtable,x
+		AND $04
+		DEC #2
+		CLC : ADC $06
+		ADC !P2XPosLo-$80,y
+		STA $00
+		TXA
+		EOR #$0010
+		TAX
+		LDA !RNGtable+1,x
+		AND $0C
+		CLC : ADC $0E
+		ADC !P2YPosLo-$80,y
+		STA $02
+
+		PHB
+		JSL GetParticleIndex
+		LDA.w #!prt_sparkle : STA !Particle_Type,x
+		LDA #$F000 : STA !Particle_Tile,x		; max prio
+		LDA $00 : STA !Particle_X,x
+		LDA $02 : STA !Particle_Y,x
+		STZ !Particle_XSpeed,x
+		STZ !Particle_YSpeed,x
+		STZ !Particle_XAcc,x
+		STZ !Particle_YAcc,x
+		PLB
+		SEP #$30
+
+		RTS
+
+
+	; run from level init
+	.CallLight
+		PHB : PHK : PLB
+		PHP
+		SEP #$30
+		JSR .UpdateLightSub
+		PLP
+		PLB
+		RTL
+
+
+
+
+
 
 	pushpc
 	org $05BC42
@@ -412,17 +967,17 @@ namespace GAMEMODE14
 ;
 
 pushpc
-	org $009712
-		JSL Camera_PreserveDP
-	org $009A58
-		JSL Camera
-	org $00A01B			;
-		JML Camera_HijackBG	;
+;	org $009712			; gamemode 11, just before decompressing background
+;		JSL Camera_PreserveDP
+;	org $009A58
+;		JSL Camera
+;	org $00A01B			;
+;		JML Camera_HijackBG	;
 	;org $00A023			; $00A023 is how the code is aligned after LM's edit
-	org $00A044			; actually just skip all of it... we're not gonna use the vanilla layer 3 anyway
-		SkipLM_BG_Setup:	;
-	org $00A299
-		JSL Camera
+;	org $00A044			; actually just skip all of it... we're not gonna use the vanilla layer 3 anyway
+;		SkipLM_BG_Setup:	;
+;	org $00A299			; gamemode 14
+;		JSL Camera
 pullpc
 
 
@@ -430,7 +985,7 @@ pullpc
 ; the vanilla routine is also called once during level init
 ; sending that here is almost certainly fine
 ; $00F6DB (scroll routine)
-Camera:
+	Camera:
 		.EnableHDMA
 		LDA !CutsceneSmoothness : BEQ ..done
 		LDA.b #Cutscene_HDMA>>16 : STA $4374
@@ -501,18 +1056,10 @@ Camera:
 
 	; behold...
 	; the SCUFFEST way to initialize the camera's x position!
-	.PreserveDP
+	.Init
 		PHP						; preserve P
-		PEI ($00)					;\
-		PEI ($02)					; |
-		PEI ($04)					; |
-		PEI ($06)					; | preserve DP
-		PEI ($08)					; |
-		PEI ($0A)					; |
-		PEI ($0C)					; |
-		PEI ($0E)					;/
-
 		REP #$30					; all regs 16-bit
+		LDA #$0000 : STA !HDMAptr			; make sure this doesn't run from bad emu init
 		STZ !CameraForceTimer				; clear forced camera movement
 		LDA $94						;\
 		STA !P2XPosLo-$80				; |
@@ -523,25 +1070,23 @@ Camera:
 		STA !P2YPosLo					;/
 		LDA !Level : STA $00				;\
 		ASL A						; |
-		ADC $00						; |
-		TAY						; | check if this level has a camera box
-		LDA.l !BoxPtr : STA $03				; |
-		LDA.l !BoxPtr+1 : STA $04			; |
-		LDA [$03],y : BNE ..box				;/
+		ADC $00						; | check if this level has a camera box
+		TAX						; |
+		LDA.l LevelData_CameraBox,x : BNE ..box		;/
 		..nobox						;\
 		SEP #$30					; | disable camera box if this level doesn't have one
 		LDA #$FF : STA !CameraBoxU+1			; |
 		BRA ..boxdone					;/
 		..box						;\
 		STA $00						; |
-		INY						; |
-		LDA [$03],y : STA $01				; |
+		LDA.l LevelData_CameraBox+1,x : STA $01		; |
 		SEP #$30					; | load camera box
 		XBA						; |
 		PHB : PHA : PLB					; |
 		REP #$20					; |
-		LDA $00 : JSL LoadCameraBox			;/
-		JSL InitCameraBox				;\
+		LDA $00 : JSL LevelCode_LoadCameraBox		;/
+
+		JSL LevelCode_InitCameraBox			;\
 		REP #$20					; | init camera box
 		PLB						;/
 		LDA !CameraBoxL					;\
@@ -553,58 +1098,30 @@ Camera:
 		..fullcalc					;\
 		STA $7462					;/
 		SEP #$30					; all regs 8-bit
-		JSL Camera					; +1 call with camera box
 		..boxdone
+
+
+		LDA !MarioDirection
+		ASL A : TAX
+		REP #$20
+		LDA.l ..camcenter,x : STA $742A
+		CLC : ADC.w !CameraPower
+		STA $742C
+		LDA.l ..camcenter,x
+		SEC : SBC.w !CameraPower
+		STA $742E
+		SEP #$20
 
 		JSL Camera					; move camera once
 
-		PEI ($1C)					;\
-		REP #$20					; |
-		LDA !CameraBackupY : PHA			; | preserve camera Y regs
-		LDA $7464 : PHA					; |
-		SEP #$20					;/
-		JSL Camera					;\
-		JSL Camera					; |
-		JSL Camera					; |
-		JSL Camera					; |
-		JSL Camera					; |
-		JSL Camera					; |
-		JSL Camera					; |
-		JSL Camera					; | move camera a bunch of times
-		JSL Camera					; | (yeah... extremely scuffed)
-		JSL Camera					; |
-		JSL Camera					; |
-		JSL Camera					; |
-		JSL Camera					; |
-		JSL Camera					; |
-		JSL Camera					; |
-		JSL Camera					;/
-		REP #$20					;\
-		..restore					; |
-		PLA : STA $7464					; | restore camera Y regs
-		PLA : STA !CameraBackupY			; |
-		PLA : STA $1C					;/
-		..return					;\
-		PLA : STA $0E					; |
-		PLA : STA $0C					; |
-		PLA : STA $0A					; |
-		PLA : STA $08					; | restore DP
-		PLA : STA $06					; |
-		PLA : STA $04					; |
-		PLA : STA $02					; |
-		PLA : STA $00					;/
+		..return					;
 		PLP						; restore P
 		RTL						; return
 
+		..camcenter
+		dw $005E
+		dw $0090
 
-	.HijackBG
-		PHP
-		REP #$20
-		SEP #$10
-		JSL BG2Controller
-		JSL BG3Controller
-		PLP
-		JML SkipLM_BG_Setup
 
 	.BG
 		PHP
@@ -614,7 +1131,6 @@ Camera:
 		JSL BG3Controller
 		PLP
 		RTL
-
 
 
 
@@ -697,11 +1213,6 @@ Camera:
 		LDA $0E						; |
 		BPL $02 : STZ $0E				;/
 
-
-		LDX !GameMode
-		CPX #$14 : BEQ +
-		LDA $94 : STA $0C
-		+
 
 		LDA $6BF5					; horizontal level mode (second highest bit is "show bottom row of level")
 		AND #$0040
@@ -807,10 +1318,10 @@ Camera:
 		LDY #$02
 		SEP #$20					; make sure camera movements are smooth for custom characters too
 		LDA #$77					;\
-		CLC : ADC !CameraPower				; | left value (0x77 + power)
+		CLC : ADC !CameraPower				; | right value (0x77 + power)
 		STA $00						;/
 		LDA #$77					;\
-		SEC : SBC !CameraPower				; | right value (0x77 - power)
+		SEC : SBC !CameraPower				; | left value (0x77 - power)
 		STA $01						;/
 
 		REP #$20
@@ -878,7 +1389,7 @@ Camera:
 		DEC A						; |
 		XBA						; |
 		AND #$FF00					; | cap at right edge of level
-		BPL $03 : LDA #$0080				; |
+		BPL $03 : LDA #$3F00				; |
 		CMP $1A						; |
 		BCS $02 : STA $1A				;/
 
@@ -914,7 +1425,7 @@ Camera:
 
 
 		BIT !CameraBoxU : BMI .NoBox			;\
-		JSR .CameraBox					; | run camera box if it's enabled
+		JSR CameraBox					; | run camera box if it's enabled
 		.NoBox						;/
 
 
@@ -1071,14 +1582,6 @@ Camera:
 	.ForceTableX
 		dw $0008,$FFF8,$0000,$0000
 
-	.SmoothSpeed
-		dw $0006,$FFFA
-
-	.CameraOffset
-		dw $0100,$00E0
-	.CameraCenter
-		dw $0080,$0070
-
 
 		.GetPlayerCoord
 		LDA !P2YSpeed-$80,y			;\
@@ -1151,31 +1654,24 @@ Camera:
 
 
 
-		.CameraBox
-		PHB : PHK : PLB
+	CameraBox:
 		PHP
 		SEP #$10
 		REP #$20
 
-		LDX #$02
-	-	LDA $1A,x
-		CMP !CameraBoxL,x : BCS +
-		LDA !CameraBoxL,x : STA $1A,x
-		BRA ++
-	+	CMP !CameraBoxR,x : BCC ++ : BEQ ++
-		LDA !CameraBoxR,x : STA $1A,x
-	++	LDA !CameraBackupX,x				; apply smooth camera
-		CMP $1A,x : BEQ +
-		LDY #$00
-		BCC $02 : LDY #$02
-		CLC : ADC.w .SmoothSpeed,y
-		STA $00
-		LDA !CameraBackupX,x
-		SEC : SBC $1A,x
-		BPL $04 : EOR #$FFFF : INC A
-		CMP #$0006 : BCC +
-		LDA $00 : STA $1A,x
-	+	DEX #2 : BPL -
+		.LimitCoords					;\
+		LDA !CameraBoxL					; |
+		CMP $1A						; |
+		BCC $02 : STA $1A				; |
+		LDA !CameraBoxR					; |
+		CMP $1A						; |
+		BCS $02 : STA $1A				; | apply box borders
+		LDA !CameraBoxU					; |
+		CMP $1C						; |
+		BCC $02 : STA $1C				; |
+		LDA !CameraBoxD					; |
+		CMP $1C						; |
+		BCS $02 : STA $1C				;/
 
 		LDX #$02					;\
 	-	LDY #$00					; |
@@ -1185,111 +1681,10 @@ Camera:
 		STY $55						; |
 	+	DEX #2 : BPL -					;/
 
-		LDA !CameraBoxL					;\
-		SEC : SBC #$0020				; |
-		STA $04						; |
-		LDA !CameraBoxR					; |
-		CLC : ADC #$0110				; |
-		STA $06						; | coords from box borders
-		LDA !CameraBoxU					; |
-		SEC : SBC #$0020				; |
-		STA $08						; |
-		LDA !CameraBoxD					; |
-		CLC : ADC #$00F0				; |
-		STA $0A						;/
-
-		LDX #$0F					;\
-	-	LDY $3230,x : BNE +				; |
-	--	JMP .Next					; |
-	+	LDY !CameraBoxSpriteErase : BNE --
-		LDA !SpriteTweaker4,x				; |
-		ORA #$0004					; |
-		STA !SpriteTweaker4,x				; |
-		LDY !CameraForceTimer : BNE .Freeze		; |
-		LDY !SpriteXLo,x : STY $00			; | search for sprites to interact with
-		LDY !SpriteXHi,x : STY $01			; |
-		LDY !SpriteYLo,x : STY $02			; |
-		LDY !SpriteYHi,x : STY $03			; |
-		LDA $00						; |
-		SEC : SBC $04					; |
-		BPL .CheckR					; |
-		CMP #$FF00 : BCC .Delete			; |
-		CMP #$FFE0 : BCC .Freeze			;/
-		BRA .Next
-
-	.Delete	LDA $3230,x					;\
-		AND #$FF00					; | delete sprite
-		STA $3230,x					;/
-		LDY $33F0,x					;\ if this was a spawned sprite, don't bother with ID
-		CPY #$FF : BEQ .Next				;/
-		LDA !CameraBoxR					;\
-		SEC : SBC !CameraBoxL				; |
-		CMP #$0101 : BCS ..respawn			; |
-		LDA !CameraBoxD					; | if camera box is 2x2 screens or smaller, don't respawn
-		SEC : SBC !CameraBoxU				; |
-		CMP #$00E1 : BCC .Next				; |
-		..respawn					;/
-		PHX						;\
-		TYX						; |
-		LDA $418A00,x					; |
-		AND #$00FF					; |
-		CMP #$00EE : BEQ +				; | if camera box is bigger than 2x2 screens, mark for respawn
-		LDA $418A00,x					; |
-		AND #$FF00					; |
-		STA $418A00,x					; |
-	+	PLX						; |
-		BRA .Next					;/
-
-	.CheckR	LDA $00						;\
-		SEC : SBC $06					; |
-		BMI .GoodX					; | see if fully outside
-		CMP #$0020 : BCC .Next				; |
-		CMP #$0100 : BCS .Delete			;/
-
-	.Freeze	LDY $3230,x					;\ delete if status < 8
-		CPY #$08 : BCC .Delete				;/
-		..freeze
-		LDA !SpriteStasis,x				;\
-		ORA #$0002					; | freeze if status >= 8
-		STA !SpriteStasis,x				; |
-		BRA .Next					;/
-
-	.GoodX	LDA $02						;\
-		CMP $08 : BMI .Freeze				; | see if sprite should freeze
-		CMP $0A : BPL .Freeze				;/
-	.Next	DEX : BMI $03 : JMP -				; > next sprite
-
 		PLP						; return
-		PLB
 		RTS
 
 
-		.Aim
-		LDA !P2XPosLo-$80				;\
-		CLC : ADC !P2XPosLo				; |
-		LSR A						; |
-		SEC : SBC #$0080				; |
-		CMP #$4000					; |
-		BCC $03 : LDA #$0000				; |
-		STA $1A						; |
-		LDA !P2YPosLo-$80				; | logic for finding camera target
-		CLC : ADC !P2YPosLo				; |
-		LSR A						; |
-		SEC : SBC #$0070				; |
-		CMP #$4000					; |
-		BCC $03 : LDA #$0000				; |
-		STA $1C						; |
-		RTS						;/
-
-
-		.Absolute
-		LDA $1A,x
-		CMP !CameraBoxL,x : BCS +
-		LDA !CameraBoxL,x : STA $1A,x
-		RTS
-	+	CMP !CameraBoxR,x : BCC + : BEQ +
-		LDA !CameraBoxR,x : STA $1A,x
-	+	RTS
 
 
 
@@ -1928,6 +2323,4 @@ macro endonmsgend()
 
 
 
-
-namespace off
 

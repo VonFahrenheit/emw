@@ -21,46 +21,51 @@
 		STA $02
 		SEP #$20
 
-		%Ex_Index_Y()
-		LDA #$07+!MinorOffset : STA !Ex_Num,y		; Smoke sprite to spawn
-		LDA #$00 : STA !Ex_Data1,y			; Show glitter sprite for 16 frames
-		LDA !P2XPosLo					;\
-		STA !Ex_XLo,y					; | Spawn at player X + 8 pixels
-		LDA !P2XPosHi					; | (include hi byte for FusionCore 1.2+)
-		STA !Ex_XHi,y					;/
+		PHB
+		JSL GetParticleIndex
+		LDA.w #!prt_watersplash : STA !Particle_Type,x
+		LDA.l !P2XPosLo : STA !Particle_X,x
+		LDA $02 : STA !Particle_Y,x
+		SEP #$30
+		LDA #$F0 : STA !Particle_Prop,x
+		PLB
+		RTL
+
+
+
+	.Bubble
+		LDA #$07 : STA $0E				;\ loop counter
+		STZ $0F						;/
 		LDA $02						;\
-		STA !Ex_YLo,y					; | Spawn at player Y + 8 pixels
-		LDA $03						; | (include hi byte for FusionCore 1.2+)
-		STA !Ex_YHi,y					;/
-		RTL
+		SEC : SBC #$05					; | adjust Y position
+		STA $02						; |
+		BCS $02 : DEC $03				;/
+		PHB						; bank wrapper start
+		..loop
+		JSL GetParticleIndex : TXY			; get index
+		LDA.w #!prt_bubble : STA !Particle_Type,y	; particle type
+		LDX $0E						; loop counter as coord index
+		LDA.l ..xoffset,x				;\
+		AND #$00FF					; | X coord
+		CLC : ADC $00					; |
+		STA !Particle_X,y				;/
+		LDA.l ..yoffset,x				;\
+		AND #$00FF					; | Y coord
+		CLC : ADC $02					; |
+		STA !Particle_Y,y				;/
+		LDA #$F000 : STA !Particle_Tile,y		; prop
+		DEC $0E : BPL ..loop				; loop
+		..end
+		SEP #$30					; all regs 8-bit
+		PLB						; bank wrapper end
+		RTL						; return
 
-.Bubble		LDX #$07
-		LDA $02
-		SEC : SBC #$05
-		STA $02
-		BCS $02 : DEC $03
+		..xoffset
+		db $00,$04,$0A,$07
+		db $08,$03,$02,$02
 
-	..loop	%Ex_Index_Y()
-		LDA #$12+!ExtendedOffset : STA !Ex_Num,y	; bubble num
-		LDA #$00
-		STA !Ex_Data1,y
-		STA !Ex_Data2,y
-		STA !Ex_Data3,y
-
-		LDA $00
-		CLC : ADC.l $00F388+$0B,x
-		STA !Ex_XLo,y
-		LDA $01
-		ADC #$00
-		STA !Ex_XHi,y
-		LDA $02
-		CLC : ADC.l $00F388+$03,x
-		STA !Ex_YLo,y
-		LDA $03
-		ADC #$00
-		STA !Ex_YHi,y
-		DEX : BPL ..loop
-
-		RTL
+		..yoffset
+		db $15,$1B,$18,$21
+		db $15,$1B,$18,$21
 
 

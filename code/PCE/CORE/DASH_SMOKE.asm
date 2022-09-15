@@ -31,11 +31,10 @@
 		STA $02
 
 		PHB
-		JSL !GetParticleIndex
+		JSL GetParticleIndex
 		LDA $00 : STA !Particle_XSpeed,x
 		LDA $02 : STA !Particle_YSpeed,x
 		STZ !Particle_XAcc,x
-		LDA #$0013 : STA !Particle_Timer,x
 		LDA.w #!prt_smoke8x8 : STA !Particle_Type,x
 		LDA #$00C0 : STA !Particle_Prop,x
 		PLB

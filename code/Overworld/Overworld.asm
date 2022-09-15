@@ -4,176 +4,6 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 	namespace Overworld
 
 
-; This should be included from SP_Patch.asm
-
-; OW game mode starts at $00A1BE
-; Its structure is as follows:
-;	- JSR to $009A77 (set up $0DA0, a controller address)
-;	- Increment main frame counter ($14)
-;	- Erase sprite tiles
-;	- Call main system ($048241)
-;		- $8241: some debug stuff (I'm actually using this)
-;		- $8275: dialogue box
-;		- $8295: look around map code
-;		- $829E: camera and cutscene stuff
-;		- $8576: pointer jump based on $13D9 (includes Mario movement)
-;		- $F708: OW sprites
-;		- $862E: draw player
-;
-;	- Go to $008494 (build hi OAM table)
-
-; $048295 seems to be the best place to hijack.
-;
-; All OW sprite tables can be used since I'm killing OW sprites
-; $6DDF-$6EE5 is free to be used for this.
-; The maximum number that can be added to !OverworldBase is +$106 (outdated, based on base address of $6DDF)
-
-
-; $7EA2:
-;	this table should be repurposed to determine which areas have been unlocked and beaten.
-;	use together with level select function.
-
-
-
-
-	!OverworldBase	= $74C8			; can be up to $500 bytes i think
-
-
-	macro MapDef(name, size)
-	print "    <name>: $", hex(!OverworldBase+!Temp)
-
-		!<name>	:= !OverworldBase+!Temp
-		!Temp	:= !Temp+<size>
-	endmacro
-
-
-	!Temp = 0
-	%MapDef(CharMenuSize,		1)	; used to hide characters that are not yet unlocked
-	%MapDef(CharMenu,		1)	; 00 = no menu, 01 = opening, 02 = main, 03 = closing
-	%MapDef(CharMenuCursor,		1)	; position
-	%MapDef(SelectingPlayer,	1)	; which player controls the char select (0 = player 1, 1 = player 2)
-	%MapDef(CharMenuTimer,		1)	; decrements
-	%MapDef(CharMenuSpriteX,	6)	;\
-	%MapDef(CharMenuSpriteStatus,	6)	; |
-	%MapDef(CharMenuCurrentPlayerX,	1)	; | controls character select animations and options
-	%MapDef(CharMenuCurrentPlayerY,	1)	; |
-	%MapDef(CharMenuOtherPlayerX,	1)	; |
-	%MapDef(CharMenuOtherPlayerY,	1)	; |
-	%MapDef(CharMenuOtherPlayerP,	1)	; |
-	%MapDef(CharMenuCount,		1)	; |
-	%MapDef(CharMenuBaseX,		1)	;/
-
-	%MapDef(MapBG2X,		2)
-	%MapDef(MapBG2Y,		2)
-
-	%MapDef(WarpPipe,		1)
-	%MapDef(WarpPipeP2X,		2)
-	%MapDef(WarpPipeP2Y,		2)
-	%MapDef(WarpPipeTimer,		1)
-	%MapDef(CircleRadius,		2)
-	%MapDef(CircleCenterX,		2)
-	%MapDef(CircleCenterY,		2)
-	%MapDef(CircleForceCenter,	2)
-	%MapDef(ButtonTimer,		2)
-	%MapDef(MapCheckpointX,		1)
-	%MapDef(MapCheckpointTargetX,	1)
-	%MapDef(CircleTimer,		1)
-	%MapDef(PrevTranslevel,		2)
-	%MapDef(MapLockCamera,		1)	;\ these 2 are used together
-	%MapDef(MapCameraTimer,		1)	;/
-	%MapDef(MapEvent,		2)	; when set, players can't move. gets cleared when camera reaches its resting position
-	%MapDef(MapCameraSpeedX,	2)
-	%MapDef(MapCameraSpeedY,	2)
-	%MapDef(MapUpdateHUD,		4)
-	%MapDef(MapLevelNameWidth,	2)
-
-	%MapDef(MapHidePlayers,		2)
-
-	%MapDef(P1MapXFraction,		1)
-	%MapDef(P1MapX,			2)
-	%MapDef(P1MapYFraction,		1)
-	%MapDef(P1MapY,			2)
-	%MapDef(P1MapZFraction,		1)
-	%MapDef(P1MapZ,			2)
-	%MapDef(P1MapXSpeed,		1)
-	%MapDef(P1MapYSpeed,		1)
-	%MapDef(P1MapZSpeed,		1)
-	%MapDef(P1MapAnim,		1)
-	%MapDef(P1MapPrevAnim,		1)
-	%MapDef(P1MapDirection,		1)
-	%MapDef(P1MapDiag2,		1)
-	%MapDef(P1MapChar,		1)
-	%MapDef(P1MapGhost,		1)
-	%MapDef(P1MapForceFlip,		1)
-
-	%MapDef(P2MapXFraction,		1)
-	%MapDef(P2MapX,			2)
-	%MapDef(P2MapYFraction,		1)
-	%MapDef(P2MapY,			2)
-	%MapDef(P2MapZFraction,		1)
-	%MapDef(P2MapZ,			2)
-	%MapDef(P2MapXSpeed,		1)
-	%MapDef(P2MapYSpeed,		1)
-	%MapDef(P2MapZSpeed,		1)
-	%MapDef(P2MapAnim,		1)
-	%MapDef(P2MapPrevAnim,		1)
-	%MapDef(P2MapDirection,		1)
-	%MapDef(P2MapDiag2,		1)
-	%MapDef(P2MapChar,		1)
-	%MapDef(P2MapGhost,		1)
-	%MapDef(P2MapForceFlip,		1)
-
-	%MapDef(MapLight,		$60)
-	!MapLight_X	= !MapLight+0
-	!MapLight_Y	= !MapLight+2
-	!MapLight_R	= !MapLight+4
-	!MapLight_G	= !MapLight+6
-	!MapLight_B	= !MapLight+8
-	!MapLight_S	= !MapLight+10
-
-	%MapDef(MapOAMindex,		2)	; index to next free area of data
-	%MapDef(MapOAMcount,		2)	; number of tilemaps currently in data
-	%MapDef(MapOAMdata,		$100)	; holds OAM data to be sorted by Y coord
-
-
-	print "Overworld RAM:"
-	print " $", hex(!OverworldBase), "-$", hex(!OverworldBase+!Temp-1)
-	print " total $", hex(!Temp), " bytes"
-
-
-
-	!OverworldSpriteBase = $6DDF
-
-	macro MapSpriteDef(name, size)
-	print "    <name>: $", hex(!OverworldSpriteBase+!Temp)
-		!<name>	:= !OverworldSpriteBase+!Temp
-		!Temp	:= !Temp+<size>
-	endmacro
-
-	!Temp = 0
-	%MapSpriteDef(OW_sprite_Num,		1)
-	%MapSpriteDef(OW_sprite_Timer,		1)
-	%MapSpriteDef(OW_sprite_Anim,		1)
-	%MapSpriteDef(OW_sprite_AnimTimer,	1)
-	%MapSpriteDef(OW_sprite_XFraction,	1)
-	%MapSpriteDef(OW_sprite_X,		2)
-	%MapSpriteDef(OW_sprite_YFraction,	1)
-	%MapSpriteDef(OW_sprite_Y,		2)
-	%MapSpriteDef(OW_sprite_ZFraction,	1)
-	%MapSpriteDef(OW_sprite_Z,		2)
-	%MapSpriteDef(OW_sprite_XSpeed,		1)
-	%MapSpriteDef(OW_sprite_YSpeed,		1)
-	%MapSpriteDef(OW_sprite_ZSpeed,		1)
-	%MapSpriteDef(OW_sprite_Direction,	1)
-	%MapSpriteDef(OW_sprite_Tilemap,	2)
-	!OW_sprite_Size	:= !Temp
-	!OW_sprite_Count = 16
-
-	print "Overworld sprite RAM:"
-	print " $", hex(!OverworldSpriteBase), "-$", hex(!OverworldSpriteBase+((!Temp)*!OW_sprite_Count)-1)
-	print " total $", hex((!Temp)*!OW_sprite_Count), " bytes"
-
-
 
 ; For game mode 0C (the OW loader)
 ;	3 bytes inserted at $00A0B3 by AMK
@@ -192,157 +22,9 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 	org $0087A7
 		NOP #3			; org: STA $420B
 
-	org $009329+($0B*2)
-		dw LevelFade_Main
-	org $009329+($0D*2)
-		dw LevelToOverworld	; org: dw $9F6F
-	org $009329+($0F*2)
-		dw LevelFade_Item	; org: dw $9F37
-	org $009329+($13*2)
-		dw LevelFade_Main	; org: dw $9F37
-	org $009329+($15*2)
-		dw OverworldToLevel	; org: dw $9F6F
-
-	org $009F37
-		BRA $06 : NOP #6
-	warnpc $009F3F
-
-
-	org $00A134
-	;	LDA #$0000		; coords for base OW position
-	org $00A13B
-	;	LDA #$0000
-	org $00A153
-	;	JSL LOAD		; org: LDA #$06 : STA $12 : JSR $85D2
-	;	BRA $01
-	;	NOP			; this removes the overworld border
-		LDA #$06 : STA $12
-		JSR $85D2
-	org $00A165
-	;	BRA $02 : NOP #2	; org: JSL $04D6E9
-					; skip Lunar Magic's overworld layer 2 tilemap loader
-
-	org $00A087			; start of game mode 0C (OW loader)
-		JML LOAD		;\
-		ReturnLoad:		; | org:; JSR $937D : LDA $7B9C
-		RTS			; |
-		NOP			;/
-
-	LevelToOverworld:
-		LDA #$01 : STA $6DAF
-		LDA #$0F : STA !2100
-		LDA #$0F : STA !Mosaic
-		JSL MAIN
-		INC $14
-		LDA !CircleRadius
-		CMP #$30 : BEQ .Done
-		INC !CircleRadius
-		RTS
-
-		.Done
-		INC !GameMode
-		RTS
-
-	OverworldToLevel:
-		JSL MAIN
-		INC $14
-		LDA !CircleRadius : BEQ .Done
-		DEC !CircleRadius
-		RTS
-
-		.Done
-		LDA #$10 : STA !GameMode
-		STZ $6DAF
-		STZ !2100
-		LDA #$FF : STA !Mosaic
-		RTS
-
-	LevelFade:
-		.Item
-		JSR .Main
-		LDA !GameMode
-		CMP #$10 : BNE .Return
-		JSL SetCarriedItem
-		RTS
-
-
-		.Main
-		LDY $6DAF
-		LDA !GameMode
-		CMP #$0B : BEQ .Slow
-		LDA $741A : BNE .Quick
-
-		.Slow
-		LDA $13
-		LSR A : BCC .Return
-		LDA !2100
-		CLC : ADC $9F2F,y
-		STA !2100
-		ASL #4
-		EOR #$F0
-		ORA #$0F
-		STA !Mosaic
-		LDA !2100 : BEQ .End
-		BRA +
-
-		.Quick
-		LDA #$0F : STA !Mosaic
-		LDA !2100
-		CLC : ADC .QuickFadeTable,y
-		BPL $02 : LDA #$00
-		CMP #$0F
-		BCC $02 : LDA #$0F
-		STA !2100
-		CMP #$00 : BEQ .End
-	+	CMP #$0F : BCC .Return
-
-		.End
-		INC !GameMode
-		TYA
-		EOR #$01
-		STA $6DAF
-
-		.Return
-		RTS
-
-		.QuickFadeTable
-		db $01,$FE
-
-
-	warnpc $00A1A6
-
-
-
-	org $00A1C3
-		JSL MAIN
-		RTS
-		NOP #3
-
-
 	org $03BB20
 		RTL			; org: STA $02
 		NOP			; This messes with LM, so I'd better be careful
-
-	org $04DD57
-		RTS			; prevent layer 2 overworld tilemap from loading
-	org $04DABA
-		RTS			; prevent layer 2 event tilemap from loading
-
-
-	org $049D07
-		RTS			; org: LDA $7F837B
-		NOP #3			; this removes the level name
-
-	org $0485CF
-		RTS			; org: JSL $00E2BD
-		NOP #3			; remove sprite OW border tiles
-
-	org $049878
-		STZ $1A,x		; org: STA $1A,x : STA $1E,x
-		STZ $1E,x
-
-	org $05D89F
-		NOP #3			; org: STA !Translevel
 
 	org $05DBF2
 		RTL			; org: PHB (prevent lives from showing on OW)
@@ -362,9 +44,10 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		db $01,$01,$01,$01,$01,$01,$01,$01	; 50-57
 		db $01,$01,$01,$01,$01,$01,$01,$01	; 58-5F
 
-
-; insert new code here
 	pullpc
+
+
+	; insert new code here
 	incsrc "Data/LevelList.asm"
 	incsrc "Data/MapLightPoints.asm"
 	incsrc "Data/Events.asm"
@@ -379,67 +62,6 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 	incsrc "OverworldSprites.asm"
 	incsrc "Lighting.asm"
 	incsrc "Sort_OAM.asm"
-
-
-
-
-
-	SetCarriedItem:
-		.P1
-		LDY !P2Carry-$80 : BEQ ..nop1
-		DEY
-		LDA $3200,y : STA !HeldItemP1_num
-		LDA !NewSpriteNum,y					;\
-		CMP !HeldItemP1_customnum : BNE ..set			; |
-		LDA !ExtraBits,y					; |
-		CMP !HeldItemP1_extra : BNE ..set			; | if all these are the same, this sprite was carried from a PREVIOUS level
-		LDA $33F0,y						; |
-		CMP #$FF : BEQ ..done					; |
-		CMP !HeldItemP1_ID : BEQ ..done				;/
-		..set
-		LDA !NewSpriteNum,y
-		CMP #$32 : BEQ ..nop1
-		STA !HeldItemP1_customnum
-		LDA !ExtraBits,y : STA !HeldItemP1_extra
-		LDA !ExtraProp1,y : STA !HeldItemP1_prop1
-		LDA !ExtraProp2,y : STA !HeldItemP1_prop2
-		REP #$20
-		LDA !Level : STA !HeldItemP1_level
-		SEP #$20
-		LDA $33F0,y : STA !HeldItemP1_ID
-		BRA ..done
-		..nop1
-		LDA #$FF : STA !HeldItemP1_num
-		..done
-
-		.P2
-		LDY !P2Carry : BEQ ..nop2
-		DEY
-		LDA $3200,y : STA !HeldItemP2_num
-		LDA !NewSpriteNum,y					;\
-		CMP !HeldItemP2_customnum : BNE ..set			; |
-		LDA !ExtraBits,y					; |
-		CMP !HeldItemP2_extra : BNE ..set			; | if all these are the same, this sprite was carried from a PREVIOUS level
-		LDA $33F0,y						; |
-		CMP #$FF : BEQ ..done					; |
-		CMP !HeldItemP2_ID : BEQ ..done				;/
-		..set
-		LDA !NewSpriteNum,y
-		CMP #$32 : BEQ ..nop2
-		STA !HeldItemP2_customnum
-		LDA !ExtraBits,y : STA !HeldItemP2_extra
-		LDA !ExtraProp1,y : STA !HeldItemP2_prop1
-		LDA !ExtraProp2,y : STA !HeldItemP2_prop2
-		REP #$20
-		LDA !Level : STA !HeldItemP2_level
-		SEP #$20
-		LDA $33F0,y : STA !HeldItemP2_ID
-		BRA ..done
-		..nop2
-		LDA #$FF : STA !HeldItemP2_num
-		..done
-
-		RTL
 
 
 
@@ -475,47 +97,41 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 
 
 	MAIN:
-		LDA $14					;\
-		AND #$1F				; |
-		TAY					; | index RNG table
-		DEC A					; |
-		AND #$1F				; |
-		TAX					;/
-		JSL !Random				; get vanilla RN
-		ADC !RNGtable,x				; add RNG from last frame
-		ADC $13					; add true frame counter
-		ADC $6DA2				;\
-		ADC $6DA3				; |
-		ADC $6DA4				; |
-		ADC $6DA5				; | add player controller input
-		ADC $6DA6				; |
-		ADC $6DA7				; |
-		ADC $6DA8				; |
-		ADC $6DA9				;/
-		ADC !P1MapXSpeed			;\ add player 1 speed
-		ADC !P1MapYSpeed			;/
-		ADC !P1MapX				;\ add player 1 position
-		ADC !P1MapY				;/
-		ADC !P2MapXSpeed			;\ add player 2 speed
-		ADC !P2MapYSpeed			;/
-		ADC !P2MapX				;\ add player 2 position
-		ADC !P2MapY				;/
-		STA !RNGtable,y				; store new RN
-		STA !RNG				; most recently generated
+		INC $14
+
+		; overworld RNG: no need to use full algorithm here
+		LDA $14						;\
+		AND #$1F					; |
+		TAY						; | index RNG table
+		DEC A						; |
+		AND #$1F					; |
+		TAX						;/
+		LDA !RNGtable,x : STA !RNG_Seed3		; update seed 3
+		BIT #$01 : BEQ +				;\
+		ASL A : ADC !RNG_Seed3				; | apply 3N+1 on previous RN
+		STA !RNG_Seed3 : BRA ++				; |
+	+	LSR !RNG_Seed3					;/
+	++	ADC $13						; add true frame counter
+		ADC $15						;\
+		ADC $16						; | add player 1 controller inputs
+		ADC $17						; |
+		ADC $18						;/
+		ADC !P1MapXSpeed				;\ add player 1 speed
+		ADC !P1MapYSpeed				;/
+		ADC !P1MapX					;\ add player 1 position
+		ADC !P1MapY					;/
+		STA !RNGtable,y					; store new RN
+		STA !RNG					; most recently generated
 
 
 		REP #$20					;\
 		LDA #$2C04 : STA $4330				; |
 		LDA #$0800 : STA $4340				; |
 		LDA #$0F03 : STA $4350				; |
-		LDA #$2641 : STA $4360				; |
 		SEP #$20					; | set up HDMA
 		STZ $4334					; |
 		STZ $4344					; |
 		STZ $4354					; |
-		LDA.b #HDMA>>16					; |
-		STA $4364					; |
-		STA $4367					; |
 		LDA #$78 : STA !HDMA				;/
 
 		LDA #$33 : STA !2123
@@ -538,22 +154,16 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		JSR !MPU_light
 
 		.Shared
-		REP #$30					;\
-		LDX.w #HDMA_Window2				; |
-		LDA !CircleTimer				; | source for window HDMA
-		AND #$0001					; |
-		BNE $03 : LDX.w #HDMA_Window1			; |
-		STX !HDMA6source				;/
-
-; $0200 -> adjust scanline (MainScreen + SubScreen)
-; $0210 -> adjust scanline (BG2 Tilemap address)
-; $0220 -> expand (BG2 coordinates)
-
+		REP #$30
 		LDA !CircleTimer
 		AND #$0001
 		BEQ $03 : LDA #$0080
 		TAX
 		SEP #$20
+
+; $0200 -> adjust scanline (MainScreen + SubScreen)
+; $0210 -> adjust scanline (BG2 Tilemap address)
+; $0220 -> expand (BG2 coordinates)
 
 		LDA !CharMenuTimer : STA $00
 		LDA !CharMenu : BEQ ..20
@@ -612,10 +222,8 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		STA !HDMA5source
 
 		SEP #$30					; all regs 8-bit
-		INC !CircleTimer				; circle timer +1
 
-
-		JSL !BuildOAM
+		JSL BuildOAM
 		RTL
 
 
@@ -869,47 +477,8 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 
 
 	.Circle
-		LDA !CircleForceCenter
-		STZ !CircleForceCenter
-		BEQ ..calccenter
-		LDA #$0080
-		STA !CircleCenterX
-		STA !CircleCenterY
-		BRA ..process
-
-		..calccenter
-		LDA !P1MapX
-		CLC : ADC #$0008
-		SEC : SBC $1A
-		BPL $03 : LDA #$0000
-		CMP #$00FF
-		BCC $03 : LDA #$00FF
-		STA !CircleCenterX
-		LDA !P1MapY
-		CLC : ADC #$0008
-		SEC : SBC $1C
-		BPL $03 : LDA #$0000
-		CMP #$00FF
-		BCC $03 : LDA #$00FF
-		STA !CircleCenterY
-
-		..process
-		LDA !CircleRadius
-		BPL $03 : LDA #$0000
-		CMP #$0030
-		BCC $03 : LDA #$0030
-		STA !CircleRadius
-		PHA
-		STZ $2250
-		STA $2251
-		CLC
-		JSL !GetRoot : STA $2253
-		NOP : BRA $00
-		LDA $2307 : STA !CircleRadius
-		JSR RenderCircle
-		JSR RenderCircle_Cutscene
-		PLA : STA !CircleRadius
-		..done
+		JSL RenderCircle
+		JSL RenderCircle_Cutscene
 
 
 		SEP #$10				;\ regs: A 16-bit, index 8-bit
@@ -1111,7 +680,7 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		SEP #$10
 		LDY.b #!VRAMbank
 		PHY : PLB
-		JSL !GetCGRAM
+		JSL GetCGRAM
 		LDA #$0002 : STA !CGRAMtable+$00,y
 		LDA.w #Palette+($79*2) : STA !CGRAMtable+$02,y
 		LDA.w #Palette>>16 : STA !CGRAMtable+$04,y
@@ -1199,7 +768,7 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		LDY.b #!VRAMbank
 		PHY : PLB
 		REP #$20
-		JSL !GetCGRAM
+		JSL GetCGRAM
 		LDA #$0002 : STA !CGRAMtable+$00,y
 		LDA.l !P1MapChar
 		AND #$000F
@@ -1231,7 +800,7 @@ print "OVERWORLD INSERTED AT $", pc, "!"
 		LDY.b #!VRAMbank
 		PHY : PLB
 		REP #$20
-		JSL !GetCGRAM
+		JSL GetCGRAM
 		LDA #$0002 : STA !CGRAMtable+$00,y
 		LDA.l !MultiPlayer
 		AND #$00FF : BNE .CharColor
@@ -1389,20 +958,6 @@ endmacro
 		db $58,$57,$93,$31	; T
 		.End
 
-
-
-	HDMA:
-
-	; indirect -> $2126 + $2127, B = K
-	.Window1
-		db $F0 : dw !CircleTable1
-		db $F0 : dw !CircleTable1+$E0
-		db $00
-
-	.Window2
-		db $F0 : dw !CircleTable2
-		db $F0 : dw !CircleTable2+$E0
-		db $00
 
 
 

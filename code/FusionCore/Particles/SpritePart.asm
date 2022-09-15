@@ -1,4 +1,6 @@
 
+; decrementing timer (if set to 0x00, timer is infinite)
+
 	SpritePart:
 		LDX $00							; reload index
 		LDA !Particle_Type-1,x : BPL .Main			;\
@@ -10,9 +12,10 @@
 		LDA !Particle_Timer,x : BEQ +				;\ check and decrement timer
 		DEC !Particle_Timer,x : BEQ .NoTimer			;/
 	+	JSR ParticleSpeed					; move particle
-		LDA !Particle_Tile,x : STA !Particle_TileTemp		; tile number + property byte
-		PHA							;\
-		ORA #$C000						; | _p3, push prop
+		LDA !Particle_Tile,x : PHA				; push prop
+		ORA #$3000 : STA !Particle_TileTemp			; tile number + property byte (p = 3)
+		LDA $01,s						;\
+		ORA #$C000						; | _p3
 		STA !Particle_Tile,x					;/
 		LDA !Particle_Layer,x					;\
 		AND #$0002						; | oam size bit

@@ -382,16 +382,6 @@ endmacro
 		ORA $00
 		STA !Characters
 
-		LDA #$00 : STA !CurrentMario
-		LDA !Characters
-		CMP #$10 : BCS +
-		LDA #$01 : STA !CurrentMario
-		BRA ++
-	+	BIT #$0F : BNE ++
-		LDA !MultiPlayer : BEQ ++
-		LDA #$02 : STA !CurrentMario
-		++
-
 		PHP
 		JSR .UpdatePlayer
 		PLP
@@ -577,7 +567,7 @@ endmacro
 		STA !ShaderInput,x				; |
 		DEX #2						; |
 		DEY #2 : BPL -					;/
-		JSL !GetCGRAM					;\
+		JSL GetCGRAM					;\
 		PLB						; > go into bank 0x40
 		LDA $00 : STA !CGRAMtable+$02,y			; |
 		LDA.w #!PalsetData>>16 : STA !CGRAMtable+$04,y	; |

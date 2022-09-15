@@ -1,5 +1,11 @@
 02 x1 Patient Kicker
+04 x1 Green Dancer Koopa
+05 x1 Red Dancer Koopa
+06 x1 Blue Dancer Koopa
+07 x1 Yellow Dancer Koopa
 0E x1 Key Block
+13 x1 Rolling Spiny
+21 x1 Still Coin
 2E x1 Spike Top
 3D x1 Golden Rip
 4D x1 Slow Ground Mole
@@ -33,8 +39,8 @@
 09 x3 Tar Creeper (stationary)
 0A x2 Mini Mech (unfinished)
 0B x2 Mole Wizard
-0C x2 Mini Mole
-0C x3 Mini Mole (burrowed)
+0C x2 Mini Mole (burrowed)
+0C x3 Mini Mole
 0D x2 Red Plant Head
 0D x3 Yellow Plant Head
 0E x2 NPC
@@ -46,10 +52,6 @@
 11 x3 Sign (message 2)
 12 x2 Lakitu Lovers
 12 x3 Dance Pad
-13 x2 Green Dancer Koopa
-13 x3 Red Dancer Koopa
-14 x2 Blue Dancer Koopa
-14 x3 Yellow Dancer Koopa
 15 x2 Spiny (can be placed on walls)
 15 x3 Rolling Spiny
 16 x2 Thif (128x64 sight box)
@@ -92,7 +94,6 @@
 30 x2 Chest
 31 x2 Experimental Object
 32 x2 Shop Object
-33 x2 Life Mushroom
 34 x2 Dense Rex (faces player)
 34 x2 Dense Rex (faces right)
 34 x2 Dense Rex (faces left)

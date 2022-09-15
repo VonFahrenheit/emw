@@ -1,19 +1,19 @@
 
-	print "Luigi Fireball inserted at $", pc
 	LuigiFireball:
-		LDX $75E9
+		LDX !SpriteIndex
+		INC !Ex_Data1,x
+		LDA !Ex_Data1,x
+		CMP #$40 : BNE .Process
+		JMP TurnToSmoke
 
-		LDA !Ex_YLo,x : PHA
-		LDA !Ex_YHi,x : PHA
+		.Process
 		STZ !Ex_YSpeed,x
+		JSR ApplySpeed
+		JSR DestroyAtWall
 
-		PHK : PEA.w .Return-1
-		PEA $8B66-1			; point to RTL
-		JML $029FAF
+		JSR DrawExSprite
+		dw !GFX_LuigiFireball_offset
+		db $00,$31
 
-		.Return
-		PLA : STA !Ex_YHi,x
-		PLA : STA !Ex_YLo,x
 		RTS
-
 

@@ -5,9 +5,17 @@
 02	0012	0,0,002 0,-8,0DC
 03	0002	0,0,003
 04	0002	0,0,004
+04	0010	This completely normal-looking green Koopa will dance by jumping around in its shell and moon walking. It will prioritize getting back to the position it was placed at whenever it starts a new move, meaning it tends to not stray very far. All Dancer Koopas use the same RNG value when determining which move to use, meaning their dance will be perfectly synchronized. Upon taking damage, the Dancer is knocked out of its shell and becomes a normal Koopa.\n\nHP: 2\nRank: E\nTraits: None\nType: Basic\nExtra bit: Yes
+04	0012	0,-16,004 0,0,03D
 05	0002	0,0,005
+05	0010	This completely normal-looking red Koopa will dance by jumping around in its shell and moon walking. It will prioritize getting back to the position it was placed at whenever it starts a new move, meaning it tends to not stray very far. All Dancer Koopas use the same RNG value when determining which move to use, meaning their dance will be perfectly synchronized. Upon taking damage, the Dancer is knocked out of its shell and becomes a normal Koopa.\n\nHP: 2\nRank: E\nTraits: None\nType: Basic\nExtra bit: Yes
+05	0012	0,-16,005 0,0,03D
 06	0002	0,0,006
+06	0010	This completely normal-looking blue Koopa will dance by jumping around in its shell and moon walking. It will prioritize getting back to the position it was placed at whenever it starts a new move, meaning it tends to not stray very far. All Dancer Koopas use the same RNG value when determining which move to use, meaning their dance will be perfectly synchronized. Upon taking damage, the Dancer is knocked out of its shell and becomes a normal Koopa.\n\nHP: 2\nRank: E\nTraits: None\nType: Basic\nExtra bit: Yes
+06	0012	0,-16,006 0,0,03D
 07	0002	0,0,007
+07	0010	This completely normal-looking yellow Koopa will dance by jumping around in its shell and moon walking. It will prioritize getting back to the position it was placed at whenever it starts a new move, meaning it tends to not stray very far. All Dancer Koopas use the same RNG value when determining which move to use, meaning their dance will be perfectly synchronized. Upon taking damage, the Dancer is knocked out of its shell and becomes a normal Koopa.\n\nHP: 2\nRank: E\nTraits: None\nType: Basic\nExtra bit: Yes
+07	0012	0,-16,007 0,0,03D
 08	0002	0,0,004 12,4,009, -16,0,402
 09	0002	0,0,004 12,4,009, -16,-8,404 -16,8,405
 0A	0002	0,0,005 12,4,009, -16,-8,404 -16,8,405
@@ -23,6 +31,8 @@
 11	0002	0,0,00D
 12	0002	0,0,420
 13	0002	0,0,00E
+13	0010	A rolling spiny.
+13	0012	0,0,00E -8,0,0DC
 14	0002	0,0,00F
 15	0002	0,0,010 -8,-16,402 8,-16,403
 16	0002	0,0,010 -16,-8,404 -16,8,405
@@ -39,7 +49,10 @@
 1E	0102	-6,-4,079 8,-2,079 0,-12,042 -4,4,079 6,4,079 -16,-12,0D5 -24,-12,0D4 -24,4,0D4 -24,20,0D4 -24,36,0D4 -24,52,01B
 1F	0002	0,-14,016 0,2,017
 20	0002	0,-8,018 -6,0,019 4,0,01A
+21	0000	A moving coin. You can set the extra bit to prevent it from moving.
 21	0002	0,0,01B
+21	0010	A coin. The extra bit is set, so it won't move despite being a sprite.
+21	0012	0,0,01B
 22	0002	0,0,01C 0,16,01D 0,-16,404 0,32,405
 23	0002	0,0,01E 0,16,01F 0,-16,404 0,32,405
 24	0002	0,0,01C 0,16,01D -16,8,402 16,8,403
@@ -96,18 +109,20 @@
 4C	0102	0,0,00C -6,-6,043 14,-6,043 -6,14,043 14,14,043
 4C	0202	0,0,000 -6,-6,043 14,-6,043 -6,14,043 14,14,043
 4C	0302	0,0,004 -6,-6,043 14,-6,043 -6,14,043 14,14,043
-4D	0002	-8,0,402 8,0,403 0,0,044
-4D	0102	0,0,044 0,-16,404
-4D	0010	A ground dwelling monty mole that will explode from its hiding place and either follow the player or walk with a hop depending on its X position. Because the extra bit, this mole will take longer to emerge from the ground. It's currently set to walk with a hop.
-4D	0012	0,0,044 0,-16,404 -8,0,0DC
-4D	0110	A ground dwelling monty mole that will explode from its hiding place and either follow the player or walk with a hop depending on its X position. Because the extra bit, this mole will take longer to emerge from the ground. It's currently set to follow.
-4D	0112	-8,0,402 8,0,403 0,0,044 0,-8,0DC
-4E	0002	-8,0,402 8,0,403 0,0,045
-4E	0102	0,0,045 0,-16,404
-4E	0010	A ledge dwelling monty mole that will explode from its hiding place and either follow the player or walk with a hop depending on its X position. Because the extra bit is set, it will take longer to emerge from its block. It's currently set to walk with a hop.
-4E	0012	0,0,045 0,-16,404 -8,0,0DC
-4E	0110	A ledge dwelling monty mole that will explode from its hiding place and either follow the player or walk with a hop depending on its X position. Because the extra bit is set, it will take longer to emerge from its block. It's currently set to follow.
-4E	0112	-8,0,402 8,0,403 0,0,045 0,-8,0DC
+4D	0000	A ground-dwelling monty mole that will jump from its hiding place and chase the player.
+4D	0002	0,0,044
+4D	0102	0,0,044
+4D	0010	A ground-dwelling monty mole that will jump from its hiding place and chase the player. Because the extra bit, this mole will take longer to emerge from the ground.
+4D	0012	0,0,044 -8,0,0DC
+4D	0110	A ground-dwelling monty mole that will jump from its hiding place and chase the player. Because the extra bit, this mole will take longer to emerge from the ground.
+4D	0112	0,0,044 0,-8,0DC
+4E	0000	A ledge-dwelling monty mole that will explode from its hidding place and chase the player.
+4E	0002	0,0,045
+4E	0102	0,0,045
+4E	0010	A ledge-dwelling monty mole that will explode from its hidding place and chase the player. Because the extra bit is set, it will take longer to emerge from its block.
+4E	0012	0,0,045 -8,0,0DC
+4E	0110	A ledge-dwelling monty mole that will explode from its hidding place and chase the player. Because the extra bit is set, it will take longer to emerge from its block.
+4E	0112	0,0,045 0,-8,0DC
 4F	0002	8,0,011
 50	0002	8,0,011 0,-8,046 24,-8,046
 51	0002	0,0,047
@@ -154,12 +169,15 @@
 72	0002	0,0,080 16,0,081
 73	0002	0,-2,80BC 16,-2,80BD 0,2,80BC 16,2,80BD -2,0,8080 14,0,8081 2,0,8080 18,0,8081 0,0,080 16,0,081
 73	0102	0,0,080 16,0,081
+74	0000	A mushroom that refills a single heart.
 74	0002	0,0,071
-75	0002	0,0,*BANNED*
-76	0002	0,0,073
-77	0002	0,0,*BANNED*
+75	0000	A mushroom that refills a single heart.
+75	0002	0,0,071
+76	0002	0,0,074
+77	0000	This is a life mushroom. Collecting this will fully heal a player and increase their maximum life by 1 until they get hit or finish a level.
+77	0002	0,0,072
 78	0000	This is a golden mushroom. It will fully heal a player and give them 100 coins if they collect it. It stands still if placed on the ground but will move right if placed in the air.
-78	0002	0,0,072
+78	0002	0,0,073
 79	0002	0,0,075
 7A	0002	0,0,*DO NOT USE*
 7B	0002	0,0,*BANNED*
@@ -370,9 +388,9 @@ F1	0002	0,0,420
 0B	0022	0,16,*Mole Wizard* 0,0,420
 
 0C	0020	This sprite is more fun than dangerous. The Mini Mole walks forward, turning at walls but walking off ledges. If it touches a player, it latches onto them and disrupts their controls by pushing random buttons until the player mashes out. The Mini Mole dies when the player mashes out, but it is otherwise invulnerable.\n\nHP: Invulnerable\nRank: F\nTraits: None\nType: Pseudo-dynamic (4 8x8 tiles)\nExtra bit: Yes
-0C	0022	0,16,*Mini\nMole* 0,0,420
+0C	0022	0,16,*Mini Mole\nburrowed* 0,0,420
 0C	0030	Setting the extra bit causes the Mini Mole to spawn burrowed, much like a normal Mony Mole. It should be placed inside a block in this state. The Mini Mole does break the block it comes out of.\n\nHP: Invulnerable\nRank: F\nTraits: None\nType: Pseudo-dynamic (4 8x8 tiles)\nExtra bit: Yes
-0C	0032	0,16,*Mini Mole\nburrowed* 0,0,420
+0C	0032	0,16,*Mini\nMole* 0,0,420
 
 0D	0020	This Plant Head rotates to face players as best it can, hurting them upon contact. If the Plant Head is placed on a destructible vine tile, its range of motion is restricted to within 60 degrees of the vine. If the Plant Head dies, its vine starts disintegrating (if it is placed on one). Any attack will kill the Plant Head, but it can not be jumped on.\n\nHP: 1\nRank: E\nTraits: None\nType: Super-dynamic (size not yet calculated)\nExtra bit: Yes
 0D	0022	0,16,*Red\nPlant Head* 0,0,420
@@ -402,15 +420,6 @@ F1	0002	0,0,420
 12	0030	The Dance Pad has to be used in conjunction with level ASM, see those files for more details. When stepped on, the Dance Pad generates a random sequence of inputs that the player must enter with a specific timing. Doing so successfully destroys a 3-tile column 2 tiles to the side of the Dance Pad. Failing the game will cause the Dance Pad to destroy the floor it is placed on, causing the player to fall down.\n\nHP: Invulnerable\nRank: F\nTraits: None\nType: Basic\nExtra bit: Yes
 12	0032	0,0,420
 
-13	0020	This completely normal-looking Green Koopa will dance by jumping around in its shell and moon walking. It will prioritize getting back to the position it was placed at whenever it starts a new move, meaning it tends to not stray very far. All Dancer Koopas use the same RNG value when determining which move to use, meaning their dance will be perfectly synchronized. Upon taking damage, the Dancer is knocked out of its shell and becomes a normal Green Koopa.\n\nHP: 2\nRank: E\nTraits: None\nType: Basic\nExtra bit: Yes
-13	0022	0,-16,004 0,0,03D
-13	0030	This completely normal-looking Red Koopa will dance by jumping around in its shell and moon walking. It will prioritize getting back to the position it was placed at whenever it starts a new move, meaning it tends to not stray very far. All Dancer Koopas use the same RNG value when determining which move to use, meaning their dance will be perfectly synchronized. Upon taking damage, the Dancer is knocked out of its shell and becomes a normal Red Koopa.\n\nHP: 2\nRank: E\nTraits: None\nType: Basic\nExtra bit: Yes
-13	0032	0,-16,005 0,0,03D
-14	0020	This completely normal-looking Blue Koopa will dance by jumping around in its shell and moon walking. It will prioritize getting back to the position it was placed at whenever it starts a new move, meaning it tends to not stray very far. All Dancer Koopas use the same RNG value when determining which move to use, meaning their dance will be perfectly synchronized. Upon taking damage, the Dancer is knocked out of its shell and becomes a normal Blue Koopa.\n\nHP: 2\nRank: E\nTraits: None\nType: Basic\nExtra bit: Yes
-14	0022	0,-16,006 0,0,03D
-14	0030	This completely normal-looking Yellow Koopa will dance by jumping around in its shell and moon walking. It will prioritize getting back to the position it was placed at whenever it starts a new move, meaning it tends to not stray very far. All Dancer Koopas use the same RNG value when determining which move to use, meaning their dance will be perfectly synchronized. Upon taking damage, the Dancer is knocked out of its shell and becomes a normal Yellow Koopa.\n\nHP: 2\nRank: E\nTraits: None\nType: Basic\nExtra bit: Yes
-14	0032	0,-16,007 0,0,03D
-
 15	0020	This version of the Spiny will snap to a wall if it is placed next to one. Other than that it behaves exactly like the normal one.\n\nHP: 1\nRank: E\nTraits: Fireproof, Uncrushable\nType: Basic\nExtra bit: Yes
 15	0022	0,0,00E -8,-16,402 8,-16,403
 15	0030	Setting the extra bit causes the Spiny to roll along the ground, bouncing if it falls down a ledge.\n\nHP: 1\nRank: E\nTraits: Fireproof, Uncrushable\nType: Basic\nExtra bit: Yes
@@ -433,7 +442,7 @@ F1	0002	0,0,420
 1A	0022	0,16,*Birdo's\nEgg* 0,0,420
 
 1B	0020	The Bumper is a very simple sprite that bounces players back upon contact. It is normally stationary but can be carried around by Monkeys, which can make it a major threat around pits. On icy levels, the bumper is frozen and acts like a solid sphere. In this state, it can be rolled along the ground and used as a platform.\n\nHP: Invulnerable\nRank: F\nTraits: None\nType: Pseudo-dynamic (1 tile) OR Super-dynamic (when frozen)\nExtra bit: No
-1B	0022	0,24,*Bumper* -8,-8,420 8,-8,420 -8,8,420 8,8,420
+1B	0022	0,16,*Bumper* -8,-16,420 8,-16,420 -8,0,420 8,0,420
 
 1C	0020	Monkey, work in progress. This is a very complex sprite that can interact with many things, so it is difficult to describe. It is recommend to experiment with Monkey placements in a level.\n\nHP: ???\nRank: me not tell you ukee ¨o\nTraits: None\Type: Pseudo-dynamic (3KB)\Extra bit: Yes
 1C	0022	0,16,*Monkey\nwaiting* 0,0,420
@@ -518,9 +527,6 @@ F1	0002	0,0,420
 
 32	0020	Shop Object\nPlace on a sprite to make it a carryable object. Extra byte 1 assigns a price tag to that sprite. Meant for use in shops. The text should appear above that sprite's tile, with the little stars appearing on either side. The sprites should be z-ordered so that the sprite that this object is attached to is not obscured by it.
 32	0022	0,-16,*Shop\n    \n  \n  * -8,0,0DC 16,0,0DC
-
-33	0020	Life Mushroom\Collecting this will fully heal a player and increase their maximum life by 1 until they get hit or finish a level.
-33	0022	0,0,074
 
 34	0020	Dense Rex
 34	0022	0,16,*Dense\nRex  * 0,0,420

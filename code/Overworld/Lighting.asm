@@ -36,7 +36,7 @@
 		STA $04
 
 		.Fade
-		JSL !FadeLight
+		JSL FadeLight
 
 
 		; LDA $1A

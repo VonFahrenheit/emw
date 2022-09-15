@@ -1,6 +1,5 @@
 
-
-
+; incrementing timer (0x00-0x1F move, 0x20 find target, 0x21+ magnet)
 ; tile: updates each frame to determine coin spin
 ;
 ; prop: state
@@ -14,16 +13,16 @@
 		SEP #$20						; 8-bit A
 
 		DEC !Particle_Tile,x					; update tile
-
-		LDA !Particle_Timer,x : BEQ .Magnet
-		DEC !Particle_Timer,x : BEQ .FindTarget
+		LDA !Particle_Timer,x
+		CMP #$21 : BCS .Magnet
+		INC !Particle_Timer,x
+		CMP #$20 : BEQ .FindTarget
 		JMP .Move
 
 		.FindTarget
 		LDA.l !RNG
 		AND #$01
-		INC A
-		STA !Particle_Prop,x
+		INC A : STA !Particle_Prop,x
 
 		.Magnet
 		STZ !Particle_XAcc,x
@@ -84,8 +83,7 @@
 		LDA !MultiPlayer
 		BNE $03 : LDX #$0000
 		LDA.l !P1CoinIncrease,x
-		INC A
-		STA.l !P1CoinIncrease,x
+		INC A : STA.l !P1CoinIncrease,x
 		LDX $00
 		LDA.b #(ParticleMain_List_End-ParticleMain_List)/2	; |
 		STA !Particle_Type,x					; | if timer hits 0, erase particle and set index to the one that was just freed up
@@ -123,8 +121,7 @@
 
 		.Move
 		LDA !Particle_Prop,x
-		ORA #$C0
-		STA !Particle_Prop,x
+		ORA #$C0 : STA !Particle_Prop,x
 		JSR ParticleSpeed					; move particle
 		LDA !Particle_Tile,x
 		AND #$0010

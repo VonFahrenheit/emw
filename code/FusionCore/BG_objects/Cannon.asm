@@ -30,7 +30,6 @@
 		LDA #$01
 		STA !P2Direction-$80
 		STA !P2Direction
-		STA !MarioDirection
 		LDA #$FF
 		STA !P2SlantPipe-$80
 		STA !P2SlantPipe
@@ -52,7 +51,7 @@
 		LDY !BG_object_Y,x				; |
 		TAX						; |
 		SEP #$20					; |
-		JSL !GetMap16					; |
+		JSL GetMap16					; |
 		REP #$30					; |
 		PLX						; | get palette (---CCC-- bits)
 		LDA $03						; |
@@ -88,20 +87,20 @@
 		..process
 		STA.l !BigRAM+2
 		LDA #$0000 : STA.l !BigRAM+4
-		LDA !BG_object_Y,x
-		SEC : SBC #$0018
-		STA $05
-		STA $0A
-		LDA #$1002 : STA $06
-		LDA !BG_object_X,x
-		CLC : ADC #$000E
-		STA $09
+
+		LDA !BG_object_X,x				;\
+		CLC : ADC #$000E				; |
+		STA $E8						; |
+		LDA !BG_object_Y,x				; | clipping
+		SEC : SBC #$0018				; |
+		STA $EA						; |
+		LDA #$0002 : STA $EC				; |
+		LDA #$0010 : STA $EE				;/
+
 		PHB : PHK : PLB
 		PHX
 		SEP #$30
-		STA $04
-		SEC : JSL !PlayerClipping
-		BCC ..nocontact
+		JSL PlayerContact : BCC ..nocontact
 		LSR A : BCC ..nop1
 		..p1
 		PHA
@@ -120,12 +119,12 @@
 
 		.ProcessPlayers
 		STA $00
-		LDA $05
+		LDA $EA
 		CLC : ADC #$28
-		STA $05
-		LDA $0B
+		STA $EA
+		LDA $EB
 		ADC #$00
-		STA $0B
+		STA $EB
 		LSR $00 : BCC ..nop1
 		..p1
 		LDY #$0000 : JSR .EnterPlayer
@@ -160,7 +159,6 @@
 		LDA #$00
 		STA.l !P2Pipe-$80
 		STA.l !P2Pipe
-		STZ !MarioDucking
 		LDA #$FF
 		STA.l !P2Stasis-$80
 		STA.l !P2Stasis
@@ -192,9 +190,9 @@
 		.EnterPlayer
 		LDA #$DF : STA !P2Pipe-$80,y
 		LDA !P2YPosLo-$80,y
-		CMP $05
+		CMP $EA
 		LDA !P2YPosHi-$80,y
-		SBC $0B : BCC ..nolock
+		SBC $EB : BCC ..nolock
 		..lock
 		LDA #$9F : STA !P2Pipe-$80,y
 		REP #$20
@@ -216,7 +214,7 @@
 		LDA !BG_object_X,x : STA $00			; |
 		LDA !BG_object_Y,x : STA $02			; |
 		PHX						; |
-		JSL !GetParticleIndex				; > (returns with 16-bit A)
+		JSL GetParticleIndex				; > (returns with 16-bit A)
 		LDA #$0017 : STA !Particle_Timer,x		; |
 		LDA $00						; |
 		CLC : ADC #$0018				; |
@@ -225,7 +223,7 @@
 		STZ !Particle_XSpeed,x				; |
 		STZ !Particle_YSpeed,x				; |
 		LDA.w #!prt_smoke16x16 : STA !Particle_Type,x	; |
-		JSL !GetParticleIndex				; > (returns with 16-bit A)
+		JSL GetParticleIndex				; > (returns with 16-bit A)
 		LDA #$0017 : STA !Particle_Timer,x		; |
 		LDA $00						; |
 		CLC : ADC #$0014				; |
@@ -236,7 +234,7 @@
 		LDA #$FF80 : STA !Particle_XSpeed,x		; |
 		LDA #$FF80 : STA !Particle_YSpeed,x		; |
 		LDA.w #!prt_smoke16x16 : STA !Particle_Type,x	; |
-		JSL !GetParticleIndex				; > (returns with 16-bit A)
+		JSL GetParticleIndex				; > (returns with 16-bit A)
 		LDA #$0017 : STA !Particle_Timer,x		; |
 		LDA $00						; |
 		CLC : ADC #$001C				; |
@@ -247,7 +245,7 @@
 		LDA #$0080 : STA !Particle_XSpeed,x		; |
 		LDA #$FF80 : STA !Particle_YSpeed,x		; |
 		LDA.w #!prt_smoke16x16 : STA !Particle_Type,x	; |
-		JSL !GetParticleIndex				; > (returns with 16-bit A)
+		JSL GetParticleIndex				; > (returns with 16-bit A)
 		LDA #$0017 : STA !Particle_Timer,x		; |
 		LDA $00						; |
 		CLC : ADC #$0014				; |
@@ -258,7 +256,7 @@
 		LDA #$FF80 : STA !Particle_XSpeed,x		; |
 		LDA #$0080 : STA !Particle_YSpeed,x		; |
 		LDA.w #!prt_smoke16x16 : STA !Particle_Type,x	; |
-		JSL !GetParticleIndex				; > (returns with 16-bit A)
+		JSL GetParticleIndex				; > (returns with 16-bit A)
 		LDA #$0017 : STA !Particle_Timer,x		; |
 		LDA $00						; |
 		CLC : ADC #$001C				; |
@@ -286,12 +284,12 @@
 		SEC : SBC #$0004
 		STA $98
 		TAY
-		JSL !GetMap16
+		JSL GetMap16
 		REP #$30
 		CMP #$0130 : BNE ..nobreak
-		LDA #$0025 : JSL !ChangeMap16
+		LDA #$0025 : JSL ChangeMap16
 		JSR .ShatterBlock
-		JSL !GetParticleIndex
+		JSL GetParticleIndex
 		LDA.w #!prt_smoke16x16 : STA !Particle_Type,x
 		LDA $9A : STA !Particle_XLo,x
 		LDA $98 : STA !Particle_YLo,x
@@ -307,27 +305,8 @@
 		SEP #$30
 		LDY #$03
 
-	-	%Ex_Index_X()
-		LDA $9A
-		AND #$F0
-		CLC : ADC .XDisp,y
-		STA !Ex_XLo,x
-		LDA $9B
-		ADC #$00
-		STA !Ex_XHi,x
-		LDA $98
-		AND #$F0
-		CLC : ADC .YDisp,y
-		STA !Ex_YLo,x
-		LDA $99
-		ADC #$00
-		STA !Ex_YHi,x
-		LDA.b #$01+!MinorOffset : STA !Ex_Num,x
-		LDA .XSpeed,y : STA !Ex_XSpeed,x
-		LDA .YSpeed,y : STA !Ex_YSpeed,x
-		STZ !Ex_Data1,x
-		STZ !Ex_Data2,x
-		STZ !Ex_Data3,x
+	-
+		; TODO: spawn particles here
 		DEY : BPL -
 
 		LDA #$07 : STA !SPC4			; shatter block SFX

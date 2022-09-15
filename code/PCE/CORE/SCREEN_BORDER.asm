@@ -97,9 +97,9 @@
 		LDA #$05 : STA !dmg		; > 1 full heart of damage (+1 because easy armor)
 		JSL CORE_HURT			;\ easy mode: pits do damage instead of instant death
 		LDA !P2Status : BNE ..die	;/
-		LDA !P2Character : BNE +	;\
-		LDA !MarioAnim			; | check if mario just died
-		CMP #$09 : BEQ ..die		;/
+		; LDA !P2Character : BNE +	;\
+		; LDA !MarioAnim			; | check if mario just died
+		; CMP #$09 : BEQ ..die		;/
 	+	LDA #$80
 		LDX !P2Character
 		CPX #$01

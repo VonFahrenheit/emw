@@ -1,36 +1,33 @@
 
+; data 1: 21--ssss
+; 2	= attach to player 2
+; 1	= attach to player 1
+; ssss	= which sprite to attach to if not attached to player
+;
+; data 2: timer
+; data 3: y offset to attachment
 
 
 
-	; data 1: --ppssss
-	; pp	= which player to attach to
-	; ssss	= which sprite to attach to if pp = 0
-	;
-	; data 2: timer
-	; data 3: y offset to attachment
-
-	print "Dizzy Star inserted at $", pc
 	DizzyStar:
-		LDX $75E9
-		LDA !Ex_Data2,x : BNE .Go
-	.Kill	STZ !Ex_Num,x
-		RTS
+		LDX !SpriteIndex
 
-	.Go	LDA $14
-		AND #$03 : BNE +
-		DEC !Ex_Data2,x
-		+
+		.Timer
+		LDA $14
+		AND #$03 : BNE ..done
+		DEC !Ex_Data2,x : BNE ..done
+		..kill
+		STZ !Ex_Num,x
+		RTS
+		..done
 
 		LDA !Ex_Data1,x
 		CMP #$10 : BCC .Sprite
-		CMP #$30 : BCS .Sprite
 
 	.Player
-		ASL #2
-		AND #$80
-		TAY
-		LDA !StarTimer : BNE .Kill
-		LDA !P2Status-$80,y : BNE .Kill
+		AND #$80 : TAY
+		LDA !StarTimer : BNE .Timer_kill
+		LDA !P2Status-$80,y : BNE .Timer_kill
 		LDA !P2XPosLo-$80,y : STA !Ex_XLo,x
 		LDA !P2XPosHi-$80,y : STA !Ex_XHi,x
 		STZ $00
@@ -40,25 +37,23 @@
 		STA !Ex_YLo,x
 		LDA $00
 		ADC !P2YPosHi-$80,y
-		STA !Ex_YHi,x
 		BRA .Graphics
 
 	.Sprite
-		AND #$0F
-		TAY
-		LDA $3230,y : BEQ .Kill
-		LDA $3220,y : STA !Ex_XLo,x
-		LDA $3250,y : STA !Ex_XHi,x
+		AND #$0F : TAY
+		LDA !SpriteStatus,y : BEQ .Timer_kill
+		LDA !SpriteXLo,y : STA !Ex_XLo,x
+		LDA !SpriteXHi,y : STA !Ex_XHi,x
 		STZ $00
 		LDA !Ex_Data3,x
 		BPL $02 : DEC $00
-		CLC : ADC $3210,y
+		CLC : ADC !SpriteYLo,y
 		STA !Ex_YLo,x
 		LDA $00
-		ADC $3240,y
-		STA !Ex_YHi,x
+		ADC !SpriteYHi,y
 
 	.Graphics
+		STA !Ex_YHi,x
 		REP #$20
 		STZ $0C
 		JSR .Draw
@@ -107,7 +102,7 @@
 	.BadCoord
 		SEP #$10
 		REP #$20
-		LDX $75E9
+		LDX !SpriteIndex
 		RTS
 
 	.GoodX	LDA $02
@@ -140,7 +135,7 @@
 		CLC : ADC #$0004
 		STA !OAMindex_p1
 		SEP #$10
-		LDX $75E9
+		LDX !SpriteIndex
 		RTS
 
 	.HiPrio
@@ -163,7 +158,7 @@
 		CLC : ADC #$0004
 		STA !OAMindex_p3
 		SEP #$10
-		LDX $75E9
+		LDX !SpriteIndex
 		RTS
 
 

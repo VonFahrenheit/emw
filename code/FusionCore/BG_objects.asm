@@ -97,7 +97,7 @@ namespace BG_OBJECTS
 		LDA.b #!VRAMbank				; |
 		PHA : PLB					; |
 		REP #$30					; |
-		JSL !GetBigCCDMA : BCS ..fail			; |
+		JSL GetBigCCDMA : BCS ..fail			; |
 		LDA $F6						; |
 		CMP #$007E					; |
 		BCC $03 : LDA #$007E				; | run CCDMA if anything was rendered this frame
@@ -295,20 +295,15 @@ incsrc "BG_objects/KeyBlock.asm"
 
 ; !BigRAM+0 = timer
 
-	CheckInteract:
-		LDA !BG_object_X,x				;\
-		STA $04						; |
-		STA $09						; |
-		LDA !BG_object_Y,x				; |
-		SEP #$20					; |
-		STA $05						; |
-		XBA : STA $0B					; | clipping
+	CheckMovement:
+		LDA !BG_object_X,x : STA $E8			;\
+		LDA !BG_object_Y,x : STA $EA			; |
 		LDA !BG_object_W,x				; |
-		ASL #3						; |
-		STA $06						; |
+		ASL #3						; | clipping
+		AND #$00FF : STA $EC				; |
 		LDA !BG_object_H,x				; |
 		ASL #3						; |
-		STA $07						;/
+		AND #$00FF : STA $EE				;/
 
 		PHX						;\
 		PHB : PHK : PLB					; | reg/bank setup
@@ -327,10 +322,8 @@ incsrc "BG_objects/KeyBlock.asm"
 		AND #$0F : TAY					; |
 		LDA ($0E),y : BEQ ..nocontact			; |
 		..valid						;/
-		CLC : LDA #$00					;\
-		JSL !PlayerClipping				; |
-		JSL !CheckContact : BCC ..nocontact		; | player 1 contact
-		LDA !P2XSpeed-$80 : BEQ ..nocontact		; |
+		JSL PlayerContact_P1 : BCC ..nocontact		;\
+		LDA !P2XSpeed-$80 : BEQ ..nocontact		; | player 1 contact
 		JMP .Interact					; |
 		..nocontact					;/
 
@@ -347,24 +340,22 @@ incsrc "BG_objects/KeyBlock.asm"
 		AND #$0F : TAY					; |
 		LDA ($0E),y : BEQ ..nocontact			; |
 		..valid						;/
-		CLC : LDA #$01					;\
-		JSL !PlayerClipping				; |
-		JSL !CheckContact : BCC ..nocontact		; | player 2 contact
-		LDA !P2XSpeed : BNE .Interact			; |
+		JSL PlayerContact_P2 : BCC ..nocontact		;\
+		LDA !P2XSpeed : BEQ ..nocontact			; | player 1 contact
+		JMP .Interact					; |
 		..nocontact					;/
 
 
 	.Sprites
 		LDX #$0F					; loop through all sprites
 		..loop						;\
-		LDA $3230,x : BEQ ..next			; |
+		LDA !SpriteStatus,x : BEQ ..next		; |
+		LDY !SpriteNum,x				; |
 		LDA !ExtraBits,x				; |
 		AND #$08 : BNE ..customsprite			; |
 		..vanillasprite					; |
-		LDY $3200,x					; |
 		LDA SpriteSize_Vanilla,y : BRA ..readfreq	; | get sprite size/weight
 		..customsprite					; |
-		LDY !NewSpriteNum,x				; |
 		LDA SpriteSize_Custom,y				; |
 		..readfreq					; |
 		BEQ ..next					; > if weight = 0, interaction is invalid
@@ -378,8 +369,8 @@ incsrc "BG_objects/KeyBlock.asm"
 		AND #$0F : TAY					; |
 		LDA ($0E),y : BEQ ..next			;/
 		..valid						;\
-		JSL !GetSpriteClipping00			; | sprite contact
-		JSL !CheckContact : BCS ..interact		; |
+		JSL GetSpriteClippingE0				; | sprite contact
+		JSL CheckContact : BCS ..interact		; |
 		..next						;/
 		DEX : BPL ..loop				; > loop
 		REP #$30					;\
@@ -389,7 +380,8 @@ incsrc "BG_objects/KeyBlock.asm"
 		RTS						;/
 		..interact					;\ A = X speed
 		LDA !SpriteXSpeed,x				;/
-		.Interact					;\
+
+	.Interact						;\
 		REP #$30					; |
 		PLB						; | return with carry set (meaning interaction)
 		PLX						; | A = X speed of interacting entity
@@ -500,19 +492,14 @@ incsrc "BG_objects/KeyBlock.asm"
 ;	carry: 0 = no contact, 1 = contact
 ;	Y = index to hitbox (only if contact)
 	CheckHitbox:
-		LDA !BG_object_X,x				;\
-		STA $04						; |
-		STA $09						; |
-		LDA !BG_object_Y,x				; |
-		SEP #$20					; |
-		STA $05						; |
-		XBA : STA $0B					; | clipping
+		LDA !BG_object_X,x : STA $E8			;\
+		LDA !BG_object_Y,x : STA $EA			; |
 		LDA !BG_object_W,x				; |
-		ASL #3						; |
-		STA $06						; |
+		ASL #3						; | clipping
+		AND #$00FF : STA $EC				; |
 		LDA !BG_object_H,x				; |
 		ASL #3						; |
-		STA $07						;/
+		AND #$00FF : STA $EE				;/
 
 		.Main
 		PHX						;\
@@ -523,15 +510,27 @@ incsrc "BG_objects/KeyBlock.asm"
 	.CheckHitbox
 		LDA !P2Hitbox1Shield-$80,y : BNE .Hitbox2	; no hit if a shield blocks the way
 		LDA !P2Hitbox1W-$80,y
-		ORA !P2Hitbox1H-$80,y
-		BEQ .Hitbox2
-		LDA !P2Hitbox1XLo-$80,y : STA $00
-		LDA !P2Hitbox1XHi-$80,y : STA $08
-		LDA !P2Hitbox1YLo-$80,y : STA $01
-		LDA !P2Hitbox1YHi-$80,y : STA $09
-		LDA !P2Hitbox1W-$80,y : STA $02
-		LDA !P2Hitbox1H-$80,y : STA $03
-		JSL !Contact16 : BCS .YesContact
+		ORA !P2Hitbox1H-$80,y : BEQ .Hitbox2
+
+		REP #$20					;\
+		LDA !P2Hitbox1W-$80,y				; |
+		AND #$00FF					; |
+		CLC : ADC !P2Hitbox1X-$80,y			; |
+		CMP $E8 : BCC ..nocontact			; |
+		LDA $E8						; |
+		CLC : ADC $EC					; |
+		CMP !P2Hitbox1X-$80,y : BCC ..nocontact		; |
+		LDA !P2Hitbox1H-$80,y				; |
+		AND #$00FF					; | check for hitbox contact
+		CLC : ADC !P2Hitbox1Y-$80,y			; |
+		CMP $EA : BCC ..nocontact			; |
+		LDA $EA						; |
+		CLC : ADC $EE					; |
+		CMP !P2Hitbox1Y-$80,y				; |
+		SEP #$20					; |
+		BCS .YesContact					; |
+		..nocontact					; |
+		SEP #$20					;/
 
 		.Hitbox2
 		CPY #$81 : BCS .NoContact
@@ -575,8 +574,7 @@ incsrc "BG_objects/KeyBlock.asm"
 	UnlockObject:
 
 		.PuffKey
-		LDA #$04 : STA $3230,x				;\ puff key
-		LDA #$1F : STA $32D0,x				;/
+		LDA #$04 : STA !SpriteStatus,x			; puff key
 
 		.KeyMem
 		LDA !ExtraProp2,x				;\
@@ -617,11 +615,11 @@ incsrc "BG_objects/KeyBlock.asm"
 ;	$9A = X coord
 
 	PuffTile:
-		LDA #$0025 : JSL !ChangeMap16
+		LDA #$0025 : JSL ChangeMap16
 		STZ $00
 		STZ $02
 		STZ $04
-		LDA.w #!prt_smoke16x16 : JSL !SpawnParticleBlock
+		LDA.w #!prt_smoke16x16 : JSL SpawnParticleBlock
 		RTS
 
 ; input:
@@ -629,11 +627,11 @@ incsrc "BG_objects/KeyBlock.asm"
 ;	$9A = X coord
 
 	WaterTile:
-		LDA #$0002 : JSL !ChangeMap16
+		LDA #$0002 : JSL ChangeMap16
 		STZ $00
 		STZ $02
 		STZ $04
-		LDA.w #!prt_smoke16x16 : JSL !SpawnParticleBlock
+		LDA.w #!prt_smoke16x16 : JSL SpawnParticleBlock
 		RTS
 
 

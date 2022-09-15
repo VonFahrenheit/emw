@@ -40,11 +40,12 @@ namespace Kadaal
 		LDA !P2Init : BNE .Main
 
 		.Init
+		INC !P2Init
 		PHP
 		LDA.b #!VRAMbank : PHA
 		REP #$30
-		LDY.w #!File_Kadaal : JSL !GetFileAddress
-		JSL !GetVRAM
+		LDY.w #!File_Kadaal : JSL GetFileAddress
+		JSL GetVRAM
 		PLB
 		LDA #$0140*$20
 		CLC : ADC !FileAddress
@@ -66,7 +67,6 @@ namespace Kadaal
 		STA !VRAMtable+$07,x
 		PHK : PLB
 		PLP
-		INC !P2Init
 
 		.Main
 
@@ -81,7 +81,7 @@ namespace Kadaal
 		LDA $96 : STA !P2YPosLo
 		SEP #$20
 		PLB
-		RTS
+		RTL
 
 		.KnockedOut			; State 01
 		JSL CORE_KNOCKED_OUT
@@ -89,7 +89,7 @@ namespace Kadaal
 		BCC .Fall
 		LDA #$02 : STA !P2Status
 		PLB
-		RTS
+		RTL
 
 		.Fall
 		BIT !P2YSpeed : BMI +
@@ -104,13 +104,15 @@ namespace Kadaal
 		JMP ANIMATION_HandleUpdate
 
 
-		.Process				; State 00
-		LDA !P2MaxHP				;\
-		CMP !P2HP				; | Enforce max HP
-		BCS $03 : STA !P2HP			;/
-
+		.Process				; state 00
+		LDA !P2MaxHP						;\
+		CMP !P2HP						; | enforce max HP
+		BCS $03 : STA !P2HP					;/
 		REP #$20						;\
-		LDA !P2Hitbox2IndexMem1 : TSB !P2Hitbox1IndexMem1	; | merge index mem for hitboxes
+		LDA !P2Hitbox1IndexMem					; |
+		ORA !P2Hitbox2IndexMem					; | merge hitboxes
+		STA !P2Hitbox1IndexMem					; |
+		STA !P2Hitbox2IndexMem					; |
 		SEP #$20						;/
 
 		LDA !P2DashSmoke : BEQ .NoSmoke
@@ -163,21 +165,19 @@ namespace Kadaal
 
 
 	CONTROLS:
-
 		JSL CORE_COYOTE_TIME
 
 		LDA !P2Headbutt : BEQ .NoHeadbutt	;\
 		LDA !P2Direction			; |
 		AND #$01				; |
-		EOR #$01				; |
-		INC A					; | force forward input during headbutt
-		TSB $6DA3				; |
-		EOR #$03				; |
-		TRB $6DA3				; |
+		EOR #$01				; | force forward input during headbutt
+		INC A					; |
+		TSB $15					; |
+		EOR #$03 : TRB $15			; |
 		.NoHeadbutt				;/
 
 
-		LDA $6DA7				;\
+		LDA $16					;\
 		AND #$03 : BEQ .NoPunchDashCancel	; |
 		CMP #$03 : BEQ .NoPunchDashCancel	; | end punch on left/right press
 		STZ !P2Punch				; |
@@ -187,7 +187,7 @@ namespace Kadaal
 		LDA !P2InAir : BNE .NoForceCrouch	;\
 		JSL CORE_CHECK_ABOVE			; |
 		BCC .NoForceCrouch			; | force down input if kadaal is on ground with a solid block above
-		LDA #$04 : TSB $6DA3			; |
+		LDA #$04 : TSB $15			; |
 		LDA #$01 : STA !P2ShellSlide
 		.NoForceCrouch				;/
 
@@ -209,7 +209,7 @@ namespace Kadaal
 		PHX
 		PEA PHYSICS-1
 
-		LDA !P2HurtTimer : BEQ $03 : JMP .Friction
+		LDA !P2HurtTimer : BEQ $03 : JMP .Friction_main	; go to friction without shell slide check
 
 		LDA !P2Climbing : BEQ $03 : JMP .NoDuck
 
@@ -224,8 +224,8 @@ namespace Kadaal
 	+	STZ !P2Headbutt					; end headbutt
 		STZ !P2Punch					; end punch
 		LDA !P2Ducking : BNE .Throw
-		BIT $6DA9 : BMI .Throw
-		BIT $6DA3 : BVS .NoThrow
+		BIT $18 : BMI .Throw
+		BIT $15 : BVS .NoThrow
 		LDA #$08 : STA !P2Throw
 		LDA #!Kad_Throw : STA !P2Anim
 		STZ !P2AnimTimer
@@ -234,7 +234,7 @@ namespace Kadaal
 		LDA #$0A : STA $3230,x
 		LDA !P2Direction : TAY
 		EOR #$01 : STA $3320,x
-		LDA $6DA3
+		LDA $15
 		AND #$04 : BEQ ..throw
 		..drop
 		LDA #$09 : STA $3230,x
@@ -267,16 +267,15 @@ namespace Kadaal
 		BRA ..NoDir
 
 	..BackDash
-		LDA $6DA9
+		LDA $18
 		AND #$30 : BEQ .NoBackDash
 		AND #$10 : BEQ +
 		LDA !P2Direction				; R is perfect pivot
 		INC A
-		TSB $6DA3
-		EOR #$03
-		TRB $6DA3
+		TSB $15
+		EOR #$03 : TRB $15
 	+	LDA #$10 : STA !P2BackDash
-		LDA $6DA3
+		LDA $15
 		AND #$03 : BEQ +
 		CMP #$03 : BEQ +
 		DEC A
@@ -291,19 +290,19 @@ namespace Kadaal
 		STZ !P2Punch
 		STZ !P2Senku
 	..NoDir	LDA #$0F					;\
-		TRB $6DA3					; | clear directionals during back dash
-		TRB $6DA7					;/
+		TRB $15						; | clear directionals during back dash
+		TRB $16						;/
 		LDA #$01 : STA !P2Dashing
 		.NoBackDash
 
 
 		.ShellSlide					;\
-		LDA $6DA3					; |
+		LDA $15						; |
 		AND #$04 : BNE +				; |
 		LDA !P2ShellSlide : BEQ ++			; |
 		LDA #$01 : STA !P2Dashing			; > shell slide can be canceled into a dash
-	++	STZ !P2ShellSlide				; |
-		STZ !P2ShellSpeed				; |
+		STZ !P2ShellSlide				; |
+	++	STZ !P2ShellSpeed				; |
 		BRA .NoGround					; |
 	+	LDA !P2ShellSlide : BEQ .NoGround		; |
 	-	JSR .GSpin					; > Hook ground spin here
@@ -322,8 +321,8 @@ namespace Kadaal
 		JSL CORE_ACCEL_X				; |
 		LDA #$01 : STA !P2ShellSpeed			; |
 		LDA #$03					; |
-		TRB $6DA3					; |
-		TRB $6DA7					; |
+		TRB $15						; |
+		TRB $16						; |
 	-	JMP .NoDuck					; |
 		.NoGround					;/
 
@@ -333,12 +332,12 @@ namespace Kadaal
 	+	LDA !P2Blocked
 		LDY !P2Platform
 		BEQ $02 : ORA #$04
-		AND $6DA3
+		AND $15
 		AND #$04 : BEQ .NoDuck
-		BIT $6DA7
+		BIT $16
 		BPL $03 : JMP .SenkuJump
 		LDA !P2Senku : BEQ +			;\
-		LDA $6DA7				; | must press (not hold) down to cancel senku (this allows senku out of shell slide)
+		LDA $16					; | must press (not hold) down to cancel senku (this allows senku out of shell slide)
 		AND #$04 : BEQ .NoDuck			; |
 		+					;/
 
@@ -362,13 +361,13 @@ namespace Kadaal
 		STZ !P2Dashing
 		STZ !P2Senku
 	.GSpin	LDA !P2ShellSpin : BNE .SpinR		;\
-		BIT $6DA7 : BVC .SpinR			; | ground spin
+		BIT $16 : BVC .SpinR			; | ground spin
 		.StartSpin				; > JSR here to start spin
 		LDA #$10 : STA !P2ShellSpin		; |
 		LDA #!Kad_Spin : STA !P2Anim		; |
 		LDA #$3E : STA !SPC4			; | > spin SFX
-		LDA #$40 : TRB $6DA7
-		TRB $6DA3
+		LDA #$40 : TRB $16
+		TRB $15
 		TRB !P2Buffer
 	;	STZ !P2Hitbox1IndexMem1			; |
 	;	STZ !P2Hitbox1IndexMem2			; |
@@ -391,10 +390,10 @@ namespace Kadaal
 		STA !P2Invinc				;/
 		LDA !KadaalUpgrades			;\
 		AND #$02 : BEQ ..Basic			; | store all-range senku direction if upgrade is attained
-		LDA $6DA3				; |
+		LDA $15					; |
 		AND #$0F : STA !P2AllRangeSenku		;/
 		..Basic
-		LDA $6DA3
+		LDA $15
 		LSR A : BCC +
 		LDA #$01 : STA !P2SenkuDir
 		BRA .ProcessSenku
@@ -442,7 +441,7 @@ namespace Kadaal
 	; shadow step
 	LDA !KadaalUpgrades
 	AND #$08 : BEQ +
-	BIT $6DA9 : BPL +
+	BIT $18 : BPL +
 	LDA !P2Direction
 	ASL A : TAY
 	REP #$20
@@ -466,7 +465,7 @@ namespace Kadaal
 		BNE ++
 		LDA #$01 : STA !P2SenkuUsed
 		++
-		BIT $6DA7 : BPL +
+		BIT $16 : BPL +
 		STZ !P2Invinc
 		JMP .SenkuJump
 	+	RTS
@@ -483,7 +482,7 @@ namespace Kadaal
 		AND #$04					; |
 		BEQ .NoSenku					;/
 
-		BIT $6DA9 : BPL .NoSenku
+		BIT $18 : BPL .NoSenku
 		STZ !P2Climbing					; drop from net/vine
 		LDA !P2ShellSpin : BMI $02 : BNE .NoSenku
 		STZ !P2ShellSlide				;\ end slide
@@ -503,13 +502,13 @@ namespace Kadaal
 
 		LDA !P2Climbing : BEQ .NoClimb			; Check for vine/net climb
 		STZ !P2ShellSlide
-		LDA $6DA3
+		LDA $15
 		LSR A : BCC +
 		LDA #$01 : STA !P2Direction
 		BRA ++
 	+	LSR A : BCC ++
 		STZ !P2Direction
-	++	BIT $6DA7 : BPL +
+	++	BIT $16 : BPL +
 		STZ !P2Climbing					; vine/net jump
 		LDA #$A8 : STA !P2YSpeed
 		LDA #$2B : STA !SPC1				; jump SFX
@@ -540,11 +539,11 @@ namespace Kadaal
 		LDA !P2Water
 		ORA !P2Blocked
 		AND #$08 : BNE ..nojump
-		BIT $6DA7 : BPL ..nojump
+		BIT $16 : BPL ..nojump
 		JMP .SenkuJump
 		..nojump
 
-		LDA $6DA3					;\
+		LDA $15						;\
 		AND #$0F					; | swim speed index
 		TAY						;/
 		LDA !P2YSpeed					;\
@@ -565,13 +564,13 @@ namespace Kadaal
 		BRA +
 
 		.WaterGround
-		LDA $6DA3					;\
+		LDA $15						;\
 		AND #$03					; |
 		TAY						; | underwater dir
 		LDA .SwimDir,y : BMI .NoSwimDir			; |
 		STA !P2Direction				; |
 		.NoSwimDir					;/
-		LDA $6DA3
+		LDA $15
 		AND #$88 : BEQ ..norise
 		BPL ..rise
 		..jump
@@ -617,26 +616,26 @@ namespace Kadaal
 	+++	STZ !P2SenkuUsed				; > no animation
 		LDA $14						;\ only spawn every 128 frames
 		AND #$7F : BNE .NoWater				;/
-		%Ex_Index_X_fast()				;\
-		LDA #$12+!ExtendedOffset : STA !Ex_Num,x	; |
-		LDA !P2YPosLo					; |
-		SEC : SBC #$08					; |
-		STA !Ex_YLo,x					; |
-		LDA !P2YPosHi					; |
-		SBC #$00					; | spawn bubble
-		STA !Ex_YHi,x					; |
-		LDY !P2Direction				; |
+
+		PHB						;\
+		JSL GetParticleIndex				; |
+		LDA.w #!prt_bubble : STA !Particle_Type,x	; |
+		LDA.l !P2YPosLo					; |
+		SEC : SBC #$0008				; |
+		STA !Particle_Y,x				; |
+		PLB						; | spawn bubble
+		LDA !P2Direction				; |
+		AND #$00FF : TAY				; |
 		LDA .BubbleX,y					; |
+		AND #$00FF					; |
 		CLC : ADC !P2XPosLo				; |
-		STA !Ex_XLo,x					; |
-		LDA !P2XPosHi					; |
-		ADC #$00					; |
-		STA !Ex_XHi,x					;/
+		STA !41_Particle_X,x				; |
+		SEP #$30					;/
 		.NoWater
 
 		LDA !P2ShellSlide : BNE ..Skip			; can't punch during shell slide
 		BIT !P2Buffer : BVS +				; skip regular input if buffered
-		BIT $6DA7
+		BIT $16
 		BVS $03
 	..Skip	JMP .NoPunch
 	+	STZ !P2BackDash					; > clear back dash when an attack is started
@@ -675,7 +674,7 @@ namespace Kadaal
 		LDA !P2XSpeed					;\
 		CLC : ADC #$1A					; | headbutt req 1: at least |0x1A| X speed
 		CMP #$34 : BCC .Punch				;/
-		LDA $6DA3					;\
+		LDA $15						;\
 		AND #$03 : BEQ .Punch				; |
 		CMP #$03 : BEQ .Punch				; | headbutt req 2: must hold same direction as moving
 		DEC A						; |
@@ -701,7 +700,7 @@ namespace Kadaal
 
 
 ;		LDA !P2ShellDrill : BEQ .NoDrill		;\
-;		LDA $6DA7					; |
+;		LDA $16						; |
 ;		AND #$08 : BEQ +				; |
 ;		STZ !P2ShellDrill				; | Can cancel drill with up
 ;		LDA #!Kad_Squat : STA !P2Anim			; |
@@ -729,7 +728,7 @@ namespace Kadaal
 		BNE .InitJump					;/
 	+	LDA !P2JumpLag					;\
 		BEQ .ProcessJump				; |
-		BIT $6DA7 : BPL $05				; | allow jump buffer from land lag
+		BIT $16 : BPL $05				; | allow jump buffer from land lag
 		LDA #$80 : TSB !P2Buffer			; |
 		JMP .Friction					;/
 
@@ -743,7 +742,7 @@ namespace Kadaal
 		BEQ .NoJump
 	;	LDA !P2Floatiness		;\
 	;	CMP #$1A : BCS .NoJump		; |
-	;	BIT $6DA3 : BMI .NoJump		; |
+	;	BIT $15 : BMI .NoJump		; |
 	;	STZ !P2Floatiness		; | stop ascent if player lets go of B
 	;	BIT !P2YSpeed : BPL .NoJump	; |
 	;	LDA !P2YSpeed			; |
@@ -754,7 +753,7 @@ namespace Kadaal
 
 		.InitJump
 		LDA !P2Buffer
-		ORA $6DA7
+		ORA $16
 		BPL .NoJump
 		LDA !P2ShellSlide : BNE ..maintainspin	; if not in shell slide...
 		STZ !P2ShellSpin			; ...clear shell spin
@@ -765,7 +764,7 @@ namespace Kadaal
 	;	LDA !P2Punch1				;\
 	;	ORA !P2Punch2				; |
 	;	BEQ .SenkuJump				; | Allow players to buffer jump from punch
-	;	LDA #$80 : STA !P2Buffer			; |
+	;	LDA #$80 : STA !P2Buffer		; |
 	;	BRA .NoJump				;/
 
 		.SenkuJump
@@ -811,10 +810,10 @@ namespace Kadaal
 		CLC : ROL #2
 		EOR #$01
 		INC A					; > 2 = right, 1 = left
-		AND $6DA3 : BEQ .NoDashCancel
+		AND $15 : BEQ .NoDashCancel
 		BRA ++
 
-	+	LDA $6DA3
+	+	LDA $15
 		AND #$03 : BEQ ++
 		CMP #$03 : BNE .NoDashCancel		; end dash if pressing left and right at the same time
 	++	STZ !P2Dashing
@@ -824,7 +823,7 @@ namespace Kadaal
 		AND #$04
 		ORA !P2Platform
 		BEQ +
-		LDA $6DA7
+		LDA $16
 		LSR A : BCC +
 		LDX !P2DashTimerR2 : BEQ +
 		STX !P2Dashing
@@ -837,7 +836,7 @@ namespace Kadaal
 		AND #$04
 		ORA !P2Platform
 		BEQ ++
-		LDA $6DA3
+		LDA $15
 		LSR A
 		BCS .ResetRight
 		LDX #$08 : STX !P2DashTimerR1
@@ -884,7 +883,7 @@ namespace Kadaal
 		AND #$04
 		ORA !P2Platform
 		STA $00
-		LDA $6DA3
+		LDA $15
 		AND #$03
 		CMP #$01 : BEQ .Right
 		CMP #$02 : BEQ .Left
@@ -893,12 +892,12 @@ namespace Kadaal
 		LDA !P2XSpeed			; |
 		CMP #$40 : BCC .Friction	; | no air friction if moving faster than 0x40
 		CMP #$C0+1 : BCS .Friction	; |
-		LDA #$03 : TSB $6DA3		;/
+		LDA #$03 : TSB $15		;/
 
 		.Friction
-		LDA !P2ShellSlide : BEQ +	; return if sliding in shell
+		LDA !P2ShellSlide : BEQ ..main	; return if sliding in shell
 		RTS
-		+
+		..main
 		STZ !P2ShellSpeed
 		LDA !P2Slope
 		CLC : ADC #$04
@@ -1007,11 +1006,13 @@ namespace Kadaal
 	PHYSICS:
 		PLA
 		BMI $03 : STA !P2Direction
-		LDA !P2SlantPipe : BEQ +
+
+		.SlantPipe
+		LDA !P2SlantPipe : BEQ ..done
 		LDA #$40 : STA !P2XSpeed
 		LDA #$C0 : STA !P2YSpeed
 		LDA #$01 : STA !P2Dashing
-		+
+		..done
 
 	.Collisions
 		LDA !P2Blocked
@@ -1021,8 +1022,7 @@ namespace Kadaal
 		LDA !P2XSpeed : BEQ .NoWall
 		CLC : ROL #2
 		INC A				; 1 = right, 2 = left
-		AND !P2Blocked
-		BEQ .NoWall
+		AND !P2Blocked : BEQ .NoWall
 		STZ !P2Dashing
 		STZ !P2XSpeed
 		BRA .NoWall
@@ -1058,13 +1058,9 @@ namespace Kadaal
 		JSL CORE_SPRITE_INTERACTION
 
 
-	EXSPRITE_INTERACTION:
-		JSL CORE_EXSPRITE_INTERACTION
-
-
 	UPDATE_SPEED:
 		LDA #$03				; gravity when holding B is 3
-		BIT $6DA3				;\ gravity without holding B is 6
+		BIT $15					;\ gravity without holding B is 6
 		BMI $02 : LDA #$06			;/
 		BIT !P2Water				;\ gravity in water is 0
 		BVC $02 : LDA #$00			;/
@@ -1077,7 +1073,7 @@ namespace Kadaal
 		+
 
 		LDX !P2Carry : BEQ .NoCarry
-		JSL CORE_PLUMBER_CARRY		
+		JSL CORE_CARRY		
 		.NoCarry
 
 
@@ -1109,7 +1105,7 @@ namespace Kadaal
 	; landing code
 
 		LDA !P2ShellSpin : BEQ .HardLanding	;\
-		LDA $6DA3				; | if holding down during shell spin, get smooth landing
+		LDA $15					; | if holding down during shell spin, get smooth landing
 		AND #$04 : BNE .LandingDone		;/
 
 		.HardLanding
@@ -1120,7 +1116,7 @@ namespace Kadaal
 		LDA !P2XSpeed				; |
 		BPL $03 : EOR #$FF : INC A		; |
 		CMP #$20 : BCC .LandingDone		; | shell slide check
-	+	LDA $6DA3				; |
+	+	LDA $15					; |
 		AND #$04 : BEQ .LandingDone		; |
 		JSR StartSlide				; |
 		.LandingDone				;/
@@ -1212,7 +1208,7 @@ namespace Kadaal
 		CMP #!Kad_Climb_over : BCC ++
 	+	LDA #!Kad_Climb : STA !P2Anim
 		STZ !P2AnimTimer
-	++	LDA $6DA3
+	++	LDA $15
 		AND #$0F : BNE +
 		STZ !P2AnimTimer
 	+	JMP .HandleUpdate
@@ -1311,7 +1307,7 @@ namespace Kadaal
 		BRA .HandleUpdate
 
 		.OnGround
-		LDA $6DA3
+		LDA $15
 		AND #$03
 		ORA !P2XSpeed
 		BNE .Move
@@ -1441,7 +1437,7 @@ namespace Kadaal
 		STA !FileAddress+0
 		BRA ..update
 		..normalfile
-		LDY.w #!File_Kadaal : JSL !GetFileAddress
+		LDY.w #!File_Kadaal : JSL GetFileAddress
 		..update
 
 
@@ -1517,7 +1513,7 @@ namespace Kadaal
 		LDA.w #ANIM
 		JSL CORE_OUTPUT_HURTBOX
 		PLB
-		RTS
+		RTL
 
 
 
@@ -1554,8 +1550,6 @@ namespace Kadaal
 
 	HITBOX:
 
-		JSL CORE_ATTACK_Setup
-
 		LDA !P2Punch					;\
 		CMP #$04 : BCC +				; | punch timer thresholds
 		CMP #$0D : BCC .Punch				;/
@@ -1576,10 +1570,6 @@ namespace Kadaal
 		.NoSpin						;/
 	;	LDA !P2SenkuSmash : BNE .Dropkick
 
-		STZ !P2Hitbox1IndexMem1				;\
-		STZ !P2Hitbox1IndexMem2				; | clear hitbox index mem if there is no hitbox
-		STZ !P2Hitbox2IndexMem1				; |
-		STZ !P2Hitbox2IndexMem2				;/
 		RTS						; return
 
 		.Punch
@@ -1599,15 +1589,6 @@ namespace Kadaal
 		.Load
 		REP #$20
 		LDA HitboxTable,y : JSL CORE_ATTACK_LoadHitbox
-
-		.ExecuteHitboxes
-		JSL CORE_ATTACK_ActivateHitbox1
-		JSR .GetClipping
-		LDA !P2Hitbox2W					;\
-		ORA !P2Hitbox2H					; | only process hitbox 2 if it actuallly exists
-		BEQ .Return					;/
-		JSL CORE_ATTACK_ActivateHitbox2
-		JSR .GetClipping
 		.Return
 		REP #$20
 		LDA !P2Hitbox1IndexMem1
@@ -1618,107 +1599,9 @@ namespace Kadaal
 		JSL CORE_GET_TILE_Attack			; terrain collision for attack
 		RTS
 
-
-		.GetClipping
-		LDY !P2ActiveHitbox
-		LDA !P2Hitbox1Shield,y : BNE .ClippingFail
-
-		LDX #$0F
-
-		.Loop
-		LDY !P2ActiveHitbox				;\
-		CPX #$08 : BCS +				; |
-		LDA !P2Hitbox1IndexMem1,y : BRA ++		; | check index memory
-	+	LDA !P2Hitbox1IndexMem2,y			; |
-	++	AND CORE_BITS,x : BNE .LoopEnd			;/
-		TXY
-		LDA ($0E),y : BNE .LoopEnd
-		LDA $3230,x					;\
-		CMP #$02 : BEQ .Hit				; | check sprite status
-		CMP #$08 : BCC .LoopEnd				;/
-	.Hit	LDA $0F : PHA					;\
-		JSL !GetSpriteClipping04			; |
-		JSL !CheckContact				; | check contact
-		PLA : STA $0F					; |
-		BCC .LoopEnd					;/
-
-		LDA !ExtraBits,x
-		AND #$08 : BNE .HiBlock
-		.LoBlock
-		LDY $3200,x
-		LDA HIT_TABLE,y : BEQ .LoopEnd
-		BRA .AnyBlock
-		.HiBlock
-		LDY !NewSpriteNum,x
-		LDA HIT_TABLE_Custom,y : BEQ .LoopEnd
-		.AnyBlock
-		ASL A : TAY
-		PEI ($0E)
-		PEA .CallReturn-1
-		REP #$20
-		LDA HIT_Ptr+0,y
-		DEC A
-		PHA
-		SEP #$20
-		LDA CORE_BITS,x
-		CPX #$08 : BCS ..8F
-	..07	ORA !P2Hitbox1IndexMem1
-		STA !P2Hitbox1IndexMem1
-		STA !P2Hitbox2IndexMem1
-		RTS
-	..8F	ORA !P2Hitbox1IndexMem2
-		STA !P2Hitbox1IndexMem2
-		STA !P2Hitbox2IndexMem2
-		.ClippingFail
-		RTS
-
-		.CallReturn
-		REP #$20
-		PLA : STA $0E
-		SEP #$20
-
-		.LoopEnd
-		DEX : BMI $03 : JMP .Loop
-
-		.HammerCheck
-		LDX #!Ex_Amount-1
-		.HammerLoop
-		LDA !Ex_Num,x
-		AND #$7F
-		CMP #$04+!ExtendedOffset : BNE .HammerEnd
-		LDA !Ex_Data3,x
-		LSR A : BCS .HammerEnd
-		LDA !Ex_XLo,x : STA $04				;\ x
-		LDA !Ex_XHi,x : STA $0A				;/
-		LDA !Ex_YLo,x : STA $05				;\ y
-		LDA !Ex_YHi,x : STA $0B				;/
-		LDA #$10 : STA $06				; w
-		STA $07						; h
-		JSL !CheckContact				;\ check for contact
-		BCC .HammerEnd					;/
-		JSL CORE_DISPLAYCONTACT				; contact gfx
-		LDY !P2ActiveHitbox				; Y = hitbox index
-		LDA !P2Hitbox1SFX1,y : BEQ ..skipSFX1		;\
-		STA !SPC1					; | SFX 1
-		..skipSFX1					;/
-		LDA !P2Hitbox1SFX2,y : BEQ ..skipSFX2		;\
-		STA !SPC4					; | SFX 2
-		..skipSFX2					;/
-		LDA !P2Hitbox1XSpeed,y : STA !Ex_XSpeed,x	; x speed
-		LDA !P2Hitbox1YSpeed,y : STA !Ex_YSpeed,x	; y speed
-		LDA !Ex_Data3,x
-		ORA #$01
-		STA !Ex_Data3,x					; hammer belongs to players
-		.HammerEnd
-		DEX
-		BPL .HammerLoop
-
-		RTS
-
-
 	.Smash
 		LDY #$06
-		JMP .Spin
+		BRA .Spin
 
 
 	; Hitbox format is Xdisp (lo+hi), Ydisp (lo+hi), width, height.
@@ -1795,431 +1678,6 @@ namespace Kadaal
 	db $02,$00			; SFX
 	db $00
 
-
-
-	HIT_Ptr:
-	dw HIT_00
-	dw HIT_01
-	dw HIT_02
-	dw HIT_03
-	dw HIT_04
-	dw HIT_05
-	dw HIT_06
-	dw HIT_07
-	dw HIT_08
-	dw HIT_09
-	dw HIT_0A
-	dw HIT_0B
-	dw HIT_0C
-	dw HIT_0D
-	dw HIT_0E
-	dw HIT_0F
-	dw HIT_10
-	dw HIT_11
-	dw HIT_12
-	dw HIT_13
-	dw HIT_14
-	dw HIT_15
-	dw HIT_16
-	dw HIT_17
-	dw HIT_18
-	dw HIT_19
-	dw HIT_1A
-
-	HIT_00:
-		RTS
-
-	HIT_01:
-		; knock out always
-		JMP KNOCKOUT
-
-	HIT_02:
-		; knock out of shell, send shell flying
-		LDA $3230,x
-		CMP #$02 : BEQ .Knockback
-		CMP #$08 : BEQ .Standard
-		CMP #$09 : BEQ .Knockback
-		CMP #$0A : BNE HIT_00
-		LDA $3200,x			;\
-		CMP #$07 : BNE .Knockback	; | shiny shell is immune to attacks
-		LDA #$02 : STA !SPC1		; |
-		RTS				;/
-
-		.Knockback
-		JSL CORE_ATTACK_Main
-		LDA #$09 : STA $3230,x
-		JMP KNOCKBACK
-
-		.Standard
-		LDA $3200,x
-		CMP #$08 : BCC $03
-	-	JMP .Stun
-
-		JSL !GetSpriteSlot		; get new sprite number into Y
-		BMI -				; if there are no empty slots, don't spawn
-
-		LDA $3200,x
-		SEC : SBC #$04
-		STA $3200,y			; store sprite number for new sprite
-		LDA #$08 : STA $3230,y		; > status: normal
-		JSL SPRITE_A_SPRITE_B_COORDS
-		PHX				;\
-		TYX				; | reset tables for new sprite
-		STZ !ExtraBits,x		; |
-		JSL !ResetSprite		; |
-		PLX				;/
-		LDA #$10			;\
-		STA $32B0,y			; | some sprite tables that SMW normally sets
-		STA $32D0,y			; |
-		STA !SpriteDisP1,y		; > don't interact
-		STA !SpriteDisP2,y		; > don't interact
-		LDA #$01 : STA $3310,y		;/
-
-		LDA CORE_BITS,y
-		CPY #$08 : BCS +
-		TSB !P2Hitbox1IndexMem1 : BRA ++
-	+	TSB !P2Hitbox1IndexMem2
-		++
-
-		LDA #$10 : STA $3300,y		; > temporarily disable player interaction
-		LDA $3430,x			;\ copy "is in water" flag from sprite
-		STA $3430,y			;/
-		LDA #$02 : STA $32D0,y		;\ some sprite tables
-		LDA #$01 : STA.w $BE,y		;/
-
-		LDA $3330,x : STA $3330,y
-
-		PHX
-		LDA !P2Direction
-		EOR #$01 : STA $3320,y
-		TAX				; X = new sprite direction
-		LDA CORE_KOOPA_XSPEED,x		; load X speed table indexed by direction
-		STA.w !SpriteXSpeed,y		; store to new sprite X speed
-		PLX
-
-		; applying hitstun here causes the spawn to fail because SMW totally rules dude...
-		LDY !P2ActiveHitbox
-		LDA !P2Hitbox1SFX1,y : BEQ ..skipSFX1
-		STA !SPC1
-		..skipSFX1
-		LDA !P2Hitbox1SFX2,y : BEQ ..skipSFX2
-		STA !SPC4
-		..skipSFX2
-		JSL CORE_DISPLAYCONTACT
-
-
-		.Stun
-		LDA #$09 : STA $3230,x		; > stun sprite
-		LDA $3200,x			;\
-		CMP #$08			; | check if sprite is a Koopa
-		BCC .DontStun			;/
-		LDA #$FF : STA $32D0,x		; > stun if not
-
-		.DontStun
-		LDA CORE_BITS,x
-		CPX #$08 : BCS +
-		TSB !P2Hitbox1IndexMem1 : BRA ++
-	+	TSB !P2Hitbox1IndexMem2
-		++
-
-		RTS
-
-
-	HIT_03:
-		; Knock back and clip wings
-		LDA $3230,x
-		CMP #$08
-		BNE HIT_02_DontStun
-		LDA $3200,x			; Load sprite sprite number
-		SEC : SBC #$08			; Subtract base number of Parakoopa sprite numbers
-		TAY
-		LDA CORE_PARAKOOPACOLOR,y	; Load new sprite number
-		STA $3200,x			; Set new sprite number
-		LDA #$01 : STA $3230,x		; > Initialize sprite
-		JSL CORE_ATTACK_Main
-		JMP KNOCKBACK
-
-	HIT_04:
-		; Knock back and stun
-		LDA $3230,x
-		CMP #$08
-		BEQ .Main
-		CMP #$09
-		BNE HIT_07
-
-		.Main
-		JSL CORE_ATTACK_Main
-		LDA $3200,x
-		CMP #$40
-		BEQ .ParaBomb
-		LDA #$09			;\
-		STA $3230,x			; | Regular Bobomb code (stuns it)
-		BRA .Shared			;/
-
-		.ParaBomb
-		LDA #$0D : STA $3200,x		; > Sprite = Bobomb
-		LDA #$01 : STA $3230,x		; > Initialize sprite
-		JSL $07F7D2			; > Reset sprite tables
-
-		.Shared
-		JMP KNOCKBACK
-
-	HIT_05:
-		; Knock back and stun
-		LDA $3230,x
-		CMP #$08
-		BEQ .Main
-		CMP #$09
-		BNE HIT_07
-
-		.Main
-		JSL CORE_ATTACK_Main
-		LDA #$09 : STA $3230,x
-		LDA #$FF : STA $32D0,x
-		JMP KNOCKBACK
-
-	HIT_06:
-		; Knock back, stun, and clip wings
-		LDA $3230,x
-		CMP #$08
-		BNE HIT_07
-		LDA #$0F : STA $3200,x		; Set new sprite number
-		JSL $07F7D2			; Reset sprite tables
-		BRA HIT_05_Main			; Handle like normal
-
-	HIT_07:
-		; Do nothing
-		RTS
-
-	HIT_08:
-		; Knock out always
-	HIT_09:
-		; Knock out always
-	HIT_0A:
-		; Knock out always
-		JMP KNOCKOUT
-
-	HIT_0B:
-		; Collect
-		PHK : PEA.w .Return-1
-		PEA.w CORE_SPRITE_INTERACTION_RTL-1
-		JML CORE_INT_0B+$03
-		.Return
-		RTS
-
-	HIT_0C:
-		; Knock out if at same depth
-		LDA $3410,x			;\ Don't process interaction while sprite is behind scenery
-		BNE HIT_0D			;/
-		JMP KNOCKOUT
-
-	HIT_0D:
-		; Do nothing
-		RTS
-
-	HIT_0E:
-		; Collapse
-		LDA $32C0,x
-		BNE .Return
-		LDA #$01 : STA $32C0,x
-		LDA #$FF : STA $32D0,x
-		LDA #$07 : STA !SPC1
-		LDY !P2Direction
-		JMP KNOCKBACK_GFX
-
-		.Return
-		RTS
-
-
-	HIT_0F:
-		; Do nothing
-		RTS
-
-	HIT_10:
-		; Stun and damage
-		JSL CORE_ATTACK_Main
-		STZ $3420,x			; Reset unknown sprite table
-		LDA $BE,x			;\
-		CMP #$03			; |
-		BEQ HIT_0F			;/> Return if sprite is still recovering from a stomp
-		INC $32B0,x			; Increment sprite stomp count
-		LDA $32B0,x
-		CMP #$03
-		BEQ .Kill
-		LDA #$03 : STA $BE,x		; Stun sprite
-		LDA #$03 : STA $32D0,x		; Set sprite stunned timer to 3 frames
-		STZ $3310,x			; Reset follow player timer
-		LDY !P2Direction
-		JMP KNOCKBACK_GFX
-
-		.Kill
-		JMP KNOCKOUT
-
-
-	HIT_11:
-		; Do nothing
-		RTS
-
-	HIT_12:
-		; Knock out if emerged
-		LDA $BE,x			;\
-		BEQ .Return			; | Only interact if sprite has emerged from the ground
-		LDA $32D0,x			; |
-		BEQ .Process			;/
-
-		.Return
-		RTS
-
-		.Process
-		JMP KNOCKOUT
-
-
-	HIT_13:
-		; Knock back and damage
-		LDA $3200,x
-		CMP #$6E : BEQ .Large
-
-		.Small
-		JMP KNOCKOUT
-
-		.Large
-		LDA #$6F : STA $3200,x		; Sprite num
-		JSL !LoadTweakers		; Reset sprite tables
-		LDA #$01 : STA $BE,x		; Action: fire breath forward
-		LDA #$FF : STA $32D0,x
-		STZ $33D0,x
-		JMP KNOCKBACK
-
-
-	HIT_14:
-		; Do nothing
-		RTS
-
-	HIT_15:
-		; Knock back and damage
-		LDY $BE,x
-		LDA $3280,x
-		AND #$04 : BNE .Aggro
-		CPY #$01 : BNE +
-		LDA #$20 : STA $32F0,x
-		LDA #$02 : STA $BE,x
-		JMP KNOCKOUT
-	+	LDA #$04 : STA $34D0,x		; Half smush timer
-		BRA .Shared
-
-		.Return
-		RTS
-
-		.Aggro
-		LDA $35D0,x : BNE .Return
-		LDA #$40 : STA $35D0,x
-		LDA $33E0,x
-		BEQ .NoRoar
-		LDA #$01 : STA $33E0,x
-
-		.NoRoar
-		CPY #$02
-		BNE .Shared
-		LDA #$20 : STA $32F0,x
-		JMP KNOCKOUT
-
-		.Shared
-		INC $BE,x
-		JSL CORE_ATTACK_Main
-		LDA $3340,x			;\
-		ORA #$0D			; | Set jump, getup, and knockback flags
-		STA $3340,x			;/
-		LDA $3330,x			;\
-		AND.b #$04^$FF			; | Put sprite in midair
-		STA $3330,x			;/
-		LDA $3280,x			;\
-		AND.b #$08^$FF			; | Clear movement disable
-		STA $3280,x			;/
-		BIT $3280,x			;\
-		BVC .NoChase			; |
-		BIT $3340,x			; |
-		BVS .NoChase			; | Aggro off of being punched
-		LDA !CurrentPlayer		; |
-		CLC : ROL #4			; |
-		ORA #$40			; |
-		ORA $3340,x			; |
-		STA $3340,x			;/
-
-		.NoChase
-		STZ $32A0,x			; > disable hammer
-		JMP KNOCKBACK
-
-
-
-	HIT_16:
-		; Do nothing
-	HIT_17:
-		; Do nothing
-		RTS
-
-	HIT_18:
-		; Knock back without doing damage
-		LDA !P2Direction
-		EOR #$01
-		STA $3320,x
-		JMP KNOCKBACK
-
-
-	HIT_19:
-		; Do nothing
-		RTS
-
-	HIT_1A:
-		; Collect
-		LDA !CurrentPlayer : BNE +
-		LDA $32E0,x : BNE HIT_19
-		BRA ++
-	+	LDA $35F0,x : BNE HIT_19
-	++	PHK : PEA.w .Return-1
-		PEA.w CORE_SPRITE_INTERACTION_RTL-1
-		JML CORE_INT_1A+$03
-		.Return
-		RTS
-
-
-
-
-
-	KNOCKOUT:
-		LDA #$02 : STA $3230,x
-
-		LDY !P2ActiveHitbox
-		LDA !P2Hitbox1Hitstun,y : STA $9D
-		LDA !P2Hitbox1YSpeed,y
-		SEC : SBC #$10
-		STA !SpriteYSpeed,x
-		LDA !P2Hitbox1XSpeed,y : STA !SpriteXSpeed,x
-		LDA !P2Hitbox1SFX1,y : BEQ .SkipSFX1			;\
-		STA !SPC1						; |
-		.SkipSFX1						; | SFX
-		LDA !P2Hitbox1SFX2,y : BEQ .SkipSFX2			; |
-		STA !SPC4						; |
-		.SkipSFX2						;/
-
-		JSL CORE_DISPLAYCONTACT
-		RTS
-
-
-	KNOCKBACK:
-		LDY !P2ActiveHitbox
-		LDA !P2Hitbox1Hitstun,y : STA $9D
-		LDA !P2Hitbox1XSpeed,y : STA !SpriteXSpeed,x
-		LDA !P2Hitbox1YSpeed,y : STA !SpriteYSpeed,x
-		LDA !P2Hitbox1SFX1,y : BEQ .SkipSFX1			;\
-		STA !SPC1						; |
-		.SkipSFX1						; | SFX
-		LDA !P2Hitbox1SFX2,y : BEQ .SkipSFX2			; |
-		STA !SPC4						; |
-		.SkipSFX2						;/
-
-		.GFX
-		JSL CORE_DISPLAYCONTACT
-		RTS
 
 
 
@@ -3097,42 +2555,6 @@ print "  - tilemap data:  $", hex(.IdleDynamo0-.IdleTM), " bytes (", dec((.IdleD
 print "  - dynamo data:   $", hex(.ClippingStandard-.IdleDynamo0), " bytes (", dec((.ClippingStandard-.IdleDynamo0)*100/(.End-ANIM)), "%)"
 print "  - clipping data: $", hex(.End-.ClippingStandard), " bytes (", dec((.End-.ClippingStandard)*100/(.End-ANIM)), "%)"
 
-
-
-;			   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |			|
-;	LO NYBBLE	   |YY0|YY1|YY2|YY3|YY4|YY5|YY6|YY7|YY8|YY9|YYA|YYB|YYC|YYD|YYE|YYF|	HI NYBBLE	|
-;	--->		   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |			V
-
-HIT_TABLE:		db $01,$01,$01,$01,$02,$02,$02,$02,$03,$03,$03,$03,$03,$04,$00,$05	;| 00X
-			db $06,$02,$00,$01,$01,$08,$08,$00,$08,$00,$00,$07,$09,$07,$0A,$0A	;| 01X
-			db $07,$0B,$0C,$0C,$0C,$0C,$07,$07,$07,$00,$07,$07,$00,$00,$07,$0D	;| 02X
-			db $0E,$0E,$0E,$07,$07,$00,$00,$07,$07,$07,$07,$07,$07,$01,$0D,$06	;| 03X
-			db $04,$0F,$0F,$0F,$07,$00,$10,$00,$07,$0F,$11,$0A,$00,$12,$12,$01	;| 04X
-			db $01,$0A,$00,$00,$00,$0F,$0F,$0F,$0F,$00,$00,$0F,$0F,$0F,$0F,$00	;| 05X
-			db $00,$0F,$0F,$0F,$00,$07,$07,$07,$07,$00,$00,$00,$00,$00,$13,$13	;| 06X
-			db $00,$01,$01,$01,$1A,$1A,$1A,$1A,$1A,$00,$00,$11,$00,$00,$00,$00	;| 07X
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 08X
-			db $00,$10,$10,$10,$10,$10,$00,$10,$10,$07,$07,$0A,$0F,$00,$07,$14	;| 09X
-			db $00,$07,$02,$00,$07,$07,$07,$00,$07,$07,$07,$15,$00,$00,$07,$16	;| 0AX
-			db $07,$00,$07,$07,$07,$00,$07,$17,$17,$00,$0F,$0F,$00,$01,$0A,$18	;| 0BX
-			db $0F,$00,$01,$07,$0F,$07,$00,$00,$00					;| 0CX
-
-.Custom			db $00,$00,$00,$00,$00,$00,$00,$07,$00,$00,$00,$00,$00,$00,$00,$00	;| 10X
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 11X
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 12X
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 13X
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 14X
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 15X
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 16X
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 17X
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 18X
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 19X
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 1AX
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 1BX
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 1CX
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 1DX
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 1EX
-			db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	;| 1FX
 
 
 

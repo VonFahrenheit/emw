@@ -58,7 +58,7 @@
 		BRA ++
 	+	ASL A
 		EOR #$1F
-	++	JSL !MixRGB_Upload
+	++	JSL MixRGB_Upload
 		RTL
 
 

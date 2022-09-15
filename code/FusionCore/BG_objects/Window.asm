@@ -19,19 +19,19 @@
 		PHX
 		PHP
 		PHB : PHK : PLB
-		LDA #$0312 : JSL !ChangeMap16
+		LDA #$0312 : JSL ChangeMap16
 		LDA $9A
 		CLC : ADC #$0010
 		STA $9A
-		LDA #$0313 : JSL !ChangeMap16
+		LDA #$0313 : JSL ChangeMap16
 		LDA $98
 		CLC : ADC #$0010
 		STA $98
-		LDA #$0323 : JSL !ChangeMap16
+		LDA #$0323 : JSL ChangeMap16
 		LDA $9A
 		SEC : SBC #$0010
 		STA $9A
-		LDA #$0322 : JSL !ChangeMap16
+		LDA #$0322 : JSL ChangeMap16
 		PLB
 		PLP
 		PLX

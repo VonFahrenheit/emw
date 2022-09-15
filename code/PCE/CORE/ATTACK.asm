@@ -125,27 +125,25 @@ ATTACK:
 
 	.ActivateHitbox1					;\
 		REP #$20					; |
-		LDA !P2Hitbox1Y					; |
-		STA $01						; |
-		STA $08						; |
-		LDA !P2Hitbox1W : STA $02			; | prepare hitbox 1 for contact check
-		LDA !P2Hitbox1X					; |
-		SEP #$20					; |
-		STA $00						; |
-		XBA : STA $08					; |
+		LDA !P2Hitbox1X : STA $E0			; |
+		LDA !P2Hitbox1Y : STA $E2			; |
+		LDA !P2Hitbox1W					; | prepare hitbox 1 for contact check
+		AND #$00FF : STA $E4				; |
+		LDA !P2Hitbox1H					; |
+		AND #$00FF : STA $E6				; |
+		SEP #$20					;/
 		STZ !P2ActiveHitbox				; > index = hitbox 1
 		BRA .CheckShield
 
 	.ActivateHitbox2					;\
 		REP #$20					; |
-		LDA !P2Hitbox2Y					; |
-		STA $01						; |
-		STA $08						; |
-		LDA !P2Hitbox2W : STA $02			; | prepare hitbox 2 for contact check
-		LDA !P2Hitbox2X					; |
-		SEP #$20					; |
-		STA $00						; |
-		XBA : STA $08					; |
+		LDA !P2Hitbox2X : STA $E0			; |
+		LDA !P2Hitbox2Y : STA $E2			; |
+		LDA !P2Hitbox2W					; | prepare hitbox 1 for contact check
+		AND #$00FF : STA $E4				; |
+		LDA !P2Hitbox2H					; |
+		AND #$00FF : STA $E6				; |
+		SEP #$20					;/
 		LDA.b #!P2Hitbox2Offset : STA !P2ActiveHitbox	; > index = hitbox 2
 
 	.CheckShield
@@ -154,15 +152,16 @@ ATTACK:
 		LDA !ShieldExists : BEQ ..return		; return if no shields exist
 		LDX #$5A					; loop index
 		REP #$20					; A 16-bit
-	..loop	LDA !ShieldW,x : BEQ ..next			;\
-		STA $06						; |
-		LDA !ShieldY,x : STA $0A			; |
-		XBA : STA $04					; |
-		LDA !ShieldX,x					; |
-		SEP #$20					; | check for shield contact
-		STA $04						; |
-		XBA : STA $0A					; |
-		JSL !CheckContact				; |
+
+		..loop
+		LDA !ShieldW,x : BEQ ..next			;\ > this checks both W and H
+		AND #$00FF : STA $EC				; |
+		LDA !ShieldH,x					; |
+		AND #$00FF : STA $EE				; |
+		LDA !ShieldX,x : STA $E8			; | check for shield contact
+		LDA !ShieldY,x : STA $EA			; |
+		SEP #$20					; |
+		JSL CheckContact				; |
 		REP #$20					; |
 		BCC ..next					;/
 
@@ -171,7 +170,8 @@ ATTACK:
 		LDA #$01 : STA !P2Hitbox1Shield,y		; |
 		RTL						;/
 
-	..next	TXA						;\
+		..next						;\
+		TXA						; |
 		SEC : SBC #$0006				; | loop
 		TAX						; |
 		BCS ..loop					;/

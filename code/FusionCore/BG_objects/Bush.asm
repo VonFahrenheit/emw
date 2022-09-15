@@ -7,7 +7,7 @@
 		STA.l !BigRAM					; > save this here for interaction check
 		BNE .HandleAnimation				;/
 
-		JSR CheckInteract : BCC .Return			;\
+		JSR CheckMovement : BCC .Return			;\
 		SEP #$20					; |
 		LDA #$0F : STA !BG_object_Timer,x		; | start animation if something touches the bush
 		REP #$20					; |
@@ -17,7 +17,7 @@
 
 		.HandleAnimation				;\
 		..spawnparticle					; | check for particle spawn conditions
-		JSR CheckInteract : BCC ..particledone		;/
+		JSR CheckMovement : BCC ..particledone		;/
 		AND #$00FF					;\
 		ASL #2						; |
 		CMP #$0200					; | X speed of particle
@@ -26,7 +26,7 @@
 		LDA !BG_object_X,x : STA $00			;\
 		LDA !BG_object_Y,x : STA $02			; |
 		PHX						; |
-		JSL !GetParticleIndex				; > (returns with 16-bit A)
+		JSL GetParticleIndex				; > (returns with 16-bit A)
 		LDA #$00FF : STA !Particle_Timer,x		; |
 		LDA #$0008 : STA !Particle_YAcc,x		; |
 		LDA.l !RNG					; |

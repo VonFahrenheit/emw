@@ -83,30 +83,30 @@
 ;	- note that any value $80-$FE will fade out the music
 ;	- a value of $FF should not be used
 ;
-;	portrait(name, X)
-;	- takes a character name (starts with upper case), and a value 0-1
-;	- value is horizontal flip (0 = right side, 1 = left side)
+;	portrait(name, side)
+;	- takes a character name (starts with upper case), and a side
+;	- side is "right" or "left"
 ;	- uses the neutral version of a portrait
 ;
 ;	noportrait()
 ;	- takes no input
 ;	- removes portrait
 ;
-;	expression(name, expression, X)
-;	- takes a character name (starts with upper case), an expression, and a value 0-1
-;	- value is horizontal flip (0 = right side, 1 = left side)
+;	expression(name, expression, side)
+;	- takes a character name (starts with upper case), an expression, and a side
+;	- side is "right" or "left"
 ;	- expressions: "neutral", "happy", "angry", "distressed", "sad"
 ;	- this command will display a variation of a portrait
 ;
-;	playerportrait(X)
-;	- takes a value
-;	- value is horizontal flip (0 = right side, 1 = left side)
+;	playerportrait(side)
+;	- takes a side
+;	- side is "right" or "left"
 ;	- loads the portrait of the character currently in play
 ;	- uses the neutral expression
 ;
-;	playerexpression(expression, X)
-;	- takes an expression and a value
-;	- value is horizontal flip (0 = right side, 1 = left side)
+;	playerexpression(expression, side)
+;	- takes an expression and a side
+;	- side is "right" or "left"
 ;	- loads the portrait of the character currently in play, with the specified expression
 ;	- expressions: "neutral", "happy", "angry", "distressed", "sad"
 ;
@@ -341,9 +341,9 @@ macro music(song)
 		db $F3,<song>
 		endmacro
 
-macro portrait(index, xflip)
+macro portrait(index, side)
 		db $F4
-	if <xflip> == 0
+	if !<side> == 0
 		db !port_<index>
 	else
 		db !port_<index>|$40
@@ -354,9 +354,9 @@ macro noportrait()
 		db $F4,$00
 		endmacro
 
-macro expression(index, expression, xflip)
+macro expression(index, expression, side)
 		db $F1
-	if <xflip> == 0
+	if !<side> == 0
 		db !port_<index>
 	else
 		db !port_<index>|$40
@@ -364,16 +364,16 @@ macro expression(index, expression, xflip)
 		db !<expression>
 		endmacro
 
-macro playerportrait(xflip)
-	if <xflip> == 0
+macro playerportrait(side)
+	if !<side> == 0
 		db $EC
 	else
 		db $ED
 		endif
 		endmacro
 
-macro playerexpression(expression, xflip)
-	if <xflip> == 0
+macro playerexpression(expression, side)
+	if !<side> == 0
 		db $EE
 	else
 		db $EF

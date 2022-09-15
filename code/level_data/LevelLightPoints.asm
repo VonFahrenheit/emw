@@ -18,7 +18,6 @@
 ;		$080 = $0.80, meaning one half, or 0.5
 ;		$200 = $2.00, meaning 2.0, and so on
 
-	LightPoints:
 		;	    --X--	--Y--		R     G     B    size  level
 		%LightPoint(43,		34,		$140, $0C0, $080, $100, $02A)
 		%LightPoint(103,	22,		$140, $0C0, $080, $180, $02A)
@@ -29,6 +28,6 @@
 
 
 
-		.End
+		..end
 		; don't mess with this label
 

@@ -94,8 +94,7 @@
 		STZ !P1CoinIncrease				;\ clear coin increase
 		STZ !P2CoinIncrease				;/
 
-		STZ !P1Dead					;\
-		LDX #$7F					; |
+		LDX #$7F					;\
 	-	STZ !P2Base-$80,x				; | revive and reset players
 		STZ !P2Base,x					; |
 		DEX : BPL -					;/
@@ -158,8 +157,10 @@
 		LDA !LevelTable1+$00
 		AND #$40 : STA !LoadCheckpoint
 		STZ !Translevel					;
-		LDA #$81 : STA $4200				; enable joypad but keep interrupts disabled
-		JML ReturnLoad					; return
+		LDA #$81					;\
+	-	BIT $4212 : BMI - : BVS -			; | wait for no blanks, then enable NMI + auto joypad
+		STA $4200					;/
+		RTL						; return
 
 		.LoadAirship
 		LDA #$F0 : STA $6DB0
@@ -167,8 +168,10 @@
 		LDA.b #!IntroLevel_Airship : STA $6109		; intro level (translevel num... but only kind of...)
 		LDA.b #!IntroLevel_Airship>>8 : STA $7F11	; set hi bit of intro level num
 		STZ !Translevel					;
-		LDA #$81 : STA $4200				; enable joypad but keep interrupts disabled
-		JML ReturnLoad					; return
+		LDA #$81					;\
+	-	BIT $4212 : BMI - : BVS -			; | wait for no blanks, then enable NMI + auto joypad
+		STA $4200					;/
+		RTL						; return
 
 
 	; $00A0B0 is the actual load overworld code in all.log
@@ -564,7 +567,6 @@
 	; otherwise the player could get soft-locked by resetting the game during the cutscene...
 		.CannonCutscene
 		LDA !StoryFlags+$00
-	STZ $7FFF
 		AND #$00FF
 		CMP #$0003 : BNE ..done
 		SEP #$20
@@ -641,8 +643,6 @@
 		JSL !DecompressFile
 		PLX
 		DEX #4 : BPL -
-
-	STZ $7FFF
 
 
 	; apply overworld events
@@ -1023,8 +1023,10 @@
 		LDA #$02 : STA $6D9B					; disable level IRQ
 		STZ !HDMA						; enable HDMA??? for window???
 		INC !GameMode						; go to game mode 0D
-		LDA #$81 : STA $4200					; enable NMI and joypad
-		JML ReturnLoad						; return
+		LDA #$81						;\
+	-	BIT $4212 : BMI - : BVS -				; | wait for no blanks, then enable NMI + auto joypad
+		STA $4200						;/
+		RTL							; return
 
 
 

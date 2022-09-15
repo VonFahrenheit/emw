@@ -26,11 +26,9 @@ COLLISION:
 
 
 		LDA !Map16ActsLike+0 : STA $06		;\
-		LDA !Map16ActsLike+1 : STA $07		; |
-		LDA !Map16ActsLike40+0 : STA $09	; | 24-bit pointers to map16 acts like tables
-		LDA !Map16ActsLike40+1			; |
-		ORA #$0080				; |
-		STA $0A					;/
+		LDA !Map16ActsLike+1 : STA $07		; | 24-bit pointers to map16 acts like tables
+		LDA !Map16ActsLike40+0 : STA $09	; |
+		LDA !Map16ActsLike40+1 : STA $0A	;/
 
 		LDA #$FFFF				;\
 		STA !BigRAM+0				; | default slope push coords
@@ -82,7 +80,7 @@ COLLISION:
 		+					;/
 
 		LDA #$F0 : STA $00			;\
-		LDA $5D					; | max X
+		LDA !Map16Width				; | max X
 		DEC A					; |
 		STA $01					;/
 		REP #$20				;\
@@ -179,7 +177,7 @@ COLLISION:
 		.NoWaterSplash
 
 		LDA !P2Blocked				;\
-		AND $6DA7				; | drop down: must be on ground and press down this frame
+		AND $16					; | drop down: must be on ground and press down this frame
 		AND #$04 : BEQ .NoDropDown		;/
 		LDA !P2DropDownTimer : BNE +		;\
 		LDA #$0F : BRA ++			; |
@@ -192,10 +190,10 @@ COLLISION:
 		LDX !BigRAM+$20 : BEQ .ClearClimb	; check can climb flags
 		LDA !P2InAir : BEQ .ClearClimb		; can't climb if touching ground
 		LDA !P2Climbing : BNE +			; skip up check if already climbing
-		LDA $6DA3				;\ start climbing with up if eligible
+		LDA $15					;\ start climbing with up if eligible
 		AND #$0C : BEQ .NoClimb			;/
 	+	STX !P2Climbing				;\
-		LDA $6DA3				; |
+		LDA $15					; |
 		AND #$0F : TAX				; | climb speed
 		LDA .ClimbSpeedX,x : STA !P2XSpeed	; |
 		LDA .ClimbSpeedY,x : STA !P2YSpeed	;/
@@ -679,13 +677,11 @@ macro GetActsLike()
 		LDA $410000,x : XBA			; |
 		LDA $400000,x				;/
 		REP #$20				;\
-		ASL A : BMI ?block40			; |
+		ASL A : TAY				; |
+		BMI ?block40				; |
 	?block00:					; |
-		TAY					; |
-		LDA [$06],y				; | get acts like setting
-		BRA ?W					; |
+		LDA [$06],y : BRA ?W			; | get acts like setting
 	?block40:					; |
-		AND #$7FFF : TAY			; |
 		LDA [$09],y				; |
 	?W:	STA $0C					; > write to $0C
 		SEP #$10				;/
@@ -790,10 +786,8 @@ endmacro
 ; 2F-37 ----
 ; 38 checkpoint
 ; 39-44 ----
-; 45 red fruit
-; 46 pink fruit
-; 47 green fruit
-; 48-69 ----
+; 45-48 extra invisible blocks
+; 49-69 ----
 ; 6A green ! block
 ; 6B yellow ! block
 ; 6C blue ! block
@@ -888,8 +882,7 @@ endmacro
 
 macro BounceSprite(num, tile)
 	LDA.b #<tile> : STA $9C
-	LDA.b #<num>+!BounceOffset
-	JSR BOUNCE_SPRITE
+	LDA.b #<num> : JSR BOUNCE_SPRITE
 endmacro
 
 
@@ -898,6 +891,8 @@ endmacro
 		LDA $0C					; A = map16 acts like setting
 		CMP #$002F : BCS $03 : JMP .Pointer1	; 000-02D: pointer 1
 		CMP #$0038 : BEQ .Midway		; 038: midway
+		CMP #$0045 : BCC .EmptyTile		;\ 045-048: extra invisible ?blocks
+		CMP #$0049 : BCC .ExtraInvisBlock	;/
 		CMP #$006A : BCC .EmptyTile		;\ 02E-037 and 039-069: empty
 		CMP #$0073 : BCS $03 : JMP .Pointer2	;/ 06A-072: pointer 2
 		CMP #$0100 : BCC .TilesetSpecific	; 073-0FF: tileset-specific
@@ -914,6 +909,29 @@ endmacro
 		.EmptyTile
 		SEP #$20
 		RTS
+
+		.ExtraInvisBlock
+		CPY #$06 : BNE .EmptyTile		; only head point can interact
+		BIT $0E-1 : BPL .EmptyTile
+		SEP #$20
+		CMP #$45 : BEQ ..mushroom
+		CMP #$46 : BEQ ..lifeshroom
+		CMP #$47 : BEQ ..vine
+	;	CMP #$48 : BEQ ..star
+		..star					;\ spawn star
+		JMP .Block_Star				;/
+		..mushroom				;\ spawn mushroom
+		JMP .Block_Mushroom			;/
+		..lifeshroom				;\ spawn life shroom
+		JMP .Block_LifeShroom			;/
+		..vine					;\
+		LDA #$79 : STA $04			; | spawn 1 vine
+		STZ $05					; |
+		JMP .Block_spawn			;/
+
+
+
+
 
 		.TilesetSpecific
 		JMP .TilesetHandler
@@ -1300,9 +1318,9 @@ endmacro
 		CMP $0C : BPL ..r
 
 	+	LDA $05 : STA !P2Slope				;\ PCE slope
-		LDX !P2Character : BNE +			;/
-		STA $73EE					;\ mario slopes
-		LDA $04 : STA !MarioSlope			;/
+	;	LDX !P2Character : BNE +			;/
+	;	STA $73EE					;\ mario slopes
+	;	LDA $04 : STA !MarioSlope			;/
 	+	LDA $7694 : STA $7693				; conveyor data
 		BIT #$40 : BEQ $03 : JMP .Lava			; go to lava if lava slope flag set
 
@@ -1577,22 +1595,22 @@ endmacro
 		dw .Block_DirectionalCoin	; 114
 		dw .NoteBlock			; 115
 		dw .BouncyNoteBlock		; 116
-		dw .Brick_Flower		; 117
-		dw .Brick_Feather		; 118
+		dw .Brick_Mushroom		; 117
+		dw .Brick_LifeShroom		; 118
 		dw .Brick_Star			; 119
 		dw .Brick_VariableItem		; 11A
 		dw .Brick_MultipleCoins		; 11B
 		dw .Brick_Coin			; 11C
 		dw .Brick_VariableP		; 11D
 		dw .Brick_Empty			; 11E
-		dw .Block_Flower		; 11F
-		dw .Block_Feather		; 120
+		dw .Block_Mushroom		; 11F
+		dw .Block_LifeShroom		; 120
 		dw .Block_Star			; 121
 		dw .Block_Star2			; 122
 		dw .Block_MultipleCoins		; 123
 		dw .Block_Coin			; 124
 		dw .Block_VariableItem		; 125
-		dw .Block_1Up			; 126
+		dw .Block_GoldMushroom		; 126
 		dw .Block_GreenShell		; 127
 		dw .Block_GreenShell		; 128
 		dw .Brick_Fakeout		; 129
@@ -1629,39 +1647,26 @@ endmacro
 		.CarryableBrick
 		CPY #$06 : BCC +
 	..solid	JMP .SetBlocked
-	+	BIT $6DA7 : BVC ..solid
-		LDA !P2Character : BEQ ..mario
-		CMP #$01 : BNE ..solid
-		..luigi
+	+	BIT $16 : BVC ..solid
 		LDA !P2Carry : BNE ..solid
-		BRA ..takeblock
-		..mario
-		LDA $748F : BNE ..solid
 		..takeblock
 		LDX #$0F
-	-	LDA $3230,x : BEQ +
+	-	LDA !SpriteStatus,x : BEQ +
 		DEX : BPL -
 		BRA ..solid
-	+	LDA #$53 : STA $3230,x
+	+	LDA #$53 : STA !SpriteStatus,x
 		STZ !ExtraBits,x
 		JSL !InitSpriteTables
-		LDA #$0B : STA $3230,x
-		LDA !P2XPosLo : STA $3220,x
-		LDA !P2XPosHi : STA $3250,x
-		LDA !P2YPosLo : STA $3210,x
-		LDA !P2YPosHi : STA $3240,x
+		LDA #$0B : STA !SpriteStatus,x
+		LDA !P2XPosLo : STA !SpriteXLo,x
+		LDA !P2XPosHi : STA !SpriteXHi,x
+		LDA !P2YPosLo : STA !SpriteYLo,x
+		LDA !P2YPosHi : STA !SpriteYHi,x
 		LDA #$FF : STA $32D0,x
-		LDA !P2Character : BEQ ..setmario
-		..setluigi
-		LDA #$09 : STA $3230,x
+		LDA #$09 : STA !SpriteStatus,x
 		INX : STX !P2Carry
 		LDA #$08 : STA !P2PickUp
-		BRA ++
-		..setmario
-		LDA #$08
-		STA $7498
-		STA $748F
-	++	JMP REMOVE_TILE
+		JMP REMOVE_TILE
 
 
 		.Water
@@ -1731,7 +1736,7 @@ endmacro
 		.Door
 		LDA $0F						;\ player must be on ground this frame
 		AND #$04 : BEQ ..r				;/
-		LDA $6DA7					;\ player must press up this frame
+		LDA $16						;\ player must press up this frame
 		AND #$08 : BEQ ..r				;/
 		CPY #$07 : BNE ..r				; > has to touch with center point
 
@@ -1797,19 +1802,17 @@ endmacro
 		..collect
 		STA $98
 		LDA !YoshiCoinCount
-		INC A
-		STA !YoshiCoinCount
+		INC A : STA !YoshiCoinCount
 		SEP #$20
 		JSL SET_GLITTER_Map16
 	;	LDA #$B4 : STA !P2FlashPal	; flash gold
 		LDA #$1C : STA !SPC1		; yoshi coin SFX
 	;	RTS
 
-	!CoinSpinTime = $3F
 
 		PHY
 		PHB
-		JSL !GetParticleIndex
+		JSL GetParticleIndex
 		LDA $9A : STA !Particle_XSpeed,x
 		LDA $98 : STA !Particle_YSpeed,x
 		SEP #$20
@@ -1817,9 +1820,8 @@ endmacro
 		LSR A
 		ROR A
 		STA !Particle_YAcc,x
-		LDA #!CoinSpinTime : STA !Particle_Timer,x
 		LDA #!prt_coinglitter : STA !Particle_Type,x
-		JSL !GetParticleIndex
+		JSL GetParticleIndex
 		LDA $9A : STA !Particle_XSpeed,x
 		LDA $98 : STA !Particle_YSpeed,x
 		SEP #$20
@@ -1828,9 +1830,8 @@ endmacro
 		LSR A
 		ROR A
 		STA !Particle_YAcc,x
-		LDA #!CoinSpinTime : STA !Particle_Timer,x
 		LDA #!prt_coinglitter : STA !Particle_Type,x
-		JSL !GetParticleIndex
+		JSL GetParticleIndex
 		LDA $9A : STA !Particle_XSpeed,x
 		LDA $98 : STA !Particle_YSpeed,x
 		SEP #$20
@@ -1839,9 +1840,8 @@ endmacro
 		LSR A
 		ROR A
 		STA !Particle_YAcc,x
-		LDA #!CoinSpinTime : STA !Particle_Timer,x
 		LDA #!prt_coinglitter : STA !Particle_Type,x
-		JSL !GetParticleIndex
+		JSL GetParticleIndex
 		LDA $9A : STA !Particle_XSpeed,x
 		LDA $98 : STA !Particle_YSpeed,x
 		SEP #$20
@@ -1850,9 +1850,8 @@ endmacro
 		LSR A
 		ROR A
 		STA !Particle_YAcc,x
-		LDA #!CoinSpinTime : STA !Particle_Timer,x
 		LDA #!prt_coinglitter : STA !Particle_Type,x
-		JSL !GetParticleIndex
+		JSL GetParticleIndex
 		LDA $9A : STA !Particle_XSpeed,x
 		LDA $98 : STA !Particle_YSpeed,x
 		SEP #$20
@@ -1861,9 +1860,8 @@ endmacro
 		LSR A
 		ROR A
 		STA !Particle_YAcc,x
-		LDA #!CoinSpinTime : STA !Particle_Timer,x
 		LDA #!prt_coinglitter : STA !Particle_Type,x
-		JSL !GetParticleIndex
+		JSL GetParticleIndex
 		LDA $9A : STA !Particle_XSpeed,x
 		LDA $98 : STA !Particle_YSpeed,x
 		SEP #$20
@@ -1872,9 +1870,8 @@ endmacro
 		LSR A
 		ROR A
 		STA !Particle_YAcc,x
-		LDA #!CoinSpinTime : STA !Particle_Timer,x
 		LDA #!prt_coinglitter : STA !Particle_Type,x
-		JSL !GetParticleIndex
+		JSL GetParticleIndex
 		LDA $9A : STA !Particle_XSpeed,x
 		LDA $98 : STA !Particle_YSpeed,x
 		SEP #$20
@@ -1883,9 +1880,8 @@ endmacro
 		LSR A
 		ROR A
 		STA !Particle_YAcc,x
-		LDA #!CoinSpinTime : STA !Particle_Timer,x
 		LDA #!prt_coinglitter : STA !Particle_Type,x
-		JSL !GetParticleIndex
+		JSL GetParticleIndex
 		LDA $9A : STA !Particle_XSpeed,x
 		LDA $98 : STA !Particle_YSpeed,x
 		SEP #$20
@@ -1894,7 +1890,6 @@ endmacro
 		LSR A
 		ROR A
 		STA !Particle_YAcc,x
-		LDA #!CoinSpinTime : STA !Particle_Timer,x
 		LDA #!prt_coinglitter : STA !Particle_Type,x
 
 
@@ -1938,16 +1933,16 @@ endmacro
 		LDX #$29 : STX !SPC4		; correct sfx
 	+	CMP #$05 : BNE ..r
 		LDX #$0F
-	-	LDA $3230,x : BEQ +
+	-	LDA !SpriteStatus,x : BEQ +
 		DEX : BPL -
 		RTS
-	+	LDA #$78 : STA $3200,x
+	+	LDA #$78 : STA !SpriteNum,x
 		STZ !ExtraBits,x
 		JSL !InitSpriteTables
-		LDA !P2XPosLo : STA $3220,x
-		LDA !P2XPosHi : STA $3250,x
-		LDA !P2YPosLo : STA $3210,x
-		LDA !P2YPosHi : STA $3240,x
+		LDA !P2XPosLo : STA !SpriteXLo,x
+		LDA !P2XPosHi : STA !SpriteXHi,x
+		LDA !P2YPosLo : STA !SpriteYLo,x
+		LDA !P2YPosHi : STA !SpriteYHi,x
 	..r	RTS
 
 		.ContentNoteBlock
@@ -1975,19 +1970,16 @@ endmacro
 		LDA #$FF : STA !CoinTimer
 		..multicoin
 		JSR SPAWN_COIN
-		%BounceSprite($01, $0A)			; brick -> multi coin brick
+		%BounceSprite(!Brick_Num, $0A)		; brick -> multi coin brick
 		BRA ..bonk
 		..1coin
 		JSR SPAWN_COIN
 		BRA ..use
 
-		..Flower
-		LDA #$74				;\
-		LDX $19 : BEQ ..set			; | if big, flower
-		INC A					; | if small, mushroom
-		BRA ..set				;/
-		..Feather
-		LDA #$74				; feather -> always mushroom
+		..Mushroom
+		LDA #$74 : BRA ..set			; mushrooom
+		..LifeShroom
+		LDA #$77				; lifeshroom
 	..set	STA $04					;\
 		LDA !MultiPlayer : STA $05		; | set item and loop counter
 		BRA ..Shared				;/
@@ -2001,15 +1993,14 @@ endmacro
 		BRA ..Shared				;/
 		..VariableItem
 		LDA $9A					;\
-		LSR #4					; |
-		TAX					; | variable item check
+		LSR #4 : TAX				; | variable item check
 		LDA ..varitemdata,x : BEQ ..Star2	; |
-		CMP #$01 : BEQ ..1Up			;/
+		CMP #$01 : BEQ ..GoldMushroom		;/
 		..Vine					;\
 		LDA #$79 : STA $04			; | spawn 1 vine
 		STZ $05					; |
 		BRA ..Shared				;/
-		..1Up
+		..GoldMushroom
 		LDA #$78 : STA $04			;\
 		STZ $05					; | spawn 1 golden mushroom
 		BRA ..Shared				;/
@@ -2027,7 +2018,7 @@ endmacro
 	..solid	JMP .SetBlocked
 	..pop	BIT $0E : BPL ..solid
 		JSR SPAWN_OBJECT
-	..use	%BounceSprite($01, $0D)			; brick -> used block
+	..use	%BounceSprite(!Brick_Num, $0D)		; brick -> used block
 	..bonk	LDY #$06
 		JMP .SetBlocked
 
@@ -2047,7 +2038,7 @@ endmacro
 		LDA $19 : BEQ ..solid
 		LDA !MarioSpinJump : BEQ ..solid
 	+	LDA #$D0 : STA !P2YSpeed
-		JSR SHATTER_BLOCK
+		JMP SHATTER_BLOCK
 	..r	RTS
 		..emptyup
 		BIT $0E : BPL ..solid
@@ -2055,7 +2046,7 @@ endmacro
 		CMP #$02 : BCS ..shatter
 		LDA !P2HP				;\ mario/luigi need to be big to break brick
 		CMP #$05 : BCS ..shatter		;/
-	..bop	%BounceSprite($01, $0C)			; brick -> brick
+	..bop	%BounceSprite(!Brick_Num, $0C)		; brick -> brick
 		BRA ..bonk
 		..shatter
 		JSR SHATTER_BLOCK
@@ -2098,19 +2089,16 @@ endmacro
 		LDA #$FF : STA !CoinTimer
 		..multicoin
 		JSR SPAWN_COIN
-		%BounceSprite($03, $0B)			; ?block -> multi coin ?block
+		%BounceSprite(!QuestionBlock_Num, $0B)	; ?block -> multi coin ?block
 		BRA ..bonk
 		..1coin
 		JSR SPAWN_COIN
 		BRA ..use
 
-		..Flower
-		LDA #$74				;\
-		LDX $19 : BEQ ..set			; | if big, flower
-		INC A					; | if small, mushroom
-		BRA ..set				;/
-		..Feather
-		LDA #$74				; feather -> always mushroom
+		..Mushroom
+		LDA #$74 : BRA ..set			; mushroom
+		..LifeShroom
+		LDA #$77				; lifeshroom
 	..set	STA $04					;\
 		LDA !MultiPlayer : STA $05		; | set item and loop counter
 		BRA ..Shared				;/
@@ -2141,7 +2129,7 @@ endmacro
 		JSR SPAWN_OBJECT
 		JSR REMOVE_TILE
 		BRA ..bonk
-		..1Up					; yoshi banned, replaced with 1-up
+		..GoldMushroom				; yoshi banned, replaced with 1-up
 		LDA #$78 : BRA +			; 1-up
 		..GreenShell
 		LDA #$04				; 1 green shell
@@ -2154,7 +2142,7 @@ endmacro
 	..solid	JMP .SetBlocked
 	..pop	BIT $0E : BPL ..solid
 	..spawn	JSR SPAWN_OBJECT
-	..use	%BounceSprite($03, $0D)			; ?block -> used block
+	..use	%BounceSprite(!QuestionBlock_Num, $0D)	; ?block -> used block
 	..bonk	LDY #$06
 		JMP .SetBlocked
 
@@ -2227,14 +2215,14 @@ endmacro
 
 		..Down
 		BIT $0E : BMI ..solid		; must move down
-		LDA $6DA3			;\ must hold down
+		LDA $15				;\ must hold down
 		AND #$04 : BEQ ..solid		;/
 		LDA #$FF : STA !P2Pipe		; set pipe status
 		RTS
 
 		..Up
 		BIT $0E : BPL ..solid		; must move up
-		LDA $6DA3			;\ must hold up
+		LDA $15				;\ must hold up
 		AND #$08 : BEQ ..solid		;/
 		LDA #$BF : STA !P2Pipe		; pipe
 		RTS
@@ -2250,13 +2238,13 @@ endmacro
 
 		..EnterLeft
 		LDA $0F
-		AND $6DA3
+		AND $15
 		AND #$02 : BEQ .SetBlocked
 		LDA #$3F : STA !P2Pipe
 		BRA ..SetY
 		..EnterRight
 		LDA $0F
-		AND $6DA3
+		AND $15
 		LSR A : BCC .SetBlocked
 		LDA #$7F : STA !P2Pipe
 		..SetY
@@ -2429,16 +2417,13 @@ endmacro
 		RTL
 
 	..go	LDA !Map16ActsLike+0 : STA $06		;\
-		LDA !Map16ActsLike+1 : STA $07		; |
-		LDA !Map16ActsLike40+0 : STA $09	; | 24-bit pointers to map16 acts like tables
-		LDA !Map16ActsLike40+1			; |
-		ORA #$0080				; |
-		STA $0A					;/
+		LDA !Map16ActsLike+1 : STA $07		; | 24-bit pointers to map16 acts like tables
+		LDA !Map16ActsLike40+0 : STA $09	; |
+		LDA !Map16ActsLike40+1 : STA $0A	;/
 		SEP #$20				; A 8-bit
 		LDA #$F0 : STA $00			;\
-		LDA $5D					; | max X
-		DEC A					; |
-		STA $01					;/
+		LDA !Map16Width				; | max X
+		DEC A : STA $01				;/
 		REP #$20				;\
 		LDA !LevelHeight			; | max Y
 		SEC : SBC #$0010			; |
@@ -2530,7 +2515,7 @@ endmacro
 		PEI ($0E)
 		REP #$20
 		LDA #$0025
-		JSL !ChangeMap16
+		JSL ChangeMap16
 		PLA : STA $0E
 		PLA : STA $0A
 		PLA : STA $08
@@ -2547,24 +2532,54 @@ endmacro
 		PLA : STA !Ex_Num,x			; num (init)
 		STZ !Ex_Data1,x				; layer/dir
 		LDA $9C : STA !Ex_Data2,x		; tile: used block
-		LDA #$0A : STA !Ex_Data3,x		; timer
 		STZ !Ex_XSpeed,x
 		LDA #$C0 : STA !Ex_YSpeed,x
 		STZ !Ex_XFraction,x
 		STZ !Ex_YFraction,x
 		LDA $9A
-		AND #$F0
-		STA !Ex_XLo,x
+		AND #$F0 : STA !Ex_XLo,x
 		LDA $9B : STA !Ex_XHi,x
 		LDA $98
-		AND #$F0
-		STA !Ex_YLo,x
+		AND #$F0 : STA !Ex_YLo,x
 		LDA $99 : STA !Ex_YHi,x
-	;	RTS
+		RTS
 
-	BLOCK_HITBOX:
+		.Long
+		JSR BOUNCE_SPRITE
+		RTL
+
+
+	SHATTER_BLOCK:
+		JSR REMOVE_TILE					; also clears lo nybbles from block coords $9A,$98
+
+		PHB						; bank wrapper start
+		PEA $0006					; loop counter
+
+		.Loop
+		JSL GetParticleIndex : TXY			; Y = particle index
+		LDA.w #!prt_brickpiece : STA !Particle_Type,x	; particle num
+		STZ !Particle_XAcc,x				; no X acc + sub
+		STZ !Particle_YAcc,x				; no Y acc + sub
+		PLX						; X = loop index
+		LDA.l .XDisp,x					;\
+		CLC : ADC $9A					; | X position
+		STA !Particle_X,y				;/
+		LDA.l .YDisp,x					;\
+		CLC : ADC $98					; | Y position
+		STA !Particle_Y,y				;/
+		LDA.l .XSpeed,x : STA !Particle_XSpeed,y	; X speed
+		LDA.l .YSpeed,x : STA !Particle_YSpeed,y	; Y speed
+		DEX #2 : BMI .Done				;\ loop
+		PHX : BRA .Loop					;/
+
+		.Done
+		SEP #$30					; all regs 8-bit
+		PLB						; bank wrapper end
+		LDA #$07 : STA !SPC4				; shatter block SFX
+
+		.BlockHitbox
 		%Ex_Index_X_fast()
-		LDA #!QuakeOffset+1 : STA !Ex_Num,x
+		LDA #!BlockHitbox_Num : STA !Ex_Num,x
 		LDA $9A
 		AND #$F0 : STA !Ex_XLo,x
 		LDA $9B : STA !Ex_XHi,x
@@ -2577,49 +2592,15 @@ endmacro
 		LDA #$06 : STA !Ex_Data1,x
 		RTS
 
-	SHATTER_BLOCK:
-		LDY #$03
-
-	-	%Ex_Index_X()
-		LDA $9A
-		AND #$F0
-		CLC : ADC .XDisp,y
-		STA !Ex_XLo,x
-		LDA $9B
-		ADC #$00
-		STA !Ex_XHi,x
-		LDA $98
-		AND #$F0
-		CLC : ADC .YDisp,y
-		STA !Ex_YLo,x
-		LDA $99
-		ADC #$00
-		STA !Ex_YHi,x
-		LDA.b #$01+!MinorOffset : STA !Ex_Num,x
-		LDA .XSpeed,y : STA !Ex_XSpeed,x
-		LDA .YSpeed,y : STA !Ex_YSpeed,x
-		STZ !Ex_Data1,x
-		STZ !Ex_Data2,x
-		STZ !Ex_Data3,x
-		DEY : BPL -
-
-		JSR BLOCK_HITBOX
-
-		LDA #$07 : STA !SPC4			; shatter block SFX
-		JMP REMOVE_TILE
-
 
 		.XDisp
-		db $00,$08,$00,$08
-
+		dw $0000,$0008,$0000,$0008
 		.YDisp
-		db $00,$00,$08,$08
-
+		dw $0000,$0000,$0008,$0008
 		.XSpeed
-		db $FF,$01,$FF,$01
-
+		dw $FF00,$0100,$FF00,$0100
 		.YSpeed
-		db $FB,$FB,$FD,$FD
+		dw $FB00,$FB00,$FD00,$FD00
 
 
 ; note: the !LevelWidth variable is NOT how many screens there can be in this mode, just how many are used
@@ -2702,14 +2683,14 @@ endmacro
 
 
 		LDX #$0F
-	-	LDA $3230,x : BEQ +
+	-	LDA !SpriteStatus,x : BEQ +
 		DEX : BPL -
 	++	JMP .Return
 
 	+	LDA $04 : PHA
 		LDA $05 : BEQ +
 		LDA #$74 : STA $04
-	+	LDA $04 : STA $3200,x
+	+	LDA $04 : STA !SpriteNum,x
 		PLA : STA $04
 		STZ !ExtraBits,x
 		PEI ($04)
@@ -2719,17 +2700,16 @@ endmacro
 		SEP #$20
 
 
-		LDA #$08 : STA $3230,x
+		LDA #$08 : STA !SpriteStatus,x
 		LDA $98
 		AND #$F0
-		STA $3210,x
-		LDA $99 : STA $3240,x
+		STA !SpriteYLo,x
+		LDA $99 : STA !SpriteYHi,x
 		LDA $9A
 		AND #$F0
-		STA $3220,x
-		LDA $9B : STA $3250,x
+		STA !SpriteXLo,x
+		LDA $9B : STA !SpriteXHi,x
 
-		LDA #$10 : STA $3360,x
 		LDA #$D0 : STA !SpriteYSpeed,x
 		LDA $05 : BNE +
 
@@ -2739,36 +2719,36 @@ endmacro
 	+	LDA $9A
 		AND #$0F
 		CMP #$08
-		BCC $03 : INC $3320,x
-		LDY $3320,x
+		BCC $03 : INC !SpriteDir,x
+		LDY !SpriteDir,x
 		LDA .VectorX,y : STA !SpriteVectorX,x
 		LDA .VectorX+2,y : STA !SpriteVectorAccX,x
-		LDA #$10 : STA !SpriteVectorTimerX,x
+		LDA #$10 : STA !SpriteVectorTimeX,x
 
 	++	LDA #$2C
 		STA !SpriteDisP1,x
 		STA !SpriteDisP2,x
 
-		LDA $3200,x				;\
+		LDA !SpriteNum,x			;\
 		CMP #$04 : BEQ .Carryable		; |
 		CMP #$3E : BEQ .Init			; |
 		CMP #$80 : BNE .StatusDone		; |
 		.Carryable				; | carryable sprite status = 09
-		INC $3230,x				; | (also timer = 00)
+		INC !SpriteStatus,x			; | (also timer = 00)
 		STZ $32D0,x				; |
 		BRA .StatusDone				;/
 		.Init
-		LDA #$01 : STA $3230,x
+		LDA #$01 : STA !SpriteStatus,x
 		STZ $32D0,x
 		.StatusDone
 
 
-		LDA $3200,x
+		LDA !SpriteNum,x
 		CMP #$7D : BEQ .y0
 		CMP #$84 : BNE .SpeedDone
 	.y0	STZ !SpriteYSpeed,x
 		STZ $32D0,x
-		LDA #$01 : STA $3320,x			; make ?block face the right way
+		LDA #$01 : STA !SpriteDir,x		; make ?block face the right way
 		.SpeedDone
 
 		LDA $05 : BEQ +
@@ -2796,11 +2776,16 @@ endmacro
 		db $01,$FF		; acc
 
 
+		.Long
+		PHB : PHK : PLB
+		JSR SPAWN_OBJECT
+		PLB
+		RTL
+
 
 	SPAWN_COIN:
-
 		%Ex_Index_X()
-		LDA #$01 : STA !Ex_Num,x
+		LDA #!CoinFromBlock_Num : STA !Ex_Num,x
 		LDA $9A
 		AND #$F0
 		STA !Ex_XLo,x
@@ -2813,13 +2798,16 @@ endmacro
 		SBC #$00
 		STA !Ex_YHi,x
 		LDA !CurrentLayer : STA !Ex_Data1,x
+		STZ !Ex_XSpeed,x
 		LDA #$D0 : STA !Ex_YSpeed,x
 		STZ !Ex_YFraction,x
 		LDA #$04 : STA !Ex_Data2,x		; coin hide timer
 		LDA !CurrentPlayer : STA !Ex_Data3,x	; coin owner
 		RTS
 
-
+		.Long
+		JSR SPAWN_COIN
+		RTL
 
 
 

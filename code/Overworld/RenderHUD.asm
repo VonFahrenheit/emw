@@ -323,7 +323,7 @@ endmacro
 
 macro UpdateHUD(slot)
 	LDA !MapUpdateHUD+<slot> : BEQ ?Next
-	JSL !GetBigCCDMA : BCS ?Next
+	JSL GetBigCCDMA : BCS ?Next
 	STZ !MapUpdateHUD+<slot>
 	LDA #$15 : STA !VRAMbase+!CCDMAtable+$07,x
 	LDA.b #!DecompBuffer>>16 : STA !VRAMbase+!CCDMAtable+$04,x

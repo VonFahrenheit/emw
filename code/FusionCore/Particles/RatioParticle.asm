@@ -1,4 +1,5 @@
 
+; decrementing timer
 	RatioParticle:
 	.BG1	LDX $00							; reload index
 		SEP #$20						; 8-bit A

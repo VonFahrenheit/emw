@@ -1,0 +1,187 @@
+;===============;
+; MATH ROUTINES ;
+;===============;
+
+
+; input:
+;	C + A = 17-bit unsigned integer
+; output:
+;	C + A = 9-bit integer + 8-bit fraction, square root of input number
+	GetRoot:
+		PHX
+		PHP
+		REP #$30
+		BCS .010000
+		CMP #$4000 : BCS .4000
+		CMP #$1000 : BCS .1000
+		CMP #$0400 : BCS .0400
+		CMP #$0100 : BCS .0100
+		ASL A : TAX
+		LDA.l .Root,x
+		PLP
+		PLX
+		RTL
+
+.010000		ROR A
+		LSR A
+.4000		XBA
+		AND #$00FF
+		ASL A : TAX
+		LDA.l .Root,x
+		ASL #4
+		PLP
+		PLX
+		BCC +
+		ASL A
+	+	RTL
+
+.1000		XBA
+		ROL #2
+		AND #$00FF
+		ASL A : TAX
+		LDA.l .Root,x
+		ASL #3
+		PLP
+		PLX
+		RTL
+
+.0400		LSR #3
+		AND #$01FE : TAX
+		LDA.l .Root,x
+		ASL #2
+		PLP
+		PLX
+		RTL
+
+.0100		LSR A
+		AND #$01FE : TAX
+		LDA.l .Root,x
+		ASL A
+		PLP
+		PLX
+		RTL
+
+
+
+	; 8.8 format
+	.Root
+		dw $0000,$0100,$016A,$01BB,$0200,$023C,$0273,$02A5	; 00-07
+		dw $02D4,$0300,$032A,$0351,$0377,$039B,$03BE,$03DF	; 08-0F
+		dw $0400,$0420,$043E,$045C,$0479,$0495,$04B1,$04CC	; 10-17
+		dw $04E6,$0500,$0519,$0532,$054B,$0563,$057A,$0591	; 18-1F
+		dw $05A8,$05BF,$05D5,$05EB,$0600,$0615,$062A,$063F	; 20-27
+		dw $0653,$0667,$067B,$068F,$06A2,$06B5,$06C8,$06DB	; 28-2F
+		dw $06EE,$0700,$0712,$0724,$0736,$0748,$0759,$076B	; 30-37
+		dw $077C,$078D,$079E,$07AE,$07BF,$07CF,$07E0,$07F0	; 38-3F
+		dw $0800,$0810,$0820,$082F,$083F,$084E,$085E,$086D	; 40-47
+		dw $087C,$088B,$089A,$08A9,$08B8,$08C6,$08D5,$08E3	; 48-4F
+		dw $08F2,$0900,$090E,$091C,$092A,$0938,$0946,$0954	; 50-57
+		dw $0961,$096F,$097D,$098A,$0997,$09A5,$09B2,$09BF	; 58-5F
+		dw $09CC,$09D9,$09E6,$09F3,$0A00,$0A0D,$0A19,$0A26	; 60-67
+		dw $0A33,$0A3F,$0A4C,$0A58,$0A64,$0A71,$0A7D,$0A89	; 68-6F
+		dw $0A95,$0AA1,$0AAD,$0AB9,$0AC5,$0AD1,$0ADD,$0AE9	; 70-77
+		dw $0AF4,$0B00,$0B0C,$0B17,$0B23,$0B2E,$0B3A,$0B45	; 78-7F
+		dw $0B50,$0B5C,$0B67,$0B72,$0B7D,$0B88,$0B93,$0B9E	; 80-87
+		dw $0BA9,$0BB4,$0BBF,$0BCA,$0BD5,$0BE0,$0BEB,$0BF5	; 88-8F
+		dw $0C00,$0C0B,$0C15,$0C20,$0C2A,$0C35,$0C3F,$0C4A	; 90-97
+		dw $0C54,$0C5F,$0C69,$0C73,$0C7D,$0C88,$0C92,$0C9C	; 98-9F
+		dw $0CA6,$0CB0,$0CBA,$0CC4,$0CCE,$0CD8,$0CE2,$0CEC	; A0-A7
+		dw $0CF6,$0D00,$0D0A,$0D14,$0D1D,$0D27,$0D31,$0D3B	; A8-AF
+		dw $0D44,$0D4E,$0D57,$0D61,$0D6B,$0D74,$0D7E,$0D87	; B0-B7
+		dw $0D91,$0D9A,$0DA3,$0DAD,$0DB6,$0DBF,$0DC9,$0DD2	; B8-BF
+		dw $0DDB,$0DE4,$0DEE,$0DF7,$0E00,$0E09,$0E12,$0E1B	; C0-C7
+		dw $0E24,$0E2D,$0E36,$0E3F,$0E48,$0E51,$0E5A,$0E63	; C8-CF
+		dw $0E6C,$0E75,$0E7E,$0E87,$0E8F,$0E98,$0EA1,$0EAA	; D0-D7
+		dw $0EB2,$0EBB,$0EC4,$0ECC,$0ED5,$0EDE,$0EE6,$0EEF	; D8-DF
+		dw $0EF7,$0F00,$0F09,$0F11,$0F1A,$0F22,$0F2A,$0F33	; E0-E7
+		dw $0F3B,$0F44,$0F4C,$0F54,$0F5D,$0F65,$0F6D,$0F76	; E8-EF
+		dw $0F7E,$0F86,$0F8E,$0F97,$0F9F,$0FA7,$0FAF,$0FB7	; F0-F7
+		dw $0FBF,$0FC8,$0FD0,$0FD8,$0FE0,$0FE8,$0FF0,$0FF8	; F8-FF
+
+
+
+; input: A = 16-bit integer to divide 1 by
+; output: result of 1/input, 8.8 format
+; method for numbers 0-256
+;	index: number * 2 (starts at 1, if 0 assume 1 because 1/0 nonono)
+;	read: 1 / number (8-bit fixed point)
+; method for numbers 257+
+;	search table for first value that is smaller than input number
+;	output is the index number of that value, so index / 2 since all entries are 16-bit
+	GetReciprocal:
+		PHX
+		PHP
+		REP #$30
+		CMP #$0101 : BCC .Read
+
+		.Search
+		LDY #$0000
+		PHA
+		CMP #$1000 : BCS ..go
+		XBA
+		AND #$000F
+		ASL A
+		TAX
+		LDA.l .Reciprocal+1,x
+		AND #$00FF
+		ASL A
+		TAX
+		..go
+		PLA
+		..loop
+		CMP.l .Reciprocal,x : BCS ..thisone
+		INY #2
+		CPY #$0200 : BCC ..loop
+		..thisone
+		TXA
+		LSR A
+		INC A
+		PLP
+		PLX
+		RTL
+
+		.Read
+		DEC A
+		BPL $03 : LDA #$0000
+		ASL A
+		TAX
+		LDA.l .Reciprocal,x
+		PLP
+		PLX
+		RTL
+
+
+		.Reciprocal
+		dw $FFFF,$8000,$5555,$4000,$3333,$2AAA,$2492,$2000
+		dw $1C72,$199A,$1746,$1555,$13B1,$1249,$1111,$1000
+		dw $0F0F,$0E38,$0D79,$0CCC,$0C30,$0BA2,$0B21,$0AAA
+		dw $0A3D,$09D8,$097B,$0924,$08D3,$0888,$0842,$0800
+		dw $07C1,$0787,$0750,$071C,$06EB,$06BC,$0690,$0666
+		dw $063E,$0618,$05F4,$05D1,$05B0,$0590,$0572,$0555
+		dw $0539,$051E,$0505,$04EC,$04D4,$04BD,$04A7,$0492
+		dw $047D,$0469,$0456,$0444,$0432,$0421,$0410,$0400
+		dw $03F0,$03E0,$03D2,$03C3,$03B5,$03A8,$039B,$038E
+		dw $0381,$0375,$0369,$035E,$0353,$0348,$033D,$0333
+		dw $0329,$031F,$0315,$030C,$0303,$02FA,$02F1,$02E8
+		dw $02E0,$02D8,$02D0,$02C8,$02C0,$02B9,$02B1,$02AA
+		dw $02A3,$029C,$0295,$028F,$0288,$0282,$027C,$0276
+		dw $0270,$026A,$0264,$025E,$0259,$0253,$024E,$0249
+		dw $0243,$023E,$0239,$0234,$0230,$022B,$0226,$0222
+		dw $021D,$0219,$0214,$0210,$020C,$0208,$0204,$0200
+		dw $01FC,$01F8,$01F4,$01F0,$01EC,$01E9,$01E5,$01E1
+		dw $01DE,$01DA,$01D7,$01D4,$01D0,$01CD,$01CA,$01C7
+		dw $01C3,$01C0,$01BD,$01BA,$01B7,$01B4,$01B2,$01AF
+		dw $01AC,$01A9,$01A6,$01A4,$01A1,$019E,$019C,$0199
+		dw $0197,$0194,$0192,$018F,$018D,$018A,$0188,$0186
+		dw $0183,$0181,$017F,$017D,$017A,$0178,$0176,$0174
+		dw $0172,$0170,$016E,$016C,$016A,$0168,$0166,$0164
+		dw $0162,$0160,$015E,$015C,$015A,$0158,$0157,$0155
+		dw $0153,$0151,$0150,$014E,$014C,$014A,$0149,$0147
+		dw $0146,$0144,$0142,$0141,$013F,$013E,$013C,$013B
+		dw $0139,$0138,$0136,$0135,$0133,$0132,$0130,$012F
+		dw $012E,$012C,$012B,$0129,$0128,$0127,$0125,$0124
+		dw $0123,$0121,$0120,$011F,$011E,$011C,$011B,$011A
+		dw $0119,$0118,$0116,$0115,$0114,$0113,$0112,$0111
+		dw $010F,$010E,$010D,$010C,$010B,$010A,$0109,$0108
+		dw $0107,$0106,$0105,$0104,$0103,$0102,$0101,$0100
+

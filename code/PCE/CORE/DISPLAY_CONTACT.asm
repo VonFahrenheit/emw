@@ -20,7 +20,7 @@
 		PHX
 		PHP
 		PHB
-		JSL !GetParticleIndex
+		JSL GetParticleIndex
 		STZ !Particle_Timer,x
 		LDA.w #!prt_contact : STA !Particle_Type,x
 		LDA #$00C0 : STA !Particle_Prop,x
@@ -53,7 +53,7 @@
 		PHX
 		PHP
 		PHB
-		JSL !GetParticleIndex
+		JSL GetParticleIndex
 		LDA #$0007 : STA !Particle_Timer,x
 		LDA.w #!prt_contactbig : STA !Particle_Type,x
 		LDA.l !CurrentPlayer

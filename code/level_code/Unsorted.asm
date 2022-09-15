@@ -8,8 +8,8 @@ ReloadSprites:
 		CMP #$EE : BEQ .Next					;/
 		STX $00							;\
 		LDY #$0F						; |
-	-	LDA $3230,y : BEQ +					; | check if the sprite is still alive
-		LDA $33F0,y						; |
+	-	LDA !SpriteStatus,y : BEQ +				; | check if the sprite is still alive
+		LDA !SpriteID,y						; |
 		CMP $00 : BEQ .Next					; |
 	+	DEY : BPL -						;/
 		.Clear							;\ mark for reload
@@ -271,19 +271,19 @@ Weather:
 		.LavaLord
 		SEP #$20
 		LDX #$0F
-	-	LDA.l $3230,x
+	-	LDA.l !SpriteStatus,x
 		CMP #$08 : BNE +
-		LDA.l $3590,x
+		LDA.l !ExtraBits,x
 		AND #$08 : BEQ +
-		LDA.l $35C0,x
+		LDA.l !SpriteNum,x
 		CMP #$20 : BEQ ++
 	+	DEX : BPL -
 		RTS
 
-	++	LDA.l $3220,x : STA $02
-		LDA.l $3250,x : STA $03
-		LDA.l $3240,x : XBA
-		LDA.l $3210,x
+	++	LDA.l !SpriteXLo,x : STA $02
+		LDA.l !SpriteXHi,x : STA $03
+		LDA.l !SpriteYHi,x : XBA
+		LDA.l !SpriteYLo,x
 
 
 		REP #$20
@@ -314,10 +314,10 @@ Weather:
 		.LoadSnow
 		PHB : PHK : PLB
 		STA $00					; store weather type
-		JSL !GetVRAM
+		JSL GetVRAM
 		REP #$30
 		LDY.w #!File_Sprite_BG_1
-		JSL !GetFileAddress
+		JSL GetFileAddress
 		SEP #$10
 
 		LDA #$0020 : STA.l !VRAMbase+!VRAMtable+$00,x
@@ -351,7 +351,7 @@ DecompressGFX:
 UploadDecomp:
 		STA $03
 		STX $05
-		JSL !GetVRAM
+		JSL GetVRAM
 		LDA $02 : STA.l !VRAMbase+!VRAMtable+$04,x
 		LDA $05
 		AND #$00FF
@@ -586,15 +586,15 @@ LoadCameraBox:
 		SBC .Offset,x					; |
 		CMP !CameraBoxR,x : BCS ..next			;/
 		..erase						;\
-		LDA $3230,y					; |
-		AND #$FF00 : STA $3230,y			; |
+		LDA !SpriteStatus,y				; |
+		AND #$FF00 : STA !SpriteStatus,y		; |
 		PHX						; |
-		LDX $33F0,y					; |
-		LDA $418A00,x					; | if not, despawn it and mark it for respawn
+		LDX !SpriteID,y					; |
+		LDA !SpriteLoadStatus,x				; | if not, despawn it and mark it for respawn
 		AND #$00FF					; | (unless marked as "never respawn")
 		CMP #$00EE : BEQ ..keep				; |
-		LDA $418A00,x					; |
-		AND #$FF00 : STA $418A00,x			; |
+		LDA !SpriteLoadStatus,x				; |
+		AND #$FF00 : STA !SpriteLoadStatus,x		; |
 		..keep						; |
 		PLX						;/
 		..next						;\ check X/Y coords
@@ -790,15 +790,15 @@ LoadCameraBox:
 		STA $00
 		LDX #$0F
 		..loop
-		LDA $3230,x
+		LDA !SpriteStatus,x
 		CMP #$01 : BEQ ..ok
 		CMP #$08 : BCC ..next
 		..ok
 		LDA !ExtraBits,x
 		AND #$08 : BNE ..next
-		LDA $3200,x
+		LDA !SpriteNum,x
 		CMP $00 : BNE ..next
-		STZ $3230,x
+		STZ !SpriteStatus,x
 		..next
 		DEX : BPL ..loop
 		RTL
@@ -807,15 +807,15 @@ LoadCameraBox:
 		STA $00
 		LDX #$0F
 		..loop
-		LDA $3230,x
+		LDA !SpriteStatus,x
 		CMP #$01 : BEQ ..ok
 		CMP #$08 : BCC ..next
 		..ok
 		LDA !ExtraBits,x
 		AND #$08 : BEQ ..next
-		LDA !NewSpriteNum,x
+		LDA !SpriteNum,x
 		CMP $00 : BNE ..next
-		STZ $3230,x
+		STZ !SpriteStatus,x
 		..next
 		DEX : BPL ..loop
 		RTL
@@ -829,15 +829,15 @@ LoadCameraBox:
 		STA $00
 		LDX #$0F
 		..loop
-		LDA $3230,x
+		LDA !SpriteStatus,x
 		CMP #$01 : BEQ ..ok
 		CMP #$08 : BCC ..next
 		..ok
 		LDA !ExtraBits,x
 		AND #$08 : BNE ..next
-		LDA $3200,x
+		LDA !SpriteNum,x
 		CMP $00 : BNE ..next
-		LDA #$02 : STA $3230,x
+		LDA #$02 : STA !SpriteStatus,x
 		..next
 		DEX : BPL ..loop
 		RTL
@@ -846,15 +846,15 @@ LoadCameraBox:
 		STA $00
 		LDX #$0F
 		..loop
-		LDA $3230,x
+		LDA !SpriteStatus,x
 		CMP #$01 : BEQ ..ok
 		CMP #$08 : BCC ..next
 		..ok
 		LDA !ExtraBits,x
 		AND #$08 : BEQ ..next
-		LDA !NewSpriteNum,x
+		LDA !SpriteNum,x
 		CMP $00 : BNE ..next
-		LDA #$02 : STA $3230,x
+		LDA #$02 : STA !SpriteStatus,x
 		..next
 		DEX : BPL ..loop
 		RTL
@@ -870,13 +870,13 @@ LoadCameraBox:
 		STA $01
 		LDX #$0F
 		..loop
-		LDA $3230,x
+		LDA !SpriteStatus,x
 		CMP #$01 : BEQ ..ok
 		CMP #$08 : BCC ..next
 		..ok
 		LDA !ExtraBits,x
 		AND #$08 : BNE ..next
-		LDA $3200,x
+		LDA !SpriteNum,x
 		CMP $01 : BNE ..next
 		INC $00
 		..next
@@ -889,13 +889,13 @@ LoadCameraBox:
 		STA $01
 		LDX #$0F
 		..loop
-		LDA $3230,x
+		LDA !SpriteStatus,x
 		CMP #$01 : BEQ ..ok
 		CMP #$08 : BCC ..next
 		..ok
 		LDA !ExtraBits,x
 		AND #$08 : BEQ ..next
-		LDA !NewSpriteNum,x
+		LDA !SpriteNum,x
 		CMP $01 : BNE ..next
 		INC $00
 		..next
@@ -914,11 +914,11 @@ LoadCameraBox:
 		..loop
 		LDA !ExtraBits,x
 		AND #$08 : BNE ..next
-		LDA $3230,x
+		LDA !SpriteStatus,x
 		CMP #$01 : BEQ ..ok
 		CMP #$08 : BCC ..next
 		..ok
-		LDA $3200,x
+		LDA !SpriteNum,x
 		CMP $00 : BEQ ..thisone
 		..next
 		DEX : BPL ..loop
@@ -931,11 +931,11 @@ LoadCameraBox:
 		..loop
 		LDA !ExtraBits,x
 		AND #$08 : BEQ ..next
-		LDA $3230,x
+		LDA !SpriteStatus,x
 		CMP #$01 : BEQ ..ok
 		CMP #$08 : BCC ..next
 		..ok
-		LDA !NewSpriteNum,x
+		LDA !SpriteNum,x
 		CMP $00 : BEQ ..thisone
 		..next
 		DEX : BPL ..loop
@@ -953,15 +953,15 @@ LoadCameraBox:
 	.Vanilla
 		LDX #$0F
 		..loop
-		LDY $3230,x : BNE ..next
-		STA $3200,x
+		LDY !SpriteStatus,x : BNE ..next
+		STA !SpriteNum,x
 		STZ !ExtraBits,x
 		LDA $00 : STA !SpriteXLo,x
 		LDA $01 : STA !SpriteXHi,x
 		LDA $02 : STA !SpriteYLo,x
 		LDA $03 : STA !SpriteYHi,x
 		JSL !ResetSprite
-		INC $3230,x
+		INC !SpriteStatus,x
 		RTL
 		..next
 		DEX : BPL ..loop
@@ -970,8 +970,8 @@ LoadCameraBox:
 	.Custom
 		LDX #$0F
 		..loop
-		LDY $3230,x : BNE ..next
-		STA !NewSpriteNum,x
+		LDY !SpriteStatus,x : BNE ..next
+		STA !SpriteNum,x
 		LDA #$08 : STA !ExtraBits,x
 		LDA $00 : STA !SpriteXLo,x
 		LDA $01 : STA !SpriteXHi,x
@@ -980,7 +980,7 @@ LoadCameraBox:
 		PHB
 		JSL !ResetSprite
 		PLB
-		INC $3230,x
+		INC !SpriteStatus,x
 		RTL
 		..next
 		DEX : BPL ..loop
@@ -994,14 +994,13 @@ LoadCameraBox:
 ;	void (subroutine fully handles door interaction)
 	DoorBox:
 		REP #$30
-		LDA $0002,y
-		STA $05
-		STA $0A
-		LDA $0004,y : STA $06
-		LDA $0000,y : STA $09
+		LDA $0000,y : STA $E8
+		LDA $0002,y : STA $EA
+		LDA $0004,y : STA $EE-1
+		AND #$00FF : STA $EC
 		SEP #$30
-		STA $04
-		SEC : JSL !PlayerClipping : BCC .Return
+		STZ $EF
+		JSL PlayerContact : BCC .Return
 		LSR A : BCC .P2
 
 		.P1
@@ -1653,11 +1652,11 @@ levelinit0:
 		LDX #$01
 		..loop
 		LDA #$25
-		STA $40C800+($1B0*2)+$63,x
-		STA $40C800+($1B0*2)+$73,x
+		STA $40C800+($1B0*2)+$123,x
+		STA $40C800+($1B0*2)+$133,x
 		LDA #$00
-		STA $41C800+($1B0*2)+$63,x
-		STA $41C800+($1B0*2)+$73,x
+		STA $41C800+($1B0*2)+$123,x
+		STA $41C800+($1B0*2)+$133,x
 		DEX : BPL ..loop
 		..done
 
@@ -1666,11 +1665,11 @@ levelinit0:
 		LDX #$01
 		..loop
 		LDA #$25
-		STA $40C800+$A7,x
-		STA $40C800+$B7,x
+		STA $40C800+$167,x
+		STA $40C800+$177,x
 		LDA #$00
-		STA $41C800+$A7,x
-		STA $41C800+$B7,x
+		STA $41C800+$167,x
+		STA $41C800+$177,x
 		DEX : BPL ..loop
 		..done
 
@@ -1681,7 +1680,7 @@ levelinit0:
 		LDA !StoryFlags+0 : BMI ..done
 		REP #$20
 		STZ $00
-		LDA #$00B0 : STA $02
+		LDA #$0170 : STA $02
 		LDA.w #!MSG_LuigiSwitchFirstTime : STA !NPC_Talk+(1*2)
 		LDA.w #!MSG_LuigiSwitch : STA !NPC_TalkCap+(1*2)
 		LDA.w #!MSG_KadaalTalk_IntroLevel : STA !NPC_Talk+(2*2)
@@ -2085,14 +2084,10 @@ levelinitC6:
 
 		LDA $95 : BNE +
 		LDA #$FF : STA $97
-		LDA !P2HP-$80 : STA !StatusBarP1Hearts
-		LDA !P2HP : STA !StatusBarP2Hearts
 		+
-
 
 		LDA #$01 : STA !KadaalStatus			; unlock kadaal
 
-		STZ !P1Dead
 		STZ !MarioAnim
 		STZ !P2Status-$80
 		STZ !P2Status
@@ -2106,34 +2101,9 @@ levelinitC6:
 
 
 levelinitC7:
-		LDA #$FC : STA !BG2BaseV
-		LDA #$FF : STA !BG2BaseV+1
-		RTL
-
-
-	pushpc
-	org $0093A4
-		LDA #$F0			; remove "Nintendo Presents"
-	org $0093C0
-		LDA #$2A			; first sound
-		STA !SPC3
-	org $0096C6
-		LDA #$2A			; title screen music
-	pullpc
-
+	RTL
 levelinitC8:
-
-		STZ $0A80			; clear chunk status
-		STZ $0A87
-		PHP
-		REP #$20
-		LDA.w #.ChunkTable : STA $0A81
-		PLP
-		RTL
-
-.ChunkTable	dw $0160,$00E0 : db $02
-
-
+	RTL
 levelinitC9:
 	RTL
 levelinitCA:
@@ -2373,7 +2343,7 @@ levelinit13B:
 		LDA !LevelTable1+$5E : BMI ..done
 		LDX #$0F
 		..loop
-		LDA $3230,x : BEQ ..thisone
+		LDA !SpriteStatus,x : BEQ ..thisone
 		DEX : BPL ..loop
 		BRA ..done
 		..thisone
@@ -2381,10 +2351,10 @@ levelinit13B:
 		LDA #$00 : STA !SpriteXHi,x
 		LDA #$60 : STA !SpriteYLo,x
 		LDA #$03 : STA !SpriteYHi,x
-		LDA #$0F : STA !NewSpriteNum,x
+		LDA #$0F : STA !SpriteNum,x
 		LDA #$0C : STA !ExtraBits,x
-		LDA #$36 : STA $3200,x
-		LDA #$01 : STA $3230,x
+		LDA #$36 : STA !SpriteNum,x
+		LDA #$01 : STA !SpriteStatus,x
 		JSL !ResetSprite
 		..done
 
@@ -2763,31 +2733,11 @@ levelinit1F1:
 		LDA #$30 : STA !SPC3
 		LDA #$06 : STA !PalsetStart
 
-
 		REP #$20
 		LDA #$7000 : STA $400000+!MsgVRAM1
 		LDA #$7200 : STA $400000+!MsgVRAM2
 		LDA #$7400 : STA $400000+!MsgVRAM3
 		SEP #$20
-
-		; .BlockExit
-		; LDA !LevelTable1+$5E : BMI ..done
-		; LDX #$0F
-		; ..loop
-		; LDA $3230,x : BEQ ..thisone
-		; DEX : BPL ..loop
-		; BRA ..done
-		; ..thisone
-		; LDA #$80 : STA !SpriteXLo,x
-		; LDA #$00 : STA !SpriteXHi,x
-		; LDA #$10 : STA !SpriteYLo,x
-		; LDA #$00 : STA !SpriteYHi,x
-		; LDA #$0F : STA !NewSpriteNum,x
-		; LDA #$0C : STA !ExtraBits,x
-		; LDA #$36 : STA $3200,x
-		; LDA #$01 : STA $3230,x
-		; JSL !ResetSprite
-		; ..done
 
 		REP #$20
 		LDA.w #!MSG_Toad_IntroLevel_1 : STA !NPC_Talk+($10*2)
@@ -2824,15 +2774,14 @@ levelinit1F7:
 
 
 	; spawn wakeup toad on intro mode
-		LDA #$0E : STA !NewSpriteNum
-		LDA #$36 : STA $3200
+		LDA #$0E : STA !SpriteNum
 		LDA #$10 : STA !ExtraProp1
 		LDA #$01 : STA !ExtraProp2
 		LDA #$30 : STA !SpriteXLo
 		STZ !SpriteXHi
 		LDA #$B0 : STA !SpriteYLo
 		STZ !SpriteYHi
-		LDA #$01 : STA $3230
+		LDA #$01 : STA !SpriteStatus
 		LDA #$08 : STA !ExtraBits
 		LDX #$00
 		JSL !ResetSprite
@@ -2906,7 +2855,7 @@ level0:
 		LDA !P2SlantPipe-$80 : BEQ +	;\
 		LDA #$03 : STA !StoryFlags+$00	; | set cannon overworld cutscene when leaving with cannon
 		REP #$20			; |
-		LDA #$0000 : JSL END_Up		;/
+		LDA #$0080 : JSL END_Up		;/
 		+
 
 		LDA #$20
@@ -2916,7 +2865,7 @@ level0:
 		ORA !P2Pipe
 		CMP #$C0 : BCC +
 		REP #$20
-		LDA #$00B0 : JSL END_Down
+		LDA #$0170 : JSL END_Down
 		+
 
 
@@ -2926,7 +2875,7 @@ level0:
 
 
 		LDX #$0F
-	-	LDA !NewSpriteNum,x
+	-	LDA !SpriteNum,x
 		CMP #$0E : BNE +
 		LDA !ExtraProp1,x
 		CMP #$02 : BNE +
@@ -2936,7 +2885,7 @@ level0:
 		LDA !SpriteXLo,x
 		CMP #$80 : BCC +
 		STZ !SpriteXSpeed,x
-		STZ !SpriteAnimIndex
+		STZ !SpriteAnimIndex,x
 		LDA #$01 : STA !ExtraProp2,x
 	+	DEX : BPL -
 
@@ -2968,7 +2917,7 @@ level0:
 		SEP #$20
 		STZ $0D
 		LDA #$08 : STA $0E
-		JSL !SpriteHUD
+		JSL DrawSpriteHUD
 		REP #$30
 		LDA !OAMindex_p3
 		LSR #2
@@ -3565,7 +3514,7 @@ LoadScreen:	PHP
 		LDX $00
 		BRA -
 
-	.Done	JSL !GetVRAM
+	.Done	JSL GetVRAM
 		REP #$20
 		LDA #$0400 : STA !VRAMbase+!VRAMtable+$02,x
 		LDA #$0000 : STA !VRAMbase+!VRAMtable+$04,x
@@ -3897,6 +3846,13 @@ levelC6:
 		+
 
 		LDA $95 : BNE +
+		LDA !P2Entrance-$80 : BEQ +
+		LDA !P2HP-$80
+		STA !StatusBarP1Hearts
+		STA !P2ShowHP-$80
+		LDA !P2HP
+		STA !StatusBarP2Hearts
+		STA !P2ShowHP
 		STZ !P2Entrance-$80
 		STZ !P2Entrance
 		+
@@ -3912,14 +3868,16 @@ levelC6:
 		LDA !SpriteXLo,x
 		CMP #$90 : BCC +
 		STZ !ExtraProp2,x
-		LDA #$08 : STA !SpriteAnimIndex
-		STZ !SpriteAnimTimer
+		LDA #$08 : STA !SpriteAnimIndex,x
+		STZ !SpriteAnimTimer,x
 		LDA #$01 : STA $400000+!MsgTalk
 		+
 
 		.MeetKadaal
 		LDA !P2Character-$80				;\
-		CMP #$02 : BEQ ..done				; |
+		CMP #$02 : BNE ..meet				; |
+		JMP ..done					; |
+		..meet						; |
 		LDA !Level+4 : BNE ..done			; |
 		LDA $1B						; | if mario is at these camera coords
 		CMP #$0D : BCC ..done				; |
@@ -3928,7 +3886,7 @@ levelC6:
 
 		LDA #$0E : JSL SearchSprite_Custom		;\
 		BMI ..done					; | kadaal faces mario
-		LDA #$01 : STA $3320,x				;/
+		LDA #$01 : STA !SpriteDir,x			;/
 
 		LDA #$02 : STA !P2Stasis-$80			; freeze mario
 		LDA #$01 : STA !Cutscene
@@ -3940,16 +3898,17 @@ levelC6:
 
 		..checkforpose
 		CMP #$04 : BEQ ..checkforfinale
-		LDA $3330,x
+		LDA !SpriteBlocked,x
 		AND #$04 : BEQ ..done
 		LDA #$04 : STA $400000+!MsgTalk
-		LDA #$20 : STA $3300,x
+		LDA #$20 : STA !SpriteDisSprite,x
 		BRA ..done
 
 		..checkforfinale
 		LDA $0A22
 		CMP #$40 : BNE ..done
 		LDA #$3E : STA !ExtraProp2,x			; switch to kadaal
+		STZ !StatusBarP1Hearts
 		REP #$20					;\
 		LDA.w #!MSG_MeetKadaal_1 : STA !MsgTrigger	; | text box
 		SEP #$20					;/
@@ -3969,7 +3928,6 @@ levelC6:
 		STZ $6109					; |
 		LDA #$00 : STA !Characters			; > swap character to mario
 		STZ !P2Character-$80				; |
-		STZ !P1Dead					; |
 		.NotEnded					;/
 
 	; set HDMA
@@ -4004,7 +3962,7 @@ levelC6:
 		CMP #$001F
 		BCC $03 : LDA #$001F
 		PHA
-		JSL !MixRGB
+		JSL MixRGB
 		PLA : BRA ..finish
 
 		..mario
@@ -4015,7 +3973,7 @@ levelC6:
 		LSR #6
 		LDX #$00
 		LDY #$01
-		JSL !MixRGB
+		JSL MixRGB
 		LDA $1A
 		SEC : SBC #$0700
 		BPL $03 : LDA #$0000
@@ -4027,7 +3985,7 @@ levelC6:
 		..finish
 		LDX #$1D
 		LDY #$03
-		JSL !MixRGB
+		JSL MixRGB
 		LDA !PaletteBuffer+0 : STA !2132_RGB
 		SEP #$20
 		..done
@@ -4044,106 +4002,123 @@ levelC6:
 		.Kadaal
 
 	; attack 1 check
+		.Attack1
 		LDA !Level+5
-		AND #$04 : BNE .NoAttack1
+		AND #$04 : BNE ..done
 		REP #$20
 		LDA !P2XPos-$80
-		CMP #$0F80 : BCC .NoAttack1
-		CMP #$1200 : BCS .NoAttack1
+		CMP #$0F80 : BCC ..done
+		CMP #$1200 : BCS ..done
 		SEP #$20
 		LDX #$0F
-	-	LDA $3230,x
-		CMP #$02 : BEQ +
-		DEX : BPL -
-		LDY #$08
-		JMP .LoadTilemap
-	+	LDA #$04 : TSB !Level+5
-		.NoAttack1
+		..loop
+		LDA !SpriteStatus,x
+		CMP #$02 : BEQ ..mark
+		DEX : BPL ..loop
+		LDY #$08 : JMP .LoadTilemap
+		..mark
+		LDA #$04 : TSB !Level+5
+		..done
 		SEP #$20
 
 	; attack 2 check
+		.Attack2
 		LDA !Level+5
-		AND #$08 : BNE .NoAttack2
+		AND #$08 : BNE ..done
 		LDA !P2XPosHi-$80
-		CMP #$12 : BEQ +
+		CMP #$12 : BEQ ..searchblock
 		STZ !Level+4
-		JMP .NoSenkuJump
-	+	LDX.b #!Ex_Amount-1
-	-	LDA !Ex_Num,x
-		CMP #$01+!MinorOffset : BEQ +
-		DEX : BPL -
-		BRA ++
-	+	LDA #$08 : TSB !Level+5
-	++	LDA !Level+4
-		CMP #$FF : BEQ +
+		JMP .TapRun
+		..searchblock
+		LDX.b #!Ex_Amount-1
+		..loop
+		LDA !Ex_Num,x
+		CMP #!BlockHitbox_Num|$80 : BEQ ..mark
+		DEX : BPL ..loop
+		BRA ..count
+		..mark
+		LDA #$08 : TSB !Level+5
+		..count
+		LDA !Level+4
+		CMP #$FF : BEQ ..draw
 		INC !Level+4
-		JMP .NoSenkuJump
-	+	LDY #$08
-		JMP .LoadTilemap
-		.NoAttack2
+		JMP .TapRun
+		..draw
+		LDY #$08 : JMP .LoadTilemap
+		..done
 
 	; slide check
+		.Slide
 		LDA !P2XPosHi-$80
-		CMP #$15 : BNE .NoSlide
-		LDY #$03
-		JMP .LoadTilemap
-		.NoSlide
+		CMP #$15 : BNE ..done
+		LDY #$03 : JMP .LoadTilemap
+		..done
 
 	; senku check
+		.Senku
 		LDA !Level+5
-		AND #$10 : BNE .NoSenku
+		AND #$10 : BNE ..done
 		LDA !P2XPosHi-$80
-		CMP #$1A : BNE .NoSenku
-		BIT !P2XPosLo-$80 : BPL +
+		CMP #$1A : BNE ..done
+		BIT !P2XPosLo-$80 : BPL ..draw
 		LDA #$10 : TSB !Level+5
-	+	LDY #$09
-		JMP .LoadTilemap
-		.NoSenku
+		..draw
+		LDY #$09 : JMP .LoadTilemap
+		..done
 
 	; senku jump check
+		.SenkuJump
 		LDA !Level+5
-		AND #$20 : BNE .NoSenkuJump
+		AND #$20 : BNE ..done
 		LDA !P2XPosHi-$80
-		CMP #$1B : BEQ +
-		CMP #$1C : BEQ +
+		CMP #$1B : BEQ ..validscreen
+		CMP #$1C : BEQ ..validscreen
+		..reset
 		STZ !Level+4
-		BRA .NoSenkuJump
-	+	LDA !P2YPosHi-$80 : BNE +
+		BRA ..done
+		..validscreen
+		LDA !P2YPosHi-$80 : BNE ..count
 		LDA !P2YPosLo-$80
-		CMP #$D0 : BCS +
-		LDA !P2InAir-$80 : BNE +
+		CMP #$D0 : BCS ..count
+		LDA !P2InAir-$80 : BNE ..count
+		..mark
 		LDA #$20 : TSB !Level+5
-	+	LDA !Level+4
-		CMP #$FF : BEQ +
+		..count
+		LDA !Level+4
+		CMP #$FF : BEQ ..draw
 		INC !Level+4
-		BRA .NoSenkuJump
-	+	LDY #$0A
-		JMP .LoadTilemap
-		.NoSenkuJump
+		BRA ..done
+		..draw
+		LDY #$0A : JMP .LoadTilemap
+		..done
 
 	; tap run check
+		.TapRun
 		LDA $0A22
-		CMP #$40 : BNE .NoTapRun
-		LDA !CutsceneSmoothness : BNE .NoTapRun
-		LDA !P2Dashing-$80 : BEQ +
+		CMP #$40 : BNE ..done
+		LDA !CutsceneSmoothness : BNE ..done
+		LDA !P2Dashing-$80 : BEQ ..animate
+		..mark
 		LDA !P2Direction-$80
 		EOR #$01
 		INC A
 		TSB !Level+5
-	+	LDA $14
+		..animate
+		LDA $14
 		AND #$10
 		BEQ $02 : LDA #$01
 		ORA #$04
 		TAY
 		LDA !Level+5
-		AND #$03 : BEQ +
-		CMP #$02 : BEQ +
-		CMP #$03 : BEQ .NoTapRun
+		AND #$03 : BEQ ..draw
+		CMP #$02 : BEQ ..draw
+		CMP #$03 : BEQ ..done
 		LDX !P2XPosHi-$80
-		CPX #$11 : BCS .NoTapRun
+		CPX #$11 : BCS ..done
 		INY #2
-	+	JMP .LoadTilemap
-		.NoTapRun
+		..draw
+		JMP .LoadTilemap
+		..done
 
 
 	; jump check
@@ -4158,8 +4133,7 @@ levelC6:
 		CMP #$F5 : BCS .NoJump
 		LDA !Level+2
 		CMP #$FF : BNE .CountJump
-		LDY #$00
-		BRA .LoadTilemap
+		LDY #$00 : BRA .LoadTilemap
 		.CountJump
 		INC A
 		STA !Level+2
@@ -4169,16 +4143,10 @@ levelC6:
 
 	; fire check
 		.CheckFire
-		LDA !CurrentMario : BEQ .Return
-		DEC A
-		LSR A
-		ROR A
-		AND #$80
-		TAX
-		LDA !P2FireCharge-$80,x : BEQ .Return
+		LDA !P2Character-$80 : BNE .Return
+		LDA !P2FireCharge-$80 : BEQ .Return
 		LDA !CutsceneSmoothness : BNE .Return
-		LDY #$02
-		BRA .LoadTilemap
+		LDY #$02 : BRA .LoadTilemap
 
 	; run check
 		.TextRun
@@ -4217,7 +4185,7 @@ levelC6:
 		REP #$20
 		STZ $00
 		LDA .TilemapPtr,y : STA $02
-		JSL !SpriteHUD
+		JSL DrawSpriteHUD
 		SEP #$20
 
 		.Return
@@ -4225,31 +4193,31 @@ levelC6:
 
 
 		.TilemapPtr
-		dw .Jump		; 00
-		dw .Run			; 01
-		dw .Fire		; 02
-		dw .Slide		; 03
-		dw .TapRun1		; 04
-		dw .TapRun2		; 05
-		dw .TapRun3		; 06
-		dw .TapRun4		; 07
-		dw .Attack		; 08
-		dw .Senku		; 09
-		dw .SenkuJump		; 0A
+		dw .JumpTM		; 00
+		dw .RunTM		; 01
+		dw .FireTM		; 02
+		dw .SlideTM		; 03
+		dw .TapRun1TM		; 04
+		dw .TapRun2TM		; 05
+		dw .TapRun3TM		; 06
+		dw .TapRun4TM		; 07
+		dw .AttackTM		; 08
+		dw .SenkuTM		; 09
+		dw .SenkuJumpTM		; 0A
 
 
 		.TilemapSize
-		db .Jump_End-.Jump
-		db .Run_End-.Run
-		db .Fire_End-.Fire
-		db .Slide_End-.Slide
-		db .TapRun1_End-.TapRun1
-		db .TapRun2_End-.TapRun2
-		db .TapRun3_End-.TapRun3
-		db .TapRun4_End-.TapRun4
-		db .Attack_End-.Attack
-		db .Senku_End-.Senku
-		db .SenkuJump_End-.SenkuJump
+		db .JumpTM_end-.JumpTM
+		db .RunTM_end-.RunTM
+		db .FireTM_end-.FireTM
+		db .SlideTM_end-.SlideTM
+		db .TapRun1TM_end-.TapRun1TM
+		db .TapRun2TM_end-.TapRun2TM
+		db .TapRun3TM_end-.TapRun3TM
+		db .TapRun4TM_end-.TapRun4TM
+		db .AttackTM_end-.AttackTM
+		db .SenkuTM_end-.SenkuTM
+		db .SenkuJumpTM_end-.SenkuJumpTM
 
 ; -- inputs --
 ; A		0x80 (16x16)
@@ -4275,25 +4243,25 @@ levelC6:
 ; SLASH		0xEC (32x16)
 
 
-		.Jump
+		.JumpTM
 		db $65,$C2,$87,$3F		; jump
 		db $75,$C2,$89,$3F
 		db $8B,$C0,$82,$3F		; B
-		..End
+		..end
 
-		.Run
+		.RunTM
 		db $65,$C2,$AC,$3F		; run
 		db $6D,$C2,$AD,$3F
 		db $83,$C0,$A2,$3F		; Y
-		..End
+		..end
 
-		.Fire
+		.FireTM
 		db $65,$C2,$EC,$3F		; fire
 		db $75,$C2,$EE,$3F
 		db $8B,$C0,$A2,$3F		; Y
-		..End
+		..end
 
-		.Slide
+		.SlideTM
 		db $60,$C2,$CC,$3F		; slide
 		db $70,$C2,$CE,$3F
 		db $8C,$C8,$E8,$3F		; dpad
@@ -4301,9 +4269,9 @@ levelC6:
 		db $94,$B8,$C6,$3F
 		db $84,$C8,$E4,$3F
 		db $94,$C8,$E6,$3F
-		..End
+		..end
 
-		.TapRun1
+		.TapRun1TM
 		db $5D,$C2,$AC,$3F		; run
 		db $65,$C2,$AD,$3F
 		db $88,$C0,$C8,$3F		; dpad 1
@@ -4316,8 +4284,8 @@ levelC6:
 		db $9C,$B8,$C6,$3F
 		db $8C,$C8,$E4,$3F
 		db $9C,$C8,$E6,$3F
-		..End
-		.TapRun2
+		..end
+		.TapRun2TM
 		db $5D,$C2,$AC,$3F		; run
 		db $65,$C2,$AD,$3F
 		db $78,$B8,$C4,$3F		; dpad 1
@@ -4328,8 +4296,8 @@ levelC6:
 		db $9C,$B8,$C6,$3F
 		db $8C,$C8,$E4,$3F
 		db $9C,$C8,$E6,$3F
-		..End
-		.TapRun3
+		..end
+		.TapRun3TM
 		db $5D,$C2,$AC,$3F		; run
 		db $65,$C2,$AD,$3F
 		db $8C,$C0,$CA,$3F		; dpad 1
@@ -4342,8 +4310,8 @@ levelC6:
 		db $88,$B8,$C6,$3F
 		db $78,$C8,$E4,$3F
 		db $88,$C8,$E6,$3F
-		..End
-		.TapRun4
+		..end
+		.TapRun4TM
 		db $5D,$C2,$AC,$3F		; run
 		db $65,$C2,$AD,$3F
 		db $8C,$B8,$C4,$3F		; dpad 1
@@ -4354,23 +4322,23 @@ levelC6:
 		db $88,$B8,$C6,$3F
 		db $78,$C8,$E4,$3F
 		db $88,$C8,$E6,$3F
-		..End
+		..end
 
-		.Attack
+		.AttackTM
 		db $5D,$C2,$A7,$3F		; attack
 		db $6D,$C2,$A9,$3F
 		db $75,$C2,$AA,$3F
 		db $8B,$C0,$A2,$3F		; Y
-		..End
+		..end
 
-		.Senku
+		.SenkuTM
 		db $61,$C2,$8B,$3F		; senku
 		db $71,$C2,$8D,$3F
 		db $79,$C2,$8E,$3F
 		db $91,$C0,$80,$3F		; A
-		..End
+		..end
 
-		.SenkuJump
+		.SenkuJumpTM
 		db $4C,$C2,$8B,$3F		; senku
 		db $5C,$C2,$8D,$3F
 		db $64,$C2,$8E,$3F
@@ -4378,7 +4346,7 @@ levelC6:
 		db $88,$C2,$87,$3F		; jump
 		db $98,$C2,$89,$3F
 		db $AE,$C0,$82,$3F		; B
-		..End
+		..end
 
 
 
@@ -4445,43 +4413,9 @@ levelC6:
 
 
 levelC7:
-	pushpc
-	org $009C6F
-		JSL levelC7_Main		; > run level code on title screen	\
-		JMP $8494			; > assemble hi OAM 			 | overwriting mario's title screen movement (source: LDX $7DF4 : DEC $7DF5 : BNE $0B)
-		NOP				; > erase leftover code			/
-	pullpc
-	.Main
-		PHB : PHK : PLB
-
-		PLB
-		RTL
-
-
+	RTL
 levelC8:
-
-		LDA !P2Blocked-$80
-		AND #$04 : BEQ +
-		LDA #$10 : STA !Characters
-		LDA #$01 : STA !P2Character-$80
-		LDA #$00 : STA !CurrentMario
-		+
-
-
-		LDX #$0F
-	-	LDA $3200,x
-		CMP #$13 : BNE +
-		LDA $3230,x
-		CMP #$02 : BNE +
-		LDA #$01 : JSL LoadChunk
-	+	DEX : BPL -
-
-		LDA $0A87 : BEQ .NoChunk
-		JSL DestroyChunk
-		.NoChunk
-
-		RTL
-
+	RTL
 levelC9:
 	RTL
 levelCA:
@@ -5179,7 +5113,7 @@ level1F1:
 		LDA $14
 		AND #$03 : BNE ..done
 		%Ex_Index_X_fast()
-		LDA #$05+!CustomOffset : STA !Ex_Num,x
+		LDA #!Explosion_Num : STA !Ex_Num,x
 		LDA !RNG
 		AND #$F0
 		CLC : ADC $1A
@@ -5408,7 +5342,7 @@ level1FA:
 		SEP #$20
 		LDA #$02 : STA $0D
 		LDA #$04 : STA $0E
-		JSL !SpriteHUD
+		JSL DrawSpriteHUD
 		+
 
 
@@ -5613,23 +5547,22 @@ TalkOnce:
 
 		PHX							; ID on stack
 		INC $00
-		LDA ($00)
-		STA $04							; Xlo in $04
-		STA $09							; Xhi in $0A
+
+		LDA ($00) : STA $E8					; X
 		INC $00
 		INC $00
-		LDA ($00) : STA $05					; Ylo in $05
-		XBA : STA $0B						; Yhi in $0B
+		LDA ($00) : STA $EA					; Y
 		INC $00
 		INC $00
-		LDA ($00) : STA $06					; dimensions in $06-$07
+		LDA ($00) : STA $EE-1					; size
+		AND #$00FF : STA $EC
 		INC $00
 		INC $00
 		LDA ($00) : PHA						; push message number
-
 		SEP #$21						; 8-bit, set carry
-		JSL !PlayerClipping					; check player contact
-		BCC .ReturnP
+		STZ $EF							; clear H hi
+
+		JSL PlayerContact : BCC .ReturnP			; check player contact
 		STZ $00							;\
 		LSR A : BCC +						; |
 		PHA							; |
@@ -5805,23 +5738,22 @@ SpeedPlatform:
 		BMI ..Return
 	+	JSL DebrisRNG
 
-		LDA #$01+!MinorOffset : STA !Ex_Num,x	; number
-		LDA #$50
-		SEC : SBC !BossData+1			; scale with platform
-		CLC : ADC $00
-		STA !Ex_YLo,x				; Y lo
-		LDA #$D0
-		CLC : ADC $01
-		STA !Ex_XLo,x				; X lo
-		LDA #$01 : STA !Ex_YHi,x		; Y hi
-		LDA #$0C : STA !Ex_XHi,x		; X hi
-
-		LDA #$FC
-		CLC : ADC $02
-		STA !Ex_YSpeed,x			; Y speed
-		LDA #$FC
-		CLC : ADC $03
-		STA !Ex_XSpeed,x			; X speed
+		; LDA #$01+!MinorOffset : STA !Ex_Num,x	; number
+		; LDA #$50
+		; SEC : SBC !BossData+1			; scale with platform
+		; CLC : ADC $00
+		; STA !Ex_YLo,x				; Y lo
+		; LDA #$D0
+		; CLC : ADC $01
+		; STA !Ex_XLo,x				; X lo
+		; LDA #$01 : STA !Ex_YHi,x		; Y hi
+		; LDA #$0C : STA !Ex_XHi,x		; X hi
+		; LDA #$FC
+		; CLC : ADC $02
+		; STA !Ex_YSpeed,x			; Y speed
+		; LDA #$FC
+		; CLC : ADC $03
+		; STA !Ex_XSpeed,x			; X speed
 
 
 		..Return
@@ -6047,22 +5979,20 @@ WATER_BOX:
 		CLC : ADC #$0005		;\ update stack value (return address)
 		STA $01,s			;/
 
-		LDY #$02			;\
-		LDA ($00),y			; | box Y
-		STA $05				; |
-		STA $0A				;/
-		LDY #$04			;\ box dimensions
-		LDA ($00),y : STA $06		;/
-		LDA ($00)			;\
-		STA $09				; | box X
-		SEP #$20			; |
-		STA $04				;/
+		LDA ($00) : STA $E8		; box X
+		LDY #$02			;\ box Y
+		LDA ($00),y : STA $EA		;/
+		LDY #$04			;\ box H (lo byte only)
+		LDA ($00),y : STA $EE-1		;/
+		AND #$00FF : STA $EC		; box W
+		SEP #$20			; A 8-bit
+		STZ $EF				; clear box H hi
 
 		LDA !P2Invinc-$80 : PHA		;\ backup invinc regs
 		LDA !P2Invinc : PHA		;/
 		STZ !P2Invinc-$80		;\ temp clear invinc regs
 		STZ !P2Invinc			;/
-		SEC : JSL !PlayerClipping	; check for player contact
+		JSL PlayerContact		; check for player contact
 		PLX : STX !P2Invinc		;\ restore invinc regs
 		PLX : STX !P2Invinc-$80		;/
 		LSR A : BCC .P2
@@ -6139,26 +6069,18 @@ WARP_BOX:
 		LDY #$07				;\ entrance link data
 		LDA ($00),y : STA !BigRAM+2		;/
 
-		LDY #$03				;\
-		LDA ($00),y				; | box Y
-		STA $05					; |
-		STA $0B-1				;/
-		LDY #$05				;\ box dimensions
-		LDA ($00),y : STA $06			;/
-		LDY #$01				;\
-		LDA ($00),y				; |
-		STA $0A-1				; | box X
-		SEP #$20				; |
-		STA $04					;/
+		LDY #$01				;\ box X
+		LDA ($00),y : STA $E8			;/
+		LDY #$03				;\ box Y
+		LDA ($00),y : STA $EA			;/
+		LDY #$05				;\ box H (lo byte only)
+		LDA ($00),y : STA $EE-1			;/
+		AND #$00FF : STA $EC			; box W
+		SEP #$20				; A 8-bit
+		STZ $EF					; clear box H hi
+
 		LDA ($00) : STA !BigRAM+0		; directional value
-		LDA !P2Invinc-$80 : PHA			;\ backup invinc regs
-		LDA !P2Invinc : PHA			;/
-		STZ !P2Invinc-$80			;\ temp clear invinc regs
-		STZ !P2Invinc				;/
-		SEC : JSL !PlayerClipping		; check for player contact
-		PLX : STX !P2Invinc			;\ restore invinc regs
-		PLX : STX !P2Invinc-$80			;/
-		BCC .Return
+		JSL PlayerContact : BCC .Return		; check for player contact
 
 		LDX !BigRAM+0				;\ don't check directions if all directions are enabled already
 		CPX #$0F : BEQ .Link			;/
@@ -6231,9 +6153,10 @@ WARP_BOX:
 	EXIT:
 		.Exit
 		SEP #$20
-		LDA #$06 : STA $71
-		STZ $88
-		STZ $89
+		INC $741A					; +1 door count
+		BNE $03 : DEC $741A				; stay at 255 instead of wrapping around to 0
+		LDA #$0F : STA !GameMode			; load level
+		LDA #$0D : STA !MarioAnim			; enter door animation
 		SEC
 		RTL
 
@@ -6440,7 +6363,7 @@ WARP_BOX:
 		.UnlockNextLevel			;\
 		REP #$30				; |
 		LDX !Level				; |
-		LDA.l LEVEL_Unlock,x			; |
+		LDA.l LevelData_Unlock,x		; |
 		AND #$00F : TAX				; | unlock level
 		SEP #$30				; |
 		LDA !LevelTable4,x			; |

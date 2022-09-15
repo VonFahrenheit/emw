@@ -1,7 +1,5 @@
 
-
-
-
+; incrementing timer
 ; for this particle, bit 6 of X speed is used as X flip flag
 
 	ContactBigParticle:
@@ -10,9 +8,11 @@
 		LDA #$02 : STA !Particle_TileTemp+2			; tile size
 
 		LDA !Particle_Tile,x : STA !Particle_TileTemp		; base tile
-		LDA !Particle_Timer,x : BEQ .NoTimer			;\ check and decrement timer
-		DEC !Particle_Timer,x					;/
-		CMP #$04 : BCS .TileDone				;\
+
+		LDA !Particle_Timer,x					;\
+		CMP #$08 : BEQ .NoTimer					; | check and increment timer
+		INC !Particle_Timer,x					;/
+		CMP #$04 : BCC .TileDone				;\
 		INC !Particle_TileTemp					; | tile animation
 		INC !Particle_TileTemp					; |
 		.TileDone						;/
