@@ -51,6 +51,7 @@
 		BRA .Return16
 
 		.Load
+<<<<<<< Updated upstream
 		LDA !P2Pipe
 		AND #$20^$FF
 		ORA #$01
@@ -68,6 +69,28 @@
 		SEP #$20
 		SEC
 		RTS
+=======
+		LDA !P2Pipe					;\
+		AND #$20^$FF					; | make sure pipe timer stays trigger happy
+		ORA #$01 : STA !P2Pipe				;/
+		LDA !MultiPlayer : BEQ .Transition		;\
+		LDA !CurrentPlayer				; |
+		INC A						; | wait for both players on multiplayer
+		ORA !PlayerWaiting				; |
+		STA !PlayerWaiting				; |
+		CMP #$03 : BNE .Return16			;/
+
+		.Transition
+		INC !DoorCounter : BNE +			; +1 door count
+		DEC !DoorCounter : +				; stay at 255 instead of wrapping around to 0
+		REP #$20
+		LDA !P2XPosLo : STA !MarioXPosLo
+		LDA !P2YPosLo : STA !MarioYPosLo
+		JSL TranslateOldExitNumber			; placeholder code until level loader is updated
+
+		LDX #$0F : STX !GameMode
+		BRA .Return16
+>>>>>>> Stashed changes
 
 		.NoPipe
 		CLC

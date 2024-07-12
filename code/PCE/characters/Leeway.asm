@@ -3,18 +3,12 @@
 
 namespace Leeway
 
+<<<<<<< Updated upstream
 ; --Build 2.7--
+=======
+; --Build 3.3--
+>>>>>>> Stashed changes
 ;
-;
-; Upgrade data:
-;	bit 0 (01)	Dash after hitting an enemy to cancel into a dash slash
-;	bit 1 (02)	Can dash in midair, but not from a dash jump
-;	bit 2 (04)	Can dash in midair, even from a dash jump
-;	bit 3 (08)	Can use combo slash in midair
-;	bit 4 (10)	Hold B to slow descent in midair
-;	bit 5 (20)	Enables stamina for climbing
-;	bit 6 (40)	Rexcalibur
-;	bit 7 (80)	Push X to perform ultimate attack
 
 
 	!Lee_Idle	= $00
@@ -42,6 +36,49 @@ namespace Leeway
 	!Lee_Dead	= $41
 	!Lee_Victory	= $42
 
+<<<<<<< Updated upstream
+=======
+	LDA $16
+	AND #$20 : BEQ +
+	LDA !LeewayUpgrades
+	EOR #$FF : STA !LeewayUpgrades
+	+
+
+
+		LDA !P2Init : BNE .Main
+
+		.Init
+		INC !P2Init
+		REP #$10
+	;	LDX #$FFFF : STX !P2Particle
+		SEP #$30
+
+		.Main
+
+		.Freeze
+		LDA $9D : BEQ ..done
+		DEC !P2AnimTimer
+		JMP ANIMATION_CheckPlayer
+		..done
+
+		.AutoAnim
+		LDA !P2Anim
+		REP #$30
+		AND #$00FF
+		ASL #3 : TAY
+		LDA ANIM+$00,y
+		SEP #$20
+		LDA !P2AnimTimer
+		INC A
+		CMP ANIM+$02,y : BCC ..sameanim
+		..newanim
+		LDA ANIM+$03,y : STA !P2Anim
+		LDA #$00
+		..sameanim
+		STA !P2AnimTimer
+		SEP #$30
+
+>>>>>>> Stashed changes
 
 
 	MAINCODE:
@@ -62,9 +99,17 @@ namespace Leeway
 		RTS
 
 		.KnockedOut
+<<<<<<< Updated upstream
 		JSR CORE_KNOCKED_OUT
 		BMI .Fall
 		BCC .Fall
+=======
+		LDA !P2DroppedSword : BNE ..move
+		INC !P2DroppedSword
+		JSR DropSword
+		..move
+		JSL CORE_KNOCKED_OUT : BCC .Fall
+>>>>>>> Stashed changes
 		LDA #$02 : STA !P2Status
 		PLB
 		RTS
@@ -72,6 +117,7 @@ namespace Leeway
 		.Fall
 		LDA #!Lee_Dead : STA !P2Anim
 		STZ !P2AnimTimer
+<<<<<<< Updated upstream
 		JMP ANIMATION_HandleUpdate
 
 		.SnapToP1
@@ -89,12 +135,16 @@ namespace Leeway
 		BCS +
 		INC !P2Status
 	+	SEP #$20
+=======
+		JMP ANIMATION_CheckPlayer
+>>>>>>> Stashed changes
 
 		.Return
 		PLB
 		RTS
 
 		.Process
+<<<<<<< Updated upstream
 		LDA !P2MaxHP				;\
 		CMP !P2HP				; | Enforce max HP
 		BCS $03 : STA !P2HP			;/
@@ -104,18 +154,38 @@ namespace Leeway
 	++	STA !P2PrevPlatform			; |
 		+					;/
 		LDA $6DA5
+=======
+
+	; merge L into A
+		LDA $17
+>>>>>>> Stashed changes
 		AND #$20
 		ASL #2
 		TSB $6DA5
 		LDA $6DA9
 		AND #$20
 		ASL #2
+<<<<<<< Updated upstream
 		TSB $6DA9
+=======
+		TSB $18
 
+		REP #$20						;\
+		LDA !P2Hitbox1IndexMem					; |
+		ORA !P2Hitbox2IndexMem					; | merge hitboxes
+		STA !P2Hitbox1IndexMem					; |
+		STA !P2Hitbox2IndexMem					; |
+		SEP #$20						;/
+
+
+>>>>>>> Stashed changes
+
+	; timers
 		LDA !P2HurtTimer
 		BEQ $03 : DEC !P2HurtTimer
 		LDA !P2Invinc
 		BEQ $03 : DEC !P2Invinc
+<<<<<<< Updated upstream
 		LDA !P2DashTimerR2
 		BEQ $03 : DEC !P2DashTimerR2
 		LDA !P2Dashing
@@ -138,13 +208,43 @@ namespace Leeway
 		AND #$04 : BEQ +
 		STZ !P2Dashing
 		BRA ++
+=======
+		LDA !P2KickTimer
+		BEQ $03 : DEC !P2KickTimer
+		LDA !P2WallAnim
+		BEQ $03 : DEC !P2WallAnim
 
-	+	LDA !P2Dashing : BEQ ++
-		AND #$80
-		ORA #$04
-		STA !P2Dashing
-		++
 
+		LDA !P2SwordTimer : BEQ +
+		DEC !P2SwordTimer : BNE +
+		STZ !P2SwordAttack
+		+
+
+
+		LDA !P2BraveDashCooldown : BEQ +
+		DEC !P2BraveDashCooldown : BNE +
+		LDA #$B4 : STA !P2FlashPal
+		+
+
+		LDA !P2DashSmoke : BEQ +				;\
+		DEC !P2DashSmoke					; | dash smoke
+		JSL CORE_DASH_SMOKE					; |
+		+							;/
+		LDA !P2SlantPipe
+		BEQ $03 : DEC !P2SlantPipe
+
+
+	; dash timer
+		.Dashing
+		LDA !P2Dashing : BEQ ..done				; check dash timer
+		DEC !P2Dashing : BNE ..done				; decrement timer
+		LDA #!Lee_DashTransition : STA !P2Anim			;\
+		LDA #$04 : STA !P2AnimTimer				; | dash done anim
+		..done
+>>>>>>> Stashed changes
+
+
+<<<<<<< Updated upstream
 		LDA !P2DashTimerL2
 		BEQ $03 : DEC !P2DashTimerL2
 		BEQ +
@@ -262,10 +362,87 @@ namespace Leeway
 		PLP
 		BPL .Wall
 		JMP .Ceiling
+=======
+		.WallJump
+		LDA !P2WallJumpTimer : BEQ ..clear
+		DEC !P2WallJumpTimer
+		LDA !P2WallJumpInput : TSB $15
+		EOR #$03 : TRB $15
+		BRA ..done
+		..clear
+		STZ !P2WallJumpInput
+		..done
 
-		.ClingLeft
-		LDA #!Lee_WallClimb : STA !P2Anim
+
+
+	; snorez particles
+		; LDA $14
+		; AND #$7F : BNE +
+		; PHP
+		; PHB
+		; JSL GetParticleIndex
+		; LDA.l !P2Dir
+		; AND #$00FF
+		; BEQ $03 : LDA #$0008
+		; ADC.l !P2X
+		; STA !Particle_X,x
+		; LDA.l !P2Y
+		; SEC : SBC #$0004
+		; STA !Particle_Y,x
+		; SEP #$20
+		; LDA #!prt_snorez : STA !Particle_Type,x
+		; LDA #$F0 : STA !Particle_Prop,x
+		; PLB
+		; PLP
+		; +
+
+
+
+
+
+
+
+	PIPE:
+		JSL CORE_PIPE : BCC CONTROLS
+		LDA #$04 : TRB $15
+		JMP ANIMATION
+
+
+	CONTROLS:
+		PEA PHYSICS-1
+		JSL CORE_COYOTE_TIME
+
+	; hurt check
+		.Hurt
+		LDA !P2HurtTimer : BEQ ..done
+		JMP .Friction
+		..done
+
+
+	; air/ground split
+		LDA !P2InAir : BEQ .Ground
+>>>>>>> Stashed changes
+
+	; air-only moves
+		.Air
+		STZ !P2Ducking					; leeway can't crouch in midair
+		LDA !P2WallCoyote
+		BEQ $03 : DEC !P2WallCoyote
+
+	; double jump code
+		.DoubleJump
+		LDA $16						;\
+		AND !LeewayUpgrades				; | must have upgrade and press B
+		BPL ..done					;/
+		LDA !P2WallClimb : BNE ..done			; can't double jump from wall/ceiling
+		LDA !P2CoyoteTime : BMI $02 : BNE ..done
+		LDA !P2AirDashUsed				;\ only one double jump per jump
+		AND #$02 : BNE ..done				;/
+		LDA #$02 : TSB !P2AirDashUsed
+		LDA #$D0 : STA !P2YSpeed
+		LDA #!Lee_Jump : STA !P2Anim
 		STZ !P2AnimTimer
+<<<<<<< Updated upstream
 		LDA #$02 : STA !P2Climb
 		STZ !P2Direction
 		BRA .ProcessClimb
@@ -305,8 +482,14 @@ namespace Leeway
 		STA !P2VectorTimeY
 		STZ !P2VectorAccY
 		.done
+=======
+		STZ !P2Dashing
+		..done
+>>>>>>> Stashed changes
 
+		BRA .SharedMoves
 
+<<<<<<< Updated upstream
 		LDA $6DA3
 		LSR #2
 		AND #$03
@@ -326,13 +509,23 @@ namespace Leeway
 		LDA #!Lee_WallCling : STA !P2Anim
 		STZ !P2AnimTimer
 		BRA .ClimbJump
+=======
+>>>>>>> Stashed changes
 
-		.NoHoldOut
-		LDA !P2YSpeed
-		BNE .ClimbJump
-		STZ !P2AnimTimer
-		BRA .ClimbJump
+	; ground-only moves
+		.Ground
+		STZ !P2KillCount
+		STZ !P2AirDashUsed
+		STZ !P2DashJump
+		STZ !P2WallClimb
+		STZ !P2WallCoyote
+		STZ !P2JumpHold
+		LDA !LeewayUpgrades
+		AND #$08
+		BEQ $02 : LDA !LeewayMaxStamina
+		STA !P2Stamina
 
+<<<<<<< Updated upstream
 		.Ceiling
 		LDA !P2ClimbTimer : BEQ +++			; drop when stamina runs out
 		LDA !P2Blocked
@@ -392,24 +585,88 @@ namespace Leeway
 		LDA #!Lee_ClimbTop : STA !P2Anim
 		STZ !P2AnimTimer
 	+	STZ !P2Climb
+=======
+		.Crouch
+		JSL CORE_CHECK_ABOVE : BCC ..noforce
+		LDA #$04 : TSB $15
+		..noforce
+		LDA $15
+		AND #$04 : STA !P2Ducking
+		..done
 
-		.EndClimb
-		RTS
+>>>>>>> Stashed changes
 
+
+<<<<<<< Updated upstream
 		.ClimbSlash
 		LDA !P2ClimbTop : BNE .EndClimb			; No normal climb attacks during get-up
 		LDA #$05
 		BIT !P2Climb
 		BPL .WallSlash
+=======
+	; moves that can be used in midair and on the ground
+	.SharedMoves
 
-		.HangSlash
-		INC A
+	; slide
+		.Sliding
+		LDA $15						;\ A = input
+		LDY !P2InAir : BEQ ..ground			;/ air/ground split
+		..air						;\ AIR: keep slide if not touching d-pad
+		AND #$03 : BEQ ..canslide			;/
+		ROR #2						;\ holding backwards in midair -> end slide
+		EOR !P2XSpeed : BPL ..endslide			;/ (note the lack of DEC A)
+		LDA !P2XSpeed					;\
+		CLC : ADC #$28					; | holding forward in midair with 0x28+ speed maintains the slide
+		CMP #$50 : BCS ..done				;/
+		BRA ..endslide
+		..ground					;\
+		AND #$07					; | GROUND: check for holding down -> can slide
+		CMP #$04 : BCS ..canslide			;/
+		LDY !P2Sliding : BEQ ..done			; if not holding down and not sliding -> done
+		AND #$03 : BEQ ..canslide			; if not holding anything -> can slide
+		..endslide					;\ end slide
+		LDA #$00 : BRA ..setslide			;/
+		..canslide					;\
+		LDA !P2Slope : BNE ..setslide			; | can slide on a slope
+		LDA !P2Sliding : BEQ ..done			; | keep slide on flat ground if speed > 0
+		LDA !P2XSpeed					;/
+		..setslide					;\
+		STA !P2Sliding					; | set slide
+		..done						;/
 
-		.WallSlash
-		STA !P2SwordAttack
-		LDA #$3D : STA !SPC4				; slash SFX
-		RTS
+	; dash code
+		.Dash
+		LDA !P2WallClimb : BNE ..clear			; clear if grabbing something
+		LDA !P2Dashing : BEQ ..done			;\ always set dash jump when dashing
+		STA !P2DashJump					;/
+		LDA !P2InAir : BEQ ..allow			;\
+		LDA !P2CoyoteTime				; | clear aerial dash unless air dashing
+		BMI $02 : BNE ..done				; | (but maintain it during coyote time)
+		LDA !P2AirDash : BEQ ..clear			; |
+		..allow						;/
+		STZ !P2YSpeed
+		LDA !P2SwordAttack : BNE ..done
+		BIT $17 : BMI ..done
+		..clear
+		STZ !P2Dashing
+		STZ !P2AirDash
+		..done
+>>>>>>> Stashed changes
 
+	; start attack code
+		.StartAttack
+		BIT $16 : BVC ..done
+		LDA !P2Dashing : BNE ..dashattack
+		LDA !P2InAir  : BEQ ..groundattack
+		LDA !P2SwordAttack : BNE ..done
+		LDA !P2WallClimb
+		BEQ ..airattack
+		BPL ..wallattack
+
+		..ceilingattack
+		LDA #$06 : BRA ..setattack
+
+<<<<<<< Updated upstream
 		.Top
 		LDA !P2YSpeed
 		BMI $04 : CMP #$10 : BCS .EndClimb-3
@@ -422,15 +679,37 @@ namespace Leeway
 		LDA !P2ClimbTop : BNE +
 		LDA #$1C : STA !P2ClimbTop
 	+	RTS
+=======
+		..wallattack
+		LDA #$05 : BRA ..setattack
+>>>>>>> Stashed changes
 
-		.NoClimb
+		..airattack
+		LDA !LeewayUpgrades
+		LSR A : BCS +
+		LDA #$04 : BRA ..setattack
+	+	LDA #$07 : BRA ..setattack
 
+		..dashattack
+		LDA !P2SwordAttack : BNE ..done
+		LDA #$03 : BRA ..setattack
 
-		LDA !P2SwordAttack : BEQ +
-		CMP #$02 : BCS +
-		RTS
-		+
+		..groundattack
+		BIT $16 : BVC ..done
+		LDA !P2SwordAttack
+		AND #$7F : BEQ ..groundattack1
+		CMP #$01 : BNE ..done
+		LDA !P2SwordTimer
+		CMP #$0C : BCS ..done
+		LDA #$40 : TSB !P2Buffer
+		BRA ..done
+		..groundattack1
+		LDA #$01
+		..setattack
+		STA !P2SwordAttack
+		..done
 
+<<<<<<< Updated upstream
 	; Dash check before ground check because air dash will be unlocked
 
 		LDA !P2DashTimerR2			;\
@@ -454,20 +733,113 @@ namespace Leeway
 		STZ !P2IndexMem1			; |
 		STZ !P2IndexMem2			;/
 		.NoCombo
+=======
 
 
+
+
+	; horizontal movement code
+	.HorizontalMovement
+		LDA !P2SwordAttack				;\
+		AND #$7F : BEQ ..notattacking			; | friction during ground attack 1
+		CMP #$01 : BEQ .Friction			; |
+		..notattacking					;/
+
+		.HandleSlide
+		LDA !P2Sliding : BEQ ..done			; check slide
+		LDA !P2XSpeed					;\
+		ROL #2						; | slide direction
+		AND #$01					; |
+		EOR #$01 : STA !P2Dir				;/
+		LDA !P2Slope					;\
+		CLC : ADC #$04					; |
+		ASL A : TAX					; | get slide speed and acc
+		REP #$30					; |
+		LDY DATA_SlideXAcc,x				; |
+		LDA DATA_SlideXSpeed,x : BNE ..getdir		;/
+		LDA !P2InAir
+		AND #$00FF : BNE ..keepspeed
+		..accjump
+		JMP .ApplyAcc
+
+		..getdir
+		BMI ..left					;\
+		..right						; |
+		BIT !P2XSpeedFraction : BMI ..accjump		; |
+		CMP !P2XSpeedFraction : BCS ..accjump		; |
+		..keepspeed
+		LDA !P2XSpeedFraction : BRA .ApplyAcc		; | handle slide speed
+		..left						; |
+		BIT !P2XSpeedFraction : BPL .ApplyAcc		; |
+		CMP !P2XSpeedFraction : BCC .ApplyAcc		; |
+		LDA !P2XSpeedFraction : BRA .ApplyAcc		; |
+		..done						;/
+
+>>>>>>> Stashed changes
+
+		LDA $15
+		AND #$03 : BNE .Move
+		LDA !P2Dashing : BEQ .Friction
+		LDA !P2Direction
+		EOR #$01
+		ASL A
+		BRA .Move_dashing
+
+<<<<<<< Updated upstream
 		STZ !P2ClimbTop				; Clear getup when starting a dash
 		LDA !P2Blocked
 		AND #$04
 		ORA !P2Platform
 		BNE .GroundDash
+=======
+		.Friction
+		REP #$30
+		LDY #$0800
+		LDA #$0000 : BRA .ApplyAcc
 
-		LDA !LeewayUpgrades			;\ air dash required to dash in midair
-		AND #$06 : BEQ .NoDash			;/
-		CMP #$04 : BCS +			;\
-		LDA !P2DashJump : BNE .NoDash		; | air dash+ required to dash out of dash jump
-		+					;/
+		.Move
+		LDY !P2SwordAttack				;\
+		CPY #$82 : BEQ ..dirdone			; | can't turn during ground attack 2 or air attack
+		CPY #$84 : BEQ ..dirdone			;/
+		AND #$01 : STA !P2Direction			;\ set dir
+		..dirdone					;/
+		LDY #$00					; base index = walking
+		LDA $15						;\ get left bit
+		..dashing					; > special hook for dash branch
+		AND #$02					;/
+		LDX !P2DashJump : BNE ..setdash			;\
+		LDX !P2Dashing : BEQ ..dashdone			; |
+		..setdash					; | dash index
+		ORA #$04					; |
+		LDY #$02					;/
+		..dashdone					;
+		TAX						; X = speed index
+		LDA !P2XSpeed : BEQ ..turn			;\> 0 speed counts as turning
+		ROL #2						; |
+		EOR !P2Direction				; |
+		LSR A : BCS ..noturn				; | increase acceleration when turning
+		..turn						; |
+		LDY #$04					; |
+		..noturn					;/
+		LDA !IceLevel : BEQ ..instant
+		LDA !P2InAir : BNE ..instant
+		..ice
+		REP #$30
+		LDA DATA_XAccIce,y : TAY
+		BRA ..getspeed
+		..instant
+		REP #$30
+		LDY #$7FFF
+		..getspeed
+		LDA DATA_XSpeed,x
+>>>>>>> Stashed changes
 
+		.ApplyAcc
+		JSL CORE_ACCEL_X_16Bit
+		SEP #$30
+		.HorizontalMovementDone
+
+<<<<<<< Updated upstream
 		LDA !P2SenkuUsed
 		BEQ $03 : JMP .Shared
 		LDA #$2D : STA !SPC1
@@ -482,8 +854,103 @@ namespace Leeway
 		LDA #$18 : STA !P2Dashing
 
 		.NoDash
+=======
 
 
+	; ceiling climb code
+		.CeilingClimb
+		LDA !P2WallClimb : BMI ..climbing
+		..init
+		LDA !P2Stamina : BEQ ..done
+		LDA !P2Blocked
+		AND $15
+		AND !LeewayUpgrades
+		AND #$08 : BEQ ..done
+		LDA #$80 : STA !P2WallClimb			; cling to ceiling off of bonk
+		REP #$20
+		LDA !P2Y
+		CLC : ADC #$0006
+		STA !P2Y
+		SEP #$20
+		STZ !P2SwordAttack
+		..climbing
+		STZ !P2DashJump
+		STZ !P2AirDashUsed
+		STZ !P2Carry					; can't hold item while climbing
+		LDA $15
+		BIT #$08 : BEQ ..drop
+		JSL CORE_CHECK_ABOVE : BCC ..drop
+		LDA $15
+		AND #$03 : TAX
+		LDA !P2SwordAttack
+		BEQ $02 : LDX #$00
+		LDA DATA_ClimbSpeed,x : STA !P2XSpeed
+		STZ !P2YSpeed
+		BIT $16 : BMI $03 : JMP .WallClimb_done
+		..drop
+		STZ !P2WallClimb
+		STZ !P2YSpeed
+		..done
+
+
+	; wall slide/climb code
+		.WallClimb
+		LDA !P2WallClimb : BNE ..canclimb		;\ can't grab wall with upwards y speed
+		BIT !P2YSpeed : BPL ..canclimb			;/
+		..donejump
+		JMP ..done					;
+		..canclimb					;
+		LDA !P2InAir : BEQ ..update			; let go if touching ground
+		LDA !P2Blocked
+		AND $15
+		AND #$03
+		BEQ $03 : STA !P2WallJumpDir			; only update wall if actually touching one
+		CMP !P2WallClimb : BEQ ..main
+		STZ !P2YSpeed					; reset Y-speed when grabbing or falling off
+		STZ !P2JumpHold
+		STZ !P2SwordAttack
+		..update
+		STA !P2WallClimb
+>>>>>>> Stashed changes
+
+		..main
+		LDA !P2WallClimb : BEQ ..donejump
+		..clinging
+		LDA $15
+		AND #$03 : TAX
+		LDA DATA_ClimbSpeed,x : STA !P2XSpeed
+		LDA $15						;\ ignore ledge if holding down
+		AND #$04 : BNE ..noledge			;/
+		LDA !P2Dir					;\
+		ASL A : TAX					; |
+		REP #$30					; |
+		LDY !P2Y					; |
+		LDA !P2X					; |
+		CLC : ADC DATA_ClimbTileX,x			; | check for ledge
+		TAX						; |
+		JSL GetMap16					; |
+		CMP #$0025					; |
+		SEP #$30					; |
+		BNE ..noledge					;/
+		LDA !P2SwordAttack : BNE ..sticktoledge		; prio for sword animation
+		LDA #!Lee_WallClimbTop : STA !P2Anim		;\
+		STZ !P2AnimTimer				; | ledge hang anim
+		..sticktoledge					;/
+		LDA #$08 : STA !P2WallAnim			; set timer for climb animation (can play even without stamina)
+		LDA !P2Y					;\
+		AND #$F0					; |
+		ORA #$06					; | snap to ledge
+		STA !P2Y					; |
+		STZ !P2YSpeed					; |
+		..noledge					;/
+
+		STZ !P2Carry					; can't hold item while climbing
+		STZ !P2DashJump
+		STZ !P2AirDashUsed
+		LDA #$03 : STA !P2WallCoyote
+		STZ !P2Dashing
+
+<<<<<<< Updated upstream
 		LDA !P2Water				; Check for vine/net climb
 		LSR A
 		BCC .NoVineClimb
@@ -502,12 +969,26 @@ namespace Leeway
 		LDA #$2B : STA !SPC1			; jump SFX
 		RTS
 		.NoVineClimb
+=======
+		..dinogrip
+		LDA !P2Anim					;\ can always climb when hanging from a ledge
+		CMP #!Lee_WallClimbTop : BEQ ..climb		;/
+		LDA !LeewayUpgrades
+		AND #$08 : BEQ ..done
+		LDA !P2Stamina : BEQ ..done
+		..climb
+		LDA $15
+		AND #$0C
+		LSR #2
+		TAX
+		LDA !P2SwordAttack
+		BEQ $02 : LDX #$00
+		LDA DATA_ClimbSpeed,x : STA !P2YSpeed
+		..done
+>>>>>>> Stashed changes
 
-		LDA !P2Blocked
-		AND #$04
-		ORA !P2Platform
-		BNE .Ground
 
+<<<<<<< Updated upstream
 		.Air
 		LDA !P2CoyoteTime				;\
 		BMI ..nope					; |
@@ -545,8 +1026,84 @@ namespace Leeway
 		LDA #$3C : STA !SPC4				; slice SFX
 	+	RTS
 
+=======
+	; dash start check after climb
+		.InitDash
+		BIT $18 : BPL ..done
+		LDA !P2WallClimb				;\ can never dash from wall
+		AND #$03 : BNE ..done				;/
+		LDA !P2Dashing
+		ORA !P2SwordAttack
+		BNE ..done
+		LDA !P2InAir : BEQ ..allow
+		LDX !P2WallClimb : BMI ..allow			; can always dash from ceiling
+		AND !LeewayUpgrades : BEQ ..done
+		LDA !P2AirDashUsed
+		AND #$01 : BNE ..done
+		LDA #$01 : TSB !P2AirDashUsed
+		..allow
+		STA !P2AirDash
+		LDX #$28 : STX !P2Dashing			; X = dash timer
+		STZ !P2WallClimb				; clear wall climb
+		LDA !LeewayUpgrades				;\ see if leeway has brave dash
+		AND #$02 : BEQ ..done				;/
+		LDA !P2HP					;\ ignore cooldown when at 1 heart or less
+		CMP #$04+1 : BCC ..skipcooldown			;/
+		LDA !P2BraveDashCooldown : BNE ..done		; no brave dash during cooldown
+		..skipcooldown
+		STX !P2BraveDash				; set brave dash
+		LDA #$78 : STA !P2BraveDashCooldown		; brave dash cooldown = 2 seconds
+		..done
+
+
+
+	; main jump code
+>>>>>>> Stashed changes
 		.Jump
+		LDA $15						;\
+		AND #$80					; | clear jump buffer unless jump is held
+		EOR #$80 : TRB !P2Buffer			;/
+		LDA !P2Buffer					;\ apply jump buffer
+		AND #$80 : TSB $16				;/
+		BIT $16 : BPL .JumpDone				; check B
+		LDA !P2WallClimb				;\
+		AND #$03					; | wall jump clause
+		ORA !P2WallCoyote				; |
+		BEQ ..nowalljump				;/
+		..walljump
+		LDA $17
+		AND #$80
+		STA !P2Dashing
+		LDA !P2Anim					;\ don't force directional inputs when jumping from ledge hang
+		CMP #!Lee_WallClimbTop : BEQ ..triggerwalljump	;/
+		LDA !P2WallJumpDir
+		AND #$03
+		EOR #$03
+		BIT $17
+		BPL $02 : ORA #$04
+		TAX
+		AND #$03 : STA !P2WallJumpInput
+		LDA #$10 : STA !P2WallJumpTimer
+		LDA DATA_WallJumpSpeed,x : STA !P2XSpeed
+		..triggerwalljump
+		STZ !P2WallCoyote
+		LDA #$C0 : BRA .TriggerJump_main
+		..nowalljump
+
+		LDA !P2Climbing : BNE .TriggerJump		;\
+		LDA !P2CoyoteTime				; |
+		BMI +						; | must be on ground or have coyote time
+		BNE .TriggerJump				; | or be climbing
+	+	LDA !P2InAir : BNE .JumpDone			;/
+
+		.TriggerJump
+		LDA #$B0					; default jump y speed
+		..main
+		STA !P2YSpeed					; jump y speed
+		LDA #$2B : STA !SPC1				; jump SFX
+		LDA #$01 : STA !P2JumpHold			; jump hold
 		STZ !P2CoyoteTime				; clear coyote time
+<<<<<<< Updated upstream
 		STZ !P2SwordAttack
 		LDA #$B0 : STA !P2YSpeed
 		LDA #$2B : STA !SPC1				; jump SFX
@@ -594,23 +1151,86 @@ namespace Leeway
 		.Direction
 		db $FF,$01,$00,$FF
 		db $FF,$01,$00,$FF
+=======
+		STZ !P2SwordAttack				; clear sword attack
+		STZ !P2Ducking					; clear crouch status
+		LDA !P2Dashing : STA !P2DashJump		; dash jump flag
+		STZ !P2Dashing					; clear dash
+		STZ !P2AirDash					; clear air dash
+		STZ !P2WallClimb				; clear wall jump
+		.JumpDone
 
-		.ClimbX
-		db $F0,$10
-		db $10,$F0
 
-		.ClimbLock
-		db $0A,$09
-		db $01,$02,$01				; third byte used for easier indexing
+		RTS
 
-		.WallAnim
-		db $01,$02
 
+
+
+>>>>>>> Stashed changes
 
 	PHYSICS:
 
+<<<<<<< Updated upstream
+		.ClimbLock
+		db $0A,$09
+		db $01,$02,$01				; third byte used for easier indexing
+=======
+		.Gravity
+		LDA #$03					; gravity when holding B is 3
+		LDY !P2SwordAttack				;\ force low g during ground attack 2
+		CPY #$82 : BEQ ..lowg				;/
+		BIT $15						;\ gravity without holding B is 6
+		BMI $02 : LDA #$06				;/
+		..lowg
+		LDY #$46					; default fall speed = 0x46
+		BIT !P2Water : BVC ..nowater			;\
+		..water						; |
+		LDY #$24					; | water fall speed = 0x24
+		LSR A						; | halve gravity (round down) underwater
+		..nowater					;/
+		LDX !P2WallClimb : BEQ ..noclimb		;\
+		LDY #$10					; | fall speed during wall slide = 0x10
+		LDA #$01					; | gravity during wall slide = 0x01
+		..noclimb					;/
+		STA !P2Gravity					; store gravity
+		STY !P2FallSpeed				; store fall speed
+		..done
+>>>>>>> Stashed changes
+
+
+<<<<<<< Updated upstream
+=======
+		.JumpSnap
+		LDA !P2JumpHold : BEQ ..done
+		LDA $15 : BMI ..done
+		STZ !P2JumpHold
+		LDA !P2YSpeed : BPL ..done
+		CLC : ADC #$20
+		BMI $02 : LDA #$00
+		STA !P2YSpeed
+		..done
+
+>>>>>>> Stashed changes
+
+		.BraveDash
+		LDA !P2Dashing : BNE ..process
+		STZ !P2BraveDash
+		..process
+		LDA !P2BraveDash : BEQ ..done			; must be brave dashing
+		LDA !P2Anim					;\
+		CMP #!Lee_DashTransition : BEQ ..done		; | no i-frames during startup of dash or dash slash
+		CMP #!Lee_DashAttack+0 : BEQ ..done		;/
+		LDA !P2Dashing
+		AND #$03
+		ORA #$04
+		CMP !P2Invinc : BCC ..done
+		STA !P2Invinc
+		..done
+
+
 
 		.Stamina
+<<<<<<< Updated upstream
 		LDA !P2Climb : BEQ .NoStamina		;\
 		LDA !P2ClimbTimer : BEQ .NoStamina	; |
 		LDA !P2XSpeed : BEQ ..nox		; |
@@ -642,6 +1262,30 @@ namespace Leeway
 		LDA #$02 : STA !P2ClimbTop		;/
 		.NoGetUpAttack
 
+=======
+		LDA !P2WallClimb : BEQ ..done			;\
+		LDA !P2Stamina : BEQ ..done			; |
+		LDA !P2XSpeed : BEQ ..nox			; |
+		ASL A						; |
+		ROL A						; |
+		INC A						; |
+		EOR !P2Blocked					; |
+		AND #$03 : BNE ..timer				; |
+		..nox						; |
+		LDA !P2YSpeed : BEQ ..checkinput		; |
+		ASL A						; | climb timer
+		ROL A						; | (1/16th speed when still)
+		INC A						; |
+		ASL #2						; |
+		EOR !P2Blocked					; |
+		AND #$0C : BNE ..timer				; |
+		..checkinput					; |
+		LDA $14						; |
+		AND #$0F : BNE ..done				; |
+		..timer						; |
+		DEC !P2Stamina					; |
+		..done						;/
+>>>>>>> Stashed changes
 
 
 		LDA !P2SlantPipe : BEQ +
@@ -649,6 +1293,7 @@ namespace Leeway
 		LDA #$C0 : STA !P2YSpeed
 		+
 
+<<<<<<< Updated upstream
 		LDA !P2Blocked
 		AND #$04
 		ORA !P2Platform
@@ -750,6 +1395,89 @@ namespace Leeway
 		BCC .Go
 		STZ !P2IndexMem1
 		STZ !P2IndexMem2
+=======
+
+
+
+	SPRITE_INTERACTION:
+		JSL CORE_SPRITE_INTERACTION
+
+
+	UPDATE_SPEED:
+		BIT !P2Water : BVC .Move		;\
+		LDA !P2XSpeed				; |
+		CMP #$80 : ROR A			; |
+		CMP #$80 : ROR A			; | reduce x speed by 25% underwater
+		EOR #$FF : INC A			; |
+		CLC : ADC !P2XSpeed			; |
+		STA !P2XSpeed				;/
+
+		.Move
+		JSL CORE_UPDATE_SPEED			; apply speed
+
+
+		.Item
+		LDX !P2Carry : BEQ ..done
+		JSL CORE_CARRY
+		..done
+
+
+	OBJECTS:
+		SEP #$20
+		LDA !P2InAir : PHA
+		REP #$30
+		LDA !P2Anim
+		AND #$00FF
+		ASL #3
+		TAY
+		LDA ANIM+$06,y : JSL CORE_COLLISION
+
+		.Climbing
+		LDA !P2Climbing : BEQ ..done
+		STZ !P2SwordAttack
+		STZ !P2SwordTimer
+		STZ !P2AirDashUsed
+		STZ !P2Dashing
+		STZ !P2DashJump
+		LDA !LeewayMaxStamina : STA !P2Stamina
+		..done
+
+
+		.Landing
+		PLA : BEQ ..done
+		LDA !P2InAir : BNE ..done
+		..land
+
+		LDA $15					;\
+		AND #$04 : BEQ ..grindset		; |
+		LDA !P2XSpeed				; |
+		CLC : ADC #$38				; |
+		CMP #$70 : BCC ..grinddone		; | can start a slide by holding down when landing with high speed
+		LDA #$04				; | (always end slide if landing without holding down)
+		..grindset				; |
+		STA !P2Sliding				; |
+		..grinddone				;/
+
+		STZ !P2SwordAttack
+		STZ !P2SwordTimer
+		..done
+
+
+
+
+	SCREEN_BORDER:
+		JSL CORE_SCREEN_BORDER
+
+
+	ATTACK:
+		PEA ANIMATION-1
+		LDA !P2SwordAttack
+		DEC A
+		ASL A : TAX
+		CPX.b #.End-.Ptr : BCC .Go
+		.Return
+		STZ !P2SwordAttack
+>>>>>>> Stashed changes
 		RTS
 
 		.Go
@@ -759,26 +1487,28 @@ namespace Leeway
 		RTS
 
 		.Ptr
-		dw .Cut					; 1
-		dw .Slash				; 2
-		dw .DashSlash				; 3
-		dw .AirSlash				; 4
-		dw .WallSlash				; 5
-		dw .HangSlash				; 6
+		dw .GroundAttack1			; 1
+		dw .GroundAttack2			; 2
+		dw .DashAttack				; 3
+		dw .AirAttack				; 4
+		dw .WallAttack				; 5
+		dw .CeilingAttack			; 6
+		dw .SpinAttack				; 7
 		.End
 
-		.Cut
+	.GroundAttack1
 		LDA !P2SwordTimer
-		CMP #$01
-		BNE +
-		BIT !P2Buffer : BVC +
+		CMP #$01 : BNE ..nocombo
+		BIT !P2Buffer : BVC ..nocombo
 		LDA #$02 : STA !P2SwordAttack
-		LDA #$3D : STA !SPC4			; slash SFX
-		BRA .Slash
-	+	LDA !P2SwordAttack : BMI ..Process
+		BRA .GroundAttack2
+		..nocombo
+		LDA !P2SwordAttack : BMI ..main
+		..init
 		ORA #$80 : STA !P2SwordAttack
-		LDA #!Lee_Cut : STA !P2Anim
+		LDA #!Lee_GroundAttack1 : STA !P2Anim
 		STZ !P2AnimTimer
+<<<<<<< Updated upstream
 		LDA #$1E : STA !P2SwordTimer
 		..Process
 	;	LDX !P2Direction
@@ -803,10 +1533,16 @@ namespace Leeway
 	;	BMI ..ZeroX+3
 	;	..ZeroX
 		LDA #$00 : JSR CORE_SET_XSPEED
+=======
+		LDA #$14 : STA !P2SwordTimer
+		STZ !P2Buffer				; clear buffer when starting the attack
+		..main
+>>>>>>> Stashed changes
 		LDA !P2Anim
-		CMP #!Lee_Cut+1 : BEQ +
-		CMP #!Lee_Cut+2 : BEQ ++
+		CMP #!Lee_GroundAttack1+1 : BEQ ..hitbox1
+		CMP #!Lee_GroundAttack1+2 : BEQ ..hitbox2
 		RTS
+<<<<<<< Updated upstream
 	++	LDA.b #CUT_1-BOX_START : JMP HITBOX
 	+	LDA.b #CUT_0-BOX_START : JMP HITBOX
 
@@ -815,9 +1551,22 @@ namespace Leeway
 
 		.Slash
 		LDA !P2SwordAttack : BMI ..Process
+=======
+		..hitbox1
+		LDA #$3C : STA !SPC4			; slice SFX
+		LDY #$00 : JMP HITBOX
+		..hitbox2
+		LDY #$02 : JMP HITBOX
+
+	.GroundAttack2
+		LDA !P2SwordAttack : BMI ..main
+		..init
+>>>>>>> Stashed changes
 		ORA #$80 : STA !P2SwordAttack
-		LDA #!Lee_Slash : STA !P2Anim
+		LDA #$E0 : STA !P2YSpeed
+		LDA #!Lee_GroundAttack2 : STA !P2Anim
 		STZ !P2AnimTimer
+<<<<<<< Updated upstream
 		LDA #$18 : STA !P2SwordTimer
 		STZ !P2IndexMem1
 		STZ !P2IndexMem2
@@ -844,19 +1593,58 @@ namespace Leeway
 	;	BMI ..ZeroX+3
 	;	..ZeroX
 		LDA #$00 : JSR CORE_SET_XSPEED
+=======
+		LDA #$0C : STA !P2SwordTimer
+		STZ !P2Hitbox1IndexMem1
+		STZ !P2Hitbox1IndexMem2
+		STZ !P2Hitbox2IndexMem1
+		STZ !P2Hitbox2IndexMem2
+		..main
+>>>>>>> Stashed changes
 		LDA !P2Anim
-		CMP #!Lee_Slash : BEQ +
-		CMP #!Lee_Slash+1 : BEQ ++
+		CMP #!Lee_GroundAttack2 : BEQ ..hitbox1
+		CMP #!Lee_GroundAttack2+1 : BEQ ..hitbox2
 		RTS
+<<<<<<< Updated upstream
 	++	LDA.b #SLASH_1-BOX_START : JMP HITBOX
 	+	LDA.b #SLASH_0-BOX_START : JMP HITBOX
+=======
+		..hitbox1
+		LDA #$3D : STA !SPC4			; slash SFX
+		LDY #$04 : JMP HITBOX
+		..hitbox2
+		LDY #$06 : JMP HITBOX
+>>>>>>> Stashed changes
 
-		.DashSlash
-		LDA !P2SwordAttack : BMI ..Process
+	.DashAttack
+		LDA !P2SwordAttack : BMI ..main
+		..init
 		ORA #$80 : STA !P2SwordAttack
-		LDA #!Lee_DashSlash : STA !P2Anim
+		LDA #!Lee_DashAttack : STA !P2Anim
+		STZ !P2AnimTimer
+		LDA #$14 : STA !P2SwordTimer
+		..main
+		LDA !P2Dashing : BEQ .ClearAttack
+		LDA #$04 : TSB !P2Dashing
+		LDA !P2SwordTimer : STA !P2Dashing
+		LDA !P2Anim
+		CMP #!Lee_DashAttack+1 : BEQ ..hitbox1
+		CMP #!Lee_DashAttack+2 : BEQ ..hitbox2
+		RTS
+		..hitbox1
+		LDA #$3C : STA !SPC4			; slice SFX
+		LDY #$08 : JMP HITBOX
+		..hitbox2
+		LDY #$0A : JMP HITBOX
+
+	.AirAttack
+		LDA !P2SwordAttack : BMI ..main
+		..init
+		ORA #$80 : STA !P2SwordAttack
+		LDA #!Lee_AirAttack : STA !P2Anim
 		STZ !P2AnimTimer
 		LDA #$1A : STA !P2SwordTimer
+<<<<<<< Updated upstream
 		..Process
 		LDA !P2Anim
 		CMP #!Lee_DashSlash+1 : BEQ +
@@ -864,26 +1652,56 @@ namespace Leeway
 		RTS
 	++	LDA.b #DASHSLASH_1-BOX_START : JMP HITBOX
 	+	LDA.b #DASHSLASH_0-BOX_START : JMP HITBOX
-
-		.AirSlash
-		LDA !P2SwordAttack : BMI ..Process
-		ORA #$80 : STA !P2SwordAttack
-		LDA #!Lee_AirSlash : STA !P2Anim
-		STZ !P2AnimTimer
-		LDA #$20 : STA !P2SwordTimer
-		..Process
+=======
+		..main
 		LDA !P2Anim
-		CMP #!Lee_AirSlash+1 : BEQ +
-		CMP #!Lee_AirSlash+2 : BEQ ++
+		CMP #!Lee_AirAttack+5 : BEQ ..hitbox1
+		CMP #!Lee_AirAttack+6 : BEQ ..hitbox2
 		RTS
+		..hitbox1
+		LDA #$3D : STA !SPC4			; slash SFX
+		LDY #$0C : JMP HITBOX
+		..hitbox2
+		LDY #$0E : JMP HITBOX
+>>>>>>> Stashed changes
+
+	.ClearAttack
+		STZ !P2SwordAttack
+		STZ !P2SwordTimer
+		RTS
+
+	.WallAttack
+		LDA !P2SwordAttack : BMI ..main
+		..init
+		ORA #$80 : STA !P2SwordAttack
+		LDA #!Lee_WallAttack : STA !P2Anim
+		STZ !P2AnimTimer
+		LDA #$14 : STA !P2SwordTimer
+		..main
+		LDA !P2WallClimb
+		AND #$03 : BEQ .ClearAttack
+		LDA !P2Anim
+		CMP #!Lee_WallAttack+2 : BEQ ..hitbox1
+		CMP #!Lee_WallAttack+3 : BEQ ..hitbox2
+		RTS
+<<<<<<< Updated upstream
 	++	LDA.b #AIRSLASH_1-BOX_START : JMP HITBOX
 	+	LDA.b #AIRSLASH_0-BOX_START : JMP HITBOX
+=======
+		..hitbox1
+		LDA #$3D : STA !SPC4			; slash SFX
+		LDY #$10 : JMP HITBOX
+		..hitbox2
+		LDY #$12 : JMP HITBOX
+>>>>>>> Stashed changes
 
-		.WallSlash
-		LDA !P2SwordAttack : BMI ..Process
+	.CeilingAttack
+		LDA !P2SwordAttack : BMI ..main
+		..init
 		ORA #$80 : STA !P2SwordAttack
-		LDA #!Lee_WallSlash : STA !P2Anim
+		LDA #!Lee_CeilingAttack : STA !P2Anim
 		STZ !P2AnimTimer
+<<<<<<< Updated upstream
 		LDA #$1C : STA !P2SwordTimer
 		..Process
 		LDA !P2Direction
@@ -893,24 +1711,56 @@ namespace Leeway
 		STA !P2DashTimerL1
 		LDA #$03 : STA !P2DashTimerL2
 		LDA CONTROLS_ClimbX+2,x : STA !P2XSpeed
+=======
+		LDA #$14 : STA !P2SwordTimer
+		..main
+		LDA !P2WallClimb : BPL .ClearAttack
+		STZ !P2XSpeed
+>>>>>>> Stashed changes
 		LDA !P2Anim
-		CMP #!Lee_WallSlash+1 : BEQ +
-		CMP #!Lee_WallSlash+2 : BEQ ++
+		CMP #!Lee_CeilingAttack+1 : BEQ ..hitbox1
+		CMP #!Lee_CeilingAttack+2 : BEQ ..hitbox2
 		RTS
+<<<<<<< Updated upstream
 	++	LDA.b #WALLSLASH_1-BOX_START : JMP HITBOX
 	+	LDA.b #WALLSLASH_0-BOX_START : JMP HITBOX
+=======
+		..hitbox1
+		LDA #$3D : STA !SPC4			; slash SFX
+		LDY #$14 : JMP HITBOX
+		..hitbox2
+		LDY #$16 : JMP HITBOX
+>>>>>>> Stashed changes
 
-		.HangSlash
-		LDA !P2SwordAttack : BMI ..Process
+	.SpinAttack
+		LDA !P2SwordAttack : BMI ..main
+		..init
 		ORA #$80 : STA !P2SwordAttack
-		LDA #!Lee_HangSlash : STA !P2Anim
+		LDA #!Lee_SpinAttack : STA !P2Anim
 		STZ !P2AnimTimer
+<<<<<<< Updated upstream
 		LDA #$16 : STA !P2SwordTimer
 		..Process
+=======
+		LDA #$1A : STA !P2SwordTimer
+		..main
+		LDA $14
+		AND #$03 : BNE ..nosfx
+		LDA #$3D : STA !SPC4			; slash SFX
+		..nosfx
+>>>>>>> Stashed changes
 		LDA !P2Anim
-		CMP #!Lee_HangSlash+1 : BEQ +
-		CMP #!Lee_HangSlash+2 : BEQ ++
+		SEC : SBC #!Lee_SpinAttack
+		ASL A : ADC #$18
+		CMP #$1F : BCS ..end
+		TAY
+		JMP HITBOX
+
+		..end
+		STZ !P2SwordAttack
+		STZ !P2SwordTimer
 		RTS
+<<<<<<< Updated upstream
 	++	LDA.b #HANGSLASH_1-BOX_START : JMP HITBOX
 	+	LDA.b #HANGSLASH_0-BOX_START : JMP HITBOX
 
@@ -1010,6 +1860,10 @@ namespace Leeway
 		SEP #$30
 		LDA !P2Blocked : PHA
 		JSR CORE_LAYER_INTERACTION
+=======
+
+
+>>>>>>> Stashed changes
 
 		LDA !P2PrevPlatform : BNE +
 		LDA !P2Platform
@@ -1059,16 +1913,17 @@ namespace Leeway
 		JSR CORE_SCREEN_BORDER
 
 	ANIMATION:
+		.External
 		LDA !P2ExternalAnimTimer			;\
-		BEQ .ClearExternal				; |
-		DEC !P2ExternalAnimTimer			; | Enforce external animations
+		BEQ ..clear					; |
+		DEC !P2ExternalAnimTimer			; | enforce external animations
 		LDA !P2ExternalAnim : STA !P2Anim		; |
 		DEC !P2AnimTimer				; |
-		JMP .HandleUpdate				;/
+		JMP .CheckPlayer				;/
+		..clear						;\ clear when timer runs out
+		STZ !P2ExternalAnim				;/
 
-		.ClearExternal
-		STZ !P2ExternalAnim
-
+<<<<<<< Updated upstream
 		LDA !P2HurtTimer
 		BEQ .NoHurt
 		LDA #!Lee_Hurt : STA !P2Anim
@@ -1077,32 +1932,141 @@ namespace Leeway
 
 		LDA !P2DashTimerR2
 		BEQ $03 : JMP .Crouch
+=======
+	; pipe check
+		.Pipe
+		LDA !P2Pipe					;\
+		BEQ ..done					; |
+		BMI ..vert					; |
+		..horz						; | pipe animations
+		JMP .Walk					; |
+		..vert						; |
+		LDA #!Lee_Victory+1 : BRA .SetAnim		; |
+		..done						;/
 
 
+	; entrance check
+		.Entrance
+		LDA !P2Entrance : BEQ ..done			;\ animate on timer 1-20
+		CMP #$21 : BCS ..done				;/
+		CMP #$10 : BCC ..handleanim			;\
+		CMP #$18 : BCC ..half				; |
+		..full						; |
+		LDA $14						; |
+		BRA ..finish					; |
+		..half						; |
+		LDA $14						; |
+		LSR A : BCC ..handleanim			; | spawn smoke
+		..finish					; |
+		AND #$01					; |
+		BEQ $02 : LDA #$40				; |
+		SBC #$20					; |
+		STA !P2XSpeed					; |
+		JSL CORE_DASH_SMOKE				; |
+		..handleanim					;/
+		STZ !P2XSpeed					; zero x speed
+		LDA !P2Anim					;\
+		CMP #!Lee_Victory : BCC ..set			; |
+		CMP #!Lee_Victory_over : BCC .GoToDraw		; | set animation
+		..set						; |
+		LDA #!Lee_Victory : BRA .SetAnim		; |
+		..done						;/
+
+
+	; hurt check
+		.Hurt
+		LDA !P2HurtTimer : BEQ ..done			;\
+		LDA #!Lee_Hurt : BRA .SetAnim			; | hurt animation
+		..done						;/
+
+
+	; sword check
+		.SwordAttack
+		LDA !P2SwordAttack : BEQ .NoSword
+		JMP .CheckPlayer
+
+>>>>>>> Stashed changes
+
+	; branch assist
+		.SetAnim
+		STA !P2Anim
+		STZ !P2AnimTimer
+		.GoToDraw
+		JMP .CheckPlayer
+
+<<<<<<< Updated upstream
 		LDA !P2ClimbTop : BEQ .NoGetUp
 		LDA #!Lee_ClimbTop : STA !P2Anim
 		LDA #$10 : STA !P2AnimTimer
 		.NoGetUp
+=======
+		.NoSword
+>>>>>>> Stashed changes
 
-		LDA !P2Anim
-		CMP #!Lee_ClimbTop
-		BNE $03 : JMP .HandleUpdate
 
-		LDA !P2SwordAttack
-		BEQ $03
-	-	JMP .HandleUpdate
+	; kick / throw animations
+		.Kick
+		LDA !P2KickTimer : BEQ ..done			;\
+		LDA #!Lee_Kick : BRA .SetAnim			; | kick
+		..done						;/
 
+
+<<<<<<< Updated upstream
 		LDA !P2Climb
 		BEQ .NoClimb
 		BMI .Ceiling
-		LDA !P2Anim
-		CMP #!Lee_WallCling : BCC .Stick
-		CMP #!Lee_ClimbTop : BCS .Stick
-		BRA -
-	.Stick	LDA #!Lee_WallCling : STA !P2Anim
-		STZ !P2AnimTimer
-		BRA -
+=======
+	; climb checks
+		.Climb
+		LDA !P2Climbing : BNE .ClimbBG
+		LDA !P2WallClimb
+		BMI .ClimbCeiling
+		BNE .ClimbWall
+		JMP .ClimbDone
 
+		.ClimbWall
+		LDY !P2Anim					; anim checked in Y here
+		LDA $15						;\ ignore climb top check if holding down
+		AND #$04 : BNE +				;/
+		CPY #!Lee_WallClimbTop : BEQ .GoToDraw		; climb top frame 1 has priority
+	+	LDA !LeewayUpgrades
+		AND #$08 : BNE ..dinogrip
+		LDA !P2WallAnim : BNE ..climbanim
+		JSL CORE_SMOKE_AT_WALL
+		BRA ..idle
+		..dinogrip
+		LDA !P2Stamina : BEQ ..rapidanim
+		..climbanim
+		LDA !P2Y
+		AND #$1F
+		EOR #$1F
+		LSR #3 : BRA ..getanim
+		..idle
+		LDA #$00
+		..getanim
+		CLC : ADC.b #!Lee_WallClimb
+		BRA .SetAnim
+		..rapidanim
+		JSL CORE_SMOKE_AT_WALL
+		LDY !P2Anim					; anim checked in Y here
+		CPY #!Lee_WallClimb : BCC ..set
+		CPY #!Lee_WallClimb_over : BCC .GoToDraw2
+		..set
+		LDA #!Lee_WallClimb : BRA .SetAnim2
+
+		.ClimbCeiling
+		LDA !P2XSpeed : BNE ..moving
+		..idle
+		LDA #!Lee_CeilingHang : BRA .SetAnim2
+		..moving
+>>>>>>> Stashed changes
+		LDA !P2Anim
+		CMP #!Lee_CeilingClimb : BCC ..set
+		CMP #!Lee_CeilingClimb_over : BCC .GoToDraw2
+		..set
+		LDA #!Lee_CeilingClimb : BRA .SetAnim2
+
+<<<<<<< Updated upstream
 
 		.Ceiling
 		LDA !P2XSpeed
@@ -1112,11 +2076,30 @@ namespace Leeway
 		CMP #!Lee_Ceiling+6 : BCS +
 		JMP .HandleUpdate
 	+	LDA #!Lee_Ceiling : STA !P2Anim
+=======
+		.ClimbBG
+		LDA !P2Anim
+		CMP #!Lee_ClimbBG : BCC ..startclimb
+		CMP #!Lee_ClimbBG_over : BCC ..climbing
+		..startclimb
+		LDA #!Lee_ClimbBG : BRA .SetAnim2
+		..climbing
+		LDA $15
+		AND #$0F : BNE .GoToDraw2
 		STZ !P2AnimTimer
-		JMP .HandleUpdate
-		.NoClimb
+		JMP .CheckPlayer
 
+	; branch support
+		.SetAnim2
+		STA !P2Anim
+>>>>>>> Stashed changes
+		STZ !P2AnimTimer
+		.GoToDraw2
+		JMP .CheckPlayer
 
+		.ClimbDone
+
+<<<<<<< Updated upstream
 		LDA !P2Water
 		LSR A
 		BCC .NoVineClimb
@@ -1131,10 +2114,19 @@ namespace Leeway
 		STZ !P2AnimTimer
 	+	JMP .HandleUpdate
 		.NoVineClimb
+=======
+	; climb top
+		.ClimbTop
+		LDA !P2Anim
+		CMP #!Lee_WallClimbTop : BCC ..done
+		CMP #!Lee_WallClimbTop_over : BCC .GoToDraw2
+		..done
+>>>>>>> Stashed changes
 
-		LDA !P2Dashing : BEQ .NoDash
 
+	; dash check
 		.Dash
+<<<<<<< Updated upstream
 		LDA !P2Anim
 		CMP #!Lee_Dash : BCC +
 		CMP #!Lee_Dash+3 : BCS +
@@ -1149,15 +2141,68 @@ namespace Leeway
 		ORA !P2Platform
 		ORA !P2SpritePlatform
 		BNE .Ground
+=======
+		LDA !P2Dashing : BEQ ..done
+		JSL CORE_SMOKE_AT_FEET
+		LDA !P2Anim
+		CMP #!Lee_DashTransition : BCC ..set
+		CMP #!Lee_Dash_over : BCC .GoToDraw2
+		..set
+		LDA #!Lee_DashTransition : BRA .SetAnim2
+		..done
 
+	; slide check
+		.Slide
+		LDA !P2Sliding : BEQ ..done
+		JSL CORE_SMOKE_AT_FEET
+		LDA !P2Anim
+		LDY !P2InAir : BEQ ..ground
+		LDY !P2XSpeed
+		CPY #$11 : BCC ..set0
+		CPY #$41 : BCC ..surf1
+		CPY #$F0 : BCS ..set0
+		CPY #$C0 : BCS ..surf1
+		BRA ..surf2
+		..ground
+		LDY !P2Slope : BNE ..checkslope
+		..set0
+		LDA #!Lee_Surf0 : BRA .SetAnim2
+		..checkslope
+		CPY #$03 : BEQ ..surf2
+		CPY #$FD : BEQ ..surf2
+		..surf1
+		CMP #!Lee_Surf1 : BCC ..set1
+		CMP #!Lee_Surf1_over : BCC .GoToDraw2
+		..set1
+		LDA #!Lee_Surf1 : BRA .SetAnim2
+		..surf2
+		CMP #!Lee_Surf2 : BCC ..set2
+		CMP #!Lee_Surf2_over : BCC .GoToDraw2
+		..set2
+		LDA #!Lee_Surf2 : BRA .SetAnim2
+		..done
+
+>>>>>>> Stashed changes
+
+	; air/ground split
+		LDA !P2InAir : BEQ .Ground
+
+	; air only animations
 		.Air
+
+		.DoubleJump
+		LDA !P2Anim
+		CMP #!Lee_DoubleJump : BCC ..done
+		CMP #!Lee_DoubleJump_over : BCC .GoToDraw3
+		..done
+
 		BIT !P2YSpeed : BPL .Falling
 
 		.Jump
-		LDA #!Lee_Jump : STA !P2Anim
-	-	JMP .HandleUpdate
+		LDA #!Lee_Jump : BRA .SetAnim3
 
 		.Falling
+<<<<<<< Updated upstream
 		LDA !LeewayUpgrades				; check for slow fall upgrade
 		AND #$10 : BEQ ..fast
 		BIT $6DA3 : BPL ..fast
@@ -1170,47 +2215,108 @@ namespace Leeway
 		CMP #!Lee_Fall+1 : BEQ .HandleUpdate
 		LDA #!Lee_Fall
 	++	STA !P2Anim
+=======
+		LDA !P2Anim
+		CMP #!Lee_Fall : BCC ..set
+		CMP #!Lee_Fall_over : BCC .GoToDraw3
+		..set
+		LDA #!Lee_Fall : BRA .SetAnim3
+
+
+	; branch assist 2
+		.SetAnim3
+		STA !P2Anim
+>>>>>>> Stashed changes
 		STZ !P2AnimTimer
-		BRA .HandleUpdate
+		.GoToDraw3
+		JMP .CheckPlayer
 
+
+	; ground only animations
 		.Ground
+<<<<<<< Updated upstream
 		BIT !P2Water : BPL .NoCrawl
+=======
+>>>>>>> Stashed changes
 
+	; crouch/crawl animation
 		.Crouch
+<<<<<<< Updated upstream
 		LDA !P2XSpeed
 		BNE .Crawl
 		LDA !P2Anim
 		CMP #!Lee_Crouch : BEQ .Crawl
 		CMP #!Lee_Crouch+1 : BEQ .Crawl
 		DEC !P2AnimTimer
+=======
+		LDA !P2Ducking : BEQ ..done			; not crouching -> skip
+		LDA !P2Anim					;\
+		CMP #!Lee_CrouchTransition : BCC ..set		; | enforce crawl animation
+		CMP #!Lee_Crouch_over : BCS ..set		;/
+		CMP #!Lee_Crouch : BCC ..update			; can't freeze during transition anim
+		LDA $15						;\
+		AND #$03 : BNE .CheckPlayer			; |
+		DEC !P2AnimTimer				; | freeze when not moving
+		..update					; |
+		BRA .CheckPlayer				;/
+		..set						;\
+		LDA #!Lee_CrouchTransition : BRA .SetAnim3	; | set
+		..done						;/
 
-		.Crawl
+
+	; prioritize crouch and dash transition frames over idle/walk
+		.CrouchToStand
 		LDA !P2Anim
-		CMP #!Lee_Crouch : BCC +
-		CMP #!Lee_CrouchEnd : BCC .HandleUpdate
-	+	LDA #!Lee_Crouch : STA !P2Anim
-		STZ !P2AnimTimer
-		BRA .HandleUpdate
+		CMP #!Lee_CrouchTransition+1 : BEQ .CheckPlayer
+		CMP #!Lee_CrouchTransition : BCC ..done
+		CMP #!Lee_Crouch_over : BCS ..done
+		LDA #!Lee_CrouchTransition+1 : BRA .SetAnim3
+		..done
+>>>>>>> Stashed changes
 
-		.NoCrawl
-		LDA !P2Anim
-		CMP #!Lee_Crouch : BCC +
-		CMP #!Lee_CrouchEnd : BCS +
-		LDA #!Lee_CrouchEnd : STA !P2Anim
-		STZ !P2AnimTimer
-		BRA .HandleUpdate
+		.DashToStand
+		CMP #!Lee_DashTransition+1 : BEQ .CheckPlayer
+		CMP #!Lee_Dash : BCC ..done
+		CMP #!Lee_Dash_over : BCS ..done
+		LDA #!Lee_DashTransition+1 : BRA .SetAnim3
+		..done
 
+
+<<<<<<< Updated upstream
 	+	CMP #!Lee_CrouchEnd : BEQ .HandleUpdate
 		LDA !P2XSpeed
 		BNE .Walk
+=======
+	; idle/walk check
+		.Standing
+		LDA !P2XSpeed : BNE .Walk
+
+		.Idle
+>>>>>>> Stashed changes
 		LDA !P2Anim
-		CMP #!Lee_Walk : BCC .HandleUpdate
+		INC !P2IdleTimer
+		LDY !P2IdleTimer : BEQ ..transition
+		CPY #$40 : BCC ..normal
+		..transition
+		CMP #!Lee_Idle1_over : BCS ..2
+		..1
+		CPY #$00 : BNE ..normal
+		LDA #!Lee_IdleTransition : BRA ..settransition
+		..2
+		CPY #$40 : BNE ..normal
+		LDA #!Lee_IdleTransition+1
+		..settransition
+		STZ !P2IdleTimer
+		BRA .SetAnim3
+		..normal
+		CMP #!Lee_Idle2_over : BCC .CheckPlayer
 		STZ !P2Anim
 		STZ !P2AnimTimer
-		BRA .HandleUpdate
+		BRA .CheckPlayer
 
 		.Walk
 		LDA !P2Anim
+<<<<<<< Updated upstream
 		CMP #!Lee_Walk : BCC +
 		CMP #!Lee_Walk+4 : BCC .HandleUpdate
 	+	LDA #!Lee_Walk : STA !P2Anim
@@ -1255,21 +2361,31 @@ namespace Leeway
 		BCC .ThisOne
 
 		.OtherOne
+=======
+		CMP #!Lee_Walk : BCC ..set
+		CMP #!Lee_Walk_over : BCC .CheckPlayer
+		..set
+		LDA #!Lee_Walk : STA !P2Anim
+		STZ !P2AnimTimer
+
+
+	; unpack
+	.CheckPlayer
+		LDA !MultiPlayer : BEQ ..thisone		; animate at 60fps on single player
+		LDA $14
+		AND #$01
+		CMP !CurrentPlayer : BEQ ..thisone
+		..otherone
+>>>>>>> Stashed changes
 		REP #$30
 		LDA !P2Anim2
 		AND #$00FF
-		ASL #3
-		TAY
-		LDA ANIM+$00,y
-		STA $0E
-		LDA SWORD+$00,y : STA $00		;\ Sword data in $00-$03
-		LDA SWORD+$02,y : STA $02		;/
+		ASL #3 : TAY
 		BRA GRAPHICS
-
-		.ThisOne
-		LDA !P2Anim
-		STA !P2Anim2
+		..thisone
+		LDA !P2Anim : STA !P2Anim2
 		REP #$30
+<<<<<<< Updated upstream
 		LDA ANIM+$04,y : STA $00		; (we're gonna overwrite $00-$03 soon so this is fine)
 
 
@@ -1322,16 +2438,28 @@ namespace Leeway
 		STX !BigRAM+0				; > set size
 
 		LDA.w #!BigRAM : JSR CORE_GENERATE_RAMCODE
+=======
+		AND #$00FF
+		ASL #3 : TAY
+		LDA ANIM+$04,y : STA $00			; dynamo (we're gonna overwrite $00-$03 soon so this is fine)
+		PHY
+		LDY.w #!File_Leeway : JSL GetFileAddress	; primary file
+		LDA.w #!File_Leeway_Sword : STA !FileAddress+4	; second file
+		LDA $00 : JSL CORE_GENERATE_RAMCODE_24bit
+>>>>>>> Stashed changes
 		REP #$30
 		PLY
-		LDA SWORD+$00,y : STA $00		;\ Sword data in $00-$03
-		LDA SWORD+$02,y : STA $02		;/
 
 
 	GRAPHICS:
-		LDA SWORD+$04,y				;\ Get priority setting
-		STA $06					;/
+		LDA ANIM+$00,y : STA $E0			; $E0 = body tilemap
+		LDA SWORD+$00,y : STA $E2			; $E2 = sword tilemap
+		LDA SWORD+$02,y : STA $E4			; $E4 = sword offsets
+		LDA SWORD+$04,y					;\ $E6 = sword priority setting
+		AND #$00FF : STA $E6				;/
+		LDA SWORD+$06,y : STA $E8			; $E8 = held item offsets
 		SEP #$30
+<<<<<<< Updated upstream
 		LDA !P2HurtTimer : BNE .DrawTiles
 		LDA !P2ComboDisable : BNE .DrawTiles	; always draw during combo dash invinc
 		LDA !P2Invinc
@@ -1419,14 +2547,125 @@ namespace Leeway
 
 
 		JSR CORE_LOAD_TILEMAP
+=======
+
+	; set carried item position
+		.Carry
+		LDX !P2Carry : BEQ ..done			; check if carrying item
+		DEX						; X = carried sprite index
+		LDA $E8						;\
+		LDY !P2Dir					; | get lo byte of x offset
+		BEQ $03 : EOR #$FF : INC A			; |
+		STA $00						;/
+		LDA $E9						;\
+		STZ $03						; |
+		BPL $02 : DEC $03				; |
+		CLC : ADC !P2YLo				; | apply y offset
+		STA !SpriteYLo,x				; |
+		LDA $03						; |
+		ADC !P2YHi					; |
+		STA !SpriteYHi,x				;/
+		LDA $00						;\
+		STZ $01						; | get hi byte of x offset
+		BPL $02 : DEC $01				;/  (doing it here is a little faster)
+		CLC : ADC !P2XLo				;\
+		STA !SpriteXLo,x				; |
+		LDA $01						; | apply x offset
+		ADC !P2XHi					; |
+		STA !SpriteXHi,x				;/
+		..done
+
+
+		REP #$20
+		LDA $E6 : BNE .DrawBody				; 00 = hi prio sword, 01 = lo prio sword
+
+		.HiPrioSword
+		LDA $E2 : BEQ ..done
+		STA $04
+		LDA !P2X : PHA
+		LDA !P2Y : PHA
+		LDA $E4
+		LDX !P2Dir
+		BEQ $04 : EOR #$FFFF : INC A
+		AND #$00FF
+		CMP #$0080
+		BCC $03 : ORA #$FF00
+		CLC : ADC !P2X
+		STA !P2X
+		LDA $E5
+		AND #$00FF
+		CMP #$0080
+		BCC $03 : ORA #$FF00
+		CLC : ADC !P2Y
+		STA !P2Y
+		JSL CORE_LOAD_TILEMAP
+		REP #$20
+		PLA : STA !P2Y
+		PLA : STA !P2X
+		..done
+
+		.DrawBody
+		LDA $E0 : STA $04
+		SEP #$20
+		LDA !P2HurtTimer : BNE ..draw
+		LDA !P2Invinc : BEQ ..draw
+		LSR #3 : TAX
+		LDA.l $00E292,x
+		AND !P2Invinc : BEQ ..done
+		..draw
+		JSL CORE_LOAD_TILEMAP
+		..done
+
+		.LoPrioSword
+		LDA $E6 : BEQ ..done				; 00 = hi prio sword, 01 = lo prio sword
+		REP #$20
+		LDA $E2 : BEQ ..done
+		STA $04
+		LDA !P2X : PHA
+		LDA !P2Y : PHA
+		LDA $E4
+		LDX !P2Dir
+		BEQ $04 : EOR #$FFFF : INC A
+		AND #$00FF
+		CMP #$0080
+		BCC $03 : ORA #$FF00
+		CLC : ADC !P2X
+		STA !P2X
+		LDA $E5
+		AND #$00FF
+		CMP #$0080
+		BCC $03 : ORA #$FF00
+		CLC : ADC !P2Y
+		STA !P2Y
+		JSL CORE_LOAD_TILEMAP
+		REP #$20
+		PLA : STA !P2Y
+		PLA : STA !P2X
+		..done
+
+
+		.Done
+		SEP #$30
+		LDX !P2Carry : BEQ OUTPUT_HURTBOX
+		DEX
+		LDA !P2X
+
+
+	OUTPUT_HURTBOX:
+		JSL CORE_FLASHPAL
+		REP #$30
+		LDA.w #ANIM
+		JSL CORE_OUTPUT_HURTBOX
+>>>>>>> Stashed changes
 		PLB
 		RTS
 
 
 ; JSR-ables
 
-	; Load index in A (8-bit)
+; input: Y = hitbox index
 	HITBOX:
+<<<<<<< Updated upstream
 		LDY !P2SwordTimer
 		BNE .Process
 		RTS
@@ -1522,6 +2761,13 @@ namespace Leeway
 		.AnyBlock
 		ASL A : TAY
 		PEA .LoopEnd-1
+=======
+		REP #$20
+		LDA HitboxTable,y
+		.SetHitbox
+		JSL CORE_ATTACK_LoadHitbox
+		.Return
+>>>>>>> Stashed changes
 		REP #$20
 		LDA HIT_Ptr+0,y
 		DEC A
@@ -1535,6 +2781,7 @@ namespace Leeway
 		.LoopEnd
 		DEX : BPL .Loop
 
+<<<<<<< Updated upstream
 		.Return
 		RTS
 
@@ -1874,6 +3121,308 @@ namespace Leeway
 		BEQ .Return			; | Only interact if sprite has emerged from the ground
 		LDA $32D0,x			; |
 		BEQ .Process			;/
+=======
+	DropSword:
+		PHP
+		LDA !P2Dir
+		ASL A : TAX
+		REP #$20
+		LDA .XSpeed,x : STA $E0
+		LDA !P2X
+		CLC : ADC .XOffset1,x
+		STA $E2
+		LDA !P2X
+		CLC : ADC .XOffset2,x
+		STA $E4
+		PHB
+		JSL GetParticleIndex
+		SEP #$20
+		LDA.b #!prt_spritepart : STA !Particle_Type,x
+		LDA !CurrentPlayer
+		BEQ $02 : LDA.b #!P2TileOffset
+		CLC : ADC.b #!P1Tile7
+		STA !Particle_Tile,x
+		LDA !CurrentPlayer
+		ORA #$30
+		BIT $E0+1
+		BMI $02 : EOR #$40
+		STA !Particle_Prop,x
+		LDA #$02 : STA !Particle_Layer,x
+		STZ !Particle_XAcc,x
+		LDA #$18 : STA !Particle_YAcc,x
+		REP #$30
+		LDA $E2 : STA !Particle_X,x
+		LDA.l !P2Y
+		CLC : ADC #$FFF5
+		STA !Particle_Y,x
+		LDA $E0 : STA !Particle_XSpeed,x
+		LDA #$FD00 : STA !Particle_YSpeed,x
+		JSL GetParticleIndex
+		SEP #$20
+		LDA.b #!prt_spritepart : STA !Particle_Type,x
+		LDA !CurrentPlayer
+		BEQ $02 : LDA.b #!P2TileOffset
+		CLC : ADC.b #!P1Tile7+1
+		STA !Particle_Tile,x
+		LDA !CurrentPlayer
+		ORA #$30
+		BIT $E0+1
+		BMI $02 : EOR #$40
+		STA !Particle_Prop,x
+		LDA #$02 : STA !Particle_Layer,x
+		STZ !Particle_XAcc,x
+		LDA #$18 : STA !Particle_YAcc,x
+		REP #$30
+		LDA $E4 : STA !Particle_X,x
+		LDA.l !P2Y
+		CLC : ADC #$FFF5
+		STA !Particle_Y,x
+		LDA $E0 : STA !Particle_XSpeed,x
+		LDA #$FD00 : STA !Particle_YSpeed,x
+		PLB
+		PLP
+		RTS
+
+		.XSpeed
+		dw $FF80,$0080
+		.XOffset1
+		dw $FFE8,$0018
+		.XOffset2
+		dw $FFF0,$0010
+
+
+
+;=====================;
+;	D A T A       ;
+;=====================;
+
+; hitbox data is based on facing right
+; xdisp and xspeed are automatically flipped when facing left
+; lo byte of x on second hitbox can not be 00, as that signals that there is no second hitbox
+;
+; format:
+;	16-bit Xdisp
+;	16-bit Ydisp
+;	8-bit W
+;	8-bit H
+;	8-bit X speed
+;	8-bit Y speed
+;	8-bit interaction disable timer
+;	8-bit input for !SPC1
+;	8-bit input for !SPC4
+
+
+	HitboxTable:
+		dw .GroundAttack1_hitbox1	; 00
+		dw .GroundAttack1_hitbox2	; 02
+		dw .GroundAttack2_hitbox1	; 04
+		dw .GroundAttack2_hitbox2	; 06
+		dw .DashAttack_hitbox1		; 08
+		dw .DashAttack_hitbox2		; 0A
+		dw .AirAttack_hitbox1		; 0C
+		dw .AirAttack_hitbox2		; 0E
+		dw .WallAttack_hitbox1		; 10
+		dw .WallAttack_hitbox2		; 12
+		dw .CeilingAttack_hitbox1	; 14
+		dw .CeilingAttack_hitbox2	; 16
+		dw .SpinAttack_hitbox1		; 18
+		dw .SpinAttack_hitbox2		; 1A
+		dw .SpinAttack_hitbox3		; 1C
+		dw .SpinAttack_hitbox4		; 1E
+
+
+	.GroundAttack1
+	..hitbox1
+	dw $0010,$FFEE : db $18,$2E	; X/Y + W/H
+	db $0C,$E8			; speeds
+	db $10				; timer
+	db $02				; hitstun
+	db $02,$00			; SFX
+	dw $0028,$FFF5 : db $0C,$20	; X/Y + W/H
+	db $06,$F0			; speeds
+	db $10				; timer
+	db $02				; hitstun
+	db $02,$00			; SFX
+	..hitbox2
+	dw $0018,$0008 : db $18,$10	; X/Y + W/H
+	db $10,$E8			; speeds
+	db $10				; timer
+	db $02				; hitstun
+	db $02,$00			; SFX
+	dw $0008,$0004 : db $14,$10	; X/Y + W/H
+	db $20,$E8			; speeds
+	db $10				; timer
+	db $02				; hitstun
+	db $02,$00			; SFX
+
+	.GroundAttack2
+	..hitbox1
+	dw $0010,$FFEC : db $18,$2E	; X/Y + W/H
+	db $20,$C8			; speeds
+	db $10				; timer
+	db $06				; hitstun
+	db $02,$00			; SFX
+	dw $0028,$FFF3 : db $0C,$20	; X/Y + W/H
+	db $10,$C8			; speeds
+	db $10				; timer
+	db $06				; hitstun
+	db $02,$00			; SFX
+	..hitbox2
+	dw $0018,$FFE8 : db $18,$10	; X/Y + W/H
+	db $20,$E8			; speeds
+	db $10				; timer
+	db $06				; hitstun
+	db $02,$00			; SFX
+	dw $0008,$FFE4 : db $20,$10	; X/Y + W/H
+	db $00,$B8			; speeds
+	db $10				; timer
+	db $06				; hitstun
+	db $02,$00			; SFX
+
+	.DashAttack
+	..hitbox1
+	dw $0010,$FFF4 : db $18,$2E	; X/Y + W/H
+	db $20,$F0			; speeds
+	db $20				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
+	dw $0028,$FFFB : db $0C,$20	; X/Y + W/H
+	db $20,$F0			; speeds
+	db $20				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
+	..hitbox2
+	dw $0018,$000F : db $18,$10	; X/Y + W/H
+	db $20,$F0			; speeds
+	db $20				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
+	dw $FFFC,$0008 : db $20,$10	; X/Y + W/H
+	db $10,$F0			; speeds
+	db $20				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
+
+
+	.AirAttack
+	..hitbox1
+	dw $0010,$FFEC : db $18,$2E	; X/Y + W/H
+	db $20,$D8			; speeds
+	db $10				; timer
+	db $06				; hitstun
+	db $02,$00			; SFX
+	dw $0028,$FFF3 : db $0C,$20	; X/Y + W/H
+	db $10,$D8			; speeds
+	db $10				; timer
+	db $06				; hitstun
+	db $02,$00			; SFX
+	..hitbox2
+	dw $0018,$FFE8 : db $18,$10	; X/Y + W/H
+	db $10,$D8			; speeds
+	db $10				; timer
+	db $06				; hitstun
+	db $02,$00			; SFX
+	dw $0008,$FFE4 : db $20,$10	; X/Y + W/H
+	db $00,$B8			; speeds
+	db $10				; timer
+	db $06				; hitstun
+	db $02,$00			; SFX
+
+	; note: this one is reverse (since leeway's direction is inverted while wall-clinging)
+	.WallAttack
+	..hitbox1
+	dw $FFE0,$FFE6 : db $18,$2E	; X/Y + W/H
+	db $F0,$00			; speeds
+	db $10				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
+	dw $FFD4,$FFED : db $0C,$20	; X/Y + W/H
+	db $F0,$00			; speeds
+	db $10				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
+	..hitbox2
+	dw $FFD9,$0008 : db $18,$10	; X/Y + W/H
+	db $F0,$00			; speeds
+	db $10				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
+	dw $FFED,$000A : db $10,$12	; X/Y + W/H
+	db $00,$46			; speeds
+	db $10				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
+
+	.CeilingAttack
+	..hitbox1
+	dw $000C,$FFED : db $18,$2E	; X/Y + W/H
+	db $10,$10			; speeds
+	db $10				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
+	dw $0024,$FFF4 : db $0C,$20	; X/Y + W/H
+	db $10,$10			; speeds
+	db $10				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
+	..hitbox2
+	dw $0018,$0009 : db $18,$10	; X/Y + W/H
+	db $10,$10			; speeds
+	db $10				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
+	dw $0008,$000B : db $10,$12	; X/Y + W/H
+	db $00,$46			; speeds
+	db $10				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
+
+	.SpinAttack
+	..hitbox1
+	dw $000B,$FFEE : db $10,$2E	; X/Y + W/H
+	db $10,$10			; speeds
+	db $10				; timer
+	db $02				; hitstun
+	db $02,$00			; SFX
+	dw $001B,$FFF5 : db $0C,$20	; X/Y + W/H
+	db $10,$10			; speeds
+	db $10				; timer
+	db $02				; hitstun
+	db $02,$00			; SFX
+	..hitbox2
+	dw $FFEE,$0003 : db $2E,$10	; X/Y + W/H
+	db $F0,$10			; speeds
+	db $10				; timer
+	db $02				; hitstun
+	db $02,$00			; SFX
+	dw $FFF5,$0013 : db $20,$0C	; X/Y + W/H
+	db $F0,$10			; speeds
+	db $10				; timer
+	db $02				; hitstun
+	db $02,$00			; SFX
+	..hitbox3
+	dw $FFF5,$FFE6 : db $10,$2E	; X/Y + W/H
+	db $F0,$F0			; speeds
+	db $10				; timer
+	db $02				; hitstun
+	db $02,$00			; SFX
+	dw $FFE9,$FFED : db $0C,$20	; X/Y + W/H
+	db $F0,$F0			; speeds
+	db $10				; timer
+	db $02				; hitstun
+	db $02,$00			; SFX
+	..hitbox4
+	dw $FFF2,$FFED : db $2E,$10	; X/Y + W/H
+	db $10,$F0			; speeds
+	db $10				; timer
+	db $02				; hitstun
+	db $02,$00			; SFX
+	dw $FFF9,$FFE1 : db $20,$0C	; X/Y + W/H
+	db $10,$F0			; speeds
+	db $10				; timer
+	db $02				; hitstun
+	db $02,$00			; SFX
+>>>>>>> Stashed changes
 
 		.Return
 		RTS
@@ -2110,10 +3659,9 @@ namespace Leeway
 		RTS
 
 
-; Data
 
-	ANIM:
 
+<<<<<<< Updated upstream
 	.Idle0				; 00
 	dw .IdleTM : db $08,!Lee_Idle+1
 	dw .IdleDynamo0
@@ -2435,16 +3983,467 @@ namespace Leeway
 	dw $0008
 	db $2E,$00,$00,!P2Tile1
 	db $2E,$10,$00,!P2Tile2
+=======
 
-	.32x32TM
+
+; Data
+	ANIM:
+
+	; idle 1
+		.Idle1Frame0
+		dw .24x32TM : db $08,!Lee_Idle1+1
+		dw .Idle1Dynamo0
+		dw .ClippingStandard
+		.Idle1Frame1
+		dw .24x32TM : db $08,!Lee_Idle1+2
+		dw .Idle1Dynamo1
+		dw .ClippingStandard
+		.Idle1Frame2
+		dw .24x32TM : db $08,!Lee_Idle1
+		dw .Idle1Dynamo2
+		dw .ClippingStandard
+
+	; sleep (counted as part of idle 1)
+		.Sleep
+		dw .24x32TM_sleep : db $FF,!Lee_Sleep
+		dw .SleepDynamo
+		dw .ClippingStandard
+
+	; idle transition
+		.IdleTransition0
+		dw .24x32TM : db $08,!Lee_Idle2
+		dw .IdleTransitionDynamo
+		dw .ClippingStandard
+		.IdleTransition1
+		dw .24x32TM : db $08,!Lee_Idle1
+		dw .IdleTransitionDynamo
+		dw .ClippingStandard
+
+	; idle 2
+		.Idle2Frame0
+		dw .24x32TM : db $08,!Lee_Idle2+1
+		dw .Idle2Dynamo0
+		dw .ClippingStandard
+		.Idle2Frame1
+		dw .24x32TM : db $08,!Lee_Idle2+2
+		dw .Idle2Dynamo1
+		dw .ClippingStandard
+		.Idle2Frame2
+		dw .24x32TM : db $08,!Lee_Idle2
+		dw .Idle2Dynamo2
+		dw .ClippingStandard
+
+	; walk
+		.Walk0
+		dw .WalkTM0 : db $06,!Lee_Walk+1
+		dw .WalkDynamo0
+		dw .ClippingStandard
+		.Walk1
+		dw .WalkTM1 : db $06,!Lee_Walk+2
+		dw .WalkDynamo1
+		dw .ClippingStandard
+		.Walk2
+		dw .WalkTM2 : db $06,!Lee_Walk+3
+		dw .WalkDynamo2
+		dw .ClippingStandard
+		.Walk3
+		dw .WalkTM3 : db $06,!Lee_Walk+4
+		dw .WalkDynamo3
+		dw .ClippingStandard
+		.Walk4
+		dw .WalkTM4 : db $06,!Lee_Walk+5
+		dw .WalkDynamo4
+		dw .ClippingStandard
+		.Walk5
+		dw .WalkTM5 : db $06,!Lee_Walk+0
+		dw .WalkDynamo5
+		dw .ClippingStandard
+
+	; kick
+		.Kick
+		dw .24x32TM : db $FF,!Lee_Kick
+		dw .KickDynamo
+		dw .ClippingStandard
+
+	; crouch transition
+		.CrouchTransition0
+		dw .32x24TM : db $04,!Lee_Crouch
+		dw .CrouchTransitionDynamo
+		dw .ClippingCrawl
+		.CrouchTransition1
+		dw .32x24TM : db $04,!Lee_Idle1
+		dw .CrouchTransitionDynamo
+		dw .ClippingCrawl
+
+	; crouch
+		.Crouch0
+		dw .32x24TM : db $08,!Lee_Crouch+1
+		dw .CrouchDynamo0
+		dw .ClippingCrawl
+		.Crouch1
+		dw .32x24TM : db $08,!Lee_Crouch+2
+		dw .CrouchDynamo1
+		dw .ClippingCrawl
+		.Crouch2
+		dw .32x24TM : db $08,!Lee_Crouch+3
+		dw .CrouchDynamo0
+		dw .ClippingCrawl
+		.Crouch3
+		dw .32x24TM : db $08,!Lee_Crouch+0
+		dw .CrouchDynamo2
+		dw .ClippingCrawl
+
+	; surf 0
+		.Surf0
+		dw .24x32TM : db $FF,!Lee_Surf0
+		dw .Surf0Dynamo
+		dw .ClippingStandard
+
+	; surf 1
+		.Surf1Frame0
+		dw .24x32TM : db $04,!Lee_Surf1+1
+		dw .Surf1Dynamo0
+		dw .ClippingStandard
+		.Surf1Frame1
+		dw .24x32TM : db $04,!Lee_Surf1+0
+		dw .Surf1Dynamo1
+		dw .ClippingStandard
+
+	; surf 2
+		.Surf2Frame0
+		dw .24x32TM : db $02,!Lee_Surf2+1
+		dw .Surf2Dynamo0
+		dw .ClippingStandard
+		.Surf2Frame1
+		dw .24x32TM : db $02,!Lee_Surf2+0
+		dw .Surf2Dynamo1
+		dw .ClippingStandard
+
+	; ground attack 1
+		.GroundAttack1Frame0
+		dw .24x32TM : db $08,!Lee_GroundAttack1+1
+		dw .GroundAttackDynamo0
+		dw .ClippingStandard
+		.GroundAttack1Frame1
+		dw .24x32TM : db $02,!Lee_GroundAttack1+2
+		dw .GroundAttackDynamo1
+		dw .ClippingStandard
+		.GroundAttack1Frame2
+		dw .24x32TM : db $02,!Lee_GroundAttack1+3
+		dw .GroundAttackDynamo2
+		dw .ClippingStandard
+		.GroundAttack1Frame3
+		dw .24x32TM : db $08,!Lee_Idle1
+		dw .GroundAttackDynamo3
+		dw .ClippingStandard
+
+	; ground attack 2
+		.GroundAttack2Frame0
+		dw .24x32TM : db $02,!Lee_GroundAttack2+1
+		dw .UpSlashDynamo0
+		dw .ClippingStandard
+		.GroundAttack2Frame1
+		dw .24x32TM : db $02,!Lee_GroundAttack2+2
+		dw .UpSlashDynamo1
+		dw .ClippingStandard
+		.GroundAttack2Frame2
+		dw .24x32TM : db $08,!Lee_Fall+1
+		dw .UpSlashDynamo2
+		dw .ClippingStandard
+
+	; dash transition
+		.DashTransition0
+		dw .32x32TM : db $08,!Lee_Dash
+		dw .DashTransitionDynamo
+		dw .ClippingDash
+		.DashTransition1
+		dw .32x32TM : db $08,!Lee_Idle1
+		dw .DashTransitionDynamo
+		dw .ClippingDash
+
+	; dash
+		.Dash0
+		dw .32x24TM : db $04,!Lee_Dash+1
+		dw .DashDynamo0
+		dw .ClippingDash
+		.Dash1
+		dw .32x24TM : db $04,!Lee_Dash+0
+		dw .DashDynamo1
+		dw .ClippingDash
+
+	; dash attack
+		.DashAttack0
+		dw .32x24TM : db $08,!Lee_DashAttack+1
+		dw .DashAttackDynamo0
+		dw .ClippingDash
+		.DashAttack1
+		dw .32x24TM : db $02,!Lee_DashAttack+2
+		dw .DashAttackDynamo1
+		dw .ClippingDash
+		.DashAttack2
+		dw .32x24TM : db $02,!Lee_DashTransition
+		dw .DashAttackDynamo2
+		dw .ClippingDash
+
+	; jump
+		.Jump
+		dw .24x32TM : db $FF,!Lee_Jump
+		dw .JumpDynamo
+		dw .ClippingStandard
+
+	; fall
+		.Fall0
+		dw .24x32TM : db $08,!Lee_Fall+1
+		dw .FallDynamo0
+		dw .ClippingStandard
+		.Fall1
+		dw .24x32TM : db $04,!Lee_Fall+2
+		dw .FallDynamo1
+		dw .ClippingStandard
+		.Fall2
+		dw .24x32TM : db $04,!Lee_Fall+1
+		dw .FallDynamo2
+		dw .ClippingStandard
+
+	; air attack
+		.AirAttack0
+		dw .24x32TM : db $04,!Lee_AirAttack+1
+		dw .AirAttackDynamo0
+		dw .ClippingStandard
+		.AirAttack1
+		dw .24x32TM : db $04,!Lee_AirAttack+2
+		dw .AirAttackDynamo1
+		dw .ClippingStandard
+		.AirAttack2
+		dw .24x32TM_reverse : db $02,!Lee_AirAttack+3
+		dw .AirAttackDynamo2
+		dw .ClippingStandard
+		.AirAttack3
+		dw .24x32TM_reverse : db $02,!Lee_AirAttack+4
+		dw .AirAttackDynamo3
+		dw .ClippingStandard
+		.AirAttack4
+		dw .24x32TM_reverse : db $02,!Lee_AirAttack+5
+		dw .AirAttackDynamo4
+		dw .ClippingStandard
+		.AirAttack5
+		dw .24x32TM : db $02,!Lee_AirAttack+6
+		dw .UpSlashDynamo0
+		dw .ClippingStandard
+		.AirAttack6
+		dw .24x32TM : db $02,!Lee_AirAttack+7
+		dw .UpSlashDynamo1
+		dw .ClippingStandard
+		.AirAttack7
+		dw .24x32TM : db $08,!Lee_Fall+1
+		dw .UpSlashDynamo2
+		dw .ClippingStandard
+
+	; double jump
+		.DoubleJump0
+		dw .32x32TM_flip : db $02,!Lee_DoubleJump+1
+		dw .DoubleJumpDynamo0
+		dw .ClippingStandard
+		.DoubleJump1
+		dw .32x32TM : db $02,!Lee_DoubleJump+2
+		dw .DoubleJumpDynamo1
+		dw .ClippingStandard
+		.DoubleJump2
+		dw .32x32TM : db $02,!Lee_DoubleJump+3
+		dw .DoubleJumpDynamo2
+		dw .ClippingStandard
+		.DoubleJump3
+		dw .32x32TM_flip : db $02,!Lee_DoubleJump+0
+		dw .DoubleJumpDynamo3
+		dw .ClippingStandard
+
+	; spin attack
+		.SpinAttack0
+		dw .32x32TM : db $02,!Lee_SpinAttack+1
+		dw .SpinAttackDynamo0
+		dw .ClippingStandard
+		.SpinAttack1
+		dw .32x32TM : db $02,!Lee_SpinAttack+2
+		dw .SpinAttackDynamo1
+		dw .ClippingStandard
+		.SpinAttack2
+		dw .32x32TM : db $02,!Lee_SpinAttack+3
+		dw .SpinAttackDynamo2
+		dw .ClippingStandard
+		.SpinAttack3
+		dw .32x32TM_flip : db $02,!Lee_SpinAttack+0
+		dw .SpinAttackDynamo1
+		dw .ClippingStandard
+
+	; climb BG
+		.ClimbBG
+		dw .24x32TM : db $FF,!Lee_ClimbBG
+		dw .ClimbBGDynamo
+		dw .ClippingStandard
+
+	; wall climb
+		.WallClimb0
+		dw .WallClimbTM : db $02,!Lee_WallClimb+1
+		dw .WallClimbDynamo0
+		dw .ClippingStandard
+		.WallClimb1
+		dw .WallClimbTM : db $02,!Lee_WallClimb+2
+		dw .WallClimbDynamo1
+		dw .ClippingStandard
+		.WallClimb2
+		dw .WallClimbTM : db $02,!Lee_WallClimb+3
+		dw .WallClimbDynamo2
+		dw .ClippingStandard
+		.WallClimb3
+		dw .WallClimbTM : db $02,!Lee_WallClimb+0
+		dw .WallClimbDynamo3
+		dw .ClippingStandard
+
+	; wall climb top
+		.WallClimbTop0
+		dw .WallClimbTopTM : db $02,!Lee_WallClimbTop+1
+		dw .WallClimbTopDynamo0
+		dw .ClippingStandard
+		.WallClimbTop1
+		dw .32x24TM_forward : db $04,!Lee_WallClimbTop+2
+		dw .WallClimbTopDynamo1
+		dw .ClippingStandard
+		.WallClimbTop2
+		dw .32x32TM : db $04,!Lee_Idle1
+		dw .WallClimbTopDynamo2
+		dw .ClippingStandard
+
+	; wall attack
+		.WallAttack0
+		dw .WallClimbTM : db $04,!Lee_WallAttack+1
+		dw .WallAttackDynamo0
+		dw .ClippingStandard
+		.WallAttack1
+		dw .WallClimbTM : db $04,!Lee_WallAttack+2
+		dw .WallAttackDynamo1
+		dw .ClippingStandard
+		.WallAttack2
+		dw .WallClimbTM : db $02,!Lee_WallAttack+3
+		dw .WallAttackDynamo2
+		dw .ClippingStandard
+		.WallAttack3
+		dw .WallClimbTM : db $02,!Lee_WallAttack+4
+		dw .WallAttackDynamo3
+		dw .ClippingStandard
+		.WallAttack4
+		dw .WallClimbTM : db $08,!Lee_WallClimb
+		dw .WallAttackDynamo3
+		dw .ClippingStandard
+
+	; ceiling hang
+		.CeilingHang
+		dw .24x32TM : db $FF,!Lee_CeilingHang
+		dw .CeilingHangDynamo
+		dw .ClippingStandard
+
+	; ceiling climb
+		.CeilingClimb0
+		dw .24x32TM : db $08,!Lee_CeilingClimb+1
+		dw .CeilingClimbDynamo0
+		dw .ClippingStandard
+		.CeilingClimb1
+		dw .24x32TM : db $08,!Lee_CeilingClimb+2
+		dw .CeilingClimbDynamo1
+		dw .ClippingStandard
+		.CeilingClimb2
+		dw .24x32TM : db $08,!Lee_CeilingClimb+3
+		dw .CeilingClimbDynamo2
+		dw .ClippingStandard
+		.CeilingClimb3
+		dw .24x32TM : db $08,!Lee_CeilingClimb+4
+		dw .CeilingClimbDynamo3
+		dw .ClippingStandard
+		.CeilingClimb4
+		dw .24x32TM : db $08,!Lee_CeilingClimb+5
+		dw .CeilingClimbDynamo4
+		dw .ClippingStandard
+		.CeilingClimb5
+		dw .24x32TM : db $08,!Lee_CeilingClimb
+		dw .CeilingClimbDynamo5
+		dw .ClippingStandard
+
+	; ceiling attack
+		.CeilingAttack0
+		dw .24x32TM : db $08,!Lee_CeilingAttack+1
+		dw .CeilingAttackDynamo0
+		dw .ClippingStandard
+		.CeilingAttack1
+		dw .24x32TM : db $02,!Lee_CeilingAttack+2
+		dw .CeilingAttackDynamo1
+		dw .ClippingStandard
+		.CeilingAttack2
+		dw .24x32TM : db $02,!Lee_CeilingAttack+3
+		dw .CeilingAttackDynamo2
+		dw .ClippingStandard
+		.CeilingAttack3
+		dw .24x32TM : db $08,!Lee_CeilingHang
+		dw .CeilingAttackDynamo2
+		dw .ClippingStandard
+
+	; hurt
+		.Hurt
+		dw .24x32TM : db $FF,!Lee_Hurt
+		dw .HurtDynamo
+		dw .ClippingStandard
+
+	; dead
+		.Dead
+		dw .24x32TM : db $FF,!Lee_Dead
+		dw .DeadDynamo
+		dw .ClippingStandard
+
+	; victory
+		.Victory0
+		dw .24x32TM : db $08,!Lee_Victory+1
+		dw .VictoryDynamo0
+		dw .ClippingStandard
+		.Victory1
+		dw .24x32TM : db $08,!Lee_Victory+0
+		dw .VictoryDynamo1
+		dw .ClippingStandard
+
+
+
+>>>>>>> Stashed changes
+
+	.WalkTM0
+	.WalkTM2
+	.WalkTM3
+	.WalkTM5
+	.24x32TM
 	dw $0010
+<<<<<<< Updated upstream
 	db $2E,$00,$F0,!P2Tile1
 	db $2E,$10,$F0,!P2Tile2
 	db $2E,$00,$00,!P2Tile3
 	db $2E,$10,$00,!P2Tile4
-
-	.24x32TM
+=======
+	db $20,$FC,$F0,!P1Tile1
+	db $20,$04,$F0,!P1Tile1+1
+	db $20,$FC,$00,!P1Tile5
+	db $20,$04,$00,!P1Tile5+1
+	..reverse
 	dw $0010
+	db $60,$04,$F0,!P1Tile1
+	db $60,$FC,$F0,!P1Tile1+1
+	db $60,$04,$00,!P1Tile5
+	db $60,$FC,$00,!P1Tile5+1
+	..sleep
+	dw $0010
+	db $20,$FC,$F3,!P1Tile1
+	db $20,$04,$F3,!P1Tile1+1
+	db $20,$FC,$03,!P1Tile5
+	db $20,$04,$03,!P1Tile5+1
+>>>>>>> Stashed changes
+
+	.32x24TM
+	dw $0010
+<<<<<<< Updated upstream
 	db $2E,$00,$F0,!P2Tile1
 	db $2E,$08,$F0,!P2Tile1+$01
 	db $2E,$00,$00,!P2Tile3
@@ -2478,8 +4477,47 @@ namespace Leeway
 ;	dl <TileNumber>*$20+$348008
 ;	dw <Dest>*$10+$6000
 ;endmacro
+=======
+	db $20,$F8,$F8,!P1Tile1
+	db $20,$08,$F8,!P1Tile2
+	db $20,$F8,$00,!P1Tile1+$10
+	db $20,$08,$00,!P1Tile2+$10
+	..forward
+	dw $0010
+	db $20,$F0,$F8,!P1Tile1
+	db $20,$00,$F8,!P1Tile2
+	db $20,$F0,$00,!P1Tile1+$10
+	db $20,$00,$00,!P1Tile2+$10
 
+	.32x32TM
+	dw $0010
+	db $20,$F8,$F0,!P1Tile1
+	db $20,$08,$F0,!P1Tile2
+	db $20,$F8,$00,!P1Tile5
+	db $20,$08,$00,!P1Tile6
+	..flip
+	dw $0010
+	db $E0,$08,$00,!P1Tile1
+	db $E0,$F8,$00,!P1Tile2
+	db $E0,$08,$F0,!P1Tile5
+	db $E0,$F8,$F0,!P1Tile6
 
+	.WalkTM1
+	dw $0010
+	db $20,$FC,$ED,!P1Tile1
+	db $20,$04,$ED,!P1Tile1+1
+	db $20,$FC,$FD,!P1Tile5
+	db $20,$04,$FD,!P1Tile5+1
+>>>>>>> Stashed changes
+
+	.WalkTM4
+	dw $0010
+	db $20,$FC,$EE,!P1Tile1
+	db $20,$04,$EE,!P1Tile1+1
+	db $20,$FC,$FE,!P1Tile5
+	db $20,$04,$FE,!P1Tile5+1
+
+<<<<<<< Updated upstream
 macro LeeDyn(TileCount, TileNumber, Dest)
 	db (<TileCount>*2)|((<TileNumber>&$07)<<5)
 	db ((<TileNumber>>>3)&$7F)|$80
@@ -3203,6 +5241,854 @@ endmacro
 ;	Length of vertical bar, right then left
 ;	Length of horizontal bar, down then up
 ; A clipping table is always exactly 12 bytes.
+=======
+	.WallClimbTM
+	dw $0010
+	db $20,$00,$F0,!P1Tile1
+	db $20,$08,$F0,!P1Tile1+1
+	db $20,$00,$00,!P1Tile5
+	db $20,$08,$00,!P1Tile5+1
+
+	.WallClimbTopTM
+	dw $0010
+	db $20,$F9,$F6,!P1Tile1
+	db $20,$01,$F6,!P1Tile1+1
+	db $20,$F9,$06,!P1Tile5
+	db $20,$01,$06,!P1Tile5+1
+
+
+
+
+; NOTE: leeway dynamo has to be stored before sword dynamo!
+
+
+	; idle 1
+		.Idle1Dynamo0
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $000, !P1Tile1)
+		%Dyn24Bit(3, $010, !P1Tile1+$10)
+		%Dyn24Bit(3, $020, !P1Tile5)
+		%Dyn24Bit(3, $030, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $023, !P1Tile7)
+		%Dyn24BitFile2(3, $033, !P1Tile7+$10)
+		..end
+		.Idle1Dynamo1
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $003, !P1Tile1)
+		%Dyn24Bit(3, $013, !P1Tile1+$10)
+		%Dyn24Bit(3, $023, !P1Tile5)
+		%Dyn24Bit(3, $033, !P1Tile5+$10)
+		..end
+		.Idle1Dynamo2
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $006, !P1Tile1)
+		%Dyn24Bit(3, $016, !P1Tile1+$10)
+		%Dyn24Bit(3, $026, !P1Tile5)
+		%Dyn24Bit(3, $036, !P1Tile5+$10)
+		..end
+
+	; idle transition
+		.IdleTransitionDynamo
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $009, !P1Tile1)
+		%Dyn24Bit(3, $019, !P1Tile1+$10)
+		%Dyn24Bit(3, $029, !P1Tile5)
+		%Dyn24Bit(3, $039, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $030, !P1Tile7)
+		..end
+
+	; idle 2
+		.Idle2Dynamo0
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $040, !P1Tile1)
+		%Dyn24Bit(3, $050, !P1Tile1+$10)
+		%Dyn24Bit(3, $060, !P1Tile5)
+		%Dyn24Bit(3, $070, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $023, !P1Tile7)
+		%Dyn24BitFile2(3, $033, !P1Tile7+$10)
+		..end
+		.Idle2Dynamo1
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $043, !P1Tile1)
+		%Dyn24Bit(3, $053, !P1Tile1+$10)
+		%Dyn24Bit(3, $063, !P1Tile5)
+		%Dyn24Bit(3, $073, !P1Tile5+$10)
+		..end
+		.Idle2Dynamo2
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $046, !P1Tile1)
+		%Dyn24Bit(3, $056, !P1Tile1+$10)
+		%Dyn24Bit(3, $066, !P1Tile5)
+		%Dyn24Bit(3, $076, !P1Tile5+$10)
+		..end
+
+	; walk
+		.WalkDynamo0
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $140, !P1Tile1)
+		%Dyn24Bit(3, $150, !P1Tile1+$10)
+		%Dyn24Bit(3, $160, !P1Tile5)
+		%Dyn24Bit(3, $170, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $030, !P1Tile7)
+		..end
+		.WalkDynamo1
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $143, !P1Tile1)
+		%Dyn24Bit(3, $153, !P1Tile1+$10)
+		%Dyn24Bit(3, $163, !P1Tile5)
+		%Dyn24Bit(3, $173, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $023, !P1Tile7)
+		%Dyn24BitFile2(3, $033, !P1Tile7+$10)
+		..end
+		.WalkDynamo2
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $146, !P1Tile1)
+		%Dyn24Bit(3, $156, !P1Tile1+$10)
+		%Dyn24Bit(3, $166, !P1Tile5)
+		%Dyn24Bit(3, $176, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $030, !P1Tile7)
+		..end
+		.WalkDynamo3
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $149, !P1Tile1)
+		%Dyn24Bit(3, $159, !P1Tile1+$10)
+		%Dyn24Bit(3, $169, !P1Tile5)
+		%Dyn24Bit(3, $179, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $023, !P1Tile7)
+		%Dyn24BitFile2(3, $033, !P1Tile7+$10)
+		..end
+		.WalkDynamo4
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $180, !P1Tile1)
+		%Dyn24Bit(3, $190, !P1Tile1+$10)
+		%Dyn24Bit(3, $1A0, !P1Tile5)
+		%Dyn24Bit(3, $1B0, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $027, !P1Tile4+$10)
+		%Dyn24BitFile2(3, $036, !P1Tile7+$01)
+		%Dyn24BitFile2(2, $029, !P1Tile7+$11)
+		..end
+		.WalkDynamo5
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $183, !P1Tile1)
+		%Dyn24Bit(3, $193, !P1Tile1+$10)
+		%Dyn24Bit(3, $1A3, !P1Tile5)
+		%Dyn24Bit(3, $1B3, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $023, !P1Tile7)
+		%Dyn24BitFile2(3, $033, !P1Tile7+$10)
+		..end
+
+	; kick
+		.KickDynamo
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $106, !P1Tile1)
+		%Dyn24Bit(3, $116, !P1Tile1+$10)
+		%Dyn24Bit(3, $126, !P1Tile5)
+		%Dyn24Bit(3, $136, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $027, !P1Tile4+$10)
+		%Dyn24BitFile2(3, $036, !P1Tile7+$01)
+		%Dyn24BitFile2(2, $029, !P1Tile7+$11)
+		..end
+
+	; crouch transition
+		.CrouchTransitionDynamo
+		db ..end-..start
+		..start
+		%Dyn24Bit(4, $13C, !P1Tile1)
+		%Dyn24Bit(4, $14C, !P1Tile1+$10)
+		%Dyn24Bit(4, $15C, !P1Tile5)
+		%Dyn24BitFile2(3, $023, !P1Tile7)
+		%Dyn24BitFile2(3, $033, !P1Tile7+$10)
+		..end
+
+	; crouch
+		.CrouchDynamo0
+		db ..end-..start
+		..start
+		%Dyn24Bit(4, $16C, !P1Tile1)
+		%Dyn24Bit(4, $17C, !P1Tile1+$10)
+		%Dyn24Bit(4, $18C, !P1Tile5)
+		%Dyn24BitFile2(3, $030, !P1Tile7)
+		..end
+		.CrouchDynamo1
+		db ..end-..start
+		..start
+		%Dyn24Bit(4, $19C, !P1Tile1)
+		%Dyn24Bit(4, $1AC, !P1Tile1+$10)
+		%Dyn24Bit(4, $1BC, !P1Tile5)
+		%Dyn24BitFile2(3, $030, !P1Tile7)
+		..end
+		.CrouchDynamo2
+		db ..end-..start
+		..start
+		%Dyn24Bit(4, $1CC, !P1Tile1)
+		%Dyn24Bit(4, $1DC, !P1Tile1+$10)
+		%Dyn24Bit(4, $1EC, !P1Tile5)
+		%Dyn24BitFile2(3, $030, !P1Tile7)
+		..end
+
+
+	; surf 0
+		.Surf0Dynamo
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $0C0, !P1Tile1)
+		%Dyn24Bit(3, $0D0, !P1Tile1+$10)
+		%Dyn24Bit(3, $0E0, !P1Tile5)
+		%Dyn24Bit(3, $0F0, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $030, !P1Tile7)
+		..end
+
+	; surf 1
+		.Surf1Dynamo0
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $186, !P1Tile1)
+		%Dyn24Bit(3, $196, !P1Tile1+$10)
+		%Dyn24Bit(3, $1A6, !P1Tile5)
+		%Dyn24Bit(3, $1B6, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $023, !P1Tile7)
+		%Dyn24BitFile2(3, $033, !P1Tile7+$10)
+		..end
+		.Surf1Dynamo1
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $189, !P1Tile1)
+		%Dyn24Bit(3, $199, !P1Tile1+$10)
+		%Dyn24Bit(3, $1A9, !P1Tile5)
+		%Dyn24Bit(3, $1B9, !P1Tile5+$10)
+		..end
+
+	; surf 2
+		.Surf2Dynamo0
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $1C0, !P1Tile1)
+		%Dyn24Bit(3, $1D0, !P1Tile1+$10)
+		%Dyn24Bit(3, $1E0, !P1Tile5)
+		%Dyn24Bit(3, $1F0, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $027, !P1Tile4+$10)
+		%Dyn24BitFile2(3, $036, !P1Tile7+$01)
+		%Dyn24BitFile2(2, $029, !P1Tile7+$11)
+		..end
+		.Surf2Dynamo1
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $1C3, !P1Tile1)
+		%Dyn24Bit(3, $1D3, !P1Tile1+$10)
+		%Dyn24Bit(3, $1E3, !P1Tile5)
+		%Dyn24Bit(3, $1F3, !P1Tile5+$10)
+		..end
+
+	; ground attack 1
+		.GroundAttackDynamo0
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $049, !P1Tile1)
+		%Dyn24Bit(3, $059, !P1Tile1+$10)
+		%Dyn24Bit(3, $069, !P1Tile5)
+		%Dyn24Bit(3, $079, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $020, !P1Tile7)
+		..end
+		.GroundAttackDynamo1
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $080, !P1Tile1)
+		%Dyn24Bit(3, $090, !P1Tile1+$10)
+		%Dyn24Bit(3, $0A0, !P1Tile5)
+		%Dyn24Bit(3, $0B0, !P1Tile5+$10)
+		%Dyn24BitFile2(4, $000, !P1Tile3)
+		%Dyn24BitFile2(4, $004, !P1Tile3+$10)
+		%Dyn24BitFile2(4, $008, !P1Tile7)
+		%Dyn24BitFile2(4, $00C, !P1Tile7+$10)
+		..end
+		.GroundAttackDynamo2
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $083, !P1Tile1)
+		%Dyn24Bit(3, $093, !P1Tile1+$10)
+		%Dyn24Bit(3, $0A3, !P1Tile5)
+		%Dyn24Bit(3, $0B3, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $027, !P1Tile4+$10)
+		%Dyn24BitFile2(3, $036, !P1Tile7+$01)
+		%Dyn24BitFile2(2, $029, !P1Tile7+$11)
+		..end
+		.GroundAttackDynamo3
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $086, !P1Tile1)
+		%Dyn24Bit(3, $096, !P1Tile1+$10)
+		%Dyn24Bit(3, $0A6, !P1Tile5)
+		%Dyn24Bit(3, $0B6, !P1Tile5+$10)
+		..end
+
+	; ground attack 2
+		.UpSlashDynamo0
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $100, !P1Tile1)
+		%Dyn24Bit(3, $110, !P1Tile1+$10)
+		%Dyn24Bit(3, $120, !P1Tile5)
+		%Dyn24Bit(3, $130, !P1Tile5+$10)
+		%Dyn24BitFile2(4, $000, !P1Tile3)
+		%Dyn24BitFile2(4, $004, !P1Tile3+$10)
+		%Dyn24BitFile2(4, $008, !P1Tile7)
+		%Dyn24BitFile2(4, $00C, !P1Tile7+$10)
+		..end
+		.UpSlashDynamo1
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $103, !P1Tile1)
+		%Dyn24Bit(3, $113, !P1Tile1+$10)
+		%Dyn24Bit(3, $123, !P1Tile5)
+		%Dyn24Bit(3, $133, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $027, !P1Tile4+$10)
+		%Dyn24BitFile2(3, $036, !P1Tile7+$01)
+		%Dyn24BitFile2(2, $029, !P1Tile7+$11)
+		..end
+		.UpSlashDynamo2
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $103, !P1Tile1)
+		%Dyn24Bit(3, $113, !P1Tile1+$10)
+		%Dyn24Bit(3, $123, !P1Tile5)
+		%Dyn24Bit(3, $133, !P1Tile5+$10)
+		..end
+
+	; dash transition
+		.DashTransitionDynamo
+		db ..end-..start
+		..start
+		%Dyn24Bit(4, $00C, !P1Tile1)
+		%Dyn24Bit(4, $01C, !P1Tile1+$10)
+		%Dyn24Bit(4, $02C, !P1Tile5)
+		%Dyn24Bit(4, $03C, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $027, !P1Tile4+$10)
+		%Dyn24BitFile2(3, $036, !P1Tile7+$01)
+		%Dyn24BitFile2(2, $029, !P1Tile7+$11)
+		..end
+
+	; dash
+		.DashDynamo0
+		db ..end-..start
+		..start
+		%Dyn24Bit(4, $04C, !P1Tile1)
+		%Dyn24Bit(4, $05C, !P1Tile1+$10)
+		%Dyn24Bit(4, $06C, !P1Tile5)
+		%Dyn24BitFile2(3, $023, !P1Tile7)
+		%Dyn24BitFile2(3, $033, !P1Tile7+$10)
+		..end
+		.DashDynamo1
+		db ..end-..start
+		..start
+		%Dyn24Bit(4, $07C, !P1Tile1)
+		%Dyn24Bit(4, $08C, !P1Tile1+$10)
+		%Dyn24Bit(4, $09C, !P1Tile5)
+		%Dyn24BitFile2(3, $023, !P1Tile7)
+		%Dyn24BitFile2(3, $033, !P1Tile7+$10)
+		..end
+
+	; dash attack
+		.DashAttackDynamo0
+		db ..end-..start
+		..start
+		%Dyn24Bit(4, $0AC, !P1Tile1)
+		%Dyn24Bit(4, $0BC, !P1Tile1+$10)
+		%Dyn24Bit(4, $0CC, !P1Tile5)
+		%Dyn24BitFile2(3, $020, !P1Tile7)
+		..end
+		.DashAttackDynamo1
+		db ..end-..start
+		..start
+		%Dyn24Bit(4, $0DC, !P1Tile1)
+		%Dyn24Bit(4, $0EC, !P1Tile1+$10)
+		%Dyn24Bit(4, $0FC, !P1Tile5)
+		%Dyn24BitFile2(4, $000, !P1Tile3)
+		%Dyn24BitFile2(4, $004, !P1Tile3+$10)
+		%Dyn24BitFile2(4, $008, !P1Tile7)
+		%Dyn24BitFile2(4, $00C, !P1Tile7+$10)
+		..end
+		.DashAttackDynamo2
+		db ..end-..start
+		..start
+		%Dyn24Bit(4, $10C, !P1Tile1)
+		%Dyn24Bit(4, $11C, !P1Tile1+$10)
+		%Dyn24Bit(4, $12C, !P1Tile5)
+		%Dyn24BitFile2(3, $027, !P1Tile4+$10)
+		%Dyn24BitFile2(3, $036, !P1Tile7+$01)
+		%Dyn24BitFile2(2, $029, !P1Tile7+$11)
+		..end
+
+	; jump
+		.JumpDynamo
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $089, !P1Tile1)
+		%Dyn24Bit(3, $099, !P1Tile1+$10)
+		%Dyn24Bit(3, $0A9, !P1Tile5)
+		%Dyn24Bit(3, $0B9, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $023, !P1Tile7)
+		%Dyn24BitFile2(3, $033, !P1Tile7+$10)
+		..end
+
+	; fall
+		.FallDynamo0
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $0C0, !P1Tile1)
+		%Dyn24Bit(3, $0D0, !P1Tile1+$10)
+		%Dyn24Bit(3, $0E0, !P1Tile5)
+		%Dyn24Bit(3, $0F0, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $030, !P1Tile7)
+		..end
+		.FallDynamo1
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $0C3, !P1Tile1)
+		%Dyn24Bit(3, $0D3, !P1Tile1+$10)
+		%Dyn24Bit(3, $0E3, !P1Tile5)
+		%Dyn24Bit(3, $0F3, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $023, !P1Tile7)
+		%Dyn24BitFile2(3, $033, !P1Tile7+$10)
+		..end
+		.FallDynamo2
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $0C6, !P1Tile1)
+		%Dyn24Bit(3, $0D6, !P1Tile1+$10)
+		%Dyn24Bit(3, $0E6, !P1Tile5)
+		%Dyn24Bit(3, $0F6, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $023, !P1Tile7)
+		%Dyn24BitFile2(3, $033, !P1Tile7+$10)
+		..end
+
+	; air attack
+		.AirAttackDynamo0
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $289, !P1Tile1)
+		%Dyn24Bit(3, $299, !P1Tile1+$10)
+		%Dyn24Bit(3, $2A9, !P1Tile5)
+		%Dyn24Bit(3, $2B9, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $027, !P1Tile4+$10)
+		%Dyn24BitFile2(3, $036, !P1Tile7+$01)
+		%Dyn24BitFile2(2, $029, !P1Tile7+$11)
+		..end
+		.AirAttackDynamo1
+		db ..end-..start
+		..start
+		%Dyn24BitFile2(3, $023, !P1Tile7)
+		%Dyn24BitFile2(3, $033, !P1Tile7+$10)
+		..end
+		.AirAttackDynamo2
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $089, !P1Tile1)
+		%Dyn24Bit(3, $099, !P1Tile1+$10)
+		%Dyn24Bit(3, $0A9, !P1Tile5)
+		%Dyn24Bit(3, $0B9, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $030, !P1Tile7)
+		..end
+		.AirAttackDynamo3
+		db ..end-..start
+		..start
+		%Dyn24BitFile2(3, $023, !P1Tile7)
+		%Dyn24BitFile2(3, $033, !P1Tile7+$10)
+		..end
+		.AirAttackDynamo4
+		db ..end-..start
+		..start
+		%Dyn24BitFile2(3, $027, !P1Tile4+$10)
+		%Dyn24BitFile2(3, $036, !P1Tile7+$01)
+		%Dyn24BitFile2(2, $029, !P1Tile7+$11)
+		..end
+
+	; double jump
+		.DoubleJumpDynamo0
+		db ..end-..start
+		..start
+		%Dyn24Bit(4, $308, !P1Tile1)
+		%Dyn24Bit(4, $318, !P1Tile1+$10)
+		%Dyn24Bit(4, $328, !P1Tile5)
+		%Dyn24Bit(4, $338, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $020, !P1Tile7)
+		..end
+		.DoubleJumpDynamo1
+		db ..end-..start
+		..start
+		%Dyn24Bit(4, $304, !P1Tile1)
+		%Dyn24Bit(4, $314, !P1Tile1+$10)
+		%Dyn24Bit(4, $324, !P1Tile5)
+		%Dyn24Bit(4, $334, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $023, !P1Tile7)
+		%Dyn24BitFile2(3, $033, !P1Tile7+$10)
+		..end
+		.DoubleJumpDynamo2
+		db ..end-..start
+		..start
+		%Dyn24Bit(4, $308, !P1Tile1)
+		%Dyn24Bit(4, $318, !P1Tile1+$10)
+		%Dyn24Bit(4, $328, !P1Tile5)
+		%Dyn24Bit(4, $338, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $020, !P1Tile7)
+		..end
+		.DoubleJumpDynamo3
+		db ..end-..start
+		..start
+		%Dyn24Bit(4, $304, !P1Tile1)
+		%Dyn24Bit(4, $314, !P1Tile1+$10)
+		%Dyn24Bit(4, $324, !P1Tile5)
+		%Dyn24Bit(4, $334, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $023, !P1Tile7)
+		%Dyn24BitFile2(3, $033, !P1Tile7+$10)
+		..end
+
+	; spin attack
+		.SpinAttackDynamo0
+		db ..end-..start
+		..start
+		%Dyn24Bit(4, $300, !P1Tile1)
+		%Dyn24Bit(4, $310, !P1Tile1+$10)
+		%Dyn24Bit(4, $320, !P1Tile5)
+		%Dyn24Bit(4, $330, !P1Tile5+$10)
+		%Dyn24BitFile2(4, $000, !P1Tile3)
+		%Dyn24BitFile2(4, $004, !P1Tile3+$10)
+		%Dyn24BitFile2(4, $008, !P1Tile7)
+		%Dyn24BitFile2(4, $00C, !P1Tile7+$10)
+		..end
+		.SpinAttackDynamo1
+		db ..end-..start
+		..start
+		%Dyn24Bit(4, $304, !P1Tile1)
+		%Dyn24Bit(4, $314, !P1Tile1+$10)
+		%Dyn24Bit(4, $324, !P1Tile5)
+		%Dyn24Bit(4, $334, !P1Tile5+$10)
+		%Dyn24BitFile2(4, $010, !P1Tile3)
+		%Dyn24BitFile2(4, $014, !P1Tile3+$10)
+		%Dyn24BitFile2(4, $018, !P1Tile7)
+		%Dyn24BitFile2(4, $01C, !P1Tile7+$10)
+		..end
+		.SpinAttackDynamo2
+		db ..end-..start
+		..start
+		%Dyn24Bit(4, $308, !P1Tile1)
+		%Dyn24Bit(4, $318, !P1Tile1+$10)
+		%Dyn24Bit(4, $328, !P1Tile5)
+		%Dyn24Bit(4, $338, !P1Tile5+$10)
+		%Dyn24BitFile2(4, $000, !P1Tile3)
+		%Dyn24BitFile2(4, $004, !P1Tile3+$10)
+		%Dyn24BitFile2(4, $008, !P1Tile7)
+		%Dyn24BitFile2(4, $00C, !P1Tile7+$10)
+		..end
+
+	; climb bg
+		.ClimbBGDynamo
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $246, !P1Tile1)
+		%Dyn24Bit(3, $256, !P1Tile1+$10)
+		%Dyn24Bit(3, $266, !P1Tile5)
+		%Dyn24Bit(3, $276, !P1Tile5+$10)
+		..end
+
+	; wall climb
+		.WallClimbDynamo0
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $1C6, !P1Tile1)
+		%Dyn24Bit(3, $1D6, !P1Tile1+$10)
+		%Dyn24Bit(3, $1E6, !P1Tile5)
+		%Dyn24Bit(3, $1F6, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $027, !P1Tile4+$10)
+		%Dyn24BitFile2(3, $036, !P1Tile7+$01)
+		%Dyn24BitFile2(2, $029, !P1Tile7+$11)
+		..end
+		.WallClimbDynamo1
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $1C9, !P1Tile1)
+		%Dyn24Bit(3, $1D9, !P1Tile1+$10)
+		%Dyn24Bit(3, $1E9, !P1Tile5)
+		%Dyn24Bit(3, $1F9, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $020, !P1Tile7)
+		..end
+		.WallClimbDynamo2
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $200, !P1Tile1)
+		%Dyn24Bit(3, $210, !P1Tile1+$10)
+		%Dyn24Bit(3, $220, !P1Tile5)
+		%Dyn24Bit(3, $230, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $020, !P1Tile7)
+		..end
+		.WallClimbDynamo3
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $203, !P1Tile1)
+		%Dyn24Bit(3, $213, !P1Tile1+$10)
+		%Dyn24Bit(3, $223, !P1Tile5)
+		%Dyn24Bit(3, $233, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $027, !P1Tile4+$10)
+		%Dyn24BitFile2(3, $036, !P1Tile7+$01)
+		%Dyn24BitFile2(2, $029, !P1Tile7+$11)
+		..end
+
+	; wall climb top
+		.WallClimbTopDynamo0
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $206, !P1Tile1)
+		%Dyn24Bit(3, $216, !P1Tile1+$10)
+		%Dyn24Bit(3, $226, !P1Tile5)
+		%Dyn24Bit(3, $236, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $023, !P1Tile7)
+		%Dyn24BitFile2(3, $033, !P1Tile7+$10)
+		..end
+		.WallClimbTopDynamo1
+		db ..end-..start
+		..start
+		%Dyn24Bit(4, $13C, !P1Tile1)
+		%Dyn24Bit(4, $14C, !P1Tile1+$10)
+		%Dyn24Bit(4, $15C, !P1Tile5)
+		%Dyn24BitFile2(3, $030, !P1Tile7)
+		..end
+		.WallClimbTopDynamo2
+		db ..end-..start
+		..start
+		%Dyn24Bit(4, $00C, !P1Tile1)
+		%Dyn24Bit(4, $01C, !P1Tile1+$10)
+		%Dyn24Bit(4, $02C, !P1Tile5)
+		%Dyn24Bit(4, $03C, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $030, !P1Tile7)
+		..end
+
+	; wall attack
+		.WallAttackDynamo0
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $209, !P1Tile1)
+		%Dyn24Bit(3, $219, !P1Tile1+$10)
+		%Dyn24Bit(3, $229, !P1Tile5)
+		%Dyn24Bit(3, $239, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $027, !P1Tile4+$10)
+		%Dyn24BitFile2(3, $036, !P1Tile7+$01)
+		%Dyn24BitFile2(2, $029, !P1Tile7+$11)
+		..end
+		.WallAttackDynamo1
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $20C, !P1Tile1)
+		%Dyn24Bit(3, $21C, !P1Tile1+$10)
+		%Dyn24Bit(3, $22C, !P1Tile5)
+		%Dyn24Bit(3, $23C, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $020, !P1Tile7)
+		..end
+		.WallAttackDynamo2
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $240, !P1Tile1)
+		%Dyn24Bit(3, $250, !P1Tile1+$10)
+		%Dyn24Bit(3, $260, !P1Tile5)
+		%Dyn24Bit(3, $270, !P1Tile5+$10)
+		%Dyn24BitFile2(4, $000, !P1Tile3)
+		%Dyn24BitFile2(4, $004, !P1Tile3+$10)
+		%Dyn24BitFile2(4, $008, !P1Tile7)
+		%Dyn24BitFile2(4, $00C, !P1Tile7+$10)
+		..end
+		.WallAttackDynamo3
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $243, !P1Tile1)
+		%Dyn24Bit(3, $253, !P1Tile1+$10)
+		%Dyn24Bit(3, $263, !P1Tile5)
+		%Dyn24Bit(3, $273, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $027, !P1Tile4+$10)
+		%Dyn24BitFile2(3, $036, !P1Tile7+$01)
+		%Dyn24BitFile2(2, $029, !P1Tile7+$11)
+		..end
+
+	; ceiling hang
+		.CeilingHangDynamo
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $2C3, !P1Tile1)
+		%Dyn24Bit(3, $2D3, !P1Tile1+$10)
+		%Dyn24Bit(3, $2E3, !P1Tile5)
+		%Dyn24Bit(3, $2F3, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $027, !P1Tile4+$10)
+		%Dyn24BitFile2(3, $036, !P1Tile7+$01)
+		%Dyn24BitFile2(2, $029, !P1Tile7+$11)
+		..end
+
+	; ceiling climb
+		.CeilingClimbDynamo0
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $280, !P1Tile1)
+		%Dyn24Bit(3, $290, !P1Tile1+$10)
+		%Dyn24Bit(3, $2A0, !P1Tile5)
+		%Dyn24Bit(3, $2B0, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $023, !P1Tile7)
+		%Dyn24BitFile2(3, $033, !P1Tile7+$10)
+		..end
+		.CeilingClimbDynamo1
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $283, !P1Tile1)
+		%Dyn24Bit(3, $293, !P1Tile1+$10)
+		%Dyn24Bit(3, $2A3, !P1Tile5)
+		%Dyn24Bit(3, $2B3, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $027, !P1Tile4+$10)
+		%Dyn24BitFile2(3, $036, !P1Tile7+$01)
+		%Dyn24BitFile2(2, $029, !P1Tile7+$11)
+		..end
+		.CeilingClimbDynamo2
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $286, !P1Tile1)
+		%Dyn24Bit(3, $296, !P1Tile1+$10)
+		%Dyn24Bit(3, $2A6, !P1Tile5)
+		%Dyn24Bit(3, $2B6, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $027, !P1Tile4+$10)
+		%Dyn24BitFile2(3, $036, !P1Tile7+$01)
+		%Dyn24BitFile2(2, $029, !P1Tile7+$11)
+		..end
+		.CeilingClimbDynamo3
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $289, !P1Tile1)
+		%Dyn24Bit(3, $299, !P1Tile1+$10)
+		%Dyn24Bit(3, $2A9, !P1Tile5)
+		%Dyn24Bit(3, $2B9, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $023, !P1Tile7)
+		%Dyn24BitFile2(3, $033, !P1Tile7+$10)
+		..end
+		.CeilingClimbDynamo4
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $28C, !P1Tile1)
+		%Dyn24Bit(3, $29C, !P1Tile1+$10)
+		%Dyn24Bit(3, $2AC, !P1Tile5)
+		%Dyn24Bit(3, $2BC, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $027, !P1Tile4+$10)
+		%Dyn24BitFile2(3, $036, !P1Tile7+$01)
+		%Dyn24BitFile2(2, $029, !P1Tile7+$11)
+		..end
+		.CeilingClimbDynamo5
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $2C0, !P1Tile1)
+		%Dyn24Bit(3, $2D0, !P1Tile1+$10)
+		%Dyn24Bit(3, $2E0, !P1Tile5)
+		%Dyn24Bit(3, $2F0, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $027, !P1Tile4+$10)
+		%Dyn24BitFile2(3, $036, !P1Tile7+$01)
+		%Dyn24BitFile2(2, $029, !P1Tile7+$11)
+		..end
+
+	; ceiling attack
+		.CeilingAttackDynamo0
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $2C6, !P1Tile1)
+		%Dyn24Bit(3, $2D6, !P1Tile1+$10)
+		%Dyn24Bit(3, $2E6, !P1Tile5)
+		%Dyn24Bit(3, $2F6, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $023, !P1Tile7)
+		%Dyn24BitFile2(3, $033, !P1Tile7+$10)
+		..end
+		.CeilingAttackDynamo1
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $2C9, !P1Tile1)
+		%Dyn24Bit(3, $2D9, !P1Tile1+$10)
+		%Dyn24Bit(3, $2E9, !P1Tile5)
+		%Dyn24Bit(3, $2F9, !P1Tile5+$10)
+		%Dyn24BitFile2(4, $000, !P1Tile3)
+		%Dyn24BitFile2(4, $004, !P1Tile3+$10)
+		%Dyn24BitFile2(4, $008, !P1Tile7)
+		%Dyn24BitFile2(4, $00C, !P1Tile7+$10)
+		..end
+		.CeilingAttackDynamo2
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $2CC, !P1Tile1)
+		%Dyn24Bit(3, $2DC, !P1Tile1+$10)
+		%Dyn24Bit(3, $2EC, !P1Tile5)
+		%Dyn24Bit(3, $2FC, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $027, !P1Tile4+$10)
+		%Dyn24BitFile2(3, $036, !P1Tile7+$01)
+		%Dyn24BitFile2(2, $029, !P1Tile7+$11)
+		..end
+
+	; hurt
+		.HurtDynamo
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $0C9, !P1Tile1)
+		%Dyn24Bit(3, $0D9, !P1Tile1+$10)
+		%Dyn24Bit(3, $0E9, !P1Tile5)
+		%Dyn24Bit(3, $0F9, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $023, !P1Tile7)
+		%Dyn24BitFile2(3, $033, !P1Tile7+$10)
+		..end
+
+	; dead
+		.DeadDynamo
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $109, !P1Tile1)
+		%Dyn24Bit(3, $119, !P1Tile1+$10)
+		%Dyn24Bit(3, $129, !P1Tile5)
+		%Dyn24Bit(3, $139, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $023, !P1Tile7)
+		%Dyn24BitFile2(3, $033, !P1Tile7+$10)
+		..end
+
+	; victory
+		.VictoryDynamo0
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $249, !P1Tile1)
+		%Dyn24Bit(3, $259, !P1Tile1+$10)
+		%Dyn24Bit(3, $269, !P1Tile5)
+		%Dyn24Bit(3, $279, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $020, !P1Tile7)
+		..end
+		.VictoryDynamo1
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $24C, !P1Tile1)
+		%Dyn24Bit(3, $25C, !P1Tile1+$10)
+		%Dyn24Bit(3, $26C, !P1Tile5)
+		%Dyn24Bit(3, $27C, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $020, !P1Tile7)
+		..end
+
+	; sleep
+		.SleepDynamo
+		db ..end-..start
+		..start
+		%Dyn24Bit(3, $30C, !P1Tile1)
+		%Dyn24Bit(3, $31C, !P1Tile1+$10)
+		%Dyn24Bit(3, $32C, !P1Tile5)
+		%Dyn24Bit(3, $33C, !P1Tile5+$10)
+		%Dyn24BitFile2(3, $020, !P1Tile7)
+		..end
+>>>>>>> Stashed changes
 
 
 	.ClippingStandard
@@ -3216,23 +6102,43 @@ endmacro
 	db $0A,$0A,$05,$05		; < Size
 
 	.ClippingWall
+<<<<<<< Updated upstream
 	db $0D,$02,$05,$05		; < X offset
 	db $FF,$FF,$10,$F4		; < Y offset
 	db $04,$04,$05,$05		; < Size
 
+=======
+	; X
+	db $0E,$01,$0E,$01		; R/L/R/L
+	db $04,$0B,$08,$08		; D/D/U/C
+	; Y
+	db $FF,$FF,$03,$03		; R/L/R/L
+	db $10,$10,$F4,$04		; D/D/U/C
+	; hurtbox
+	dw $0001,$FFF8			; X/Y
+	db $0D,$18			; W/H
+
+
+	.ClippingDash
+	; X
+	db $0E,$01,$0E,$01		; R/L/R/L
+	db $04,$0B,$08,$08		; D/D/U/C
+	; Y
+	db $FF,$FF,$0A,$0A		; R/L/R/L
+	db $10,$10,$F8,$02		; D/D/U/C
+	; hurtbox
+	dw $0001,$FFFC			; X/Y
+	db $10,$14			; W/H
+>>>>>>> Stashed changes
 
 
 .End
 print "  Anim data: $", hex(.End-ANIM), " bytes"
-print "  - sequence data: $", hex(.IdleTM-ANIM), " bytes (", dec((.IdleTM-ANIM)*100/(.End-ANIM)), "%)"
-print "  - tilemap data:  $", hex(.IdleDynamo0-.IdleTM), " bytes (", dec((.IdleDynamo0-.IdleTM)*100/(.End-ANIM)), "%)"
-print "  - dynamo data:   $", hex(.ClippingStandard-.IdleDynamo0), " bytes (", dec((.ClippingStandard-.IdleDynamo0)*100/(.End-ANIM)), "%)"
-print "  - clipping data: $", hex(.End-.ClippingStandard), " bytes (", dec((.End-.ClippingStandard)*100/(.End-ANIM)), "%)"
 
 
 
-	SWORD:
 
+<<<<<<< Updated upstream
 	.Idle0				; 00
 	dw .HorzTM : db $F5,$08
 	dw $0000,$0000
@@ -3459,25 +6365,609 @@ print "  - clipping data: $", hex(.End-.ClippingStandard), " bytes (", dec((.End
 	.Victory1			; 43
 	dw .HoldUpTM : db $04,$E5
 	dw $0000,$0000
+=======
+; format:
+; 00 - tilemap
+; 02 - X offset
+; 03 - Y offset
+; 04 - sword priority (0 = sword in front, anything else = body in front)
+; 05 - held item priority (0 = item in front, anything else = body in front), checked by sprite
+; 06 - held item X offset
+; 07 - held item Y offset
+
+>>>>>>> Stashed changes
+
+; these are base coordinates for held items
+	!tempx = $FD
+	!tempy = $F3
 
 
+	SWORD:
+	; idle 1
+		.Idle1Frame0
+		dw .SlantDownTM : db $FD,$04
+		db $00
+		db $00
+		db !tempx+$0F,!tempy+$02
+		.Idle1Frame1
+		dw .SlantDownTM : db $FD,$04
+		db $00
+		db $00
+		db !tempx+$0F,!tempy+$02
+		.Idle1Frame2
+		dw .SlantDownTM : db $FD,$04
+		db $00
+		db $00
+		db !tempx+$0F,!tempy+$02
+
+	; sleep
+		.Sleep
+		dw .StuckTM : db $0A,$00
+		db $FF
+		db $FF
+		db !tempx+$F8,!tempy+$0C
+
+	; idle transition
+		.IdleTransition0
+		dw .HorzTM : db $FD,$02
+		db $00
+		db $00
+		db !tempx+$0F,!tempy+$02
+		.IdleTransition1
+		dw .HorzTM : db $FD,$02
+		db $00
+		db $00
+		db !tempx+$0F,!tempy+$02
+
+	; idle 2
+		.Idle2Frame0
+		dw .SlantUpTM : db $FF,$FF
+		db $00
+		db $00
+		db !tempx+$0F,!tempy+$03
+		.Idle2Frame1
+		dw .SlantUpTM : db $FF,$FF
+		db $00
+		db $00
+		db !tempx+$0F,!tempy+$03
+		.Idle2Frame2
+		dw .SlantUpTM : db $FF,$FF
+		db $00
+		db $00
+		db !tempx+$0F,!tempy+$03
+
+	; walk
+		.Walk0
+		dw .HorzTM : db $02,$02
+		db $00
+		db $00
+		db !tempx+$07,!tempy+$02
+		.Walk1
+		dw .SlantUpTM : db $FC,$FD		; body tilemap displaced (-3 Y)
+		db $00
+		db $00
+		db !tempx+$0E,!tempy+$04
+		.Walk2
+		dw .HorzTM : db $FF,$02
+		db $00
+		db $00
+		db !tempx+$0D,!tempy+$03
+		.Walk3
+		dw .SlantDownTM : db $06,$01
+		db $FF
+		db $00
+		db !tempx+$06,!tempy+$01
+		.Walk4
+		dw .DiagonalDownTM : db $0E,$00		; body tilemap displaced (-2 Y)
+		db $FF
+		db $00
+		db !tempx+$FF,!tempy+$FF
+		.Walk5
+		dw .SlantDownTM : db $0C,$01
+		db $FF
+		db $00
+		db !tempx+$03,!tempy+$02
+
+	; kick
+		.Kick
+		dw .DiagonalUpTM_reverse : db $0F,$FB
+		db $00
+		db $00
+		db !tempx+$0F,!tempy+$03
+
+	; crouch transition
+		.CrouchTransition0
+		dw .SlantDownTM : db $06,$06
+		db $00
+		db $FF
+		db !tempx+$06,!tempy+$06
+		.CrouchTransition1
+		dw .SlantDownTM : db $06,$06
+		db $00
+		db $FF
+		db !tempx+$06,!tempy+$FD
+
+	; crouch
+		.Crouch0
+		dw .HorzTM : db $03,$0C
+		db $00
+		db $FF
+		db !tempx+$03,!tempy+$07
+		.Crouch1
+		dw .HorzTM : db $05,$0C
+		db $00
+		db $FF
+		db !tempx+$03,!tempy+$07
+		.Crouch2
+		dw .HorzTM : db $03,$0C
+		db $00
+		db $FF
+		db !tempx+$03,!tempy+$07
+		.Crouch3
+		dw .HorzTM : db $01,$0C
+		db $00
+		db $FF
+		db !tempx+$03,!tempy+$07
+
+	; surf 0
+		.Surf0
+		dw .HorzTM : db $12,$0C
+		db $FF
+		db $00
+		db !tempx+$0F,!tempy+$FD
+
+	; surf 1
+		.Surf1Frame0
+		dw .SlantDownTM : db $10,$06
+		db $FF
+		db $00
+		db !tempx+$0E,!tempy+$FC
+		.Surf1Frame1
+		dw .SlantDownTM : db $10,$06
+		db $FF
+		db $00
+		db !tempx+$0E,!tempy+$FC
+
+	; surf 2
+		.Surf2Frame0
+		dw .DiagonalDownTM : db $0F,$03
+		db $FF
+		db $00
+		db !tempx+$0D,!tempy+$F9
+		.Surf2Frame1
+		dw .DiagonalDownTM : db $0F,$03
+		db $FF
+		db $00
+		db !tempx+$0D,!tempy+$F9
+
+	; ground attack 1
+		.GroundAttack1Frame0
+		dw .StraightUpTM : db $FF,$F0
+		db $00
+		db $00
+		db !tempx+$0D,!tempy+$00
+		.GroundAttack1Frame1
+		dw .BigSlashDownTM : db $FC,$02
+		db $00
+		db $00
+		db !tempx+$0F,!tempy+$03
+		.GroundAttack1Frame2
+		dw .AfterSlashDownTM : db $FE,$08
+		db $00
+		db $00
+		db !tempx+$0E,!tempy+$00
+		.GroundAttack1Frame3
+		dw .DiagonalDownTM : db $FF,$07
+		db $00
+		db $00
+		db !tempx+$0E,!tempy+$00
+
+	; ground attack 2
+		.GroundAttack2Frame0
+		dw .BigSlashUpTM : db $FC,$00
+		db $00
+		db $00
+		db !tempx+$0E,!tempy+$FF
+		.GroundAttack2Frame1
+		dw .AfterSlashUpTM : db $FE,$F0
+		db $00
+		db $00
+		db !tempx+$0E,!tempy+$FE
+		.GroundAttack2Frame2
+		dw .DiagonalUpTM : db $FE,$F0
+		db $00
+		db $00
+		db !tempx+$0E,!tempy+$FE
+
+	; dash transition
+		.DashTransition0
+		dw .DiagonalDownTM : db $0D,$00
+		db $00
+		db $FF
+		db !tempx+$FF,!tempy+$09
+		.DashTransition1
+		dw .DiagonalDownTM : db $0D,$00
+		db $00
+		db $FF
+		db !tempx+$FF,!tempy+$09
+
+	; dash
+		.Dash0
+		dw .SlantDownTM_reverse : db $0C,$02
+		db $00
+		db $FF
+		db !tempx+$FC,!tempy+$0E
+		.Dash1
+		dw .SlantDownTM_reverse : db $0C,$02
+		db $00
+		db $FF
+		db !tempx+$FC,!tempy+$0E
+
+	; dash attack
+		.DashAttack0
+		dw .StraightUpTM : db $06,$FA
+		db $00
+		db $FF
+		db !tempx+$FE,!tempy+$0B
+		.DashAttack1
+		dw .BigSlashDownTM : db $00,$08
+		db $00
+		db $FF
+		db !tempx+$FE,!tempy+$07
+		.DashAttack2
+		dw .AfterSlashDownTM_dash : db $07,$05
+		db $00
+		db $FF
+		db !tempx+$FE,!tempy+$07
+
+	; jump
+		.Jump
+		dw .SlantDownTM : db $00,$FF
+		db $00
+		db $00
+		db !tempx+$0F,!tempy+$FF
+
+	; fall
+		.Fall0
+		dw .HorzTM : db $FD,$FD
+		db $00
+		db $00
+		db !tempx+$0F,!tempy+$FD
+		.Fall1
+		dw .SlantUpTM : db $FB,$F8
+		db $00
+		db $00
+		db !tempx+$0F,!tempy+$F7
+		.Fall2
+		dw .SlantUpTM : db $FB,$F8
+		db $00
+		db $00
+		db !tempx+$0F,!tempy+$F7
+
+	; air attack
+		.AirAttack0
+		dw .DiagonalUpTM_reverse : db $09,$F1
+		db $00
+		db $00
+		db !tempx+$FC,!tempy+$F0
+		.AirAttack1
+		dw .SlantUpTM_reverse : db $09,$F1
+		db $00
+		db $00
+		db !tempx+$FC,!tempy+$F0
+		.AirAttack2
+		dw .HorzTM_reverse : db $FC,$FF
+		db $00
+		db $00
+		db !tempx+$0B,!tempy+$FF
+		.AirAttack3
+		dw .SlantDownTM_reverse : db $FC,$FF
+		db $00
+		db $00
+		db !tempx+$0B,!tempy+$FF
+		.AirAttack4
+		dw .DiagonalDownTM_reverse : db $FC,$FF
+		db $00
+		db $00
+		db !tempx+$0B,!tempy+$FF
+		.AirAttack5
+		dw .BigSlashUpTM : db $FC,$00
+		db $00
+		db $00
+		db !tempx+$0E,!tempy+$FF
+		.AirAttack6
+		dw .AfterSlashUpTM : db $FE,$F0
+		db $00
+		db $00
+		db !tempx+$0E,!tempy+$FE
+		.AirAttack7
+		dw .DiagonalUpTM : db $FE,$F0
+		db $00
+		db $00
+		db !tempx+$0E,!tempy+$FE
+
+	; double jump
+		.DoubleJump0
+		dw .StraightUpTM : db $F8,$03
+		db $FF
+		db $00
+		dw $FFFF
+		.DoubleJump1
+		dw .SlantDownTM : db $0B,$0A
+		db $FF
+		db $00
+		dw $FFFF
+		.DoubleJump2
+		dw .StraightDownTM : db $12,$F8
+		db $FF
+		db $00
+		dw $FFFF
+		.DoubleJump3
+		dw .SlantUpTM_reverse : db $00,$F0
+		db $FF
+		db $00
+		dw $FFFF
+
+	; spin attack
+		.SpinAttack0
+		dw .SpinSlashTM0 : db $F8,$03
+		db $FF
+		db $00
+		dw $FFFF
+		.SpinAttack1
+		dw .SpinSlashTM1 : db $0B,$0A
+		db $FF
+		db $00
+		dw $FFFF
+		.SpinAttack2
+		dw .SpinSlashTM2 : db $12,$F8
+		db $FF
+		db $00
+		dw $FFFF
+		.SpinAttack3
+		dw .SpinSlashTM3 : db $00,$F0
+		db $FF
+		db $00
+		dw $FFFF
+
+	; climb BG
+		.ClimbBG
+		dw .SlantDownTM : db $E8,$05
+		db $00
+		db $00
+		dw $FFFF
+
+	; wall climb
+		.WallClimb0
+		dw .DiagonalUpTM_reverse : db $00,$F4
+		db $FF
+		db $00
+		dw $FFFF
+		.WallClimb1
+		dw .StraightUpTM : db $00,$FA
+		db $FF
+		db $00
+		dw $FFFF
+		.WallClimb2
+		dw .StraightUpTM : db $00,$FE
+		db $FF
+		db $00
+		dw $FFFF
+		.WallClimb3
+		dw .DiagonalUpTM_reverse : db $00,$F9
+		db $FF
+		db $00
+		dw $FFFF
+
+	; wall climb top
+		.WallClimbTop0
+		dw .SlantUpTM : db $F9,$05		; body tilemap displaced (-2 X, +6 Y)
+		db $FF
+		db $00
+		dw $FFFF
+		.WallClimbTop1
+		dw .HorzTM : db $FE,$06
+		db $FF
+		db $00
+		dw $FFFF
+		.WallClimbTop2
+		dw .HorzTM : db $FF,$05
+		db $00
+		db $00
+		dw $FFFF
+
+	; wall attack
+		.WallAttack0
+		dw .DiagonalUpTM_reverse : db $13,$05
+		db $00
+		db $00
+		dw $FFFF
+		.WallAttack1
+		dw .StraightUpTM : db $10,$EF
+		db $00
+		db $00
+		dw $FFFF
+		.WallAttack2
+		dw .BigSlashDownTM_reverse : db $13,$FA
+		db $00
+		db $00
+		dw $FFFF
+		.WallAttack3
+		dw .AfterSlashDownTM_reverse : db $12,$08
+		db $00
+		db $00
+		dw $FFFF
+		.WallAttack4
+		dw .DiagonalDownTM_reverse : db $12,$08
+		db $00
+		db $00
+		dw $FFFF
+
+	; ceiling hang
+		.CeilingHang
+		dw .DiagonalDownTM : db $0C,$03
+		db $00
+		db $00
+		dw $FFFF
+
+	; ceiling climb
+		.CeilingClimb0
+		dw .SlantDownTM_reverse : db $01,$FA
+		db $FF
+		db $00
+		dw $FFFF
+		.CeilingClimb1
+		dw .DiagonalDownTM_reverse : db $02,$F9
+		db $FF
+		db $00
+		dw $FFFF
+		.CeilingClimb2
+		dw .DiagonalDownTM : db $0B,$FD
+		db $00
+		db $00
+		dw $FFFF
+		.CeilingClimb3
+		dw .SlantDownTM : db $0B,$FC
+		db $00
+		db $00
+		dw $FFFF
+		.CeilingClimb4
+		dw .DiagonalDownTM : db $0B,$FD
+		db $00
+		db $00
+		dw $FFFF
+		.CeilingClimb5
+		dw .DiagonalDownTM_reverse : db $02,$F8
+		db $FF
+		db $00
+		dw $FFFF
+
+	; ceiling attack
+		.CeilingAttack0
+		dw .SlantUpTM : db $0D,$F5
+		db $00
+		db $00
+		dw $FFFF
+		.CeilingAttack1
+		dw .SlashTM : db $FF,$01
+		db $00
+		db $00
+		dw $FFFF
+		.CeilingAttack2
+		dw .AfterSlashDownTM_ceiling : db $04,$06
+		db $00
+		db $00
+		dw $FFFF
+		.CeilingAttack3
+		dw .DiagonalDownTM : db $04,$06
+		db $00
+		db $00
+		dw $FFFF
+
+	; hurt
+		.Hurt
+		dw .SlantUpTM : db $FC,$00
+		db $00
+		db $00
+		db !tempx+$0A,!tempy+$04
+
+	; dead
+		.Dead
+		dw $0000 : db $FD,$FF
+		db $00
+		db $00
+		dw $FFFF
+
+	; victory
+		.Victory0
+		dw .StraightUpTM : db $FE,$F4
+		db $FF
+		db $00
+		db !tempx+$0E,!tempy+$FD
+		.Victory1
+		dw .StraightUpTM : db $FE,$F1
+		db $FF
+		db $00
+		db !tempx+$0C,!tempy+$00
+
+
+
+; for these, !tempx and !tempy are base offsets for each tilemap
+; the purpose of this is to make it so sword tilemaps can be swapped and still appear in the right place
+	!tempx = $E9
+	!tempy = $FE
 	.HorzTM
+	dw $000C
+	db $21,!tempx+$00,!tempy+$00,!P1Tile7
+	db $21,!tempx+$08,!tempy+$00,!P1Tile7+1
+	db $21,!tempx+$10,!tempy+$00,!P1Tile8
+	!tempx = $14
+	!tempy = $FE
+	..reverse
+	dw $000C
+	db $61,!tempx+$00,!tempy+$00,!P1Tile7
+	db $61,!tempx+$F8,!tempy+$00,!P1Tile7+1
+	db $61,!tempx+$F0,!tempy+$00,!P1Tile8
+
+	!tempx = $EB
+	!tempy = $00
+	.SlantDownTM
 	dw $0008
+<<<<<<< Updated upstream
 	db $2E,$00,$00,!P2Tile5
 	db $2E,$08,$00,!P2Tile5+$01
-
-	.DiaTM
+=======
+	db $20,!tempx+$00,!tempy+$00,!P1Tile7
+	db $20,!tempx+$08,!tempy+$00,!P1Tile7+1
+	!tempx = $0A
+	!tempy = $00
+	..reverse
 	dw $0008
+	db $60,!tempx+$00,!tempy+$00,!P1Tile7
+	db $60,!tempx+$F8,!tempy+$00,!P1Tile7+1
+>>>>>>> Stashed changes
+
+	!tempx = $EB
+	!tempy = $F4
+	.SlantUpTM
+	dw $0008
+<<<<<<< Updated upstream
 	db $2E,$00,$00,!P2Tile7
 	db $2E,$F8,$08,!P2Tile8
-
-	.PrepTM
+=======
+	db $A0,!tempx+$00,!tempy+$00,!P1Tile7
+	db $A0,!tempx+$08,!tempy+$00,!P1Tile7+1
+	!tempx = $0A
+	!tempy = $F4
+	..reverse
 	dw $0008
+	db $E0,!tempx+$00,!tempy+$00,!P1Tile7
+	db $E0,!tempx+$F8,!tempy+$00,!P1Tile7+1
+>>>>>>> Stashed changes
+
+	!tempx = $EC
+	!tempy = $01
+	.DiagonalDownTM
+	dw $0008
+	db $20,!tempx+$00,!tempy+$08,!P1Tile7+$01
+	db $20,!tempx+$08,!tempy+$00,!P1Tile4+$10
+	!tempx = $09
+	!tempy = $01
+	..reverse
+	dw $0008
+<<<<<<< Updated upstream
 	db $6E,$00,$00,!P2Tile5
 	db $6E,$08,$00,!P2Tile5+$01
+=======
+	db $60,!tempx+$00,!tempy+$08,!P1Tile7+$01
+	db $60,!tempx+$F8,!tempy+$00,!P1Tile4+$10
+>>>>>>> Stashed changes
 
-	.CutTM0
+	!tempx = $EC
+	!tempy = $01
+	.AfterSlashDownTM
 	dw $0010
+<<<<<<< Updated upstream
 	db $2E,$00,$00,!P2Tile5
 	db $2E,$10,$00,!P2Tile6
 	db $2E,$20,$00,!P2Tile7
@@ -3492,10 +6982,59 @@ print "  - clipping data: $", hex(.End-.ClippingStandard), " bytes (", dec((.End
 	dw $0008
 	db $2E,$00,$00,!P2Tile6
 	db $2E,$08,$00,!P2Tile6+$01
-
-
-	.SmallSlashTM
+=======
+	db $20,!tempx+$00,!tempy+$08,!P1Tile7+$01
+	db $20,!tempx+$08,!tempy+$00,!P1Tile4+$10
+	db $A0,!tempx+$F4,!tempy+$00,!P1Tile3
+	db $A1,!tempx+$04,!tempy+$08,!P1Tile4
+	..dash
 	dw $0010
+	db $20,!tempx+$00,!tempy+$08,!P1Tile7+$01
+	db $20,!tempx+$08,!tempy+$00,!P1Tile4+$10
+	db $A0,!tempx+$F0,!tempy+$0A,!P1Tile3
+	db $A1,!tempx+$00,!tempy+$12,!P1Tile4
+	..ceiling
+	dw $0010
+	db $20,!tempx+$00,!tempy+$08,!P1Tile7+$01
+	db $20,!tempx+$08,!tempy+$00,!P1Tile4+$10
+	db $A0,!tempx+$F4,!tempy+$03,!P1Tile3
+	db $A1,!tempx+$04,!tempy+$0B,!P1Tile4
+	!tempx = $09
+	!tempy = $01
+	..reverse
+	dw $0010
+	db $60,!tempx+$00,!tempy+$08,!P1Tile7+$01
+	db $60,!tempx+$F8,!tempy+$00,!P1Tile4+$10
+	db $E0,!tempx+$0C,!tempy+$FC,!P1Tile3
+	db $E1,!tempx+$04,!tempy+$04,!P1Tile4
+
+	!tempx = $EC
+	!tempy = $F4
+	.DiagonalUpTM
+	dw $0008
+	db $A0,!tempx+$00,!tempy+$F8,!P1Tile7+$01
+	db $A0,!tempx+$08,!tempy+$00,!P1Tile4+$10
+	!tempx = $09
+	!tempy = $F4
+	..reverse
+	dw $0008
+	db $E0,!tempx+$00,!tempy+$F8,!P1Tile7+$01
+	db $E0,!tempx+$F8,!tempy+$00,!P1Tile4+$10
+>>>>>>> Stashed changes
+
+	!tempx = $FF
+	!tempy = $FA
+	.StraightUpTM
+	dw $000C
+	db $21,!tempx+$00,!tempy+$F0,!P1Tile7
+	db $21,!tempx+$00,!tempy+$F8,!P1Tile7+1
+	db $21,!tempx+$00,!tempy+$00,!P1Tile8
+
+	!tempx = $EC
+	!tempy = $F4
+	.AfterSlashUpTM
+	dw $0010
+<<<<<<< Updated upstream
 	db $2E,$00,$00,!P2Tile5
 	db $2E,$08,$08,!P2Tile6
 	db $2E,$18,$08,!P2Tile7
@@ -3562,17 +7101,203 @@ print "  - clipping data: $", hex(.End-.ClippingStandard), " bytes (", dec((.End
 	dw $0008
 	db $6E,$00,$00,!P2Tile7
 	db $6E,$F8,$08,!P2Tile8
+=======
+	db $A0,!tempx+$00,!tempy+$F8,!P1Tile7+$01
+	db $A0,!tempx+$08,!tempy+$00,!P1Tile4+$10
+	db $20,!tempx+$F7,!tempy+$06,!P1Tile3
+	db $21,!tempx+$07,!tempy+$06,!P1Tile4
 
-	.NoTM
-	dw $0000
+	!tempx = $FF
+	!tempy = $04
+	.StraightDownTM
+	dw $000C
+	db $A1,!tempx+$00,!tempy+$00,!P1Tile8
+	db $A1,!tempx+$00,!tempy+$08,!P1Tile7+1
+	db $A1,!tempx+$00,!tempy+$10,!P1Tile7
 
+	!tempx = $00
+	!tempy = $00
+	.StuckTM
+	dw $0008
+	db $A1,!tempx+$00,!tempy+$00,!P1Tile8
+	db $A1,!tempx+$00,!tempy+$08,!P1Tile7+1
+
+	!tempx = $DC
+	!tempy = $F3
+	.SlashTM
+	dw $0028
+	db $21,!tempx+$08,!tempy+$F8,!P1Tile4+$01
+	db $21,!tempx+$10,!tempy+$F8,!P1Tile4+$10
+	db $21,!tempx+$18,!tempy+$F8,!P1Tile4+$11
+	db $20,!tempx+$00,!tempy+$00,!P1Tile7
+	db $20,!tempx+$10,!tempy+$00,!P1Tile8
+	db $A0,!tempx+$00,!tempy+$10,!P1Tile7
+	db $A0,!tempx+$10,!tempy+$10,!P1Tile8
+	db $A1,!tempx+$08,!tempy+$20,!P1Tile4+$01
+	db $A1,!tempx+$10,!tempy+$20,!P1Tile4+$10
+	db $A1,!tempx+$18,!tempy+$20,!P1Tile4+$11
+
+	!tempx = $DC
+	!tempy = $F3
+	.BigSlashDownTM
+	dw $0030
+	db $21,!tempx+$08,!tempy+$F8,!P1Tile4+$01
+	db $21,!tempx+$10,!tempy+$F8,!P1Tile4+$10
+	db $21,!tempx+$18,!tempy+$F8,!P1Tile4+$11
+	db $20,!tempx+$00,!tempy+$00,!P1Tile7
+	db $20,!tempx+$10,!tempy+$00,!P1Tile8
+	db $A0,!tempx+$00,!tempy+$10,!P1Tile7
+	db $A0,!tempx+$10,!tempy+$10,!P1Tile8
+	db $A1,!tempx+$08,!tempy+$20,!P1Tile4+$01
+	db $A1,!tempx+$10,!tempy+$20,!P1Tile4+$10
+	db $A1,!tempx+$18,!tempy+$20,!P1Tile4+$11
+	db $20,!tempx+$14,!tempy+$F8,!P1Tile3
+	db $21,!tempx+$24,!tempy+$F8,!P1Tile4
+	!tempx = $1C
+	!tempy = $F3
+	..reverse
+	dw $0030
+	db $61,!tempx+$00,!tempy+$F8,!P1Tile4+$01
+	db $61,!tempx+$F8,!tempy+$F8,!P1Tile4+$10
+	db $61,!tempx+$F0,!tempy+$F8,!P1Tile4+$11
+	db $60,!tempx+$00,!tempy+$00,!P1Tile7
+	db $60,!tempx+$F0,!tempy+$00,!P1Tile8
+	db $E0,!tempx+$00,!tempy+$10,!P1Tile7
+	db $E0,!tempx+$F0,!tempy+$10,!P1Tile8
+	db $E1,!tempx+$00,!tempy+$20,!P1Tile4+$01
+	db $E1,!tempx+$F8,!tempy+$20,!P1Tile4+$10
+	db $E1,!tempx+$F0,!tempy+$20,!P1Tile4+$11
+	db $60,!tempx+$EC,!tempy+$F8,!P1Tile3
+	db $61,!tempx+$E4,!tempy+$F8,!P1Tile4
+
+	!tempx = $DC
+	!tempy = $F3
+	.BigSlashUpTM
+	dw $0030
+	db $21,!tempx+$08,!tempy+$F8,!P1Tile4+$01
+	db $21,!tempx+$10,!tempy+$F8,!P1Tile4+$10
+	db $21,!tempx+$18,!tempy+$F8,!P1Tile4+$11
+	db $20,!tempx+$00,!tempy+$00,!P1Tile7
+	db $20,!tempx+$10,!tempy+$00,!P1Tile8
+	db $A0,!tempx+$00,!tempy+$10,!P1Tile7
+	db $A0,!tempx+$10,!tempy+$10,!P1Tile8
+	db $A1,!tempx+$08,!tempy+$20,!P1Tile4+$01
+	db $A1,!tempx+$10,!tempy+$20,!P1Tile4+$10
+	db $A1,!tempx+$18,!tempy+$20,!P1Tile4+$11
+	db $A0,!tempx+$14,!tempy+$18,!P1Tile3
+	db $A1,!tempx+$24,!tempy+$20,!P1Tile4
+
+	!tempx = $ED
+	!tempy = $F2
+	.SpinSlashTM0
+	dw $0030
+	db $21,!tempx+$08,!tempy+$F8,!P1Tile4+$01
+	db $21,!tempx+$10,!tempy+$F8,!P1Tile4+$10
+	db $21,!tempx+$18,!tempy+$F8,!P1Tile4+$11
+	db $20,!tempx+$00,!tempy+$00,!P1Tile7
+	db $20,!tempx+$10,!tempy+$00,!P1Tile8
+	db $A0,!tempx+$00,!tempy+$10,!P1Tile7
+	db $A0,!tempx+$10,!tempy+$10,!P1Tile8
+	db $A1,!tempx+$08,!tempy+$20,!P1Tile4+$01
+	db $A1,!tempx+$10,!tempy+$20,!P1Tile4+$10
+	db $A1,!tempx+$18,!tempy+$20,!P1Tile4+$11
+	db $20,!tempx+$07,!tempy+$F3,!P1Tile3
+	db $21,!tempx+$17,!tempy+$F3,!P1Tile4
+
+	!tempx = $F0
+	!tempy = $F8
+	.SpinSlashTM1
+	dw $0030
+	db $21,!tempx+$F8,!tempy+$00,!P1Tile3+$01
+	db $21,!tempx+$F8,!tempy+$08,!P1Tile3+$11
+	db $21,!tempx+$F8,!tempy+$10,!P1Tile3+$00
+	db $20,!tempx+$00,!tempy+$00,!P1Tile4
+	db $20,!tempx+$00,!tempy+$10,!P1Tile8
+	db $60,!tempx+$10,!tempy+$00,!P1Tile4
+	db $60,!tempx+$10,!tempy+$10,!P1Tile8
+	db $61,!tempx+$20,!tempy+$00,!P1Tile3+$01
+	db $61,!tempx+$20,!tempy+$08,!P1Tile3+$11
+	db $61,!tempx+$20,!tempy+$10,!P1Tile3+$00
+	db $20,!tempx+$F2,!tempy+$01,!P1Tile7
+	db $21,!tempx+$F2,!tempy+$F9,!P1Tile3+$10
+
+	!tempx = $08
+	!tempy = $F5
+	.SpinSlashTM2
+	dw $0030
+	db $E1,!tempx+$00,!tempy+$20,!P1Tile4+$01
+	db $E1,!tempx+$F8,!tempy+$20,!P1Tile4+$10
+	db $E1,!tempx+$F0,!tempy+$20,!P1Tile4+$11
+	db $E0,!tempx+$00,!tempy+$10,!P1Tile7
+	db $E0,!tempx+$F0,!tempy+$10,!P1Tile8
+	db $60,!tempx+$00,!tempy+$00,!P1Tile7
+	db $60,!tempx+$F0,!tempy+$00,!P1Tile8
+	db $61,!tempx+$00,!tempy+$F8,!P1Tile4+$01
+	db $61,!tempx+$F8,!tempy+$F8,!P1Tile4+$10
+	db $61,!tempx+$F0,!tempy+$F8,!P1Tile4+$11
+	db $E0,!tempx+$EF,!tempy+$1E,!P1Tile3
+	db $E1,!tempx+$E7,!tempy+$26,!P1Tile4
+
+	!tempx = $05
+	!tempy = $FE
+	.SpinSlashTM3
+	dw $0030
+	db $E1,!tempx+$10,!tempy+$08,!P1Tile3+$01
+	db $E1,!tempx+$10,!tempy+$00,!P1Tile3+$11
+	db $E1,!tempx+$10,!tempy+$F8,!P1Tile3+$00
+	db $E0,!tempx+$00,!tempy+$00,!P1Tile4
+	db $E0,!tempx+$00,!tempy+$F0,!P1Tile8
+	db $A0,!tempx+$F0,!tempy+$00,!P1Tile4
+	db $A0,!tempx+$F0,!tempy+$F0,!P1Tile8
+	db $A1,!tempx+$E8,!tempy+$08,!P1Tile3+$01
+	db $A1,!tempx+$E8,!tempy+$00,!P1Tile3+$11
+	db $A1,!tempx+$E8,!tempy+$F8,!P1Tile3+$00
+	db $E0,!tempx+$0E,!tempy+$FF,!P1Tile7
+	db $E1,!tempx+$16,!tempy+$0F,!P1Tile3+$10
 
 
 
 .End
 print "  Sword data: $", hex(.End-SWORD), " bytes"
-print "  - sequence data: $", hex(.HorzTM-SWORD), " bytes (", dec((.HorzTM-SWORD)*100/(.End-SWORD)), "%)"
-print "  - tilemap data:  $", hex(.End-.HorzTM), " bytes (", dec((.End-.HorzTM)*100/(.End-SWORD)), "%)"
+
+>>>>>>> Stashed changes
+
+
+	DATA:
+
+		.XAccIce
+		dw $0280	; walking
+		dw $0680	; dashing
+		dw $1000	; turning (overrides dash)
+
+		; right, left
+		.XSpeed
+		dw $1800,$E800	; walking
+		dw $3000,$D000	; dashing
+
+		; indexed by dash*4 + left/right input
+		.WallJumpSpeed
+		db $00,$18,$E8,$00
+		db $00,$30,$D0,$00
+
+		.ClimbSpeed
+		db $00,$10,$F0,$00
+
+		.SlideXSpeed
+		dw $C000,$C000,$C000,$D000
+		dw $0000
+		dw $3000,$4000,$4000,$4000
+
+		.SlideXAcc
+		dw $1000,$0800,$0800,$0400
+		dw $0200
+		dw $0400,$0800,$0800,$1000
+
+		.ClimbTileX
+		dw $FFF8,$0018
+
+
+
 
 
 

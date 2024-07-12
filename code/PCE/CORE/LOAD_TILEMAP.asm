@@ -14,7 +14,13 @@
 
 ; $0A/$0B are based on Player 2, so they are subtracted for Player 1
 
+<<<<<<< Updated upstream
 LOAD_TILEMAP:	STZ !P2TilesUsed
+=======
+	LOAD_TILEMAP:
+		STZ !BigRAM+$7E				; this reg ACTUALLY controls priority bits during this routine!
+							; at the end, it's set to the number of bytes written to OAM
+>>>>>>> Stashed changes
 
 		REP #$20				;
 		LDA !DizzyEffect			;\ check dizzy effect
@@ -72,6 +78,7 @@ LOAD_TILEMAP:	STZ !P2TilesUsed
 	+	STY !P2TilesUsed
 
 		.HiPrio
+<<<<<<< Updated upstream
 		STZ $0A			;\
 		LDA #$0C : STA $0B	; |
 		LDA !CurrentPlayer	; | Set up tile/palette offsets for player
@@ -80,6 +87,27 @@ LOAD_TILEMAP:	STZ !P2TilesUsed
 		LDA #$0E : STA $0B	;/
 	+	REP #$20
 		LDA !P2XPosLo
+=======
+		STZ $0A					;\
+		STZ $0B					; |
+		LDA !CurrentPlayer : BEQ +		; | tile/palette offsets for player
+		LDA #$20 : STA $0A			; |
+		LDA #$02 : STA $0B			; |
+		+					;/
+
+		REP #$30
+		LDA !P2Entrance
+		AND #$007F : BEQ ..entrancedone
+		SEC : SBC #$0021
+		BPL $03 : LDA #$0000
+		ASL #3
+		LDY !P2Direction-1
+		CPY #$0100 : BCC +
+		..entrancedone
+		EOR #$FFFF
+		SEC
+	+	ADC !P2XPosLo
+>>>>>>> Stashed changes
 		SEC : SBC $1A
 		STA $00
 		LDA !P2YPosLo
@@ -114,8 +142,13 @@ LOAD_TILEMAP:	STZ !P2TilesUsed
 		AND #$01
 		BEQ $02 : LDA #$80
 		STA !BigRAM+$7F
+<<<<<<< Updated upstream
 		LDA ($04),y
 		AND #$FE
+=======
+		LDA $0000,y
+		AND.b #$01^$FF
+>>>>>>> Stashed changes
 		EOR $0C
 		SEC : SBC !P2TilesUsed
 		SEC : SBC $0B		; Subtract player palette offset
@@ -171,10 +204,16 @@ LOAD_TILEMAP:	STZ !P2TilesUsed
 		LDA $06
 		STA !OAM+$80,x
 		INY
+<<<<<<< Updated upstream
 		LDA ($04),y
 		CMP #$40 : BCS +
 		SEC : SBC $0A		; Subtract player offset unless it's Leeway's slashy thing
 	+	STA !OAM+$82,x
+=======
+		LDA $0000,y
+		CLC : ADC $0A				; add player offset
+		STA !OAM_p2+$002,x
+>>>>>>> Stashed changes
 		INY
 		PHX
 		TXA
@@ -191,9 +230,20 @@ LOAD_TILEMAP:	STZ !P2TilesUsed
 .LoopLong	JMP .Loop
 .End		INX #4
 		TXA
+<<<<<<< Updated upstream
 		SEC : SBC #$80
 		STA !P2TilesUsed
 		RTS
+=======
+		REP #$20
+		SEC : SBC !OAMindex_p2
+		SEP #$20
+		STA !BigRAM+$7E
+		REP #$20
+		TXA : STA !OAMindex_p2
+		SEP #$30
+		RTL
+>>>>>>> Stashed changes
 
 
 

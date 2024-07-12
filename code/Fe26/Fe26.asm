@@ -65,6 +65,7 @@ endmacro
 		RTL
 
 
+<<<<<<< Updated upstream
 ; 02A751 is very sus
 ; this code is responsible for initializing a bunch of variables for the sprite engine
 ; it seems to be super inefficient though
@@ -73,6 +74,22 @@ endmacro
 ;
 ; running this code fucks up spawned vanilla sprites by turning them into broken customs
 ; not runnning this code fucks up vanilla sprites by making them despawn instantly upon touching the edge of the screen
+=======
+; states:
+;	00 - empty slot
+;	01 - INIT
+;	02 - dead, falling down
+;	03 -
+;	04 - turn to smoke puff particle
+;	05 - sinking in lava/mud
+;	06 -
+;	07 -
+;	08 - MAIN
+;	09 - can be carried
+;	0A - kicked
+;	0B - carried
+;	0C -
+>>>>>>> Stashed changes
 ;
 
 	org $02A751				; this routine initializes the sprite engine on level load
@@ -102,9 +119,61 @@ endmacro
 	org $0288B8
 		db $74
 
+<<<<<<< Updated upstream
 
 	org $029F13
 		JML ExBubbleFix			; org: LDA !WaterLevel : BNE $13 ($029F2A)
+=======
+macro UpdateX()
+		LDA !SpriteXLo,x : STA $F0			;\ backup coords
+		LDA !SpriteXHi,x : STA $F1			;/
+		LDA !SpriteXSpeed,x : BEQ ?Return
+		ASL #4
+		CLC : ADC !SpriteXSub,x
+		STA !SpriteXSub,x
+		PHP
+		LDY #$00
+		LDA !SpriteXSpeed,x
+		LSR #4
+		CMP #$08
+		BCC $03 : ORA #$F0 : DEY
+		PLP
+		ADC !SpriteXLo,x
+		STA !SpriteXLo,x
+		TYA
+		ADC !SpriteXHi,x
+		STA !SpriteXHi,x
+		LDA !SpriteXLo,x				;\
+		SEC : SBC $F0					; | get delta
+		STA !SpriteDeltaX,x				;/
+	?Return:
+endmacro
+
+macro UpdateY()
+		LDA !SpriteYLo,x : STA $F2			;\ backup coords
+		LDA !SpriteYHi,x : STA $F3			;/
+		LDA !SpriteYSpeed,x : BEQ ?Return
+		ASL #4
+		CLC : ADC !SpriteYSub,x
+		STA !SpriteYSub,x
+		PHP
+		LDY #$00
+		LDA !SpriteYSpeed,x
+		LSR #4
+		CMP #$08
+		BCC $03 : ORA #$F0 : DEY
+		PLP
+		ADC !SpriteYLo,x
+		STA !SpriteYLo,x
+		TYA
+		ADC !SpriteYHi,x
+		STA !SpriteYHi,x
+		LDA !SpriteYLo,x				;\
+		SEC : SBC $F2					; | get delta
+		STA !SpriteDeltaY,x				;/
+	?Return:
+endmacro
+>>>>>>> Stashed changes
 
 
 
@@ -136,9 +205,21 @@ endmacro
 	org $07F722
 		JML Erase
 
+<<<<<<< Updated upstream
 	org $07F794
 		AND #$0E			; lowest bit comes from !SpriteProp
 
+=======
+	; hijacked by SA-1 just before
+	; NOTE: this is no longer in use
+	org $07F7A5
+		LDA.l VanillaTweakerData+0,x : STA !SpriteTweaker1,y
+		LDA.l VanillaTweakerData+1,x : STA !SpriteTweaker2,y
+		LDA.l VanillaTweakerData+2,x : STA !SpriteTweaker3,y
+		LDA.l VanillaTweakerData+3,x : STA !SpriteTweaker4,y
+		LDA.l VanillaTweakerData+4,x : STA !SpriteTweaker5,y
+		LDA.l VanillaTweakerData+5,x : STA !SpriteTweaker6,y
+>>>>>>> Stashed changes
 	org $07F7D2
 		JSL Erase			; call this routine immediately instead of jumping back and forth
 		JML SetSpriteTables		; use this routine as it handles both vanilla and custom sprites
@@ -463,6 +544,81 @@ MainSpriteLoop:
 		DEX : BMI .SpritesDone
 		JMP .Loop
 
+<<<<<<< Updated upstream
+=======
+print "Fe26 sprite engine starts at $", pc, "."
+	MainSpriteLoop:
+		PHB
+
+		LDA.b #!PlatformData>>16				;\ addr access
+		PHA : PLB						;/
+
+		STZ.w !PlatformExists					; clear platform flag
+		%ClearPlatform($00)					;\
+		%ClearPlatform($01)					; |
+		%ClearPlatform($02)					; |
+		%ClearPlatform($03)					; |
+		%ClearPlatform($04)					; |
+		%ClearPlatform($05)					; |
+		%ClearPlatform($06)					; |
+		%ClearPlatform($07)					; | clear platforms
+		%ClearPlatform($08)					; |
+		%ClearPlatform($09)					; |
+		%ClearPlatform($0A)					; |
+		%ClearPlatform($0B)					; |
+		%ClearPlatform($0C)					; |
+		%ClearPlatform($0D)					; |
+		%ClearPlatform($0E)					; |
+		%ClearPlatform($0F)					;/
+		STZ.w !ShieldExists					; clear shield flag
+		REP #$20						;\
+		%ClearShield($00)					; |
+		%ClearShield($01)					; |
+		%ClearShield($02)					; |
+		%ClearShield($03)					; |
+		%ClearShield($04)					; |
+		%ClearShield($05)					; |
+		%ClearShield($06)					; |
+		%ClearShield($07)					; | clear shield boxes
+		%ClearShield($08)					; |
+		%ClearShield($09)					; |
+		%ClearShield($0A)					; |
+		%ClearShield($0B)					; |
+		%ClearShield($0C)					; |
+		%ClearShield($0D)					; |
+		%ClearShield($0E)					; |
+		%ClearShield($0F)					; |
+		SEP #$20						;/
+
+		PHK : PLB						; get program bank
+
+		LDA !GameMode						;\ just load sprites in game modes other than 0x14
+		CMP #$14 : BNE .Load					;/
+		LDA !CameraXDelta					;\
+		ORA !CameraYDelta					; | spawn sprites on the edges of the screen
+		BEQ .NoLoad						; | (but only if the camera has moved this frame)
+		.Load							;/
+		JSR LoadSpriteFromLevel					; > load sprites
+		LDA !ProcessingSprites : BNE .NoLoad			;\
+		PLB							; | if processing sprites flag is set, also run sprites
+		RTL							; | otherwise return
+		.NoLoad							;/
+
+		STZ $7471						;\ clear some smw regs
+		STZ $78C2						;/
+		LDX #$0F						; loop through all 16 sprite slots
+
+		.Loop							;\ set sprite index
+		STX !SpriteIndex					;/
+		LDA !SpriteStatus,x : BNE .WantToProcess		; check if sprite exists
+	; this catches sprites that are despawned from within sprite codes
+		LDA !SpriteNum,x					;\
+		CMP #$FF : BEQ .NextSprite				; | erase if status = 00 (if sprite num = 0xFF, this sprite is already erased)
+		JSL Erase						; |
+		LDA #$FF : STA !SpriteNum,x				;/
+		.NextSprite						;\ loop
+		DEX : BPL .Loop						;/
+>>>>>>> Stashed changes
 		.SpritesDone
 		LDA #$00 : STA !ProcessingSprites	; clear processing sprites flag
 
@@ -497,8 +653,158 @@ TileCount:	db $02,$02,$02,$02,$03,$03,$03,$03,$03,$03,$03,$03,$03,$01,$01,$01	; 
 		db $12,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; EX
 		db $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00	; FX
 
+<<<<<<< Updated upstream
 
 incsrc "SpriteData.asm"
+=======
+		..camerabox						;\
+		REP #$20						; |
+		LDA !SpriteEraseMode					; |
+		AND #$003F						; | check for camera box
+		CMP #$0004 : BCS ..screenbordercheck			; |
+		AND #$0002 : TAY					; |
+		LDA !CameraBoxU : BMI ..screenbordercheck		;/
+		SBC .CameraBoxThreshold_u,y				;\
+		CMP $0E : BPL ..boxout					; |
+		LDA !CameraBoxD						; |
+		CLC : ADC .CameraBoxThreshold_d,y			; |
+		CMP $0E : BMI ..boxout					; |
+		LDA !CameraBoxL						; | check borders
+		SEC : SBC .CameraBoxThreshold_l,y			; |
+		CMP $0C : BPL ..boxout					; |
+		LDA !CameraBoxR						; |
+		CLC : ADC .CameraBoxThreshold_r,y			; |
+		CMP $0C : BPL ..insidebox				;/
+		..boxout						;\
+		LDA !SpriteEraseMode					; |
+		BIT #$0001 : BNE ..despawn				; | if outside box in erase mode 0/2, just don't call the sprite code
+		..freeze						; |
+		SEP #$20						; |
+		RTS							;/
+		..insidebox						;\ if 0x40 bit is set, ignore normal off-screen check while inside camera box
+		BIT !SpriteEraseMode-1 : BVS ..end			;/
+
+		..screenbordercheck					;\ if 0x80 bit is set, ignore normal off-screen check
+		BIT !SpriteEraseMode-1 : BMI ..end			;/
+		LDA $0C							;\
+		CLC : ADC #$0060					; | check sprite x
+		SEC : SBC $1A						; |
+		CMP #$01C0						; |
+		BCS ..despawn						;/
+		LDA $6BF4						;\
+		AND #$0003						; | get index to spawn/despawn settings
+		ASL A : TAY						;/
+		LDA $0E							; get sprite y
+		BIT $0E : BMI +						;\ check level height
+		CMP !LevelHeight : BCS ..despawn			;/
+	+	LDA $1C							;\
+		CLC : ADC InitSpriteEngine_min_y_range,y		; |
+		CMP $0E : BPL ..despawn					; | check spawn/despawn ranges
+		LDA $1C							; |
+		CLC : ADC.w InitSpriteEngine_max_y_range,y		; |
+		CMP $0E : BPL ..end					;/
+
+		..despawn						;\
+		SEP #$20						; |
+		LDY !SpriteID,x						; |
+		CPY #$FF : BEQ Empty					; |
+		LDA !SpriteStatus,x					; |
+		CMP #$02 : BEQ +					; > status 2 = don't respawn
+		TYX							; | handle despawn
+		LDA !SpriteLoadStatus,x					; |
+		CMP #$EE : BEQ +					; |
+		LDA #$00 : STA !SpriteLoadStatus,x			; |
+	+	LDX !SpriteIndex					; |
+		BRA Empty						;/
+		..end							;\
+		SEP #$20						; | A 8-bit
+		..done							;/
+
+		STZ !SpriteDeltaX,x					;\ sprite has not yet moved on this frame
+		STZ !SpriteDeltaY,x					;/
+
+
+	.GoToState
+		JMP ($3000)						;\ execute pointer and return
+		.StateReturn						;/
+		LDA !SpriteStatus,x : BNE ..done			;\
+		STZ !ExtraBits,x					; | if status is 00 after sprite has been processed...
+		STZ !ExtraProp1,x					; | ...clear custom sprite regs
+		STZ !ExtraProp2,x					; | (this fixes a bug if a slot is opened and claimed on the same frame)
+		..done							; |
+		JMP .NextSprite						;/
+
+
+		.StatePtr
+		dw Empty	; 00
+		dw Init		; 01
+		dw Fall		; 02
+		dw Empty	; 03
+		dw Puff		; 04
+		dw Sink		; 05
+		dw Empty	; 06
+		dw Empty	; 07
+		dw Main		; 08
+		dw Item		; 09
+		dw Kick		; 0A
+		dw Held		; 0B
+		..end
+		; 0C+ are all invalid
+
+
+	; note that ..d and ..r are 0x10 smaller than one might expect, due to "default size" of sprites being 16x16 pixels
+	.CameraBoxThreshold
+	..u	dw $001F,$005F
+	..d	dw $00F0,$0130
+	..l	dw $0020,$0060
+	..r	dw $0110,$0150
+
+
+
+	; this catches sprites that get auto-despawned from the off-screen check
+	Empty:
+		STZ !SpriteStatus,x					; status = 0
+		LDA !SpriteNum,x					;\ see if sprite is already cleared
+		CMP #$FF : BEQ .Return					;/
+		CMP #$2B : BNE .NotPortal				;\
+		LDA !ExtraBits,x					; |
+		AND #$08 : BEQ .NotPortal				; | special portal check
+		JSL Portal_DESPAWN					; > mark eaten sprite for respawn
+		.NotPortal						;/
+		JSL Erase						;\
+		LDA #$FF : STA !SpriteNum,x				; | erase sprite (sprite num = 0xFF marks as erased)
+		.Return							;/
+		RTS							; return from state call
+
+
+	Init:
+		.SetStatus						;\
+		LDA #$08 : STA !SpriteStatus,x				; |
+		LDA !SpriteTweaker3,x					; | set status to MAIN or ITEM based on tweaker setting
+		AND #$04 : BEQ ..done					; |
+		INC !SpriteStatus,x					; |
+		..done							;/
+
+		.Water							;\
+		LDA !BuoyancySettings : BEQ ..done			; > see if liquids are turned off
+		BIT !SpriteTweaker1,x : BMI ..done			; > see if sprite doesn't interact with terrain
+		LDA !3DWater : BEQ ..map16				; |
+		LDA !SpriteYLo,x					; | set water status if sprite is under 3D water surface
+		CMP !Level+2						; |
+		LDA !SpriteYHi,x : BMI ..map16				; > can't be above the level
+		SBC !Level+3 : BCS ..inwater				;/
+		..map16							;\
+		REP #$30						; |
+		LDA #$0000						; |
+		LDY #$0000						; |
+		JSL GetMap16_Sprite					; | check for water tiles
+		CMP #$0004						; |
+		SEP #$30						; |
+		BCS ..done						; |
+		..inwater						;/
+		LDA #$60 : STA !SpriteWater,x				;\ set water status if spawning in water
+		..done							;/
+>>>>>>> Stashed changes
 
 
 	Init:
@@ -565,6 +871,7 @@ incsrc "SpriteData.asm"
 		STA $33C0,x
 		RTL
 
+<<<<<<< Updated upstream
 
 	Main:
 		STZ $7491
@@ -572,6 +879,276 @@ incsrc "SpriteData.asm"
 		AND #!CustomBit : BNE .Custom
 		LDA ($D8)
 		RTL
+=======
+
+	Fall:
+		JSL GetSpriteClippingE8					;\ interact with hitboxes
+		JSL P2Attack						;/
+		LDA #$80 : STA !SpriteTweaker1,x			; disable terrain interaction
+		LDA #$C0 : STA !SpriteTweaker2,x			; disable player/sprite interaction
+		LDA #$01 : STA !SpriteFloat,x				; normal float
+		STZ !SpriteStasis,x					;\ move without stasis
+		JSL APPLY_SPEED						;/
+		LDA #$FF : STA !SpriteStasis,x				;\ go to main with stasis
+		JMP Main						;/
+
+
+	Puff:
+		REP #$20						;\
+		STZ $00							; |
+		STZ $02							; |
+		STZ $04							; | transform into puff particle
+		SEP #$20						; |
+		LDA $64 : STA $07					; |
+		LDA #!prt_smoke16x16 : JSL SpawnParticle		; |
+		STZ !SpriteStatus,x					;/
+		RTS							; return from state call
+
+
+	Sink:
+		INC !SpriteYLo,x : BNE +				;\ move down
+		INC !SpriteYHi,x					;/
+		+
+		LDA #$C0 : STA !SpriteTweaker2,x			; disable player/sprite interaction
+		LDA #$01 : STA !SpriteFloat,x				; normal float
+		STZ !SpriteStasis,x					;\
+		STZ !SpriteXSpeed,x					; | move without stasis or speeds to update collision flags
+		STZ !SpriteYSpeed,x					; |
+		JSL APPLY_SPEED						;/
+		LDA !SpriteWater,x
+		AND #$1F
+		CMP #$1F : BNE .Sinking
+		LDA $32D0,x : BNE .Main
+		STZ !SpriteStatus,x
+		RTS
+
+		.Sinking
+		LDA #$FF : STA !SpriteStasis,x				; stasis
+		LDA #$18 : STA $32D0,x					; despawn timer
+		.Main							;\ run main
+		JMP Main						;/
+
+
+	Item:
+		.CeilingBonk
+		LDA !SpriteBlocked,x
+		AND #$08 : BEQ ..done
+		STA !SpriteYSpeed,x
+		LDA #$01 : STA !SPC1					; bonk SFX
+		..done
+
+		JSR Main						; run main code
+		JSL GetSpriteClippingE8					;\
+		LDA $EA							; |
+		SEC : SBC #$02						; |
+		STA $EA							; |
+		BCS $02 : DEC $EB					; |
+		INC $EE							; | output platform box
+		INC $EE							; |
+		LDA !SpriteBlocked,x					; |
+		AND #$04 : BNE +					; |
+		LDA #$04 : BRA ++					; |
+	+	LDA #$07						; |
+	++	JSL OutputPlatformBox					;/
+		RTS							; return from state call
+
+
+	Kick:
+		.CeilingBonk
+		LDA !SpriteBlocked,x
+		AND #$08 : BEQ ..done
+		STA !SpriteYSpeed,x
+		LDA #$01 : STA !SPC1					; bonk SFX
+		..done
+
+		JSR Main						; run main code
+		JSL GetSpriteClippingE8					;\
+		LDA $EA							; |
+		SEC : SBC #$02						; |
+		STA $EA							; | output platform box
+		BCS $02 : DEC $EB					; |
+		INC $EE							; |
+		INC $EE							; |
+		LDA #$04 : JSL OutputPlatformBox			;/
+		RTS							; return from state call
+
+
+	Held:
+		TXA							;\
+		INC A							; | if held by a player, stay held and run main code
+		CMP !P2Carry-$80 : BEQ .StillHeld			; |
+		CMP !P2Carry : BEQ .StillHeld				;/
+		.Drop							;\
+		LDA #$09 : STA !SpriteStatus,x				; | otherwise, go back to being an item
+		BRA Item						;/
+
+		.StillHeld						;\
+		..p1							; |
+		LDY #$00 : BRA ..main					; | get holding player index
+		..p2							; |
+		LDY #$80						; |
+		..main							;/
+		LDA !P2XSpeed-$80,y : STA !SpriteXSpeed,x		;\ set speeds of held item
+		LDA !P2YSpeed-$80,y : STA !SpriteYSpeed,x		;/
+		LDA !P2Character-$80,y					;\
+		CMP #$02 : BEQ ..reverse				; |
+		CMP #$03 : BEQ ..reverse				; |
+		..normal						; |
+		LDA !P2Dir-$80,y					; | set direction of held item
+		EOR #$01 : BRA ..setdir					; |
+		..reverse						; |
+		LDA !P2Dir-$80,y					; |
+		..setdir						; |
+		STA !SpriteDir,x					;/
+
+
+	Main:
+		.SilverPTimer
+		LDA !SilverPTimer : BEQ ..done				; check for silver P
+		LDA !SpriteTweaker4,x					;\ check if sprite is immune to silver P
+		AND #$10 : BNE ..done					;/
+		LDA !ExtraBits,x					;\
+		AND #$08 : BNE ..transform				; |
+		LDA !SpriteNum,x					; | check if sprite already is a coin
+		CMP #$21 : BEQ ..done					; |
+		..transform						;/
+		REP #$20						;\
+		STZ $00							; |
+		STZ $02							; |
+		STZ $04							; | spawn smoke puff
+		SEP #$20						; |
+		LDA $64 : STA $07					; |
+		LDA #!prt_smoke16x16 : JSL SpawnParticle		;/
+		LDA #$21 : STA !SpriteNum,x				;\
+		STZ !ExtraBits,x					; | transform into coin
+		JSL !ResetSprite					; |
+		..done							;/
+
+		.Dizzy
+		LDA !DizzyEffect : BEQ ..done				;\
+		LDA !GameMode						; | check for dizzy effect
+		CMP #$14 : BNE ..done					;/
+		REP #$20						;\
+		LDA !CameraBackupY : STA $1C				; |
+		SEP #$20						; |
+		LDA !SpriteXHi,x : XBA					; |
+		LDA !SpriteXLo,x					; |
+		REP #$20						; |
+		SEC : SBC $1A						; |
+		AND #$00FF						; |
+		LSR #3							; |
+		ASL A							; | apply dizzy offset
+		PHX							; |
+		TAX							; |
+		LDA !DecompBuffer+$1040,x				; |
+		AND #$01FF						; |
+		CMP #$0100						; |
+		BCC $03 : ORA #$FE00					; |
+		STA $1C							; |
+		PLX							; |
+		SEP #$20						; |
+		..done							;/
+
+		.UpdateTile						;\
+		LDA !ExtraBits,x					; | vanilla/custom check
+		AND #!CustomBit : BNE ..custom				; |
+		..vanilla						;/
+		LDY !SpriteStatus,x					; get status
+		PHX							;\
+		REP #$30						; |
+		LDA !SpriteNum,x					; |
+		AND #$00FF : STA $00					; > save sprite number here
+		ASL A							; |
+		TAX							; |
+		LDA.l SpriteGFXIndex_Vanilla,x				; | (don't update if = 0xFFFF)
+		CMP #$FFFF : BNE ..updatevanilla			;/
+		..dontupdate						;\
+		SEP #$30						; |
+		PLX							; | restore X and default to 0
+		STZ !SpriteTile,x					; |
+		STZ !SpriteProp,x					; |
+		BRA ..done						;/
+		..updatevanilla						;\
+		TAX							; |
+		LDA $00							; |
+		CMP #$007E : BEQ ..dontupdate				; |
+		CMP #$007F : BEQ ..dontupdate				; > flying rainbow shroom and flying red coin should use 0
+		CMP #$000D : BCS ..update				; |
+		CMP #$0004 : BCC ..update				; | get sprite's load status
+		CPY #$0002 : BEQ ..shell				; |
+		CPY #$0009 : BCC ..update				; | (special case for koopa shell)
+		..shell							; |
+		LDX.w #!GFX_Shell_offset : BRA ..update			;/
+		..custom						;\
+		PHX							; |
+		REP #$30						; |
+		LDA !SpriteNum,x					; |
+		AND #$00FF						; | get sprite's load status
+		ASL A							; |
+		TAX							; |
+		LDA.l SpriteGFXIndex_Custom,x : BPL ..updatecustom	;/ (don't update if negative)
+		SEP #$30						;\
+		PLX							; | just return if negative
+		BRA ..done						;/
+		..updatecustom						;\ X = index
+		TAX							;/
+		..update						;\
+		LDA !GFX_status,x					; |
+		SEP #$30						; |
+		PLX							; | get tile + prop
+		STA !SpriteTile,x					; |
+		XBA : STA !SpriteProp,x					; |
+		..done							;/
+
+		.3DWater						;\
+		LDA !3DWater : BEQ ..done				; |
+		LDA !SpriteYHi,x : XBA					; |
+		LDA !SpriteYLo,x					; |
+		REP #$20						; |
+		CMP !Level+2						; |
+		SEP #$20						; | apply 3D water
+		BCC ..done						; |
+		LDA !SpriteStatus,x					; |
+		CMP #$02 : BNE +					; |
+		LDA #$01 : STA !SpriteWater,x				; |
+	+	LDA !SpriteExtraCollision,x				; |
+		ORA #$40 : STA !SpriteExtraCollision,x			; |
+		..done							;/
+
+		.DecTimers
+		%decreg($32D0)						; main timer
+		%decreg(!SpriteDisP1)					; P1 interaction disable timer
+		%decreg(!SpriteDisP2)					; P2 interaction disable timer
+		%decreg(!SpriteDisSprite)				; sprite interaction disable timer
+		%decreg(!SpriteIFrames)					; sprite interaction disable timer
+		LDA !SpriteStasis,x : BEQ ..done			;\
+		CMP #$FF : BEQ ..done					; | stasis timer (if set to -1, it will never end)
+		DEC !SpriteStasis,x					; |
+		..done							;/
+
+		LDA !ExtraBits,x					;\ check sprite type (vanilla/custom)
+		AND #!CustomBit : BNE .Custom				;/
+
+		.Vanilla						;\ main code for vanilla sprite
+		JSL HandleVanilla_Main					;/
+		RTS							; return from state call
+
+		.Custom							;\
+		LDA !SpriteNum,x					; |
+		REP #$30						; |
+		AND #$00FF						; |
+		ASL #2 : STA $00					; |
+		ASL A : ADC $00						; | main code for custom sprite
+		TAY							; |
+		LDA SpriteData+$09,y : STA $00				; |
+		LDA SpriteData+$0A,y : STA $01				; |
+		SEP #$30						; |
+		PHK : PEA.w ..return-1					; > return address
+		JML [$3000]						;/
+		..return						;\ return from state call
+		RTS							;/
+
+>>>>>>> Stashed changes
 
 		.Custom
 		PLA : PLA		;\ swap lower 2 bytes of RTL address to point to an RTS opcode
@@ -666,15 +1243,145 @@ incsrc "SpriteData.asm"
 
 
 	InitSpriteEngine:
+<<<<<<< Updated upstream
+=======
+		PHB : PHK : PLB
+		PHP
+		SEP #$30
+
+	.WipeRAM
+		LDX #$00				;\
+		TXA					; | reset load status for all sprites
+	-	STA !SpriteLoadStatus,x			; |
+		INX : BNE -				;/
+		STZ !ScrollSpriteNum_L1			;\ despawn scroll sprites
+		STZ !ScrollSpriteNum_L2			;/
+
+		STZ !SpriteStatus+$0			;\
+		STZ !SpriteStatus+$1			; |
+		STZ !SpriteStatus+$2			; |
+		STZ !SpriteStatus+$3			; |
+		STZ !SpriteStatus+$4			; |
+		STZ !SpriteStatus+$5			; |
+		STZ !SpriteStatus+$6			; |
+		STZ !SpriteStatus+$7			; | kill all sprites
+		STZ !SpriteStatus+$8			; |
+		STZ !SpriteStatus+$9			; |
+		STZ !SpriteStatus+$A			; |
+		STZ !SpriteStatus+$B			; |
+		STZ !SpriteStatus+$C			; |
+		STZ !SpriteStatus+$D			; |
+		STZ !SpriteStatus+$E			; |
+		STZ !SpriteStatus+$F			;/
+		STZ !SpriteNum+$0			;\
+		STZ !SpriteNum+$1			; |
+		STZ !SpriteNum+$2			; |
+		STZ !SpriteNum+$3			; |
+		STZ !SpriteNum+$4			; |
+		STZ !SpriteNum+$5			; |
+		STZ !SpriteNum+$6			; |
+		STZ !SpriteNum+$7			; | reset all sprite nums to make sure they will be cleared properly
+		STZ !SpriteNum+$8			; |
+		STZ !SpriteNum+$9			; |
+		STZ !SpriteNum+$A			; |
+		STZ !SpriteNum+$B			; |
+		STZ !SpriteNum+$C			; |
+		STZ !SpriteNum+$D			; |
+		STZ !SpriteNum+$E			; |
+		STZ !SpriteNum+$F			;/
+
+	.Initialize
+>>>>>>> Stashed changes
 		LDA $6BF4				; this is set as part of LM's level data
 		AND #$03				;\
 		ASL A					; |
 		TAX					; |
-		REP #$20				; | we need to set these due to LM hijacking the vanilla sprite off screen code
+		REP #$20				; | these are most likely obsolete
 		LDA.l .min_y_range,x : STA $6BF0	; |
 		LDA.l .max_y_range,x : STA $6BF2	; |
 		SEP #$20				;/
+<<<<<<< Updated upstream
 		JMP MainSpriteLoop_Main			; go directly to SA-1 hook, ends in RTL so this is fine
+=======
+		LDA #$00 : STA !ProcessingSprites
+		JSL MainSpriteLoop			; call main loop
+
+		REP #$20				;\
+		LDA $94					; |
+		SEC : SBC #$0020			; |
+		STA $E0					; |
+		LDA $96					; |
+		SEC : SBC #$0020			; |
+		STA $E2					; |
+		LDA #$0050				; |
+		STA $E4					; | despawn sprites that are withing 32px of players upon level entry
+		STA $E6					; |
+		SEP #$30				; |
+		LDX #$0F				; |
+	-	LDA !SpriteStatus,x : BEQ +		; |
+		LDA !SpriteTweaker3,x			; > check for despawn protection
+		AND #$20 : BNE +			; |
+		JSL GetSpriteClippingE8			; |
+		JSL CheckContact : BCC +		; |
+		STZ !SpriteStatus,x			; |
+	+	DEX : BPL -				;/
+
+
+	; this has to run last
+	; (they spawn in state 0x0B instead of 0x01, and they should not be hit by despawn mechanic)
+	; ID = 0xFF -> not native to this level
+	.SpawnHeldItems
+		LDA !HeldItemP1_num
+		CMP #$FF : BEQ ..p1done
+		LDX #$0F
+	-	LDA !SpriteStatus,x : BEQ ..thisp1
+		DEX : BPL -
+		JMP ..p2done
+		..thisp1
+		LDA #$40 : TSB !P2ExtraInput1-$80
+		LDA !HeldItemP1_num : STA !SpriteNum,x
+		LDA !HeldItemP1_extra : STA !ExtraBits,x
+		JSL !ResetSprite
+		LDA #$0B : STA !SpriteStatus,x
+		LDA !HeldItemP1_prop1 : STA !ExtraProp1,x
+		LDA !HeldItemP1_prop2 : STA !ExtraProp2,x
+		LDA !HeldItemP1_ID : STA !SpriteID,x
+		LDA !P2XPosLo-$80 : STA !SpriteXLo,x
+		LDA !P2XPosHi-$80 : STA !SpriteXHi,x
+		LDA !P2YPosLo-$80 : STA !SpriteYLo,x
+		LDA !P2YPosHi-$80 : STA !SpriteYHi,x
+		INX : STX !P2Carry-$80
+		..p1done
+		LDA #$FF : STA !HeldItemP1_num
+
+		LDA !HeldItemP2_num
+		CMP #$FF : BEQ ..p2done
+		LDX #$0F
+	-	LDA !SpriteStatus,x : BEQ ..thisp2
+		DEX : BPL -
+		BRA ..p2done
+		..thisp2
+		LDA #$40 : TSB !P2ExtraInput1
+		LDA !HeldItemP2_num : STA !SpriteNum,x
+		LDA !HeldItemP2_extra : STA !ExtraBits,x
+		JSL !ResetSprite
+		LDA #$0B : STA !SpriteStatus,x
+		LDA !HeldItemP2_prop1 : STA !ExtraProp1,x
+		LDA !HeldItemP2_prop2 : STA !ExtraProp2,x
+		LDA !HeldItemP1_ID : STA !SpriteID,x
+		LDA !P2XPosLo : STA !SpriteXLo,x
+		LDA !P2XPosHi : STA !SpriteXHi,x
+		LDA !P2YPosLo : STA !SpriteYLo,x
+		LDA !P2YPosHi : STA !SpriteYHi,x
+		INX : STX !P2Carry
+		..p2done
+		LDA #$FF : STA !HeldItemP2_num
+
+		PLP
+		PLB
+		RTL
+
+>>>>>>> Stashed changes
 
 	; shoutout to Vitor for straight up giving me these
 	.min_y_range
@@ -694,18 +1401,25 @@ endmacro
 	LoadSpriteFromLevel:
 		PHP					;\
 		SEP #$20				; |
-		BIT $6BF4 : BPL .NoSmart		; |
-		LDA $1A					; |
-		CMP $6BEE : BNE .SmartUpdate		; | if smart spawn is enabled, sprites only spawn if the camera has moved since last time this was called
-		LDA $1C					; |
-		CMP $6BEF : BNE .SmartUpdate		; |
-		PLP					; |
-		RTS					;/
-	.SmartUpdate					;\
-		LDA $1A : STA $6BEE			; | update smart regs
-		LDA $1C : STA $6BEF			; |
-	.NoSmart					;/
 
+; CUT because this is already done before the subroutine call
+
+;		BIT $6BF4 : BPL .NoSmart		; |
+;		LDA $1A					; |
+;		CMP $6BEE : BNE .SmartUpdate		; | if smart spawn is enabled, sprites only spawn if the camera has moved since last time this was called
+;		LDA $1C					; |
+;		CMP $6BEF : BNE .SmartUpdate		; |
+;		PLP					; |
+;		RTS					;/
+;	.SmartUpdate					;\
+;		LDA $1A : STA $6BEE			; | update smart regs
+;		LDA $1C : STA $6BEF			; |
+;	.NoSmart					;/
+
+
+
+
+<<<<<<< Updated upstream
 ; for large levels, pushing/pulling these is faster than using addr regs
 ; $45	left border of spawn box
 ; $47	right border of spawn box
@@ -724,11 +1438,22 @@ endmacro
 		PEI ($4F)
 		PEI ($51)
 		PEI ($53)
+=======
+; $F0	left border of spawn box
+; $F2	right border of spawn box
+; $F4	top border of spawn box
+; $F6	bottom border of spawn box
+; $F8	left border of forbiddance box
+; $FA	right border of forbiddance box
+; $FC	top border of forbiddance box
+; $FE	bottom border of forbiddance box
+
+		.PreserveF0
+>>>>>>> Stashed changes
 		SEP #$30
 		LDA $6BF4
 		AND #$03
-		ASL A
-		TAX
+		ASL A : TAX
 		REP #$30
 
 		LDA $1A						; > BG1 Xpos
@@ -1057,6 +1782,7 @@ endmacro
 		JMP .LoadNewSprite			;/
 
 		.Return
+<<<<<<< Updated upstream
 		REP #$20
 		PLA : STA $53
 		PLA : STA $51
@@ -1066,6 +1792,8 @@ endmacro
 		PLA : STA $49
 		PLA : STA $47
 		PLA : STA $45
+=======
+>>>>>>> Stashed changes
 		PLP
 		RTS
 
@@ -1256,18 +1984,55 @@ endmacro
 
 
 	SetSpriteTables:
+<<<<<<< Updated upstream
 		LDA !ExtraBits,x			;\ see if custom
 		AND #$08 : BNE .Custom			;/
+=======
+		LDA !ExtraBits,x					;\ see if custom
+		AND.b #!CustomBit : BNE .Custom				;/
+>>>>>>> Stashed changes
 
 		.Vanilla
 		PHY
 		PHP
 		SEP #$30
+<<<<<<< Updated upstream
 		STZ !ExtraProp1,x
 		STZ !ExtraProp2,x
 		STZ !NewSpriteNum,x
 		JSL !LoadTweakers			; load vanilla tweakers
 		JSL Init_Vanilla			; make sure palset is loaded even if sprite was spawned in a state other than 01
+=======
+		STZ !ExtraProp1,x					;\ clear extra props
+		STZ !ExtraProp2,x					;/
+		REP #$30
+		LDA !SpriteNum,x
+		AND #$00FF
+		ASL A : STA $00
+		ASL A : ADC $00
+		TXY
+		TAX
+		SEP #$20
+		LDA.l VanillaTweakerData+0,x : STA !SpriteTweaker1,y
+		LDA.l VanillaTweakerData+1,x : STA !SpriteTweaker2,y
+		LDA.l VanillaTweakerData+2,x : STA !SpriteTweaker3,y
+		LDA.l VanillaTweakerData+3,x : STA !SpriteTweaker4,y
+		LDA.l VanillaTweakerData+5,x : STA !SpriteTweaker6,y
+		LDA.l VanillaTweakerData+4,x : STA !SpriteTweaker5,y	; last so we can AND instantly
+		SEP #$30
+		TYX
+		AND #$07 : BEQ ..nopalset				;\
+		PHX							; |
+		CLC : ADC #$09						; |
+		JSL LoadPalset						; |
+		LDX $0F							; | load palset
+		LDA !Palset_status,x					; |
+		SEP #$30						; |
+		PLX							; |
+		ASL A							; |
+		..nopalset						;/
+		STA !SpriteOAMProp,x					; > CCC bits
+>>>>>>> Stashed changes
 		PLP
 		PLY
 		RTL
@@ -1276,6 +2041,7 @@ endmacro
 		PHB : PHK : PLB
 		PHY
 		PHP
+<<<<<<< Updated upstream
 		LDA !NewSpriteNum,x
 		STZ $2250				;\
 		REP #$30				; |
@@ -1304,12 +2070,48 @@ endmacro
 		AND #$C0				; |
 		ORA !ExtraProp2,x			; |
 		STA !ExtraProp2,x			;/
+=======
+		REP #$30						;\
+		LDA !SpriteNum,x					; |
+		AND #$00FF						; |
+		ASL #2 : STA $00					; | index = num * 12
+		ASL A : ADC $00						; |
+		TAY							; |
+		SEP #$20						;/
+		LDA SpriteData+$00,y : STA !SpriteTweaker1,x		;\
+		LDA SpriteData+$01,y : STA !SpriteTweaker2,x		; |
+		LDA SpriteData+$02,y : STA !SpriteTweaker3,x		; | tweaker bytes
+		LDA SpriteData+$03,y : STA !SpriteTweaker4,x		; |
+		LDA SpriteData+$05,y : STA !SpriteTweaker6,x		; |
+		LDA SpriteData+$04,y : STA !SpriteTweaker5,x		;/> 5 last
+		AND #$07 : BEQ ..nopalset				;\
+		PHY							; |
+		PHX							; |
+		PHP							; |
+		CLC : ADC #$09						; |
+		SEP #$30						; |
+		JSL LoadPalset						; | load palset
+		LDX $0F							; |
+		LDA !Palset_status,x					; |
+		PLP							; |
+		PLX							; |
+		PLY							; |
+		ASL A							; |
+		..nopalset						;/
+		STA !SpriteOAMProp,x					; > CCC bits
+
+		REP #$20						;\
+		LDA SpriteData+$06,y : STA $00				; | INIT pointer
+		SEP #$20						; |
+		LDA SpriteData+$08,y : STA $02				;/
+>>>>>>> Stashed changes
 		PLP
 		PLY
 		PLB
 		RTL
 
 
+<<<<<<< Updated upstream
 	HandleStatus:
 		SEP #$20
 		LDA #$01 : PHA : PLB
@@ -1618,6 +2420,8 @@ endmacro
 
 
 
+=======
+>>>>>>> Stashed changes
 
 incsrc "PhysicsPlus.asm"
 

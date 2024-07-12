@@ -69,7 +69,7 @@
 		RTS
 
 
-		.Draw
+	.Draw
 		LDA !Ex_XLo,x : STA $00
 		LDA !Ex_XHi,x : STA $01
 		LDA !Ex_YLo,x : STA $02
@@ -101,25 +101,27 @@
 		SEC : SBC #$000C
 		SEC : SBC $1A
 		STA $00
-		CMP #$FFF8 : BCS .GoodX
-		CMP #$0100 : BCC .GoodX
-	.BadCoord
+		CMP #$FFF8 : BCS ..goodx
+		CMP #$0100 : BCC ..goodx
+		..badcoord
 		SEP #$10
 		REP #$20
 		LDX $75E9
 		RTS
 
-	.GoodX	LDA $02
+		..goodx
+		LDA $02
 		SEC : SBC $1C
-		CMP #$FFF8 : BCS .GoodY
-		CMP #$00E0 : BCS .BadCoord
+		CMP #$FFF8 : BCS ..goody
+		CMP #$00E0 : BCS ..badcoord
 
-	.GoodY	SEP #$10
+		..goody
+		SEP #$10
 		LDY $05
-		CPY #$01 : BEQ .HiPrio
-		CPY #$02 : BEQ .HiPrio
+		CPY #$01 : BEQ ..hiprio
+		CPY #$02 : BEQ ..hiprio
 
-	.LoPrio
+		..loprio
 		REP #$30
 		PHA
 		LDA !OAMindex_p1 : TAX
@@ -142,7 +144,7 @@
 		LDX $75E9
 		RTS
 
-	.HiPrio
+		..hiprio
 		REP #$30
 		PHA
 		LDA !OAMindex_p3 : TAX

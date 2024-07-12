@@ -168,6 +168,9 @@ org $308008
 	dl Kadaal
 	dl Leeway
 	dl Leeway_Sword
+	; alter
+	; peach
+	dl PlayerObjects
 
 	dl HappySlime
 	dl AggroRex
@@ -258,6 +261,10 @@ org $348008
 
 	%InsertFile(Leeway_Sword)
 	incbin ../RawGraphics/PlayerGFX/LeewaysSword.bin
+	.End
+
+	%InsertFile(PlayerObjects)
+	incbin ../RawGraphics/PlayerGFX/PlayerObjects.bin
 	.End
 
 	%InsertFile(AggroRex)

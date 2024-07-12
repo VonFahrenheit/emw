@@ -3,16 +3,9 @@
 
 namespace Mario
 
-
-;=================;
-;MARIO ADJUSTMENTS;
-;=================;
-
-; Look at $00E45D for actual OAM access
+; --Build 1.2--
 ;
-; 8x8 tile is loaded from $00DFDA ("Mario8x8Tiles" in all.log) indexed by $06
-; $06 is loaded from $00DF1A ("TileExpansion?" in all.log)
-;
+<<<<<<< Updated upstream
 ;	Code:
 ;	LDY $19
 ;	LDA $73E0
@@ -82,10 +75,22 @@ namespace Mario
 	org $00FEA8
 		JML Mario_FireballCheck		; fusion core fireball check fix
 		NOP
+=======
+
+	MAINCODE:
+
+
+	LDA $16
+	AND #$20 : BEQ +
+	LDA !MarioUpgrades
+	EOR #$FF : STA !MarioUpgrades
+	+
+>>>>>>> Stashed changes
 
 	org $00FEB6
 		db $36				; Fireball SFX
 
+<<<<<<< Updated upstream
 	org $0086A3
 	; OBSOLETE DUE TO VR3
 	;	JSL Mario_Controls		; > org: BPL $03 : LDX $6DB3
@@ -101,21 +106,24 @@ namespace Mario
 
 	org $00DC2D
 		JML Mario_Stasis		; > org: LDA $7D : STA $8A
+=======
+
+		LDA !P2Init : BNE .Main
+
+		.Init
+		INC !P2Init
+		REP #$30
+		LDY.w #!File_PlayerObjects : JSL GetFileAddress
+		LDA.w #ANIM_TinyFlameDynamo : JSL CORE_GENERATE_RAMCODE_24bit
+>>>>>>> Stashed changes
 
 	org $00E3A6
 		JML Mario_ExternalAnim		; > org: LDA $73E0 : CMP #$3D
 		NOP
 
-	org $00DFDA
-		db $00,$02,$FF,$FF,$00,$02,$18,$FF
-		db $00,$02,$1A,$1B,$00,$02,$19,$FF
-		db $00,$02,$0E,$0F,$00,$02,$1E,$1F
-		db $00,$02,$0A,$0B,$00,$02,$1C,$1D
-		db $00,$02,$0C,$0D,$00,$02,$06,$FF
-		db $00,$02,$02,$FF,$04,$07,$FF,$FF
-		db $FF,$FF
-	warnpc $00E00C
+		.Main
 
+<<<<<<< Updated upstream
 	org $00A21B
 		JSL Mario_Pause1		; > Org: LDA $16 : AND #$10
 
@@ -211,7 +219,46 @@ namespace Mario
 	db $03,$03,$03,$03,$03,$03		; walking/running
 	db $08,$08,$08,$08			; falling
 	warnpc $00E45D
+=======
+		.Freeze
+		LDA $9D : BEQ ..done
+		LDA !P2MarioFinale : BNE +
+		DEC !P2AnimTimer
+		JMP ANIMATION_CheckPlayer
+	+	JMP .FlameStar_spawnparticle
+		..done
 
+>>>>>>> Stashed changes
+
+		.AutoAnim
+		LDA !P2Anim
+		REP #$30
+		AND #$00FF
+		ASL #3 : TAY
+		LDA ANIM+$00,y
+		SEP #$20
+		LDA !P2AnimTimer
+		INC A
+		CMP ANIM+$02,y : BCC ..sameanim
+		..newanim
+		LDA ANIM+$03,y : STA !P2Anim
+		CMP #!Mar_Walk : BCC ..rate0
+		CMP #!Mar_Walk_over : BCS ..rate0
+		LDA !IceLevel : BEQ +
+	..rate4	LDA #$04 : BRA ..sameanim			; use a special super fast rate on icy ground
+	+	LDA !P2XSpeed
+		CLC : ADC !P2VectorX
+		BPL $03 : EOR #$FF : INC A
+		CMP #$13 : BCC ..rate0
+		CMP #$15 : BCC ..rate1
+		CMP #$20 : BCC ..rate2
+	..rate3	LDA #$03 : BRA ..sameanim
+	..rate2	LDA #$02 : BRA ..sameanim
+	..rate1	LDA #$01 : BRA ..sameanim
+	..rate0	LDA #$00
+		..sameanim
+		STA !P2AnimTimer
+		SEP #$30
 
 	org $00E468				; tile number
 		JSL MarioTileRemap		;\ org: STA $6302,y : LDX $05
@@ -252,6 +299,7 @@ namespace Mario
 		STZ !P2ExtraInput1
 		STZ !P2ExtraInput3
 		SEP #$20
+<<<<<<< Updated upstream
 		STZ !P2Character
 		LDA $7497 : STA !P2Invinc		; > Copy Mario's invincibility timer
 		LDA !MarioDirection : STA !P2Direction	; > Copy direction flag
@@ -304,10 +352,141 @@ namespace Mario
 		AND #$03 : BEQ +
 		STZ !MarioClimb				; clear this if mario touches no walls
 		+
+=======
+		RTL
+
+		.KnockedOut
+		JSL CORE_KNOCKED_OUT : BCC .Fall
+		LDA #$02 : STA !P2Status
+		RTL
+
+		.Fall
+		LDA #!Mar_Dead : STA !P2Anim
+		STZ !P2AnimTimer
+		JMP ANIMATION_CheckPlayer
+
+		.Process
+		REP #$20					;\
+		LDA !P2Hitbox1IndexMem				; |
+		ORA !P2Hitbox2IndexMem				; | merge hitboxes
+		STA !P2Hitbox1IndexMem				; |
+		STA !P2Hitbox2IndexMem				; |
+		SEP #$20					;/
+
+	; timers
+		LDA !P2KickTimer
+		BEQ $03 : DEC !P2KickTimer
+		LDA !P2SlantPipe
+		BEQ $03 : DEC !P2SlantPipe
+		LDA !P2PickUp
+		BEQ $03 : DEC !P2PickUp
+		LDA !P2TurnTimer
+		BEQ $03 : DEC !P2TurnTimer
+		LDA !P2FireTimer
+		BEQ $03 : DEC !P2FireTimer
+		LDA !P2RolloutTimer
+		BEQ $03 : DEC !P2RolloutTimer
+		LDA !P2RolloutStomp
+		BEQ $03 : DEC !P2RolloutStomp
+		LDA !P2WallKickLockInput
+		BEQ $03 : DEC !P2WallKickLockInput
+
+
+		.MarioFinale
+		LDA !P2MarioFinale : BEQ ..done
+		STZ $15
+		STZ $16
+		STZ $17
+		STZ $18
+		STZ !P2XSpeed
+		STZ !P2YSpeed
+		DEC !P2MarioFinale : BNE ..done
+		STZ !P2FlameStar
+		STZ !P2FireCharge
+		..done
+
+
+		.FlameStar
+		LDX !P2FlameStar : BNE ..process
+	-	JMP ..done
+
+		..process
+		LDA $14
+		AND #$03 : BNE ..timerdone
+		DEC !P2FlameStar
+		..timerdone
+		LDA !MarioUpgrades
+		AND #$01
+		INC A : STA !P2FireCharge
+		LDA !P2MarioFinale : BNE ..spawnparticle
+		CPX #$40 : BCS ..spawnparticle
+		LDA $14
+		LSR A : BCS -
+		CPX #$20 : BCS ..spawnparticle
+		LSR A : BCS -
+
+		..spawnparticle
+		REP #$20
+		LDA !RNG
+		AND #$000F
+		SBC #$0008
+		STA $00
+		LDA $14
+		AND #$001F
+		EOR #$0010
+		TAX
+		LDA !RNGtable,x
+		AND #$001F
+		SBC #$0010
+		STA $02
+		PHB
+		JSL GetParticleIndex
+		PLB
+		LDA !P2X
+		ADC $00
+		STA !41_Particle_X,x
+		LDA !P2Y
+		ADC $02
+		STA !41_Particle_Y,x
+		LDA #$0000
+		STA !41_Particle_XSpeed,x
+		STA !41_Particle_XAcc,x
+		STA !41_Particle_YAcc,x
+		LDA #$FE00 : STA !41_Particle_YSpeed,x
+		LDA #$F400 : STA !41_Particle_Tile,x
+		SEP #$20
+		LDA !CurrentPlayer
+		BEQ $02 : LDA #$20
+		ORA #!P1Tile4
+		BIT !RNG
+		BPL $02 : ORA #$10
+		STA !41_Particle_Tile,x
+		LDA.b #!prt_basic : STA !41_Particle_Type,x
+		LDA #$10 : STA !41_Particle_Timer,x
+		LDA #$00 : STA !41_Particle_Layer,x
+		SEP #$30
+		..done
+
+		LDA $9D : BEQ +
+		DEC !P2AnimTimer
+		JMP ANIMATION_CheckPlayer
+		+
+
+
+		LDA !P2HurtTimer : BEQ +
+		DEC !P2HurtTimer
+		BRA ++
+	+	LDA !P2Invinc
+		BEQ $03 : DEC !P2Invinc
+		LDA !P2ShrinkTimer
+		BEQ $03 : DEC !P2ShrinkTimer
+		++
+>>>>>>> Stashed changes
 
 		RTS
 
 
+<<<<<<< Updated upstream
 		.HandyGlove
 		PHB : PHK : PLB
 		PHX
@@ -409,6 +588,24 @@ namespace Mario
 		LDA !MarioBlocked				;\ overwritten code
 		AND #$03					;/
 		RTL						; return
+=======
+		.FireCharge
+		LDA !MarioUpgrades				;\
+		AND #$01					; |
+		INC A						; | cap mario's fire charges based on upgrade
+		CMP !P2FireCharge : BCS ..done			; |
+		STA !P2FireCharge				; |
+		..done						;/
+
+
+		.DashBoots
+		LDA !MarioUpgrades				;\
+		AND #$10					; |
+		ASL A						; | dash timer minimum of 32 with dash boots
+		CMP !P2Dashing : BCC ..done			; |
+		STA !P2Dashing					; |
+		..done						;/
+>>>>>>> Stashed changes
 
 
 	..Offset
@@ -439,6 +636,7 @@ namespace Mario
 		PLY						; |
 		+						;/
 
+<<<<<<< Updated upstream
 		RTL
 
 
@@ -452,8 +650,152 @@ namespace Mario
 	..P1	LDA !P2FlareDrill-$80,y : BNE ..Fall		;/
 	..Float	JML $00D8ED
 	..Fall	JML $00D928
+=======
+		.WallKickInput
+		LDA !P2WallKickLockInput : BEQ ..done		;\
+		LDA !P2WallKickDir : TRB $15			; | force d-pad to press away from wall after wall kick
+		EOR #$03 : TSB $15				; |
+		..done						;/
 
 
+	; air/ground split
+		LDA !P2InAir : BEQ .Ground
+
+		.Air
+		LDA !P2RolloutStomp : BEQ ..nostomproll		;\ allow aerial rollout after stomping an enemy
+		BIT $16 : BVS +					;/
+		LDA !P2RolloutBuffer				;\
+		CMP #$07 : BCS ..nostomproll			; | allow buffered aerial rollout
+		CMP #$03 : BCC ..nostomproll			; |
+	+	JMP .TriggerRollout				;/
+		..nostomproll
+		LDA #$03 : STA !P2RolloutTimer
+		LDA !P2YSpeed : BPL +
+		LDA !P2RolloutStomp : BNE ++
+		LDA #$00
+	+	CMP #$20
+		BCS $02 : LDA #$20
+		STA !P2RolloutSpeed
+	++	LDA !P2RolloutBuffer
+		BMI +
+		BEQ ..maybebufferroll
+		DEC !P2RolloutBuffer
+	+	JMP .SharedMoves
+		..maybebufferroll
+		BIT $16 : BVC +
+		LDA #$06 : STA !P2RolloutBuffer
+	+	JMP .SharedMoves
+
+
+		.Ground
+		STZ !P2KillCount
+		STZ !P2SpinJump
+		STZ !P2Crush
+		LDA $15
+		AND #$04
+		STA !P2Ducking : BEQ ..updateslide
+		..startslide
+		LDA !P2Anim
+		CMP #!Mar_Rollout : BCC +
+		CMP #!Mar_Rollout_over : BCC ..setslide
+	+	LDA !P2Slope : BNE ..setslide
+		LDA !P2FlameDash : BNE ..setslide			; can slide out of flame dash
+		..updateslide
+		LDA !P2Sliding : BEQ .Rollout
+		LDA $15
+		AND #$07
+		CMP #$04 : BCS ..checkspeed
+		AND #$03 : BEQ ..checkspeed
+		LDA #$00 : BRA ..setslide
+		..checkspeed
+		LDA !P2XSpeed : BNE ..setslide
+		LDA !P2Slope
+		..setslide
+		STA !P2Sliding
+
+		.Rollout
+		LDA !MarioUpgrades : BPL .NoRollout			; check upgrade
+		LDA !P2RolloutBuffer
+		BEQ ..inputroll
+		BMI .NoRollout						; can't roll -> roll
+		CMP #$03 : BCC .NoRollout				; can't roll if mistimed by more than 3 frames
+		LDA #$40 : TSB $16					; force roll if buffered
+		..inputroll
+		LDA !P2RolloutTimer : BEQ .NoRollout
+		BIT $16 : BVC .NoRollout
+
+		.TriggerRollout
+		LDA $15
+		AND #$03
+		DEC A
+		EOR #$01
+		CMP !P2Dir : BNE .NoRollout
+		TAY
+		LDA !P2RolloutSpeed
+		CPY #$01
+		BEQ $03 : EOR #$FF : INC A
+		CMP #$00 : BPL ..right
+		..left
+		BIT !P2XSpeed : BPL ..go
+		CMP !P2XSpeed : BCS ..speeddone
+		BRA ..go
+		..right
+		BIT !P2XSpeed : BMI ..go
+		CMP !P2XSpeed : BCC ..speeddone
+		..go
+		LDY #$1F
+		..speeddone
+		JSL CORE_ACCEL_X_8Bit
+		LDA !P2WallKickLockInput : BNE ..nobounce
+		LDA !P2RolloutSpeed
+		LSR A
+		ADC #$18
+		EOR #$FF : INC A
+		STA !P2YSpeed
+		..nobounce
+		LDA #$FF : STA !P2RolloutBuffer
+		BRA .SharedMoves
+		.NoRollout
+		STZ !P2RolloutBuffer
+
+
+
+	.SharedMoves
+		LDA !P2Sliding					;\ enforce crouch when sliding
+		BEQ $03 : STA !P2Ducking			;/
+
+
+	; fireball
+		.Fire
+		LDA !P2YSpeed : BMI ..canthrow			;\
+		BIT !P2RolloutBuffer : BMI ..done		; | can cancel dive into fireball, but NOT rollout
+		..canthrow					;/
+		LDA $18						;\ input with R
+		AND #$10 : BEQ ..done				;/
+		LDA !P2FlameStar : BNE ..process		;\
+		LDA !P2FireCharge : BEQ ..done			; | must have a fire charge or be in flame star
+		DEC !P2FireCharge				;/
+		..process
+		LDA #$0A : STA !P2FireTimer
+		LDA #$80 : TRB !P2RolloutBuffer			; end rollout animation
+		JSR ThrowFireball
+		..done
+
+>>>>>>> Stashed changes
+
+		.Water
+		BIT !P2Water : BVC ..done			;\
+		..main						; |
+		STZ !P2FlameDash				; |
+		STZ !P2RolloutBuffer				; |
+		STZ !P2Gravity					; | while in water, replace the rest of CONTROLS and all of PHYSICS with PLUMBER_SWIM
+		STZ !P2Dashing					; |
+		STZ !P2SpinUsed					; |
+		JSL CORE_PLUMBER_SWIM				; |
+		JMP SPRITE_INTERACTION				; |
+		..done						;/
+
+<<<<<<< Updated upstream
 		.Cape2
 		LDA !MarioUpgrades
 		AND #$04 : BEQ ..No
@@ -482,8 +824,404 @@ namespace Mario
 	..30	LDA #$30 : STA !Ex_YSpeed,x
 		RTL
 
+=======
+		LDA #$0A : STA !P2FastSwim			;
 
 
+	; wall kick
+		.WallKick
+		LDA !MarioUpgrades				;\ upgrade check
+		AND #$02 : BEQ ..done				;/
+		LDA !P2Blocked					;\
+		BIT #$04 : BEQ ..checkbounce			; | if on ground, free inputs and end
+		STZ !P2WallKickLockInput			; |
+		BRA ..done					;/
+		..checkbounce					;\ must touch a wall
+		AND #$03 : BEQ ..done				;/
+		STA !P2WallKickDir				; set dir (will be used for joypad lock)
+		LDA $15						;\
+		AND #$03					; |
+		CMP !P2WallKickDir : BNE ..done			; | trigger wall kick by holding towards wall and pressing B
+		BIT !P2CoyoteTime : BMI +			; |
+		BIT $16 : BPL ..done				;/
+	+	TRB $15						;\
+		EOR #$03 : TAY					; | lock joypad away from wall
+		TSB $15						;/
+		LDA DATA_WallKickSpeed,y : STA !P2XSpeed	; set X speed
+		LDA #$B3 : STA !P2YSpeed			; set Y speed
+		LDA #$10 : STA !P2WallKickLockInput		; lock joypad for 16 frames
+		LDA #$03 : STA !P2RolloutStomp			; allow rollout for 3 frames
+		LDA #$30 : STA !P2RolloutSpeed			; rollout speed if used
+		..done
+
+
+	; flame dash
+		.FlameDashStart
+		LDA !P2FlameDash : BNE ..done			; can't cancel flame dash into flame dash
+		LDA !P2YSpeed : BMI ..candash			;\
+		LDA !P2RolloutBuffer : BMI ..done		; | can cancel dive into flame dash, but NOT rollout
+		..candash					;/
+		LDA !MarioUpgrades				; requires upgrade
+		AND $18						;\ activated with L
+		AND #$20 : BEQ ..done				;/
+		STZ !P2FlameDashDown				; reset down flag
+		STZ !P2FlameDashPlus				; reset bonus speed flag
+		LDA !P2FlameStar : BNE ..trigger		;\
+		LDA !P2FireCharge : BEQ ..done			; | costs a fire charge, unless in flame star
+		DEC !P2FireCharge				;/
+		..trigger
+		LDA #$20 : STA !P2FlameDash			; flame dash timer
+		LDA !MarioUpgrades				;\
+		AND $15						; |
+		AND #$04 : BEQ ..forward			; |
+		LDA !P2InAir : BEQ ..forward			; |
+		..down						; | downwards flame dash
+		STA !P2FlameDashDown				; |
+		STZ !P2XSpeed					; |
+		LDA !P2FallSpeed				; |
+		BRA ..set					;/
+		..forward					;\ forwards flame dash
+		BIT !P2YSpeed : BMI ..done			;/
+		..set						;\
+		STA !P2YSpeed					; | set y speed
+		..done						;/
+
+		.FlameDashRun
+		LDA !P2FlameDash : BEQ ..done
+		DEC !P2FlameDash
+		LDA #$80 : TRB !P2RolloutBuffer			; end rollout
+		LDA #$70 : STA !P2Dashing
+		LDA #$50 : STA !P2FlashPal
+		LDA #$01 : STA !P2Invinc
+		LDA !P2FlameDashDown : BEQ ..forward		;\
+		..down						; |
+		LDA !P2InAir : BNE ..drop			; | flame dash down into ground -> end
+		LDA !P2Slope : BNE ..transition			; |
+		..end						; |
+		STZ !P2FlameDash : BRA ..done			;/
+		..transition					;\
+		ROL #2						; |
+		AND #$01 : TAX					; |
+		INX						; | flame dash down into slope -> forward
+		EOR #$01 : STA !P2Dir				; | (go down slope)
+		STZ !P2FlameDashDown				; |
+		LDA DATA_FlameDashSpeed,x : STA !P2XSpeed	; |
+		LDA #$04 : STA !P2FlameDashPlus			; > bonus speed
+		BRA ..done					;/
+		..drop						;\
+		LDA !P2FallSpeed : STA !P2YSpeed		; | dash down in midair
+		LDA #$00 : BRA ..accel				;/
+		..forward					;\
+		LDA !P2Slope : BEQ ..keepspeed			; |
+		EOR !P2XSpeed					; | lose bonus speed if running up a slope
+		BPL ..keepspeed					; |
+		STZ !P2FlameDashPlus				; |
+		..keepspeed					;/
+		LDA $15
+		AND #$03 : BNE ..index
+		..usedir
+		LDA !P2Dir
+		EOR #$01
+		INC A
+		..index
+		ORA !P2FlameDashPlus : TAX
+		LDA DATA_FlameDashSpeed,x
+		..accel
+		LDY #$10
+		JSL CORE_ACCEL_X_8Bit
+		..done
+
+
+	; mario finale
+		.MarioFinale
+		LDA !P2MarioFinale : BNE ..main
+		..init
+		LDA !P2FlameStar : BEQ ..done
+		BIT $18 : BVC ..done
+		LDA #$20
+		STA !P2MarioFinale
+		STA $9D
+		BRA ..done
+		..main
+		JSR ThrowFireball
+		LDA #!MarFinale_Num : STA !Ex_Num,x
+		LDA !RNG : STA !Ex_Data1,x
+		STZ !Ex_Data2,x
+		STZ !Ex_Data3,x
+		..done
+
+
+
+	; flame star charge
+		.FlameStarCharge
+		LDA $15						;\
+		AND #$0F					; | must stand still
+		ORA !P2FlameStarUsed : BEQ ..checkupgrade	; | can only use once
+		JMP ..clearcharge				;/
+		..checkupgrade					;\
+		LDA !MarioUpgrades				; | must hold upgrade and hold X
+		AND #$40 : BEQ ..clearcharge			; |
+		CMP $17 : BNE ..clearcharge			;/
+		LDA !P2FlameStarCharge : BNE +			;\ check for X press (not hold) when starting
+		BIT $18 : BVC ..done				;/
+	+	CMP #$3C : BCS ..trigger			; end after charging for 1 full second
+		INC !P2FlameStarCharge				; increment timer
+		PHB						;\
+		JSL GetParticleIndex				; |
+		PLB						; |
+		LDA !P2X : STA !41_Particle_X,x			; |
+		LDA !P2FlameStarCharge				; |
+		AND #$00FF					; |
+		LSR #2						; |
+		SEC : SBC #$0020				; |
+		CLC : ADC !P2Y					; |
+		STA !41_Particle_Y,x				; |
+		LDA #$0000					; |
+		STA !41_Particle_XSpeed,x			; |
+		STA !41_Particle_YSpeed,x			; |
+		STA !41_Particle_XAcc,x				; | display star item
+		STA !41_Particle_YAcc,x				; |
+		SEP #$20					; |
+		LDA !CurrentPlayer				; |
+		BEQ $02 : LDA #!P2TileOffset			; |
+		CLC : ADC #!P1Tile3				; |
+		STA !41_Particle_Tile,x				; |
+		LDA #$F4 : STA !41_Particle_Prop,x		; |
+		LDA #$02 : STA !41_Particle_Layer,x		; |
+		LDA.b #!prt_basic : STA !41_Particle_Type,x	; |
+		LDA #$02 : STA !41_Particle_Timer,x		; |
+		SEP #$30					; |
+		BRA ..done					;/
+		..trigger					;
+		LDA #$96 : STA !P2FlameStar			; timer = 2.5 * 4 seconds (10 seconds)
+		INC !P2FlameStarUsed				; can't use ultimate again
+		..clearcharge
+		STZ !P2FlameStarCharge
+		..done
+
+
+
+
+	; main jump code
+		.Jump
+		LDA $15						;\
+		AND #$80					; | clear jump buffer unless jump is held
+		EOR #$80 : TRB !P2Buffer			;/
+		LDA !P2Buffer					;\ apply jump buffer
+		AND #$80 : TSB $16				;/
+		LDA $16						;\ check B + A
+		ORA $18 : BPL .JumpDone				;/
+		LDA !P2Climbing : BNE .TriggerJump		;\
+		LDA !P2CoyoteTime				; |
+		BMI +						; | must be on ground or have coyote time
+		BNE .TriggerJump				; | or be climbing
+	+	LDA !P2InAir : BNE .JumpDone			;/
+
+		.TriggerJump
+		STZ !P2Buffer					; clear input buffer on jumping
+		STZ !P2FlameStarCharge				; interrupt flame star charge
+		LDA !P2XSpeed
+		BPL $03 : EOR #$FF : INC A
+		LSR #3
+		CMP #$07
+		BCC $02 : LDA #$07
+		BIT $18 : BMI ..spinjump
+		..normaljump
+		LDX #$2B : STX !SPC1				; jump SFX
+		BRA ..finishjump
+		..spinjump
+		ORA #$08
+		INC !P2SpinJump
+		INC !P2Crush
+		STZ !P2Ducking
+		LDX #$04 : STX !SPC4				; spin jump sfx
+		..finishjump
+		TAX
+		LDA DATA_JumpHeight,x : STA !P2YSpeed		; update y speed
+		LDA !P2Sliding					;\
+		STZ !P2Sliding					; | clear slide, and also clear duck if jumping out of a slide
+		BEQ $03 : STZ !P2Ducking			;/
+		LDA !P2Dashing
+		CMP #$70 : BCC .JumpDone
+		LDA.b #!Mar_LongJump : STA !P2Anim		;\ long jump anim
+		STZ !P2AnimTimer				;/
+		.JumpDone
+
+
+
+
+	; horizontal movement
+	.HorizontalMovement
+		LDA #$FF : STA $04				; default: dash timer -1
+
+; $00 = 16-bit resting speed (during .Friction), 16-bit max speed index (during .Move)
+; $02 = 8-bit accel index
+; $03 = scrach
+; $04 = added to dash timer
+
+		LDA !P2InAir : BEQ ..ground			; check air/ground
+		LDA !P2Dashing					;\
+		CMP #$70 : BNE ..handleinput			; |
+		LDA !P2XSpeed					; |
+		ROL #2						; |
+		AND #$01					; | keep p speed in midair if holding forward
+		INC A						; | (only if p speed is full)
+		AND $15 : BEQ ..handleinput			; |
+		STZ $04						; |
+		BRA ..handleinput				;/
+		..ground
+		LDA !P2Ducking					;\
+		ORA !P2Sliding					; | can't walk/run on ground while crouching or sliding
+		BNE .Friction					;/
+		..handleinput
+		LDA $15
+		AND #$03 : BNE .Move
+
+
+		.Friction
+		LDA !P2InAir : BEQ $03 : JMP .DashTimer		; no friction in midair
+		LDA !P2Slope
+		CLC : ADC #$04
+		ASL A : TAX
+		LDA !P2Sliding
+		REP #$30
+		BEQ ..stand
+		..slide
+		LDA DATA_SlidingSpeed,x : BRA +
+		..stand
+		LDA DATA_RestingSpeed,x
+	+	STA $00
+		BNE ..special
+		BIT !P2XSpeedFraction : BPL ..accleft		;\ if resting speed is 0, just read current speed dir
+		BRA ..accright					;/
+		..special					;\
+		BPL ..right					; |
+		..left						; |
+		BIT !P2XSpeedFraction : BPL ..accleft		; |
+		CMP !P2XSpeedFraction : BCS ..accright		; |
+		..accleft					; |
+		TXA : ASL A					; |
+		BRA ..acc					; | more complicated calculation if resting speed != 0
+		..right						; |
+		BIT !P2XSpeedFraction : BMI ..accright		; |
+		CMP !P2XSpeedFraction : BCC ..accleft		; |
+		..accright					; |
+		TXA						; |
+		INC A						; |
+		ASL A						; |
+		..acc						;/
+		TAY
+		LDA !IceLevel
+		AND #$00FF : BEQ +
+		LDA DATA_Friction_ice,y : BRA ++
+	+	LDA DATA_Friction,y
+	++	TAY
+		LDA $00 : BRA .UpdateSpeed
+
+		.Move
+		AND #$01 : STA $00				;\ $00 = dir index (*1), 16-bit
+		STZ $01						;/
+		ASL A : STA $02					; $02 = dir index (*2)
+		LDA #$00					; base index = 0x00
+		LDX !P2Dashing					;\
+		CPX #$70 : BCC +				; | p-speed index = 0x04
+		LDA #$04					; |
+		BRA ++						;/
+	+	BIT $15 : BVC ++				;\ running (but not p-speed) index = 0x02
+		LDA #$02					;/
+	++	TSB $00						; $00 = speed + dir index
+		LDA !P2Slope					;\
+		CLC : ADC #$04					; |
+		STA $03						; | add slope * 6
+		ASL A : ADC $03					; | $00 = full speed index
+		ASL A : ADC $00					; |
+		STA $00						;/
+		LDA $15						;\
+		AND #$03 : BEQ ..notturning			; |
+		DEC A						; |
+		EOR #$01 : STA !P2Direction			; > update mario direction
+		EOR #$01					; |
+		ROR #2						; | get turn offset
+		EOR !P2XSpeed : BPL ..notturning		; |
+		..turning					; |
+		LDA #$24					; |
+		CLC : ADC $02					; |
+		STA $02						; |
+		..notturning					;/
+		LDA !P2Slope					;\
+		CLC : ADC #$04					; |
+		ASL #2						; |
+		ADC $02						; | A = slope*8 + dir*4 + run button*2
+		BIT $15						; |
+		BVC $01 : INC A					; |
+		ASL A						;/
+		LDX !P2InAir : BNE ..noice			;\ check if on icy surface
+		LDX !IceLevel : BEQ ..noice			;/
+		..ice						;\
+		TAX						; | ice accel value
+		REP #$30					; |
+		LDY DATA_XAccel_ice,x : BRA ..acc		;/
+		..noice						;\ on normal ground or in midair, index = slope*4 + dir*2
+		TAX						;/
+		REP #$30					;\ get normal accel value
+		LDY DATA_XAccel,x				;/
+		..acc
+		LDX $00
+		LDA DATA_MaxXSpeed-1,x
+		AND #$FF00
+
+		.UpdateSpeed
+		JSL CORE_ACCEL_X_16Bit
+		SEP #$30
+
+
+		.DashTimer
+		BIT $15 : BVC ..apply
+		LDA !P2XSpeed
+		CMP #$23 : BCC ..apply
+		CMP #$DD+1 : BCS ..apply
+		..inctimer
+		LDA !P2Dashing
+		LDX !P2Anim					;\ keep p speed in long jump pose so mario can do a turning p jump
+		CPX.b #!Mar_LongJump : BEQ +			;/
+		LDX !P2InAir : BNE ..apply			; dash timer can't increment in midair
+	+	LDX #$02 : STX $04				; dash timer +2
+		..apply
+		LDA !P2InAir : BEQ ..timer
+		LDA !P2CoyoteTime
+		BMI ..timer
+		BNE ..notimer
+		..timer
+		LDA $04						;\
+		CLC : ADC !P2Dashing				; |
+		BPL $02 : LDA #$00				; | update dash timer (-1 or +2)
+		CMP #$70					; |
+		BCC $02 : LDA #$70				; |
+		STA !P2Dashing					;/
+		..notimer
+
+
+
+
+	PHYSICS:
+		.Gravity
+		BIT !P2Water : BVS ..done			; don't update gravity in water
+		LDA #$46 : STA !P2FallSpeed
+		LDA #$06 : STA !P2Gravity
+		LDA $15
+		ORA $17
+		BPL ..done
+		LSR !P2Gravity
+		..done
+>>>>>>> Stashed changes
+
+		.SlantPipe
+		LDA !P2SlantPipe : BEQ ..done
+		LDA #$40 : STA !P2XSpeed
+		LDA #$C0 : STA !P2YSpeed
+		..done
+
+<<<<<<< Updated upstream
 		.AirHook
 		JSR .Coyote
 		LDA !P2CoyoteTime-$80,x
@@ -589,6 +1327,18 @@ namespace Mario
 	.00D99A	JML $00D99A
 	.00D9EB	JML $00D9EB
 
+=======
+		.Collision
+		LDA !P2XSpeed
+		CLC : ADC !P2VectorX
+		BEQ ..done
+		ROL #2
+		AND #$01
+		INC A
+		AND !P2Blocked : BEQ ..done
+		STZ !P2XSpeed
+		..done
+>>>>>>> Stashed changes
 
 		.FastSwim_2
 		LDY $748F : BNE .00DAA4			;\
@@ -615,6 +1365,7 @@ namespace Mario
 	+	LDA $7D : STA $8A			;\ Return as normal
 		JML $00DC31				;/
 
+<<<<<<< Updated upstream
 
 		.ExternalAnim
 		LDA !CurrentMario : BEQ ..NoExternal
@@ -697,6 +1448,26 @@ namespace Mario
 	..go	JML $00FEB5				; spawn a fireball
 
 
+=======
+		.Carry
+		LDX !P2Carry : BEQ ..done
+		JSL CORE_CARRY		
+		..done
+
+
+	OBJECTS:
+		REP #$30
+		LDA !P2HP					;\
+		AND #$00FF					; | always use crouch clipping for small mario
+		CMP #$0005 : BCS +				; |
+		LDA.w #ANIM_ClippingCrouch : BRA ++		;/
+	+	LDA !P2Anim					;\
+		AND #$00FF					; | get index to anim table
+		ASL #3						; |
+		TAY						;/
+		LDA ANIM+$06,y					;
+	++	JSL CORE_COLLISION				; pointer to clipping
+>>>>>>> Stashed changes
 
 		.Controls
 		PHP
@@ -742,6 +1513,7 @@ namespace Mario
 		TAY : STY $2121					; |
 		JML $00A30E					;/
 
+<<<<<<< Updated upstream
 
 		.PaletteData
 	;	LDA.w #!MarioPalData : STA $6D82		; Mario's palette is in I-RAM
@@ -863,10 +1635,327 @@ namespace Mario
 		..NoGlow
 		PLX
 		..NoUpdate
+=======
+	ATTACK:
+		LDA !P2FlameDash : BNE .FlameDash
+		LDA !P2Sliding : BNE .Slide
+
+		.NoHitbox
+		STZ !P2Hitbox1IndexMem1
+		STZ !P2Hitbox1IndexMem2
+		STZ !P2Hitbox2IndexMem1
+		STZ !P2Hitbox2IndexMem2
+		BRA .AttacksDone
+
+		.FlameDash
+		REP #$20
+		LDA.w #DATA_FlameDashHitbox : JSL CORE_ATTACK_LoadHitbox
+		LDA !P2FlameDashDown : BEQ .AttacksDone
+		LDA #$10 : STA !P2Hitbox1XSpeed
+		LDA !P2FallSpeed : STA !P2Hitbox1YSpeed
+		BRA .AttacksDone
+
+		.Slide
+		REP #$20
+		LDA.w #DATA_SlideHitbox : JSL CORE_ATTACK_LoadHitbox
+
+		.AttacksDone
+		REP #$20					;\
+		LDA !P2Hitbox1IndexMem				; |
+		ORA !P2Hitbox2IndexMem				; | merge hitboxes
+		STA !P2Hitbox1IndexMem				; |
+		STA !P2Hitbox2IndexMem				; |
+		SEP #$20					;/
+
+
+
+	ANIMATION:
+		.External
+		LDA !P2ExternalAnimTimer : BEQ ..clear		;\
+		DEC !P2ExternalAnimTimer			; |
+		LDA !P2ExternalAnim : STA !P2Anim		; | enforce external animations
+		DEC !P2AnimTimer				; |
+		JMP .CheckPlayer				;/
+		..clear
+		STZ !P2ExternalAnim				; clear external animation when timer hits 0
+
+	; pipe check
+		.Pipe
+		LDA !P2Pipe : BEQ ..done			;\
+		BMI ..vert					; |
+		..horz						; |
+		JMP .Walk					; | pipe animations
+		..vert						; |
+		LDA #!Mar_FaceFront : JMP .SetAnim		; |
+		..done						;/
+
+	; entrance check
+		.Entrance
+		LDA !P2Entrance : BEQ ..done			;\ animate on timer 1-20
+		CMP #$21 : BCS ..done				;/
+		CMP #$10 : BCC ..handleanim			;\
+		CMP #$18 : BCC ..half				; |
+		..full						; |
+		LDA $14						; |
+		BRA ..finish					; |
+		..half						; |
+		LDA $14						; |
+		LSR A : BCC ..handleanim			; | spawn smoke
+		..finish					; |
+		AND #$01					; |
+		BEQ $02 : LDA #$40				; |
+		SBC #$20					; |
+		STA !P2XSpeed					; |
+		JSL CORE_DASH_SMOKE				; |
+		..handleanim					;/
+		STZ !P2XSpeed					; zero x speed
+		LDA !P2Anim					;\
+		CMP #!Mar_Victory : BCC ..set			; |
+		CMP #!Mar_Victory_over : BCS ..set		; |
+		JMP .GoToDraw					; | set animation
+		..set						; |
+		LDA #!Mar_Victory : BRA .SetAnim		; |
+		..done						;/
+
+	; hurt check
+		.Hurt
+		LDA !P2HurtTimer : BEQ ..done
+		LDA !P2Anim
+		CMP #!Mar_Hurt : BEQ .GoToDraw
+		CMP #!Mar_Hurt+1 : BEQ .GoToDraw
+		LDA #!Mar_Hurt : BRA .SetAnim
+		..done
+
+	; shrink check
+		.Shrink
+		LDA !P2ShrinkTimer : BEQ ..done
+		LDA !P2Anim
+		CMP #!Mar_Shrink : BEQ .GoToDraw
+		CMP #!Mar_Shrink+1 : BEQ .GoToDraw
+		LDA #!Mar_Shrink : BRA .SetAnim
+		..done
+
+	; rollout check
+		.Rollout
+		LDA !P2RolloutBuffer : BPL ..done
+		BIT !P2YSpeed : BPL ..rolling
+		..rising
+		LDA #!Mar_RolloutStart : BRA .SetAnim
+		..rolling
+		LDA !P2Anim
+		CMP #!Mar_Rollout : BCC +
+		CMP #!Mar_Rollout_over : BCC .GoToDraw
+	+	LDA #!Mar_Rollout : BRA .SetAnim
+		..done
+
+	; climb check
+		.Climb
+		LDA !P2Climbing : BEQ .OtherMovements
+		LDA !P2Anim
+		CMP #!Mar_Climb : BCC ..startclimb
+		CMP #!Mar_Climb_over : BCC ..climbing
+		..startclimb
+		LDA #!Mar_Climb : STA !P2Anim
+		STZ !P2AnimTimer
+		..climbing
+		LDA $15
+		AND #$0F : BNE .GoToDraw
+		STZ !P2AnimTimer
+		JMP .CheckPlayer
+
+	; branch assist
+		.SetAnim
+		STA !P2Anim
+		STZ !P2AnimTimer
+		.GoToDraw
+		JMP .CheckPlayer
+
+	; second block
+		.OtherMovements
+
+	; crouch/slide
+		.Crouch
+		LDA !P2Ducking : BNE ..smoke			;\ use crouch when crouching or just after picking up an item
+		LDA !P2PickUp : BEQ ..done			;/
+		..smoke						;\ friction smoke when crouching
+		JSL CORE_SMOKE_AT_FEET				;/
+		LDA !P2Carry : BNE ..crouch			;\
+		LDA !P2Sliding : BEQ ..crouch			; |
+		..slide						; |
+		LDA #!Mar_Slide : BRA .SetAnim			; | determine whether crouch or slide anim should be used
+		..crouch					; |
+		LDA #!Mar_Crouch : BRA .SetAnim			; |
+		..done						;/
+
+	; ultimate charge
+		.FlameStarCharge
+		LDA !P2FlameStarCharge : BEQ ..done
+		LDA #!Mar_FlameStar : BRA .SetAnim
+		..done
+
+	; mario finale
+		.MarioFinale
+		LDA !P2MarioFinale : BEQ ..done
+		CMP #$20 : BNE ..fire
+		LDA #!Mar_Cutscene+2 : BRA .SetAnim
+		..fire
+		LDA #!Mar_Hammer+2 : BRA .SetAnim
+		..done
+
+	; kick
+		.Kick
+		LDA !P2KickTimer : BEQ ..done			;\
+		LDA #!Mar_Kick : BRA .SetAnim			; | kick
+		..done						;/
+
+	; special animation when turning with item
+		.CarryTurn
+		LDA !P2Carry : BEQ ..done			;\
+		LDA !P2TurnTimer : BEQ ..done			; | turn if turn timer is set and item is held
+		JMP .Turn					; |
+		..done						;/
+
+	; ground/air split
+		LDA !P2InAir : BNE .Air				; determine air/ground status
+
+	; ground only animations
+		.Ground
+		LDA !P2FireTimer : BEQ ..nofire			;\
+		LDA #!Mar_Fire : BRA .SetAnim2			; | fire pose
+		..nofire					;/
+		LDA !P2XSpeed					;\
+		ORA !P2VectorX					; | check for horizonal movement
+		BNE .Move					;/
+
+	; standing still on ground
+		.Stand
+		LDA $15						;\
+		AND #$08 : BEQ ..idle				; | look up frame when up is held
+		..lookup					; |
+		LDA #!Mar_LookUp : BRA .SetAnim2		;/
+		..idle						;\ otherwise use idle frame when X speed is 0
+		LDA #$00					;/
+
+	; branch assist 2
+		.SetAnim2
+		STA !P2Anim
+		STZ !P2AnimTimer
+		.GoToDraw2
+		JMP .CheckPlayer
+
+	; moving on ground
+		.Move
+		STA $00						;\
+		LDA $15						; |
+		AND #$03 : BEQ ..noturn				; | turn frame when holding against Xspeed direction
+		DEC A						; |
+		ROR #2						; |
+		EOR $00 : BMI .Turn				;/
+		..noturn
+		LDA !P2Dashing					;\ determine walk/run animation
+		CMP #$70 : BEQ .Run				;/
+
+		.Walk
+		LDA !P2Anim					;\
+		CMP #!Mar_Walk : BCC ..set			; |
+		CMP #!Mar_Walk_over : BCC .GoToDraw2		; | walk animation
+		..set						; |
+		LDA #!Mar_Walk : BRA .SetAnim2			;/
+
+		.Run
+		LDA !P2Anim					;\
+		CMP #!Mar_Run : BCC ..set			; |
+		CMP #!Mar_Run_over : BCC .GoToDraw2		; | run animation
+		..set						; |
+		LDA #!Mar_Run : BRA .SetAnim2			;/
+
+		.Turn
+		JSL CORE_SMOKE_AT_FEET
+		LDA #!Mar_Turn : STA !P2Anim			; turn frame
+		LDA !P2Carry : BEQ .GoToDraw2			;\
+		DEC A : TAX					; | udpate carried item coordinate
+		LDA !P2XPosLo : STA !SpriteXLo,x		; |
+		LDA !P2XPosHi : STA !SpriteXHi,x		;/
+		JMP .CheckPlayer
+
+	; air only animations
+		.Air
+		LDA !P2SlantPipe : BEQ ..noslant
+		LDA #$70 : STA !P2Dashing
+		LDA.b #!Mar_LongJump : BRA .SetAnim3
+		..noslant
+		LDA !P2Blocked					;\
+		BIT #$04 : BNE ..nowallkick			; |
+		AND $15						; | eligible for wall kick -> turn pose
+		AND #$03 : BEQ ..nowallkick			; |
+		LDA #!Mar_WallKick : BRA .SetAnim3		; |
+		..nowallkick					;/
+		LDA !P2FireTimer : BNE .FastSwim_set		; midair throw fire pose
+		BIT !P2Water : BVC .NoWater
+		LDA !P2Carry : BNE .FastSwim
+		LDA !P2FastSwim : BNE .SlowSwim
+
+		.FastSwim
+		LDA !P2XSpeed
+		BPL $03 : EOR #$FF : INC A
+		LSR #4
+		DEC A
+		BPL $02 : LDA #$00
+		CLC : ADC !P2AnimTimer
+		CMP #$07
+		BCC $02 : LDA #$07
+		STA !P2AnimTimer
+		LDA !P2Anim
+		LDX !P2Carry : BNE ..fast			; force fast swim when holding an item
+		CMP #!Mar_SwimSlow+1 : BCC ..fast		;\ let the swim stroke finish
+		CMP #!Mar_SwimSlow_over : BCC .CheckPlayer	;/
+		..fast
+		CMP #!Mar_SwimFast : BCC ..set
+		CMP #!Mar_SwimFast_over : BCC .CheckPlayer
+		..set
+		LDA #!Mar_SwimFast : BRA .SetAnim3
+
+		.SlowSwim
+		LDA !P2Anim
+		CMP #!Mar_SwimSlow : BCC ..set
+		CMP #!Mar_SwimSlow_over : BCC .CheckPlayer
+		..set
+		LDA #!Mar_SwimSlow
+
+	; branch assist 3
+		.SetAnim3
+		STA !P2Anim
+		STZ !P2AnimTimer
+		BRA .CheckPlayer
+
+		.NoWater
+
+	; spin jump
+		.SpinJump
+		LDA !P2SpinJump : BEQ ..done
+		LDA !P2Anim
+		CMP #!Mar_Spin : BCC ..set
+		CMP #!Mar_Spin_over : BCC .CheckPlayer
+		..set
+		LDA #!Mar_Spin : BRA .SetAnim3
+		..done
+
+	; jumps
+		.Jump
+		LDA !P2Carry : BNE ..carry			; > carry jump check
+		LDA !P2Anim					;\ long jump frame has priority
+		CMP #!Mar_LongJump : BEQ .CheckPlayer		;/
+		LDA #!Mar_Jump					;\
+		BIT !P2YSpeed : BMI $01 : INC A			; | determine rising/falling frame
+		BRA .SetAnim3					;/
+		..carry						;\ lock to third frame of walk animation if holding item
+		LDA #!Mar_Walk+2 : BRA .SetAnim3		;/
+>>>>>>> Stashed changes
 
 		..override
 		RTL
 
+<<<<<<< Updated upstream
 
 		.ExtraCollision
 		STZ $73E1					; overwritten code
@@ -994,6 +2083,89 @@ namespace Mario
 	..M2	LDA $16
 		BRA -
 
+=======
+	; unpack
+	.CheckPlayer
+		LDA !MultiPlayer : BEQ ..thisone	; animate at 60fps on single player
+		LDA $14
+		AND #$01
+		CMP !CurrentPlayer : BEQ ..thisone
+		..otherone
+		REP #$30
+		LDA !P2Anim2
+		AND #$00FF
+		ASL #3 : TAY
+		LDA ANIM+$00,y : STA $0E
+		SEP #$30
+		JMP GRAPHICS
+		..thisone
+		REP #$30
+		LDA !P2Anim
+		AND #$00FF
+		ASL #3 : TAY
+
+
+	.ReplaceAnim
+		REP #$30
+		TYA						;\ $02 = current working anim index
+		LSR #3 : STA $02				;/
+		LDA ANIM+$00,y : STA $0E
+		LDA ANIM+$04,y : STA $04			;\ get source address (within file)
+		AND #$0FFC : ASL #3				;/
+		SEP #$10
+		LDY !P2Carry : BEQ .NoCarryAddress		; no carry offset if not carrying
+		LDY $02						;\ these always use the normal address, even when carrying an object
+		LDX CARRY_ADDRESS,y : BMI .NoCarryAddress	;/
+		LDX CARRY_POSE,y				;\
+		CPX #$FF : BEQ .CarryAddress			; |
+		REP #$10					; |
+		STX $02						; | carry pose replacement
+		TXA						; |
+		ASL #3 : TAY					; |
+		BRA .ReplaceAnim				;/
+		.CarryAddress					;\
+		CLC : ADC #$0800				; | carrying offset
+		.NoCarryAddress					;/
+
+		STA $02						; $02 = address
+		LDY.b #!File_Mario : JSL GetFileAddress		; get address of file
+
+
+
+		LDY #$00					; Y = big format
+		LDA !P2ShrinkTimer				;\ shrink anim check
+		AND #$0012 : BNE .BigAddress			;/
+		LDX !P2HP					;\ always use big address if mario has more than a full heart
+		CPX #$05 : BCS .BigAddress			;/
+		.SmallAddress					;\
+		LDA $02 : STA $00				; |
+		AND #$01E0					; |
+		STA $02						; > x tile
+		LDA $00						; |
+		AND #$7E00					; | recalculate address for small mario
+		LSR #2						; | (keep x tile offset, multiply y tile offset by 0.75, add starting offset)
+		STA $00						; |
+		ASL A						; |
+		ADC $00						; |
+		ORA $02						; |
+		ADC #$4800					; > starting offset of small mario
+		DEY						; > Y = small format
+		STA $02						; > store offset within file
+		.BigAddress					;/
+
+
+		LDA $04+1 : JSL CORE_GENERATE_RAMCODE_16bit	; compile RAM code
+
+
+		LDA !P2Anim : STA !P2Anim2
+
+
+	GRAPHICS:
+		SEP #$30
+		JSL CORE_FLASHPAL
+		LDA !P2Status : BNE .DrawTiles
+		LDA !P2HurtTimer : BNE .DrawTiles
+>>>>>>> Stashed changes
 
 ; returning with carry clear will pause
 ; returning with carry set will not pause
@@ -1415,6 +2587,7 @@ MarioAnimations:
 
 		; fire flash code
 		SEP #$30
+<<<<<<< Updated upstream
 		LDY #$00
 		LDA !MarioFireCharge							;\ fire palette if mario has palette charge
 		BEQ $02 : LDY.b #!palset_mario_fire					;/
@@ -1432,6 +2605,19 @@ MarioAnimations:
 		LDA #$01 : STA !P2LockPalset
 		CPX #$00
 		BEQ $02 : LDX #$20
+=======
+		INC !P2FireFlash
+		LDY !P2FireCharge : BEQ ..noglow	; Y = number of fire charges
+		LDA !P2FlashPal
+		AND #$1F : BEQ ..glow
+		STA !P2FireFlash
+		BRA ..noglow
+		; glow: write to colors 2, 3, 8 and A
+		..glow
+		LDA !CurrentPlayer
+		BEQ $02 : LDA #$20
+		TAX
+>>>>>>> Stashed changes
 		REP #$20
 		LDA #$7FFF
 		STA.l !PaletteHSL+$904+$100,x
@@ -1488,20 +2674,44 @@ MarioAnimations:
 		BEQ $02 : LDA #$10
 		CLC : ADC #$82
 		TAX
+<<<<<<< Updated upstream
 		LDY #$02
 		LDA $14
+=======
+		LDA !P2FireFlash
+		CPY #$02 : BCC ..singlecharge
+		..doublecharge
+		ASL A
+		AND #$3F
+		CMP #$10 : BCC +
+		CMP #$30 : BCC ..singlecharge
+		CLC
+	+	ADC #$20
+		..singlecharge
+>>>>>>> Stashed changes
 		AND #$3F
 		SEC : SBC #$20
 		BPL $03 : EOR #$FF : INC A
 		PHA
 		PHX
+<<<<<<< Updated upstream
 		JSL !MixRGB_Upload
 		PLX
+=======
+		LDY #$02
+		JSL MixRGB_Upload
+		PLA
+		CLC : ADC #$06
+		TAX
+>>>>>>> Stashed changes
 		LDA $01,s
-		INX #6
-		LDY #$01
 		PHX
+<<<<<<< Updated upstream
 		JSL !MixRGB_Upload
+=======
+		LDY #$01
+		JSL MixRGB_Upload
+>>>>>>> Stashed changes
 		PLX
 		PLA
 		INX #2
@@ -1767,6 +2977,7 @@ MarioHurtbox:	PHA
 macro CommentOut()
 
 
+<<<<<<< Updated upstream
 ;=====================;
 ; TRANSCRIBED $00C47E ;
 ;=====================;
@@ -1945,10 +3156,60 @@ MarioMain:
 		ADC !MarioXPos,x
 		STA !MarioXPos,x
 		SEP #$20
+=======
+	ThrowFireball:
+		%Ex_Index_X_fast()
+
+		.YOffset
+		STZ $00
+		LDA !P2HP
+		CMP #$05 : BCC ..done
+		LDA #$08 : STA $00
+		..done
+
+		.Direction
+		LDA $15
+		AND #$03 : BNE ..index
+		..dir
+		LDA !P2Direction
+		EOR #$01
+		INC A
+		..index
+		TAY
+
+		.SpawnFireball
+		LDA !P2XPosLo
+		CLC : ADC DATA_FireX-1,y
+		STA !Ex_XLo,x
+		LDA !P2XPosHi
+		ADC #$00
+		STA !Ex_XHi,x
+		LDA !P2YPosLo
+		SEC : SBC $00
+		STA !Ex_YLo,x
+		LDA !P2YPosHi
+		SBC #$00
+		STA !Ex_YHi,x
+		LDA #!MarFireball_Num : STA !Ex_Num,x
+		LDA DATA_FireSpeed-1,y : STA !Ex_XSpeed,x
+		LDA #$36 : STA !SPC4				; fire sfx
+		LDA !P2MarioFinale : BNE ..tacticalfire		; finale = tactical X speed
+		LDA !MarioUpgrades				;\
+		AND $15						; | tactical fire upgrade check
+		AND #$08 : BEQ ..normalfire			;/
+		..tacticalfire					;\
+		LDA !Ex_XSpeed,x				; | tactical fire clause
+		CMP #$80 : ROR !Ex_XSpeed,x			; |
+		LDA #$C0					;/
+		..normalfire					;\ set fire y speed
+		STA !Ex_YSpeed,x				;/
+		JSL RegisterProjectile
+>>>>>>> Stashed changes
 		RTS
 
 
 
+<<<<<<< Updated upstream
 ;
 ; OTHER ANIMS
 ;
@@ -1998,8 +3259,638 @@ MarioMain:
 
 endmacro
 
+=======
+;=====================;
+;	D A T A       ;
+;=====================;
 
 
+
+	; Anim format:
+	; dw $TTTT : db $tt,$NN
+	; dw $DDDD
+	; dw $CCCC
+	; TTTT is tilemap pointer.
+	; tt is frame count.
+	; NN is next anim.
+	; DDDD is dynamo pointer.
+	; CCCC is clipping pointer.
+
+
+	; 0x00 if the pose has a carry variant, 0xFF if it doesn't
+	CARRY_ADDRESS:
+	db $00					; idle
+	db $00,$00,$00				; walk
+	db $00,$00,$00				; run
+	db $00					; lookup
+	db $00					; crouch
+	db $00,$00				; jump
+	db $FF					; slide
+	db $FF					; face back
+	db $FF					; face front
+	db $FF					; kick
+	db $00					; long jump
+	db $00					; turn
+	db $FF					; victory
+	db $FF,$FF,$FF,$FF			; swim slow
+	db $FF,$FF,$FF				; swim fast
+	db $FF,$FF				; climb
+	db $FF,$FF,$FF				; hammer / throw
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF		; cutscene frames
+	db $FF					; balloon
+	db $FF,$FF,$FF,$FF			; spin
+	db $FF					; fire
+	db $FF					; hang
+	db $FF					; rollout start
+	db $FF,$FF,$FF,$FF			; rollout
+	db $FF					; wall kick
+	db $FF					; flame star
+	db $FF,$FF				; hurt
+	db $FF,$FF				; shrink
+	db $FF					; dead
+
+	; which pose to replace the pose (index) with if mario is carrying something, 0xFF if there is no replacement
+	CARRY_POSE:
+	db $FF					; idle
+	db $FF,$FF,$FF				; walk
+	db !Mar_Walk+0,!Mar_Walk+1,!Mar_Walk+2	; run
+	db $FF					; lookup
+	db $FF					; crouch
+	db !Mar_Walk+2,!Mar_Walk+1		; jump
+	db $FF					; slide
+	db $FF					; face back
+	db $FF					; face front
+	db $FF					; kick
+	db !Mar_Walk+2				; long jump
+	db $FF					; turn
+	db $FF					; victory
+	db $FF,$FF,$FF,$FF			; swim slow
+	db $FF,$FF,$FF				; swim fast
+	db $FF,$FF				; climb
+	db $FF,$FF,$FF				; hammer / throw
+	db $FF,$FF,$FF,$FF,$FF,$FF,$FF		; cutscene frames
+	db $FF					; balloon
+	db $FF,$FF,$FF,$FF			; spin
+	db $FF					; fire
+	db $FF					; hang
+	db $FF					; rollout start
+	db $FF,$FF,$FF,$FF			; rollout
+	db $FF					; wall kick
+	db $FF					; flame star
+	db $FF,$FF				; hurt
+	db $FF,$FF				; shrink
+	db $FF					; dead
+
+
+
+
+	ANIM:
+	.Idle0
+	dw .16x32TM : db $00,!Mar_Idle
+	%Dyn16Bit(2, $000)
+	dw .ClippingStandard
+
+	.Walk
+	dw .16x32TM : db $06,!Mar_Walk+1
+	%Dyn16Bit(2, $000)
+	dw .ClippingStandard
+	dw .16x32TM : db $06,!Mar_Walk+2
+	%Dyn16Bit(2, $002)
+	dw .ClippingStandard
+	dw .16x32TM : db $06,!Mar_Walk
+	%Dyn16Bit(2, $004)
+	dw .ClippingStandard
+
+	.Run
+	dw .24x32TM : db $02,!Mar_Run+1
+	%Dyn16Bit(3, $080)
+	dw .ClippingStandard
+	dw .24x32TM : db $02,!Mar_Run+2
+	%Dyn16Bit(3, $083)
+	dw .ClippingStandard
+	dw .24x32TM : db $02,!Mar_Run
+	%Dyn16Bit(3, $086)
+	dw .ClippingStandard
+
+	.LookUp
+	dw .16x32TM : db $FF,!Mar_LookUp
+	%Dyn16Bit(2, $006)
+	dw .ClippingStandard
+
+	.Crouch
+	dw .16x32TM : db $FF,!Mar_Crouch
+	%Dyn16Bit(2, $008)
+	dw .ClippingCrouch
+
+	.Jump
+	dw .16x32TM : db $FF,!Mar_Jump
+	%Dyn16Bit(2, $00A)
+	dw .ClippingStandard
+	dw .16x32TM : db $FF,!Mar_Jump+1
+	%Dyn16Bit(2, $00C)
+	dw .ClippingStandard
+
+	.Slide
+	dw .16x32TM : db $FF,!Mar_Slide
+	%Dyn16Bit(2, $00E)
+	dw .ClippingCrouch
+
+	.FaceBack
+	dw .16x32TM : db $FF,!Mar_FaceBack
+	%Dyn16Bit(2, $08E)
+	dw .ClippingStandard
+
+	.FaceFront
+	dw .16x32TM : db $FF,!Mar_FaceFront
+	%Dyn16Bit(2, $08C)
+	dw .ClippingStandard
+
+	.Kick
+	dw .16x32TM : db $08,!Mar_Idle
+	%Dyn16Bit(2, $04E)
+	dw .ClippingStandard
+
+	.LongJump
+	dw .24x32TM : db $FF,!Mar_LongJump
+	%Dyn16Bit(3, $089)
+	dw .ClippingStandard
+
+	.Turn
+	dw .16x32TM : db $FF,!Mar_Turn
+	%Dyn16Bit(2, $04C)
+	dw .ClippingStandard
+
+	.Victory
+	dw .16x32TM : db $FF,!Mar_Victory
+	%Dyn16Bit(2, $04A)
+	dw .ClippingStandard
+
+	.SwimSlow
+	dw .24x32TM : db $FF,!Mar_SwimSlow
+	%Dyn16Bit(3, $0C0)
+	dw .ClippingStandard
+	dw .24x32TM : db $08,!Mar_SwimSlow+2
+	%Dyn16Bit(3, $0C0)
+	dw .ClippingStandard
+	dw .24x32TM : db $08,!Mar_SwimSlow+3
+	%Dyn16Bit(3, $0C3)
+	dw .ClippingStandard
+	dw .24x32TM : db $08,!Mar_SwimSlow+0
+	%Dyn16Bit(3, $0C6)
+	dw .ClippingStandard
+
+	.SwimFast
+	dw .24x32TM : db $08,!Mar_SwimFast+1
+	%Dyn16Bit(3, $100)
+	dw .ClippingStandard
+	dw .24x32TM : db $08,!Mar_SwimFast+2
+	%Dyn16Bit(3, $103)
+	dw .ClippingStandard
+	dw .24x32TM : db $08,!Mar_SwimFast
+	%Dyn16Bit(3, $106)
+	dw .ClippingStandard
+
+	.Climb
+	dw .16x32TM : db $08,!Mar_Climb+1
+	%Dyn16Bit(2, $10B)
+	dw .ClippingStandard
+	dw .16x32TMX : db $08,!Mar_Climb
+	%Dyn16Bit(2, $10B)
+	dw .ClippingStandard
+
+	.Hammer
+	dw .16x32TM : db $06,!Mar_Hammer+1
+	%Dyn16Bit(2, $140)
+	dw .ClippingStandard
+	dw .16x32TM : db $06,!Mar_Hammer+2
+	%Dyn16Bit(2, $142)
+	dw .ClippingStandard
+	dw .16x32TM : db $0C,!Mar_Idle
+	%Dyn16Bit(2, $144)
+	dw .ClippingStandard
+
+	.Cutscene
+	dw .16x32TM : db $FF,!Mar_Cutscene
+	%Dyn16Bit(2, $146)
+	dw .ClippingStandard
+	dw .16x32TM : db $FF,!Mar_Cutscene+1
+	%Dyn16Bit(2, $148)
+	dw .ClippingStandard
+	dw .16x32TM : db $FF,!Mar_Cutscene+2
+	%Dyn16Bit(2, $14A)
+	dw .ClippingStandard
+	dw .16x32TM : db $FF,!Mar_Cutscene+3
+	%Dyn16Bit(2, $14C)
+	dw .ClippingStandard
+	dw .16x32TM : db $FF,!Mar_Cutscene+4
+	%Dyn16Bit(2, $14E)
+	dw .ClippingStandard
+	dw .16x32TM : db $FF,!Mar_Cutscene+5
+	%Dyn16Bit(2, $180)
+	dw .ClippingStandard
+	dw .16x32TM : db $FF,!Mar_Cutscene+6
+	%Dyn16Bit(2, $182)
+	dw .ClippingStandard
+
+	.Balloon
+	dw .32x32TM : db $FF,!Mar_Balloon
+	%Dyn16Bit(4, $184)
+	dw .ClippingStandard
+
+	.Spin
+	dw .16x32TM : db $02,!Mar_Spin+1
+	%Dyn16Bit(2, $000)
+	dw .ClippingStandard
+	dw .16x32TM : db $02,!Mar_Spin+2
+	%Dyn16Bit(4, $08C)
+	dw .ClippingStandard
+	dw .16x32TMX : db $02,!Mar_Spin+3
+	%Dyn16Bit(2, $000)
+	dw .ClippingStandard
+	dw .16x32TM : db $02,!Mar_Spin
+	%Dyn16Bit(4, $08E)
+	dw .ClippingStandard
+
+	.Fire
+	dw .16x32TM : db $FF,!Mar_Fire
+	%Dyn16Bit(2, $1C0)
+	dw .ClippingStandard
+
+	.Hang
+	dw .16x32TM : db $FF,!Mar_Hang
+	%Dyn16Bit(2, $1C2)
+	dw .ClippingStandard
+
+
+	.RolloutStart
+	dw .24x32TM : db $FF,!Mar_RolloutStart
+	%Dyn16Bit(3, $1CD)
+	dw .ClippingStandard
+
+	.Rollout1
+	dw .RolloutTM : db $02,!Mar_Rollout+1
+	%Dyn16Bit(3, $1C7)
+	dw .ClippingCrouch
+	.Rollout2
+	dw .RolloutTM : db $02,!Mar_Rollout+2
+	%Dyn16Bit(3, $1CA)
+	dw .ClippingCrouch
+	.Rollout3
+	dw .RolloutTM_flip : db $02,!Mar_Rollout+3
+	%Dyn16Bit(3, $1C7)
+	dw .ClippingCrouch
+	.Rollout4
+	dw .RolloutTM_flip : db $02,!Mar_Rollout+0
+	%Dyn16Bit(3, $1CA)
+	dw .ClippingCrouch
+
+	.WallKick
+	dw .16x32TMX : db $FF,!Mar_WallKick
+	%Dyn16Bit(2, $04C)
+	dw .ClippingStandard
+
+	.FlameStar
+	dw .16x32TM : db $FF,!Mar_FlameStar
+	%Dyn16Bit(2, $0CE)
+	dw .ClippingStandard
+
+	.Hurt
+	dw .16x32TM : db $04,!Mar_Hurt+1
+	%Dyn16Bit(2, $1C4)
+	dw .ClippingCrouch
+	dw .24x32TM : db $0F,!Mar_Idle
+	%Dyn16Bit(3, $188)
+	dw .ClippingCrouch
+
+	.Shrink
+	dw .16x32TM : db $04,!Mar_Shrink+1
+	%Dyn16Bit(2, $18B)
+	dw .ClippingCrouch
+	dw .16x32TM : db $04,!Mar_Shrink+0
+	%Dyn16Bit(2, $000)
+	dw .ClippingCrouch
+
+	.Dead
+	dw .16x32TM : db $FF,!Mar_Dead
+	%Dyn16Bit(2, $18E)
+	dw .ClippingStandard
+
+
+
+	.RolloutTM
+	dw $0010			; big mario
+	db $20,$FC,$F0,!P1Tile1
+	db $20,$04,$F0,!P1Tile1+1
+	db $20,$FC,$00,!P1Tile5
+	db $20,$04,$00,!P1Tile5+1
+	dw $0010			; small mario
+	db $20,$FC,$F8,!P1Tile1
+	db $20,$04,$F8,!P1Tile1+1
+	db $20,$FC,$00,!P1Tile1+$10
+	db $20,$04,$00,!P1Tile1+$11
+	..flip
+	dw $0010			; big mario
+	db $E0,$04,$08,!P1Tile1
+	db $E0,$FC,$08,!P1Tile1+1
+	db $E0,$04,$F8,!P1Tile5
+	db $E0,$FC,$F8,!P1Tile5+1
+	dw $0010			; small mario
+	db $E0,$04,$04,!P1Tile1
+	db $E0,$FC,$04,!P1Tile1+1
+	db $E0,$04,$FC,!P1Tile1+$10
+	db $E0,$FC,$FC,!P1Tile1+$11
+
+
+
+	.16x32TM
+	dw $0008			; big mario
+	db $20,$00,$F0,!P1Tile1
+	db $20,$00,$00,!P1Tile5
+	dw $0008			; small mario
+	db $20,$00,$F8,!P1Tile1
+	db $20,$00,$00,!P1Tile1+$10
+	.16x32TMX
+	dw $0008			; big mario
+	db $60,$00,$F0,!P1Tile1
+	db $60,$00,$00,!P1Tile5
+	dw $0008			; small mario
+	db $60,$00,$F8,!P1Tile1
+	db $60,$00,$00,!P1Tile1+$10
+
+
+	.24x32TM
+	dw $0010			; big mario
+	db $20,$00,$F0,!P1Tile1
+	db $20,$08,$F0,!P1Tile1+1
+	db $20,$00,$00,!P1Tile5
+	db $20,$08,$00,!P1Tile5+1
+	dw $0010			; small mario
+	db $20,$00,$F8,!P1Tile1
+	db $20,$08,$F8,!P1Tile1+1
+	db $20,$00,$00,!P1Tile1+$10
+	db $20,$08,$00,!P1Tile1+$11
+
+
+	.32x32TM
+	dw $0010			; big mario
+	db $20,$F8,$F0,!P1Tile1
+	db $20,$08,$F0,!P1Tile2
+	db $20,$F8,$00,!P1Tile5
+	db $20,$08,$00,!P1Tile6
+	dw $0010			; small mario
+	db $20,$F8,$F8,!P1Tile1
+	db $20,$08,$F8,!P1Tile2
+	db $20,$F8,$00,!P1Tile1+$10
+	db $20,$08,$00,!P1Tile2+$10
+
+
+	.TinyFlameDynamo
+	db ..end-..start
+	..start
+	%Dyn24Bit(3, $026, !P1Tile3)
+	%Dyn24Bit(3, $036, !P1Tile3+$10)
+	..end
+
+
+
+	.ClippingStandard
+	; X
+	db $0E,$01,$0E,$01		; R/L/R/L
+	db $04,$0B,$08,$08		; D/D/U/C
+	; Y
+	db $FF,$FF,$0A,$0A		; R/L/R/L
+	db $10,$10,$F8,$02		; D/D/U/C
+	; hurtbox
+	dw $0002,$FFF6			; X/Y
+	db $0C,$1A			; W/H
+
+
+	.ClippingCrouch
+	; X
+	db $0E,$01,$0E,$01		; R/L/R/L
+	db $04,$0B,$08,$08		; D/D/U/C
+	; Y
+	db $06,$06,$0A,$0A		; R/L/R/L
+	db $10,$10,$00,$08		; D/D/U/C
+	; hurtbox
+	dw $0001,$0004			; X/Y
+	db $0C,$0C			; W/H
+
+
+
+.End
+print "  Anim data: $", hex(.End-ANIM), " bytes"
+
+
+; vanilla collision parameters:
+;	x + 2
+;	w = 0x0C
+;	small
+;	y + 0x14
+;	h = 0x0C
+;	big
+;	y + 0x06
+;	h = 0x1A
+
+
+
+	DATA:
+	; all values have 3 added to them compared to all.log
+	; this is to maintain the same jump height despite gravity being applied earlier
+	.JumpHeight
+	..normal
+	db $B3,$B1,$AE,$AC,$A9,$A7,$A4,$A2
+	..spin
+	db $B9,$B7,$B5,$B3,$B1,$AE,$AC,$A9
+>>>>>>> Stashed changes
+
+	.WallKickSpeed
+	db $00,$20,$E0,$00
+
+	.FlameDashSpeed
+	db $00,$40,$C0,$00
+	db $00,$50,$B0,$00		; with boost
+
+	.FlameDashHitbox
+	dw $0000,$FFF2 : db $14,$1E	; X/Y + W/H
+	db $40,$E8			; speeds
+	db $12				; timer
+	db $05				; hitstun
+	db $00,$38			; SFX
+	db $00
+
+	.SlideHitbox
+	dw $0008,$0008 : db $08,$0C	; X/Y + W/H
+	db $10,$C8			; speeds
+	db $20				; timer
+	db $04				; hitstun
+	db $02,$00			; SFX
+
+
+
+
+	.FireX
+	db $08,$00
+	.FireSpeed
+	db $30,$D0
+
+
+	; indexed by slope*2
+	.RestingSpeed
+	dw $E000	; supersteep left
+	dw $F000	; steep slope left
+	dw $0000	; normal slope left
+	dw $0000	; gradual slope left
+	dw $0000	; flat ground
+	dw $0000	; gradual slope right
+	dw $0000	; normal slope right
+	dw $1000	; steep slope right
+	dw $2000	; supersteep right
+
+	; indexed by slope*2
+	.SlidingSpeed
+	dw $C000	; supersteep left
+	dw $D000	; steep slope left
+	dw $D400	; normal slope left
+	dw $D800	; gradual slope left
+	dw $0000	; flat ground
+	dw $2800	; gradual slope right
+	dw $2C00	; normal slope right
+	dw $3000	; steep slope right
+	dw $4000	; supersteep right
+
+	; accel left, accel right
+	.Friction
+	dw $0400,$0100		; supersteep left
+	dw $0200,$0040		; steep slope left
+	dw $0180,$00C0		; normal slope left
+	dw $0100,$0100		; gradual slope left
+	dw $0100,$0100		; flat ground
+	dw $0100,$0100		; gradual slope right
+	dw $00C0,$0180		; normal slope right
+	dw $0040,$0200		; steep slope right
+	dw $0100,$0400		; supersteep right
+	..ice
+	dw $0200,$0080		; supersteep left
+	dw $0080,$0020		; steep slope left
+	dw $0040,$0020		; normal slope left
+	dw $0020,$0020		; gradual slope left
+	dw $0020,$0020		; flat ground
+	dw $0020,$0020		; gradual slope right
+	dw $0020,$0040		; normal slope right
+	dw $0020,$0080		; steep slope right
+	dw $0080,$0200		; supersteep right
+
+	; walking left, running left, walking right, running right
+	.XAccel
+	dw $0400,$0400,$0300,$0300	; supersteep left
+	dw $0180,$0180,$0100,$0100	; steep slope left
+	dw $0180,$0180,$0140,$0140	; normal slope left
+	dw $0180,$0180,$0180,$0180	; gradual slope left
+	dw $0180,$0180,$0180,$0180	; flat ground
+	dw $0180,$0180,$0180,$0180	; gradual slope right
+	dw $0140,$0140,$0180,$0180	; normal slope right
+	dw $0100,$0100,$0180,$0180	; steep slope right
+	dw $0300,$0300,$0400,$0400	; supersteep right
+	..turning
+	dw $0300,$0600,$0300,$0600	; supersteep left, turning
+	dw $0300,$0600,$0200,$0400	; steep slope left, turning
+	dw $02C0,$0580,$0240,$0480	; normal slope left, turning
+	dw $0280,$0500,$0280,$0500	; gradual slope left, turning
+	dw $0280,$0500,$0280,$0500	; flat ground, turning
+	dw $0280,$0500,$0280,$0500	; gradual slope right, turning
+	dw $0240,$0480,$02C0,$0580	; normal slope right, turning
+	dw $0200,$0400,$0300,$0600	; steep slope right, turning
+	dw $0300,$0600,$0300,$0600	; supersteep right, turning
+
+	..ice
+	dw $0400,$0400,$0200,$0300	; supersteep left
+	dw $0180,$0180,$0080,$0100	; steep slope left
+	dw $0180,$0180,$0080,$0140	; normal slope left
+	dw $0080,$0180,$0080,$0180	; gradual slope left
+	dw $0080,$0180,$0080,$0180	; flat ground
+	dw $0080,$0180,$0080,$0180	; gradual slope right
+	dw $0080,$0140,$0180,$0180	; normal slope right
+	dw $0080,$0100,$0180,$0180	; steep slope right
+	dw $0200,$0300,$0400,$0400	; supersteep right
+	..iceturning
+	dw $0300,$0300,$0300,$0300	; supersteep left, turning
+	dw $0300,$0300,$0040,$0200	; steep slope left, turning
+	dw $0080,$02C0,$0040,$0240	; normal slope left, turning
+	dw $0040,$0280,$0040,$0280	; gradual slope left, turning
+	dw $0040,$0280,$0040,$0280	; flat ground, turning
+	dw $0040,$0280,$0040,$0280	; gradual slope right, turning
+	dw $0040,$0240,$0080,$02C0	; normal slope right, turning
+	dw $0040,$0200,$0300,$0300	; steep slope right, turning
+	dw $0300,$0300,$0300,$0300	; supersteep right, turning
+
+
+
+
+; order is:
+;	+00: walking left
+;	+01: walking right
+;	+02: running left (holding Y)
+;	+03: running right (holding Y)
+;	+04: P-speed left
+;	+05: P-speed right
+	.MaxXSpeed
+	db $DC,$F0,$DC,$F8,$D0,$FC	; supersteep left
+	db $DC,$10,$DC,$1C,$D0,$28	; steep slope left
+	db $E8,$12,$DC,$20,$D0,$2C	; normal slope left
+	db $EC,$14,$DC,$24,$D0,$30	; gradual slope left
+	db $EC,$14,$DC,$24,$D0,$30	; flat ground
+	db $EC,$14,$DC,$24,$D0,$30	; gradual slope right
+	db $EE,$18,$E0,$24,$D4,$30	; normal slope right
+	db $F0,$24,$E4,$24,$D8,$30	; steep slope right
+	db $10,$24,$08,$24,$04,$30	; supersteep right
+
+
+; vanilla documentation
+
+; D2CD: friction
+;	indexed by (slope index / 2)
+;	each slope type has 4 bytes (2 * 16-bit speed values)
+;	first value is when moving too fast right, second value is when moving too fast left
+
+; D309: friction on ice
+;	same format as normal friction
+
+; D345: X accel
+;	indexed by (turning * 90) + (dir * 4) + (run button * 2) + slope index
+;	each slope type has 8 bytes (4 * 16-bit speed values)
+;	+00: walking left
+;	+02: running left (holding Y)
+;	+04: walking right
+;	+06: running right (holding Y)
+
+; D43D: X accel on ice
+;	same format as normal accel
+
+; D535: max X speed
+;	indexed by dir + (run status index * 2) + slope index
+;	run status index
+;		0 if walking
+;		1 if running
+;		2 if running faster than 0x23
+;		3 if P-speed (!P2Dashing = 0x70)
+;	each slope type has 8 bytes (8 * 8-bit speed values)
+;	+00: walking left
+;	+01: walking right
+;	+02: running left (holding Y)
+;	+03: running right (holding Y)
+;	+04: running left 2 (holding Y + moving faster than 0xDD)
+;	+05: running right 2 (holding Y + faster than 0x23)
+;	+06: P-speed left
+;	+07: P-speed right
+
+; D5BD: slope slide max speed
+;	indexed by (slope index / 8)
+;	holds 8-bit values
+
+; D5C9: slope speed cap
+;	indexed by (slope index / 4) + (dir * 2)
+;	holds 16-bit values
 
 
 

@@ -88,6 +88,7 @@
 ;
 
 	ParticleMain:
+<<<<<<< Updated upstream
 		PHP
 		REP #$30
 		LDX #$0000
@@ -115,6 +116,227 @@
 
 
 incsrc "Particles/BasicParticle.asm"
+=======
+		PHB							;\
+		PHP							; |
+		SEP #$20						; | push B/P, set bank to 0x41, regs 16-bit
+		LDA #$41						; |
+		PHA : PLB						; |
+		REP #$30						;/
+
+
+; DEBUG: display current number of particles
+;		LDY #$0000
+;	-	LDA !Particle_Type,x
+;		AND #$00FF : BEQ +
+;		INY
+;	+	TXA
+;		CLC : ADC.w #!Particle_Size
+;		CMP.w #(!Particle_Count*!Particle_Size) : BCS +
+;		TAX
+;		BRA -
+;	+	TYA : STA.l !P1Coins
+
+		LDX #$0000						; starting index
+		LDA !DizzyEffect					;\ turbo paradigm: 1 copy of code with dizzy and 1 copy without it
+		AND #$00FF : BNE .IncludeDizzyEffect			;/
+
+	.NoDizzy
+		..check
+		LDA !Particle_Type,x					;\
+		AND #$007F : BNE ..call					; |
+		..next							; |
+		TXA							; | loop through table and process all particles
+		CLC : ADC.w #!Particle_Size				; |
+		TAX							; |
+		CPX.w #!Particle_Size*!Particle_Count : BCC ..check	;/
+		PLP							;\
+		PLB							; | pull B/P and return
+		RTS							;/
+		..call							;\
+		STX $00							; |
+		ASL A							; |
+		CMP.w #.List_end-.List : BCC ..valid			; |
+		JSR .ClearParticle					; | call particle code
+		BRA ..next						; | (invalid goes to .ClearParticle)
+		..valid							; |
+		TAX							; |
+		JSR (.List-2,x)						; |
+		REP #$20						; |
+		BRA ..next						;/
+
+
+	.IncludeDizzyEffect
+		..check
+		LDA !Particle_Type,x					;\
+		AND #$007F : BNE ..call					; |
+		..next							; |
+		TXA							; | loop through table and process all particles
+		CLC : ADC.w #!Particle_Size				; |
+		TAX							; |
+		CPX.w #!Particle_Size*!Particle_Count : BCC ..check	;/
+		PLP							;\
+		PLB							; | pull B/P and return
+		RTS							;/
+		..call							;\
+		STX $00							; |
+		ASL A							; |
+		CMP.w #.List_end-.List : BCC ..valid			; | loop over all particles
+		JSR .ClearParticle					; | (invalid goes to .ClearParticle)
+		BRA ..next						; |
+		..valid							;/
+		TAY							;\
+		LDA !CameraBackupY : STA $1C				; |
+		LDA !Particle_XLo,x					; |
+		SEC : SBC $1A						; |
+		AND #$00FF						; |
+		LSR #3							; |
+		ASL A							; | apply dizzy offset
+		TAX							; |
+		LDA !DecompBuffer+$1040,x				; |
+		AND #$01FF						; |
+		CMP #$0100						; |
+		BCC $03 : ORA #$FE00					; |
+		STA $1C							; |
+		TYX							;/
+		JSR (.List-2,x)						;\
+		REP #$20						; | call particle code
+		BRA ..next						;/
+
+	.ClearParticle
+		LDX $00
+		STZ !Particle_Base+$00,x
+		STZ !Particle_Base+$02,x
+		STZ !Particle_Base+$04,x
+		STZ !Particle_Base+$06,x
+		STZ !Particle_Base+$08,x
+		STZ !Particle_Base+$0A,x
+		STZ !Particle_Base+$0C,x
+		STZ !Particle_Base+$0E,x
+		STZ !Particle_Base+$0F,x
+		RTS
+
+		.List
+		; super customs
+		dw BasicParticle_BG1		; 01
+		dw BasicParticle_BG2
+		dw BasicParticle_BG3
+		dw BasicParticle_Cam
+		dw RatioParticle_BG1
+		dw RatioParticle_BG2
+		dw RatioParticle_BG3
+		dw RatioParticle_Cam
+		dw AnimAddParticle_BG1
+		dw AnimAddParticle_BG2
+		dw AnimAddParticle_BG3
+		dw AnimAddParticle_Cam
+		dw AnimSubParticle_BG1
+		dw AnimSubParticle_BG2
+		dw AnimSubParticle_BG3
+		dw AnimSubParticle_Cam
+
+		; minor customs
+		dw SpritePart
+		dw FlashParticle
+
+		; hardcoded: vanilla replacements
+		dw SmokeParticle8x8
+		dw SmokeParticle16x16
+		dw ContactParticle
+		dw ContactBigParticle
+		dw CoinGlitterParticle
+		dw SparkleParticle
+		dw SparkleSmallParticle
+		dw Text100Particle
+		dw BrickPieceParticle
+
+	;	dw WaterSplashParticle
+	;	dw LavaSplashParticle
+
+		dw LavaParticle
+		dw SplashParticle
+		dw BubbleParticle
+		dw SnoreZParticle
+
+		; hardcoded: new particles
+		dw LeafParticle
+		dw TinyCoin
+
+		dw .ClearParticle		; final index, a particle is set to this when it's erased which makes it clear its data next frame
+
+		..end
+
+
+	; special JSL that only runs mario's flame particles
+	.RunFreeze
+		PHB : PHK : PLB
+		PHP
+		SEP #$20
+		LDA #$41
+		PHA : PLB
+		REP #$30
+		LDX #$0000
+		..check
+		LDA !Particle_Tile,x					;\
+		AND #$0FFF						; |
+		CMP #$0400+!P1Tile7 : BEQ +				; |
+		CMP #$0400+!P1Tile7+$10 : BEQ +				; |
+		CMP #$0400+!P2Tile7 : BEQ +				; | loop through table and process viable particles
+		CMP #$0400+!P2Tile7+$10 : BNE ..next			; |
+	+	LDA !Particle_Type,x					; |
+		AND #$007F						; |
+		CMP.w #!prt_basic : BEQ ..call				;/
+		..next							;\
+		TXA							; |
+		CLC : ADC.w #!Particle_Size				; | get next particle
+		TAX							; |
+		CPX.w #!Particle_Size*!Particle_Count : BCC ..check	;/
+		SEP #$30
+		JSL BuildOAM
+		PLP							;\
+		PLB							; | pull B/P and return
+		RTL							;/
+		..call							;\
+		STX $00							; |
+		ASL A							; |
+		CMP.w #.List_end-.List : BCC ..valid			; |
+		JSR .ClearParticle					; | call particle code
+		BRA ..next						; | (invalid goes to .ClearParticle)
+		..valid							; |
+		TAX							; |
+		JSR (.List-2,x)						; |
+		REP #$20						; |
+		BRA ..next						;/
+
+
+
+
+incsrc "Particles/BasicParticle.asm"
+incsrc "Particles/RatioParticle.asm"
+incsrc "Particles/AnimAddParticle.asm"
+incsrc "Particles/AnimSubParticle.asm"
+incsrc "Particles/SmokeParticle8x8.asm"
+incsrc "Particles/SmokeParticle16x16.asm"
+incsrc "Particles/ContactParticle.asm"
+incsrc "Particles/ContactBigParticle.asm"
+incsrc "Particles/SpritePart.asm"
+incsrc "Particles/CoinGlitterParticle.asm"
+incsrc "Particles/SparkleParticle.asm"
+incsrc "Particles/SparkleSmallParticle.asm"
+incsrc "Particles/LeafParticle.asm"
+incsrc "Particles/TinyCoin.asm"
+incsrc "Particles/FlashParticle.asm"
+incsrc "Particles/Text100Particle.asm"
+incsrc "Particles/BrickPieceParticle.asm"
+
+;incsrc "Particles/WaterSplashParticle.asm"
+;incsrc "Particles/LavaSplashParticle.asm"
+
+incsrc "Particles/LavaParticle.asm"
+incsrc "Particles/SplashParticle.asm"
+incsrc "Particles/BubbleParticle.asm"
+incsrc "Particles/SnoreZParticle.asm"
+>>>>>>> Stashed changes
 
 
 
@@ -479,9 +701,24 @@ incsrc "Particles/BasicParticle.asm"
 		SEC
 		RTS
 
+<<<<<<< Updated upstream
 	.NoSpawn
 		SEP #$20
 		CLC
+=======
+		LDA !Particle_YTemp
+		AND #$01FF
+		CMP #$00E0 : BCC .YDone
+		CMP #$0180 : BCS .Up
+		.Down
+		LDA !Particle_YSpeed,x : BPL .Despawn
+		.Up
+		CMP #$01F0 : BCS .YDone
+		LDA !Particle_YSpeed,x : BPL .YDone
+		.Despawn
+		LDA.w #(ParticleMain_List_end-ParticleMain_List)/2 : STA !Particle_Type,x
+		.YDone
+>>>>>>> Stashed changes
 		RTS
 
 

@@ -204,7 +204,7 @@
 98	0002	-8,0,082 0,0,03E 0,-16,*Pitchin'\nChuck*
 99	0002	-8,0,083 8,0,084
 9A	0002	0,-8,085 16,-8,086 8,16,028
-9B	0002	-16,-16,087
+9B	0002	-16,0,087
 9C	0002	-8,0,088 8,0,088 -24,-4,008 24,-4,009
 9D	0002	-8,-8,0C6 8,-8,0C7 -8,8,0C8 8,8,0C9 0,0,00C
 9D	0102	-8,-8,0C6 8,-8,0C7 -8,8,0C8 8,8,0C9 0,0,00A
@@ -212,6 +212,10 @@
 9D	0302	-8,-8,0C6 8,-8,0C7 -8,8,0C8 8,8,0C9 0,0,071
 9E	0002	0,16,0CB 0,32,0CB -8,48,0CC 8,48,0CD -8,64,0CE 8,64,0CF -24,56,402
 9E	0102	0,16,0CB 0,32,0CB -8,48,0CC 8,48,0CD -8,64,0CE 8,64,0CF 24,56,403
+9E	0010	A version of the ball and chain that starts pointing up. Clock/counter is still decided by X position.
+9E	0012	0,-16,0CB 0,-32,0CB -8,-64,0CC 8,-64,0CD -8,-48,0CE 8,-48,0CF 24,-56,403
+9E	0110	A version of the ball and chain that starts pointing up. Clock/counter is still decided by X position.
+9E	0112	0,-16,0CB 0,-32,0CB -8,-64,0CC 8,-64,0CD -8,-48,0CE 8,-48,0CF -24,-56,402
 9F	0002	16,0,014 32,0,014 48,0,014 0,16,014 48,16,014 0,32,014 48,32,014 16,48,014 32,48,014 48,48,014 16,24,*BANZAI\nBILL*
 A1	0000	This sprite has been reprogrammed to work in normal levels. It displays correctly in-game but not in-editor.
 A1	0002	-16,-16,0B6 16,-16,0B7 -16,16,0B8 16,16,0B9 -16,0,*Bowling\nBall   *

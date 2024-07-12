@@ -28,7 +28,7 @@ sa1rom
 ; $000-$3FF:	backup of layer 3 tilemap
 ;
 
-; layer 3 GFX are backed up to SNES WRAM $001000 / $7E1000
+; layer 3 GFX are backed up to SNES WRAM $7EEE00
 ; this takes up $900 bytes for normal mode (144 x 64 px) and $D90 bytes for cinematic mode (248 x 56 px)
 ; max size is $E00
 
@@ -334,7 +334,7 @@ sa1rom
 		STA !VRAMtable+$19,x					; |
 		STA !VRAMtable+$20,x					; |
 		STA !VRAMtable+$27,x					; |
-		STZ !VRAMtable+$2E,x					; > SNES WRAM
+		LDA #$7E : STA !VRAMtable+$2E,x				; > SNES WRAM
 		REP #$20						; |
 		LDA.w #!GFX_buffer+$300 : STA !VRAMtable+$02,x		; |
 		LDA.w #!GFX_buffer+$380 : STA !VRAMtable+$09,x		; |
@@ -342,7 +342,7 @@ sa1rom
 		LDA.w #!GFX_buffer+$500 : STA !VRAMtable+$17,x		; |
 		LDA.w #!GFX_buffer+$600 : STA !VRAMtable+$1E,x		; |
 		LDA.w #!GFX_buffer+$700 : STA !VRAMtable+$25,x		; |
-		LDA #$1000 : STA !VRAMtable+$2C,x			; > SNES WRAM
+		LDA #$EE00 : STA !VRAMtable+$2C,x			; > SNES WRAM
 		LDA !MsgVRAM3 : STA !VRAMtable+$05,x			; |
 		CLC : ADC #$0100					; |
 		STA !VRAMtable+$0C,x					; | restore GFX overwritten by border and portrait
@@ -523,7 +523,7 @@ MAKE_BACKUP:
 		STA !VRAMtable+$19,x					; |
 		STA !VRAMtable+$20,x					; |
 		STA !VRAMtable+$27,x					; |
-		STZ !VRAMtable+$2E,x					; > buffer in SNES WRAM
+		LDA #$7E : STA !VRAMtable+$2E,x				; > buffer in SNES WRAM
 		REP #$20						; |
 		LDA.w #!GFX_buffer+$300 : STA !VRAMtable+$02,x		; |
 		LDA.w #!GFX_buffer+$380 : STA !VRAMtable+$09,x		; |
@@ -531,7 +531,7 @@ MAKE_BACKUP:
 		LDA.w #!GFX_buffer+$500 : STA !VRAMtable+$17,x		; |
 		LDA.w #!GFX_buffer+$600 : STA !VRAMtable+$1E,x		; |
 		LDA.w #!GFX_buffer+$700 : STA !VRAMtable+$25,x		; |
-		LDA.w #$1000 : STA !VRAMtable+$2C,x			; > buffer in SNES WRAM
+		LDA.w #$EE00 : STA !VRAMtable+$2C,x			; > buffer in SNES WRAM
 		LDA !MsgVRAM3						; |
 		ORA #$8000						; |
 		STA !VRAMtable+$05,x					; |

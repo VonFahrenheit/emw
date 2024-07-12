@@ -79,10 +79,10 @@ macro ReloadOAMData()
 		PHP
 		REP #$20
 		STZ !OAMindex_index+0
-		STZ !OAMindex_offset+0
 		LDA #$0002 : STA !OAMindex_index+2
 		LDA #$0004 : STA !OAMindex_index+4
 		LDA #$0006 : STA !OAMindex_index+6
+		STZ !OAMindex_offset+0
 		LDA #$0200 : STA !OAMindex_offset+2
 		LDA #$0400 : STA !OAMindex_offset+4
 		LDA #$0600 : STA !OAMindex_offset+6
@@ -190,6 +190,200 @@ endmacro
 
 
 
+<<<<<<< Updated upstream
+=======
+macro generic_dynamo(tilecount, sourcetile, desttile)
+		dw <tilecount>*$20
+		dl <sourcetile>*$20
+		dw (<desttile>*$10)+$6000
+endmacro
+
+
+
+; llllllll	lo byte
+; HHHH-ssh	hi byte
+
+; llllllll are bits 0-7
+; h is bit 8
+; HHHH are bits 9-12
+; ss are always set
+
+
+macro SecondaryExitValue(exit)
+		db <exit>
+		db ((<exit>&$1E00)>>5)|((<exit>&$0100)>>8)|$06
+endmacro
+
+
+
+
+
+macro EnterDoor(player)
+		LDA #$0F : STA !SPC4					; door SFX
+		LDA !MultiPlayer : BEQ ..enter				;\
+		LDA !PlayerWaiting : BEQ ..godormant			; | handle multiplayer
+		..enter							;/
+		INC !DoorCounter					; +1 door count
+		BNE $03 : DEC !DoorCounter				; stay at 255 instead of wrapping around to 0
+		LDA #$0F : STA !GameMode				; load level
+
+		LDA !P2XPosLo-$80+(<player>*$80) : STA $94		;\ set mario coords to make sure the transition goes into the correct level
+		LDA !P2XPosHi-$80+(<player>*$80) : STA $94+1		;/
+
+		..godormant						;\
+		LDA !CurrentPlayer					; | wait for the other player in the door
+		LDA.b #<player> : TSB !PlayerWaiting			;/
+	endmacro
+
+
+
+
+	macro fraction(mult, div)
+		if <mult> != 0
+		dw $200*<div>/<mult>
+		else
+		dw $200
+		endif
+		dw <mult>
+		dw <div>
+	endmacro
+
+
+
+	macro GradientRGB(table)
+		REP #$20			; > A 16 bit
+		LDA #$3200			;\
+		STA $4330			; |
+		LDA #<table>_Red		; |
+		STA !HDMA3source		; | Set up red colour math on channel 3
+		LDY.b #<table>_Red>>16		; |
+		STY $4334			;/
+		LDA #$3200			;\
+		STA $4340			; |
+		LDA #<table>_Green		; | Set up green colour math on channel 4
+		STA !HDMA4source		; |
+		STY $4344			;/
+		LDA #$3200			;\
+		STA $4350			; |
+		LDA #<table>_Blue		; | Set up blue colour math on channel 5
+		STA !HDMA5source		; |
+		STY $4354			;/
+		SEP #$20			; > A 8 bit
+		LDA #$38			;\ Enable HDMA on channels 3, 4, and 5
+		TSB !HDMA			;/
+	endmacro
+
+	macro GradientGB(table)
+		REP #$20			; > A 16 bit
+		LDA #$3200			;\
+		STA $4330			; |
+		LDA #<table>_Green		; |
+		STA !HDMA3source		; | Set up red colour math on channel 3
+		LDY.b #<table>_Red>>16		; |
+		STY $4334			;/
+		LDA #$3200			;\
+		STA $4340			; |
+		LDA #<table>_Blue		; | Set up green colour math on channel 4
+		STA !HDMA4source		; |
+		STY $4344			;/
+		SEP #$20			; > A 8 bit
+		LDA #$18			;\ Enable HDMA on channels 3 and 4
+		TSB !HDMA			;/
+	endmacro
+
+
+	macro TalkBox(X, Y, W, H, M)		; Xcoord, Ycoord, width, heigth, message
+		LDX !P1Dead
+		BNE ?P2
+		LDA $94
+		CMP.w #<X>
+		BCC ?P2
+		CMP.w #<X>+<H>
+		BCS ?P2
+		LDA $96
+		CMP.w #<Y>
+		BCC ?P2
+		CMP.w #<Y>+<H>
+		BCS ?P2
+		LDA $77
+		AND #$0004
+		BEQ ?P2
+		LDA $16
+		AND #$0008
+		BEQ ?P2
+		LDX.b #<M>
+		STX !MsgTrigger
+		BRA ?Return
+
+		?P2:
+		LDX !P2Status
+		BNE ?Return
+		LDA !P2XPosLo
+		CMP.w #<X>
+		BCC ?Return
+		CMP.w #<X>+<H>
+		BCS ?Return
+		LDA !P2YPosLo
+		CMP.w #<Y>
+		BCC ?Return
+		CMP.w #<Y>+<H>
+		BCS ?Return
+		LDA !P2Blocked
+		AND #$0004
+		BEQ ?Return
+		LDA $6DA7
+		AND #$0008
+		BEQ ?Return
+		LDX.b #<M>
+		STX !MsgTrigger
+
+		?Return:
+	endmacro
+
+
+	macro CameraBox(X, Y, W, H)
+		dw <X>*$100
+		dw <Y>*$E0
+		dw (<X>+<W>)*$100
+		dw (<Y>+<H>)*$E0
+	endmacro
+
+
+macro decreg(reg)
+	LDA <reg>,x : BEQ ?skip
+	DEC <reg>,x
+	?skip:
+endmacro
+
+
+macro ListVanillaInit(name)
+	dw <name>_INIT
+endmacro
+
+macro ListVanillaMain(name)
+	dw <name>_MAIN
+endmacro
+
+macro VanillaSprite(name)
+	namespace <name>
+		incsrc "Fe26/sprites_vanilla/<name>.asm"
+	namespace off
+endmacro
+
+
+
+>>>>>>> Stashed changes
+
+
+macro snescolor(R, G, B)
+	dw <R>+(<G>+(<B>*32)*32)
+endmacro
+
+
+
+
+
+
 
 
 	; -- Free RAM --		; Point to unused addresses, please.
@@ -216,6 +410,11 @@ endmacro
 		!LightData_SNES		= $7EFC00	; 2 buffers of 512 bytes each for processing lighting
 
 
+<<<<<<< Updated upstream
+=======
+		!MPU_NMI		= $315F		; used to break SA-1 out of final loop to max shader
+
+>>>>>>> Stashed changes
 		!LightBuffer		= $3171		; lowest bit: which buffer SNES is working on (0 = first buffer, 1 = second buffer), highest bit: 0 = not ready for upload, 1 = ready for upload
 		!LightIndexStart	= $3172
 		!LightIndexEnd		= $3174
@@ -244,12 +443,121 @@ endmacro
 
 
 
+<<<<<<< Updated upstream
 		!HDMA2source		= $1F00
 		!HDMA3source		= $1F02
 		!HDMA4source		= $1F04
 		!HDMA5source		= $1F06
 		!HDMA6source		= $1F08
 		!HDMA7source		= $1F0A
+=======
+	; regs
+		!420C			= $019F
+
+		; thse can only be read/written by SNES
+		; source is a mirror of $43x2, written duringNMI
+		; module is a 24-bit pointer to an HDMA module (see EffectLibrary.asm)
+		; location is a 24-bit pointer to RAM where the HDMA table is generated
+		; size is a 16-bit offset to location during odd frames of double buffering
+		; bit is the channel's bit: 2^channel num (written during level load)
+		; counter is an 8-bit internal frame counter
+		; init is an 8-bit flag set to 1 after a module is run
+		; mem is 3 bytes of general purpose RAM that the module can use
+		; note that channel 7 ONLY has 2 bytes of mem, rather than 3, due to it also holding !420C
+		!HDMA2source		= $0140
+		!HDMA2module		= $0142
+		!HDMA2location		= $0145
+		!HDMA2size		= $0148
+		!HDMA2bit		= $014A
+		!HDMA2counter		= $014B
+		!HDMA2init		= $014C
+		!HDMA2mem		= $014D
+		!HDMA3source		= $0150
+		!HDMA3module		= $0152
+		!HDMA3location		= $0155
+		!HDMA3size		= $0158
+		!HDMA3bit		= $015A
+		!HDMA3counter		= $015B
+		!HDMA3init		= $015C
+		!HDMA3mem		= $015D
+		!HDMA4source		= $0160
+		!HDMA4module		= $0162
+		!HDMA4location		= $0165
+		!HDMA4size		= $0168
+		!HDMA4bit		= $016A
+		!HDMA4counter		= $016B
+		!HDMA4init		= $016C
+		!HDMA4mem		= $016D
+		!HDMA5source		= $0170
+		!HDMA5module		= $0172
+		!HDMA5location		= $0175
+		!HDMA5size		= $0178
+		!HDMA5bit		= $017A
+		!HDMA5counter		= $017B
+		!HDMA5init		= $017C
+		!HDMA5mem		= $017D
+		!HDMA6source		= $0180
+		!HDMA6module		= $0182
+		!HDMA6location		= $0185
+		!HDMA6size		= $0188
+		!HDMA6bit		= $018A
+		!HDMA6counter		= $018B
+		!HDMA6init		= $018C
+		!HDMA6mem		= $018D
+		!HDMA7source		= $0190
+		!HDMA7module		= $0192
+		!HDMA7location		= $0195
+		!HDMA7size		= $0198
+		!HDMA7bit		= $019A
+		!HDMA7counter		= $019B
+		!HDMA7init		= $019C
+		!HDMA7mem		= $019D
+
+
+
+
+		; MPU HDMA regs (DP $3100)
+
+
+		; 16 bytes, can be used for anything during a module
+		; scratch		$00
+
+		!HDMA_WorkingY		= $10			; used to keep track of how many scanlines have been rendered
+		!HDMA_MaxY		= $12			; reset to 0x00E0 before each module is processed. module pointers can overwrite this to render a smaller effect
+		!HDMA_WorkingIndex	= $14			; used when SA-1 has to hand off its buffer index
+		!HDMA_WorkingOutput	= $16			; used when SA-1 has to control SNES' write address
+		!HDMA_Misc		= $18			; can be used for any purpose
+
+		; these are copied once before the first module call
+		; BG1 X			$1A
+		; BG1 Y			$1C
+		; BG2 X			$1E
+		; BG2 Y			$20
+		; BG3 X			$22
+		; BG3 Y			$24
+
+		!HDMA_Sync		= $26			; sometimes used to sync SNES and SA-1
+		!HDMA_ProgramState	= $28
+		; a little more complex, though it only uses a few bits
+		; highest bit in lo byte is set by SNES when it requests a new buffer read
+		; highest bit in hi byte is set by SA-1 when writing to buffer 2
+		; when SA-1 updates the hi byte, it also clears the lo byte
+		; SNES only ever sets bit 0x0080
+
+		!HDMA_Input		= $2A			; 16-/24-bit input pointer, sometimes used by SA-1
+		!HDMA_Output		= $2D			; 24-bit output pointer
+
+		!HDMA_Buffer1		= $30			; 8 bytes
+		!HDMA_Buffer1_Lines	= !HDMA_Buffer1+0	; 2 bytes
+		!HDMA_Buffer1_Data	= !HDMA_Buffer1+2	; 4 bytes
+		!HDMA_Buffer1_Output	= !HDMA_Buffer1+6	; 2 bytes, address that lines and data are written to
+
+		!HDMA_Buffer2		= $38			; 8 bytes
+		!HDMA_Buffer2_Lines	= !HDMA_Buffer2+0	; 2 bytes
+		!HDMA_Buffer2_Data	= !HDMA_Buffer2+2	; 4 bytes
+		!HDMA_Buffer2_Output	= !HDMA_Buffer2+6	; 2 bytes, address that lines and data are written to
+
+>>>>>>> Stashed changes
 
 
 
@@ -260,6 +568,57 @@ endmacro
 		!2109			= $3146		; $2109 mirror, BG3 tilemap address control
 		!210C			= $3147		; $210C mirror, BG3 GFX address control
 
+<<<<<<< Updated upstream
+=======
+
+		!2123			= $41		; window settings for BG1/BG2
+		!2124			= $42		; window settings for BG3/BG4
+		!2125			= $43		; window settings for sprite layer and color plane
+		!2130			= $44		; color math settings
+		!2131			= $40		; color math designation
+
+
+
+		!Mode7Settings		= $786C		; $211A mirror
+			; rc--emyx (rc----yx are written to $211A, the rest is software side)
+			;
+			; hardware bits:
+			; r - playing field size (0 = 1024x1024, 1 = "much larger", actual size unknown)
+			; c - empty space fill, only used with r = 1 (0 = fill is transparent, 1 = fill is character 0)
+			; y/x - flip for entire screen
+			;
+			; software bits:
+			; e - enable mode 7 (0 = skip mode 7 regs during NMI/VR3, 1 = update mode 7 regs during NMI/VR3)
+			; m - manual control (0 = use !Mode7Rotation/!Mode7Scaling to feed values to matrix, 1 = use direct writes to matrix)
+
+
+
+		!Mode7X			= $3A		; $210D mirror (kept distinct from camera coords since those interact with gameplay)
+		!Mode7Y			= $3C		; $210E mirror (same thing here, this just moves the mode7 image without affecting the camera)
+		!Mode7MatrixA		= $2E		; $211B mirror
+		!Mode7MatrixB		= $30		; $211C mirror
+		!Mode7MatrixC		= $32		; $211D mirror
+		!Mode7MatrixD		= $34		; $211E mirror
+		!Mode7CenterX		= $2A		; $211F mirror
+		!Mode7CenterY		= $2C		; $2120 mirror
+
+		!Mode7Rotation		= $36
+		!Mode7Scale		= $38
+
+
+
+
+
+
+
+
+		!DynamicList		= $7600		; 32 bytes, !DynamicTile mirror for each sprite (indexed by sprite number * 2)
+		!DynamicMatrix		= $7620		; 32 bytes, -------T tttttttt bits for each dynamic tile
+		!DynamicProp		= $7640		; 16 bytes, -------T bit of prop, complement to $F0 for dynamic sprites
+		!DynamicTile		= $7650		; 2 bytes, 1 bit per tile (0 = free, 1 = in use)
+							; cleaned up by Fe26 at the start of each loop
+		!DynamicCount		= $7652		; 16-bit, how many dynamic tiles will be updated this frame
+>>>>>>> Stashed changes
 
 
 		!DynamicTile		= $3150
@@ -270,8 +629,12 @@ endmacro
 					; if the comparison concludes invalid, the slot is considered free
 
 
-	!CameraPower	= #$19		; remap to address later, this is how far ahead the camera is allowed to scroll
+		!CameraPrevX		= $7462			;\
+		!CameraPrevY		= $7464			; | these can be overwritten by level/HDMA codes
+		!CameraPrevBG2X		= $7466			; |
+		!CameraPrevBG2Y		= $7468			;/
 
+<<<<<<< Updated upstream
 	!CameraXMem	= $7432		; 16-bit used for PCE camera baybee
 
 
@@ -280,9 +643,44 @@ endmacro
 
 		!CameraForceTimer	= $314C			; index 0/1 for both of these, 1 processed first
 		!CameraForceDir		= $314E
+=======
+
+		!CameraSettings		= $74C8
+		!CameraPower		= !CameraSettings+0	; factor player speed is multiplied with to adjust target camera position
+		!CameraMinPower		= !CameraSettings+2	; minimum camera adjustment needed for it to be applied
+		!CameraMaxPower		= !CameraSettings+4	; maximum allowed camera adjustment
+		!CameraPauseTime	= !CameraSettings+6	; how long the camera should remember the player's highest speed before it starts slowing down
+		!CameraAccel		= !CameraSettings+8	; how quickly the camera accelerates up to a proper speed adjustment (8.8 format)
+		!CameraSlowdown		= !CameraSettings+10	; how quickly the camera returns to center when the player is standing still (8.8 format)
+		!CameraYThreshold	= !CameraSettings+12	; how far from the center the player has to be for the camera to scroll vertically
+		; 2 bytes free at +14, +15
+
+		!CameraData		= $74D8
+		!CameraBackupX		= !CameraData+0		;\ only camera box is allowed to write to these
+		!CameraBackupY		= !CameraData+2		;/
+		!CameraForceTimer	= !CameraData+4		;\ index 0/1 for both of these, 1 processed first
+		!CameraForceDir		= !CameraData+6		;/
+		!CameraBoxL		= !CameraData+8
+		!CameraBoxU		= !CameraData+10
+		!CameraBoxR		= !CameraData+12
+		!CameraBoxD		= !CameraData+14
+		!CameraBoxRoom		= !CameraData+16	; which camera box room the player is in
+		!Room			= !CameraBoxRoom	; alt name
+		!LockBox		= !CameraData+18	; 0 = camera box has automatic doors, 1 = camera box is locked
+
+		!CameraXDelta		= !CameraData+20	;\ how much the camera moved last time its position updated
+		!CameraYDelta		= !CameraData+22	;/
+		!CameraSpeedMem1	= !CameraData+26	; highest speed influence player has recently had on camera (8.8 format)
+		!CameraSpeedMem2	= !CameraData+24	; player speed influence on camera, never set if 0
+		!CameraPauseTimer	= !CameraData+28	; while set, !CameraSpeedMem2 does not slow down
+		!CameraXSpeed		= !CameraData+30	;\ used internally in camera code
+		!CameraYSpeed		= !CameraData+32	;/
+>>>>>>> Stashed changes
+
+		!CameraYDir		= !CameraData+34	; 0 = not moving vertically, 1 = moving down, -1 = moving up
 
 
-
+<<<<<<< Updated upstream
 		!CameraBoxL		= $6AC0
 		!CameraBoxU		= $6AC2
 		!CameraBoxR		= $6AC4
@@ -297,6 +695,27 @@ endmacro
 		!SmoothCamera		= $6AF6			; enables smooth camera (always on with camera box)
 
 
+=======
+		!SpriteEraseMode	= $5C
+		; by default, sprites are ereased if they go too far off-screen
+		; ALL off-screen checks are ignored if the 0x80 bit in tweaker 3 is set
+		; 00 = camera box will freeze sprites outside the border (threshold = 0x20)
+		; 01 = camera box will erase sprites outside the border (threshold = 0x20)
+		; 02 = camera box will freeze sprites outside the border (threshold = 0x60)
+		; 03 = camera box will erase sprites outside the border (threshold = 0x60)
+		; 04 = camera box does not affect sprites, sprites will use their default off-screen code
+
+
+		; set 0x40 bit to disable normal off-screen check for sprites inside camera box
+		; set 0x80 bit to disable normal off-screen check
+
+
+
+
+		; these are set by VR3, but not used by it
+		; instead, these define the area (level coords) that block updates may occur in
+		; any block update outside the zip box only needs to update the map16 table
+>>>>>>> Stashed changes
 		!BG1ZipBoxL		= $45
 		!BG1ZipBoxR		= $47
 		!BG1ZipBoxU		= $49
@@ -320,26 +739,279 @@ endmacro
 		!BG2ZipRowX		= $61FC
 		!BG2ZipRowY		= $61FE
 
-		!BG1_Y_Delta		= $7858			; remapped from $77BC
-		!BG1_X_Delta		= $7859			; remapped from $77BD
-		!BG2_Y_Delta		= $785A			; remapped from $77BE
-		!BG2_X_Delta		= $785B			; remapped from $77BF
 
-
+		!LevelEntry		= $741E			; overwrites yoshi wings flag and skip yoshi intro flag
+		!LevelToBeat		= $7420			; level num to beat when BeatLevel is called (equal to !Level by default)
 		!Level			= $610B
 		!BossData		= $66F9			; 7 bytes
 		!RNGtable		= $6660			; 32 random values, a new one is generated each frame
 		!RNG			= $6700			; most recently generated RN
 
-		!MarioGFX1		= $6F42			; VRAM address for first Mario GFX upload
-		!MarioGFX2		= $6F44			; VRAM address for second Mario GFX upload
-		!MarioTileOffset	= $6F46			; Added to Mario's tile numbers
-		!MarioPropOffset	= $6F47			; Added to Mario's YXPPCCCT
-
 		!RAMcode_flag		= $6020			; 0x1234 = Execute, anything else = ignore
 		!RAMcode_offset		= $6022			; used for RAM code generation
 		!RAMcode		= $404A00
 
+<<<<<<< Updated upstream
+=======
+		!GlobalLight1		= $6024			; first set of light RGB to use for auto mixing
+		!GlobalLight2		= $6025			; second set of light RGB to use for auto mixing
+		!GlobalLightMix		= $6026			; balance between global light 1 and global light 2 (0 = all 1, 32 = all 2)
+		!GlobalLightMixPrev	= $6027			; used to keep track of when auto mixer should run (leave both at 0 to not use)
+
+
+
+		!GFX_status		= $418000
+		!Part_status		= !GFX_status+$000	; 512 entries for parts (9-bit, 2 bytes each)
+		!Set_status		= !GFX_status+$400	; 128 entries for sets (9-bit, 2 bytes each)
+		!SuperSet_status	= !GFX_status+$500	; 64 entries for super sets (9-bit, 2 bytes each)
+		!Palset_status		= !GFX_status+$580	; 128 entries for palsets, 7+1 bit, 1 byte each
+		!BG_status		= !GFX_status+$600	; 256 entries for BG objects (8-bit, 1 byte each)
+		!SD_status		= !GFX_status+$700	; 256 entries for super-dynamic files, 6+2 bit, 1 byte each
+
+
+		macro def_GFX(name)
+			!GFX_<name> := !GFX_status+!Temp
+			!GFX_<name>_tile := !GFX_<name>
+			!GFX_<name>_prop := !GFX_<name>+1
+			!GFX_<name>_offset := !Temp
+			!Temp := !Temp+2
+		endmacro
+
+		macro def_BG(name)
+			!GFX_<name> := !GFX_status+!Temp
+			!GFX_<name>_offset := !Temp
+			!Temp := !Temp+1
+		endmacro
+
+
+	; GFX parts
+		!Temp = 0
+
+		; simple enemies
+		%def_GFX(Goomba)
+		%def_GFX(Bobomb)
+		%def_GFX(Spiny)
+		%def_GFX(SpikeTop)
+		%def_GFX(BuzzyBeetle)
+		%def_GFX(SwooperBat)
+		%def_GFX(MontyMole)
+		%def_GFX(MegaMole)
+		%def_GFX(MiniMole)
+		%def_GFX(HoppingFlame)
+		%def_GFX(Lakitu)
+		%def_GFX(Wiggler)
+		%def_GFX(Thwomp)
+		%def_GFX(Thwimp)
+		%def_GFX(Podoboo)
+		%def_GFX(DiagPodoboo)
+		%def_GFX(BallAndChain)
+		%def_GFX(FallingSpike)
+		%def_GFX(WoodenSpike)
+		%def_GFX(Grinder)
+		%def_GFX(Sparky)
+		%def_GFX(HotHead)
+		%def_GFX(MechaKoopa)
+		%def_GFX(SpikeBall)
+		%def_GFX(Fuzzy)
+		%def_GFX(SuperKoopa)
+		%def_GFX(Pokey)
+		%def_GFX(Ninji)
+		%def_GFX(Thif)
+		%def_GFX(NetKoopa)
+		%def_GFX(BulletBill)
+		%def_GFX(BulletBillDiag)
+		%def_GFX(BulletBillUp)
+		%def_GFX(BanzaiBill)
+		%def_GFX(BowlingBall)
+		%def_GFX(FishBone)
+		%def_GFX(DryBones)
+		%def_GFX(BonyBeetle)
+		%def_GFX(Fish)
+		%def_GFX(BlurpFish)
+		%def_GFX(PorcuPuffer)
+		%def_GFX(Dolphin)
+		%def_GFX(Urchin)
+		%def_GFX(TorpedoTed)
+		%def_GFX(Reznor)
+		%def_GFX(Birdo)
+		%def_GFX(Monkey)
+		%def_GFX(FlamePillar)
+		%def_GFX(GasBubble)
+		%def_GFX(UltraFuzzy)
+		%def_GFX(TarCreeperHands)
+		%def_GFX(Boo)
+		%def_GFX(Eerie)
+		%def_GFX(FishingBoo)
+		%def_GFX(BooHoo)
+
+		; beneficial sprites
+		%def_GFX(Starman)
+		%def_GFX(PSwitch)
+		%def_GFX(SpringBoard)
+		%def_GFX(Bumper)
+		%def_GFX(PBalloon)
+		%def_GFX(Sign)
+		%def_GFX(Key)
+		%def_GFX(SmallBird)
+		%def_GFX(YoshiCoin)
+		%def_GFX(Chest)
+
+		; platforms
+		%def_GFX(GrowingPipe)
+		%def_GFX(CastleBlock)
+		%def_GFX(FloatingSkulls)
+		%def_GFX(BrownGreyPlat)
+		%def_GFX(CheckerPlat)
+		%def_GFX(RockPlat)
+		%def_GFX(OrangePlat)
+		%def_GFX(ScalePlat)
+		%def_GFX(CastlePlat)
+		%def_GFX(CarrotPlat)
+		%def_GFX(TimerPlat)
+		%def_GFX(MovingLedge)
+		%def_GFX(TerrainPlat)
+		%def_GFX(Elevator)
+
+		; support sprite parts
+		%def_GFX(Shield)
+		%def_GFX(Portal)
+
+		; sprite support parts
+		%def_GFX(Football)
+		%def_GFX(ChuckRock)
+		%def_GFX(Rope)
+		%def_GFX(Chainsaw)
+		%def_GFX(Mechanism)
+		%def_GFX(StatueFireball)
+		%def_GFX(LakituCloud)
+		%def_GFX(BossFireball)
+		%def_GFX(SmallFireball)
+		%def_GFX(ReznorFireball)
+		%def_GFX(Fireball32x32)
+		%def_GFX(EnemyFireball)
+		%def_GFX(LotusPollen)
+		%def_GFX(Baseball)
+		%def_GFX(WaterEffects)
+		%def_GFX(LavaEffects)
+		%def_GFX(LightningEffects)
+		%def_GFX(Parachute)
+		%def_GFX(Tray)
+		%def_GFX(PlantStalk)
+		%def_GFX(Wings)		; bat wings
+		%def_GFX(AngelWings)
+		%def_GFX(Hammer)
+		%def_GFX(DinoFire)
+		%def_GFX(SmushedKoopa)
+		%def_GFX(Shell)
+		%def_GFX(FelMagic)
+		%def_GFX(Bone)
+		%def_GFX(SkeletonRubble)
+		%def_GFX(SlimeParticles)
+		%def_GFX(SnoreZ)
+
+		; rex support parts
+		%def_GFX(RexLegs1)
+		%def_GFX(RexLegs2)
+		%def_GFX(RexSmall)
+		%def_GFX(RexHat1)
+		%def_GFX(RexHat2)
+		%def_GFX(RexHat3)
+		%def_GFX(RexHat4)
+		%def_GFX(RexHat5)
+		%def_GFX(RexHat6)
+		%def_GFX(RexHat7)
+		%def_GFX(RexHelmet)
+		%def_GFX(RexBag1)
+		%def_GFX(RexBag2)
+		%def_GFX(RexBag3)
+		%def_GFX(RexBag4)
+		%def_GFX(RexSword)
+
+		; player support parts
+		%def_GFX(LuigiFireball)
+
+
+		; special particle parts
+		%def_GFX(LeafParticle)
+		%def_GFX(TinyCoin)
+		%def_GFX(SmallNumbers)
+
+
+
+	; GFX sets
+		!Temp = $400
+
+		; vanilla enemies
+		%def_GFX(GoombaSlave)
+		%def_GFX(ParaGoomba)
+		%def_GFX(PiranhaPlant)	; stalk, fire
+		%def_GFX(Magikoopa)
+		%def_GFX(Blargg)	; lava parts
+		%def_GFX(VolcanoLotus)
+		%def_GFX(BooBlock)
+		%def_GFX(BigBoo)
+		%def_GFX(SumoBro)
+		%def_GFX(SumoLightning)
+		%def_GFX(BowserStatue)
+		%def_GFX(Chuck)
+		%def_GFX(AmazingHammerBro)
+		%def_GFX(DinoRhino)
+		%def_GFX(DinoTorch)
+		%def_GFX(ShellessKoopa)
+		%def_GFX(KickerKoopa)
+		%def_GFX(DryBonesThrower)
+		%def_GFX(BulletBillCardinals)
+		%def_GFX(ParachuteGoomba)
+		%def_GFX(ParachuteBobomb)
+		%def_GFX(RipVanFish)
+
+		; neutral things
+		%def_GFX(Blocks)	; includes wings
+
+		; custom enemies
+		%def_GFX(Rex)
+		%def_GFX(HammerRex)
+		%def_GFX(FlyingRex)
+		%def_GFX(Conjurex)
+		%def_GFX(MoleWizard)
+		%def_GFX(KompositeKoopa)
+		%def_GFX(CoinGolem)
+
+
+
+	; super sets
+		!Temp = $500
+		%def_GFX(ParaKoopa)
+		%def_GFX(ParaKoopaBlue)
+		%def_GFX(Koopa)
+		%def_GFX(KoopaBlue)
+		%def_GFX(SuperKoopaKicker)
+		%def_GFX(ParachuteGen)
+		%def_GFX(CarrierBubble)
+		%def_GFX(ExplodingBlock)
+
+
+
+
+	; BG objects
+		!Temp = $600
+		%def_BG(BushFrame1)
+		%def_BG(BushFrame2)
+		%def_BG(BushFrame3)
+		%def_BG(Window)
+		%def_BG(WindowBroken)
+		%def_BG(CannonIdle)
+		%def_BG(CannonTilt1)
+		%def_BG(CannonTilt2)
+		%def_BG(CannonFire1)
+		%def_BG(CannonFire2)
+		%def_BG(CableTiles)
+		%def_BG(PoleFrame1)
+		%def_BG(PoleFrame2)
+		%def_BG(PoleFrame3)
+		%def_BG(TrashCan)
+
+>>>>>>> Stashed changes
 
 		!GlobalPalset1		= $6024			; which sprite palset variation to use
 		!GlobalPalset2		= $6025			; if mixing is used, this is which sprite palset variation to use for mixing
@@ -585,7 +1257,87 @@ endmacro
 	; 11 = $41
 	; pppppp = location in bank (KB)
 	;
+<<<<<<< Updated upstream
 	; address of GFX = bank [bb], hi byte [pppppp * 4], lo byte 0
+=======
+	; address of GFX = bank [bb translated], hi byte [pppppp--], lo byte 0
+
+	macro def_SD(name)
+		!SD_<name> := !SD_status+!Temp
+		!SD_<name>_offset := !Temp
+		!Temp := !Temp+1
+	endmacro
+
+		!Temp = 0
+		%def_SD(Hammer)
+		%def_SD(PlantHead)
+		%def_SD(Bone)
+		%def_SD(Fireball8x8)
+		%def_SD(Fireball16x16)
+		%def_SD(Goomba)
+		%def_SD(LuigiFireball)
+		%def_SD(Baseball)
+		%def_SD(KadaalLinear)
+		%def_SD(Fireball32x32)
+		%def_SD(EnemyFireball)
+		%def_SD(LuigiWallRun)
+
+
+
+
+
+
+	; palset list
+	;
+	; make sure the order matches the order of palsets in SP_Files
+
+	macro def_palset(name)
+		!palset_<name> := !temppalset
+		!addr_palset_<name> := !Palset_status+!temppalset
+		!temppalset := !temppalset+1
+	endmacro
+
+		!temppalset = 1
+
+		; player palsets
+		%def_palset(mario)
+		%def_palset(luigi)
+		%def_palset(kadaal)
+		%def_palset(leeway)
+		%def_palset(alter)
+		%def_palset(peach)
+		%def_palset(placeholder4)
+		%def_palset(placeholder5)
+		%def_palset(mario_fire)
+
+		; default palsets
+		%def_palset(default_yellow)
+		%def_palset(default_blue)
+		%def_palset(default_red)
+		%def_palset(default_green)
+
+		; generic palsets
+		%def_palset(generic_grey)
+		%def_palset(generic_ghost_blue)
+		%def_palset(generic_lightblue)
+
+		; special palsets
+		%def_palset(special_wizrex)
+
+		%def_palset(special_flash_white)
+		%def_palset(special_flash_black)
+		%def_palset(special_flash_red)
+		%def_palset(special_flash_green)
+		%def_palset(special_flash_blue)
+		%def_palset(special_flash_yellow)
+		%def_palset(special_flash_caster)
+		%def_palset(special_kingking_blue)
+		%def_palset(special_kingking_red)
+
+		%def_palset(special_toad)
+		%def_palset(special_melody)
+
+>>>>>>> Stashed changes
 
 
 		!Palset8		= $6028
@@ -623,6 +1375,7 @@ endmacro
 		%def_file(Kadaal)
 		%def_file(Leeway)
 		%def_file(Leeway_Sword)
+		%def_file(PlayerObjects)
 
 		; dynamic sprite files
 		%def_file(HappySlime)
@@ -846,7 +1599,22 @@ endmacro
 		!P2TilesUsed		= !P2Base+$2D		; Also borrowed for lo prio function
 		!P2SenkuDir		= !P2Base+$2E
 
+<<<<<<< Updated upstream
 		!P2ButtonDis		= !P2Base+$2E		; TRB'd to Leeway's $6DA3 if L2 is set
+=======
+		!Cutscene		= $6AC0			; 1 byte, cutscene index (0 = no cutscene)
+		!CutsceneIndex		= !Cutscene+1		; 1 byte
+		!CutsceneWait		= !Cutscene+2		; 1 byte
+		!Cutscene6DA2		= !Cutscene+3		;\
+		!Cutscene6DA3		= !Cutscene+4		; |
+		!Cutscene6DA4		= !Cutscene+5		; |
+		!Cutscene6DA5		= !Cutscene+6		; | input mirrors
+		!Cutscene6DA6		= !Cutscene+7		; | (these override the normal regs)
+		!Cutscene6DA7		= !Cutscene+8		; |
+		!Cutscene6DA8		= !Cutscene+9		; |
+		!Cutscene6DA9		= !Cutscene+10		;/
+		!CutsceneSmoothness	= !Cutscene+11		; transition thing
+>>>>>>> Stashed changes
 
 		!P2SpinUsed		= !P2Base+$2F		; used by Luigi
 		!P2SenkuUsed		= !P2Base+$2F		; used by Kadaal/Leeway
@@ -865,7 +1633,12 @@ endmacro
 		!P2ClippingY		= !P2Base+$34		; | 16-bit pointers to actual tables
 		!P2ClippingSize		= !P2Base+$36		;/
 
+<<<<<<< Updated upstream
 		!P2SlantPipe		= !P2Base+$38
+=======
+		!PlayerWaiting		= $7871				; 00 = no wait, 01 = P1 waiting, 02 = P2 waiting, 03 = trigger exit
+		!Players		= $7872				; 00 = no players alive, 01 = P1 alive, 02 = P2 alive, 03 = both players alive
+>>>>>>> Stashed changes
 
 		!P2PrevPlatform		= !P2Base+$39
 
@@ -923,6 +1696,7 @@ endmacro
 		!P2ComboDisable		= !P2Base+$63		; set during combo dash to prevent chaining
 
 
+<<<<<<< Updated upstream
 		!P2LockPalset		= !P2Base+$7C		; while nonzero, player palset will not be reloaded
 		!P2Init			= !P2Base+$7D		; set to 1 after player has run its init routine
 		!P2ExtraBlock		= !P2Base+$7E
@@ -934,6 +1708,116 @@ endmacro
 		!P2CoyoteTime		= !P2Base+$7F
 			; also applies to Mario
 			; it works like this:
+=======
+		!P2Basics		= !P2Base+$00
+		!P2Physics		= !P2Base+$20
+		!P2Hitbox		= !P2Base+$41
+		!P2Custom		= !P2Base+$60			; 5 bytes at the end are an extension of basic
+
+
+	; --BASICS--
+		!P2Character		= !P2Basics+$00			; faster than reading !Characters
+		!P2Init			= !P2Basics+$01			; 0 = run init code, 1 = do not run init code
+		!P2Status		= !P2Basics+$02			; 0 = normal, 1 = dying, 2 = not in play
+		!P2HP			= !P2Basics+$03			; current HP
+		!P2MaxHP		= !P2Basics+$04			; max HP
+		!P2Invinc		= !P2Basics+$05			; invincibility/i-frames timer
+		!P2HurtTimer		= !P2Basics+$06			; hurt animation timer, does not give i-frames on its own
+		!P2Anim			= !P2Basics+$07			; animation index
+		!P2AnimTimer		= !P2Basics+$08			; animation timer, increments
+		!P2Anim2		= !P2Basics+$09			; secondary animation index, used in 30FPS mode (co-op)
+		!P2ExternalAnim		= !P2Basics+$0A			; overrides !P2Anim
+		!P2ExternalAnimTimer	= !P2Basics+$0B			; timer for external anim, decrements
+		!P2LockPalset		= !P2Basics+$0C			; 0 = reload palset each frame, 1 = do not reload palset
+		!P2Direction		= !P2Basics+$0D			; 0 = left, 1 = right
+		!P2Dir			= !P2Direction			; alt name
+		!P2Hurtbox		= !P2Basics+$0E			;\
+		!P2HurtboxXLo		= !P2Hurtbox+$00		; |
+		!P2HurtboxXHi		= !P2Hurtbox+$01		; |
+		!P2HurtboxYLo		= !P2Hurtbox+$02		; | hurtbox, stored so sprites/fusion sprites can access it
+		!P2HurtboxYHi		= !P2Hurtbox+$03		; |
+		!P2HurtboxW		= !P2Hurtbox+$04		; |
+		!P2HurtboxH		= !P2Hurtbox+$05		;/
+		!P2HurtboxX		= !P2HurtboxXLo			;\ alt names
+		!P2HurtboxY		= !P2HurtboxYLo			;/
+		!P2KillCount		= !P2Basics+$14			; kill count, usually cleared upon touching ground
+		!P2Buffer		= !P2Basics+$15			;\
+		!P2Buffer1		= !P2Buffer+$00			; | input buffer
+		!P2Buffer2		= !P2Buffer+$01			;/
+		!P2ExtraInput		= !P2Basics+$17			;\
+		!P2ExtraInput1		= !P2ExtraInput+$00		; |
+		!P2ExtraInput2		= !P2ExtraInput+$01		; | forced input
+		!P2ExtraInput3		= !P2ExtraInput+$02		; | (each one is cleared after being applied)
+		!P2ExtraInput4		= !P2ExtraInput+$03		;/
+		!P2DropDownTimer	= !P2Basics+$1B			; set to 0xA when player pushes down, counts down, when set, player can drop through ledges with down
+		!P2SlopeSpeed		= !P2Basics+$1C			; 00 = use default slope speed limiter, 01+ = do not limit
+		!P2Crush		= !P2Basics+$1D			; if set, player currently has the crushing property of mario's spin jump
+
+		!P2FlashPal		= !P2Basics+$1E
+			; format:
+			;	pppttttt
+			;	p = which flash color to use
+			;		0 = white
+			;		1 = black
+			;		2 = red
+			;		3 = green
+			;		4 = blue
+			;		5 = yellow
+			;		6 = cyan
+			;		7 = purple
+			;	t = timer
+		!P2Entrance		= !P2Basics+$1F
+
+
+	; --PHYSICS--
+		!P2XFraction		= !P2Physics+$00		;\
+		!P2XPos			= !P2XFraction+$01		; | 24-bit xpos
+		!P2XPosLo		= !P2XFraction+$01		; |
+		!P2XPosHi		= !P2XFraction+$02		;/
+		!P2YFraction		= !P2Physics+$03		;\
+		!P2YPos			= !P2YFraction+$01		; | 24-bit xpos
+		!P2YPosLo		= !P2YFraction+$01		; |
+		!P2YPosHi		= !P2YFraction+$02		;/
+
+		!P2XLo			= !P2XPosLo			;\
+		!P2XHi			= !P2XPosHi			; | shorter mirrors
+		!P2YLo			= !P2YPosLo			; |
+		!P2YHi			= !P2YPosHi			;/
+		!P2X			= !P2XPosLo			;\ even shorter mirrors for 16-bit use
+		!P2Y			= !P2YPosLo			;/
+
+
+		!P2XSpeedFraction	= !P2Physics+$06		;\ 16-bit xspeed
+		!P2XSpeed		= !P2XSpeedFraction+$01		;/
+		!P2YSpeedFraction	= !P2Physics+$08		;\ 16-bit yspeed
+		!P2YSpeed		= !P2YSpeedFraction+$01		;/
+
+		!P2VectorX		= !P2Physics+$0A		; added to xspeed
+		!P2VectorTimeX		= !P2VectorX+$01		; timer for X vector (decrements)
+		!P2VectorAccX		= !P2VectorX+$02		; added to X vector each frame that timer is nonzero
+		!P2VectorY		= !P2Physics+$0D		; added to yspeed
+		!P2VectorTimeY		= !P2VectorY+$01		; timer for Y vector (decrements)
+		!P2VectorAccY		= !P2VectorY+$02		; added to Y vector each frame that timer is nonzero
+
+		!P2FallSpeed		= !P2Physics+$10		; maximum fall speed
+		!P2Gravity		= !P2Physics+$11		; added to yspeed each frame in midair
+		!P2GravityMod		= !P2Physics+$12		; same as gravity (added together), can be modified externally
+		!P2Stasis		= !P2Physics+$13		; timer (decrements), while nonzero, speed is not applied
+
+		!P2Blocked		= !P2Physics+$14		; bits: 1 = r, 2 = l, 4 = d, 8 = u, 10 = crushed
+		!P2BlockedLayer		= !P2Physics+$15		; same as blocked, but only set by layer collision (not platform)
+		!P2ExtraBlock		= !P2Physics+$16		; wwwcudlr (w = water flags, rest same as blocked) can be modified externally
+		!P2InAir		= !P2Physics+$17		; 0 = on ground, slope or, platform, 4 = in midair
+		!P2Platform		= !P2Physics+$18		; index (+1) of sprite that player is standing on
+
+		!P2Slope		= !P2Physics+$19		; 0 = no slope, 1-4 = slope right, FC-FF = slope left
+		!P2Water		= !P2Physics+$1A		; 0 = not in water, 40 = in water (set if center point touches water)
+									; bits 0-4 show which parts are in water (same order as !P2Blocked)
+									; usually, bit 4 (10) has to be set for water physics to be used
+
+		!P2CoyoteTime		= !P2Physics+$1B		; coyote time status
+			; format:
+>>>>>>> Stashed changes
 			;	j----ttt
 			; every frame, t decrements
 			; when t hits 0, j is cleared
@@ -941,6 +1825,363 @@ endmacro
 			; if t is nonzero, the character can jump even in midair
 			; when the character is on the ground, t is set to 3
 			; when the character presses jump in midair, j is set and t is set to 3
+<<<<<<< Updated upstream
+=======
+		!P2CoyoteDisable	= !P2Physics+$1C		; speed added to player when using coyote jump, cleared when coyote is cleared (yyyyxxxx)
+
+
+		!P2Ducking		= !P2Physics+$1D		; 0 = not ducking, 4 = ducking
+		!P2Climbing		= !P2Physics+$1E		; 0 = not climbing, 1 = climbing
+
+		!P2Pipe			= !P2Physics+$1F		; pipe status
+			; format:
+			;	ddettttt
+			; dd = direction:
+			;	00 (00) left
+			;	01 (40) right
+			;	02 (80) up
+			;	03 (C0) down
+			; e = enter (1) / exit (0)
+			; t = timer (0x00-0x1F) 
+		!P2SlantPipe		= !P2Physics+$20		; timer (decrements) for shooting out of slant pipe
+
+
+	; --HITBOXES--
+		; pre-loaded:
+		!P2Hitbox1		= !P2Hitbox+$00			;\
+		!P2Hitbox1XLo		= !P2Hitbox1+$00		; |
+		!P2Hitbox1XHi		= !P2Hitbox1+$01		; |
+		!P2Hitbox1YLo		= !P2Hitbox1+$02		; | hitbox 1
+		!P2Hitbox1YHi		= !P2Hitbox1+$03		; |
+		!P2Hitbox1W		= !P2Hitbox1+$04		; |
+		!P2Hitbox1H		= !P2Hitbox1+$05		;/
+		!P2Hitbox1X		= !P2Hitbox1XLo			; reference options
+		!P2Hitbox1Y		= !P2Hitbox1YLo			; reference options
+		!P2Hitbox1XSpeed	= !P2Hitbox1+$06		; x knockback
+		!P2Hitbox1YSpeed	= !P2Hitbox1+$07		; y knockback
+		!P2Hitbox1DisTimer	= !P2Hitbox1+$08		; interaction disable timer on hit
+		!P2Hitbox1Hitstun	= !P2Hitbox1+$09		; hitstun
+		!P2Hitbox1SFX1		= !P2Hitbox1+$0A		; SFX (!SPC1) on hit (0 = no SFX)
+		!P2Hitbox1SFX2		= !P2Hitbox1+$0B		; SFX (!SPC4) on hit (0 = no SFX)
+		; not pre-loaded:
+		!P2Hitbox1IndexMem1	= !P2Hitbox1+$0C		;\ hitbox 1 index mem (1 bit per sprite)
+		!P2Hitbox1IndexMem2	= !P2Hitbox1+$0D		;/
+		!P2Hitbox1Shield	= !P2Hitbox1+$0E		; marks shield contact
+
+		!P2Hitbox1IndexMem	= !P2Hitbox1IndexMem1		; alt name
+
+		; pre-loaded:
+		!P2Hitbox2		= !P2Hitbox+$0F			;\
+		!P2Hitbox2XLo		= !P2Hitbox2+$00		; |
+		!P2Hitbox2XHi		= !P2Hitbox2+$01		; |
+		!P2Hitbox2YLo		= !P2Hitbox2+$02		; | hitbox 2
+		!P2Hitbox2YHi		= !P2Hitbox2+$03		; |
+		!P2Hitbox2W		= !P2Hitbox2+$04		; |
+		!P2Hitbox2H		= !P2Hitbox2+$05		;/
+		!P2Hitbox2X		= !P2Hitbox2XLo			; reference options
+		!P2Hitbox2Y		= !P2Hitbox2YLo			; reference options
+		!P2Hitbox2XSpeed	= !P2Hitbox2+$06		; x knockback
+		!P2Hitbox2YSpeed	= !P2Hitbox2+$07		; y knockback
+		!P2Hitbox2DisTimer	= !P2Hitbox2+$08		; interaction disable timer on hit
+		!P2Hitbox2Hitstun	= !P2Hitbox1+$09		; hitstun
+		!P2Hitbox2SFX1		= !P2Hitbox2+$0A		; SFX (!SPC1) on hit (0 = no SFX)
+		!P2Hitbox2SFX2		= !P2Hitbox2+$0B		; SFX (!SPC4) on hit (0 = no SFX)
+		; not pre-loaded:
+		!P2Hitbox2IndexMem1	= !P2Hitbox2+$0C		;\ hitbox 2 index mem (1 bit per sprite)
+		!P2Hitbox2IndexMem2	= !P2Hitbox2+$0D		;/
+		!P2Hitbox2Shield	= !P2Hitbox2+$0E		; marks shield contact
+
+		!P2Hitbox2IndexMem	= !P2Hitbox2IndexMem1		; alt name
+
+
+		!P2ActiveHitbox		= !P2Hitbox+$1E			; 0 = hitbox 1, !P2Hitbox2Offset = hitbox 2
+
+
+		; offsets
+		!P2HitboxXOffset	= (!P2Hitbox1X-(!P2Hitbox1))
+		!P2HitboxYOffset	= (!P2Hitbox1Y-(!P2Hitbox1))
+		!P2HitboxWOffset	= (!P2Hitbox1W-(!P2Hitbox1))
+		!P2HitboxHOffset	= (!P2Hitbox1H-(!P2Hitbox1))
+		!P2HitboxXSpeedOffset	= (!P2Hitbox1XSpeed-(!P2Hitbox1))
+		!P2HitboxYSpeedOffset	= (!P2Hitbox1YSpeed-(!P2Hitbox1))
+		!P2HitboxDisOffset	= (!P2Hitbox1DisTimer-(!P2Hitbox1))
+		!P2HitboxHitstunOffset	= (!P2Hitbox1Hitstun-(!P2Hitbox1))
+		!P2HitboxSFX1Offset	= (!P2Hitbox1SFX1-(!P2Hitbox1))
+		!P2HitboxSFX2Offset	= (!P2Hitbox1SFX2-(!P2Hitbox1))
+		!P2HitboxIndex1Offset	= (!P2Hitbox1IndexMem1-(!P2Hitbox1))
+		!P2HitboxIndex2Offset	= (!P2Hitbox1IndexMem2-(!P2Hitbox1))
+
+		!P2Hitbox2Offset	= (!P2Hitbox2-(!P2Hitbox1))
+
+
+
+
+	; --SPECIFIC/GENERIC NAMES--
+		!P2Carry		= !P2Custom+$00
+		!P2FusionIndex		= !P2Custom+$03			; index to owned fusion sprite
+		!P2PickUp		= !P2Custom+$05			; timer for picking up an item
+		!P2SpecialUsed		= !P2Custom+$07			; cleared when touching ground or bouncing on enemy
+		!P2Dashing		= !P2Custom+$08			; used by most characters as a timer or flag for dash status
+		!P2KickTimer		= !P2Custom+$09			; timer (decrements) after kicking objects like shells
+		!P2TurnTimer		= !P2Custom+$0A			; timer (decrements) for turning around
+
+
+		!P2YDelta		= !P2Base+$7C
+		!P2ShowHP		= !P2Base+$7D
+		!P2TouchingItem		= !P2Base+$7E			; penultimate byte = set if touching a carryable item
+		!P2TempHP		= !P2Base+$7F			; last byte = temp HP
+
+	; --MARIO DEFINES--
+		;!P2Carry		= !P2Custom+$00
+		!P2FastSwim		= !P2Custom+$01
+		!P2FireTimer		= !P2Custom+$02
+		!P2SpinJump		= !P2Custom+$03			; mario can't own a fusion sprite (has to search table anyway)
+		!P2Overdrive		= !P2Custom+$04
+		;!P2PickUp		= !P2Custom+$05			; 05
+		!P2FireFlash		= !P2Custom+$06			; internally controlled frame counter
+		!P2GalaxySpinUsed	= !P2SpecialUsed		; 07
+		;!P2Dashing		= !P2Custom+$08			; 08
+		;!P2KickTimer		= !P2Custom+$09			; 09
+		;!P2TurnTimer		= !P2Custom+$0A			; 0A
+		!P2Sliding		= !P2Custom+$0B			; flag for sliding on slopes
+		!P2ShrinkTimer		= !P2Custom+$0C			; timer for shrink animation
+		!P2FireCharge		= !P2Custom+$0D			; 0 = can't shoot fire, 1 = can shoot fire
+
+		!P2RolloutTimer		= !P2Custom+$0E			; counts down from 3 when landing, allows grounded rollout
+		!P2RolloutSpeed		= !P2Custom+$0F			; how much speed mario gets from a rollout, set while falling
+		!P2RolloutBuffer	= !P2Custom+$10			; buffers rollout for 3 frames, then locks you out for 3 frames, set to -1 during rollout animation
+		!P2RolloutStomp		= !P2Custom+$11			; set for 4 frames when stomping an enemy, allows aerial rollout
+		!P2WallKickDir		= !P2Custom+$12			; which wall direction was used for wall kick
+		!P2WallKickLockInput	= !P2Custom+$13			; timer, locks d-pad in wall kick direction
+		!P2FlameDash		= !P2Custom+$14			; timer
+		!P2FlameDashDown	= !P2Custom+$15			; flag
+		!P2FlameDashPlus	= !P2Custom+$16			; flag, increases flame dash speed
+		!P2FlameStar		= !P2Custom+$17			; timer
+		!P2FlameStarCharge	= !P2Custom+$18			; timer, counts up
+		!P2FlameStarUsed	= !P2Custom+$19			; flag, only cleared at level load
+		!P2MarioFinale		= !P2Custom+$1A			; timer
+
+		!MarioFlashPal		= $54
+
+	; --LUIGI DEFINES--
+		;!P2Carry		= !P2Custom+$00
+		;!P2FastSwim		= !P2Custom+$01
+		;!P2FireTimer		= !P2Custom+$02
+		!P2FireIndex		= !P2FusionIndex		; 03
+	; FREE	offset $04
+		;!P2PickUp		= !P2Custom+$05			; 05
+		!P2SpinAttack		= !P2Custom+$06
+		!P2SpinUsed		= !P2SpecialUsed		; 07
+		;!P2Dashing		= !P2Custom+$08			; 08
+		;!P2KickTimer		= !P2Custom+$09			; 09
+		;!P2TurnTimer		= !P2Custom+$0A			; 0A
+		;!P2Sliding		= !P2Custom+$0B			; flag for sliding on slopes
+		;!P2ShrinkTimer		= !P2Custom+$0C			; timer for shrink animation
+		!P2WaterRun		= !P2Custom+$0D			; flag
+		!P2WallRun		= !P2Custom+$0E			; flag
+		!P2Statue		= !P2Custom+$0F			; timer
+		!P2Cyclone		= !P2Custom+$10			; number of mash presses during spin
+		!P2JumpCharge		= !P2Custom+$11			; counts up
+		!P2LightningJump	= !P2Custom+$12			; timer
+		!P2LightningCounter	= !P2Custom+$13			; frame counter for lightning jump
+		!P2YoshiFlutter		= !P2Custom+$14			; timer
+
+
+	; --KADAAL DEFINES--
+		;!P2Carry		= !P2Custom+$00
+		!P2Headbutt		= !P2Custom+$01			; timer (decrements) for kadaal's headbutt
+		!P2DashTimerR		= !P2Custom+$02			;\ kadaal's dash timers
+		!P2DashTimerL		= !P2Custom+$03			;/(doesn't own a fusion sprite, so free for this)
+		!P2WalkTimer		= !P2Custom+$04			; kadaal walk startup
+		!P2CanTurn		= !P2Custom+$05			; marks whether kadaal is allowed to turn around with left/right
+		!P2Senku		= !P2Custom+$06			; timer (decrements) for senku
+		!P2SenkuUsed		= !P2SpecialUsed		; 07
+		;!P2Dashing		= !P2Custom+$08			; 08
+		!P2SenkuDir		= !P2Custom+$09			; which direction kadaal's senku will go (0 = right, 1 = left)
+		!P2AllRangeSenku	= !P2Custom+$0A			; all range direction for senku, requires upgrade
+		!P2JumpLag		= !P2Custom+$0B			; timer (decrements) for kadaal's land lag
+		!P2ShellSpin		= !P2Custom+$0C			; timer (decrements) for shell spin attack
+		!P2ShellSlide		= !P2Custom+$0D			; kadaal's shell slide
+		!P2ShellSpeed		= !P2Custom+$0E			; flag that kadaal is going fast enough to maintain shell slide speed in air
+		!P2BackDash		= !P2Custom+$0F			; timer (decrements) for kadaal's back dash or perfect pivot
+		!P2Punch		= !P2Custom+$10			; timer (decrements) for kadaal's punch
+		!P2DashSmoke		= !P2Custom+$11
+		!P2Throw		= !P2Custom+$12			; timer for item throw
+		!P2DropKick		= !P2Custom+$13
+
+
+	; --LEEWAY DEFINES--
+		;!P2Carry		= !P2Custom+$00
+		!P2SwordTimer		= !P2Custom+$01			; timer (decrements) for leeway's current sword attack
+		!P2IdleTimer		= !P2Custom+$02			; counts up while idle
+		!P2WallJumpInput	= !P2Custom+$03			; while timer is set, these bits are ORA'd to leeway's $6DA3
+		!P2WallJumpTimer	= !P2Custom+$04			; timer for wall jump input
+		!P2WallCoyote		= !P2Custom+$05			; if nonzero, wall jump can be used in air
+		!P2WallJumpDir		= !P2Custom+$06			; collision bit of wall
+		!P2AirDashUsed		= !P2SpecialUsed		; 07
+		;!P2Dashing		= !P2Custom+$08			; 08
+		;!P2KickTimer		= !P2Custom+$09			; 09
+		!P2WallClimb		= !P2Custom+$0A			; leeway's climb reg
+		;!P2Sliding		= !P2Custom+$0B			; 0B
+		!P2JumpHold		= !P2Custom+$0C			; set while leeway holds B, used for jump snap
+		!P2AirDash		= !P2Custom+$0D			; flag set when dash is started in midair, locks Yspeed to 0
+		!P2Stamina		= !P2Custom+$0E			; resource for leeway's climb and wall jump
+		!LeewayMaxStamina	= #$78
+		!P2DashJump		= !P2Custom+$0F			; allows dash speed without dash animation in midair
+		!P2SwordAttack		= !P2Custom+$10			; which sword attack leeway is performing
+		;!P2DashSmoke		= !P2Custom+$11
+		;!P2Throw		= !P2Custom+$12			; timer for item throw
+
+		!P2BraveDash		= !P2Custom+$13			; marks leeway as invincible during dash
+		!P2BraveDashCooldown	= !P2Custom+$14			; cooldown for brave dash
+
+		;			= !P2Custom+$15
+		;			= !P2Custom+$16
+
+
+		!P2DroppedSword		= !P2Custom+$17			; set so leeway only drops his sword once
+		!P2WallAnim		= !P2Custom+$18			; used for wall climb animation with ledge
+
+
+	; --ALTER DEFINES--
+	; --PEACH DEFINES--
+
+
+
+
+	; --PLAYER ANIMATIONS--
+
+macro def_anim(name, count)
+	!<name>		:= !Temp		; define anim start
+	!<name>_frames	:= <count>		; define number of frames
+	!<name>_over	:= !Temp+<count>	; define over value
+	!Temp		:= !Temp+<count>	; increment counter
+endmacro
+
+	!Temp = 0
+	%def_anim(Mar_Idle, 1)			;\
+	%def_anim(Mar_Walk, 3)			; | these use ice animation speed
+	%def_anim(Mar_Run, 3)			;/
+	%def_anim(Mar_LookUp, 1)
+	%def_anim(Mar_Crouch, 1)
+	%def_anim(Mar_Jump, 2)
+	%def_anim(Mar_Slide, 1)
+	%def_anim(Mar_FaceBack, 1)
+	%def_anim(Mar_FaceFront, 1)
+	%def_anim(Mar_Kick, 1)
+	%def_anim(Mar_LongJump, 1)
+	%def_anim(Mar_Turn, 1)
+	%def_anim(Mar_Victory, 1)
+	%def_anim(Mar_SwimSlow, 4)
+	%def_anim(Mar_SwimFast, 3)
+	%def_anim(Mar_Climb, 2)
+	%def_anim(Mar_Hammer, 3)
+	%def_anim(Mar_Cutscene, 7)
+	%def_anim(Mar_Balloon, 1)
+	%def_anim(Mar_Spin, 4)
+	%def_anim(Mar_Fire, 1)
+	%def_anim(Mar_Hang, 1)
+	%def_anim(Mar_RolloutStart, 1)
+	%def_anim(Mar_Rollout, 4)
+	%def_anim(Mar_WallKick, 1)
+	%def_anim(Mar_FlameStar, 1)
+	%def_anim(Mar_Hurt, 2)
+	%def_anim(Mar_Shrink, 2)
+	%def_anim(Mar_Dead, 1)
+
+	!Temp = 0
+	%def_anim(Lui_Idle, 1)			;\
+	%def_anim(Lui_Walk, 3)			; | these use ice animation speed
+	%def_anim(Lui_Run, 3)			;/
+	%def_anim(Lui_LookUp, 1)
+	%def_anim(Lui_Crouch, 1)
+	%def_anim(Lui_Jump, 2)
+	%def_anim(Lui_Slide, 1)
+	%def_anim(Lui_FaceBack, 1)
+	%def_anim(Lui_FaceFront, 1)
+	%def_anim(Lui_Kick, 1)
+	%def_anim(Lui_LongJump, 1)
+	%def_anim(Lui_Turn, 1)
+	%def_anim(Lui_Victory, 1)
+	%def_anim(Lui_SwimSlow, 4)
+	%def_anim(Lui_SwimFast, 3)
+	%def_anim(Lui_Climb, 2)
+	%def_anim(Lui_Hammer, 3)
+	%def_anim(Lui_Cutscene, 7)
+	%def_anim(Lui_Balloon, 1)
+	%def_anim(Lui_Spin, 4)
+	%def_anim(Lui_SpinEnd, 4)
+	%def_anim(Lui_Flutter, 3)
+	%def_anim(Lui_WallRun, 6)
+	%def_anim(Lui_Statue, 1)
+	%def_anim(Lui_LightningJump, 1)
+	%def_anim(Lui_Hurt, 2)
+	%def_anim(Lui_Shrink, 2)
+	%def_anim(Lui_Dead, 1)
+
+
+
+	!Temp = 0
+	%def_anim(Kad_Idle, 4)			;\
+	%def_anim(Kad_Walk, 4)			; | these use ice animation speed
+	%def_anim(Kad_Dash, 6)			;/
+	%def_anim(Kad_Spin, 4)
+	%def_anim(Kad_Squat, 1)
+	%def_anim(Kad_Fall, 3)			; fall has to be before shell
+	%def_anim(Kad_Shell, 4)
+	%def_anim(Kad_Turn, 1)
+	%def_anim(Kad_Senku, 1)
+	%def_anim(Kad_Punch, 4)
+	%def_anim(Kad_Hurt, 1)
+	%def_anim(Kad_Dead, 1)
+	%def_anim(Kad_Climb, 2)
+	%def_anim(Kad_Duck, 2)
+	%def_anim(Kad_Swim, 4)
+	%def_anim(Kad_DropKick, 5)
+	%def_anim(Kad_DropKickBounce, 2)
+	%def_anim(Kad_Headbutt, 4)
+	%def_anim(Kad_Carry, 3)
+	%def_anim(Kad_Throw, 1)
+	%def_anim(Kad_Victory, 1)
+
+
+
+
+	!Temp = 0
+	%def_anim(Lee_Idle1, 4)
+	!Lee_Sleep = !Lee_Idle1+3
+	%def_anim(Lee_IdleTransition, 2)
+	%def_anim(Lee_Idle2, 3)
+	%def_anim(Lee_Walk, 6)
+	%def_anim(Lee_Kick, 1)
+	%def_anim(Lee_CrouchTransition, 2)
+	%def_anim(Lee_Crouch, 4)
+	%def_anim(Lee_Surf0, 1)
+	%def_anim(Lee_Surf1, 2)
+	%def_anim(Lee_Surf2, 2)
+	%def_anim(Lee_GroundAttack1, 4)
+	%def_anim(Lee_GroundAttack2, 3)
+	%def_anim(Lee_DashTransition, 2)
+	%def_anim(Lee_Dash, 2)
+	%def_anim(Lee_DashAttack, 3)
+	%def_anim(Lee_Jump, 1)
+	%def_anim(Lee_Fall, 3)
+	%def_anim(Lee_AirAttack, 8)
+	%def_anim(Lee_DoubleJump, 4)
+	%def_anim(Lee_SpinAttack, 4)
+	%def_anim(Lee_ClimbBG, 1)
+	%def_anim(Lee_WallClimb, 4)
+	%def_anim(Lee_WallClimbTop, 3)
+	%def_anim(Lee_WallAttack, 5)
+	%def_anim(Lee_CeilingHang, 1)
+	%def_anim(Lee_CeilingClimb, 6)
+	%def_anim(Lee_CeilingAttack, 4)
+	%def_anim(Lee_Hurt, 1)
+	%def_anim(Lee_Dead, 1)
+	%def_anim(Lee_Victory, 2)
+
+
+>>>>>>> Stashed changes
 
 
 
@@ -948,6 +2189,7 @@ endmacro
 
 		!MarioFireCharge	= $58
 		!MarioClimb		= $62
+
 
 
 		!SRAM_block		= $41B000
@@ -982,14 +2224,14 @@ endmacro
 		!CharacterData		= !SRAM_buffer+$50	; 60 bytes
 		!MarioStatus		= !SRAM_buffer+$50
 		!MarioUpgrades		= !SRAM_buffer+$51
-					; 01 - fire flower??
-					; 02 - Handy Glove
-					; 04 - Heroic Cape
-					; 08 - Tactical Fire
-					; 10 - Flare Spin
-					; 20 - Flare Drill
-					; 40 - Flower DNA
-					; 80 - Flame Overdrive
+					; 01 - fire charge+
+					; 02 - wall kick
+					; 04 - flame dash (down)
+					; 08 - tactical fire
+					; 10 - dash boots
+					; 20 - flame dash
+					; 40 - flame star
+					; 80 - dive/rollout
 		!MarioPlaytime		= !SRAM_buffer+$52	; 5 bytes
 		!MarioLevelsBeaten	= !SRAM_buffer+$57	; 1 byte
 		!MarioDeathCounter	= !SRAM_buffer+$58	; 2 bytes
@@ -1010,13 +2252,13 @@ endmacro
 
 		!KadaalStatus		= !SRAM_buffer+$64
 		!KadaalUpgrades		= !SRAM_buffer+$65
-					; 01 - Senku Smash
-					; 02 - Senku Control
-					; 04 - Air Senku
-					; 08 - Landslide
-					; 10 - Shell Drill
-					; 20 - Sturdy Shell
-					; 40 - Ground Spin
+					; 01 - 
+					; 02 - 
+					; 04 - 
+					; 08 - 
+					; 10 - 
+					; 20 - 
+					; 40 - 
 					; 80 - Shun Koopa Satsu
 		!KadaalPlaytime		= !SRAM_buffer+$66	; 5 bytes
 		!KadaalLevelsBeaten	= !SRAM_buffer+$6B	; 1 byte
@@ -1024,14 +2266,14 @@ endmacro
 
 		!LeewayStatus		= !SRAM_buffer+$6E
 		!LeewayUpgrades		= !SRAM_buffer+$6F
-					; 01 - Combo Slash
-					; 02 - Air Dash
-					; 04 - Improved Air Dash
-					; 08 - Combo Air Slash
-					; 10 - Heroic Cape
-					; 20 - Dino Grip
-					; 40 - Rexcalibur
-					; 80 - Star Strike
+					; 01 - 
+					; 02 - brave dash
+					; 04 - air dash
+					; 08 - dino grip
+					; 10 - dino rush
+					; 20 - 
+					; 40 - rexcalibur
+					; 80 - double jump
 		!LeewayPlaytime		= !SRAM_buffer+$70	; 5 bytes
 		!LeewayLevelsBeaten	= !SRAM_buffer+$75	; 1 byte
 		!LeewayDeathCounter	= !SRAM_buffer+$76	; 2 bytes
@@ -1088,6 +2330,91 @@ endmacro
 								; second 128 bytes are 16 slots for uploads of 256 bytes or smaller
 
 
+<<<<<<< Updated upstream
+=======
+		!SquareTable		= $44C0			; 4 bytes per entry (indexed by dynamic tile number * 4)
+								; each entry simply holds a 24-bit source address to be uploaded to that square
+
+
+	macro RawDyn(tiles, source, dest)
+		dw <tiles>*$20
+		dl <source>
+		dw <dest>
+	endmacro
+
+	macro FileDyn(tiles, sourcetile, dest)
+		dw <tiles>*$20
+		dl <sourcetile>*$20
+		dw <dest>
+	endmacro
+
+
+	; upload this tile
+	macro SquareDyn(tilenum)
+		dw <tilenum>*$20
+	endmacro
+
+	; update source file address
+	macro SquareFile(file)
+		dw $8000|<file>
+	endmacro
+
+	; skip forward that number of tiles (used to update later claimed tiles without updating earlier ones)
+	macro SquareSkipTiles(tiles)
+		dw $C000|<tiles>
+	endmacro
+
+	; update source file address to a super-dynamic one
+	macro SquareSuperDynamic(ID)
+		dw $E000|<ID>
+	endmacro
+
+
+
+
+
+	!IntroLevel_Airship		= $1F7
+	!IntroLevel_Airship		= $1F1
+	!IntroLevel_UnexploredHill	= $0C6
+
+
+
+		!LockROM		= 0			; 0 = lock ROM and finalize header
+								; 1 = do not lock ROM
+		!Version		= 0			; 1.!Version is written to header
+
+
+
+
+	macro LockROM(read, condition)
+	if !LockROM != 0
+		PHP
+		SEP #$20
+		LDA <read>
+		CMP <condition> : BEQ ?Ok
+	?LockROM:
+		db $00
+	?Ok:
+		PLP
+	endif
+	endmacro
+
+
+
+		!Debug			= 1			; 0 = do not insert debug code
+								; 1 = insert debug code
+
+	macro DebugCode()
+		if !Debug == 1
+	endmacro
+
+
+	macro EndDebug()
+		endif
+	endmacro
+
+
+>>>>>>> Stashed changes
 		!DebugData		= $404900		; values from V timer, used to track performance over time
 								; each entry is 16 bytes and holds:
 								; - times called (2 bytes)
@@ -1317,16 +2644,185 @@ endmacro
 		!Particle_TileTemp	= $08
 
 
+<<<<<<< Updated upstream
+=======
+	macro def_particle(name)
+		!prt_<name>	:= !Temp
+		!prt_<name>_BG1	:= !prt_<name>
+		!prt_<name>_BG2	:= !prt_<name>+1
+		!prt_<name>_BG3	:= !prt_<name>+2
+		!prt_<name>_Cam	:= !prt_<name>+3
+		!Temp		:= !Temp+4
+	endmacro
+
+	macro def_particle_simple(name)
+		!prt_<name>	:= !Temp
+		!Temp		:= !Temp+1
+	endmacro
+
+
+
+	!Temp = 1			; 0 doesn't count!
+
+	; super customs
+	%def_particle(basic)
+	%def_particle(ratio)
+	%def_particle(anim_add)
+	%def_particle(anim_sub)
+
+	; minor customs
+	%def_particle_simple(spritepart)
+	%def_particle_simple(flash)
+
+	; hardcoded: vanilla replacements
+	%def_particle_simple(smoke8x8)
+	%def_particle_simple(smoke16x16)
+	%def_particle_simple(contact)
+	%def_particle_simple(contactbig)
+	%def_particle_simple(coinglitter)
+	%def_particle_simple(sparkle)
+	%def_particle_simple(sparklesmall)
+	%def_particle_simple(text100)
+	%def_particle_simple(brickpiece)
+
+;	%def_particle_simple(watersplash)
+;	%def_particle_simple(lavasplash)
+
+	%def_particle_simple(lavaparticle)
+	%def_particle_simple(splash)
+
+	%def_particle_simple(bubble)
+	%def_particle_simple(snorez)
+
+	; hardcoded: new particles
+	%def_particle_simple(leaf)
+	%def_particle_simple(tinycoin)
+
+
+
+
+	; BG_object regs
+		!BG_object_Base		= $A0B0			; bank $41
+		!BG_object_Count	= 128
+		!BG_object_Size		= 10
+
+		!BG_object_Index	= $57			; 16-bit, holds the index to the next free BG object
+
+		!BG_object_Type		= !BG_object_Base+$00	; which object this is
+		!BG_object_Timer	= !BG_object_Base+$01	; timer
+		!BG_object_X		= !BG_object_Base+$02	;\
+		!BG_object_XLo		= !BG_object_X		; | 16-bit X pos
+		!BG_object_XHi		= !BG_object_X+1	;/
+		!BG_object_Y		= !BG_object_Base+$04	;\
+		!BG_object_YLo		= !BG_object_Y		; | 16-bit Y pos
+		!BG_object_YHi		= !BG_object_Y+1	;/
+		!BG_object_W		= !BG_object_Base+$06	; how many 8x8 tiles wide this object is
+		!BG_object_H		= !BG_object_Base+$07	; how many 8x8 tiles tall this object is
+		!BG_object_Tile		= !BG_object_Base+$08	; position on page 3
+		!BG_object_Misc		= !BG_object_Base+$09	; reg that can be used for various purposes
+
+	; BG_object map16
+		!BG_object_Map16	= $41A5B0		; 2 KiB right after BG object data
+		!Map16Page3		= !BG_object_Map16	;\ alt names
+		!Map16_Page3		= !BG_object_Map16	;/
+
+
+	; cable regs
+		!CableRenderBuffer	= !V_buffer
+
+		!CableRAM		= !GFX_buffer+$1000	; starts right after buffer
+
+		!CableCacheX		= !CableRAM+$000	; carried between renders, cleared at the start of each frame
+		!CableTilemapLookup	= !CableRAM+$002	; 16 bytes marking whether each tilemap buffer is used (indexed by $51, can be reordered each frame)
+		!CableTilemapBuffer	= !CableRAM+$012	; $C0 * 16 bytes = $C00 bytes (3 KiB) total
+
+		!CableTileOverflow	= !CableRAM+$C12	; up to 128 bytes, used internally in renderer, can be shared
+		!CablePrevHash		= !CableRAM+$C92	; 2 bytes, used internally in renderer, can be shared
+		!CableConnectionHash	= !CableRAM+$C94	; 2 bytes, hash of last tile used for middle line
+		!CableConnectionIndex	= !CableRAM+$C96	; 2 bytes, render index to the last tile used for middle line
+		!CableRenderLineTemp	= !CableRAM+$C98	; 3 bytes, used internally in renderer, can be shared
+
+		; these 5 are the cache used for tilemap updates, true mirrors below
+		!CableUpdateMinus2	= !CableRAM+$C9B
+		!CableUpdateMinus1	= !CableRAM+$C9C
+		!CableUpdate0		= !CableRAM+$C9D
+		!CableUpdatePlus1	= !CableRAM+$C9E
+		!CableUpdatePlus2	= !CableRAM+$C9F
+
+		; each cable needs its own set of these 5 bytes... so there are 64 structs of this type here
+		!CableUpdateData	= !CableRAM+$CA0
+
+		!CableTilemapIndex	= !CableRAM+$DE0	; 2 bytes, carried between renders, cleared at the start of each frame
+
+
+		!CableTexture		= !CableRAM+$E00
+
+
+
+
+
+
+		; shield box data
+		!ShieldByteCount	= $06
+		!ShieldData		= $418B00
+		!ShieldXLo		= !ShieldData+0
+		!ShieldXHi		= !ShieldData+1
+		!ShieldYLo		= !ShieldData+2
+		!ShieldYHi		= !ShieldData+3
+		!ShieldW		= !ShieldData+4
+		!ShieldH		= !ShieldData+5
+		!ShieldX		= !ShieldXLo
+		!ShieldY		= !ShieldYLo
+
+		!ShieldExists		= !ShieldData+($10*!ShieldByteCount)
+
+	; call from bank $41!
+	macro ClearShield(num)
+		STZ.w !ShieldW+(<num>*!PlatformByteCount)
+	endmacro
+
+
+
+		; platform box data
+		!PlatformByteCount	= $0C
+		!PlatformData		= $418F00		; 192 bytes (16 slots, 11 bytes per slot, index with sprite num * 0x0C)
+		!PlatformStatus		= !PlatformData+0	; which collision points to interact with (00 = this platform does not exist)
+		!PlatformXLeft		= !PlatformData+1	; 16-bit Xpos of left border
+		!PlatformXRight		= !PlatformData+3	; 16-bit Xpos of right border
+		!PlatformYUp		= !PlatformData+5	; 16-bit Ypos of top border
+		!PlatformYDown		= !PlatformData+7	; 16-bit Ypos of down border
+		!PlatformDeltaX		= !PlatformData+9	; 8-bit X delta
+		!PlatformDeltaY		= !PlatformData+10	; 8-bit Y delta
+		!PlatformSprite		= !PlatformData+11	; 8-bit sprite index
+
+		!PlatformExists		= !PlatformData+($10*!PlatformByteCount)
+
+	; call from bank $41!
+	macro ClearPlatform(num)
+		STZ.w !PlatformStatus+(<num>*!PlatformByteCount)
+	endmacro
+
+
+
+
+
+>>>>>>> Stashed changes
 
 		!PlayerBackupData	= $404E00		; > 128 bytes
 
 		!MultiPlayer		= $404E80
+<<<<<<< Updated upstream
 		!CurrentPlayer		= $404E81		; Used on OW for character select and during levels
+=======
+		!CurrentPlayer		= $404E81		; used on OW for character select and during levels
+		!HitboxType		= $404E82		; 0 = normal hitbox, 1 = sight box
+>>>>>>> Stashed changes
 
 		; $404E82 free
 
 		!CurrentMario		= $404E84		; > 0 = no Mario, 1 = P1 Mario, 2 = P2 Mario
 
+		; THESE ARE PROBABLY UNUSED
 		!VineDestroy		= $404E85
 		!VineDestroyPage	= !VineDestroy+$00	; > Map16 page of vines
 		!VineDestroyXLo		= !VineDestroy+$01
@@ -1354,11 +2850,11 @@ endmacro
 
 		!MegaLevelID		= $404EB3		; 0 = no mega level
 
-		!TextPal		= $404EB4		; CCC bits of text prop, set to 0x18 by default
+		; $404EB4 (1 byte) free
 
 		!PauseThif		= $404EB5		; when set, thifs will not process
 
-		!LevelInitFlag		= $404EB6		; 0 while INIT is running, 1 while MAIN is running
+		!LevelMainFlag		= $404EB6		; 0 while INIT is running, 1 while MAIN is running
 
 		!3DWater		= $404EB7		; enable/disable 3D water from DKC2
 
@@ -1372,6 +2868,19 @@ endmacro
 								; so $300 + $300 + $300 + $200 = $B00 bytes, or 2.75KB
 		!PaletteBuffer		= !PaletteHSL+$900
 
+<<<<<<< Updated upstream
+=======
+		!PaletteCacheHSL	= !PaletteHSL+$300
+		!PaletteBufferHSL	= !PaletteHSL+$600
+		!PaletteCacheRGB	= !PaletteHSL+$900
+		!PaletteBuffer		= !PaletteHSL+$B00
+		!ShaderInput		= !PaletteHSL+$D00
+
+
+		!DizzyEffect		= $405DF8		; when enabled, table at !DecompBuffer+$1000 must be used to adjust sprite heights
+
+		!3DWater_Color		= $405DF9		; 16-bit, should be set at level init
+>>>>>>> Stashed changes
 
 
 		!DizzyEffect		= $4059F8		; when enabled, table at $40A040 must be used to adjust sprite heights
@@ -1379,7 +2888,21 @@ endmacro
 		!3DWater_Color		= $4059F9		; 16-bit, should be set at level init
 		!FileAddress		= $4059FB		; 24-bit, scratch pointer to file
 
+<<<<<<< Updated upstream
 	; next entry at $4059FE
+=======
+		; 1 byte free at $405DFB
+		!ShakeBG3		= $405DFC		; same as !ShakeTimer but for BG3
+
+		; 2 bytes free at $405DFD-$405DFE!
+
+		!NPC_TalkSign		= $405DFF
+		!NPC_Talk		= $405E00		; 256 word entries (512 B), 1 for each NPC ID, index with NPC ID * 2 to get input for !MsgTrigger
+		!NPC_TalkCap		= $406000		; same format as previous table, cap for auto-incrementing function
+
+	; next entry at $406200
+
+>>>>>>> Stashed changes
 
 
 		; these are values not addresses
@@ -1499,6 +3022,11 @@ endmacro
 					; $35F0		; P2 interaction disable timer
 		!CustomBit		= $08
 
+<<<<<<< Updated upstream
+=======
+		!SpriteTile		= $6030		; offset to add to sprite tilemap numbers, normally updated each frame before MAIN
+		!SpriteProp		= $6040		; lowest bit of sprite OAM prop, normally updated each frame before MAIN
+>>>>>>> Stashed changes
 
 		!SpriteDisP1		= $32E0
 		!SpriteDisSprite	= $3300
@@ -1569,10 +3097,42 @@ endmacro
 		!CustomOffset		= $35
 
 
+<<<<<<< Updated upstream
 		!Ex_Palset		= $6050			; which palset a FusionCore sprite is using (hidden 13th reg, i suppose)
+=======
+	; fusion sprite list
+		!MarFireball_Num	= $01
+		!MarFinale_Num		= $02
+		!LuiFireball_Num	= $03
+		; 01-07 reserved for player use
+		!Malleable_Num		= $08
+		!Hammer_Num		= $09
+		!Bone_Num		= $0A
+		!Baseball_Num		= $0B
+		!SmallFireball_Num	= $0C
+		!BigFireball_Num	= $0D
+		!TinyFlame_Num		= $0E
+		!VolcanoLotusFire_Num	= $0F
+		!Glitter_Num		= $10
+		!QuestionBlock_Num	= $11
+		!Brick_Num		= $12
+		!BlockHitbox_Num	= $13
+		!CoinFromBlock_Num	= $14
+		!Shooter_Num		= $15
+		!TorpedoArm_Num		= $16
+		!DizzyStar_Num		= $17
+		!Explosion_Num		= $18
+		!TurnToPrt_Num		= $19
+>>>>>>> Stashed changes
 
 		!Ex_Index		= $7699			; rolling index for fusion sprites
 		!Particle_Index		= $769A			; rolling index for particles (16-bit)
+
+	; player projectile list
+		!PlayerProjectile	= $7660
+		!PProjectile_Index	= !PlayerProjectile+0
+		!PProjectile_List	= !PlayerProjectile+1
+
 
 	; $1C3 bytes in this chunk
 	; note that the order of the physics regs is important
@@ -1597,7 +3157,13 @@ endmacro
 
 	; -- MSG RAM --
 		; DP define
+<<<<<<< Updated upstream
 		!MsgPal			= $61
+=======
+		!MsgPal			= $61			; first portrait color (default = 0xA1)
+		!BorderPal		= $62			; ccc bits of border prop (default = 0x08)
+		!TextPal		= $63			; CCC bits of text prop, set to 0x18 by default
+>>>>>>> Stashed changes
 
 		; LM pointer
 		!MsgData		= $03BC0B		; Use this to figure out where Lunar Magic puts message data
@@ -1701,12 +3267,8 @@ endmacro
 
 		!RAM_TrueFrameCounter	= $13
 		!RAM_FrameCounter	= $14
-		!MarioJoypad1		= $15
-		!MarioJoypad1OneF	= $16
-		!MarioJoypad2		= $17
-		!MarioJoypad2OneF	= $18
-		!MarioPowerUp		= $19
 		!RAM_ScreenMode		= $5B
+<<<<<<< Updated upstream
 		!Palette		= $5C
 		!LevelWidth		= $5E	; in screens
 		!GlobalProperties	= $64
@@ -1724,28 +3286,50 @@ endmacro
 		!MarioScreenXPosHi	= $7F
 		!MarioScreenYPosLo	= $80
 		!MarioScreenYPosHi	= $81
+=======
+		!Map16Width		= $5D		; how many screens fit in the current level mode (number of map16 columns, actual max width with no -1)
+		!LevelWidth		= $5E		; in screens (effective width not max width: only used screens are counted)
+		!GlobalProperties	= $64
+>>>>>>> Stashed changes
 		!WaterLevel		= $85
 		!IceLevel		= $86
-		!MarioXPos		= $94
-		!MarioXPosLo		= $94
-		!MarioXPosHi		= $95
-		!MarioYPos		= $96
-		!MarioYPosLo		= $96
-		!MarioYPosHi		= $97
+
+		!MarioXPos		= $94		;\
+		!MarioXPosLo		= !MarioXPos	; |
+		!MarioXPosHi		= !MarioXPos+1	; | still used sometimes for loading and such
+		!MarioYPos		= $96		; |
+		!MarioYPosLo		= !MarioYPos	; |
+		!MarioYPosHi		= !MarioYPos+1	;/
+		!MarioX			= !MarioXPos
+		!MarioY			= !MarioYPos
+
+
 		!GameMode		= $6100
 		!PaletteRGB		= $6703
+<<<<<<< Updated upstream
+=======
+		!Color0			= $6903
+		!HorzLevelMode		= $6BF5		; tbn mmmmm (t = layer 2/3 uses map16, b = show bottom row, n = use new sprite system, mmmmm = horizontal level mode)
+		!Layer2LevelMap16Addr	= $6C26
+>>>>>>> Stashed changes
 		!LevelMode		= $6D9B
 		!MainScreen		= $6D9D
 		!SubScreen		= $6D9E
 		!HDMA			= $6D9F
+<<<<<<< Updated upstream
 		!MarioJoypad1Raw	= $6DA2
 		!MarioJoypad2Raw	= $6DA4
 		!MarioJoypad1RawOneF	= $6DA6
 		!ItemBox		= $6DC2
+=======
+		!HeaderItemMem		= $73BE		; which of the !ItemMem tables to use (3 = ignore)
+>>>>>>> Stashed changes
 		!Translevel		= $73BF
+		!BG2Height		= $73CD		; height of BG2, in tiles: OA-HHHHH (O = relative to FG only, A = auto-coord, H = height)
 		!PauseTimer		= $73D3
 		!Pause			= $73D4
 		!LevelHeight		= $73D7
+<<<<<<< Updated upstream
 		!CapeImg		= $73DF
 		!MarioImg		= $73E0
 		!MarioWallWalk		= $73E3
@@ -1755,15 +3339,22 @@ endmacro
 		!CapeYPosLo		= $73EB
 		!CapeYPosHi		= $73EC
 		!MarioBehind		= $73F9
+=======
+>>>>>>> Stashed changes
 		!BG3TideSettings	= $7403		; 0 = no tide, 1 = tide that goes up/down, 2 = static tide
 		!ScrollLayer1		= $7404
-		!MarioSpinJump		= $740D
 		!EnableHScroll		= $7411
 		!EnableVScroll		= $7412
 		!BG2ModeH		= $7413
 		!BG2ModeV		= $7414
 		!BG2BaseV		= $7417		; 16-bit
+<<<<<<< Updated upstream
 		!MsgTrigger		= $7426
+=======
+		!DoorCounter		= $741A
+		!MsgTrigger		= $7426		; 16-bit
+		!DeathTimer		= $743C		; used for death animation
+>>>>>>> Stashed changes
 		!ScrollSpriteNum	= $743E
 		!ScrollSpriteNum_L1	= !ScrollSpriteNum
 		!ScrollSpriteNum_L2	= $743F
@@ -1774,6 +3365,7 @@ endmacro
 		!BG3ScrollSettings	= $745F		; hi nybble is vertical option, lo nybble is horizontal option
 		!BG3YFraction		= $7460		; 16-bit
 		!BG3BaseH		= $746A		; 16-bit
+<<<<<<< Updated upstream
 		!MarioCarryingObject	= $7470
 		!StarTimer		= $7490
 		!LevelEnd		= $7493
@@ -1782,15 +3374,81 @@ endmacro
 		!MarioCapeSpin		= $74A6
 		!SpriteIndex		= $75E9
 		!MarioKillCount		= $7697
+=======
+		!RNG_Seed1		= $748B		;\
+		!RNG_Seed2		= $748C		; | vanilla compat
+		!RNG_Seed3		= $748D		; | (seed 3 and 4 are sometimes read as output by vanilla sprites)
+		!RNG_Seed4		= $748E		;/
+		!StarTimer		= $7490
+		!LevelEnd		= $7493
+		!PSwitchTimer		= $74AD
+		!SilverPTimer		= $74AE
+		!SpriteIndex		= $75E9
+>>>>>>> Stashed changes
 		!CoinTimer		= $786B
-		!MarioRidingYoshi	= $787A
 		!ShakeTimer		= $7887
+<<<<<<< Updated upstream
 		!YoshiIndex		= $78E2
 		!GeneratorNum		= $78B9
 		!MarioStunTimer		= $78BD
 		!WindowDir		= $7B88
 		!WindowSize		= $7B89
 		!SideExit		= $7B96
+=======
+		!ShakeBG1		= !ShakeTimer	; alt name
+		!GeneratorNum		= $78B9
+		!BuoyancySettings	= $790E		; 0x80 = enabled, 0x40 = enabled but disable BG2 interaction for sprites
+		!HeaderTileset		= $7931
+		!CurrentLayer		= $7933		; 0x00 = BG1, 0x80 = BG2/BG3
+		!WindowDir		= $7B88
+		!WindowSize		= $7B89
+
+
+	; these can be freely used, as far as i can tell
+	; note that 7BA1 is used during level load and CAN NOT be freely used
+		; 7B8A	menu stuff related to old OW
+		; 7B8B	old main menu stuff
+		; 7B8C	old HDMA flag
+		; 7B8D	old OW stuff
+		; 7B8E	old OW stuff
+		; 7B8F	old OW stuff
+		; 7B90	old OW stuff
+		; 7B91	old main menu stuff
+		; 7B92	old main menu stuff
+		; 7B93	"use secondary exits" flag, written during level load (bank 0D) but never read
+		; 7B94	"disable bonus game" flag
+		; 7B95	old yoshi stuff
+		; 7B96	old side exit flag
+		; 7B97	unused scroll sprite register
+		; 7B99	old goal point register
+		; 7B9A	old scroll sprite register
+		; 7B9B	old yoshi stuff
+		; 7B9C	old OW stuff
+		; 7B9D	old rising/sinking water stuff
+		; 7B9E	old OW stuff
+		; 7B9F	old reznor stuff
+		; 7BA0	old OW stuff
+		; ONE BYTE USED HERE AT 7BA1 (LEVEL LOAD)
+		; 7BA2-7BE2	old mode 7 stuff
+
+		!LevelBorderExits	= $7BA2
+		!UpExitLimitL		= !LevelBorderExits+$00
+		!UpExitLimitR		= !LevelBorderExits+$02
+		!LeftExitLimitU		= !LevelBorderExits+$04
+		!LeftExitLimitD		= !LevelBorderExits+$06
+		!RightExitLimitU	= !LevelBorderExits+$08
+		!RightExitLimitD	= !LevelBorderExits+$0A
+		!DownExitLimitL		= !LevelBorderExits+$0C
+		!DownExitLimitR		= !LevelBorderExits+$0E
+		!UpExitOverride		= !LevelBorderExits+$10
+		!LeftExitOverride	= !LevelBorderExits+$12
+		!RightExitOverride	= !LevelBorderExits+$14
+		!DownExitOverride	= !LevelBorderExits+$16
+		!HardBoxBorders		= !LevelBorderExits+$18		; flag (n trigger) when set, camera box borders clamp collision points and inherit level border exits
+
+
+		!MusicBackup		= $6DDA		; set to 0xFF to prevent music from reloading on death
+>>>>>>> Stashed changes
 		!SPC1			= $7DF9
 		!SPC2			= $7DFA
 		!SPC3			= $7DFB
@@ -1806,10 +3464,7 @@ endmacro
 		!SpriteLoadStatus	= $418A00	; 255 bytes, 1 for each sprite in level data
 
 	; -- Custom routines --
-
-		!MPU_light		= $0E00
-		!MPU_wait		= $1EA6		; SNES routine that waits for SA-1
-		!MPU_phase		= $1EFF		; phase SA-1 has to get to before MPU_wait can stop
+		!MPU_phase		= $1EFF			; phase SA-1 has to get to before MPU_wait can stop
 
 
 		!InitSpriteTables	= $07F7D2
@@ -1880,6 +3535,7 @@ endmacro
 
 		!GetSpriteSlot		= $02A9DE
 
+<<<<<<< Updated upstream
 		!GetSpriteClipping04	= $03B69F
 		!GetSpriteClipping00	= $03B6E5
 
@@ -1887,6 +3543,9 @@ endmacro
 		!CheckContact		= $03B72B
 
 		!LoadTweakers		= $07F78B		; reloads vanilla tweakers and set OAM prop
+=======
+	;	!LoadTweakers		= $07F7A0		; reloads vanilla tweakers and sets OAM prop
+>>>>>>> Stashed changes
 		!ResetSprite		= $07F7D2		; hijacked by Fe26 to work with custom sprites
 		; same as !InitSpriteTables
 		; procedure: set sprite num + extra bits, then call, then set ID, then store coords + status
@@ -1922,6 +3581,7 @@ endmacro
 		!ClimbRightSpeed	= $10
 
 	; -- Graphics --
+<<<<<<< Updated upstream
 
 		!P2Tile1		= $20		;\
 		!P2Tile2		= $22		; | Located in SP1
@@ -1931,6 +3591,27 @@ endmacro
 		!P2Tile6		= $2A
 		!P2Tile7		= $2C
 		!P2Tile8		= $2E
+=======
+		!P1Tile1		= $00		;\
+		!P1Tile2		= $02		; |
+		!P1Tile3		= $04		; |
+		!P1Tile4		= $06		; | first 64x32 block in SP1
+		!P1Tile5		= $20		; |
+		!P1Tile6		= $22		; |
+		!P1Tile7		= $24		; |
+		!P1Tile8		= $26		;/
+
+		!P2Tile1		= $08		;\
+		!P2Tile2		= $0A		; |
+		!P2Tile3		= $0C		; |
+		!P2Tile4		= $0E		; | second 64x32 block in SP1
+		!P2Tile5		= $28		; |
+		!P2Tile6		= $2A		; |
+		!P2Tile7		= $2C		; |
+		!P2Tile8		= $2E		;/
+>>>>>>> Stashed changes
+
+		!P2TileOffset		= !P2Tile1-!P1Tile1
 
 		!SP1			= $6000
 		!SP2			= $6800
